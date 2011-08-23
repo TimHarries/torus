@@ -1892,8 +1892,13 @@ endif
        if (PRESENT(iArray64))   iArray = transfer(iArray64, iArray)
        if (PRESENT(iArray32))   iArray = transfer(iArray32, iArray)
        if (PRESENT(float32))    iArray = transfer(float32, iArray)
-       if (PRESENT(iArray8))    iArray = transfer(iArray8, iArray)
+       if (PRESENT(iArray8))    iArray = iarray8
     endif
+    if (writedebug) then
+       write(*,*) "last byte of iarray8 ",iarray8(SIZE(iarray8))
+       write(*,*) "last byte of iArray ",iArray(SIZE(iarray))
+    endif
+
     allocate(string(1:((nBytes+4)*8/6)+20))
 
     if (writeDebug) write(*,*) "nBytes ",nBytes
@@ -2924,17 +2929,9 @@ end subroutine writeXMLVtkFileAMR
            j = j + k
         enddo
 
-        write(*,*) "Size float32 ",SIZE(float32)
-        do j = SIZE(float32)-10,SIZE(float32)
-           write(*,*) j, float32(j)
-        enddo
-
         call convertandcompress(iBytes, iHeader, farray32=float32)
-        write(*,*) "ibytes ", iBytes(SIZE(ibytes)-10:size(iBytes))
         call base64encode(.false., pstring, nString, iArray8=iHeader)
-        call base64encode(.false., pstring2, nString2, iArray8=iBytes, debug=.true.)
-        write(*,*) "nstring2 ",nstring2
-        write(*,*) "pstring2 ",pstring2(nstring2-10:nstring2)
+        call base64encode(.false., pstring2, nString2, iArray8=iBytes)
         open(lunit, file=vtkFilename, form="unformatted", status="old", access="stream", position="append")
         write(lunit) pstring(1:nString), pstring2(1:nString2)
         close(lunit)
