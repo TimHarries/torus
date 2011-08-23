@@ -314,24 +314,6 @@ ifeq ($(SYSTEM), zensingle)
     KNOWN_SYSTEM=yes
 endif
 
-
-# Build using SGI's Message Passing Toolkit version of MPI. 
- ifeq ($(SYSTEM), zenmpt)
-     F95COMP= ifort -lmpi
-     FASTFLAG= -O3 -xT
-     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
-     STATICFLAG=
-     MATHTRAP=
-     EXE=torus.mpt
-     F2CLIB=
-     STATICLIBS= -Bstatic
-     STARLIBS= 
-     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
-     MPIFLAG = -DMPI
-     KNOWN_SYSTEM=yes
- endif
-
-
 ifeq ($(SYSTEM), mpiintel)
     TOP  = $(HOME)/mpi_intel
     TOP2 = $(HOME)/mpi_g77
