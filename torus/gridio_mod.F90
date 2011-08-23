@@ -3037,35 +3037,49 @@ contains
 
 
        subroutine readGridMPI(grid, gridfilename, fileFormatted)
+         use inputs_mod, only : splitOverMPI
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
          logical :: fileFormatted
          integer :: iThread
          integer :: nOctals, nVoxels
+         character(len=80) :: message
 
          if (associated(grid%octreeRoot)) then
             call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
             grid%octreeRoot => null()
          endif
 
-         do iThread = 1, nThreadsGlobal - 1
-            if (myrankGlobal == iThread) then
-               call openGridFile(gridFilename, fileformatted)
-               call readStaticComponents(grid, fileFormatted)
-               close(20)
+         if (splitOverMPI) then
+            do iThread = 1, nThreadsGlobal - 1
+               if (myrankGlobal == iThread) then
+                  call openGridFile(gridFilename, fileformatted)
+                  call readStaticComponents(grid, fileFormatted)
+                  close(20)
+               endif
+               call torus_mpi_barrier
+            enddo
+            
+            if (myrankGlobal == 0) then
+               call readAmrGridSingle(gridfilename, fileFormatted, grid)
+               call sendGridToAllThreads(grid%octreeRoot)
+            else
+               allocate(grid%octreeRoot)
+               grid%octreeRoot%nDepth = 1
+               nOctals = 0
+               call getBranchOverMPI(grid%octreeRoot, null())
             endif
-            call torus_mpi_barrier
-         enddo
+         else
+            do iThread = 0, nThreadsGlobal - 1
+               if (myrankGlobal == iThread) call readAmrGridSingle(gridfilename, fileFormatted, grid)
+               write(message,'(a,i3,a)') "Thread ",ithread, " read"
+               call writeInfo(message,TRIVIAL)
+               call torus_mpi_barrier
+            enddo
+         endif
 
-         if (myrankGlobal == 0) then
-             call readAmrGridSingle(gridfilename, fileFormatted, grid)
-             call sendGridToAllThreads(grid%octreeRoot)
-          else
-            allocate(grid%octreeRoot)
-            grid%octreeRoot%nDepth = 1
-            nOctals = 0
-             call getBranchOverMPI(grid%octreeRoot, null())
-          endif
+
+
 
           call torus_mpi_barrier
           call updateMaxDepth(grid)

@@ -3369,10 +3369,10 @@ contains
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
-    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
-         "sourceline ",  &
-    "ne         ", "jnu        ","haschild   ", &
-         "inflow     ","temperature"/))
+!    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
+!         "sourceline ",  &
+!    "ne         ", "jnu        ","haschild   ", &
+!         "inflow     ","temperature"/))
 
 
     doCube = calcDataCube
@@ -3413,7 +3413,8 @@ contains
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
        endif
-       call dumpCubeToSpectrum(cube, "spec.dat")
+       write(tempFilename,'(a,i3.3,a)') "spec",nFile,".fits"
+       call dumpCubeToSpectrum(cube, tempFilename)
        call torus_mpi_barrier
        call freeDataCube(cube)
     endif
