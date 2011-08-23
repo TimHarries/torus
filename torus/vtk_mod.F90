@@ -1918,7 +1918,10 @@ endif
           call mvbits(ik,0,8,i32temp,24)
           call mvbits(ik1,0,8,i32temp,16)
           call mvbits(ik2,0,8,i32temp,8)
-          if (writeDebug.and.((k+2)==nBytes)) write(*,*) "last (k+2 = nbytes)",i32temp
+          if (writeDebug.and.((k+2)==nBytes)) then
+             write(*,*) "ik, ik1, ik2 ",ik,ik1,ik2
+             write(*,*) "last (k+2 = nbytes)",i32temp
+          endif
 
        else
           if ((k+1) == nBytes) then
