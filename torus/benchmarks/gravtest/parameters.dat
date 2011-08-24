@@ -1,0 +1,49 @@
+! torus parameters file for testing multigrid gravity solver
+! plus nbody gravity field
+
+splitovermpi T
+dumpradial T
+geometry unisphere
+readgrid F
+writegrid F
+
+hydrodynamics T
+nbodyphysics T
+
+mindepthamr 5
+maxdepthamr 5
+cfl 0.3
+
+amr3d T
+amr2d F
+amr1d F
+
+nsource 1
+sourcepos1 0. 0. 3e8
+mass1 0.1
+radius1 1.
+teff1 1.
+contflux1 blackbody
+
+
+amrgridsize 1.e9
+amrgridcentrex 0.
+amrgridcentrey 0.
+amrgridcentrez 0.
+griddistancescale 1.d10
+
+tstart 0.d0 s 
+tend 1. s 
+tdump 10. s 
+
+mass 1.d0
+radius 1.d0
+position 0. 0. 0.
+velocity 0. 0. 0.
+
+xplusboundstring freeOutNoIn
+xminusboundstring freeOutNoIn
+yplusboundstring freeOutNoIn
+yminusboundstring freeOutNoIn
+zplusboundstring freeOutNoIn
+zminusboundstring freeOutNoIn
