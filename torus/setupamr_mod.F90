@@ -367,7 +367,7 @@ contains
           case("unisphere")
              call findmassoverallthreads(grid, totalmass)
              call  torus_mpi_barrier
-             call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
+             if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
              call  torus_mpi_barrier
              call findmassoverallthreads(grid, totalmass)
 #endif
