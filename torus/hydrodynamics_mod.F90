@@ -2448,8 +2448,8 @@ end subroutine sumFluxes
     if (selfGravity) then
        if (myrankglobal == 1) call tune(6,"Self-gravity")
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
-          call zeroSourcepotential(grid%octreeRoot)
           call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
        endif
        call sumGasStarGravity(grid%octreeRoot)
@@ -2935,7 +2935,7 @@ end subroutine sumFluxes
 
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
-    use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance
+    use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance, dumpRadial
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64),  mu
@@ -3071,21 +3071,26 @@ end subroutine sumFluxes
        call setupQX(grid%octreeRoot, grid, direction)
 
        if (doselfGrav) then
+
+          call findMassOverAllThreads(grid, totalmass)
+          if (writeoutput) write(*,*) "Total mass: ",totalMass/msol, " solar masses"
+
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
           call writeVtkFile(grid, "beforeselfgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " /))
           call zeroPhiGas(grid%octreeRoot)
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
 
+          call zeroSourcepotential(grid%octreeRoot)
           if (globalnSource > 0) then
-             call zeroSourcepotential(grid%octreeRoot)
              call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
           endif
           call sumGasStarGravity(grid%octreeRoot)
 
           call writeVtkFile(grid, "afterselfgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+               "phigas       ","phi          " /))
           if (myrank == 1) write(*,*) "Done"
           if (myrank == 1) call tune(6, "Self-Gravity")
        endif
@@ -3151,7 +3156,7 @@ end subroutine sumFluxes
        if (nBodyPhysics) then
           totalmass = totalMass + SUM(globalSourceArray(1:globalnSource)%mass)
        endif
-       if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass
+       if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass,initialMass/msol
 
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
@@ -3224,10 +3229,11 @@ end subroutine sumFluxes
           grid%iDump = it
           grid%currentTime = currentTime
 
-          write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
-             call  dumpValuesAlongLine(grid, plotfile, VECTOR(1.d-3,0.d0,0.0d0), &
-                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.0d0), 1000)
-
+          if (dumpRadial) then
+             write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
+             call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+          endif
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
 
@@ -7012,6 +7018,9 @@ end subroutine refineGridGeneric2
              else
                 fracChange = 1.d30
              endif
+             if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+             thisOctal%chiline(subcell) = frac
+
              thisOctal%phi_gas(subcell) = newPhi
              
           endif
@@ -7129,7 +7138,8 @@ end subroutine refineGridGeneric2
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
     real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-4
-    integer :: it, ierr, i
+    real(double) :: thisFrac
+    integer :: it, ierr, i, j
 !    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
@@ -7190,13 +7200,6 @@ end subroutine refineGridGeneric2
                 call updatePhiTree(grid%octreeRoot, i)
              enddo
 
-!             write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!             call writeVtkFile(grid, plotfile, &
-!                  valueTypeString=(/"rho          ",&
-!                  "hydrovelocity", &
-!                  "rhoe         ", &
-!                  "u_i          ", &
-!                  "phi          "/))
 
              if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
@@ -7232,22 +7235,32 @@ end subroutine refineGridGeneric2
     do while (ANY(fracChange(1:nHydrothreads) > tol2))
        fracChange = 0.d0
        it = it + 1
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+!       thisFrac = 1.d30
+!       do while (thisFrac > 1.d-6)
+!          thisFrac = 0.d0
+       do j = 1,10
+          call gSweep2(grid%octreeRoot, grid, deltaT, thisFrac)
+       enddo
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       
+       fracChange = 0.d0
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
-
-!       call periodBoundary(grid, justGrav = .true.)
-!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-       
        fracChange = tempFracChange
+
+
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
        if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
             MAXVAL(fracChange(1:nHydroThreads))
+
+
+!             write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!             call writeVtkFile(grid, plotfile, &
+!                  valueTypeString=(/"chiline"/))
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
@@ -7572,12 +7585,12 @@ end subroutine minMaxDepth
            if (.not.thisOctal%ghostCell(subcell)) then
               xVec = point - com
               rVec = subcellCentre(thisOctal, subcell) - com
-              r = modulus(rVec)*1.d10
-              x = modulus(xVec)*1.d10
+              r = modulus(rVec)
+              x = modulus(xVec)
               cosTheta = (xVec.dot.rVec) / (r*x)
               dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
               do iPole = 0, 4
-                 v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
+                 v = v + (-bigG/(x*1.d10))*(r/x)**ipole * legendre(ipole, cosTheta) * dm
               enddo
               
            endif
@@ -7601,7 +7614,6 @@ end subroutine minMaxDepth
      type(VECTOR) :: point
      tag = 94
      call findCoM(grid, com)
-
      call updateDensityTree(grid%octreeRoot)
 
      do iThread = 1, nHydroThreadsGlobal
@@ -7630,7 +7642,7 @@ end subroutine minMaxDepth
                  point%z = temp(3)
                  v = 0.d0
 !                 if (present(level)) then
-                    call multipoleExpansionLevel(grid%octreeRoot, point, com, v, level=3)
+                    call multipoleExpansionLevel(grid%octreeRoot, point, com, v, level=4)
 !                 else
 !                    call multipoleExpansion(grid%octreeRoot, point, com, v)
 !                 endif
@@ -7673,7 +7685,7 @@ end subroutine minMaxDepth
            if (thisOctal%ghostCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
               v = 0.d0
-              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=3)
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=4)
 
               do iThread = 1, nHydroThreadsGlobal
 

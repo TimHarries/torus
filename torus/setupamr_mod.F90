@@ -44,7 +44,7 @@ contains
 
 #ifdef MPI 
     use mpi_amr_mod
-    use inputs_mod, only : photoionPhysics, rho0
+    use inputs_mod, only : photoionPhysics, rho0, sphereMass
 #ifdef PHOTOION
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff
 #endif
@@ -359,11 +359,18 @@ contains
              write(*,*) "total mass ",totalmass
              scaleFac = massEnvelope / totalMass
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-             call scaleDensityAMR(grid%octreeRoot, scaleFac)
+             call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
-
+#ifdef MPI
+          case("unisphere")
+             call findmassoverallthreads(grid, totalmass)
+             call  torus_mpi_barrier
+             call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
+             call  torus_mpi_barrier
+             call findmassoverallthreads(grid, totalmass)
+#endif
           case DEFAULT
        end select
 

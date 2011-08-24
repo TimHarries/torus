@@ -85,6 +85,7 @@
 
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
+  logical :: dumpRadial               ! write a text radial cut each dump
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   real(double) :: etaViscosity        !Artificial viscosity parameter
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times

@@ -104,7 +104,7 @@ contains
        else
           if(.not. thisoctal%ghostcell(subcell)) then
              if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-                dv = cellVolume(thisOctal, subcell)!*1.d30
+                dv = cellVolume(thisOctal, subcell)*1.d30
 !                print *, "dv", dv, thisOctal%subcellSize**3
 
                 if (hydrodynamics) then
@@ -1977,10 +1977,10 @@ end subroutine dumpStromgrenRadius
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen
-    real(double) :: loc(3), rho, rhou , rhoe, p, phi
+    real(double) :: loc(3), rho, rhou , rhoe, p, phi, phi_gas
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 9
+    integer, parameter :: nStorage = 10
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 50
     integer :: status(MPI_STATUS_SIZE)
@@ -2017,7 +2017,8 @@ end subroutine dumpStromgrenRadius
           rhoe = tempStorage(7)
           p = tempStorage(8)
           phi = tempStorage(9)
-          write(20,'(6e14.5)') modulus(cen-startPoint), rho, rhou/rho, rhoe,p, phi
+          phi_gas = tempStorage(10)
+          write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi, phi_gas
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
           !print *, "POSITION 2 ", position
@@ -2059,6 +2060,7 @@ end subroutine dumpStromgrenRadius
              tempStorage(7) = thisOctal%rhoe(subcell)             
              tempStorage(8) = thisOctal%pressure_i(subcell)             
              tempStorage(9) = thisOctal%phi_i(subcell)             
+             tempStorage(10) = thisOctal%phi_gas(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
           endif
        enddo

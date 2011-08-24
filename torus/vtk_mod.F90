@@ -1053,6 +1053,9 @@ contains
                case("phi")
                   write(lunit, *) real(thisOctal%phi_i(subcell))
 
+               case("phigas")
+                  write(lunit, *) real(thisOctal%phi_gas(subcell))
+
                case("q_i")
                   write(lunit, *) real(thisOctal%q_i(subcell))
 
@@ -2762,6 +2765,9 @@ end subroutine writeXMLVtkFileAMR
                   
                case("phi")
                   rArray(1, n) = real(thisOctal%phi_i(subcell))
+
+               case("phigas")
+                  rArray(1, n) = real(thisOctal%phi_gas(subcell))
 
                case("q_i")
                   rArray(1, n) = real(thisOctal%q_i(subcell))

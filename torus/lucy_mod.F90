@@ -216,7 +216,7 @@ contains
        call findTotalMass(grid%octreeRoot, totalMass)
        scaleFac = massEnvelope / totalMass
        if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-       call scaleDensityAMR(grid%octreeRoot, scaleFac)
+       call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
     endif
 
 
@@ -798,7 +798,7 @@ contains
              call findTotalMass(grid%octreeRoot, totalMass)
              scaleFac = massEnvelope / totalMass
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-             call scaleDensityAMR(grid%octreeRoot, scaleFac)
+             call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
              call sublimateDustWR104(grid%octreeRoot)
           endif
 
@@ -909,7 +909,7 @@ contains
           call findTotalMass(grid%octreeRoot, totalMass)
           scaleFac = massEnvelope / totalMass
           if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-          call scaleDensityAMR(grid%octreeRoot, scaleFac)
+          call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
           call sublimateDustWR104(grid%octreeRoot)
        endif
 

@@ -227,6 +227,9 @@ contains
 
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("dumpradial", dumpRadial, cLine, fLine, nLines, &
+         "Dump a radial slice: ","(a,1l,1x,a)", .false., ok, .false.)
     
     call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
             "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)

@@ -6884,8 +6884,8 @@ CONTAINS
        thisOctal%rho(subcell) = rhoSphere
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
-       thisOctal%temperature(subcell) = 1000.d0
+       thisOctal%rho(subcell) = 1.d-10 * rhoSphere
+       thisOctal%temperature(subcell) = 10.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
     thisOctal%iequationOfState(subcell) = 2
@@ -8516,7 +8516,7 @@ end function readparameterfrom2dmap
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i
-  real :: scaleFac
+  real(double) :: scaleFac
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
