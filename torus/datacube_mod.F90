@@ -1,6 +1,7 @@
 module datacube_mod
 
   use kind_mod
+  use interferometry_mod
   use messages_mod
 
   implicit none
@@ -747,6 +748,28 @@ subroutine freeDataCube(thiscube)
   end subroutine writeCollapsedDataCube
 #endif
 
+
+  subroutine dumpCubeToVisibilityCurves(thisCube, visFile, wavelength)
+    use inputs_mod, only : gridDistance
+    type(DATACUBE) :: thisCube
+    character(len=*) :: visFile
+    character(len=80) :: tempFile
+    real(double) :: wavelength
+    real(double), allocatable :: dimage(:,:), xAxis(:), yAxis(:)
+    integer :: iv
+    allocate(dImage(1:thisCube%nx,1:thisCube%ny))
+    allocate(xAxis(1:thisCube%nx))
+    allocate(yAxis(1:thisCube%ny))
+    do iv = 1, thiscube%nv
+       write(tempFile,'(a, a, SP, i5.4, a)') trim(visFile),"_v=",nint(thiscube%vAxis(iv)), ".dat"
+       dImage(1:thisCube%nx,1:thisCube%ny) = reshape(thisCube%intensity(1:thisCube%nx,1:thisCube%ny,iv:iv),(/thisCube%nx,thisCube%ny/))
+       xAxis = thisCube%xAxis * 1.d10 / gridDistance
+       yAxis = thisCube%yAxis * 1.d10 / gridDistance
+       call visibilityCurve(tempFile, dImage, &
+            thisCube%nx, thisCube%ny, xAxis, yAxis, wavelength, 300.d2)
+    enddo
+    deallocate(dimage,xaxis, yaxis)
+  end subroutine dumpCubeToVisibilityCurves
 
   subroutine dumpCubeToSpectrum(thisCube, specFile)
     type(DATACUBE) :: thisCube

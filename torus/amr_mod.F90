@@ -120,12 +120,12 @@ CONTAINS
     else if (interpolate) then
        if (associated(thisOctal%boundaryCondition)) &
             thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
-       Thisoctal%etacont(subcell) = parentOctal%etaCont(parentSubcell)
+       if (associated(thisOctal%etaCont)) Thisoctal%etacont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
        thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
-       thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
-       thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
-       thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
+       if (associated(thisOctal%biasCont3d)) thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
+       if (associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
+       if (associated(thisOctal%chiLine)) thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
 !       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
 !       thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
        if (associated(thisOctal%ionFrac)) then
@@ -6884,8 +6884,8 @@ CONTAINS
        thisOctal%rho(subcell) = rhoSphere
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 1.d-10 * rhoSphere
-       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%rho(subcell) = 1.d-3 * rhoSphere
+       thisOctal%temperature(subcell) = 10000.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
     thisOctal%iequationOfState(subcell) = 2

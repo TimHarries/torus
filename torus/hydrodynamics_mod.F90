@@ -5419,10 +5419,16 @@ end subroutine sumFluxes
     if (converged.and.refineOnMass) then
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
-          call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-               inherit=.false., interp=.false., amrHydroInterp = .true.)
+          if (thisOctal%oneD) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=.false., interp=.false., amrHydroInterp = .true.)
+          else
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=.true., interp=.false.)
+          endif
           converged = .false.
 !        print *, "split D ", thisOctal%nDepth
+!        write(*,*) masstol, (thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3)
           exit
        endif
     endif

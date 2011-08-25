@@ -3298,7 +3298,7 @@ contains
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
     use modelatom_mod, only : identifyTransitionCmf
-    use datacube_mod, only : dumpCubeToSpectrum
+    use datacube_mod, only : dumpCubeToSpectrum, dumpCubeToVisibilityCurves
 #ifdef USECFITSIO
     use inputs_mod, only : dataCubeFilename
     use datacube_mod, only : writedataCube
@@ -3415,6 +3415,8 @@ contains
        endif
        write(tempFilename,'(a,i3.3,a)') "spec",nFile,".fits"
        call dumpCubeToSpectrum(cube, tempFilename)
+       write(tempFilename,'(a,i3.3)') "vis",nFile
+       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq)
        call torus_mpi_barrier
        call freeDataCube(cube)
     endif
@@ -3612,6 +3614,9 @@ contains
 #ifdef MPI
     use mpi
 #endif
+#ifdef _OPENMP
+    integer :: omp_get_thread_num
+#endif
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     type(GRIDTYPE) :: grid
@@ -3635,6 +3640,7 @@ contains
     real(double) :: area(maxray)
     real(double) :: totArea
     integer :: iRay
+    integer :: iomp
     character(len=80) :: message
 
     ! For MPI implementations
@@ -3729,14 +3735,18 @@ contains
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea) &
+       !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
        !$OMP SHARED (cube, viewVec, grid ) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints, thisAtom, itrans)
-
+       
+       iomp = 0
+#ifdef _OPENMP
+       iomp = omp_get_thread_num()
+#endif
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
-             write(*,*) myrankGlobal, " ix ",ix
+             write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
           do iy = 1, cube%ny
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
                  nPoints,  nRay, xRay, yRay, area)
