@@ -762,7 +762,8 @@ subroutine freeDataCube(thiscube)
     allocate(yAxis(1:thisCube%ny))
     do iv = 1, thiscube%nv
        write(tempFile,'(a, a, SP, i5.4, a)') trim(visFile),"_v=",nint(thiscube%vAxis(iv)), ".dat"
-       dImage(1:thisCube%nx,1:thisCube%ny) = reshape(thisCube%intensity(1:thisCube%nx,1:thisCube%ny,iv:iv),(/thisCube%nx,thisCube%ny/))
+       dImage(1:thisCube%nx,1:thisCube%ny) = &
+            reshape(thisCube%intensity(1:thisCube%nx,1:thisCube%ny,iv:iv),(/thisCube%nx,thisCube%ny/))
        xAxis = thisCube%xAxis * 1.d10 / gridDistance
        yAxis = thisCube%yAxis * 1.d10 / gridDistance
        call visibilityCurve(tempFile, dImage, &
