@@ -133,6 +133,13 @@ ${TORUS_FC} -o comparison comparison.f90
 ./comparison
 }
 
+check_gravtest()
+{
+echo "Compiling check.f90"
+${TORUS_FC} -o check check.f90
+./check
+}
+
 prepare_run()
 {
 if [[ -e ${TEST_DIR} ]]; then
@@ -251,6 +258,18 @@ for sys in ${SYS_TO_TEST}; do
 	    cat check_log_${SYSTEM}_image.txt
 	    echo ;;
 	*) echo "Imaging benchmark does not run on this system. Skipping"
+	    echo ;;
+    esac
+
+# Gravity solver test
+    case ${sys} in
+	ompiosx|zen)  echo "Running gravity solver test"
+	    export THIS_BENCH=gravtest
+	    run_dom_decomp 9
+	    check_gravtest > check_log_${SYSTEM}_gravtest.txt 2>&1 
+	    cat check_log_${SYSTEM}_gravtest.txt
+	    echo ;;
+	*) echo "Gravity solver test does not run on this system. Skipping"
 	    echo ;;
     esac
 

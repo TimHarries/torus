@@ -88,6 +88,14 @@ else
     subject_line="${subject_line} Image benchmark failed. "
 fi
 
+# Test for success of gravity solver test
+num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest/check_log_ompiosx_gravtest.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    subject_line="${subject_line} Gravity test successful. "
+else
+    subject_line="${subject_line} Gravity test failed. "
+fi
+
 # Move log file
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log 
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
