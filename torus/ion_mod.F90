@@ -48,7 +48,7 @@ module ion_mod
      integer :: nTransitions ! number of bb transitions for this species
      integer :: nLevels ! number of energy levels
      type(LEVELTYPE) :: level(10) 
-     type(TRANSITIONTYPE) :: transition(20) 
+     type(TRANSITIONTYPE) :: transition(40) 
   end type IONTYPE
 
   type(IONTYPE), save :: globalIonArray(50)
@@ -292,9 +292,12 @@ subroutine addLevels(thisIon)
      call addLevel(thisIon,"4P_1/2", 5.33173d0, 0.5)
      call addLevel(thisIon,"4P_3/2", 5.33446d0, 1.5)
      call addLevel(thisIon,"4P_5/2", 5.33797d0, 2.5)
- !commenting these out kills it..... are they supposed ot be in order of inc. energy???Haworth
-     !call addLevel(thisIon,"2P_1/2", 13.715684d0, 0.5) &
-     !call addLevel(thisIon,"2P_3/2", 13.720780d0, 1.5)
+     !THAW
+     call addLevel(thisIon,"2D_3/2", 9.290460d0 , 1.5)
+     call addLevel(thisIon,"2D_5/2", 9.290148d0 , 2.5)
+     call addLevel(thisIon,"2S_1/2", 11.96370d0, 0.5)
+     call addLevel(thisIon,"2P_1/2", 13.715648d0, 0.5)
+     call addLevel(thisIon,"2P_3/2", 13.720780d0, 1.5)
 
   case("C III")
      call addLevel(thisIon, "1S_0", 0.d0, 0.)
@@ -421,6 +424,7 @@ subroutine addTransitions(thisIon)
 
   select case(thisIon%species)
 
+!THaw - freshly modding carbon to agree with MOCASSIN
   case("C I")
      allocate(t(6), gamma(6))
      t = (/ 500, 1000, 5000, 10000, 15000, 20000/)
@@ -430,6 +434,12 @@ subroutine addTransitions(thisIon)
      call addTransition2(thisIon, "3P_2", "3P_0", 2304147., 1.71e-14, t, gamma, 6)
      gamma = (/ 0.00694,  0.01389,  0.0670,  0.12667,  0.17778,  0.21778/) 
      call addTransition2(thisIon, "1D_2", "3P_0", 9811.03, 7.77e-8, t, gamma, 6)
+     !1-5
+     gamma = (/ 0.00191, 0.00377, 0.01656, 0.02800, 0.03556, 0.04056 /)
+     call addTransition2(thisIon, "1S_0", "3P_0", 4619.43, 1.e-20, t, gamma, 6)
+     !1-6
+     gamma = (/ 0.01667, 0.02356, 0.05278, 0.07456, 0.09133, 0.10556 /)
+     call addTransition2(thisIon, "5S^0_2", "3P_0", 2964.31, 1.e-20, t, gamma, 6)
      gamma = (/ 0.025,   0.065,   0.714,   1.020,   1.1,   1.1/) 
      call addTransition2(thisIon, "3P_2", "3P_1", 3704140., 2.65e-7, t, gamma, 6)
      gamma = (/ 0.02083,  0.0417,  0.201,  0.380,  0.533,  0.6533/) 
@@ -446,6 +456,7 @@ subroutine addTransitions(thisIon)
      call addTransition2(thisIon, "5S^0_2", "3P_2", 2968.08, 1.56e1, t, gamma, 6)
      gamma = (/ 0.0620,  0.0877,  0.196,  0.277,  0.340,  0.392/) 
      call addTransition2(thisIon, "1S_0", "1D_2", 8727.18, 5.28e-1, t, gamma, 6)
+
      deallocate(t, gamma)
      
   case("C II") 
@@ -472,7 +483,116 @@ subroutine addTransitions(thisIon)
      call addTransition2(thisIon, "4P_5/2", "4P_1/2", 1.99e6, 1.e-20,t, gamma, 12)
      gamma = (/ 1.42, 1.44, 1.56, 1.73, 1.82, 1.90, 1.97, 2.02, 2.07, 2.11, 2.14, 2.17/)
      call addTransition2(thisIon, "4P_5/2", "4P_3/2", 3.53e6, 3.67e-7,t, gamma, 12)
+
+     !Thaw
+     !1-6
+     gamma = (/ 1.10, 1.14, 1.20, 1.27, 1.31, 1.34, 1.35, 1.36, 1.36, 1.36, 1.36, 1.36/)
+     call addTransition2(thisIon, "2D_3/2", "2P^0_1/2", 1334.55, 2.42E+8,t, gamma, 12)
+
+     !1-7
+     gamma = (/ 0.658, 0.633, 0.624, 0.613, 0.597, 0.581, 0.567, 0.553, 0.542, 0.532, 0.523, 0.515 /)
+     call addTransition2(thisIon, "2D_5/2", "2P^0_1/2", 1334.59, 1.e-20,t, gamma, 12)
+
+     !1-8
+     gamma = (/ 0.802, 0.760, 0.736, 0.721, 0.721, 0.727, 0.734, 0.742, 0.749, 0.756, 0.762, 0.767/)
+     call addTransition2(thisIon, "2S_1/2", "2P^0_1/2", 1036.35 , 7.74E+8,t, gamma, 12)
+
+     !1-9
+     gamma = (/ 1.05, 1.12, 1.21, 1.34, 1.43, 1.50, 1.56, 1.61, 1.66, 1.70, 1.74, 1.77 /)
+     call addTransition2(thisIon, "2P_1/2", "2P^0_1/2", 903.98 , 2.74E+9,t, gamma, 12)
+
+     !1-10
+     gamma = (/ 0.603, 0.636, 0.674, 0.725, 0.759, 0.785, 0.806, 0.822, 0.837, 0.850, 0.857, 0.863 /)
+     call addTransition2(thisIon, "2P_3/2", "2P^0_1/2", 903.64 , 6.86E+8,t, gamma, 12)
+
+     !2-6
+     gamma = (/ 1.01, 0.995, 0.998, 1.00, 0.996, 0.985, 0.973, 0.961, 0.950, 0.940, 0.930, 0.922 /)
+     call addTransition2(thisIon, "2D_3/2", "2P^0_3/2", 1335.68, 4.78E+7,t, gamma, 12)
+
+     !2-7
+     gamma = (/ 1.77, 1.78, 1.81, 1.84, 1.85, 1.84, 1.82, 1.81, 1.79, 1.78, 1.77, 1.76 /)
+     call addTransition2(thisIon, "2D_5/2", "2P^0_3/2", 1335.73, 2.88E+8,t, gamma, 12)
+
+     !2-8
+     gamma = (/ 1.61, 1.53, 1.48, 1.46, 1.47, 1.50, 1.52, 1.55, 1.58, 1.60, 1.62, 1.64 /)
+     call addTransition2(thisIon, "2S_1/2", "2P^0_3/2", 1037.03 , 1.53E+9,t, gamma, 12)
+
+     !2-9
+     gamma = (/ 0.628, 0.667, 0.720, 0.794, 0.850, 0.895, 0.935, 0.969, 0.999, 1.03, 1.05, 1.07 /)
+     call addTransition2(thisIon, "2P_1/2", "2P^0_3/2", 904.49 , 1.38E+9,t, gamma, 12)
      
+     !2-10
+     gamma = (/ 2.67, 2.83, 3.03, 3.30, 3.49, 3.64, 3.78, 3.89, 3.99, 4.07, 4.14, 4.21/)
+     call addTransition2(thisIon, "2P_3/2", "2P^0_3/2", 904.16 , 3.43E+9,t, gamma, 12)
+
+     !3-6
+     gamma = (/ 0.560, 0.559, 0.562, 0.569, 0.573, 0.573, 0.577, 0.577, 0.576, 0.573, 0.571, 0.568/)
+     call addTransition2(thisIon, "2D_3/2", "4P_1/2", 3131.97 , 1.e-20,t, gamma, 12)
+
+     !3-7
+     gamma = (/ 0.336, 0.337, 0.339, 0.343, 0.346, 0.349, 0.351, 0.352, 0.352, 0.352, 0.351, 0.350/)
+     call addTransition2(thisIon, "2D_5/2", "4P_1/2", 3132.22 , 1.e-20,t, gamma, 12)
+
+     !3-8
+     gamma = (/ 0.092, 0.085, 0.0858, 0.087, 0.0878, 0.0888, 0.0897, 0.0906, 0.0914, 0.0921, 0.0926, 0.0932/)
+     call addTransition2(thisIon, "2S_1/2", "4P_1/2", 1869.52 , 1.e-20,t, gamma, 12)
+
+     !3-9
+     gamma = (/ 0.057, 0.069, 0.100, 0.133, 0.146, 0.155, 0.159, 0.162, 0.167, 0.170, 0.174, 0.178/)
+     call addTransition2(thisIon, "2P_1/2", "4P_1/2", 1478.86 , 1.e-20,t, gamma, 12)
+
+     !3-10
+     gamma = (/ 0.035, 0.048, 0.085, 0.122, 0.136, 0.143, 0.148, 0.152, 0.156, 0.160, 0.163, 0.166/)
+     call addTransition2(thisIon, "2P_3/2", "4P_1/2", 1477.95 , 1.e-20,t, gamma, 12)
+
+     !4-6
+     gamma = (/ 0.877, 0.877, 0.882, 0.892, 0.900, 0.905, 0.907, 0.907, 0.906, 0.903, 0.900, 0.895/)
+     call addTransition2(thisIon, "2D_3/2", "4P_3/2", 3134.13 , 1.e-20,t, gamma, 12)
+
+     !4-7
+     gamma = (/ 0.913, 0.915, 0.919, 0.930, 0.938, 0.944, 0.947, 0.947, 0.945, 0.943, 0.939, 0.934/)
+     call addTransition2(thisIon, "2D_5/2", "4P_3/2", 3134.38 , 1.e-20,t, gamma, 12)
+
+     !4-8
+     gamma = (/ 0.184, 0.171, 0.172, 0.174, 0.176, 0.177, 0.179, 0.181, 0.183, 0.184, 0.185, 0.186/)
+     call addTransition2(thisIon, "2S_1/2", "4P_3/2", 1870.30 , 1.e-20,t, gamma, 12)
+
+     !4-9
+     gamma = (/ 0.083, 0.102, 0.153, 0.209, 0.230, 0.242, 0.249, 0.256, 0.262, 0.268, 0.274, 0.280/)
+     call addTransition2(thisIon, "2P_1/2", "4P_3/2", 1479.34 , 1.e-20,t, gamma, 12)
+
+     !4-10
+     gamma = (/ 0.102, 0.132, 0.215, 0.300, 0.331, 0.347, 0.359, 0.368, 0.375, 0.380, 0.390, 0.400/)
+     call addTransition2(thisIon, "2P_3/2", "4P_3/2", 1478.43 , 1.e-20,t, gamma, 12)
+
+     !5-6
+     gamma = (/ 0.712, 0.714, 0.718, 0.727, 0.734, 0.739, 0.742, 0.744, 0.744, 0.742, 0.740, 0.737/)
+     call addTransition2(thisIon, "2D_3/2", "4P_5/2", 3136.91 , 1.e-20,t, gamma, 12)
+
+     !5-7
+     gamma = (/ 1.97, 1.97, 1.98, 2.01, 2.02, 2.03, 2.03, 2.02, 2.02, 2.01, 1.99, 1.98/)
+     call addTransition2(thisIon, "2D_5/2", "4P_5/2", 3137.16 , 1.e-20,t, gamma, 12)
+
+     !5-8
+     gamma = (/ 0.276, 0.256, 0.257, 0.261, 0.263, 0.266, 0.269, 0.272, 0.274, 0.276, 0.278, 0.279/)
+     call addTransition2(thisIon, "2S_1/2", "4P_5/2", 1871.28 , 1.e-20,t, gamma, 12)
+
+     !5-9
+     gamma = (/ 0.045, 0.063, 0.116, 0.169, 0.188, 0.198, 0.206, 0.211, 0.217, 0.222, 0.227, 0.231/)
+     call addTransition2(thisIon, "2P_1/2", "4P_5/2", 1479.96 , 1.e-20,t, gamma, 12)
+
+     !5-10
+     gamma = (/ 0.231, 0.288, 0.435, 0.582, 0.633, 0.657, 0.675, 0.690, 0.701, 0.710, 0.724, 0.738/)
+     call addTransition2(thisIon, "2P_3/2", "4P_5/2", 1479.05 , 1.e-20,t, gamma, 12)
+
+!     !7-6 
+!     gamma = (/ 1.23, 1.15, 1.13, 1.16, 1.22, 1.27, 1.32, 1.37, 1.41, 1.45, 1.49, 1.52/)
+!     call addTransition2(thisIon, "2D_3/2", "2D_5/2", 39739164.27 , 1.e-20,t, gamma, 12)
+!
+!     !6-8
+!     gamma = (/ 0.680, 0.661, 0.660, 0.639, 0.624, 0.618, 0.615, 0.615, 0.616, 0.618, 0.620, 0.623/)
+!     call addTransition2(thisIon, "2S_1/2", "2D_3/2", 4638.05 , 1.e-20,t, gamma, 12)
+
      deallocate(t, gamma)
 
   case("C III")
