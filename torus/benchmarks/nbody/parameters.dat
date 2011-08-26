@@ -1,0 +1,37 @@
+geometry empty
+centralmass 0.
+readgrid F
+writegrid F
+
+nbodyphysics T
+
+mindepthamr 5
+maxdepthamr 5
+
+amr3d T
+
+amrgridsize 4.e3
+
+tend 1e9
+tdump 1.d7
+
+eps 1.d10
+
+nsource 2
+
+mass1 1.e0
+mass2 1.d0
+sourcepos1 -1.49598e3 0.d0 0.d0
+sourcepos2  1.49598e3 0.d0 0.d0
+
+velocity1 0.d0  10.d0 0.d0
+velocity2 0.d0 -10.d0 0.d0
+
+teff1 10000.
+teff2 10000.
+
+contflux1 blackbody
+contflux2 blackbody
+
+radius1 1.d0
+radius2 1.d0

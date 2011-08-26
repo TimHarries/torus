@@ -163,6 +163,9 @@ contains
 
        call getUnitDouble("tdump", tDump, "time", cLine, fLine, nLines, &
             "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+       call getDouble("eps", inputEps, 1.d0, cLine, fLine, nLines, &
+            "Gravity softening length (cm): ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+
     endif
 
     call getLogical("blockhandout", blockHandout, cLine, fLine, nLines, &

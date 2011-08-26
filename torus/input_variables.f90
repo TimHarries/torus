@@ -230,6 +230,7 @@
   type(VECTOR) :: secondSourcePosition       ! the position of it
   real :: binarySep
   real :: momRatio
+  real(double) :: inputEps ! input gravity softening length
 
   ! Variance Reduction (spectrum_mod)
   logical :: biasToLyman

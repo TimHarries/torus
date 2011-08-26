@@ -208,6 +208,7 @@ contains
   end subroutine calculateEps
 
   subroutine nBodyStep(source, nSource, dt, grid)
+    use inputs_mod, only : inputEps
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(sourcetype) :: source(:)
@@ -220,7 +221,12 @@ contains
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    call calculateEps(source, nSource, eps)
+
+    if (inputEps == 0.d0) then
+       call calculateEps(source, nSource, eps)
+    else
+       eps = inputEps
+    endif
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))

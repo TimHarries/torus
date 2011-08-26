@@ -2934,10 +2934,16 @@ end subroutine writeXMLVtkFileAMR
            call MPI_RECV(float32(j:(j+k-1)), k, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
            j = j + k
         enddo
+        write(*,*) "Size float32 ",SIZE(float32)
+        do j = SIZE(float32)-10,SIZE(float32)
+           write(*,*) j,float32(j)
+        enddo
 
         call convertandcompress(iBytes, iHeader, farray32=float32)
         call base64encode(.false., pstring, nString, iArray8=iHeader)
         call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+        write(*,*) "nstring2 ",nString2
+        write(*,*) "pstring2 ",pstring2(nstring2-10:nstring2)
         open(lunit, file=vtkFilename, form="unformatted", status="old", access="stream", position="append")
         write(lunit) pstring(1:nString), pstring2(1:nString2)
         close(lunit)
