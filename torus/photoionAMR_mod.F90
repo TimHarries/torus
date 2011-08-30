@@ -86,7 +86,7 @@ contains
     integer :: i, status, tag=30
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
-
+    logical :: noPhoto=.false.
 
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
@@ -123,14 +123,28 @@ contains
        grid%currentTime = 0.d0
        grid%iDump = 0
        deltaTforDump = 3.14d10 !1kyr
-       nextDumpTime = deltaTforDump
+
        if (grid%geometry == "hii_test") deltaTforDump = 9.d10
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
+       if(grid%geometry == "turbulence") then
+!turbulence phase
+          deltaTforDump = 3.14d12
+          tend = 3.14d13        !1Myr
+          noPhoto = .true.
+       end if
+       
+       nextDumpTime = deltaTforDump
        timeofNextDump = 0.d0       
      else
        deltaTforDump = 1.57d11 !5kyr
+       if(grid%geometry == "turbulence") then
+!reset clocks
+          grid%currentTime = 0.d0
+          deltaTforDump = 3.14d11
+          tend = 50.d0*deltaTforDump
+       endif
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
        if(justDump) then 
@@ -213,7 +227,7 @@ contains
        endif
     end if
 
-    if(grid%currentTime == 0.d0 .and. .not. readGrid) then
+    if(grid%currentTime == 0.d0 .and. .not. readGrid .and. .not. noPhoto) then
        call ionizeGrid(grid%octreeRoot)
 
        looplimitTime = deltaTForDump
@@ -357,7 +371,7 @@ contains
           photoLoopGlobal = .true.
        end if
 
-       if(photoLoopGlobal) then
+       if(photoLoopGlobal .and. .not. noPhoto) then
           call writeInfo("Calling photoionization loop",TRIVIAL)
 !          call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then

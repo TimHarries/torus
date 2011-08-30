@@ -220,6 +220,9 @@ CONTAINS
     CASE("rtaylor")
        call calcRTaylorDensity(thisOctal, subcell)
 
+    CASE("turbulence")
+       call calcRadiativeRoundUpDensity(thisOctal, subcell)
+
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
@@ -3835,8 +3838,7 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere","empty")
-         
+   case("bonnor", "unisphere","empty", "turbulence")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("radcloud")
@@ -6616,6 +6618,63 @@ CONTAINS
     yplusbound = 1
     yminusbound = 1
   end subroutine calcRTaylorDensity
+
+
+!Sets up a turbulent medium. To perform radiative round up models:
+!1. Run this with all boundaries reflective or periodic
+!2. Then run a radiation hydro calculation with periodic ±y, ±z and reflecting -x, freeoutnoin +x
+  subroutine calcRadiativeRoundUpDensity(thisOctal,subcell)
+    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real(double) :: cs, a, b, c, eThermal
+
+    thisOctal%rho(subcell) = 300.d0*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)    
+
+    cs = sqrt(ethermal)   
+
+    call randomNumberGenerator(getDouble=a)
+    call randomNumberGenerator(getDouble=b)
+    call randomNumberGenerator(getDouble=c)
+  
+    if(a < 0.4) then
+       a = cs/((a*10.d0)**2.)
+    end if
+
+    if(b < 0.4) then
+       b = cs/((b*10.d0)**2.)
+    end if
+
+    if(c < 0.4) then
+       c = cs/((c*10.d0)**2.)
+    end if
+
+    thisOctal%velocity(subcell) = VECTOR(a ,b, c)
+
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+    endif
+    
+    thisOctal%etaCont(subcell) = 0.
+  end subroutine
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
 
