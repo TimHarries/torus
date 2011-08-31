@@ -3398,18 +3398,16 @@ contains
          write(*,*) "Calculating spectrum for: ",lamLine
 
     if (doCube) then
+#ifdef USECFITSIO
        call createDataCube(cube, grid, viewVec, nSource, source, thisAtom(iAtom), iTrans)
        
 #ifdef MPI
        write(*,*) "Process ",my_rank, " create data cube done"
 #endif
        if (myrankiszero) then
-
-#ifdef USECFITSIO
           tempChar = datacubeFilename(1:(index(datacubefilename,".fits")-1))
           write(tempFilename,'(a,i3.3,a)') trim(tempChar),nFile,".fits"
           call writeDataCube(cube,tempfilename)
-#endif
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
        endif
@@ -3419,7 +3417,11 @@ contains
        call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq)
        call torus_mpi_barrier
        call freeDataCube(cube)
+#else
+       call writeWarning("No data cubes written. Torus was build without FITS support")
+#endif
     endif
+
     if (.not.doSpec) goto 666
 #ifdef MPI
   call randomNumberGenerator(syncIseed=.true.)
