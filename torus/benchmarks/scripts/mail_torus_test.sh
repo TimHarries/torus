@@ -33,6 +33,7 @@ done
 tar cf torus_test_output.tar ${attach_list}
 
 subject_line=" " 
+suite_status="PASSED"
 
 # Test for success of disc benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
@@ -42,6 +43,7 @@ if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]
     subject_line="${subject_line} Disc benchmark successful."
 else
     subject_line="${subject_line} Disc benchmark failed."
+    suite_status="FAILED"
 fi
 
 # Test for success of molebench
@@ -52,6 +54,7 @@ if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]];
     subject_line="${subject_line} Molecular benchmark successful."
 else
     subject_line="${subject_line} Molecular benchmark failed."
+    suite_status="FAILED"
 fi
 
 # Test for success of hydro benchmark
@@ -60,6 +63,7 @@ if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} Hydro benchmark successful. "
 else
     subject_line="${subject_line} Hydro benchmark failed. "
+    suite_status="FAILED"
 fi
 
 # Test for success of hII region benchmark
@@ -70,6 +74,7 @@ if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]];
     subject_line="${subject_line} HII region benchmark successful. "
 else
     subject_line="${subject_line} HII region benchmark failed. "
+    suite_status="FAILED"
 fi
 
 # Test for success of domain decomposed hII region benchmark                                                                  
@@ -78,6 +83,7 @@ if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} MPI HII region benchmark successful. "
 else
     subject_line="${subject_line} MPI HII region benchmark failed. "
+    suite_status="FAILED"
 fi
 
 # Test for success of imaging benchmark
@@ -86,6 +92,7 @@ if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} Image benchmark successful. "
 else
     subject_line="${subject_line} Image benchmark failed. "
+    suite_status="FAILED"
 fi
 
 # Test for success of gravity solver test
@@ -94,16 +101,29 @@ if [[ ${num_success} -eq 1 ]]; then
     subject_line="${subject_line} Gravity test successful. "
 else
     subject_line="${subject_line} Gravity test failed. "
+    suite_status="FAILED"
 fi
 
-# Move log file
-mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log 
+# Test for success of nbody test
+num_success=`/usr/bin/grep "Torus nbody test successful" benchmarks_gfortran/benchmarks/nbody/check_log_gfortran_nbody.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    subject_line="${subject_line} N body test successful. "
+else
+    subject_line="${subject_line} N body test failed. "
+    suite_status="FAILED"
+fi
+
+# Set up the message body 
+echo $subject_line > header
+echo  >> header
+mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log~
+cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ > ${TORUS_TEST_DIR}/torus_daily_test_log 
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
 mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk tjh202@exeter.ac.uk"
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "${subject_line}" -a torus_test_output.tar ${user} < ${LOG_FILE}
+    /sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar ${user} < ${LOG_FILE}
 done
 
 exit

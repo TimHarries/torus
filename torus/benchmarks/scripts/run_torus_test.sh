@@ -133,7 +133,7 @@ ${TORUS_FC} -o comparison comparison.f90
 ./comparison
 }
 
-check_gravtest()
+check_it()
 {
 echo "Compiling check.f90"
 ${TORUS_FC} -o check check.f90
@@ -266,12 +266,25 @@ for sys in ${SYS_TO_TEST}; do
 	ompiosx|zen)  echo "Running gravity solver test"
 	    export THIS_BENCH=gravtest
 	    run_dom_decomp 9
-	    check_gravtest > check_log_${SYSTEM}_gravtest.txt 2>&1 
+	    check_it > check_log_${SYSTEM}_gravtest.txt 2>&1 
 	    cat check_log_${SYSTEM}_gravtest.txt
 	    echo ;;
 	*) echo "Gravity solver test does not run on this system. Skipping"
 	    echo ;;
     esac
+
+# nbody test
+    case ${sys} in
+	gfortran)  echo "Running nbody test"
+	    export THIS_BENCH=nbody
+	    run_bench
+	    check_it > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+	    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+	    echo ;;
+	*) echo "nbody test does not run on this system. Skipping"
+	    echo ;;
+    esac
+
 
 # Run 2D disc
     echo "Running disc benchmark"
