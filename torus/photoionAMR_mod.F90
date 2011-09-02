@@ -558,7 +558,7 @@ end subroutine radiationHydro
     integer :: maxIter
     type(SAHAMILNETABLE),save :: hTable, heTable
     type(RECOMBTABLE),save :: Hrecombtable
-    real(double) :: freq(1004), dfreq(1004), spectrum(1004)
+    real(double) :: freq(1006), dfreq(1006), spectrum(1006)
 !    real(double) :: freq(1000+(2*grid%nIon)), dfreq(1000+(2*grid%nIon)), spectrum(1000+(2*grid%nIon)) 
     real(double) :: nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
@@ -595,7 +595,7 @@ end subroutine radiationHydro
     integer :: dprCounter
 
 
-    integer :: k, iLevel
+    integer :: k
     real(double) :: nuThresh
 
     !optimisation variables
@@ -743,7 +743,7 @@ end subroutine radiationHydro
 
           !H I, He I ionization edge refinement
           k = 1
-          do i = 1, 3
+          do i = 1, 4
              if(i /= 2) then
                 nuThresh = (grid%ion(i)%ipot)*evtoerg/hCgs
                 freq(1000+k) = nuthresh*0.99d0
