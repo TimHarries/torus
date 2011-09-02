@@ -558,7 +558,9 @@ end subroutine radiationHydro
     integer :: maxIter
     type(SAHAMILNETABLE),save :: hTable, heTable
     type(RECOMBTABLE),save :: Hrecombtable
-    real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
+    real(double) :: freq(1004), dfreq(1004), spectrum(1004)
+!    real(double) :: freq(1000+(2*grid%nIon)), dfreq(1000+(2*grid%nIon)), spectrum(1000+(2*grid%nIon)) 
+    real(double) :: nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
     integer, parameter :: nTemp = 9
     real(double) :: v, dustHeating
@@ -591,6 +593,10 @@ end subroutine radiationHydro
     logical :: sourcePhoton
 
     integer :: dprCounter
+
+
+    integer :: k, iLevel
+    real(double) :: nuThresh
 
     !optimisation variables
     integer, parameter :: stackLimit=200
@@ -728,11 +734,37 @@ end subroutine radiationHydro
              freq(i) = 10.d0**freq(i)
              lams(nFreq-i+1) = cspeed/freq(i)
           enddo
+!          do i = 2, nFreq-1
+!             dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+!          enddo
+!          dfreq(1) = 2.d0*(freq(2)-freq(1))
+!          dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
+
+
+          !H I, He I ionization edge refinement
+          k = 1
+          do i = 1, 3
+             if(i /= 2) then
+                nuThresh = (grid%ion(i)%ipot)*evtoerg/hCgs
+                freq(1000+k) = nuthresh*0.99d0
+!                print *, "A ", freq(1000+k), i
+                k = k + 1
+                freq(1000+k) = nuthresh*1.01d0
+!                print *, "B ", freq(1000+k), i
+                k = k + 1
+                nfreq = nfreq + 2
+                end if
+          end do
+          call sort(nFreq, Freq)
+
           do i = 2, nFreq-1
              dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
           enddo
           dfreq(1) = 2.d0*(freq(2)-freq(1))
           dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
+
+!          print *, "nFreq ", nfreq
+
        end if
 
     if (firstTimeTables) then
@@ -1340,6 +1372,11 @@ end subroutine radiationHydro
                                      write(67,*) freq(i), spectrum(i)
                                   enddo
                                   close(67)
+!                                  open(68,file="freq.dat",status="unknown",form="formatted")
+!                                  do i = 1, nfreq
+!                                     write(68,*) i, freq(i)
+!                                  enddo
+!                                  close(68)
                                endif
                                thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                                uHat = randomUnitVector() ! isotropic emission
