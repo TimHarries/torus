@@ -3031,7 +3031,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     do i = 1, grid%nIon
           xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)          
 
-       if (xSec > 0.d0) then
+       if (xSec > 0.d0 .and. thisFreq > nuHydrogen) then
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
                + fac * xSec
           if(i == 1) then
