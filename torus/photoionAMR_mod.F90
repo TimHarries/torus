@@ -743,8 +743,8 @@ end subroutine radiationHydro
 
           !H I, He I ionization edge refinement
           k = 1
-          do i = 1, 4
-             if(i /= 2) then
+          do i = 3, 4
+!             if(i /= 2) then
                 nuThresh = (grid%ion(i)%ipot)*evtoerg/hCgs
                 freq(1000+k) = nuthresh*0.99d0
 !                print *, "A ", freq(1000+k), i
@@ -753,7 +753,7 @@ end subroutine radiationHydro
 !                print *, "B ", freq(1000+k), i
                 k = k + 1
                 nfreq = nfreq + 2
-                end if
+!                end if
           end do
           call sort(nFreq, Freq)
 
