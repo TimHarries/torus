@@ -6627,7 +6627,7 @@ CONTAINS
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    real(double) :: cs, a, b, c, eThermal
+    real(double) :: cs, a, b, c, eThermal, rand
 
     thisOctal%rho(subcell) = 300.d0*mHydrogen
     thisOctal%temperature(subcell) = 10.d0
@@ -6638,17 +6638,33 @@ CONTAINS
     call randomNumberGenerator(getDouble=a)
     call randomNumberGenerator(getDouble=b)
     call randomNumberGenerator(getDouble=c)
-  
-    if(a < 0.4) then
+    call randomNumberGenerator(getDouble=rand)
+
+    if(a < 0.4 .and. a > 0.1) then
        a = cs/((a*10.d0)**2.)
+       if(rand > 0.5) then
+          a = - a
+       end if
+    else
+       a = 0.d0
     end if
 
-    if(b < 0.4) then
+    if(b < 0.4 .and. b > 0.1) then
        b = cs/((b*10.d0)**2.)
+       if(rand > 0.5) then
+          b = - b
+       end if
+       else 
+          b = 0.d0
     end if
 
-    if(c < 0.4) then
+    if(c < 0.4 .and. c > 0.1) then
        c = cs/((c*10.d0)**2.)
+       if(rand > 0.5) then
+          c = - c
+       end if
+      else
+         c = 0.d0
     end if
 
     thisOctal%velocity(subcell) = VECTOR(a ,b, c)
