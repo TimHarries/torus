@@ -464,7 +464,8 @@ contains
                 if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
 
                 if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
-                   write(*,*) "Error 1 Neighbour on ",boundaryType, " of ", myrankglobal,"  is not on thread ", sendThread, " but ", &
+                   write(*,*) "Error 1 Neighbour on ",boundaryType, " of ", myrankglobal, &
+                        "  is not on thread ", sendThread, " but ", &
                    neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
                    stop
                 endif
@@ -738,7 +739,8 @@ contains
                 if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
 
                 if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
-                   write(*,*) "Error 2 Neighbour on ",boundaryType, " of ", myrankglobal,"  is not on thread ", sendThread, " but ", &
+                   write(*,*) "Error 2 Neighbour on ",boundaryType, " of ", myrankglobal, &
+                        "  is not on thread ", sendThread, " but ", &
                    neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
                    stop
                 endif

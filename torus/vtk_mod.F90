@@ -2409,12 +2409,15 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
         write(*,*) "iStart, iEnd ",istart,iend
         if (i == 10) iEnd = size(iBytes,kind=bigInt)
         if (i == 1) then
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), outnpad = outnpad, outipad=outipad, padEnd=.false.)
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                outnpad = outnpad, outipad=outipad, padEnd=.false.)
         else if (i == 10) then
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                inputnpad = oldoutnpad, inputipad = oldoutipad, &
                 padend = .true.)
         else
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                inputnpad = oldoutnpad, inputipad = oldoutipad, &
                 outnpad = outnpad, outipad = outipad, padend = .false.)
         endif
         write(*,*) " i ",i,nstring2,outnpad
@@ -3084,12 +3087,15 @@ end subroutine writeXMLVtkFileAMR
            write(*,*) "iStart, iEnd ",istart,iend
            if (i == 10) iEnd = size(iBytes,kind=bigInt)
            if (i == 1) then
-              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), outnpad = outnpad, outipad=outipad, padEnd=.false.)
+              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                   outnpad = outnpad, outipad=outipad, padEnd=.false.)
            else if (i == 10) then
-              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                   inputnpad = oldoutnpad, inputipad = oldoutipad, &
                    padend = .true.)
            else
-              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                   inputnpad = oldoutnpad, inputipad = oldoutipad, &
                    outnpad = outnpad, outipad = outipad, padend = .false.)
            endif
            write(*,*) " i ",i,nstring2,outnpad
@@ -3188,12 +3194,15 @@ end subroutine writeXMLVtkFileAMR
            write(*,*) "iStart, iEnd ",istart,iend
            if (i == 10) iEnd = size(iBytes,kind=bigInt)
            if (i == 1) then
-              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), outnpad = outnpad, outipad=outipad, padEnd=.false.)
+              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                   outnpad = outnpad, outipad=outipad, padEnd=.false.)
            else if (i == 10) then
-              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                   inputnpad = oldoutnpad, inputipad = oldoutipad, &
                    padend = .true.)
            else
-              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+              call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                   inputnpad = oldoutnpad, inputipad = oldoutipad, &
                    outnpad = outnpad, outipad = outipad, padend = .false.)
            endif
            write(*,*) " i ",i,nstring2,outnpad
@@ -3357,11 +3366,11 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
   if (myrankGlobal == 1) then
      j  = index(vtkFilename, ".") -1
-     open(lunit, file=vtkFilename(1:j)//".pvtu", status="unknown", form="formatted")
-     write(lunit, *) '<?xml version="1.0"?>'
-     write(lunit,*) '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian">'
-     write(lunit,*) '<PUnstructuredGrid GhostLevel="0">'
-     write(lunit,*) '<PCellData>'
+     open(lunit, file=vtkFilename(1:j)//".pvtu", status="unknown", access="stream")
+     write(lunit) '<?xml version="1.0"?>'//lf
+     write(lunit) '<VTKFile type="PUnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf
+     write(lunit) '  <PUnstructuredGrid GhostLevel="0">'//lf
+     write(lunit) '    <PCellData Scalars="scalars">'//lf
      do i = 1, nValueType
         select case (valueType(i))
         case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
@@ -3373,24 +3382,24 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
         end select
         
         if (scalarvalue) then
-           write(lunit,*) '<PDataArray type="Float32" Name="',trim(valueType(i)),'"/>'
+           write(lunit) '      <PDataArray type="Float32" Name="',trim(valueType(i)),'"/>'//lf
         else
-           write(lunit,*) '<PDataArray type="Float32" Name="',trim(valueType(i)),'" NumberOfComponents="3"/>'
+           write(lunit) '      <PDataArray type="Float32" Name="',trim(valueType(i)),'" NumberOfComponents="3"/>'//lf
         endif
      enddo
-     write(lunit,*) '</PCellData>'
+     write(lunit) '    </PCellData>'//lf
 
-     write(lunit,*) '<PPoints>'
-     write(lunit,*) '<PDataArray type="Float32" NumberOfComponents="3"/>'
-     write(lunit,*) '</PPoints>'
+     write(lunit) '  <PPoints>'//lf
+     write(lunit) '    <PDataArray type="Float32" NumberOfComponents="3"/>'//lf
+     write(lunit) '  </PPoints>'//lf
 
      do i = 1, nHydroThreadsGlobal
         j  = index(vtkFilename, ".") -1
         write(pVtkFilename, '(a,a,i3.3,a)') vtkFilename(1:j),"_",i,".vtu"
-        write(lunit,*) '<Piece Source="'//trim(pVtkFilename)//'"/>'
+        write(lunit) '  <Piece Source="'//trim(pVtkFilename)//'"/>'//lf
      enddo
-     write(lunit,*) '</PUnstructuredGrid>'
-     write(lunit,*) '</VTKFile>'
+     write(lunit) '  </PUnstructuredGrid>'//lf
+     write(lunit) '</VTKFile>'//lf
      close(lunit)
   endif
 
@@ -3490,12 +3499,15 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
         write(*,*) "iStart, iEnd ",istart,iend
         if (i == 10) iEnd = size(iBytes,kind=bigInt)
         if (i == 1) then
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), outnpad = outnpad, outipad=outipad, padEnd=.false.)
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                outnpad = outnpad, outipad=outipad, padEnd=.false.)
         else if (i == 10) then
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                inputnpad = oldoutnpad, inputipad = oldoutipad, &
                 padend = .true.)
         else
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), inputnpad = oldoutnpad, inputipad = oldoutipad, &
+           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
+                inputnpad = oldoutnpad, inputipad = oldoutipad, &
                 outnpad = outnpad, outipad = outipad, padend = .false.)
         endif
         write(*,*) " i ",i,nstring2,outnpad
