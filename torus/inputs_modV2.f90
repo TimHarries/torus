@@ -97,6 +97,9 @@ contains
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
          "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("parallelvtu", parallelVTUfiles, cLine, fLine, nLines, &
+         "Use parallel VTU files: ","(a,1l,1x,a)", .false., ok, .false.)
+
 ! the grid setup. Either we read the grid in or set it up from scratch
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
@@ -382,7 +385,7 @@ contains
 
     case("starburst")
        call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
-            "Starburst mass (solar masses): ","(a,f5.1,a)", 1000.d0, ok, .true.)
+            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
 
        call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
             "Cluster radius (pc): ","(a,f5.1,a)", 1.d0, ok, .true.)

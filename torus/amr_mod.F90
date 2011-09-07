@@ -4766,7 +4766,7 @@ CONTAINS
 !      END IF
 
 
-   end select
+  end select
 
    if (thisOctal%nDepth == maxDepthAmr) then
       split = .false.
@@ -6959,8 +6959,8 @@ CONTAINS
        thisOctal%rho(subcell) = rhoSphere
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 1.d-3 * rhoSphere
-       thisOctal%temperature(subcell) = 10000.d0
+       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
+       thisOctal%temperature(subcell) = 100.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
     thisOctal%iequationOfState(subcell) = 2

@@ -3014,12 +3014,12 @@ end subroutine sumFluxes
        call writeInfo("Done", TRIVIAL)
     endif
 
-!    if (readgrid) then
-!       if(myrankglobal /= 0) then
-!          call zeroPhiGas(grid%octreeRoot)
-!          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-!       endif
-!    endif
+    if (readgrid) then
+       if(myrankglobal /= 0) then
+          call zeroPhiGas(grid%octreeRoot)
+          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+       endif
+    endif
 
 
     if (.not.readgrid) then
@@ -7946,6 +7946,8 @@ end subroutine minMaxDepth
                  source(nsource)%velocity%y = temp(6) 
                  source(nsource)%velocity%z = temp(7) 
                  source(nsource)%radius = temp(8) 
+                 call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
+                      100.d0, 1.d7, 1000)
                  call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
               endif
            enddo

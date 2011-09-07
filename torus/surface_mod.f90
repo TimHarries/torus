@@ -283,6 +283,11 @@ end subroutine readSurface
 
 
 
+    allocate(surface%nuArray(1))
+    allocate(surface%hnuArray(1))
+    surface%nNuHotFlux = 1
+    surface%nuArray = 0.
+    surface%hnuArray = 0.
 
     n = 0
     do i = 1, nTheta
@@ -321,9 +326,13 @@ end subroutine readSurface
           dPhi = twoPi / real(nPhi)
           area = radius * dTheta * radius * sin(theta) * dPhi
           call addElement(surface, radius, rVec, dtheta, dphi, area, 0.)
+          allocate(surface%element(surface%nElements)%hotFlux(1:1))
           surface%angleArray(i,j) = n
        enddo
     enddo
+    allocate(surface%totalPhotosphere(1:1))
+    allocate(surface%totalAccretion(1:1))
+
   end subroutine buildSphereNbody
 
 

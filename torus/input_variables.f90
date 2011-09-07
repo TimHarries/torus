@@ -715,6 +715,7 @@
   logical           :: debug
   logical           :: suppressWarnings
   logical           :: useBinaryXMLVTKfiles
+  logical           :: parallelVTUFiles
   character(len=80) :: absolutePath
   integer(bigInt)   :: maxMemoryAvailable
   logical           :: blockHandout ! Enable MPI block handout

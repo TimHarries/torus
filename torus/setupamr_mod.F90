@@ -207,7 +207,11 @@ contains
              call splitGridFractal(grid%octreeRoot, rho0, 0.3, grid, gridconverged)
           enddo
           call randomNumberGenerator(syncIseed=.true.)
-          
+          do i = 1, 8
+             grid%octreeRoot%mpiThread(i) = i
+          enddo
+          call distributeMPIthreadLabels(grid%octreeRoot)
+
 #ifdef PHOTOION
           if (photoionPhysics) then
              call ionizeGrid(grid%octreeRoot)
@@ -1066,6 +1070,7 @@ contains
     real :: rmin, rmax, tot, fac, mean
     logical :: converged, split
 
+    if (.not.converged) return
     converged = .true.
 
 ! based on method 2 of Hetem and Lepine 1993 A&A 270 451
@@ -1082,10 +1087,30 @@ contains
           end do
        else
 !          if (thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) > limitScalar) then
-          split = .false.
-          if (octalonThread(thisOctal, subcell, myrankGlobal)) split = .true.
-          if (thisOctal%nDepth == maxDepthAMR) split = .false.
+          split = .true.
+          if (thisOctal%threeD.and.((nThreadsGlobal-1)==8)) then
+             if (thisOctal%nDepth == 1) then
+                split = .true.
+             else if (thisOctal%nDepth > 1) then
+                if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+                   split = .false.
+                endif
+             endif
+          endif
 
+          if (thisOctal%threed.and.((nThreadsGlobal-1)==64)) then
+             if (thisOctal%nDepth <= 2) then
+                split = .true.
+             else
+                if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+                   split = .false.
+                endif
+             endif
+          endif
+          if (thisOctal%nDepth == maxDepthAMR) split = .false.
+          if (myrankGlobal==1) then
+             write(*,*) "depth ",thisOctal%nDepth, " subcell ",subcell, " mpithread ",thisOctal%mpithread(subcell), " split ",split
+          endif
           if (split) then
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=.true., interp=.false.)
