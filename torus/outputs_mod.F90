@@ -23,11 +23,11 @@ contains
     use inputs_mod, only : monteCarloRT
 #ifdef MPI
     use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
+    use hydrodynamics_mod, only : checkMaclaurinBenchmark
 #endif
 !    use inputs_mod, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use inputs_mod, only : cmf, lamline, ttauriRouter,amrgridsize
     use physics_mod, only : setupXarray, setupDust
-    use hydrodynamics_mod, only : checkMaclaurinBenchmark
 #ifdef MOLECULAR
     use molecular_mod
     use angularImage, only: make_angular_image, map_dI_to_particles
@@ -93,8 +93,10 @@ contains
 
     if (calcBenchmark) then
        select case (grid%geometry)
+#ifdef MPI
           case("maclaurin")
              call checkMaclaurinBenchmark(grid)
+#endif
           case DEFAULT
              write(message,'(a)') "No benchmark calculation for: "//trim(grid%geometry)
        end select

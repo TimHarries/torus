@@ -3941,9 +3941,9 @@ CONTAINS
       rd = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
          ! change the parameter
       rd = rd+thisOctal%subcellSize/2.d0
-      OstrikerRho(1) = rhoc * (1.d0+(rd/r0)**2)**-2.d0
+      OstrikerRho(1) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
       rd = rd-thisOctal%subcellSize
-      OstrikerRho(2) = rhoc * (1.d0+(rd/r0)**2)**-2.d0
+      OstrikerRho(2) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
       if(abs((OstrikerRho(1) - OstrikerRho(2))/rhoc) .ge. 0.02) split = .true.
 
    case("h2obench1")
@@ -7908,7 +7908,7 @@ end function readparameterfrom2dmap
     cellCentre = subcellCentre(thisOctal, subcell)
     r1 = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
     thisOctal%temperature(subcell) = 10.d0
-    thisOctal%rho(subcell) = rhoc * (1.d0 + (r1/r0)**2)**-2.d0
+    thisOctal%rho(subcell) = rhoc * (1.d0 + (r1/r0)**2)**(-2.d0)
 
     if (molecularPhysics) then
        thisOctal%molAbundance(subcell) = molAbundance

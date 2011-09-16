@@ -3821,13 +3821,14 @@ end subroutine writeParallelXMLVtkFileAMR
     real :: points(:,:)
     integer(bigint) :: nUniquePoints
     integer(bigint) :: connectivity(:)
-    integer(bigint) :: nPoints, i, j
+    integer(bigint) :: nPoints, i, j, one
     real :: pointCell(:,:)
     integer :: nPointsInCell
     logical :: found
+    one = 1
     do i = 1, nPointsInCell
        found = .false.
-       do j = max(1,nUniquePoints-100), nUniquePoints
+       do j = max(one,nUniquePoints-100), nUniquePoints
           if (theSamePoint(points(1:3,j), pointCell(1:3,i))) then
              connectivity(nPoints+i) = j-1
              found = .true.
