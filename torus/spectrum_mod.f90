@@ -295,7 +295,11 @@ module spectrum_mod
 10    continue
       read(20,'(a)',end=20) cline
       if (len(trim(cline)).gt.0) then
-         read(cLine,*,err=10) x, f
+         if (cLine(1:1) /="#") then
+            read(cLine,*,err=10) x, f
+         else 
+            goto 10
+         endif
       else
          goto 10
       endif

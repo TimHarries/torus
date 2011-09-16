@@ -46,7 +46,8 @@ module constants_mod
 
   real(double), parameter :: angstrom = 1.d-10
   real(double), parameter :: micron = 1.d-6
-  real, parameter :: angsToMicrons = angstrom/micron
+  real(double), parameter :: angsToMicrons = angstrom/micron
+  real(double), parameter :: micronsToAngs = micron/angstrom
   real(double), parameter :: centimeter = 1.d-2
   real(double), parameter :: micronTocm = micron/centimeter
   real(double), parameter :: angstromToCm = angstrom/centimeter

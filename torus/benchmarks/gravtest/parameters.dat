@@ -3,7 +3,7 @@
 
 splitovermpi T
 dumpradial T
-geometry unisphere
+geometry gravtest
 readgrid F
 writegrid F
 

@@ -32,6 +32,7 @@
   logical :: calcPhotometry
   logical :: calcImage
   logical :: calcSpectrum
+  logical :: calcBenchmark
 
 !-----------------------------------
 ! Write/read a grid for a warm start
@@ -85,6 +86,7 @@
 
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
+  logical :: severeDamping            ! Turn on damping
   logical :: dumpRadial               ! write a text radial cut each dump
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   real(double) :: etaViscosity        !Artificial viscosity parameter
@@ -221,6 +223,8 @@
   character(len=80) :: sourceFilename
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)
+  logical :: stellarSource(10)
+  character(len=10) :: diffuseType(10)
   type(VECTOR) :: sourcePos(10), sourceVel(10)
   character(len=80) :: inputContFluxFile(10)
   character(len=80) :: contFluxFile

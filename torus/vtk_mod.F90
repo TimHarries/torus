@@ -1910,7 +1910,6 @@ endif
         if (lastBlockSize > 0) then
            nLeftOverBytes = lastBlockSize
            leftOverBytes(1:nLeftOverBytes) = iBytesUncompressed(nBytesUnCompressed - lastBlockSize + 1:nBytesUncompressed)
-           write(*,*) "nleftover bytes ",nleftoverbytes
         else
            nLeftOverBytes = 0
         endif
@@ -2388,17 +2387,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
         deallocate(connectivity)
      enddo
 
-     write(*,*) "ibytes size from sections ",size(ibytes),ibytes(1),iBytes(size(ibytes))
-
-
-!     allocate(connectivity(1:nPointsGlobal))
-!     do ibig = 1, nPointsGlobal
-!        connectivity(ibig) = iBig -1
-!     enddo
-!     call convertandcompress(iBytes, iHeader, iarray64=connectivity)
-
-!     write(*,*) "ibytes size from single call  ",size(ibytes),ibytes(1),iBytes(size(ibytes))
-
 
      call base64encode(.false., pstring, nString, iArray8=iHeader)
      write(lunit) pstring(1:nString)
@@ -2406,7 +2394,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      do i = 1, 10
         iStart = (i-1) * blocksize + 1
         iEnd = iStart + blockSize - 1
-        write(*,*) "iStart, iEnd ",istart,iend
         if (i == 10) iEnd = size(iBytes,kind=bigInt)
         if (i == 1) then
            call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
@@ -2420,7 +2407,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
                 inputnpad = oldoutnpad, inputipad = oldoutipad, &
                 outnpad = outnpad, outipad = outipad, padend = .false.)
         endif
-        write(*,*) " i ",i,nstring2,outnpad
         oldoutnpad = outnpad
         oldoutipad = Outipad
         write(lunit) pstring2(1:nString2)
@@ -2793,6 +2779,9 @@ end subroutine writeXMLVtkFileAMR
                case("jnu")
                   rArray(1, n) = thisOctal%biasLine3d(subcell)
 
+               case("biasline")
+                  rArray(1, n) = thisOctal%biasLine3d(subcell)
+
                case("dust1")
                   rArray(1, n) = real(thisOctal%dustTypeFraction(subcell,1))
 
@@ -3084,7 +3073,6 @@ end subroutine writeXMLVtkFileAMR
         do i = 1, 10
            iStart = (i-1) * blocksize + 1
            iEnd = iStart + blockSize - 1
-           write(*,*) "iStart, iEnd ",istart,iend
            if (i == 10) iEnd = size(iBytes,kind=bigInt)
            if (i == 1) then
               call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
@@ -3098,7 +3086,6 @@ end subroutine writeXMLVtkFileAMR
                    inputnpad = oldoutnpad, inputipad = oldoutipad, &
                    outnpad = outnpad, outipad = outipad, padend = .false.)
            endif
-           write(*,*) " i ",i,nstring2,outnpad
            oldoutnpad = outnpad
            oldoutipad = Outipad
            write(lunit) pstring2(1:nString2)
@@ -3167,20 +3154,13 @@ end subroutine writeXMLVtkFileAMR
 
         do iThread = 2, nHydroThreadsGlobal
            call MPI_RECV(k, 1, MPI_INTEGER8, iThread, tag, MPI_COMM_WORLD, status, ierr)
-           write(*,*) "receiving data from thread ",ithread, " size ",k
            allocate(float32(1:k))
-           call tune(6, "MPI receive")
            call MPI_RECV(float32, k, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-           call tune(6, "MPI receive")
-           write(*,*) "received"
-           call tune(6, "Compress")
            if (iThread /= nHydroThreadsGlobal) then
               call convertandcompressInSections(iBytes, iHeader, farray32=float32)
            else
               call convertandcompressInSections(iBytes, iHeader, farray32=float32, lastTime = .true.)
            endif
-           call tune(6, "Compress")
-           write(*,*) "compressed"
            deallocate(float32)
         enddo
 
@@ -3191,7 +3171,6 @@ end subroutine writeXMLVtkFileAMR
         do i = 1, 10
            iStart = (i-1) * blocksize + 1
            iEnd = iStart + blockSize - 1
-           write(*,*) "iStart, iEnd ",istart,iend
            if (i == 10) iEnd = size(iBytes,kind=bigInt)
            if (i == 1) then
               call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
@@ -3205,7 +3184,6 @@ end subroutine writeXMLVtkFileAMR
                    inputnpad = oldoutnpad, inputipad = oldoutipad, &
                    outnpad = outnpad, outipad = outipad, padend = .false.)
            endif
-           write(*,*) " i ",i,nstring2,outnpad
            oldoutnpad = outnpad
            oldoutipad = Outipad
            write(lunit) pstring2(1:nString2)
@@ -3230,7 +3208,6 @@ end subroutine writeXMLVtkFileAMR
         deallocate(float32, rArray)
      endif
      
-     write(*,*) "writepoints done"
 
      call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writePointsDecomposed
@@ -3269,9 +3246,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   character(len=12) :: str1, str2
   logical :: vectorValue, scalarValue
   integer :: sizeOfFloat, sizeOfInt, sizeOfInt1
-  integer(kind=bigint) :: blocksize, iBig, iStart, iEnd
-  integer :: outnPad, outipad(2), oldoutipad(2), oldoutnpad
-  integer(bigint) :: nString, nString2
+  integer(bigint) :: nString, nString2, nUniquePoints
   integer :: j
   character(len=80) :: pVtkfilename
   real, allocatable :: float32(:)
@@ -3416,6 +3391,12 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      nBytesCellTypes = sizeofint1 * nCellsGlobal
   endif
 
+  allocate(points(1:3, 1:nPoints))
+  allocate(connectivity(1:nPoints))
+
+  call getUniquePoints(grid, nPoints, points, connectivity, nUniquePoints)
+
+
   if (writeheader) then
      open(lunit, file=pvtkFilename, form="unformatted",access="stream",status="replace")
      buffer = '<?xml version="1.0"?>'//lf
@@ -3424,7 +3405,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      write(lunit) trim(buffer)
      buffer = '  <UnstructuredGrid>'//lf 
      write(lunit) trim(buffer)
-     write(str1(1:12),'(i10)') nPoints
+     write(str1(1:12),'(i10)') nUniquePoints
      write(str2(1:12),'(i10)') nCells
      buffer = '    <Piece NumberOfPoints="'//str1//'" NumberOfCells="'//str2//'">'//lf
      write(lunit) trim(buffer)
@@ -3434,13 +3415,11 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      write(lunit) trim(buffer)
      close(lunit)
   endif
-     
+
 
   if (writeheader) then 
-     allocate(points(1:3,1:nPoints))
-     call getPoints(grid, nPoints, points)
-     allocate(float32(1:(nPoints*3)))
-     float32 = RESHAPE(points, (/SIZE(float32)/))
+     allocate(float32(1:(nUniquePoints*3)))
+     float32 = RESHAPE(points(1:3,1:nUniquePoints), (/SIZE(float32)/))
      open(lunit, file=pvtkFilename, form="unformatted",access="stream",status="old",position="append")
 
      call convertandcompress(iBytes, iHeader, farray32=float32)
@@ -3466,58 +3445,13 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
           ' >'//lf
      write(lunit) trim(buffer)
 
-     blockSize = nPointsGlobal / 10
-     do i = 1, 10
-
-        iStart = (i-1) * blocksize + 1
-        iEnd = iStart + blockSize - 1
-        if (i == 10) iEnd = nPointsGlobal
-
-        allocate(connectivity(iStart:iEnd))
-        do iBig = iStart,iEnd
-           connectivity(iBig) = iBig-1
-        enddo
-        if (i == 1) then
-           call convertandcompressInSections(iBytes, iHeader, iarray64=connectivity, firstTime=.true.)
-        else if (i == 10) then
-           call convertandcompressInSections(iBytes, iHeader, iarray64=connectivity, lastTime=.true.)
-        else
-           call convertandcompressInSections(iBytes, iHeader, iarray64=connectivity)
-        endif
-        deallocate(connectivity)
-     enddo
-
-     write(*,*) "ibytes size from sections ",size(ibytes),ibytes(1),iBytes(size(ibytes))
-
-
+     call convertandcompress(iBytes, iHeader, iArray64=connectivity)
      call base64encode(.false., pstring, nString, iArray8=iHeader)
-     write(lunit) pstring(1:nString)
-     blockSize = size(iBytes,kind=bigint)/10
-     do i = 1, 10
-        iStart = (i-1) * blocksize + 1
-        iEnd = iStart + blockSize - 1
-        write(*,*) "iStart, iEnd ",istart,iend
-        if (i == 10) iEnd = size(iBytes,kind=bigInt)
-        if (i == 1) then
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
-                outnpad = outnpad, outipad=outipad, padEnd=.false.)
-        else if (i == 10) then
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
-                inputnpad = oldoutnpad, inputipad = oldoutipad, &
-                padend = .true.)
-        else
-           call base64encode(.false., pstring2, nString2, iArray8=iBytes(iStart:iEnd), &
-                inputnpad = oldoutnpad, inputipad = oldoutipad, &
-                outnpad = outnpad, outipad = outipad, padend = .false.)
-        endif
-        write(*,*) " i ",i,nstring2,outnpad
-        oldoutnpad = outnpad
-        oldoutipad = Outipad
-        write(lunit) pstring2(1:nString2)
-     end do
-
+     call base64encode(.false., pstring2, nString2, iArray8=iBytes)
+     write(lunit) pstring(1:nString), pstring2(1:nString2)
      deallocate(pString, pstring2)
      deallocate(iBytes, iHeader)
+     deallocate(connectivity)
 
 
      buffer = lf//'        </DataArray>'//lf
@@ -3688,6 +3622,241 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 #endif
   if (associated(iHeader)) deallocate(iHeader)
 end subroutine writeParallelXMLVtkFileAMR
+
+
+  subroutine getUniquePoints(grid, nPoints, points, connectivity, nUniquePoints)
+    type(GRIDTYPE) :: grid
+    real :: points(:,:)
+    integer(bigint) :: connectivity(:)
+    integer(bigint) :: nPoints, nUniquePoints
+
+    nPoints = 0
+    nUniquePoints = 0
+
+    call recursiveGetUniquePoints(grid, grid%octreeRoot, nPoints, Points, connectivity, nUniquePoints)
+
+  contains
+
+    recursive subroutine recursiveGetUniquePoints(grid, thisOctal, nPoints, points, connectivity, nUniquePoints)
+      use octal_mod, only: returndPhi
+#ifdef MPI
+      use mpi
+#endif
+
+      type(OCTAL), pointer :: thisOctal, child
+      integer(bigint) :: connectivity(:), nUniquePoints
+      type(GRIDTYPE) :: grid
+      real :: points(:,:)
+      integer(bigint) :: nPoints
+      integer :: subcell, i
+      real :: xp, xm, yp, ym, zm, zp, d, r1, r2, phi, dphi
+      real :: phi1, phi2, phiStart, phiEnd
+      integer :: npointsInCell
+      real :: pointCell(3, 8)
+      integer :: nPhi, iPhi
+      type(VECTOR) :: rVec
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call recursiveGetUniquePoints(grid, child, nPoints, points, connectivity, nUniquePoints)
+                  exit
+               end if
+            end do
+         else
+
+#ifdef MPI
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
+#endif
+            if (thisOctal%threed) then
+               if (.not.thisOctal%cylindrical) then
+                  rVec = subcellCentre(thisOctal,subcell)
+                  d = thisOctal%subcellSize/2.d0
+                  
+                  nPointsInCell = 8
+
+                  xp = REAL(rVec%x + d)
+                  xm = REAL(rVec%x - d)
+                  yp = REAL(rVec%y + d)
+                  ym = REAL(rVec%y - d)
+                  zp = REAL(rVec%z + d)
+                  zm = REAL(rVec%z - d)
+                  
+                  pointCell(1, 1) = xm
+                  pointCell(2, 1) = ym
+                  pointCell(3, 1) = zm
+
+                  pointCell(1, 2) = xp
+                  pointCell(2, 2) = ym
+                  pointCell(3, 2) = zm
+
+                  pointCell(1, 3) = xm
+                  pointCell(2, 3) = yp
+                  pointCell(3, 3) = zm
+
+                  pointCell(1, 4) = xp
+                  pointCell(2, 4) = yp
+                  pointCell(3, 4) = zm
+
+                  pointCell(1, 5) = xm
+                  pointCell(2, 5) = ym
+                  pointCell(3, 5) = zp
+
+                  pointCell(1, 6) = xp
+                  pointCell(2, 6) = ym
+                  pointCell(3, 6) = zp
+
+                  pointCell(1, 7) = xm
+                  pointCell(2, 7) = yp
+                  pointCell(3, 7) = zp
+
+                  pointCell(1, 8) = xp
+                  pointCell(2, 8) = yp
+                  pointCell(3, 8) = zp
+
+                  call addPoints(points, nUniquePoints, connectivity, nPoints, nPointsInCell, pointCell)
+!                  if (myrankGlobal==1)write(*,*) "nPoints ",nPoints, " Unique Points ", nUniquePoints
+
+               else
+                  rVec = subcellCentre(thisOctal, subcell)
+                  d = thisOctal%subcellSize/2.d0
+                  zp = REAL(rVec%z + d)
+                  zm = REAL(rVec%z - d)
+                  r1 = sqrt(rVec%x**2 + rVec%y**2) - d
+                  r2 = sqrt(rVec%x**2 + rVec%y**2) + d
+                  phi = atan2(rVec%y, rVec%x)
+                  dphi = returndPhi(thisOctal)
+                  phi1 = phi - dphi
+                  phi2 = phi + dphi
+                  nPhi = max(1, nint(dphi/(10.d0*degtorad)))
+                  do iPhi = 1, nPhi
+                     phiStart = phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi)
+                     phiEnd   = phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi)
+
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r1*cos(phiStart)
+                     points(2, nPoints) = r1*sin(phiStart)
+                     points(3, nPoints) = zm
+
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r1*cos(phiEnd)
+                     points(2, nPoints) = r1*sin(phiEnd)
+                     points(3, nPoints) = zm
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r2*cos(phiEnd)
+                     points(2, nPoints) = r2*sin(phiEnd)
+                     points(3, nPoints) = zm
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r2*cos(phiStart)
+                     points(2, nPoints) = r2*sin(phiStart)
+                     points(3, nPoints) = zm
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r1*cos(phiStart)
+                     points(2, nPoints) = r1*sin(phiStart)
+                     points(3, nPoints) = zp
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r1*cos(phiEnd)
+                     points(2, nPoints) = r1*sin(phiEnd)
+                     points(3, nPoints) = zp
+
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r2*cos(phiEnd)
+                     points(2, nPoints) = r2*sin(phiEnd)
+                     points(3, nPoints) = zp
+
+                     nPoints = nPoints + 1
+                     points(1, nPoints) = r2*cos(phiStart)
+                     points(2, nPoints) = r2*sin(phiStart)
+                     points(3, nPoints) = zp
+                  enddo
+               endif
+            else
+               rVec = subcellCentre(thisOctal,subcell)
+               d = thisOctal%subcellSize/2.d0
+               xp = REAL(rVec%x + d)
+               xm = REAL(rVec%x - d)
+               zp = REAL(rVec%z + d)
+               zm = REAL(rVec%z - d)
+
+               nPoints = nPoints + 1
+               points(1, nPoints) = xm
+               points(2, nPoints) = zm
+               points(3, nPoints) = 0.
+
+               nPoints = nPoints + 1
+               points(1, nPoints) = xp
+               points(2, nPoints) = zm
+               points(3, nPoints) = 0.
+
+               nPoints = nPoints + 1
+               points(1, nPoints) = xm
+               points(2, nPoints) = zp
+               points(3, nPoints) = 0.
+
+
+               nPoints = nPoints + 1
+               points(1, nPoints) = xp
+               points(2, nPoints) = zp
+               points(3, nPoints) = 0.
+
+            endif
+
+         endif
+      enddo
+
+
+    end subroutine recursiveGetUniquePoints
+  end subroutine getUniquePoints
+
+  subroutine addPoints(points, nUniquePoints, connectivity, nPoints, nPointsInCell, pointCell)
+    real :: points(:,:)
+    integer(bigint) :: nUniquePoints
+    integer(bigint) :: connectivity(:)
+    integer(bigint) :: nPoints, i, j
+    real :: pointCell(:,:)
+    integer :: nPointsInCell
+    logical :: found
+    do i = 1, nPointsInCell
+       found = .false.
+       do j = max(1,nUniquePoints-100), nUniquePoints
+          if (theSamePoint(points(1:3,j), pointCell(1:3,i))) then
+             connectivity(nPoints+i) = j-1
+             found = .true.
+             exit
+          endif
+       enddo
+       if (.not.found) then
+          nUniquePoints = nUniquePoints + 1
+          points(1:3,nUniquePoints) = pointCell(1:3,i)
+          connectivity(nPoints+i) = nUniquePoints-1
+       endif
+    enddo
+    npoints = npoints + nPointsincell
+  end subroutine addPoints
+
+  logical function theSamePoint(p1, p2)
+    real :: p1(3), p2(3)
+    real, parameter :: tol = epsilon(p1)
+
+    theSamePoint = .true.
+    if (abs(p1(1)-p2(1)) > tol) then
+       theSamePoint = .false.
+    else if (abs(p1(2)-p2(2)) > tol) then
+       theSamePoint = .false.
+    else if (abs(p1(3)-p2(3)) > tol) then
+       theSamePoint = .false.
+    endif
+  end function theSamePoint
+    
 
 
 end module vtk_mod

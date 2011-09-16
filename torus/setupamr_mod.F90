@@ -368,7 +368,7 @@ contains
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
 #ifdef MPI
-          case("unisphere")
+          case("unisphere","gravtest")
              call findmassoverallthreads(grid, totalmass)
              call  torus_mpi_barrier
              if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)

@@ -14,7 +14,7 @@ contains
     use inputs_mod, only : stokesimage
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
-    use inputs_mod, only : imageFilename, calcImage, calcSpectrum
+    use inputs_mod, only : imageFilename, calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use inputs_mod, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
@@ -27,6 +27,7 @@ contains
 !    use inputs_mod, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use inputs_mod, only : cmf, lamline, ttauriRouter,amrgridsize
     use physics_mod, only : setupXarray, setupDust
+    use hydrodynamics_mod, only : checkMaclaurinBenchmark
 #ifdef MOLECULAR
     use molecular_mod
     use angularImage, only: make_angular_image, map_dI_to_particles
@@ -85,9 +86,20 @@ contains
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
          (.not.calcDataCube).and. &
-         (.not.calcPhotometry) ) then
+         (.not.calcPhotometry).and. &
+         (.not.calcBenchmark) ) then
        goto 666
     endif
+
+    if (calcBenchmark) then
+       select case (grid%geometry)
+          case("maclaurin")
+             call checkMaclaurinBenchmark(grid)
+          case DEFAULT
+             write(message,'(a)') "No benchmark calculation for: "//trim(grid%geometry)
+       end select
+    endif
+          
 
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
@@ -323,5 +335,6 @@ contains
     endif
 666 continue
   end subroutine doOutputs
+
 
 end module outputs_mod

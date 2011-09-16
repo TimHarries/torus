@@ -40,6 +40,56 @@ contains
     
   end subroutine dohydrodynamics
 
+
+
+  subroutine checkMaclaurinBenchmark(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double) :: maxDev, temp
+    integer :: ierr
+    
+    if (myrankGlobal == 0) goto 666
+    
+    maxDev = 0.d0
+    call checkDeviations(grid%octreeRoot, maxDev)
+    call MPI_ALLREDUCE(maxDev, temp, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCommunicator, ierr)
+    if (writeOutput) then
+       write(*,*) "Maximum deviation of potential ",maxDev
+       if (maxDev > 1.d-2) then
+          write(*,*) "TORUS Maclaurin spheroid gravity test failed"
+       else
+          write(*,*) "TORUS Maclaurin spheroid gravity test successful"
+       endif
+    endif
+    666 continue
+    call torus_mpi_barrier
+  end subroutine checkMaclaurinBenchmark
+
+  recursive subroutine checkDeviations(thisoctal, maxDev)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: maxDev
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call checkDeviations(child, maxDev)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+          maxDev = max(maxDev, abs((thisOctal%phi_gas(subcell) - &
+               thisOctal%biasLine3d(subcell))/thisOctal%biasline3d(subcell)))
+       endif
+    enddo
+  end subroutine checkDeviations
+
+
   recursive subroutine fluxlimiter(thisoctal)
     use inputs_mod, only : limiterType
     use mpi
@@ -1654,6 +1704,32 @@ contains
   end subroutine pressureforcew
 
 
+  recursive subroutine damp(thisoctal)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call damp(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+  
+          thisoctal%rhou(subcell) = 0.9d0 * thisOctal%rhou(subcell)
+          thisoctal%rhov(subcell) = 0.9d0 * thisOctal%rhov(subcell)
+          thisoctal%rhow(subcell) = 0.9d0 * thisOctal%rhow(subcell)
+        
+       endif
+    enddo
+  end subroutine damp
+
 
 
   recursive subroutine copyrhotoq(thisoctal)
@@ -2203,7 +2279,7 @@ end subroutine sumFluxes
 
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
-    use inputs_mod, only : nBodyPhysics
+    use inputs_mod, only : nBodyPhysics, severeDamping
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -2422,7 +2498,7 @@ end subroutine sumFluxes
     call pressureForceU(grid%octreeRoot, dt/2.d0)
     if (myrankglobal == 1) call tune(6,"X-direction step")
 
-
+    if (severeDamping) call damp(grid%octreeRoot)
 
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call periodBoundary(grid)
@@ -2664,7 +2740,7 @@ end subroutine sumFluxes
             !         "returnPhysicalUnitSpeed(speed))", tc
             ! end if
              
-             tc = min(tc, dx / (cs + speed) )
+             tc = min(tc, dx / max(1.d-30,(cs + speed)) )
 !             if (myrank == 1) write(*,*) "tc ",tc
 
           endif
@@ -3014,12 +3090,14 @@ end subroutine sumFluxes
        call writeInfo("Done", TRIVIAL)
     endif
 
-    if (readgrid) then
-       if(myrankglobal /= 0) then
-          call zeroPhiGas(grid%octreeRoot)
-          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-       endif
-    endif
+
+
+!    if (readgrid) then
+!       if(myrankglobal /= 0) then
+!          call zeroPhiGas(grid%octreeRoot)
+!          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+!       endif
+!    endif
 
 
     if (.not.readgrid) then
@@ -3090,7 +3168,7 @@ end subroutine sumFluxes
 
           call writeVtkFile(grid, "afterselfgrav.vtk", &
                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
-               "phigas       ","phi          " /))
+               "phigas       ","phi          "/))
           if (myrank == 1) write(*,*) "Done"
           if (myrank == 1) call tune(6, "Self-Gravity")
        endif
@@ -3133,7 +3211,7 @@ end subroutine sumFluxes
           initialMass = initialMass + SUM(globalSourceArray(1:globalnSource)%mass)
        endif
 
-    do while(currentTime < tend)
+    do while(currentTime <= tend)
        if (myrank /= 0) then
           tc(myrank) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
@@ -3256,7 +3334,7 @@ end subroutine sumFluxes
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
-
+       if (currentTime  == tEnd) exit
     enddo
   end subroutine doHydrodynamics3d
 
@@ -7153,10 +7231,12 @@ end subroutine refineGridGeneric2
 
 !    call saveGhostCellPhi(grid%octreeRoot)
 
+
+    call updateDensityTree(grid%octreeRoot)
+
     if (PRESENT(multigrid)) then
 
 
-       call updateDensityTree(grid%octreeRoot)
 
        do iDepth = 3, maxDepthAmr-1
 
@@ -7222,6 +7302,7 @@ end subroutine refineGridGeneric2
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
+
 
     if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
     call applyDirichlet(grid)
@@ -7527,6 +7608,7 @@ end subroutine minMaxDepth
               end if
            end do
         else
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
            com = com + subcellCentre(thisOctal,subcell) * &
                 thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30
         endif
@@ -7622,6 +7704,7 @@ end subroutine minMaxDepth
      call findCoM(grid, com)
      call updateDensityTree(grid%octreeRoot)
 
+
      do iThread = 1, nHydroThreadsGlobal
         if (myRankGlobal == iThread) then
            if (present(level)) then
@@ -7709,6 +7792,7 @@ end subroutine minMaxDepth
                  endif
               enddo
 
+!              write(*,*) "old/new phi gas boundary ",thisOctal%phi_gas(subcell), v
               thisOctal%phi_gas(subcell) = v
            endif
         endif
@@ -7877,6 +7961,8 @@ end subroutine minMaxDepth
         newSource(newnSource)%position = (1.d0/newMass) * newPosition
         newSource(newnSource)%radius = rSol/1.d10
         newSource(newnSource)%age = newAge / dble(n)
+        newSource(newnSource)%stellar = .true.
+        newSource(newnSource)%diffuse = .false.
      enddo
 
         
@@ -7887,6 +7973,8 @@ end subroutine minMaxDepth
      source(1:nSource)%position = newSource(1:nSource)%position
      source(1:nSource)%radius = newSource(1:nSource)%radius
      source(1:nSource)%age = newSource(1:nSource)%age
+     source(1:nSource)%stellar = newSource(1:nSource)%stellar
+     source(1:nSource)%diffuse = newSource(1:nSource)%diffuse
 
      do j = 1, nSource
         call emptySurface(source(j)%surface)
@@ -7945,7 +8033,10 @@ end subroutine minMaxDepth
                  source(nsource)%velocity%x = temp(5) 
                  source(nsource)%velocity%y = temp(6) 
                  source(nsource)%velocity%z = temp(7) 
-                 source(nsource)%radius = temp(8) 
+                 source(nsource)%radius = temp(8)   
+                 source(nSource)%stellar = .true.
+                 source(nSource)%diffuse = .false.
+
                  call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
                       100.d0, 1.d7, 1000)
                  call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
@@ -7983,7 +8074,7 @@ end subroutine minMaxDepth
           bigJ = 0.2d0
 
           cs = soundSpeed(thisOctal, subcell)
-          rhoJeans = bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2) ! krumholz eq 6
+          rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
 
 
           rhoMax = max(thisOctal%rho(subcell) / rhoJeans, rhoMax)
@@ -8577,8 +8668,6 @@ end subroutine minMaxDepth
 
     ffunc = (u**(4.d0/(gamma+1.d0)))*(0.5d0 + (1.d0/(gamma-1.d0)) * (1.d0/u**2))
   end function ffunc
-
-  
 
 #endif
 

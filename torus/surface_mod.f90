@@ -121,8 +121,12 @@ end subroutine readSurface
         write(lunit) elements(i)%norm
         write(lunit) elements(i)%area
         write(lunit) elements(i)%position
-        write(lunit) size(elements(i)%hotFlux)
-        write(lunit) elements(i)%hotFlux(1:size(elements(i)%hotflux))
+        if (associated(elements(i)%hotFlux)) then
+           write(lunit) size(elements(i)%hotFlux)
+           write(lunit) elements(i)%hotFlux(1:size(elements(i)%hotflux))
+        else
+           write(lunit) 0
+        endif
         write(lunit) elements(i)%temperature
         write(lunit) elements(i)%dTheta
         write(lunit) elements(i)%dphi
@@ -142,8 +146,10 @@ end subroutine readSurface
         read(lunit) elements(i)%area
         read(lunit) elements(i)%position
         read(lunit) k
-        allocate(elements(i)%hotFlux(1:k))
-        read(lunit) elements(i)%hotFlux(1:size(elements(i)%hotflux))
+        if (k > 0) then
+           allocate(elements(i)%hotFlux(1:k))
+           read(lunit) elements(i)%hotFlux(1:size(elements(i)%hotflux))
+        endif
         read(lunit) elements(i)%temperature
         read(lunit) elements(i)%dTheta
         read(lunit) elements(i)%dphi

@@ -232,6 +232,12 @@ CONTAINS
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
 
+    CASE("gravtest")
+       call calcGravtest(thisOctal, subcell)
+
+    CASE("maclaurin")
+       call maclaurinSpheroid(thisOctal, subcell)
+
     CASE("sedov")
        call calcSedovDensity(thisOctal, subcell)
 
@@ -3316,7 +3322,7 @@ CONTAINS
     real(double), save :: astar
     type(VECTOR) :: minV, maxV
     real(double) :: vgradx, vgrady, vgradz, vgrad
-    real(double) :: T, vturb, b, dphi
+    real(double) :: T, vturb, b, dphi, rhoc
 
     splitInAzimuth = .false.
     split = .false.
@@ -3838,7 +3844,7 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere","empty", "turbulence")
+   case("bonnor", "unisphere","empty", "turbulence","gravtest")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("radcloud")
@@ -3928,16 +3934,17 @@ CONTAINS
 
    case("molefil")
 
-      r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
+      rhoc = 5.d-19
+      r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
 
       cellCentre = subcellCentre(thisOctal, subcell)
       rd = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
          ! change the parameter
       rd = rd+thisOctal%subcellSize/2.d0
-      OstrikerRho(1) = 5d-18/(1 + rd**2/(8.d0*r0**2))**2
+      OstrikerRho(1) = rhoc * (1.d0+(rd/r0)**2)**-2.d0
       rd = rd-thisOctal%subcellSize
-      OstrikerRho(2) = 5d-18/(1 + rd**2/(8.d0*r0**2))**2
-      if(abs((OstrikerRho(1) - OstrikerRho(2))/5d-18) .ge. 0.02) split = .true.
+      OstrikerRho(2) = rhoc * (1.d0+(rd/r0)**2)**-2.d0
+      if(abs((OstrikerRho(1) - OstrikerRho(2))/rhoc) .ge. 0.02) split = .true.
 
    case("h2obench1")
       cellCentre = subcellCentre(thisOctal, subcell)
@@ -6963,13 +6970,72 @@ CONTAINS
        thisOctal%temperature(subcell) = 100.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
-    thisOctal%iequationOfState(subcell) = 2
+    thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
     ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = eThermal
-    thisOctal%gamma(subcell) = 7.d0/5.d0
+    thisOctal%gamma(subcell) = 2.d0
 
   end subroutine calcUniformSphere
 
+  subroutine calcGravtest(thisOctal,subcell)
+
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod,  rhoSphere
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec-spherePosition)
+    rhoSphere = sphereMass / ((fourPi/3.d0) * sphereRadius**3 * 1.d30)
+
+    if (rMod < sphereRadius) then
+       thisOctal%rho(subcell) = rhoSphere
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+       thisOctal%temperature(subcell) = 100.d0
+    endif
+    thisOctal%velocity(subcell) = sphereVelocity
+    thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 2.d0
+
+  end subroutine calcGravtest
+
+  subroutine maclaurinSpheroid(thisOctal,subcell)
+
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    use utils_mod
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: z, ethermal
+    real(double), parameter :: a1 = 1.d0, a2 = 1.d0, a3 = 0.5d0
+    rVec = subcellCentre(thisOctal, subcell)
+
+
+    if (sqrt(rVec%x**2 + rVec%y**2) < a1) then
+
+       z = sqrt(a3**2 * (1.d0 - (rVec%x**2 + rVec%y**2)/a1**2))
+       if (abs(rVec%z) <= z) then
+          thisOctal%rho(subcell) = 1.d0
+       else
+          thisOctal%rho(subcell) = tiny(1.d0)
+       endif
+    endif
+    thisOctal%temperature(subcell) = 100.d0
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 2.d0
+    if (.not.associated(thisOctal%biasLine3d)) allocate(thisOctal%biasLine3d(1:thisOctal%maxChildren))
+    thisOctal%biasLine3d(subcell) = maclaurinPhi(rVec%x*1.d10, rVec%y*1.d10, rVec%z*1.d10, 1.d10, 1.d10, 0.5d10)
+
+
+  end subroutine maclaurinSpheroid
 
 
   subroutine calcSedovDensity(thisOctal,subcell)
@@ -7828,28 +7894,57 @@ end function readparameterfrom2dmap
 
   subroutine molecularFilamentFill(thisOctal,subcell)
 
-    use inputs_mod, only : molAbundance!,rhoC,r0
+    use inputs_mod, only : molAbundance, molecularphysics, photoionPhysics, hydrodynamics
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    real(double) :: r0, r1
+    real(double) :: r0, r1, rhoc
     TYPE(VECTOR) :: cellCentre
 
-    r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
+
+      rhoc = 5.d-19
+      r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
 
     cellCentre = subcellCentre(thisOctal, subcell)
     r1 = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
-
-    thisOctal%molAbundance(subcell) = molAbundance
-    thisOctal%microTurb(subcell) = 1.e5/cspeed
     thisOctal%temperature(subcell) = 10.d0
+    thisOctal%rho(subcell) = rhoc * (1.d0 + (r1/r0)**2)**-2.d0
 
-    thisOctal%rho(subcell) = 5d-18/(1 + r1**2/(8.d0*r0**2))**2
-    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+    if (molecularPhysics) then
+       thisOctal%molAbundance(subcell) = molAbundance
+       thisOctal%microTurb(subcell) = 1.e5/cspeed
+       thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+    thisOctal%cornerVelocity =  VECTOR(0.d0,0.d0,0.d0)
+    endif
 
     thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
 
-   CALL fillVelocityCorners(thisOctal,molebenchVelocity)
+    thisOctal%inFlow(subcell) = .true.
+
+    if (photoionPhysics) then
+
+       
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = thisOctal%nh(subcell)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+       
+       thisOctal%ionFrac(subcell,1) = 1.               !HI
+       thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+          thisOctal%ionFrac(subcell,3) = 1.            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+          
+       endif
+    endif
+    thisOctal%etaCont(subcell) = 0.
+    if (hydrodynamics) then
+       thisOctal%gamma(subcell) = 1.0
+       thisOctal%iEquationOfState(subcell) = 1
+    endif
+
+
   end subroutine molecularFilamentFill
 
   subroutine ggtauFill(thisOctal,subcell)
@@ -12331,227 +12426,6 @@ end function readparameterfrom2dmap
   end subroutine getxValues
 
 
-  function distanceToGridFromOutside(grid, posVec, direction) result (tval)
-    use inputs_mod, only : suppressWarnings
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
-    type(OCTAL), pointer :: thisOctal
-    real(double) :: tval
-    real(double) :: distTor1, theta, mu
-    real(double) :: distToRboundary, compz,currentZ
-    real(double) :: distToZboundary
-    type(VECTOR) ::  zHat, rhat
-    real(double) ::  compx, gridRadius
-    real(oct) :: t(6),denom(6), r, r1, d, cosmu,x1,x2
-    integer :: i,j
-    logical :: ok, thisOk(6)
-    logical :: debug
-    
-    real(double) :: subcellsize
-    type(VECTOR) :: normdiff
-
-
-   tval = HUGE(tval)
-
-   point = posVec
-
-   subcen = grid%OctreeRoot%centre
-
-   thisOctal => grid%octreeRoot
-
-   if (thisOctal%oneD) then
-   
-      r1 = thisOctal%subcellSize*2.d0
-      d = modulus(point)
-      rHat = (-1.d0)*posVec
-      call normalize(rhat)
-      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-      cosmu = rHat.dot.direction
-      mu = acos(max(-1.d0,min(1.d0,cosmu)))
-      distTor1 = 1.e30
-      if (mu  < theta ) then
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-         if (.not.ok) then
-            write(*,*) "Quad solver failed in distanceToGridFromOutside"
-            x1 = thisoctal%subcellSize
-            x2 = 0.d0
-         endif
-         tval = min(x1,x2)
-      endif
-      goto 666
-   endif
-
-    if (thisOctal%threed.and.(.not.thisOctal%cylindrical)) then
-
-          ! cube
-
-         ok = .true.
-
-         subcellsize = thisOctal%subcellSize
-
-         if(direction%x .ne. 0.d0) then            
-            denom(1) = 1.d0 / direction%x
-         else
-            denom(1) = 0.d0
-         endif
-         denom(4) = -denom(1)
-
-         if(direction%y .ne. 0.d0) then            
-            denom(2) = 1.d0 / direction%y
-         else
-            denom(2) = 0.d0
-         endif
-         denom(5) = -denom(2)
-
-         if(direction%z .ne. 0.d0) then            
-            denom(3) = 1.d0 / direction%z
-         else
-            denom(3) = 0.d0
-         endif
-         denom(6) = -denom(3)
-
-         normdiff = subcen - posvec
-
-         t(1) =  (normdiff%x + subcellsize) * denom(1)
-         t(2) =  (normdiff%y + subcellsize) * denom(2)
-         t(3) =  (normdiff%z + subcellsize) * denom(3)
-         t(4) =  (normdiff%x - subcellsize) * denom(1)
-         t(5) =  (normdiff%y - subcellsize) * denom(2)
-         t(6) =  (normdiff%z - subcellsize) * denom(3)
-
-         thisOk = .true.
-
-         do i = 1, 6
-            if (denom(i) .ge. 0.d0) thisOK(i) = .false.
-            if (t(i) < 0.) thisOk(i) = .false.
-         enddo
-         
-         j = 0
-         do i = 1, 6
-            if (thisOk(i)) j=j+1
-         enddo
-         
-         if (j == 0) ok = .false.
-         
-         if (.not.ok) then
-            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. "
-            write(*,*) direction%x,direction%y,direction%z
-            write(*,*) t(1:6)
-         endif
-         
-         tval = maxval(t, mask=thisOk)
-         
-!         write(*,*) t(1:6),thisOK(1:6)
-
-         if (tval == 0.) then
-            write(*,*) " tval=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. "
-            write(*,*) posVec
-            write(*,*) direction%x,direction%y,direction%z
-            write(*,*) t(1:6)
-            stop
-         endif
-         
-
-      else
-
-
-! now look at the cylindrical case
-
-         ! first do the inside and outside curved surfaces
-
-         if (thisOctal%twoD) then
-            r = sqrt(subcen%x**2 + subcen%y**2)
-            r1 = r + thisOctal%subcellSize
-            gridRadius = r1
-         else
-            gridRadius = 2.d0*thisOctal%subcellSize
-            r1 = gridRadius
-         endif
-
-
-         d = sqrt(point%x**2+point%y**2)
-         xHat = (-1.d0)*VECTOR(point%x, point%y,0.d0)
-         call normalize(xHat)
-         rDirection = VECTOR(direction%x, direction%y, 0.d0)
-         compX = modulus(rDirection)
-         call normalize(rDirection)
-               
-         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-         cosmu = xHat.dot.rdirection
-         mu = acos(max(-1.d0,min(1.d0,cosmu)))
-         distTor1 = 1.e30
-         if (compx /= 0.d0) then
-            if (mu  < theta ) then
-               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-               if (.not.ok) then
-                  write(*,*) "Quad solver failed in distanceToGridFromOutside"
-                  x1 = thisoctal%subcellSize
-                  x2 = 0.d0
-               endif
-               distTor1 = min(x1,x2)/CompX
-               hitVec = posVec + distToR1 * direction
-               if (abs(hitVec%z) > thisOctal%subcellSize) distToR1 = 1.d30
-            endif
-         endif
-         
-         distToRboundary = distTor1
-         if (distToRboundary < 0.d0) then
-            distToRboundary = 1.e30
-         endif
-
-         ! now do the upper and lower (z axis) surfaces
-
-         zHat = VECTOR(0.d0, 0.d0, 1.d0)
-         compZ = zHat.dot.direction
-         currentZ = point%z
-
-         debug = .false.
-         if(debug) then
-            write(*,*) "subcen",subcen
-            write(*,*) "thisoctal%subcellsize",thisoctal%subcellsize
-            write(*,*) "point", point
-            write(*,*) "posvec", posvec
-            write(*,*) "direction",direction
-         endif
-
-         if (compZ /= 0.d0 ) then
-            if (compZ > 0.d0) then
-               distToZboundary= (subcen%z - thisOctal%subcellsize - currentZ ) / compZ                              
-               hitVec = posvec + disttoZboundary * direction
-               if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
-            else
-               distToZboundary = abs((subcen%z + thisOctal%subcellsize - currentZ ) / compZ)
-               hitVec = posvec + disttoZboundary * direction
-               if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
-            endif
-         else
-            disttoZboundary = 1.e30
-         endif
-      
-         tVal = min(distToZboundary, distToRboundary)
-         if(.not. suppressWarnings) then
-
-!            if (tVal > 1.e29) then
-!               write(*,*) "Cylindrical"
-!               write(*,*) "posVec",posvec
-!               write(*,*) "direction",direction
-!               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
-!               write(*,*) "subcen",subcen
-!               write(*,*) "z",currentZ
-!               write(*,*) "x1,x2",x1,x2
-!            endif
-
-            if (tval < 0.) then
-               write(*,*) "Cylindrical"
-               write(*,*) tVal,distToZboundary,disttorboundary
-               write(*,*) "subcen",subcen
-               write(*,*) "z",currentZ
-            endif
-         endif
-      endif
-      
-666   continue
-    end function distanceToGridFromOutside
 
   !
   ! hydroWarp stuff

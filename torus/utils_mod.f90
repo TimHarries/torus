@@ -4874,6 +4874,71 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
   end function hfunc
 
 
+  real(double) function macLaurinPhi(x, y, z, a1, a2, a3) result(phi)
+    real(double) :: x, y, z, a1, a2, a3
+    real(double) :: lam1, lam2, lam_mid, y1, y2, ym, z1
+    real(double) :: bigA1, bigA3, h
+    real(double), parameter :: rho = 1.d0
+    logical :: converged, inside
+    real(double) :: e
+    e = sqrt(1.d0-(a3/a1)**2)
+
+
+    inside = .false.
+    if (sqrt(x**2 + y**2) < a1) then
+       z1 = sqrt(a3**2 * (1.d0 - (x**2 + y**2)/a1**2))
+       if (abs(z) <= z1) then
+          inside = .true.
+       endif
+    endif
+
+
+    if (inside) then
+          bigA1 = sqrt(1.d0-e**2)/e**3 * asin(e) - (1.d0-e**2)/e**2
+          bigA3 = (2.d0/e**2) - (2.d0*sqrt(1.d0-e**2)/e**3) * asin(e)
+          phi = -pi * bigG * rho * (2.d0*bigA1 * a1**2 - bigA1 * (x**2+y**2) + bigA3 * (a3**2 - z**2))
+       else
+
+          lam1 = 0.d0
+          lam2 = 1.d25
+          converged = .false.
+          do while(.not.converged)
+             lam_mid = 0.5d0*(lam1 + lam2)
+             y1 = lambdaFunc(x, y, z, a1, a2, a3, lam1)
+             y2 = lambdaFunc(x, y, z, a1, a2, a3, lam2)
+             ym = lambdaFunc(x, y, z, a1, a2, a3, lam_mid)
+
+
+             if (y1*ym < 0.d0) then
+                lam1 = lam1
+                lam2 = lam_mid
+             else if (y2*ym < 0.d0) then
+                lam1 = lam_mid
+                lam2 = lam2
+             else
+                converged = .true.
+                lam_mid = 0.5d0*(lam1+lam2)
+             endif
+
+             if (abs((lam1-lam2)/lam2) .le. 1.d-6) then
+                converged = .true.
+             endif
+          enddo
+
+          h = a1*e /(sqrt(a3**2 + lam_mid))
+          
+          phi = -(2.d0*pi*bigG*rho*a1*a3/e) * (atan(h) - (1.d0/(2.d0*a1**2*e**2)) * ( (x**2+y**2)*(atan(h) - (h/(1.d0+h**2))) + &
+               2.d0 * z**2 * (h - atan(h)) ) )
+
+       endif
+
+     end function macLaurinPhi
+
+  real(double) function lambdaFunc(x, y, z, a1, a2, a3, lambda) 
+    real(double) :: x, y, z, a1, a2, a3, lambda
+
+    lambdaFunc = x**2/(a1**2 + lambda) + y**2 / (a2**2 + lambda) + z**2 / (a3**2 + lambda) - 1.d0
+  end function lambdaFunc
 
 end module utils_mod
 

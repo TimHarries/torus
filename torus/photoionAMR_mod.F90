@@ -2613,12 +2613,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           
           if (thisOctal%inflow(subcell)) then
 
-
+!             write(*,*) thisOctal%nCrossings(subcell),thisOctal%undersampled(subcell)
 
              if (.not.thisOctal%undersampled(subcell)) then
                 
-                
-                call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+                 
+               call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
 !                if (thisOctal%ionFrac(subcell,1) > 0.9d0) write(*,*) "total heating ",totalheating
                 if (totalHeating < 1.d-30) then
                    thisOctal%temperature(subcell) = tLow
@@ -2626,7 +2626,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    nIter = 0
                    converged = .false.
                    
-                   t1 = 100.
+                   t1 = tlow
                    t2 = 30000.
 !
 
@@ -4072,7 +4072,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
      Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
           * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
   endif
-!  dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
+  dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
   totalHeating = (Hheating + HeHeating + dustHeating)
   
 end subroutine getHeating

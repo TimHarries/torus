@@ -38,8 +38,8 @@ contains
     oneKappa = .false.
     monteCarloRT = .false.
 
-    tMinGlobal = 3.
     nDustType = 1
+    tMinGlobal = 3.
     filter_set_name = "natural"
     noscattering = .false.
     usebias = .true.
@@ -234,6 +234,9 @@ contains
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("severedamping", severedamping, cLine, fLine, nLines, &
+         "Severe damping: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("dumpradial", dumpRadial, cLine, fLine, nLines, &
          "Dump a radial slice: ","(a,1l,1x,a)", .false., ok, .false.)
     
@@ -294,6 +297,8 @@ contains
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("benchmark", calcBenchmark, cLine, fLine, nLines, &
+         "Check a benchmark: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (calcDataCube) call readDataCubeParameters(cLine, fLine, nLines)
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
@@ -415,7 +420,7 @@ contains
        call getDouble("centralmass", centralMass, msol, cLine, fLine, nLines, &
             "Central mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
-     case("unisphere")
+     case("unisphere","gravtest")
        call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
             "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
@@ -1101,7 +1106,7 @@ contains
 
 
 
-    call writeBanner("Stellar source  data","#",TRIVIAL)
+    call writeBanner("Photon source data","#",TRIVIAL)
 
 
 
@@ -1111,38 +1116,48 @@ contains
        if (writeoutput) write(*,*) " "
        write(message,'(a,i1)') "Source number: ",i
        call writeInfo(message,TRIVIAL)
-       write(keyword, '(a,i1)') "radius",i
-       call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
-            "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
 
-       write(keyword, '(a,i1)') "teff",i
-       call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
-            "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
+       write(keyword, '(a,i1)') "stellar",i
+       call getLogical(keyword, stellarSource(i), cLine, fLine, nLines, &
+            "Stellar source: ","(a,xxxx,a)",.true., ok, .false.)
 
-       write(keyword, '(a,i1)') "mass",i
-       call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
+       if (stellarSource(i)) then
+          write(keyword, '(a,i1)') "radius",i
+          call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
+               "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
+          
+          write(keyword, '(a,i1)') "teff",i
+          call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
+               "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
+          
+          write(keyword, '(a,i1)') "mass",i
+          call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
             "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
 
-       write(keyword, '(a,i1)') "contflux",i
-       call getString(keyword, inputcontFluxFile(i), cLine, fLine, nLines, &
-            "Continuum flux file: ","(a,a,a)","none", ok, .true.)
+          write(keyword, '(a,i1)') "contflux",i
+          call getString(keyword, inputcontFluxFile(i), cLine, fLine, nLines, &
+               "Continuum flux file: ","(a,a,a)","none", ok, .true.)
+          
+          write(keyword, '(a,i1)') "sourcepos",i
+          call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
+               "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
-       write(keyword, '(a,i1)') "sourcepos",i
-       call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
-            "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+          write(keyword, '(a,i1)') "velocity",i
+          call getVector(keyword, sourceVel(i), 1.d5, cLine, fLine, nLines, &
+               "Source velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
 
-       write(keyword, '(a,i1)') "velocity",i
-       call getVector(keyword, sourceVel(i), 1.d5, cLine, fLine, nLines, &
-            "Source velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+          write(keyword, '(a,i1)') "probsource",i
+          call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
+               "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
 
-       write(keyword, '(a,i1)') "probsource",i
-       call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
-            "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
-
-       write(keyword, '(a,i1)') "pointsource",i
-       call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
-            "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
-
+          write(keyword, '(a,i1)') "pointsource",i
+          call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
+               "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
+       else
+          write(keyword, '(a,i1)') "diffusetype",i
+          call getString(keyword, diffuseType(i), cLine, fLine, nLines, &
+            "Type of diffuse radiation field: ","(a,a,1x,a)","none", ok, .true.)
+       endif
 
     enddo
 

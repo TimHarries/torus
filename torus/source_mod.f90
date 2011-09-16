@@ -32,6 +32,8 @@ module source_mod
      logical :: pointSource
      real(double) :: distance
      real(double) :: prob ! probability of packet from this source
+     logical :: stellar
+     logical :: diffuse ! isrf, cmb
   end type SOURCETYPE
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
@@ -94,6 +96,8 @@ module source_mod
       write(lunit) source%outsideGrid
       write(lunit) source%onCorner
       write(lunit) source%distance
+      write(lunit) source%stellar
+      write(lunit) source%diffuse
 
       call writeSpectrumToDump(source%spectrum,lunit)
       call writeSurface(source%surface, lunit)
@@ -115,6 +119,8 @@ module source_mod
       read(lunit) source%outsideGrid
       read(lunit) source%onCorner
       read(lunit) source%distance
+      read(lunit) source%stellar
+      read(lunit) source%diffuse
 
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)
@@ -369,6 +375,89 @@ module source_mod
       endif
     end subroutine getMelvinPositionDirection
 
+    subroutine createSourceISRF(source, grid)
+      use amr_utils_mod, only : gridArea
+      type(SOURCETYPE) :: source
+      type(GRIDTYPE) :: grid
+      character(len=120) :: ifilename,dataDirectory
+      integer :: i
+      logical :: ok
+
+      source%stellar = .false.
+      source%diffuse = .true.
+
+      call unixGetenv("TORUS_DATA", dataDirectory, i)
+      ifilename = trim(dataDirectory)//"/"//"isrf.dat"
+
+      call readSpectrum(source%spectrum, ifilename, ok)
+      if (.not.ok) then
+         call writeFatal("Cannot read isrf.dat")
+         stop
+      endif
+
+      source%spectrum%lambda = source%spectrum%lambda * micronsToAngs
+      source%spectrum%dlambda = source%spectrum%dlambda * micronsToAngs
+      source%spectrum%flux = source%spectrum%flux / micronsToAngs
+
+      source%spectrum%flux = source%spectrum%flux / 4.d0  ! from fourpi jnu to pi jnu
+      
+      source%luminosity = integrateSpectrumOverBand(source%spectrum,0.d0,1.d30)
+
+      source%luminosity = source%luminosity * gridArea(grid)
+    end subroutine createSourceISRF
+
+    subroutine createSourceCMB(source, grid)
+      use amr_utils_mod, only : gridArea
+      type(GRIDTYPE) :: grid
+      type(SOURCETYPE) :: source
+
+      source%stellar = .false.
+      source%diffuse = .true.
+
+      call fillSpectrumBB(source%spectrum, 2.8d0, 1000.d0, 1.d9, 1000)
+      source%luminosity = integrateSpectrumOverBand(source%spectrum,0.d0,1.d30)
+
+      source%luminosity = source%luminosity * gridArea(grid)
+    end subroutine createSourceCMB
+      
+      
+
+
+    subroutine getIsotropicPositionDirection(position, direction, grid)
+      use amr_utils_mod, only : distanceToGridFromOutside, inOctal
+      type(GRIDTYPE) :: grid
+      real(double) :: z, ang, distToGrid
+      type(VECTOR) :: entryPoint, norm, v, n, zAxis, thisPoint
+      type(VECTOR),intent(out) :: position, direction
+      logical :: ok
+
+      zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+      entryPoint = randomUnitVector()
+      norm = (-1.d0)*entryPoint
+      ok = .false.
+
+      do while (.not.ok)
+
+         call randomNumberGenerator(getDouble=z)
+         z = sqrt(z)
+         ang = acos(z)
+         n = norm .cross. zAxis
+         call normalize(n)
+         v = norm
+         v = arbitraryRotate(v, ang, n)
+         call randomNumberGenerator(getDouble=ang)
+         ang = ang * twoPi
+         v = arbitraryRotate(v, ang, norm)
+         
+         direction = v
+         thisPoint = entryPoint*4d0*grid%octreeRoot%subcellSize
+         
+         distToGrid = distanceToGridFromOutside(grid, thisPoint, direction, hitGrid=ok)
+
+      enddo
+      position = thisPoint + (distToGrid+1.d-3*grid%halfSmallestSubcell)*direction
+    end subroutine getIsotropicPositionDirection
+
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
       use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
@@ -381,37 +470,38 @@ module source_mod
 
       if (PRESENT(weight)) weight = 1.d0
 
-      if (.not.source%outsideGrid) then
-         if (source%pointSource) then
-            !      ! simply treating as a point source
-            position = source%position
-            direction = randomUnitVector()
-            if (biasPhiDirection > 0.d0) then
-               if (.not.PRESENT(weight)) then
-                  call writeFatal("getPhotonPositionDirection called without weight when weighted direction required")
-               endif
-               call randomNumberGenerator(getDouble=r)
-               w = 2.d0*r-1.d0
-               call randomNumberGenerator(getDouble=r)
-               if (r < biasPhiProb) then
+      if (source%stellar) then
+         if (.not.source%outsideGrid) then
+            if (source%pointSource) then
+               !      ! simply treating as a point source
+               position = source%position
+               direction = randomUnitVector()
+               if (biasPhiDirection > 0.d0) then
+                  if (.not.PRESENT(weight)) then
+                     call writeFatal("getPhotonPositionDirection called without weight when weighted direction required")
+                  endif
                   call randomNumberGenerator(getDouble=r)
-                  ang = biasPhiDirection + (2.d0*r-1.d0) * biasPhiInterval
-                  weight = (biasPhiInterval/twoPi) / biasPhiProb
-               else
-                  ang = biasPhiDirection
-                  do while (abs(ang-biasPhiDirection) < biasPhiInterval/2.d0)
+                  w = 2.d0*r-1.d0
+                  call randomNumberGenerator(getDouble=r)
+                  if (r < biasPhiProb) then
                      call randomNumberGenerator(getDouble=r)
-                     ang = r * twoPi
-                  enddo
-                  weight = (1.d0-(biasPhiInterval/twoPi)) / (1.d0-biasPhiProb)
-               endif
-               t = sqrt(1.d0-w*w)
-               u = t*cos(ang)
-               v = t*sin(ang)
-               direction = VECTOR(u, v, w)
-               
+                     ang = biasPhiDirection + (2.d0*r-1.d0) * biasPhiInterval
+                     weight = (biasPhiInterval/twoPi) / biasPhiProb
+                  else
+                     ang = biasPhiDirection
+                     do while (abs(ang-biasPhiDirection) < biasPhiInterval/2.d0)
+                        call randomNumberGenerator(getDouble=r)
+                        ang = r * twoPi
+                     enddo
+                     weight = (1.d0-(biasPhiInterval/twoPi)) / (1.d0-biasPhiProb)
+                  endif
+                  t = sqrt(1.d0-w*w)
+                  u = t*cos(ang)
+                  v = t*sin(ang)
+                  direction = VECTOR(u, v, w)
+                  
             endif
-
+            
                   
                
          else
@@ -429,35 +519,35 @@ module source_mod
                print *, "Corner Error! "
                stop
             end if
-        !2D    print *, "cornerDir = ", cornerDir
-           ! print *, "source%position = ", source%position
-           ! print *, "grid%octreeRoot%centre", grid%octreeRoot%centre
-           ! print *, "preDirection = ", direction
+            !2D    print *, "cornerDir = ", cornerDir
+            ! print *, "source%position = ", source%position
+            ! print *, "grid%octreeRoot%centre", grid%octreeRoot%centre
+            ! print *, "preDirection = ", direction
             if (cornerDir%x > 0 .and. direction%x > 0) then
                direction%x = -direction%x 
-              ! print *, "called A"
+               ! print *, "called A"
             else if (cornerDir%x < 0.d0 .and. direction%x < 0.d0) then
                direction%x = -direction%x
-              ! print *, "called B"
+               ! print *, "called B"
             end if
             if (cornerDir%z > 0.d0 .and. direction%z > 0.d0) then
                direction%z = -direction%z
                !print *, "called C"
             else if (cornerDir%z < 0.d0 .and. direction%z < 0.d0) then
                direction%z = -direction%z
-             !  print *, "called D"
+               !  print *, "called D"
             end if
             if (cornerDir%y > 0.d0 .and. direction%y > 0.d0) then
                direction%y = -direction%y
-              ! print *, "called E"
+               ! print *, "called E"
             else if (cornerDir%y < 0.d0 .and. direction%y < 0.d0) then
                direction%y = -direction%y
-              !! print *, "called F"
+               !! print *, "called F"
             end if
-         !Currently dont handle edges
+            !Currently dont handle edges
             
-!            print *, "postDirection : ", direction
-
+            !            print *, "postDirection : ", direction
+            
             
             !direction%z = abs(direction%z)
             !direction%y = abs(direction%y)
@@ -473,8 +563,12 @@ module source_mod
          position%z = r * grid%octreeRoot%subcellSize
          direction = VECTOR(1.d0, 0.d0, 0.d0)
       endif
-
       !Thaw - photons from corner sources should be directed into the grid
+
+   else
+      call getIsotropicPositionDirection(position, direction, grid)
+   endif
+
     end subroutine getPhotonPositionDirection
 
   function distanceToSphere(rVec, uHat, centre, radius) result (distance)
