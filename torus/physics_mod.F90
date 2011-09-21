@@ -487,7 +487,7 @@ contains
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
      use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
 #ifdef PHOTOION
-     use photoion_mod, only : refineLambdaArray
+     use photoion_utils_mod, only : refineLambdaArray
 #endif
 
      logical, optional :: dustRadeq, photoion, atomicDataCube
