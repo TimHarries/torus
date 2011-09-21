@@ -2033,7 +2033,7 @@ end do
         if(readstat /= 0) then
            read(cLine(i)(j+1:80),*,iostat=readstat) value
            if(readstat /= 0) then
-              write(*,*) "parameters.dat entry with no value given!!"
+              write(*,*) "parameters.dat entry with no value given!!" //name
               stop
            else
               unit = "default"

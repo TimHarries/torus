@@ -226,6 +226,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+    CASE("brunt")
+       call calcBruntDensity(thisOctal, subcell) 
+
     CASE("radcloud")
        call calcRadialClouds(thisOctal, subcell)
 
@@ -3844,7 +3847,7 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere","empty", "turbulence","gravtest")
+   case("bonnor", "unisphere","empty", "turbulence","gravtest", "brunt")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("radcloud")
@@ -6698,6 +6701,101 @@ CONTAINS
     
     thisOctal%etaCont(subcell) = 0.
   end subroutine
+
+ subroutine calcBruntDensity(thisOctal, subcell)
+    use utils_mod, only: bonnorebertrun
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, fac, distance, rho_o
+    logical, save :: firstTime = .true.
+    integer, parameter :: nr = 1000
+    real(double), save :: r(nr), rho(nr)
+    integer :: i, j
+    integer, parameter :: numClouds=4
+    type(VECTOR) :: centre(numClouds)
+
+    rho_o = 1.d3*mHydrogen
+    
+!    thisOctal%rho(subcell)=1.d-10*mHydrogen
+    rVec = subcellCentre(thisOctal, subcell)
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+!   if(thisOctal%rho(subcell) == 1.d-10*mHydrogen) then
+      thisOctal%rho(subcell) = rho_o * exp(-((rVec%y+1.54d10)/3.08d10))
+ !     print *, "thisOctal%rho(subcell) ", thisOctal%rho(subcell)
+ !     print *, "exp(-((rVec%y+1.54d10)/3.08d10)) ", exp(-((rVec%y+1.54d10)/3.08d10))
+!   else
+!      thisOctal%rho(subcell) = 0.d0
+ !  end if
+
+    centre(1) = VECTOR(-15.d0, 25.d0, 0.d0)
+    centre(2) = VECTOR(-30.d0, 25.d0, 0.d0)
+    centre(3) = VECTOR(15.d0, 25.d0, 0.d0)
+    centre(4) = VECTOR(30.d0, 25.d0, 0.d0)
+!    centre(5) = VECTOR(75.d0, 25.d0, 0.d0)
+     
+   do j = 1, numClouds
+       centre(j) = (centre(j) * pctocm)/1.d10
+    end do
+
+    if (firstTime) then
+       firstTime = .false.
+       r = 0.d0; rho = 0.d0
+
+       call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho) 
+       r = r / 1.d10
+       if (myrankGlobal==1) then
+          do i =1 , nr
+             write(55, *) r(i)*1.d10/autocm, rho(i)
+          enddo
+       endif
+    endif
+
+!      thisOctal%rho(subcell) = rho(nr)
+      do j = 1, numClouds
+         rVec = subcellCentre(thisOctal, subcell)
+
+         distance = (rVec%x - centre(j)%x)**2 + (rVec%y - centre(j)%y)**2 + (rVec%z - centre(j)%z)**2 
+         if((distance**0.5) < r(nr)) then
+            rMod = sqrt((rVec%x - centre(j)%x)**2 + (rVec%y - centre(j)%y)**2 + (rVec%z - centre(j)%z)**2)
+            call locate(r, nr, rMod, i)
+            fac = (rMod-r(i))/(r(i+1)-r(i))
+            thisOctal%rho(subcell) = thisOctal%rho(subcell) + (rho(i) + fac*(rho(i+1)-rho(i)))
+            thisOctal%velocity(subcell) = VECTOR(0.d0, -3.d5, 0.d0) !-3kms^-1
+         endif
+      end do
+
+
+
+    thisOctal%temperature = 10.d0
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10) 
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+
+!    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+!    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+!    thisOctal%nhi(subcell) = 1.e-5
+!    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+!    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+
+!    thisOctal%ionFrac(subcell,1) = 1.               !HI 
+!    Thisoctal%ionfrac(subcell,2) = 1.e-10           !HII
+!    if (SIZE(thisOctal%ionFrac,2) > 2) then
+!       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+!       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+!    endif
+!    thisOctal%etaCont(subcell) = 0.
+
+
+    thisOctal%inFlow(subcell) = .true.
+
+  end subroutine calcBruntDensity
+
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
 

@@ -2,7 +2,7 @@
 ! hydrodynamics module added by tjh on 18th june 2007
 
 
-module hydrodynamics_mod
+Module hydrodynamics_mod
 #ifdef MPI
 
   use inputs_mod
@@ -550,7 +550,9 @@ contains
 
           thisoctal%x_i_minus_1(subcell) = 0.d0
           thisoctal%x_i_plus_1(subcell) = 0.d0
+
           if (.not.thisoctal%edgecell(subcell)) then
+!          if (.not.thisoctal%ghostcell(subcell)) then
 
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -990,7 +992,6 @@ contains
        m = (f(1) - f(2))/(xpos(1) - xpos(2))
 
        dx = thisOctal%subcellSize*griddistancescale
-
 
        !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                  
        df = abs(m*dx)/2.d0
@@ -3101,9 +3102,7 @@ end subroutine sumFluxes
 
 
     if (.not.readgrid) then
-
     if (myrankGlobal /= 0) then
-
 
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -3113,10 +3112,10 @@ end subroutine sumFluxes
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
 
+
        call calculateRhoInCodeUnits(grid%octreeRoot)
        call calculateEnergyInCodeUnits(grid%octreeRoot)
        call calculatePhiInCodeUnits(grid%octreeRoot)
-
 
        call calculateRhoE(grid%octreeRoot, direction)
     end if
@@ -3143,11 +3142,10 @@ end subroutine sumFluxes
     end if
 
     if(myRankGlobal /= 0) then
-       
+       call evenUpGridMPI(grid,.false., dorefine)
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
-
        if (doselfGrav) then
 
           call findMassOverAllThreads(grid, totalmass)
