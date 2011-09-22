@@ -389,9 +389,9 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 14
+    integer, parameter :: nStorage = 17
     real(double) :: loc(3), tempStorage(nStorage)
-    type(VECTOR) :: octVec, direction, rVec
+    type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
     integer :: iOctal
     integer :: subcell, neighbourSubcell
@@ -522,6 +522,12 @@ contains
              call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
 
              call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
+
+             pVec = subcellCentre(neighbourOctal, neighbourSubcell)
+
+             tempStorage(15) = pVec%x
+             tempStorage(16) = pVec%y
+             tempStorage(17) = pVec%z
 
              if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
                 write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
@@ -668,9 +674,9 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 14
+    integer, parameter :: nStorage = 17
     real(double) :: loc(3), tempStorage(nStorage)
-    type(VECTOR) :: octVec, direction, rVec
+    type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
     integer :: iOctal
     integer :: nDepth, thisnDepth
@@ -797,13 +803,15 @@ contains
 
              call findSubcellTDLevel(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell, nDepth)
 
+             pVec = subcellCentre(neighbourOctal, neighbourSubcell)
+
              if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
                 write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
                 stop
              endif
 
              if (neighbourOctal%nDepth <= thisnDepth) then
-                tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
+                Tempstorage(1) = neighbourOctal%q_i(neighbourSubcell)
                 tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
                 tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
                 tempStorage(4) = neighbourOctal%rhou(neighbourSubcell)
@@ -826,6 +834,10 @@ contains
 
                 tempStorage(13) = neighbourOctal%phi_gas(neighbourSubcell)
 
+                tempStorage(15) = pVec%x
+                tempStorage(16) = pVec%y
+                tempStorage(17) = pVec%z
+
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
 !                          write(*,*) myRank, " temp storage sent"
@@ -834,8 +846,7 @@ contains
 
                 write(*,*) "Error on receiveAcrossMpiBoundaryLevel"
                 stop
-             
-
+            
 
              endif
           endif
@@ -1056,17 +1067,17 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz)
     use mpi
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
-    type(VECTOR) :: direction, rVec
+    type(VECTOR) :: direction, rVec, pVec
     integer :: subcell, neighbourSubcell, tSubcell
     integer :: nBound, nDepth
     integer, intent(out) :: nd
 
     real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
-    real(double), intent(out) :: xplus
+    real(double), intent(out) :: xplus, px, py, pz
     integer :: myRank, ierr
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1081,6 +1092,11 @@ contains
        nd = neighbourOctal%nDepth
 
        x = neighbourOctal%x_i(neighbourSubcell)
+       pVEc = subcellCentre(neighbourOctal, neighbourSubcell)
+
+       px = pVec%x
+       py = pVec%y
+       pz = pVec%z
 
        if (thisOctal%nDepth == neighbourOctal%nDepth) then ! same level
 
@@ -1095,6 +1111,8 @@ contains
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+
+
        else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
           q   = neighbourOctal%q_i(neighbourSubcell)
           rho = neighbourOctal%rho(neighbourSubcell)
@@ -1170,6 +1188,10 @@ contains
        flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
        phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
        phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
+       px = thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
+       py = thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
+       pz = thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
+       
 
     endif
   end subroutine getNeighbourValues
