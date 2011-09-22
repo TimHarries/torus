@@ -1003,8 +1003,8 @@ contains
 
                 communityoctal => mirrorOctal
                 call findsubcelllocal(locator, communityOctal, communitySubcell)
-                call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, rhoe, &
-                rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
+                rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
 
     !            print *, "C ", subcellcentre(communityoctal, communitysubcell), myRank
      !           print *, "direction ", direction
@@ -1059,8 +1059,8 @@ contains
                    (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
 
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
-                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, rhoe, &
-                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, &
+                   rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                    
                    cvec = VECTOR(px, py, pz)
                 
