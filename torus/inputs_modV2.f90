@@ -1729,12 +1729,16 @@ contains
   end subroutine readDataCubeParameters
 
   subroutine readImageParameters(cLine, fLine, nLines)
+    use image_utils_mod
+
     character(len=80) :: cLine(:), message
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
     integer :: i
     character(len=20) :: keyword
+    character(len=80) :: outputImageType, imageFilename
+    integer :: thisnpixels
 
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
@@ -1745,6 +1749,7 @@ contains
 
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i8,a)", 1, ok, .false.)
+    call setNumImages(nimage)
 
     call getLogical("inarcsec", imageinArcsec, cLine, fLine, nLines, &
          "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1762,16 +1767,16 @@ contains
 
     if (nimage == 1) then
 
-       call getString("imagefile", imageFilename(1), cLine, fLine, nLines, &
+       call getString("imagefile", imageFilename, cLine, fLine, nLines, &
             "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
 
        call getReal("lambdaimage", lambdaImage(1),1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
        if (photoionPhysics) then
-          call getString("imagetype", outputimageType(1), cLine, fLine, nLines, &
+          call getString("imagetype", outputimageType, cLine, fLine, nLines, &
                "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
        endif
-       call getInteger("npixels", npixelsArray(1), cLine, fLine, nLines, &
+       call getInteger("npixels", thisnpixels, cLine, fLine, nLines, &
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
        
 
@@ -1797,6 +1802,7 @@ contains
        call getReal("lamstart", lamstart, 1., cLine, fLine, nLines, &
             "LamStart (probably temporary - not sure what it does)","(a,f8.1,1x,a)", 6562.8, ok, .false.)
        
+       call setImageParams(1, lambdaImage(1), outputimageType, imageFilename, thisnpixels)
     else
        do i = 1, nImage
 
@@ -1806,18 +1812,18 @@ contains
           call writeInfo(" ")
 
           write(keyword,'(a,i1.1)') "imagefile",i
-          call getString(keyword, imageFilename(i), cLine, fLine, nLines, &
+          call getString(keyword, imageFilename, cLine, fLine, nLines, &
                "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
           write(keyword,'(a,i1.1)') "lambdaimage",i
           call getReal(keyword, lambdaImage(i),1., cLine, fLine, nLines, &
                "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
           if (photoionPhysics) then
              write(keyword,'(a,i1.1)') "imagetype",i
-             call getString(keyword, outputimageType(i), cLine, fLine, nLines, &
+             call getString(keyword, outputimageType, cLine, fLine, nLines, &
                   "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
           endif
           write(keyword,'(a,i1.1)') "npixels",i
-          call getInteger(keyword, npixelsArray(i), cLine, fLine, nLines, &
+          call getInteger(keyword, thisnpixels, cLine, fLine, nLines, &
                "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
           write(keyword,'(a,i1.1)') "inclination",i
           call getReal(keyword, inclinationArray(i), real(degtorad), cLine, fLine, nLines, &
@@ -1825,7 +1831,7 @@ contains
           write(keyword,'(a,i1.1)') "positionangle",i
           call getReal(keyword, positionAngle(i), real(degtorad), cLine, fLine, nLines, &
                "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-
+          call setImageParams(i, lambdaImage(i), outputimageType,imageFilename, thisnpixels)
     enddo
 
  end if

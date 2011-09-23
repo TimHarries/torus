@@ -14,13 +14,14 @@ contains
     use inputs_mod, only : stokesimage
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
-    use inputs_mod, only : imageFilename, calcImage, calcSpectrum, calcBenchmark
+    use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use inputs_mod, only : lambdaImage, npixelsArray, mie, gridDistance, nLambda, nv
+    use inputs_mod, only : lambdaImage, mie, gridDistance, nLambda, nv
     use inputs_mod, only : outfile, npixels, nImage, inclinationArray
-    use inputs_mod, only : lamStart, lamEnd, lineEmission, outputImageType
+    use inputs_mod, only : lamStart, lamEnd, lineEmission
     use inputs_mod, only : monteCarloRT
+    use image_utils_mod
 #ifdef MPI
     use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
@@ -197,8 +198,7 @@ contains
           if(inclineZ) observerDirection%z = sin(singleInclination)
 
           do i = 1, nImage
-             call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), & 
-                  lambdaImage(i), outputImageType(i), nPixelsArray(i))
+             call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, i)
           enddo
 #else
           call writeFatal("Cannot calculate an image from a domain decomposed grid without MPI")
@@ -206,8 +206,7 @@ contains
        else
           do i = 1, nImage
              observerDirection = VECTOR(-1.0d0, 0.d0, 0.d0)
-             call createImagePhotoion(grid, globalnSource, globalsourcearray, observerDirection, imageFilename(i), &
-                  lambdaImage(i), outputImageType(i), nPixelsArray(i))
+             call createImagePhotoion(grid, globalnSource, globalsourcearray, observerDirection, i)
           end do
        end if
     endif
@@ -278,8 +277,8 @@ contains
           do i = 1, nImage
              nlambda = 1
              stokesImage = .true.
-             outfile = imageFilename(i)
-             npixels = nPixelsArray(i)
+             outfile = getImageFilename(i)
+             npixels = getImagenPixels(i)
              lamStart = lambdaImage(i)
              lamEnd = lambdaImage(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
@@ -318,8 +317,8 @@ contains
           do i = 1, nImage
              nlambda = 1
              stokesImage = .true.
-             outfile = imageFilename(i)
-             npixels = nPixelsArray(i)
+             outfile = getImageFilename(i)
+             npixels = getImagenPixels(i)
              lamStart = lambdaImage(i)
              lamEnd = lambdaImage(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &

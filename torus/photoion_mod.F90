@@ -3186,9 +3186,10 @@ end subroutine readHeIIrecombination
      end subroutine unpackIonFrac
 #endif
 
-  subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageFilename,lambdaLine,outputImageType,npix)
+  subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageNum)
     use inputs_mod, only : nPhotons, setimagesize, lamStart, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
+    use image_utils_mod
 #ifdef USECFITSIO
     use inputs_mod, only: gridDistance
     use image_mod, only: writeFitsImage
@@ -3202,12 +3203,13 @@ end subroutine readHeIIrecombination
     use mpi_global_mod, only: nThreadsGlobal
     use mpi
 #endif
+    integer, intent(in) :: imageNum
     type(GRIDTYPE) :: grid
-    character(len=*), intent(in) :: imageFilename
+    character(len=80)   :: imageFilename
     integer, intent(in) :: nSource
-    real, intent(in) :: lambdaLine
-    character(len=*), intent(in) :: outputimageType
-    integer, intent(in) :: npix
+    real :: lambdaLine
+    character(len=80) :: outputimageType
+    integer :: npix
     integer :: nXpix, nYpix
     real :: imageXsize, imageYsize
     type(SOURCETYPE) :: source(:), thisSource
@@ -3232,6 +3234,11 @@ end subroutine readHeIIrecombination
     integer :: i
     integer :: ierr
 #endif
+
+    lambdaline      = getImageWavelength(imageNum)
+    outputImageType = getImageType(imageNum)
+    imageFilename   = getImageFilename(imageNum)
+    npix            = getImagenPixels(imageNum)
 
     call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0

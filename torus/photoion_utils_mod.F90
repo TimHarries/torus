@@ -773,6 +773,10 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
   integer, intent(in)          :: nsource
   type(SOURCETYPE), intent(in) :: source(:)
   real(double), intent(out)    :: lCore
+  character(len=80) :: message
+
+  write(message,*) "Setting up grid for "//trim(outputimageType)//" image."
+  call writeInfo(message, FORINFO)
 
   select case (outputimageType)
 
@@ -809,6 +813,8 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
 
   case("dustonly")
 
+     write(message,"(a,f8.2,a)") "Image wavelength: ", lambdaImage*angsToMicrons, " microns"
+     call writeInfo(message, FORINFO)
      call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
      call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage,iLambdaPhoton)
      

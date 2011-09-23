@@ -4735,14 +4735,16 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageFilename, &
-       lambdaImage, outputimageType, nPixels)
+  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageNum)
     use inputs_mod, only: nPhotons, gridDistance
+    use image_utils_mod
     use mpi
-    real, intent(in) :: lambdaImage
+    integer, intent(in) :: imageNum
+    real :: lambdaImage
     type(GRIDTYPE) :: grid
     integer :: npixels
-    character(len=*) :: imageFilename, outputImageType
+    character(len=80) :: imageFilename 
+    character(len=80) :: outputImageType
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
@@ -4775,6 +4777,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     !THAW - dev
     real(double) :: weightSource,  sourceFac, theoretical
     integer :: nLams
+
+    lambdaImage     = getImageWavelength(imageNum)
+    outputImageType = getImageType(imageNum)
+    imageFilename   = getImageFilename(imageNum)
+    npixels         = getImagenPixels(imageNum)
 
 !    integer :: i
 

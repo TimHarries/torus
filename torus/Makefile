@@ -541,7 +541,7 @@ endif
 
 VERSIONSOURCE = torus_version_mod.f90 
 
-F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
+F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_utils_mod.f90 \
             sed_mod.f90 utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \

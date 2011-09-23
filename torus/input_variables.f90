@@ -311,7 +311,6 @@
   real :: setImageSize ! image size for createLucyImage and phaseloop_mod
   integer :: nv ! number of velocity channels
   integer :: npixels ! number of pixels 
-  integer :: nPixelsArray(10) ! number of pixels
   integer :: nImage ! Number of images to generate
   logical :: stokesImage ! use in phaselooop_mod
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
@@ -325,9 +324,7 @@
 
   ! file names 
   character(len=80) :: outFile           ! used in phaseloop_mod
-  character(len=80) :: imageFilename(10)
   character(len=80) :: datacubeFilename
-  character(len=80) :: outputimageType(10) ! types of images from photoionisation
 
 
 !----------------------------------------------------------
