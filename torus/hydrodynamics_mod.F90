@@ -4410,7 +4410,6 @@ end subroutine sumFluxes
                          thisOctal%tempStorage(subcell,5) = inflowMomentum
                       endif
                    endif
-                   
 
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)

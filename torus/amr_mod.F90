@@ -229,6 +229,9 @@ CONTAINS
     CASE("brunt")
        call calcBruntDensity(thisOctal, subcell) 
 
+    CASE("blobtest")
+       call calcBlobTestDensity(thisOctal, subcell)
+
     CASE("radcloud")
        call calcRadialClouds(thisOctal, subcell)
 
@@ -3850,7 +3853,7 @@ CONTAINS
    case("bonnor", "unisphere","empty", "turbulence","gravtest", "brunt")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
-   case("radcloud")
+   case("radcloud", "blobtest")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
   
 
@@ -6701,6 +6704,51 @@ CONTAINS
     
     thisOctal%etaCont(subcell) = 0.
   end subroutine
+
+!http://www.astrosim.net/code/doku.php?id=home:codetest:hydrotest:wengen:wengen3
+!Agertz et al. (2007) - fundamental differences between SPH and grid methods
+  subroutine calcBlobTestDensity(thisOctal, subcell)
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: mUnit, vUnit, lUnit, eThermal, tExt, tInt, gamma
+
+    tExt = 1.d7
+    tInt = 1.d6
+    gamma = 5.d0/3.d0
+
+    mUnit = 2.3262d5 * mSol
+    lUnit = 1.d3 * pctocm
+    vUnit = 1.d5
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    if((rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm)) then
+       thisOctal%rho(subcell) = 3.13e-7*(mUnit/(lUnit**3.d0))
+       thisOctal%temperature(subcell) = tInt
+    else
+       thisOctal%rho(subcell) = 3.13e-8*(mUnit/(lUnit**3.d0))
+       thisOctal%temperature(subcell) = tExt
+    end if
+
+    thisOctal%gamma(subcell) = gamma
+    eThermal = (kErg*thisOctal%temperature(subcell))/(gamma - 1.d0)
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * eThermal
+    thisOctal%iEquationOfState(subcell) = 0
+    thisOCtal%pressure_i(subcell) = (gamma-1.d0) * eThermal * thisOctal%rho(subcell)
+
+    inflowRho = 3.13e-8*(mUnit/(lUnit**3.d0))
+    inflowSpeed = 1.d8
+    inflowMomentum = inflowSpeed * inflowRho
+    inflowEnergy = ((kErg*tExt)/(gamma-1.d0)) + (0.5d0*(inflowSpeed**2.d0))
+    inflowRhoe = inflowEnergy * inflowRho
+    inflowPressure = kErg*tExt*thisOctal%rho(subcell)
+
+  end subroutine
+
 
  subroutine calcBruntDensity(thisOctal, subcell)
     use utils_mod, only: bonnorebertrun
