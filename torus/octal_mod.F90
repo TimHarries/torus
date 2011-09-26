@@ -313,6 +313,7 @@ MODULE octal_mod
     real(double), pointer :: phi_stars(:) => null(), phi_gas(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
     integer, pointer :: boundaryCondition(:) => null()
+    integer, pointer :: numMPIneighbours(:) => null()
 
   END TYPE octal
  

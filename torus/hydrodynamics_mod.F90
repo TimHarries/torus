@@ -3508,7 +3508,6 @@ end subroutine sumFluxes
        if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
-
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        do i = 1, nPairs
@@ -3518,6 +3517,19 @@ end subroutine sumFluxes
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
+
+       if (myRank == 1) write(*,*) "Assigning number of neighbours on different MPI threads"
+       
+       if(myRank /= 0) then
+          call setupNumMPIneighbours(grid%octreeRoot, grid)
+       end if
+       write(plotfile,'(a,i4.4,a)') "gridInfo.vtk"
+       call writeVtkFile(grid, plotfile, &
+       valueTypeString=(/"numAlien     "/))
+
+       if (myRank == 1) write(*,*) "MPI neighbours assigned"
+
+
 
 
        if (it == 0) then
@@ -6120,6 +6132,81 @@ end subroutine refineGridGeneric2
 !    sigma = sqrt(sigma / dble(n))
     sigma = maxval(abs(x(1:n)))-minval(abs(x(1:n)))
   end function sigma
+
+
+!Calculate the number of neighbouring cells on different MPI threads
+ recursive subroutine setupNumMPIneighbours(thisOctal, grid)
+      use mpi
+      type(GRIDTYPE) :: grid
+      type(octal), pointer :: thisOctal
+      type(octal), pointer :: neighbourOctal
+      type(octal), pointer :: child
+      integer :: subcell, neighbourSubcell
+      integer :: myRank, ierr
+      integer :: numMPINeighbours, nDir
+      integer :: i, k
+      type(VECTOR) :: dirVec(6)
+      type(VECTOR) :: locator
+
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%hasChild(subcell)) then
+! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupNumMPIneighbours(child, grid)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+
+          if(.not. thisOctal%ghostcell(subcell)) then
+          
+             numMPIneighbours = 0
+             
+             if (thisOctal%threed) then
+                nDir = 6
+                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+                dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+                dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+                dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+                dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+                dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+             else if (thisOctal%twod) then
+                nDir = 4
+                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+                dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+                dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+                dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+             else
+                nDir = 2
+                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+                dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             endif
+             
+             print *, "alpha", myRank
+             do k = 1, nDir
+                locator = subcellCentre(thisOctal, subcell) + dirVec(k)*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                neighbourOctal => thisOctal
+                if(inOctal(grid%octreeRoot, locator)) then
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                   if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+                      numMPIneighbours = numMPIneighbours + 1
+                   end if
+                end if
+             end do
+             
+             thisOctal%numMPIneighbours(subcell) = numMPIneighbours
+          end if
+       end if    
+      end do
+      
+  end subroutine
 
   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
     use mpi  
