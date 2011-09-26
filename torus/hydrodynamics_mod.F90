@@ -6189,7 +6189,6 @@ end subroutine refineGridGeneric2
                 dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
              endif
              
-             print *, "alpha", myRank
              do k = 1, nDir
                 locator = subcellCentre(thisOctal, subcell) + dirVec(k)*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
                 neighbourOctal => thisOctal
