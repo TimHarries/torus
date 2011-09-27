@@ -905,8 +905,6 @@ contains
                case("bcond")
                   write(lunit, *) real(thisOctal%boundaryCondition(subcell))
 
-               case("numAlien")
-                  write(lunit, *) real(thisOctal%numMPIneighbours(subcell))
 
                case("deltaT")
                   write(lunit, *) real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell))
@@ -2800,8 +2798,6 @@ end subroutine writeXMLVtkFileAMR
                case("bcond")
                   rArray(1, n) = real(thisOctal%boundaryCondition(subcell))
 
-               case("numAlien")
-                  rArray(1, n) = real(thisOctal%numMPIneighbours(subcell))
 
                case("deltaT")
                   rArray(1, n) = real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell))

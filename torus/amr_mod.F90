@@ -9345,7 +9345,6 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%NH,  source%NH)
     call copyAttribute(dest%NHI,  source%NHI)
     call copyAttribute(dest%boundaryCondition,  source%boundaryCondition)
-    call copyAttribute(dest%numMPIneighbours,  source%numMPIneighbours) 
     call copyAttribute(dest%boundaryPartner,  source%boundaryPartner)
     call copyAttribute(dest%GravboundaryPartner,  source%GravboundaryPartner)
     call copyAttribute(dest%NHII,  source%NHII)
@@ -9462,6 +9461,13 @@ end function readparameterfrom2dmap
                               SIZE(source%mpiboundaryStorage,2), &
                               SIZE(source%mpiboundaryStorage,3)))
       dest%mpiboundaryStorage = source%mpiboundaryStorage
+    END IF  
+
+    IF (ASSOCIATED(source%mpiCornerStorage)) THEN                   
+      ALLOCATE(dest%mpiCornerStorage( SIZE(source%mpiCornerStorage,1),       &
+                              SIZE(source%mpiCornerStorage,2), &
+                              SIZE(source%mpiCornerStorage,3)))
+      dest%mpiCornerStorage = source%mpiCornerStorage
     END IF  
 
     IF (ASSOCIATED(source%kappaAbs)) THEN                   
@@ -13643,7 +13649,6 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
-       call allocateAttribute(thisOctal%numMPIneighbours,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%gravboundaryPartner,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
@@ -13774,7 +13779,6 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%rho_i_minus_1)
 
        call deAllocateAttribute(thisOctal%boundaryCondition)
-       call deAllocateAttribute(thisOctal%numMPIneighbours)
        call deAllocateAttribute(thisOctal%boundaryPartner)
 
        call deAllocateAttribute(thisOctal%radiationMomentum)
@@ -13787,6 +13791,7 @@ end function readparameterfrom2dmap
        call deallocateAttribute(thisOctal%neighbourSubcell)
 
        call deallocateAttribute(thisOctal%mpiBoundaryStorage)
+       call deallocateAttribute(thisOctal%mpiCornerStorage)
 
        call deallocateAttribute(thisOctal%departCoeff)
        call deallocateAttribute(thisOctal%molAbundance)

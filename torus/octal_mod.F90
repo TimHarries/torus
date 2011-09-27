@@ -289,6 +289,7 @@ MODULE octal_mod
     INTEGER, POINTER                   :: gas_particle_list(:) => null() ! SPH index of the particles in this octal
     LOGICAL, DIMENSION(:), pointer :: changed => null()    ! octal has changed in some way since previous calculation
     real(double), pointer, dimension(:,:,:) :: mpiBoundaryStorage => null()
+    real(double), pointer, dimension(:,:,:) :: mpiCornerStorage => null()
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
 
@@ -313,7 +314,6 @@ MODULE octal_mod
     real(double), pointer :: phi_stars(:) => null(), phi_gas(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
     integer, pointer :: boundaryCondition(:) => null()
-    integer, pointer :: numMPIneighbours(:) => null()
 
   END TYPE octal
  

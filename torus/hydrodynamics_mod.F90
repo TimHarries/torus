@@ -924,7 +924,7 @@ contains
     type(vector) :: nVec
     real(double), intent(out) :: fac
     real(double), allocatable ::  xpos(:), f(:)
-    integer :: myRank, ierr
+    integer :: myRank, ierr, nCornerBound
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd, iTot, i
     real(double) :: xnext, m, dx, df, px, py, pz
@@ -981,7 +981,6 @@ contains
                 !The community cell values can then be obtained from its the boundary partner on the native side of the domain. 
 
                 mirrorOctal => thisOctal
-                
                 !Move along the native side of the domain by 1 cell in the appropriate direction
                 
 !                print *, "A ", subcellcentre(thisoctal, subcell), myRank
@@ -997,27 +996,33 @@ contains
 
 !                nVec = subcellCentre(neighbourOctal, neighbourSubcell)
 
-                !Probe across the mpi boundary and check if the corresponding cell is the community subcell
-                locator = subcellcentre(mirrorOctal, mirrorSubcell) + direction * & 
-                (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
 
-                communityoctal => mirrorOctal
-                call findsubcelllocal(locator, communityOctal, communitySubcell)
-                call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
-                rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                if(octalOnThread(mirrorOctal,mirrorSubcell, myRank)) then
+!Probe across the mpi boundary and check if the corresponding cell is the community subcell
+                   locator = subcellcentre(mirrorOctal, mirrorSubcell) + direction * & 
+                   (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
+                   
+                   communityoctal => mirrorOctal
+                   call findsubcelllocal(locator, communityOctal, communitySubcell)
+                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
+                   rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
 
-    !            print *, "C ", subcellcentre(communityoctal, communitysubcell), myRank
-     !           print *, "direction ", direction
-      !          print *, "locator ", locator
+                else
+                   nCornerBound = getNCornerBoundFromDirection(direction, 1)
+                   px = thisOctal%mpiCornerStorage(subcell, nCornerBound, 1)
+                   py = thisOctal%mpiCornerStorage(subcell, nCornerBound, 2)
+                   pz = thisOctal%mpiCornerStorage(subcell, nCornerBound, 3)
+                   flux = thisOctal%mpiCornerStorage(subcell, nCornerBound, 4)
+                end if
 
                 cvec = VECTOR(px, py, pz)
 
                 if(cVec%x /= nVec%x .or. cVec%z /= nVec%z) then
                    !Found the community subcell
                   
-                   !Get the values ...
-                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
-                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+!                   !Get the values ...
+!                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
+!                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                   
 !                   rVec = subcellcentre(communityoctal, communitysubcell)
                    f(i) = flux
@@ -1046,6 +1051,7 @@ contains
                    !Found the same cell
 
                    !Move along one more cell width
+
 
                    locator = subcellcentre(mirrorOctal, mirrorSubcell) + community(i) * &
                    (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
@@ -2662,10 +2668,13 @@ end subroutine sumFluxes
 
   end subroutine hydroStep3d
 
-  subroutine hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+  subroutine hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
+      nCornerBound, cornerGroup, nCornerGroup)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup
+    integer :: nCornerPairs, cornerThread1(:), cornerThread2(:), nCornerBound(:)
+    integer :: cornerGroup(:), nCornerGroup
     real(double) :: dt
     type(VECTOR) :: direction
 
@@ -2692,6 +2701,8 @@ end subroutine sumFluxes
     end if
 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2737,6 +2748,8 @@ end subroutine sumFluxes
        call rhiechowui(grid%octreeroot, grid, direction, dt)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=1)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -2781,6 +2794,8 @@ end subroutine sumFluxes
        call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -3520,21 +3535,16 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
-       if (myRank == 1) write(*,*) "Assigning number of neighbours on different MPI threads"
-       
        call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
-
-       write(plotfile,'(a,i4.4,a)') "gridInfo.vtk"
-       call writeVtkFile(grid, plotfile, &
-       valueTypeString=(/"numAlien     "/))
 
        do i = 1, nCornerPairs
           if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
        end do
 
-       if (myRank == 1) write(*,*) "MPI neighbours assigned"
 
-
+       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
+       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+       call writeInfo("Done", TRIVIAL)
 
 
        if (it == 0) then
@@ -3547,8 +3557,6 @@ end subroutine sumFluxes
 
           !    call calculateEnergy(grid%octreeRoot, gamma, mu)
           call calculateRhoE(grid%octreeRoot, direction)
-
-
 
           call evenUpGridMPI(grid,.true., dorefine)
 
@@ -3643,7 +3651,8 @@ end subroutine sumFluxes
                "rhow         ", &
                "phi          "/))
 
-          call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
+             nCornerBound, cornerGroup, nCornerGroup)
           write(plotfile,'(a,i4.4,a)') "postStep.vtk"
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
