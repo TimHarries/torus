@@ -3475,7 +3475,9 @@ end subroutine sumFluxes
     real(double) :: totalEnergy, totalMass
     type(VECTOR) :: direction, viewVec
     integer :: thread1(100), thread2(100), nBound(100), nPairs
+    integer :: cornerthread1(100), cornerthread2(100), ncornerBound(100), ncornerPairs
     integer :: nGroup, group(100)
+    integer :: nCornerGroup, cornergroup(100)
     integer :: nHydroThreads 
     logical :: converged
     integer :: nUnrefine, jt
@@ -3520,12 +3522,15 @@ end subroutine sumFluxes
 
        if (myRank == 1) write(*,*) "Assigning number of neighbours on different MPI threads"
        
-       if(myRank /= 0) then
-          call setupNumMPIneighbours(grid%octreeRoot, grid)
-       end if
+       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
+
        write(plotfile,'(a,i4.4,a)') "gridInfo.vtk"
        call writeVtkFile(grid, plotfile, &
        valueTypeString=(/"numAlien     "/))
+
+       do i = 1, nCornerPairs
+          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
+       end do
 
        if (myRank == 1) write(*,*) "MPI neighbours assigned"
 
@@ -6134,80 +6139,7 @@ end subroutine refineGridGeneric2
   end function sigma
 
 
-!Calculate the number of neighbouring cells on different MPI threads
- recursive subroutine setupNumMPIneighbours(thisOctal, grid)
-      use mpi
-      type(GRIDTYPE) :: grid
-      type(octal), pointer :: thisOctal
-      type(octal), pointer :: neighbourOctal
-      type(octal), pointer :: child
-      integer :: subcell, neighbourSubcell
-      integer :: myRank, ierr
-      integer :: numMPINeighbours, nDir
-      integer :: i, k
-      type(VECTOR) :: dirVec(6)
-      type(VECTOR) :: locator
-
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-
-    do subcell = 1, thisOctal%maxChildren
-
-       if (thisOctal%hasChild(subcell)) then
-! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call setupNumMPIneighbours(child, grid)
-                exit
-             end if
-          end do
-       else
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
-
-          if(.not. thisOctal%ghostcell(subcell)) then
-          
-             numMPIneighbours = 0
-             
-             if (thisOctal%threed) then
-                nDir = 6
-                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-                dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-                dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-                dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-                dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-                dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
-             else if (thisOctal%twod) then
-                nDir = 4
-                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-                dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
-                dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
-                dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
-             else
-                nDir = 2
-                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-                dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-             endif
-             
-             do k = 1, nDir
-                locator = subcellCentre(thisOctal, subcell) + dirVec(k)*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-                neighbourOctal => thisOctal
-                if(inOctal(grid%octreeRoot, locator)) then
-                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
-                      numMPIneighbours = numMPIneighbours + 1
-                   end if
-                end if
-             end do
-             
-             thisOctal%numMPIneighbours(subcell) = numMPIneighbours
-          end if
-       end if    
-      end do
-      
-  end subroutine
-
-  subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
+   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
     use mpi  
     use inputs_mod, only : minDepthAMR, maxDepthAMR
 

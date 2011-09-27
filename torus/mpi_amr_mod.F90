@@ -379,7 +379,6 @@ contains
 
 
   subroutine receiveAcrossMpiBoundary(grid, boundaryType, receiveThread, sendThread)
-
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -604,6 +603,232 @@ contains
        end do
     endif
   end subroutine receiveAcrossMpiBoundary
+
+  subroutine receiveAcrossMpiCorner(grid, boundaryType, receiveThread, sendThread)
+    use mpi
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal, tOctal
+    type(octal), pointer  :: neighbourOctal
+    character(len=*) :: boundaryType
+    integer :: receiveThread, sendThread, tsubcell
+    integer :: myRank, ierr
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    integer :: nOctals
+    integer, parameter :: nStorage = 17
+    real(double) :: loc(3), tempStorage(nStorage)
+    type(VECTOR) :: octVec, direction, rVec, pVec
+    integer :: nBound
+    integer :: iOctal
+    integer :: subcell, neighbourSubcell
+    integer :: tag = 77
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: sendLoop
+    integer :: nDepth
+    real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    select case(boundaryType)
+    case("left")
+       direction = VECTOR(-1.d0, 0.d0, 0.d0)
+       nBound = 1
+    case("right")
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       nBound = 2
+    case("top")
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
+       nBound = 3
+    case("bottom")
+       direction = VECTOR(0.d0, 0.d0, -1.d0)
+       nBound = 4
+    case("front")
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
+       nBound = 5
+    case("back")
+       direction = VECTOR(0.d0, -1.d0, 0.d0)
+       nBound = 6
+    case DEFAULT
+       write(*,*) "boundary type not recognised ",boundaryType
+       stop
+    end select
+!    write(*,*) myrank, "boundary number is ",nbound
+    
+
+    if (myRank == receiveThread) then
+       allocate(octalArray(grid%nOctals))
+       nOctals = 0
+       call getOctalArray(grid%octreeRoot,octalArray, nOctals)
+       if (nOctals /= grid%nOctals) then
+          write(*,*) "Screw up in get octal array", nOctals,grid%nOctals
+          stop
+       endif
+!       write(*,*) myrank," generated ",nOctals, " array of octals"
+       do iOctal =  1, nOctals
+          
+          thisOctal => octalArray(iOctal)%content
+          
+          do subcell = 1, thisOctal%maxChildren             
+             if (.not.thisOctal%hasChild(subcell)) then
+                
+!                if (thisOctal%mpiThread(subcell) /= myRank) cycle
+                if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+                
+                octVec = subcellCentre(thisOctal, subcell) + &
+                     (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
+                
+                if (.not.inOctal(grid%octreeRoot, octVec)) then
+                   write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
+                   write(*,*) "centre",subcellCentre(thisOctal, subcell)
+                   write(*,*) "depth",thisOctal%nDepth, thisOctal%haschild(1:8)
+                   write(*,*) octVec
+                   stop
+                endif
+                
+                neighbourOctal => thisOctal
+                call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+
+                if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
+
+                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
+                   write(*,*) "Error 1 Neighbour on ",boundaryType, " of ", myrankglobal, &
+                        "  is not on thread ", sendThread, " but ", &
+                   neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
+                   stop
+                endif
+
+                loc(1) = octVec%x
+                loc(2) = octVec%y
+                loc(3) = octVec%z
+!                write(*,*) myRank, " has identified a boundary cell ", loc(1:3)
+
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+!                write(*,*) myrank, " sent the locator to ", sendThread
+
+                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, MPI_COMM_WORLD, ierr)
+!                write(*,*) myrank, " sent the locator to ", sendThread
+
+                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+!                write(*,*) myrank, " received temp storage"
+                if (.not.associated(thisOctal%mpiBoundaryStorage)) then
+                   allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
+                   thisOctal%mpiBoundaryStorage = 0.d0
+                endif
+                thisOctal%mpiBoundaryStorage(subcell, nBound, 1:nStorage) = tempStorage(1:nStorage)
+!                write(*,*) myrank, " successfully stored"
+
+             end if
+          enddo
+       enddo
+       deallocate(octalArray)
+       loc(1) = HUGE(loc(1))
+       loc(2) = 0.d0
+       loc(3) = 0.d0
+!       write(*,*) myrank, " sending a huge value to ", sendThread
+       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+
+       ! now send a finish signal to the sendThread
+    else
+       if (myRank /= sendThread) then
+          write(*,*) "subroutine called within thread ", myRank, " but expecing to be ", sendthread
+          stop
+       endif
+       sendLoop = .true.
+       do while (sendLoop)
+          ! receive a locator
+!          write(*,*) myrank, " waiting for a locator"
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+!          write(*,*) myrank, " received a locator ", loc(1:3)
+          if (loc(1) > 1.d20) then
+             sendLoop = .false.
+!             write(*,*) myRank, " found the signal to end the send loop"
+          else
+
+             octVec = VECTOR(loc(1), loc(2), loc(3))
+
+             call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+
+             call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
+
+             pVec = subcellCentre(neighbourOctal, neighbourSubcell)
+
+             tempStorage(15) = pVec%x
+             tempStorage(16) = pVec%y
+             tempStorage(17) = pVec%z
+
+             if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
+                write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
+                stop
+             endif
+
+             if (neighbourOctal%nDepth <= nDepth) then
+                if ((nDepth - neighbourOctal%nDepth) > 1) then
+                   write(*,*) "Octal depth differs by more than 1 across boundary!!!"
+                   write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
+                   write(*,*) "myrank ",myrank
+                   write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
+                   stop
+                endif
+                tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
+                tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
+                tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
+                tempStorage(4) = neighbourOctal%rhou(neighbourSubcell)
+                tempStorage(5) = neighbourOctal%rhov(neighbourSubcell)
+                tempStorage(6) = neighbourOctal%rhow(neighbourSubcell)
+                tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
+                rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+                tOctal => neighbourOctal
+                tSubcell = neighbourSubcell
+                call findSubcellLocal(rVec, tOctal, tSubcell)
+                tempStorage(8) = tOctal%q_i(tsubcell)
+                
+                tempStorage(9) = dble(neighbourOctal%nDepth)
+                tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
+                tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
+
+                tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
+
+                tempStorage(13) = neighbourOctal%phi_gas(neighbourSubcell)
+                tempStorage(14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
+
+!                write(*,*) myrank," set up tempstorage with ", &
+!                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
+!                     neighbourOctal%edgeCell(neighbourSubcell)
+
+             else ! need to average
+                call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
+                     flux, phi, phigas)
+                tempStorage(1) = q
+                tempStorage(2) = rho
+                tempStorage(3) = rhoe
+                tempStorage(4) = rhou
+                tempStorage(5) = rhov
+                tempStorage(6) = rhow
+                tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
+                rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+                tOctal => neighbourOctal
+                tSubcell = neighbourSubcell
+                call findSubcellLocal(rVec, tOctal, tSubcell)
+                tempStorage(8) = tOctal%q_i(tsubcell)
+                
+                tempStorage(9) = dble(neighbourOctal%nDepth)
+                tempStorage(10) = pressure
+                tempStorage(11) = flux
+                tempStorage(12) = phi
+                tempStorage(13) = phigas
+                tempstorage(14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
+             endif
+!                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+!                          write(*,*) myRank, " temp storage sent"
+
+             
+
+
+          endif
+       end do
+    endif
+  end subroutine receiveAcrossMpiCorner
   
   subroutine exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound)
     use mpi
@@ -662,6 +887,81 @@ contains
     enddo
 666 continue
   end subroutine exchangeAcrossMPIboundary
+
+  subroutine exchangeAcrossMPIcorner(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup, iGroup
+    integer, optional :: useThisBound
+    integer :: rBound, cOne, cTwo
+    integer :: myRank, ierr
+    logical :: doExchange
+    character(len=10) :: boundaryType(6) = (/"left  ","right ", "top   ", "bottom", "front ", "back  "/)
+    character(len=12) :: cornerType(12) = (/"leftupper","rightupper", "topupper", "bottomupper", "frontupper", "backupper", &
+      "leftlower", "rightlower", "toplower", "bottomlower", "frontlower", "backlower" /)
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    if (myrankGlobal == 0) goto 666
+    CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
+
+    do iGroup = 1, nGroup
+       do iPair = 1, nPairs
+          if (group(iPair) == iGroup) then
+             doExchange = .true.
+             if (present(useThisBound)) then
+                doExchange = .false.
+                if (nBound(iPair) == useThisBound) doExchange = .true.
+             endif
+             if (doExchange) then
+                if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
+                   if(boundaryType(nBound(iPair)) == "left  ") then
+                      cOne = 1
+                      cTwo = 7
+                   else if (boundaryType(nBound(iPair)) == "right ") then
+                      cOne = 2
+                      cTwo = 8
+                   else if (boundaryType(nBound(iPair)) == "top   ") then
+                      cOne = 3
+                      cTwo = 9
+                   else if (boundaryType(nBound(iPair)) == "bottom") then
+                      cOne = 4
+                      cTwo = 10
+                   else if (boundaryType(nBound(iPair)) == "front ") then
+                      cOne = 5
+                      cTwo = 11
+                   else if (boundaryType(nBound(iPair)) == "back  ") then
+                      cOne = 6
+                      cTwo = 12
+                   else
+                      call torus_abort("error in MPI corner exchange")
+                   end if
+
+                   call receiveAcrossMpiCorner(grid, cornerType(cOne), thread1(iPair), thread2(iPair))
+
+                   if      (nBound(iPair) == 1) then
+                      rBound = 2
+                   else if (nBound(iPair) == 2) then
+                      rBound = 1
+                   else if (nBound(iPair) == 3) then
+                      rBound = 4
+                   else if (nBound(iPair) == 4) then
+                      rBound = 3
+                   else if (nBound(iPair) == 5) then
+                      rBound = 6
+                   else if (nBound(iPair) == 6) then
+                      rBound = 5
+                   endif
+                   call receiveAcrossMpiCorner(grid, boundaryType(rBound), thread2(iPair), thread1(iPair))
+                endif
+             endif
+          endif
+       enddo
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    enddo
+666 continue
+  end subroutine exchangeAcrossMPIcorner
+
 
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
@@ -901,6 +1201,210 @@ contains
     enddo
 
   end subroutine exchangeAcrossMPIboundaryLevel
+
+!Calculate the number of neighbouring cells on different MPI threads                                                       
+ recursive subroutine determineCornerPairs(thisOctal, grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, &    
+       CornerGroup, nCornerGroup, iThread)
+!      use mpi                                                                                                             
+      use vector_mod, only: modulus
+      type(GRIDTYPE) :: grid
+      integer, intent(out) :: ncornerPairs, cornerthread1(:), cornerthread2(:)                                             
+      integer, intent(out) :: ncornerBound(:), ncornerGroup, cornergroup(:)                                                
+      type(octal), pointer :: thisOctal
+      type(octal), pointer :: neighbourOctal
+      type(octal), pointer :: child
+      integer :: subcell, neighbourSubcell
+      integer :: iThread
+      integer :: numMPINeighbours, nDir
+      integer :: i, k, i1, i2, h, j
+      type(VECTOR) :: dirVec(6), outsider(6)
+      type(VECTOR) :: locator, v1, v2, cVec
+      integer :: iCornerPair
+      logical :: alreadyInList
+      logical, save :: firstTime=.true.
+
+!    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)                                                                      
+
+      if(firstTime) then
+         nCornerPairs = 0
+         firsttime = .false.
+      end if
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%hasChild(subcell)) then
+! find the child                                                                                                           
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call determineCornerPairs(child, grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, &         
+                   cornerGroup, nCornerGroup, iThread)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, iThread)) cycle
+
+          if(.not. thisOctal%ghostcell(subcell)) then
+
+             numMPIneighbours = 0
+
+             if (thisOctal%threed) then
+                nDir = 6
+                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+                dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+                dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+                dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+                dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+                dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+             else if (thisOctal%twod) then
+                nDir = 4
+                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+                dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+                dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+                dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+             else
+                nDir = 2
+                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+                dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             endif
+
+             j = 1
+             outsider = VECTOR(0.d0, 0.d0, 0.d0)
+             v1 = VECTOR(0.d0, 0.d0, 0.d0)
+             v2 = VECTOR(0.d0, 0.d0, 0.d0)
+             cVec = VECTOR(0.d0, 0.d0, 0.d0)
+             numMPIneighbours = 0
+             do k = 1, nDir
+                locator = subcellCentre(thisOctal, subcell) + dirVec(k)*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)                            
+                neighbourOctal => thisOctal
+                if(inOctal(grid%octreeRoot, locator)) then
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell) 
+                   if(.not. octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
+                      numMPIneighbours = numMPIneighbours + 1
+                      outsider(j)= dirVec(k)
+                      j = j + 1
+                      if(numMPIneighbours > 1) then !lies on a corner
+                         !find the last two vectors                  
+                         do h = 6, 1, -1
+                            if(modulus(outsider(h)) /= 0.d0) then
+                               if(modulus(v1) == 0.d0) then
+                                  v1 = outsider(h)
+                               else
+                                  v2 = outsider(h)
+                                  exit
+                               end if
+                            end if
+                         end do
+!the new corner lies between the last two vectors
+                         cVec = v1 + v2
+                         locator = subcellCentre(thisOctal, subcell) + &
+                            cVec*((sqrt(2.d0)*(thisoctal%subcellsize/2.d0))+0.01d0*grid%halfsmallestsubcell)                                                    
+
+                           if(inOctal(grid%octreeRoot, locator)) then
+                               call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)                                                                 
+                               if(.not. octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then                                                          
+                                  i1 = iThread
+                                  i2 = neighbourOctal%mpiThread(neighbourSubcell)                                                                               
+                                  alreadyInList = .false.
+                                  do iCornerPair = 1, nCornerPairs
+                                     if(((i1 == cornerThread1(iCornerPair)).and.(i2 == cornerThread2(iCornerPair)).or. &    
+                                        ((i2 == cornerThread1(iCornerPair)).and.(i1 == cornerThread2(iCornerPair))))) then  
+                                       alreadyInList = .true.
+                                     end if
+                                  end do
+
+                                  if(.not. alreadyInList) then
+                                     nCornerPairs = nCornerPairs + 1
+                                     cornerThread1(nCornerPairs) = i1
+                                     cornerThread2(nCornerPairs) = i2
+                                     nCornerBound(nCornerPairs) = k
+                                  end if
+                               else
+                                  call torus_abort("Expected cell on a different thread not found")                                                             
+                               end if                                                                                                                           
+                            end if                                                                                                                              
+                         end if                                                                                                                                 
+                                                                                                                                                                
+                      end if                                                                                                                                    
+                   end if                                                                                                                                       
+                end do                                                                                                                                          
+                                                                                                                                                                
+                thisOctal%numMPIneighbours(subcell) = numMPIneighbours                                                                                          
+             end if                                                                                                                                             
+          end if                                                                                                                                                
+       end do                                                                                 
+   end subroutine determineCornerPairs                                                                                                                          
+
+
+   subroutine returnCornerPairs(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)                                      
+      use mpi                                                                                                                                                   
+      use utils_mod, only: indexx                                                                                                                               
+      integer, allocatable :: indx(:), itmp(:)                                                                                                                  
+      integer :: list(1000), nList                                                                                                                              
+      real, allocatable :: sort(:)                                                                                                                              
+      type(GRIDTYPE) :: grid                                                                                                                                    
+      integer :: i, myRank, ierr, nThreads, iThread                                                                                                             
+      integer, intent(out) :: ncornerPairs, cornerthread1(:), cornerthread2(:)                                                                                  
+      integer, intent(out) :: ncornerBound(:), ncornerGroup, cornergroup(:)                                                                                     
+                                                                                                                                                                
+         call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)                                                                                                       
+         call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)                                                                                                     
+                                                                                                                                                                
+         nCornerPairs = 0                                                                                                                                       
+         do iThread = 1, nThreads-1                                                                                                                             
+            call determineCornerPairs(grid%octreeRoot, grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, &                                        
+            cornerGroup, nCornerGroup, iThread)                                                                                                                 
+         enddo                                                                                                                                                  
+                                                                                                                                                                
+                                                                                                                                                                
+      if(nCornerPairs > 1) then                                                                                                                                 
+                                                                                                                                                                
+         allocate(indx(1:nCornerPairs), sort(1:nCornerPairs), itmp(1:nCornerPairs))                                                                             
+         do i = 1, nCornerPairs                                                                                                                                 
+            sort(i) = real(cornerThread1(i))*100. + real(cornerThread2(i))                                                                                      
+         enddo                                                                                                                                                  
+         call indexx(nCornerPairs, sort, indx)                                                                                                                  
+                                                                                                                                                                
+         do i = 1, nCornerPairs                                                                                                                                 
+            itmp(i) = cornerThread1(indx(i))                                                                                                                    
+         enddo                                                                                                                                                  
+         cornerthread1(1:nCornerPairs) = itmp(1:nCornerPairs)                                                                                                   
+         do i = 1, nCornerPairs                                                                                                                                 
+            itmp(i) = cornerThread2(indx(i))                                                                                                                    
+         enddo                                                                                                                                                  
+         cornerthread2(1:nCornerPairs) = itmp(1:nCornerPairs)                                                                                                   
+         do i = 1, nCornerPairs                                                                                                                                 
+            itmp(i) = nCornerBound(indx(i))                                                                                                                     
+         enddo                                                                                                                                                  
+         nCornerBound(1:nCornerPairs) = itmp(1:nCornerPairs)                                                                                                    
+         deallocate(indx, sort, itmp)                                                                                                                           
+      endif                                                                                                                                                     
+                                                                                                                                                                
+      nCornerGroup = 1                                                                                                                                          
+      cornerGroup = 0                                                                                                                                           
+      nList = 0                                                                                                                                                 
+      do while(any(cornerGroup(1:nCornerPairs)==0))                                                                                                             
+         do i = 1, nCornerPairs                                                                                                                                 
+            if (cornerGroup(i) == 0) then                                                                                                                       
+               if (.not.inList(cornerthread1(i), list, nList).and.&                                                                                             
+               (.not.inList(cornerthread2(i), list, nList))) then              
+                                                                                                                                                               
+               cornerGroup(i) = nCornerGroup                                                                                                                    
+               list(nList+1) = cornerthread1(i)                                                                                                                 
+               list(nList+2) = cornerthread2(i)                                                                                                                 
+               nList = nList + 2                                                                                                                                
+            endif                                                                                                                                               
+         endif                                                                                                                                                  
+      enddo                                                                                                                                                     
+      nCornerGroup = nCornerGroup + 1                                                                                                                           
+      nList = 0                                                                                                                                                 
+      enddo                                                                                                                                                     
+                                                                                                                                                                
+!      print *, "done"                                                                                                                                          
+   end subroutine returnCornerPairs          
+
+
 
   recursive subroutine determineBoundaryPairs(thisOctal, grid, nPairs,  thread1, thread2, nBound, iThread)
 
