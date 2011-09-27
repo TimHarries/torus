@@ -1008,7 +1008,16 @@ contains
                    rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
 
                 else
-                   nCornerBound = getNCornerBoundFromDirection(direction, 1)
+                   nCornerBound = getNCornerBoundFromDirection(direction, i)
+                   print *, "mirrorOctal thread ", mirrorOctal%mpiThread(subcell), myRank, nCornerBound
+                   if(.not. associated(thisOctal%mpiCornerStorage)) then
+
+                      print *, direction
+                      print *, community
+                      print *, "centre ", subcellCentre(thisOctal, subcell)
+                      print *, "nCornerBound{",i,")", nCornerBound
+!                      print *, thisOctal%mpiCornerStorage
+                   end if
                    px = thisOctal%mpiCornerStorage(subcell, nCornerBound, 1)
                    py = thisOctal%mpiCornerStorage(subcell, nCornerBound, 2)
                    pz = thisOctal%mpiCornerStorage(subcell, nCornerBound, 3)
@@ -2701,8 +2710,9 @@ end subroutine sumFluxes
     end if
 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2748,8 +2758,9 @@ end subroutine sumFluxes
        call rhiechowui(grid%octreeroot, grid, direction, dt)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=1)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=1)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -2794,9 +2805,10 @@ end subroutine sumFluxes
        call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
+    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+    Call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)

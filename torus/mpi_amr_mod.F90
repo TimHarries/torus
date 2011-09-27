@@ -790,6 +790,9 @@ contains
     if (myrankGlobal == 0) goto 666
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
+!    print *, "nBound", nBound, myRank
+!    print *, "nGroup", nGroup, myRank
+
     do iGroup = 1, nGroup
 
        do iPair = 1, nPairs
@@ -849,6 +852,9 @@ contains
     if (myrankGlobal == 0) goto 666
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
+!      print *, "nCornerBound", nCornerBound, myRank
+!      print *, "nCornerGroup", nCornerGroup, myRank
+
     do iGroup = 1, nCornerGroup
        do iPair = 1, nCornerPairs
           if (cornerGroup(iPair) == iGroup) then
@@ -879,6 +885,10 @@ contains
                       rBound = 7
                    endif
                    call receiveAcrossMpiCorner(grid, cornerType(rBound), cornerThread2(iPair), cornerThread1(iPair))
+!                             if (myRank == 1) then
+!                                write(*,*) "Exchange done for direction ",nCornerbound(ipair), " and ",rBound
+!                                write(*,*) "Between threads ", cornerThread1(ipair), " and ", cornerThread2(ipair)
+!                             endif
                 endif
              endif
           endif
@@ -1175,22 +1185,22 @@ contains
 
              if (thisOctal%threed) then
                 nDir = 6
-                dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-                dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-                dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-                dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-                dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-                dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+                dirVec(1) = VECTOR( -1.d0, 0.d0,  0.d0)
+                dirVec(2) = VECTOR( +1.d0, 0.d0,  0.d0)
+                dirVec(3) = VECTOR( 0.d0,  0.d0,  +1.d0)
+                dirVec(4) = VECTOR( 0.d0,  0.d0,  -1.d0)
+                dirVec(5) = VECTOR( 0.d0, +1.d0,  0.d0)
+                dirVec(6) = VECTOR( 0.d0, -1.d0, 0.d0)
              else if (thisOctal%twod) then
                 nDir = 4
-                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-                dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
-                dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+                dirVec(1) = VECTOR( -1.d0, 0.d0, 0.d0)
+                dirVec(2) = VECTOR( +1.d0,0.d0, 0.d0)
+                dirVec(3) = VECTOR( 0.d0, 0.d0,  +1.d0)
                 dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
              else
                 nDir = 2
-                dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-                dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+                dirVec(1) = VECTOR( -1.d0, 0.d0, 0.d0)
+                dirVec(2) = VECTOR( +1.d0, 0.d0, 0.d0)
              endif
 
              j = 1
@@ -1242,7 +1252,7 @@ contains
                                      nCornerPairs = nCornerPairs + 1
                                      cornerThread1(nCornerPairs) = i1
                                      cornerThread2(nCornerPairs) = i2
-                                     nCornerBound(nCornerPairs) = k
+                                     nCornerBound(nCornerPairs) = getNCornerBoundFromDirection(cVec, 0)
                                   end if
                                else
                                   call torus_abort("Expected cell on a different thread not found")                                                             
@@ -1790,8 +1800,26 @@ contains
        else if (direction%y < -0.9d0) then
           nCornerBound = 6
        endif
+   else if(index == 0) then
+      !Special case for when the diagonal is given
+      if (direction%x < -0.9d0 .and. direction%z > 0.9d0) then
+          nCornerBound = 1
+      else if (direction%x > 0.9d0 .and. direction%z < -0.9d0) then
+          nCornerBound = 2
+      else if (direction%x > 0.9d0 .and. direction%z > 0.9d0) then
+          nCornerBound = 3
+      else if (direction%x > -0.9d0 .and. direction%z < -0.9d0) then
+          nCornerBound = 4
+      else if (direction%y > 0.9d0 .and. direction%z > 0.9d0) then
+          nCornerBound = 5
+      else if (direction%y < -0.9d0 .and. direction%z < -0.9d0) then
+          nCornerBound = 6
+      else if (direction%y < -0.9d0 .and. direction%z > 0.9d0) then
+          nCornerBound = 7
+      else if (direction%y > 0.9d0 .and. direction%z < -0.9d0) then
+          nCornerBound = 8
+      end if
    end if
-
 
   end function
 
