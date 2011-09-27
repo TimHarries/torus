@@ -74,9 +74,9 @@ contains
     real(double) ::  nextDumpTime
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
-    integer :: thread1(200), thread2(200), nBound(1000), nPairs
+    integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: group(1000), nGroup
-!    logical :: globalConverged(64), tConverged(64)
+!    logical :: globalConverged(512), tConverged(512)
     integer :: nHydroThreads
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
@@ -128,6 +128,7 @@ contains
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
+       if(grid%geometry == "molefil") deltaTforDump = tdump
        if(grid%geometry == "turbulence") then
 !turbulence phase
           deltaTforDump = 3.14d12

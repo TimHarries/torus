@@ -12,7 +12,7 @@ module dust_mod
   implicit none
   public
   private :: fillGridMie, fillAMRgridMie, dustPropertiesfromFile, returnScaleHeight, &
-       getTemperatureDensityRundust, createRossArray, rtnewtdust, Equation2dust, parseGrainType, &
+       getTemperatureDensityRundust,  rtnewtdust, Equation2dust, parseGrainType, &
        getMeanMass2
 
 contains
@@ -408,6 +408,10 @@ contains
 ! This compiler directive disables optimisation in this subroutine, as  
 ! ifort 12 was incorrectly setting up grid%oneKappaAbs and grid%oneKappaSca. 
     use mieDistCrossSection_mod, only: mieDistCrossSection
+#ifdef MPI
+    use mpi
+#endif
+
 
     implicit none
     type(GRIDTYPE) :: grid
@@ -424,9 +428,14 @@ contains
     character(len=*) :: grainname(:)   ! names of grains available
     real :: sig_ext, sig_scat, sig_abs
     real :: total_abundance
+    integer :: ilam_beg, ilam_end
     character(len=80) :: albedoFilename
-
     integer :: i, j, k
+
+#ifdef MPI
+    real, allocatable :: tempArray(:)
+    integer :: np, n_rmdr, m, ierr
+#endif
 
 
     scale = 1.
@@ -478,7 +487,34 @@ contains
 
 !    if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
 !    if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
-    do i = 1, grid%nLambda
+
+    ilam_beg = 1
+    ilam_end = grid%nLambda
+#ifdef MPI
+    ! Set the range of index for a photon loop used later.     
+    np = nThreadsGlobal
+    n_rmdr = MOD(grid%nLambda,np)
+    m = grid%nLambda/np
+          
+    if (myRankGlobal .lt. n_rmdr ) then
+       ilam_beg = (m+1)*myRankGlobal + 1
+       ilam_end = ilam_beg + m
+    else
+       ilam_beg = m*myRankGlobal + 1 + n_rmdr
+       ilam_end = ilam_beg + m -1
+    end if
+#endif
+
+    sigmaExt = 0.0
+    sigmaAbs = 0.0
+    sigmaSca = 0.0
+    !$OMP PARALLEL DEFAULT(NONE) &
+    !$OMP SHARED(ilam_beg, ilam_end, nGrain, amin, amax, a0, qdist, pdist, grid) &
+    !$OMP SHARED(mreal2d, mimg2d) &
+    !$OMP SHARED(sigmaExt, sigmaAbs, sigmaSca, abundance, total_abundance) &
+    !$OMP PRIVATE(i,j,sig_ext, sig_scat, sig_abs, gsca)
+    !$OMP DO SCHEDULE(DYNAMIC)
+    do i = ilam_beg, ilam_end
        do j = 1, ngrain
           call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
                mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
@@ -492,13 +528,28 @@ contains
        sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
        sigmaSca(i) =    sigmaSca(i)/total_abundance 
 
-!       if (writeoutput) write(21,*) grid%lamArray(i), gsca
-!       if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
     end do
+    !$OMP END DO
+    !$OMP END PARALLEL
+#ifdef MPI
+    allocate(tempArray(1:grid%nLambda))
+    tempArray = 0.
 
-!    if (writeoutput) close(20)
-!    if (writeoutput) close(21)
+    call MPI_ALLREDUCE(sigmaExt, tempArray, grid%nLambda, MPI_REAL,&
+         MPI_SUM, MPI_COMM_WORLD, ierr)
+    sigmaExt = tempArray
 
+    tempArray = 0.
+    call MPI_ALLREDUCE(sigmaAbs, tempArray, grid%nLambda, MPI_REAL,&
+         MPI_SUM, MPI_COMM_WORLD, ierr)
+    sigmaAbs = tempArray
+    
+    tempArray = 0.
+    call MPI_ALLREDUCE(sigmaSca, tempArray, grid%nLambda, MPI_REAL,&
+         MPI_SUM, MPI_COMM_WORLD, ierr)
+    sigmaSca = tempArray
+    deallocate(tempArray)
+#endif
     if (.not.grid%oneKappa) then
        if (grid%adaptive) then
           if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
@@ -1104,8 +1155,56 @@ contains
 999 continue
   end subroutine parseGrainType
 
-  subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+  subroutine writeDust(dustfile, iDustType, grid, xArray, nLambda, miePhase, nMuMie) 
+    use phasematrix_mod, only : phasematrix
+    use inputs_mod, only : dustTogas
+    character(len=*) :: dustFile
+    type(GRIDTYPE) :: grid
+    real :: xarray(:)
+    integer :: nLambda, iDustType
+    type(PHASEMATRIX) :: miePhase(:,:,:)
+    integer :: nMuMie
 
+    if (writeoutput) then
+       open(22, file=dustfile,status="unknown", form="unformatted")
+       write(22) nLambda
+       write(22) xArray(1:nLambda)
+       write(22) grid%oneKappaAbs(iDustType, 1:nLambda)/dustTogas
+       write(22) grid%oneKappaSca(iDustType, 1:nLambda)/dustTogas
+       write(22) miePhase(iDustType,1:nLambda, 1:nMuMie)
+       close(22)
+    endif
+
+  end subroutine writeDust
+
+  subroutine readDust(dustfile, iDustType, grid, xArray, nLambda, miePhase, nMuMie)
+    use phasematrix_mod, only : phasematrix
+    use inputs_mod, only : dustTogas
+    character(len=*) :: dustFile
+    type(GRIDTYPE) :: grid
+    real :: xarray(:)
+    integer :: nLambda, iDustType
+    type(PHASEMATRIX), pointer :: miePhase(:,:,:)
+    integer :: nMuMie
+
+    open(22, file=dustfile,status="old", form="unformatted")
+    read(22) nLambda
+
+    read(22) xArray(1:nLambda)
+    read(22) grid%oneKappaAbs(iDustType, 1:nLambda)
+    read(22) grid%oneKappaSca(iDustType, 1:nLambda)
+
+    read(22) miePhase(iDustType,1:nLambda, 1:nMuMie)
+    close(22)
+    grid%oneKappaAbs(iDustType, 1:nLambda) = grid%oneKappaAbs(iDustType, 1:nLambda) * dustTogas    
+    grid%oneKappaSca(iDustType, 1:nLambda) = grid%oneKappaSca(iDustType, 1:nLambda) * dustTogas    
+
+  end subroutine readDust
+
+  subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+#ifdef MPI
+    use mpi
+#endif
     use mieDistPhaseMatrix_mod
     use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
@@ -1125,6 +1224,13 @@ contains
     type(GRIDTYPE) :: grid
     real :: xArray(:)
     integer :: nLambda
+    integer :: ilam_beg, ilam_end
+
+#ifdef MPI
+    real, allocatable :: temp(:,:,:,:), tempArray(:), tempArray2(:)
+    integer :: np, n_rmdr, m, ierr, i1,i2
+#endif
+
 
     ! Note: the first index should be either lambda or mu
     !       in order to speedup the array operations!!!  (RK) 
@@ -1149,6 +1255,7 @@ contains
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
              call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                   ngrain, X_grain, grainname, i)
+
              grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
              grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
           enddo
@@ -1189,7 +1296,7 @@ contains
           call writeInfo("Using isotropic scattering",FORINFO)
           miePhase = fillIsotropic()
           call writeInfo("Completed.",TRIVIAL)
-          return
+          goto 666
        endif
 
        if (readMiePhase) then
@@ -1252,9 +1359,31 @@ contains
           ! are turned off.
           ! When optimisations are turned on, the methods give different result,
           ! and *neither* matches the result obtained when optimisations are off.
+          useOldMiePhaseCalc = .false.
+
           if (useOldMiePhaseCalc) then
              do i = 1, nDustType
-                do j = 1, nLambda
+
+
+    ilam_beg = 1
+    ilam_end = grid%nLambda
+#ifdef MPI
+    ! Set the range of index for a photon loop used later.     
+    np = nThreadsGlobal
+    n_rmdr = MOD(grid%nLambda,np)
+    m = grid%nLambda/np
+          
+    if (myRankGlobal .lt. n_rmdr ) then
+       ilam_beg = (m+1)*myRankGlobal + 1
+       ilam_end = ilam_beg + m
+    else
+       ilam_beg = m*myRankGlobal + 1 + n_rmdr
+       ilam_end = ilam_beg + m -1
+    end if
+#endif
+
+                do j = ilam_beg, ilam_end
+                   write(*,*) myrankglobal, " rank doing ",j
                    do k = 1, nMumie
                       mu = 2.*real(k-1)/real(nMumie-1)-1.
                       call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
@@ -1262,6 +1391,36 @@ contains
                    enddo
                    call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
                 end do
+#ifdef MPI                
+                allocate(temp(1:grid%nlambda,1:nMuMie,1:4,1:4))
+                temp = 0.
+                do j = 1, iLam_beg, iLam_end
+                   do k = 1, nMuMie
+                      do i1 = 1, 4
+                         do i2 = 1, 4
+                            temp(j,k,i1,i2)= miePhase(i,j,k)%element(i1,i2)
+                         enddo
+                      enddo
+                   enddo
+                enddo
+                allocate(tempArray(1:(grid%nLambda*nMuMie*4*4)))
+                allocate(tempArray2(1:(grid%nLambda*nMuMie*4*4)))
+                tempArray = reshape(temp, shape(tempArray))
+
+                call MPI_ALLREDUCE(tempArray, tempArray2, grid%nLambda, MPI_REAL,&
+                     MPI_SUM, MPI_COMM_WORLD, ierr)
+                temp = reshape(tempArray2, shape(temp))
+                do j = 1, grid%nLambda
+                   do k = 1, nMuMie
+                      do i1 = 1, 4
+                         do i2 = 1, 4
+                            miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
+                         enddo
+                      enddo
+                   enddo
+                enddo
+                deallocate(temp, temparray, temparray2)
+#endif
              end do
           else
              call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
@@ -1286,6 +1445,9 @@ contains
        enddo
 
        call resetNewDirectionMie
+
+    666 continue
+
        call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
        call writeInfo("Completed.",TRIVIAL)

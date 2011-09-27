@@ -818,7 +818,9 @@ end subroutine readSurface
        surface%element(i)%prob = surface%element(i)%prob + surface%element(i-1)%prob
     enddo
     surface%element(:)%prob = surface%element(:)%prob - surface%element(1)%prob
-    surface%element(:)%prob = surface%element(:)%prob / surface%element(SIZE(surface%element))%prob
+    if (surface%element(SIZE(surface%element))%prob /= 0.d0) then
+       surface%element(:)%prob = surface%element(:)%prob / surface%element(SIZE(surface%element))%prob
+    endif
   end subroutine createProbs
     
   subroutine getPhotoVec(surface, position, direction)

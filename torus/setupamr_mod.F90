@@ -328,12 +328,12 @@ contains
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                   minRho, minR)
              call testVelocity(grid%octreeRoot,grid)
-             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline","chiline","inflow "/))
        
              if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
 
+             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline","chiline","inflow ","cornervel"/))
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)
@@ -1107,6 +1107,17 @@ contains
                 endif
              endif
           endif
+
+          if (thisOctal%threed.and.((nThreadsGlobal-1)==512)) then
+             if (thisOctal%nDepth <= 3) then
+                split = .true.
+             else
+                if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+                   split = .false.
+                endif
+             endif
+          endif
+
           if (thisOctal%nDepth == maxDepthAMR) split = .false.
           if (myrankGlobal==1) then
              write(*,*) "depth ",thisOctal%nDepth, " subcell ",subcell, " mpithread ",thisOctal%mpithread(subcell), " split ",split

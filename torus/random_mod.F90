@@ -367,7 +367,7 @@ contains
     integer, allocatable :: array(:,:)
     logical :: allTheSame
 
-    allocate(array(1:nTest, 8))
+    allocate(array(1:nTest, 12))
     !$OMP PARALLEL DEFAULT(NONE) &
     !$OMP PRIVATE(r, i,j) &
     !$OMP SHARED(array, np, ntest)

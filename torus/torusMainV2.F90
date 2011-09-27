@@ -103,6 +103,12 @@ program torus
   call  setupamrgrid(grid)
 !  call checkAMRgrid(grid, .false.)
 
+!  call writeAMRgrid("test.dat",.false.,grid)
+!  call writeVtkFile(grid, "mpi.vtk",  valueTypeString=(/"mpithread"/))
+!  call torus_mpi_barrier
+!  goto 666
+
+
   call setupGlobalSources(grid)
 
   call writeBanner("Run-time messages","+",TRIVIAL)
@@ -125,7 +131,7 @@ program torus
   call freeAMRCOMMUNICATOR
   call MPI_FINALIZE(ierr)
 #endif
-
+666 continue
   call writeBanner("Torus completed","o",TRIVIAL)
 
 end program torus

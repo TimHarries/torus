@@ -58,6 +58,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
   use sed_mod, only: getNumSedInc, getSedInc
+  use physics_mod, only : setupdust
   implicit none
 
 ! Arguments
@@ -651,7 +652,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         end if
      endif
 
-     call  createDustCrossSectionPhaseMatrix(grid, grid%lamArray, nLambda, miePhase, nMuMie)
+!     call  createDustCrossSectionPhaseMatrix(grid, grid%lamArray, nLambda, miePhase, nMuMie)
+!     call setupDust(grid, grid%lamArray, nLambda, miePhase, nMumie, fileStart="sed")
+     if (writeoutput) then
+        write(*,*) "nlambda ",nlambda
+        write(*,*) "grid%nlambda ",grid%nLambda
+        write(*,*) "size(grid%lamArray) ",size(grid%lamarray)
+        write(*,*) "grid%lamArray ",grid%lamArray
+     endif
 
      if (noScattering) then
         if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"

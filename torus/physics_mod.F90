@@ -362,7 +362,7 @@ contains
            call randomSource(globalsourcearray, globalnSource, &
                 i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
         endif
-        call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+        call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="dust")
 !        call fillDustUniform(grid, grid%octreeRoot)
 #ifdef MPI
         call randomNumberGenerator(syncIseed=.true.)
@@ -509,7 +509,7 @@ contains
            if ( present(numLam) ) then 
               nLambda = numLam
            else
-              nLambda = 1000
+              nLambda = 200
            end if
 
 
@@ -518,12 +518,12 @@ contains
            if ( present(lamMin) ) then 
               lamStart = lamMin
            else
-              lamStart = 10.d0
+              lamStart = 100.d0
            end if
            if ( present(lamMax) ) then 
               lamEnd = lamMax
            else
-              lamEnd = 1.d9
+              lamEnd = 1.d7
            end if
            
            if ( present(wavLin) ) then 
@@ -705,15 +705,17 @@ contains
 
 end subroutine setupGlobalSources
 
-subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
-  use inputs_mod, only : mie, nDustType
+subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
+  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile
   use phasematrix_mod
   use dust_mod
   type(GRIDTYPE) :: grid
   real, pointer :: xArray(:)
-  integer :: nLambda
+  character(len=*), optional :: fileStart
+  integer :: nLambda, i
   type(PHASEMATRIX), pointer :: miePhase(:,:,:)
   integer :: nMuMie
+  character(len=80) :: dustFilename
 
   grid%oneKappa = .true.
   mie = .true.
@@ -724,7 +726,35 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie)
   allocate(grid%tempRossArray(1:grid%nTempRossArray))
 
 
-  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+  if (.not.readDustFromFile) then
+     call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+     if (writeDustToFile) then
+        do i = 1, nDustType
+           write(dustFilename, '(a,i2.2,a)') "dust_",i,".dat"
+           if (PRESENT(fileStart)) write(dustFilename, '(a,i2.2,a)') trim(fileStart),i,".dat"
+           call writeDust(dustfilename, i, grid, xArray, nLambda, miePhase, nMuMie)
+        enddo
+     endif
+  else
+     if (associated(grid%onekappaAbs)) deallocate(grid%onekappaAbs)
+     if (associated(grid%onekappaSca)) deallocate(grid%onekappaSca)
+     if (associated(miePhase)) deallocate(miePhase)
+     allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda))
+     allocate(grid%oneKappaSca(1:nDustType, 1:nLambda))
+     allocate(miePhase(1:nDustType,1:nLambda,1:nMuMie))
+     do i = 1, nDustType
+        write(dustFilename, '(a,i2.2,a)') "dust_",i,".dat"
+        if (PRESENT(fileStart)) write(dustFilename, '(a,i2.2,a)') trim(fileStart),i,".dat"
+        call readDust(dustfilename, i, grid, xArray, nLambda, miePhase, nMuMie)
+     enddo
+
+     call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
+     call createRossArray(grid)
+     call writeInfo("Done.",TRIVIAL)
+     call resetNewDirectionMie
+     call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
+
+  end if
   call allocateMemoryForDust(grid%octreeRoot)
 end subroutine setupDust
 

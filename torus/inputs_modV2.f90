@@ -929,6 +929,9 @@ contains
     call getLogical("refineonmass", refineonmass, cLine, fLine, nLines, &
          "Refine grid using mass in cell?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("refineonjeans", refineonJeans, cLine, fLine, nLines, &
+         "Refine grid using local jeans mass?: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getUnitDouble("masstol", masstol, "mass" , cLine, fLine, nLines, &
          "Cell mass tolerance: ","(a,es9.3,1x,a)", 1.d-5*mSol, ok, .false.)
 
@@ -995,6 +998,11 @@ contains
           stop
        end if
        
+       call getLogical("readdust", readDustFromFile, cLine, fLine, nLines, &
+         "Read dust opacities and phase matrices from file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("writedust", writeDustToFile, cLine, fLine, nLines, &
+         "Write dust opacities and phase matrices to file: ","(a,1l,1x,a)", .false., ok, .false.)
 
        grainFracTotal = 0.
        do i = 1, nDustType
@@ -1016,27 +1024,32 @@ contains
                "Grain fractional abundance: ","(a,f8.5,1x,a)",1. , ok, .false.)
           grainFracTotal = grainFracTotal + grainFrac(i)
 
+          if (.not. readDustFromFile) &
           call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
                "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
 
+          if (.not. readDustFromFile) &
           call getReal(amaxLabel, aMax(i), 1., cLine, fLine, nLines, &
                "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
 
+          if (.not. readDustFromFile) &
           call getReal(qDistLabel, qdist(i), 1., cLine, fLine, nLines, &
                "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
 
+          if (.not. readDustFromFile) &
           call getReal(a0Label, a0(i), 1., cLine, fLine, nLines, &
                "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
 
 
+          if (.not. readDustFromFile) &
           call getReal(pdistLabel, pdist(i), 1., cLine, fLine, nLines, &
                "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
           if (writeoutput) write(*,*)
        enddo
 
+          if (.not. readDustFromFile) &
        call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
          "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
-
 
   end subroutine readDustPhysicsParameters
 

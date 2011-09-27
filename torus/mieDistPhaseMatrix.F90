@@ -16,6 +16,9 @@ contains
 
    subroutine mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
       use phasematrix_mod
+#ifdef MPI
+      use mpi
+#endif
       use inputs_mod, only : aMin, aMax, a0, qDist, pDist
       implicit none
 
@@ -38,14 +41,20 @@ contains
       real :: x
       integer :: nc, nci
       integer, save :: max_nci = 0
-!$OMP THREADPRIVATE (max_nci)
+      integer :: ilam_beg, ilam_end
       real :: cosTheta
       real, allocatable :: pnmllg(:,:)
+#ifdef MPI
+    real, allocatable :: temp(:,:,:,:), tempArray(:), tempArray2(:)
+    integer :: np, n_rmdr, m, ierr, i1, i2
+#endif
 
 
+
+    max_nci = 0
       do i = 1, nDustType
          ! First set up precomputed tables
-         call mapDustDistribution(aMin(1),aMax(1),a0(1),qDist(1),pDist(1), nDist, &
+         call mapDustDistribution(aMin(i),aMax(i),a0(i),qDist(i),pDist(i), nDist, &
                  a, da, dist, aFac)
 
          do j = 1, nLambda
@@ -75,7 +84,24 @@ contains
             call genlgpOld(acos(cosTheta), pnmllg(k, 1:max_nci), max_nci)
          end do
 
-         do j = 1, nLambda
+    ilam_beg = 1
+    ilam_end = nLambda
+#ifdef MPI
+    ! Set the range of index for a photon loop used later.     
+    np = nThreadsGlobal
+    n_rmdr = MOD(nLambda,np)
+    m = nLambda/np
+          
+    if (myRankGlobal .lt. n_rmdr ) then
+       ilam_beg = (m+1)*myRankGlobal + 1
+       ilam_end = ilam_beg + m
+    else
+       ilam_beg = m*myRankGlobal + 1 + n_rmdr
+       ilam_end = ilam_beg + m -1
+    end if
+#endif
+
+         do j = ilam_beg, ilam_end
             ! Now set up a precomputed table for sphere for fixed values of
             ! dustType and lambda and varying values of a
             do n = 1, nDist-1
@@ -87,6 +113,10 @@ contains
                        beshTable(j,n)%hankel, sphereTable(n)%f, sphereTable(n)%g, sphereTable(n)%cnrm)
             end do   ! n
 
+            !$OMP PARALLEL DEFAULT(NONE) &
+            !$OMP SHARED (nMuMie,  beshTable, sphereTable, pnmllg, da, dist, afac, miePhase, j, i, max_nci) &
+            !$OMP PRIVATE (k, cosTheta)
+            !$OMP DO SCHEDULE(DYNAMIC)
             do k = 1, nMumie
                cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)
                call mieDistPhaseMatrix(cosTheta, nDist, beshTable(j,1:nDist-1), sphereTable, &
@@ -94,6 +124,8 @@ contains
 !               call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), xArray(j), &
 !                       cosTheta, miePhase(i,j,k), mReal(i,j), mImg(i,j))
             enddo
+            !$OMP END DO
+            !$OMP END PARALLEL
 
 
             call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
@@ -104,6 +136,39 @@ contains
                deallocate(sphereTable(n)%cnrm)
             end do   ! n
          end do   ! j
+
+#ifdef MPI                
+                allocate(temp(1:nlambda,1:nMuMie,1:4,1:4))
+                temp = 0.
+                do j = iLam_beg, iLam_end
+                   do k = 1, nMuMie
+                      do i1 = 1, 4
+                         do i2 = 1, 4
+                            temp(j,k,i1,i2)= miePhase(i,j,k)%element(i1,i2)
+                         enddo
+                      enddo
+                   enddo
+                enddo
+                allocate(tempArray(1:(nLambda*nMuMie*4*4)))
+                allocate(tempArray2(1:(nLambda*nMuMie*4*4)))
+                tempArray = reshape(temp, shape(tempArray))
+
+                call MPI_ALLREDUCE(tempArray, tempArray2, size(tempArray), MPI_REAL,&
+                     MPI_SUM, MPI_COMM_WORLD, ierr)
+                temp = reshape(tempArray2, shape(temp))
+                do j = 1, nLambda
+                   do k = 1, nMuMie
+                      do i1 = 1, 4
+                         do i2 = 1, 4
+                            miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
+                         enddo
+                      enddo
+                   enddo
+                enddo
+                deallocate(temp, temparray, temparray2)
+#endif
+
+
 
          deallocate(pnmllg)
          do j = 1, nLambda

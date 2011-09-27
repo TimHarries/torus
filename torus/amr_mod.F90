@@ -756,6 +756,16 @@ CONTAINS
        endif
     endif
 
+    if ((parent%threed).and.(nThreadsGlobal - 1) == 512) then
+       if (parent%child(newChildIndex)%nDepth > 3) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 8
+             parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
@@ -3543,7 +3553,7 @@ CONTAINS
      inflow=.false.
      insideStar = .false.
      outsideStar = .false.
-     do i = 1, 200
+     do i = 1, 400
         rVec = randomPositionInCell(thisOctal,subcell)
         if (inFLowMahdavi(1.d10*rVec)) then
            inFlow = .true.
@@ -3562,7 +3572,7 @@ CONTAINS
 !        write(*,*) "c/l ",cellsize/laccretion
 
 !        if (cellsize > lAccretion/fac) split = .true.
-        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**2) &
+        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
              split = .true.
 
 !        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
@@ -3599,6 +3609,13 @@ CONTAINS
         
         if (inflow) then
            if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
+           if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.d0)) then
+              split = .true.
+              splitInAzimuth = .true.
+           endif
+!           if (abs(cellCentre%z) < 0.5*DW_rMax) then
+!              if ((cellSize/(DW_rMax-DW_rMin)) > 0.02) split = .true.
+!           endif
         endif
      endif
 
@@ -4396,7 +4413,7 @@ CONTAINS
 
       if (thisOctal%cylindrical) then
          dphi = returndPhi(thisOctal)
-         if ((r > 0.9*rGapInner).and.(r < 1.1*rGapOuter)) then
+         if ((r > 0.5*rGapInner).and.(r < 2.*rGapOuter)) then
             if (dphi > minPhiResolution) then
                split = .true.
                splitinAzimuth = .true.
@@ -4410,6 +4427,7 @@ CONTAINS
       if (thisOctal%cylindrical) then
          if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 5.d0*hr)) then
             phi = atan2(cellcentre%y, cellcentre%x)
+	    if (thisOctal%subcellSize > 0.1d0*(rGapOuter-rGapInner)) split = .true.
             if (phi < 0.d0) phi = phi + twopi
             dphi = returndPhi(thisOctal)
             phi1 = phi - dphi
@@ -4854,6 +4872,18 @@ CONTAINS
             endif
          endif
       endif
+
+      if (thisOctal%threed.and.((nThreadsGlobal-1)==512)) then
+         if (thisOctal%nDepth <= 3) then
+            split = .true.
+         else
+            if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+               split = .false.
+            endif
+         endif
+      endif
+
+
    endif
 
   END FUNCTION decideSplit
@@ -10726,7 +10756,7 @@ end function readparameterfrom2dmap
     real :: e, h0, he0
 #endif
 
-!$OMP THREADPRIVATE (firstTime, nLambda, tgasArray, oneKappaAbsT, oneKappaScaT)
+
 
     if ( present(reset_kappa) ) then 
        if ( reset_kappa ) then 
@@ -11522,7 +11552,7 @@ end function readparameterfrom2dmap
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: cellCentre
+    type(VECTOR) :: cellCentre, corner(8)
     integer :: subcell, i
     
     do subcell = 1, thisOctal%maxChildren
@@ -11538,20 +11568,24 @@ end function readparameterfrom2dmap
        else
 !          thisOctal%inflow(subcell) = .false.
           cellCentre = subcellCentre(thisOctal, subcell)
-          if (inflowBlandfordPayne(cellCentre)) then
+          call subcellCorners(thisOctal, subcell, corner)
+          if (inflowBlandfordPayne(corner(1:thisoctal%maxChildren))&
+               .and.inflowBlandfordPayne(cellCentre)) then
              thisOctal%inflow(subcell) = .true.
              thisOctal%rho(subcell) = rhoBlandfordPayne(cellCentre)
              thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre)
              thisOctal%temperature(subcell) = DW_temperature
+
+!             IF ((thisoctal%threed).and.(subcell == 8)) &
+                  CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
+          
+!             IF ((thisoctal%twod).and.(subcell == 4)) &
+                  CALL fillVelocityCorners(thisOctal,VelocityBlandfordPayne)
+
           endif
 
           if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
 
-          IF ((thisoctal%threed).and.(subcell == 8)) &
-               CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
-          
-          IF ((thisoctal%twod).and.(subcell == 4)) &
-               CALL fillVelocityCorners(thisOctal,VelocityBlandfordPayne)
 
 
        endif
@@ -11719,7 +11753,7 @@ end function readparameterfrom2dmap
        else
           cellCentre = subcellCentre(thisOctal, subcell)
           thisR = modulus(cellCentre)*1.d10
-          if (inflowMahdavi(1.d10*cellCentre)) then
+          if (thisOctal%inflow(subcell).and.inflowMahdavi(1.d10*cellcentre)) then
              thisHeating = fac / thisR**3
              localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
              call locate(gamma, 8, localCooling, j)
@@ -13366,8 +13400,10 @@ end function readparameterfrom2dmap
        write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
             (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
        
-       t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
-       write(*,*) "Approx accretion temperature is ",t, " kelvin"
+       if (accretingArea > 0.d0) then
+          t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
+          write(*,*) "Approx accretion temperature is ",t, " kelvin"
+       endif
     endif
 
     CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)

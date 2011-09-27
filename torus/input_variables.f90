@@ -260,6 +260,7 @@
   character(len=80) :: dustfilename(10) ! used in dust_mod, not set !!!
   logical :: variableDustSublimation
   integer :: nDustType
+  logical :: readDustFromFile, writeDustToFile
   logical :: useDust
   ! abundances of different types of dust grains. These will be used when 
   ! the graintype assigned is "mixed."
@@ -674,6 +675,7 @@
   logical :: cylindrical
   logical :: refineOnTemperature !refine grid using temperature gradient
   logical :: refineOnMass !refine grid using cell mass
+  logical :: refineOnJeans !refine grid using cell mass vs local jeans mass
   real(double) :: massTol !cell mass tolerance
   logical :: refineOnIonization !refine grid using ionization gradient
   real(double) :: amrTolerance !maximum gradient before AMR grid refines

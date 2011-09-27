@@ -16,6 +16,11 @@ module magnetic_mod
      module procedure inflowMahdaviArray
   end interface
 
+  interface inflowBlandfordPayne
+     module procedure inflowBlandfordPayneSingle
+     module procedure inflowBlandfordPayneArray
+  end interface
+
 contains
 
 
@@ -138,13 +143,23 @@ contains
 666 continue
   end function velocityMahdavi
 
+  logical function inflowBlandfordPayneArray(rVec)
+    type(VECTOR) :: rVec(:)
+    integer :: i
 
-  logical function inflowBlandfordPayne(rVec)
+    inflowBlandfordPayneArray = .true.
+    do i = 1, size(rVec)
+       inflowBlandfordPayneArray = inflowBlandfordPayneSingle(rVec(i))
+       if (.not.inflowBlandfordPayneArray) exit
+    enddo
+  end function inflowBlandfordPayneArray
+
+  logical function inflowBlandfordPayneSingle(rVec)
     use inputs_mod, only : DW_Rmin, DW_Rmax, DW_theta
     type(VECTOR) :: rVec
     real(double) :: r0, r, z, zMax, zMin
        
-    inFlowBlandfordPayne = .false.
+    inFlowBlandfordPayneSingle = .false.
     r0 = sqrt(rVec%x**2 + rVec%y**2)
     if (r0 < DW_Rmin) goto 666
     r = modulus(rVec)
@@ -153,10 +168,10 @@ contains
     Zmin = 0.d0
     if (r0 > DW_Rmax) zMin = (r0-DW_Rmax)*tan(DW_theta)
     if ((z >= zMin).and.(z <= zMax)) then
-       inFlowBlandfordPayne = .true.
+       inFlowBlandfordPayneSingle = .true.
     endif
 666 continue
-  end function inFlowBlandfordPayne
+  end function inflowBlandfordPayneSingle
     
 
   type (VECTOR) function velocityBlandfordPayne(point)
@@ -184,6 +199,7 @@ contains
     if ((r /= 0.d0).and.(x >= 0.d0)) then
        if (r0/r < 1.d0) then
           vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - r0/r) ! Kwan Edwards & Fischer
+!          vel = max(20.d5, vel)
           velocityBlandfordPayne = (vel/cSpeed) * rVec 
           velocityBlandfordPayne = rotateZ(velocityBlandfordPayne, -phi)
        endif

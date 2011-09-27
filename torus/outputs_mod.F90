@@ -107,10 +107,10 @@ contains
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       do i = 1, 50
+       do i = 1, 2
           viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
           !       gridDistance = 140.d0* pctocm/1.d10
-          ang = twopi * dble(i-1)/50.
+          ang = pi * dble(i-1)
           viewVec =  rotatez(viewVec, ang)
           !       gridDistance = 140.d0* pctocm/1.d10
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
@@ -257,7 +257,7 @@ contains
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
-          call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+          call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
           call getSublimationRadius(grid, rSub)
           write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
           call writeInfo(message, FORINFO)

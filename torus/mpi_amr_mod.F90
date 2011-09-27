@@ -37,6 +37,9 @@ contains
     if (nThreadsGlobal == 64) nHydroThreadsGlobal = 64
     if (nThreadsGlobal == 65) nHydroThreadsGlobal = 64
 
+    if (nThreadsGlobal == 512) nHydroThreadsGlobal = 512
+    if (nThreadsGlobal == 513) nHydroThreadsGlobal = 512
+
   end subroutine setupAMRCOMMUNICATOR
 
 ! Free communicator created by setupAMRCOMMUNICATOR
@@ -2032,6 +2035,34 @@ contains
           endif
 !          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
        endif
+
+       if (nHydroThreads == 512) then
+          nFirstLevel = (myRank-1) / 64 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else if (thisOctal%nDepth == 2) then
+             nFirstLevel = (myRank-1) / 8  + 1
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+!          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
+       endif
+
+
+
     endif
 
     if (thisOctal%oned) then
@@ -2789,6 +2820,16 @@ end subroutine dumpStromgrenRadius
        endif
     endif
 
+    if ((parent%threed).and.(nThreadsGlobal - 1) == 512) then
+       if (parent%child(newChildIndex)%nDepth > 3) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 8
+             parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
@@ -3497,10 +3538,13 @@ end subroutine dumpStromgrenRadius
          stop
       end if
       
-      if((2**(nDimensions) + 1) /= nThreadsGlobal .and. (4**(nDimensions) + 1) /= nThreadsGlobal) then
+      if((2**(nDimensions) + 1) /= nThreadsGlobal .and. &
+         (4**(nDimensions) + 1) /= nThreadsGlobal .and. &
+         (8**(nDimensions) + 1) /= nThreadsGlobal) then
          if(myRankGlobal == 0) then
             write(*,*) "An incorrect number of threads has been used:"
-            write(*,*) "For this model try: ", (2**(nDimensions) + 1), "or ", (4**(nDimensions) + 1), "threads"
+            write(*,*) "For this model try: ", (2**(nDimensions) + 1), &
+                 "or ", (4**(nDimensions) + 1)," or ", (8**(nDimensions) + 1), "threads"
          end if
          stop
       else
@@ -3581,6 +3625,16 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
 
     if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
        if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 8
+             parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
+    if ((parent%threed).and.(nThreadsGlobal - 1) == 512) then
+       if (parent%child(newChildIndex)%nDepth > 3) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
           do i = 1, 8

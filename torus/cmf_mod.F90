@@ -2141,7 +2141,7 @@ contains
                       endif
                    end do
                 enddo
-
+                write(*,*) myrankglobal, " voxels counted"
                 allocate(tArrayd(1:nVoxels))
                 allocate(tempArrayd(1:nVoxels))
                 tArrayd = 0.d0
@@ -2150,8 +2150,10 @@ contains
                    do i = 1, thisAtom(iAtom)%nLevels
                       tArrayd = 0.d0
                       call packAtomLevel(octalArray, nVoxels, tArrayd,  iAtom, i, ioctal_beg, ioctal_end)
+                      write(*,*) myrankglobal, " packed"
                       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                            MPI_SUM,MPI_COMM_WORLD,ierr)
+                      if (my_rank == 0) write(*,*) "allreduce levels done ",iatom,i
                       tArrayd = tempArrayd
                       call unpackAtomLevel(octalArray, nVoxels, tArrayd, iAtom, i)
                    enddo
@@ -2162,6 +2164,7 @@ contains
                    call packJnu(octalArray, nVoxels, tArrayd, i, ioctal_beg, ioctal_end)
                    call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                         MPI_SUM,MPI_COMM_WORLD,ierr)
+                      if (my_rank == 0) write(*,*) "allreduce freqs done ",i
                    tArrayd = tempArrayd
                    call unpackJnu(octalArray, nVoxels, tArrayd, i)
                 enddo
@@ -2170,6 +2173,7 @@ contains
                 call packBiasLine3d(octalArray, nVoxels, tArrayd, ioctal_beg, ioctal_end)
                 call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                      MPI_SUM,MPI_COMM_WORLD,ierr)
+                if (my_rank == 0) write(*,*) "allreduce biasline3d done"
                 tArrayd = tempArrayd
                 call unpackBiasLine3d(octalArray, nVoxels, tArrayd)
 
@@ -2833,6 +2837,7 @@ contains
                    thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
                    thisVel= thisVel - rayVel
                    dv = (thisVel .dot. direction) + deltaV
+
                    call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
                    
                    iUpper = thisAtom(iAtom)%iUpper(iTrans)
@@ -3178,6 +3183,7 @@ contains
              if (.not.lineoff) then
                 thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, &
                      linearInterp=.false.) 
+
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
                 alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal, subcell, &
@@ -3369,10 +3375,10 @@ contains
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
-!    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
-!         "sourceline ",  &
-!    "ne         ", "jnu        ","haschild   ", &
-!         "inflow     ","temperature"/))
+    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
+         "sourceline ",  &
+         "ne         ", "jnu        ","haschild   ", &
+         "inflow     ","temperature","velocity","cornervel"/))
 
 
     doCube = calcDataCube
@@ -3411,10 +3417,10 @@ contains
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
        endif
-       write(tempFilename,'(a,i3.3,a)') "spec",nFile,".fits"
+       write(tempFilename,'(a,i3.3,a)') "spec",nFile,".dat"
        call dumpCubeToSpectrum(cube, tempFilename)
-       write(tempFilename,'(a,i3.3)') "vis",nFile
-       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq)
+!       write(tempFilename,'(a,i3.3)') "vis",nFile
+!       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq)
        call torus_mpi_barrier
        call freeDataCube(cube)
 #else

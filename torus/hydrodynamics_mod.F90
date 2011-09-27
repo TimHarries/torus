@@ -2967,12 +2967,12 @@ end subroutine sumFluxes
     integer :: i
     type(VECTOR) :: direction
     integer :: nHydroThreads
-    real(double) :: tc(10), totalMass, totalEnergy
+    real(double) :: tc(512), totalMass, totalEnergy
     integer :: it
     integer :: myRank, ierr
-    integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
+    integer :: nPairs, thread1(5120), thread2(5120), group(5120), nBound(5120), ngroup
     integer :: iUnrefine, nUnrefine
-    real(double) :: nextDumpTime, temptc(10)
+    real(double) :: nextDumpTime, temptc(512)
     character(len=80) :: plotfile
     real(double) :: iniM, endM, iniE, endE
 
@@ -3141,7 +3141,7 @@ end subroutine sumFluxes
     use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance, dumpRadial
     use mpi
     type(gridtype) :: grid
-    real(double) :: dt, tc(64), temptc(64),  mu
+    real(double) :: dt, tc(512), temptc(512),  mu
     real(double) :: currentTime !, smallTime
     real(double) :: initialmass
     integer :: i, it, iUnrefine
@@ -3150,9 +3150,9 @@ end subroutine sumFluxes
     real(double) :: nextDumpTime, tff,totalMass !, ang
     type(VECTOR) :: direction, viewVec
     integer :: nUnrefine
-    integer :: thread1(200), thread2(200), nBound(200), nPairs
+    integer :: thread1(5120), thread2(5120), nBound(5120), nPairs
     integer :: nHydroThreads
-    integer :: nGroup, group(200)
+    integer :: nGroup, group(5120)
 !    logical :: doRefine
     logical :: doSelfGrav
     logical, save  :: firstStep = .true.
@@ -3208,7 +3208,7 @@ end subroutine sumFluxes
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        do i = 1, nPairs
           if (myrankglobal==1) &
-            write(*,'(a,i3,i3,a,i3,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
+            write(*,'(a,i5,i4,a,i4,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
        enddo
 
 
@@ -3466,7 +3466,7 @@ end subroutine sumFluxes
     use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance
     use mpi
     type(gridtype) :: grid
-    real(double) :: dt, tc(64), temptc(64), mu
+    real(double) :: dt, tc(512), temptc(512), mu
     real(double) :: currentTime
     integer :: i, it, iUnrefine
     integer :: myRank, ierr
@@ -3474,9 +3474,9 @@ end subroutine sumFluxes
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass
     type(VECTOR) :: direction, viewVec
-    integer :: thread1(100), thread2(100), nBound(100), nPairs
+    integer :: thread1(512), thread2(512), nBound(512), nPairs
+    integer :: nGroup, group(512)
     integer :: cornerthread1(100), cornerthread2(100), ncornerBound(100), ncornerPairs
-    integer :: nGroup, group(100)
     integer :: nCornerGroup, cornergroup(100)
     integer :: nHydroThreads 
     logical :: converged
@@ -5483,7 +5483,7 @@ end subroutine sumFluxes
     use mpi
     type(GRIDTYPE) :: grid
     integer :: iThread
-    logical :: globalConverged(64), tConverged(64)
+    logical :: globalConverged(512), tConverged(512)
     integer :: ierr
     real(double) :: tol
     globalConverged = .false.
@@ -5513,7 +5513,7 @@ end subroutine sumFluxes
 
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
-    use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature
+    use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol
     use mpi
     type(gridtype) :: grid
@@ -5531,6 +5531,7 @@ end subroutine sumFluxes
     integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
+    real(double) :: bigJ, cs, rhoJeans
     integer :: nd
 
     converged = .true.
@@ -5653,6 +5654,8 @@ end subroutine sumFluxes
        endif
 !
 
+
+
     if (converged.and.refineOnMass) then
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
@@ -5669,6 +5672,29 @@ end subroutine sumFluxes
           exit
        endif
     endif
+
+    if (converged.and.refineOnJeans) then
+       bigJ = 0.25d0
+       cs = soundSpeed(thisOctal, subcell)
+       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
+       massTol = rhoJeans*1.d30*thisOctal%subcellSize**3
+       if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
+            .and.(thisOctal%nDepth < maxDepthAMR))  then
+          if (thisOctal%oneD) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=.false., interp=.false., amrHydroInterp = .true.)
+          else
+             write(*,*) "refining on jeans"
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=.true., interp=.false.)
+          endif
+          converged = .false.
+!        print *, "split D ", thisOctal%nDepth
+!        write(*,*) masstol, (thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3)
+          exit
+       endif
+    endif
+
 
    if(converged .and. refineOnTemperature)then
        do i = 1, nDir
@@ -6148,9 +6174,9 @@ end subroutine refineGridGeneric2
     integer, optional :: dumpfiles
     integer :: myRank, nThreads, thisThread
     integer :: ierr
-    logical :: globalConverged(64), localChanged(64), tConverged(64)
+    logical :: globalConverged(512), localChanged(512), tConverged(512)
     type(VECTOR) :: locs(200000), eLocs(200000)
-    integer :: nLocs(64), tempNlocs(20000)
+    integer :: nLocs(512), tempNlocs(20000)
     integer :: thread(100000), nLocsGlobal,i, depth(200000)
 
     real(double) :: temp(20000,4),tempsent(4)
@@ -6158,7 +6184,7 @@ end subroutine refineGridGeneric2
     integer :: iThread, nExternalLocs
     integer :: iter
     integer, parameter :: tag = 1
-    logical :: globalChanged(64)
+    logical :: globalChanged(512)
     integer :: status(MPI_STATUS_SIZE)
     logical :: evenAcrossThreads
     logical :: allThreadsConverged
@@ -7376,7 +7402,7 @@ end subroutine refineGridGeneric2
     use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid
-    integer, parameter :: maxThreads = 100
+    integer, parameter :: maxThreads = 512
     integer :: iDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
@@ -7398,7 +7424,7 @@ end subroutine refineGridGeneric2
 
 
 
-       do iDepth = 3, maxDepthAmr-1
+       do iDepth = 4, maxDepthAmr-1
 
           call unsetGhosts(grid%octreeRoot)
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
@@ -7417,7 +7443,7 @@ end subroutine refineGridGeneric2
 !          deltaT = deltaT * timeToCodeUnits
           it = 0
           fracChange = 1.d30
-          do while (ANY(fracChange(1:nHydrothreads) > tol))
+          do while (ANY(fracChange(1:nHydrothreads) > tol)) 
              fracChange = 0.d0
              ghostFracChange = 0.d0
              it = it + 1
@@ -7552,7 +7578,6 @@ end subroutine refineGridGeneric2
 !          write(*,*) "rhou,rhow ", thisOCtal%rhou(subcell), thisOctal%rhow(subcell)
 !          write(*,*) "etot, ekinetic, eThermal ",etot, ekinetic, ethermal
        case(1) ! isothermal
-#ifdef PHOTOION
           eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
 
           if (photoionPhysics) then
@@ -7578,10 +7603,8 @@ end subroutine refineGridGeneric2
           !    print *, "F", (thisOctal%rho(subcell)/mu*mHydrogen)*kerg*thisOctal%temperature(subcell)
           !   stop
           !end if
-#else
-          call writeFatal("hydrodynamics_mod: isothermal pressure needs photoionization")
-          STOP
-#endif
+!          call writeFatal("hydrodynamics_mod: isothermal pressure needs photoionization")
+!          STOP
 
        case(2) !  equation of state from Bonnell 1994
           rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))
@@ -7985,7 +8008,7 @@ end subroutine minMaxDepth
            if (thisOctal%ghostCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
               v = 0.d0
-              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=3)
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=4)
 
               do iThread = 1, nHydroThreadsGlobal
 
@@ -8231,8 +8254,7 @@ end subroutine minMaxDepth
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-          bigJ = 0.2d0
-
+          bigJ = 0.25d0
           cs = soundSpeed(thisOctal, subcell)
           rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
 
