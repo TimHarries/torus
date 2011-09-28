@@ -333,13 +333,18 @@ contains
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
 
-             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline","chiline","inflow ","cornervel"/))
+             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline  ", &
+                                                                     "chiline  ", &
+                                                                     "inflow   ", &
+                                                                     "cornervel"/))
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)
               call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
-              call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ","chiline ","ne      ", &
-                   "velocity"/))
+              call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ", &
+                                                                       "chiline ", &
+                                                                       "ne      ", &
+                                                                       "velocity"/))
 
           case("wrshell")
              grid%geometry = "wrshell"

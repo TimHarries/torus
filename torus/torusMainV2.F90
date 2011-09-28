@@ -131,7 +131,7 @@ program torus
   call freeAMRCOMMUNICATOR
   call MPI_FINALIZE(ierr)
 #endif
-666 continue
+!666 continue
   call writeBanner("Torus completed","o",TRIVIAL)
 
 end program torus

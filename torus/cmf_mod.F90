@@ -3378,7 +3378,8 @@ contains
     call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
          "sourceline ",  &
          "ne         ", "jnu        ","haschild   ", &
-         "inflow     ","temperature","velocity","cornervel"/))
+         "inflow     ","temperature", "velocity   ", &
+         "cornervel  "/))
 
 
     doCube = calcDataCube
