@@ -836,7 +836,8 @@ contains
 666 continue
   end subroutine exchangeAcrossMPIboundary
 
-  subroutine exchangeAcrossMPIcorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound)
+  subroutine exchangeAcrossMPIcorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, &
+      useThisBound)
     use mpi
     type(GRIDTYPE) :: grid
     integer :: iPair, nCornerPairs, cornerThread1(:), cornerThread2(:), nCornerBound(:)

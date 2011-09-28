@@ -5626,15 +5626,22 @@ end subroutine sumFluxes
                 if(thisOctal%corner(subcell) .and. thisOCtal%nDepth < maxDepthAMR) split = .true.
 
                 if(refineonspeed) then
-                   speed1 = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
-                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
-                   speed2 = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
+                   if(thisOctal%threeD) then
+                      speed1 = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
+                      + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
+                      speed2 = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
+                   else
+                     speed1 = sqrt(thisOctal%rhou(subcell)**2  &
+                      + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
+                      speed2 = sqrt(rhou**2 + rhow**2)/rho
+                   end if
+
                    if (Speed1 > 1.d-10 .and. speed2 > 1.d-10) then
                       grad = abs(speed1-speed2) / speed1
                       maxGradient = max(grad, maxGradient)
                       if (grad > limit) then
                          split = .true.
-                         print *, "grad, limit", grad, limit
+!                         print *, "grad, limit", grad, limit
                       endif
                    endif
                 end if
