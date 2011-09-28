@@ -3876,10 +3876,15 @@ CONTAINS
 
    case("kelvin")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+!      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+!      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+!      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+!      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+      if ( (abs(thisOctal%zMax-0.2d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin-0.2d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMax+0.2d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin+0.2d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       
       if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
       
@@ -4432,7 +4437,7 @@ CONTAINS
       if (thisOctal%cylindrical) then
          if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 5.d0*hr)) then
             phi = atan2(cellcentre%y, cellcentre%x)
-	    if (thisOctal%subcellSize > 0.1d0*(rGapOuter-rGapInner)) split = .true.
+            if (thisOctal%subcellSize > 0.1d0*(rGapOuter-rGapInner)) split = .true.
             if (phi < 0.d0) phi = phi + twopi
             dphi = returndPhi(thisOctal)
             phi1 = phi - dphi

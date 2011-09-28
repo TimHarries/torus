@@ -4526,7 +4526,7 @@ end subroutine sumFluxes
           if (thisOctal%twoD.and.(nProbeOutside > 1)) corner = .true.
           if (thisOctal%threeD.and.(nProbeOutside > 2)) corner = .true.
 
-!          corner = .false.
+
 
           if (.not.corner) then
              do iProbe = 1, nProbes
@@ -5529,7 +5529,7 @@ end subroutine sumFluxes
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
-    use inputs_mod, only : refineonionization, massTol
+    use inputs_mod, only : refineonionization, massTol, refineonrhoe
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5546,7 +5546,7 @@ end subroutine sumFluxes
     integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
-    real(double) :: bigJ, cs, rhoJeans
+    real(double) :: bigJ, cs, rhoJeans, speed1, speed2
     integer :: nd
 
     converged = .true.
@@ -5625,18 +5625,20 @@ end subroutine sumFluxes
 
                 if(thisOctal%corner(subcell) .and. thisOCtal%nDepth < maxDepthAMR) split = .true.
 
+                if(refineonspeed) then
+                   speed1 = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
+                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
+                   speed2 = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
+                   if (Speed1 > 1.d-10 .and. speed2 > 1.d-10) then
+                      grad = abs(speed1-speed2) / speed1
+                      maxGradient = max(grad, maxGradient)
+                      if (grad > limit) then
+                         split = .true.
+                         print *, "grad, limit", grad, limit
+                      endif
+                   endif
+                end if
 
-!                thisSpeed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
-!                     + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
-!                speed = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
-!                if (thisSpeed > 0.d0) then
-!                   grad = abs(thisSpeed-speed) / thisSpeed
-!                   maxGradient = max(grad, maxGradient)
-!                   if (grad > limit) then
-!                      split = .true.
-!                   endif
-!                endif
-                
                 if (split) then
  
                    if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
@@ -5768,9 +5770,38 @@ end subroutine sumFluxes
        enddo
     end if
 
-
-
-
+!    if(converged .and. refineOnSpeed) then 
+!       do i = 1, nDir
+!          maxGradient = 1.d-30
+!          locator = subcellCentre(thisOctal, subcell) + &
+!          (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
+!          if (inOctal(grid%octreeRoot, locator)) then
+!
+!             neighbourOctal => thisOctal
+!
+!             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!
+!!Thaw - modded to use specifiable limit 
+!
+!
+!             speed1 = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)
+!             speed2 = sqrt(neighbourOctal%rhou(neighboursubcell)**2 + neighbourOctal%rhov(neighboursubcell)**2 + & 
+!                neighbourOctal%rhow(neighboursubcell)**2)
+!
+!             grad = abs((speed1 - speed2) / speed1)
+!            
+!             maxGradient = max(grad, maxGradient)
+!
+!             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
+!                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+!                   call addNewChildWithInterp(thisOctal, subcell, grid)
+!                   converged = .false.
+!                   exit
+!                endif
+!             endif
+!          end if
+!       enddo
+ !   end if
 
     if (converged.and.refineOnIonization) then
 

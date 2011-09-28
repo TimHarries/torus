@@ -941,6 +941,9 @@ contains
     call getLogical("refineonrhoe", refineonrhoe, cLine, fLine, nLines, &
          "Refine grid using rhoe?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("refineonspeed", refineonspeed, cLine, fLine, nLines, &
+         "Refine grid using speed?: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("refineonionization", refineonionization, cLine, fLine, nLines, &
          "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 

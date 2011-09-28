@@ -677,6 +677,7 @@
   logical :: refineOnMass !refine grid using cell mass
   logical :: refineOnRhoe !refine grid using cell rhoe
   logical :: refineOnJeans !refine grid using cell mass vs local jeans mass
+  logical :: refineOnSpeed !refine grid using cell speed
   real(double) :: massTol !cell mass tolerance
   logical :: refineOnIonization !refine grid using ionization gradient
   real(double) :: amrTolerance !maximum gradient before AMR grid refines
