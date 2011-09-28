@@ -248,23 +248,36 @@ module source_mod
                weightArray(1:nSource) = prob(1:nSource) / source(1:nSource)%prob
                prob(1:nSource) = source(1:nSource)%prob
             endif
-
-             do i = 2, nSource
-               prob(i) = prob(i) + prob(i-1)
-            enddo
-            prob(1:nSource) = prob(1:nSource) - prob(1)
-            prob(1:nSource) = prob(1:nSource) / prob(nSource)
+            if (nSource > 2) then
+               do i = 2, nSource
+                  prob(i) = prob(i) + prob(i-1)
+               enddo
+               prob(1:nSource) = prob(1:nSource) - prob(1)
+               prob(1:nSource) = prob(1:nSource) / prob(nSource)
+            endif
+            if (writeoutput) write(*,*) "prob ",prob(1:nSource)
+            if (writeoutput) write(*,*) "source%prob ",source(1:nSource)%prob
+            if (writeoutput) write(*,*) "weight ",weightArray(1:nSource)
          end if
 	 
-         call randomNumberGenerator(getDouble=r)
-         call locate(prob, nSource, r, iSource)
-         if (iSource < nSource) then
-            t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
-            if (t > 0.5) iSource = iSource + 1
+         if (nSource > 2) then
+            call randomNumberGenerator(getDouble=r)
+            call locate(prob, nSource, r, iSource)
+            if (iSource < nSource) then
+               t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
+               if (t > 0.5) iSource = iSource + 1
+               weight = weightArray(isource)
+            endif
+         else
+            call randomNumberGenerator(getDouble=r)
+            if (r < prob(1)) then
+               iSource = 1
+            else 
+               isource = 2
+            endif
             weight = weightArray(isource)
          endif
       endif
-
     end subroutine randomSource
 
     real(double) function sumSourceLuminosity(source, nsource, lam1, lam2) result (tot)
@@ -279,6 +292,36 @@ module source_mod
                     dble(lam2)) * (fourPi*(1.d10*source(i)%radius)**2)
       enddo
     end function sumSourceLuminosity
+
+    subroutine testRandomSource(source, nsource)
+    integer :: nSource, isource
+    type(SOURCETYPE) :: Source(:)
+    real(double) :: totlum, tot
+    integer :: i, n
+    real(double) :: eps, packetweight
+    real :: lamArray(2)
+    integer :: nLambda
+
+    nlambda = 2
+    lamArray(1) = 100.d0
+    lamArray(2) = 1.d7
+      call randomSource(source, nSource, isource, weight=packetWeight, lamArray=lamArray, nLambda=nLambda, &
+          initialize = .true.)
+    n = 1000000
+    totlum = sum(source%luminosity)
+    eps = totLum / dble(n)
+    
+    tot = 0.d0
+    do i = 1, n
+    call randomSource(source, nSource, iSource, weight=packetWeight)
+       tot = tot + eps * packetWeight
+    enddo
+    write(*,*) "Test random source: expect luminosity ",totlum
+    write(*,*) "Test random source: found luminosity ",tot
+    if (abs(totlum-tot)/tot > 0.01d0) then
+       call writeFatal("Error in randomSource")
+    endif
+  end subroutine testRandomSource
 
     real(double) function sumSourceLuminosityMonochromatic(grid, source, nsource, lam) result (tot)
       integer :: nSource
@@ -485,7 +528,7 @@ module source_mod
                   call randomNumberGenerator(getDouble=r)
                   if (r < biasPhiProb) then
                      call randomNumberGenerator(getDouble=r)
-                     ang = biasPhiDirection + (2.d0*r-1.d0) * biasPhiInterval
+                     ang = biasPhiDirection + (r-0.5d0) * biasPhiInterval
                      weight = (biasPhiInterval/twoPi) / biasPhiProb
                   else
                      ang = biasPhiDirection

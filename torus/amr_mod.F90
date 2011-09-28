@@ -4437,21 +4437,23 @@ CONTAINS
       if (thisOctal%cylindrical) then
          if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 5.d0*hr)) then
             phi = atan2(cellcentre%y, cellcentre%x)
-            if (thisOctal%subcellSize > 0.1d0*(rGapOuter-rGapInner)) split = .true.
+            if (thisOctal%subcellSize > 0.2d0*(rGapOuter-rGapInner)) split = .true.
             if (phi < 0.d0) phi = phi + twopi
             dphi = returndPhi(thisOctal)
             phi1 = phi - dphi
             if (phi1 < 0.d0) phi1 = phi1 + twoPi
             phi2 = phi + dphi
-            if (dPhi*radtodeg > dPhiRefine) then
-               if (((phi1*radtodeg > 180.d0-phiRefine/2.d0).and. &
-                    (phi1*radtodeg < 180.d0+phiRefine/2.d0)).or. &
-                   ((phi2*radtodeg > 180.d0-phiRefine/2.d0).and. &
-                   (phi2*radtodeg < 180.d0+phiRefine/2.d0)).or. &
-                   ((phi1*radtodeg < 180.d0-phiRefine/2.d0).and. &
-                   (phi2*radtodeg > 180.d0+phiRefine/2.d0))) then
-                  splitInAzimuth = .true.
-                  split = .true.
+            if (abs(cellCentre%z) < hr) then
+               if (dPhi*radtodeg > dPhiRefine) then
+                  if (((phi1*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                       (phi1*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                       ((phi2*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                       (phi2*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                       ((phi1*radtodeg < 180.d0-phiRefine/2.d0).and. &
+                       (phi2*radtodeg > 180.d0+phiRefine/2.d0))) then
+                     splitInAzimuth = .true.
+                     split = .true.
+                  endif
                endif
             endif
          endif

@@ -122,7 +122,7 @@ contains
     real(double) :: loglam1, loglamN, scalelam
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
-    real(double) :: packetWeight
+    real(double) :: packetWeight, wavelengthWeight
     real(double) :: subRadius
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
@@ -171,7 +171,7 @@ contains
        lognu1 = log10(1200.d0) + real(i-1)*(log10(1e7)-log10(1200.))/999.
        lognu1 = 10.d0**lognu1
        logt = atomhydrogenRayXsection(lognu1)
-       if (myrankglobal == 1) write(105,*) lognu1, logt/sigmaE
+!       if (myrankglobal == 1) write(105,*) lognu1, logt/sigmaE
     enddo
 
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
@@ -425,7 +425,7 @@ contains
                 !$OMP PRIVATE(thisPhotonAbs) &
                 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
                 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
-                !$OMP PRIVATE(oldUHat, packetWeight) &
+                !$OMP PRIVATE(oldUHat, packetWeight, wavelengthWeight) &
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
@@ -467,7 +467,8 @@ contains
                    sOctal => thisOctal
 
                    escaped = .false.
-                   call getWavelength(thisSource%spectrum, wavelength, packetWeight)
+                   call getWavelength(thisSource%spectrum, wavelength, wavelengthWeight)
+                   packetWeight = packetWeight * wavelengthWeight
                    thisFreq = cSpeed/(wavelength / 1.e8)
                    thislam = wavelength
 

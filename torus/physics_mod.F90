@@ -276,8 +276,8 @@ contains
           end select
        endif
 
-
     end do
+       if (Writeoutput) call testRandomSource(source, nsource)
        
  endif
   end subroutine setupSources
