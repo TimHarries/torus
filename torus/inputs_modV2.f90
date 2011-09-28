@@ -938,6 +938,9 @@ contains
     call getLogical("refineontemperature", refineontemperature, cLine, fLine, nLines, &
          "Refine grid using temperature gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("refineonrhoe", refineonrhoe, cLine, fLine, nLines, &
+         "Refine grid using rhoe?: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("refineonionization", refineonionization, cLine, fLine, nLines, &
          "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 

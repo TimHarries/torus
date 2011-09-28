@@ -650,8 +650,6 @@ contains
              thisoctal%rho_i_minus_1(subcell) = rho
              thisoctal%phi_i_minus_1(subcell) = phi
 
-
-
           endif
        endif
     enddo
@@ -880,6 +878,8 @@ contains
                 fac = 0.d0
              end if
 
+
+
              thisoctal%flux_i_plus_1(subcell) = flux + fac
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -889,18 +889,11 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
              thisoctal%flux_i_minus_1(subcell) = flux
 
-! new stuff added by tjh
 
-!             if (thisoctal%ndepth >= nd) then ! this is a coarse-to-fine cell boundary
-                thisoctal%flux_i_minus_1(subcell) = flux
-!             else
-!                ! now we need to do the fine-to-coarse flux
-!                if (thisoctal%u_i_minus_1(subcell) .ge. 0.d0) then ! flow is out of this cell into next
-!                   thisoctal%flux_i_minus_1(subcell) = thisoctal%q_i(subcell) * thisoctal%u_i_minus_1(subcell)
-!                else
-!                   thisoctal%flux_i_minus_1(subcell) = flux ! flow is from neighbour into this one
-!                endif
-!             endif
+             thisoctal%flux_i_minus_1(subcell) = flux
+             
+
+   
 
           endif
        endif
@@ -928,6 +921,7 @@ contains
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd, iTot, i
     real(double) :: xnext, m, dx, df, px, py, pz
+!    logical, intent(in) :: coarseToFine
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -1620,7 +1614,7 @@ contains
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0)* & !gravity
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
-             
+            
 
 
 !             endif
@@ -5675,8 +5669,6 @@ end subroutine sumFluxes
        endif
 !
 
-
-
     if (converged.and.refineOnMass) then
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
@@ -5745,6 +5737,38 @@ end subroutine sumFluxes
           end if
        enddo
       endif
+
+
+    if(converged .and. refineOnRhoe) then 
+       do i = 1, nDir
+          maxGradient = 1.d-30
+          locator = subcellCentre(thisOctal, subcell) + &
+          (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
+          if (inOctal(grid%octreeRoot, locator)) then
+
+             neighbourOctal => thisOctal
+
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+!Thaw - modded to use specifiable limit 
+
+             grad = abs((thisOctal%rhoe(subcell) - neighbourOctal%rhoe(neighbourSubcell)) / & 
+             (thisOctal%rhoe(subcell)))
+
+             maxGradient = max(grad, maxGradient)
+
+             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
+                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+                   call addNewChildWithInterp(thisOctal, subcell, grid)
+                   converged = .false.
+                   exit
+                endif
+             endif
+          end if
+       enddo
+    end if
+
+
 
 
 
@@ -6407,7 +6431,6 @@ end subroutine refineGridGeneric2
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
 
-         
           !Thaw - force ghostcells to match their partner refinement
           if(thisOctal%ghostcell(subcell)) then
              locator = thisOctal%boundaryPartner(subcell)
@@ -6431,7 +6454,6 @@ end subroutine refineGridGeneric2
                    exit
                 end if
              end if
-             
 
              !Periodic non-ghosts refinement (i.e. A and B, where |G|G|A|B|)
              if(thisOctal%boundaryCondition(subcell) == 2 .and. .not. thisOctal%edgecell(subcell)) then
@@ -6560,7 +6582,8 @@ end subroutine refineGridGeneric2
                 call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
                 if(.not. thisOctal%ghostcell(subcell)) then
                    if(thisOctal%twoD) then
-                      !                   if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
+                     
+!                      if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
                       rVec = subcellCentre(thisOctal, subcell)
                       bVec = subcellCentre(neighbourOctal, neighbourSubcell)
                       octVec = VECTOR(x, y, z) 
@@ -6605,9 +6628,9 @@ end subroutine refineGridGeneric2
 !                            print *, "nd2", nd
                          end if
                       end if
-                      !end if
-                  
-                   else if(thisOctal%threeD) then
+!                   end if
+                   
+                else if(thisOctal%threeD) then
                       !As with 2D, need to ensure that all cells in contact are checked across an mpi boundary
                       rVec = subcellCentre(thisOctal, subcell)
                       nVec = subcellCentre(neighbourOctal, neighbourSubcell)

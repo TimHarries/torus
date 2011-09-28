@@ -3833,7 +3833,7 @@ CONTAINS
 
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          if(thisOctal%twoD) then
-            if ( ((rVec%x+rvec%z) > 0.04).and. (((rVec%x+rvec%z) < 0.06)) .and. &
+            if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
                  (thisOctal%nDepth < maxDepthAMR)) split = .true.
          else if(thisoctal%threeD) then
            ! if ( ((rVec%x) < 0.21).and. &
@@ -3880,6 +3880,11 @@ CONTAINS
       if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      
+      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      
+      
+
 !      if ((thisOctal%xMax < 0.75d0).and.(thisOctal%xMin > 0.25d0).and.&
 !           (thisOctal%zMax < 0.1d0).and.(thisOctal%zMin > -0.1d0)) split = .true.
    case("rtaylor")
@@ -4887,6 +4892,53 @@ CONTAINS
    endif
 
   END FUNCTION decideSplit
+
+
+logical  FUNCTION cornerCell(grid, thisOctal, subcell)
+      type(OCTAL) :: thisOctal
+      type(GRIDTYPE) :: grid
+      integer :: subcell
+      type(VECTOR) :: probe(6), rVec, locator
+      integer :: nProbeOutside, nProbes, iProbe
+      
+
+      if (thisOctal%oned) then
+         nProbes = 2
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+      endif
+      if (thisOctal%twod) then
+         nProbes = 4
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+         probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+         probe(4) = VECTOR(0.d0, 0.d0, -1.d0)
+      endif
+      if (thisOctal%threeD) then
+         nProbes = 6
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+         probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+         probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+         probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+         probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
+      endif
+
+      rVec = subcellCentre(thisOctal, subcell)
+      nProbeOutside = 0
+      do iProbe = 1, nProbes
+         locator = rVec + &
+         (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)                 
+         if (.not.inOctal(grid%octreeRoot, locator).or. &
+         (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &                      
+         nProbeOutside = nProbeOutside + 1
+      enddo
+      cornerCell=.false.
+      if (thisOctal%twoD.and.(nProbeOutside > 1)) cornerCell = .true.
+      if (thisOctal%threeD.and.(nProbeOutside > 2)) cornerCell = .true.
+
+      
+  END FUNCTION cornerCell
 
   
   SUBROUTINE fillVelocityCorners(thisOctal,velocityFunc, debug)
@@ -6537,10 +6589,10 @@ CONTAINS
     rVec = subcellCentre(thisOctal, subcell)
     
     if (abs(rVec%z) > 0.25d0) then
-       thisOctal%velocity(subcell) = VECTOR(-0.50, 0.d0, 0.d0)
+       thisOctal%velocity(subcell) = VECTOR(-0.5d0, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 1.d0
     else
-       thisOctal%velocity(subcell) = VECTOR(0.50, 0.d0, 0.d0)
+       thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 2.d0
     endif
 
