@@ -846,8 +846,8 @@ contains
     integer :: rBound!, cOne, cTwo
     integer :: myRank, ierr
     logical :: doExchange
-    character(len=12) :: cornerType(8) = (/"leftupper","rightlower", "rightupper", "leftlower", &
-      "topupper", "bottomlower", "toplower", "bottomupper" /)
+    character(len=12) :: cornerType(8) = (/"leftupper   ","rightlower  ", "rightupper  ", "leftlower   ", &
+      "topupper    ", "bottomlower ", "toplower    ", "bottomupper " /)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal == 0) goto 666
@@ -867,7 +867,8 @@ contains
              if (doExchange) then
                 if ((myRank == cornerThread1(iPair)).or.(myRank == cornerThread2(iPair))) then
 
-                   call receiveAcrossMpiCorner(grid, cornerType(nCornerBound(iPair)), cornerThread1(iPair), cornerThread2(iPair))
+                   call receiveAcrossMpiCorner(grid, cornerType(nCornerBound(iPair)), &
+                      cornerThread1(iPair), cornerThread2(iPair))
                    if      (nCornerBound(iPair) == 1) then
                       rBound = 2
                    else if (nCornerBound(iPair) == 2) then
@@ -885,7 +886,8 @@ contains
                    else if (nCornerBound(iPair) == 8) then
                       rBound = 7
                    endif
-                   call receiveAcrossMpiCorner(grid, cornerType(rBound), cornerThread2(iPair), cornerThread1(iPair))
+                   call receiveAcrossMpiCorner(grid, cornerType(rBound), &
+                      cornerThread2(iPair), cornerThread1(iPair))
 !                             if (myRank == 1) then
 !                                write(*,*) "Exchange done for direction ",nCornerbound(ipair), " and ",rBound
 !                                write(*,*) "Between threads ", cornerThread1(ipair), " and ", cornerThread2(ipair)
@@ -1211,7 +1213,8 @@ contains
              cVec = VECTOR(0.d0, 0.d0, 0.d0)
              numMPIneighbours = 0
              do k = 1, nDir
-                locator = subcellCentre(thisOctal, subcell) + dirVec(k)*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)                            
+                locator = subcellCentre(thisOctal, subcell) + &
+                 dirVec(k)*(thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
                 neighbourOctal => thisOctal
                 if(inOctal(grid%octreeRoot, locator)) then
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell) 
@@ -1234,13 +1237,13 @@ contains
 !the new corner lies between the last two vectors
                          cVec = v1 + v2
                          locator = subcellCentre(thisOctal, subcell) + &
-                            cVec*((sqrt(2.d0)*(thisoctal%subcellsize/2.d0))+0.01d0*grid%halfsmallestsubcell)                                                    
+                            cVec*((sqrt(2.d0)*(thisoctal%subcellsize/2.d0))+0.01d0*grid%halfsmallestsubcell) 
 
                            if(inOctal(grid%octreeRoot, locator)) then
-                               call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)                                                                 
-                               if(.not. octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then                                                          
+                               call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                               if(.not. octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
                                   i1 = iThread
-                                  i2 = neighbourOctal%mpiThread(neighbourSubcell)                                                                               
+                                  i2 = neighbourOctal%mpiThread(neighbourSubcell)
                                   alreadyInList = .false.
                                   do iCornerPair = 1, nCornerPairs
                                      if(((i1 == cornerThread1(iCornerPair)).and.(i2 == cornerThread2(iCornerPair)).or. &    
@@ -1256,7 +1259,7 @@ contains
                                      nCornerBound(nCornerPairs) = getNCornerBoundFromDirection(cVec, 0)
                                   end if
                                else
-                                  call torus_abort("Expected cell on a different thread not found")                                                             
+                                  call torus_abort("Expected cell on a different thread not found")
                                end if 
                             end if   
                          end if  
