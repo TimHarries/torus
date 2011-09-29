@@ -3413,6 +3413,7 @@ end subroutine sumFluxes
                 if (myrank == 1)call tune(6, "Unrefine grid")
                ! nUnrefine = 0
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
+                call evenUpGridMPI(grid, .true., dorefine)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrank == 1)call tune(6, "Unrefine grid")
                 iUnrefine = 0
@@ -6450,7 +6451,7 @@ end subroutine refineGridGeneric2
 
     end do
 
-    print *, "DONE AN EVEN UP"
+!    print *, "DONE AN EVEN UP"
 
 666 continue
   end subroutine evenUpGridMPI
@@ -6947,11 +6948,11 @@ end subroutine refineGridGeneric2
        write(*,*) "There is a bug somewhere: ",myrank
        stop
     endif
-    WRITE(*,*) "ATTEMPTNG TO SPLIT", depth, thisOctal%nDepth,  myRank
+!    WRITE(*,*) "ATTEMPTNG TO SPLIT", depth, thisOctal%nDepth,  myRank
     if (((depth-thisOctal%nDepth) > 1).and.(thisOctal%nDepth < maxDepthAMR)) then
        call addNewChildWithInterp(thisOctal,subcell,grid)
        localChanged = .true.
-       write(*,*) "split at locator"
+!       write(*,*) "split at locator"
     endif
 
   end subroutine splitAtLocator
@@ -7024,7 +7025,7 @@ end subroutine refineGridGeneric2
 
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
                       nLocs = nLocs + 1
-                      print *, "found ", nLocs, "on other threads", myRank
+!                      print *, "found ", nLocs, "on other threads", myRank
                       loc(nLocs) = octVec
                       thread(nLocs) = neighbourOctal%mpiThread(neighbourSubcell)
                       depth(nLocs) = thisOctal%nDepth
