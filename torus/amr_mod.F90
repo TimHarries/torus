@@ -3843,7 +3843,11 @@ CONTAINS
             print *, "1D diag sod doesn't work"
             stop
          end if
-         !if ( ((rVec%x+rvec%z) < 0.06).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+         
+         if(cornerCell(grid, thisOctal, subcell) .and. &
+            thisOctal%nDepth < maxDepthAMR) split = .true.
+
+!if ( ((rVec%x+rvec%z) < 0.06).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
          
 
       else
@@ -3881,13 +3885,13 @@ CONTAINS
 !      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 !      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-8).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-8).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-8).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-8).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       
       if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      
+      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
       
 
 !      if ((thisOctal%xMax < 0.75d0).and.(thisOctal%xMin > 0.25d0).and.&
@@ -4946,6 +4950,54 @@ logical  FUNCTION cornerCell(grid, thisOctal, subcell)
 
       
   END FUNCTION cornerCell
+
+
+logical  FUNCTION edgeCell(grid, thisOctal, subcell)
+      type(OCTAL) :: thisOctal
+      type(GRIDTYPE) :: grid
+      integer :: subcell
+      type(VECTOR) :: probe(6), rVec, locator
+      integer :: nProbeOutside, nProbes, iProbe
+
+
+      if (thisOctal%oned) then
+         nProbes = 2
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+      endif
+      if (thisOctal%twod) then
+         nProbes = 4
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+         probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+         probe(4) = VECTOR(0.d0, 0.d0, -1.d0)
+      endif
+      if (thisOctal%threeD) then
+         nProbes = 6
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+         probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+         probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+         probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+         probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
+      endif
+
+      rVec = subcellCentre(thisOctal, subcell)
+      nProbeOutside = 0
+      do iProbe = 1, nProbes
+         locator = rVec + &
+         (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)                                              
+         if (.not.inOctal(grid%octreeRoot, locator).or. &
+         (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &                                                   
+          nProbeOutside = nProbeOutside + 1
+      enddo
+      edgeCell=.false.
+      if (thisOctal%twoD.and.(nProbeOutside >= 1)) edgeCell = .true.
+      if (thisOctal%threeD.and.(nProbeOutside >= 2)) edgeCell = .true.
+
+
+  END FUNCTION edgeCell
+
 
   
   SUBROUTINE fillVelocityCorners(thisOctal,velocityFunc, debug)

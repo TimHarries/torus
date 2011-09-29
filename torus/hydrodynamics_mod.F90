@@ -3565,12 +3565,14 @@ end subroutine sumFluxes
           call calculateRhoE(grid%octreeRoot, direction)
 
           call evenUpGridMPI(grid,.true., dorefine)
+          call writeVTKfile(grid, "evenUpA.vtk")
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call refinegridGeneric(grid, amrTolerance)          
           end if
           call evenUpGridMPI(grid, .true.,dorefine)
+          call writeVTKfile(grid, "evenUpB.vtk")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
@@ -3688,13 +3690,26 @@ end subroutine sumFluxes
        if (myrank == 1) call tune(6,"Hydrodynamics step")
 !Thaw - temprorary extra evenup
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+       call writeVTKfile(grid, "evenUpC.vtk")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
           call refinegridGeneric(grid, amrTolerance)
        end if
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+       call writeVTKfile(grid, "evenUpD.vtk")
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call writeVTKfile(grid, "miscA.vtk")
+       if(doUnrefine) then
+          if (myrankglobal == 1) call tune(6, "Unrefine grid")
+          call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
+          call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+          if (myrankglobal == 1) call tune(6, "Unrefine grid")
+          iUnrefine = 0
+       end if
+       call writeVTKfile(grid, "miscB.vtk")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+       call writeVTKfile(grid, "miscC.vtk")
        currentTime = currentTime + dt
        !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
 
@@ -3702,6 +3717,7 @@ end subroutine sumFluxes
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
+       call writeVTKfile(grid, "miscD.vtk")
 
        if (currentTime .ge. nextDumpTime) then
           it = it + 1
@@ -6320,64 +6336,73 @@ end subroutine refineGridGeneric2
        enddo
 
 
-       if (evenAcrossThreads) then
-          nLocs = 0
-          call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
-          call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
-          nLocsGlobal = SUM(tempnLocs)
-
-          do thisThread = 1, nThreads - 1
-             if(thisThread == myRank) then
-                do iThread = 1, nThreads-1
-                   nTemp(1) = 0
-                   if (iThread /= myRank) then
-                      do i = 1 , nLocs(myRank)
-                         if (thread(i) == iThread) then
-                            nTemp(1) = nTemp(1) + 1
-                            temp(nTemp(1),1) = locs(i)%x
-                            temp(nTemp(1),2) = locs(i)%y
-                            temp(nTemp(1),3) = locs(i)%z
-                            temp(nTemp(1),4) = dble(depth(i))
-                         endif
-                      enddo
-                      call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-                      if (nTemp(1) > 0) then
-                         do i = 1, nTemp(1)
-                            call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       if (evenAcrossThreads) then             
+             nLocs = 0
+             call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
+             call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+             
+             nLocsGlobal = SUM(tempnLocs)
+             
+             do thisThread = 1, nThreads - 1
+                if(thisThread == myRank) then
+                   do iThread = 1, nThreads-1
+                      nTemp(1) = 0
+                      if (iThread /= myRank) then
+                         do i = 1 , nLocs(myRank)
+                            if (thread(i) == iThread) then
+                               nTemp(1) = nTemp(1) + 1
+                               temp(nTemp(1),1) = locs(i)%x
+                               temp(nTemp(1),2) = locs(i)%y
+                               temp(nTemp(1),3) = locs(i)%z
+                               temp(nTemp(1),4) = dble(depth(i))
+                            endif
                          enddo
+
+                         call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+                         if (nTemp(1) > 0) then
+                            do i = 1, nTemp(1)
+                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                            enddo
+                         endif
                       endif
-                   endif
-                enddo
-
-             else
-                !                          write(*,*) "rank ",myRank," receiving message from ",ithread
-                call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
-                !                          write(*,*) "received ",nSent
-                if (nSent(1) > 0) then
-                   do i = 1, nSent(1)
-                      call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, MPI_COMM_WORLD, status, ierr)
-                      eLocs(i)%x = tempsent(1)
-                      eLocs(i)%y = tempsent(2)
-                      eLocs(i)%z = tempsent(3)
-                      eDepth(i) = nint(tempsent(4))
                    enddo
+                else
+                          write(*,*) "rank ",myRank," receiving message from ",ithread
+                   call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
+                          write(*,*) "received ",nSent
+                   if (nSent(1) > 0) then
+                      do i = 1, nSent(1)
+                         call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, MPI_COMM_WORLD, status, ierr)
+                         eLocs(i)%x = tempsent(1)
+                         eLocs(i)%y = tempsent(2)
+                         eLocs(i)%z = tempsent(3)
+                         eDepth(i) = nint(tempsent(4))
+                      enddo
+                   endif
+                   nExternalLocs = nSent(1)
                 endif
-                nExternalLocs = nSent(1)
-             endif
-          enddo
+             enddo
+             
+!             print *, elocs
+!             print *, edepth
+             print *, "----------------"
+             print *, "nExternalLocs ", nExternalLocs
+             print *, "----------------"
 
-          do iThread = 1, nThreadsGlobal-1
-             if (myrankGlobal /= iThread) then
-                call hydroValuesServer(grid, iThread)
-             else
-                do i = 1, nExternalLocs
-                   call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
-                enddo
-                call shutdownServers()
-             endif
-             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          enddo
-
+             do iThread = 1, nThreadsGlobal-1
+                if (myrankGlobal /= iThread) then
+                   call hydroValuesServer(grid, iThread)
+                else
+                   do i = 1, nExternalLocs
+                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
+!                      if(localChanged) converged = .false.
+                   enddo
+                   call shutdownServers()
+                endif
+                call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             enddo
+!          end do
+          
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftersplit",dumpfiles,"_",iter,".vtk"
              call writeVtkFile(grid, vtkFilename)
@@ -6417,11 +6442,16 @@ end subroutine refineGridGeneric2
              allThreadsConverged = .true.
           endif
           iter = iter + 1
+      
+
        else
           allThreadsConverged = .true.
        endif
 
     end do
+
+    print *, "DONE AN EVEN UP"
+
 666 continue
   end subroutine evenUpGridMPI
 
@@ -6434,14 +6464,14 @@ end subroutine refineGridGeneric2
     type(octal), pointer :: bOctal
     integer :: subcell, i, bSubcell
     logical :: converged, converged_tmp
-    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction, nVec
-    type(vector) :: vecStore(3)
+    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction!, nVec
+!    type(vector) :: vecStore(3)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
     integer :: myRank, ierr
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
-    integer :: nd, nd2
+    integer :: nd!, nd2
 
     converged = .true.
     converged_tmp=.true.
@@ -6618,261 +6648,261 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
                 call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
-                if(.not. thisOctal%ghostcell(subcell)) then
-                   if(thisOctal%twoD) then
-                     
-!                      if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
-                      rVec = subcellCentre(thisOctal, subcell)
-                      bVec = subcellCentre(neighbourOctal, neighbourSubcell)
-                      octVec = VECTOR(x, y, z) 
-                      
-                      !                      print *, "nd", nd, thisOctal%nDepth, myRank
-                      if((nd - thisOctal%nDepth)==1) then
-                         !THaw - need to ensure that both of the neighbours are of lower refinement(2D)
-                         if(abs(dirVec(j)%z) == 1.d0) then
-                            if(rVec%x > octVec%x) then                                  
-!                               print *, "a1", octvec
-                               octVec = octVec + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               print *, "a2", octvec
-                            else
-!                               print *, "b1", octvec
-                               octVec = octVec + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               print *, "b2", octvec
-                            end if
-                            
-                         else if (abs(dirVec(j)%x) == 1.d0) then
-                            
-                            if(rVec%z >octVec%z) then
-!                               print *, "c1", octvec
-                               octVec = octVec + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               print *, "c2", octvec
-                            else
-!                               print *, "d1", octvec
-                               octVec = octVec + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               print *, "d2", octvec
-                            end if
-                            
-                         else 
-                            print *, "Unrecognized direction", dirVec(j)
-                            stop
-                         end if
-                         
-                         
-                         call getHydroValues(grid, octVec, nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
-                         
-                         if(nd2 > nd) then
-!                            print *, "nd1", nd
-                            nd = nd2
-!                            print *, "nd2", nd
-                         end if
-                      end if
+!                if(.not. thisOctal%ghostcell(subcell)) then
+!                   if(thisOctal%twoD) then
+!                     
+!!                      if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
+!                      rVec = subcellCentre(thisOctal, subcell)
+!                      bVec = subcellCentre(neighbourOctal, neighbourSubcell)
+!                      octVec = VECTOR(x, y, z) 
+!                      
+!                      !                      print *, "nd", nd, thisOctal%nDepth, myRank
+!                      if((nd - thisOctal%nDepth)==1) then
+!                         !THaw - need to ensure that both of the neighbours are of lower refinement(2D)
+!                         if(abs(dirVec(j)%z) == 1.d0) then
+!                            if(rVec%x > octVec%x) then                                  
+!!                               print *, "a1", octvec
+!                               octVec = octVec + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!!                               print *, "a2", octvec
+!                            else
+!!                               print *, "b1", octvec
+!                               octVec = octVec + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!!                               print *, "b2", octvec
+!                            end if
+!                            
+!                         else if (abs(dirVec(j)%x) == 1.d0) then
+!                            
+!                            if(rVec%z >octVec%z) then
+!!                               print *, "c1", octvec
+!                               octVec = octVec + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!!                               print *, "c2", octvec
+!                            else
+!!                               print *, "d1", octvec
+!                               octVec = octVec + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!!                               print *, "d2", octvec
+!                            end if
+!                            
+!                         else 
+!                            print *, "Unrecognized direction", dirVec(j)
+!                            stop
+!                         end if
+!                         
+!                         
+!                         call getHydroValues(grid, octVec, nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+!                         
+!                         if(nd2 > nd) then
+!!                            print *, "nd1", nd
+!                            nd = nd2
+!!                            print *, "nd2", nd
+!                         end if
+!                      end if
+!!                   end if
+!                   
+!                else if(thisOctal%threeD) then
+!                      !As with 2D, need to ensure that all cells in contact are checked across an mpi boundary
+!                      rVec = subcellCentre(thisOctal, subcell)
+!                      nVec = subcellCentre(neighbourOctal, neighbourSubcell)
+!                      octVec = VECTOR(x, y, z)
+!                      vecStore(1) = octVec
+!                      
+!!                      print *, "doing 3D evenup"
+!
+!                      !Reminder of my labels
+!                      ! _______
+!                      !|i  |ii |   z        x        y
+!                      !|___|___|   ^        ^        ^
+!                      !|iii|iV |   |        |        |
+!                      !|___|___|   |____>y, |____>z, |____x
+!                      !                 
+!
+!                      !If the result of initial check is inconclusive we need to check other cells of the neighbour
+!                      if((nd - thisOctal%nDepth)==1) then
+!
+!                         !Work round the neighbouring cells clockwise and get their positions
+!
+!                         !Note that this process may not actually reach each "quarter" first time
+!                         !If it encounters a cell of higher refinement it might get lost (but only within the neighbour cube)
+!                         !This is no problem since if it occurs it implies refinement is necessary 
+!                         
+!                         if(abs(dirVec(j)%x) == 1.d0) then
+!                            if(rVec%y > octVec%y) then
+!                               if(rVec%z > octVec%z) then
+!                                  !Have found (i)
+!                                  
+!                                  !goto (ii)
+!                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iv)
+!                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iii)
+!                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!
+!                               else if(rVec%z < octVec%z) then
+!                                  !Have found (iii)
+!
+!                                  !goto (i)                                                                                                                                                         
+!                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(ii)                                                                                                                                                         
+!                                  vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iv)                                                                                         
+!                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!
+!                               end if
+!                               
+!                            else if (rVec%y < octVec%y) then
+!                               if(rVec%z > octVec%z) then
+!                                  !have found ii
+!                                  !goto (iv)
+!                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iii)
+!                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(i)
+!                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!
+!                               else if(rVec%z < octVec%z) then
+!                                  !have found iv
+!                                  !goto (iii)
+!                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(i)
+!                                  !vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(ii)
+!                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!
+!                               end if
+!                            end if
+!
+!                            !vecstore check                                                                                                                            
+!                            do i = 1, 3
+!                               locator = vector(rVec%x, vecStore(i)%y, vecStore(i)%z)
+!                               if(.not. inSubcell(thisOctal,subcell, locator)) then
+!                                  write(*,*) "Screw up in partner checks x"
+!                                  stop
+!                               end if
+!                            end do
+!
+!                                                     
+!                         else if(abs(dirVec(j)%y) == 1.d0) then !x-->y, y-->z, z-->x 
+!                            if(rVec%z > octVec%z) then
+!                               if((rVec%x > octVec%x)) then
+!                               !Have found (i)       
+!
+!                                  !goto (ii)
+!                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iv)
+!                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iii)
+!                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                                                                                                                             
+!                               else if(rVec%x < octVec%x) then
+!                                  !Have found (iii)
+!                                  !goto (i)
+!                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(ii)
+!                                  vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iv)
+!                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               end if
+!
+!                            else if (rVec%z < octVec%z) then
+!                               if(rVec%x > octVec%x) then
+!                                  !have found ii
+!                                  !goto (iv)
+!                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iii)
+!                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(i)
+!                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               else if(rVec%x < octVec%x) then
+!                                  !have found iv
+!                                  !goto (iii)
+!                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(i)
+!                                  !vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(ii)
+!                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               end if
+!                            end if
+!
+!                            !vecstore check                                                                                                                            
+!                            do i = 1, 3
+!                               locator = vector(vecStore(i)%x, rVec%y, vecStore(i)%z)
+!                               if(.not. inSubcell(thisOctal,subcell, locator)) then
+!                                  write(*,*) "Screw up in partner checks y"
+!                                  stop
+!                               end if
+!                            end do
+!
+!
+!                         else if(abs(dirVec(j)%z) == 1.d0) then !x-->y, y-->z, z-->x 
+!                            if(rVec%x > octVec%x) then
+!                               if(rVec%y > octVec%y) then
+!                                  !Have found (i)
+!                                  !goto (ii) 
+!                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iv)
+!                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iii)
+!                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!
+!                               else if(rVec%y < octVec%y) then
+!                                  !Have found (iii)
+!                                  !goto (i)
+!                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(ii)
+!                                  vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iv)
+!                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               end if
+!
+!                            else if (rVec%x < octVec%x) then
+!                               if(rVec%y > octVec%y) then
+!                                  !have found ii
+!                                  !goto (iv)
+!                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(iii)
+!                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(i)
+!                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               else if(rVec%y < octVec%y) then
+!                                  !have found iv
+!                                  !goto (iii)
+!                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(i)
+!                                  !vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                                  !goto(ii)
+!                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
+!                               end if
+!                            end if
+!
+!                            !vecstore check
+!                            do i = 1, 3
+!                               locator = vector(vecStore(i)%x, vecStore(i)%y, rVec%z)
+!                               if(.not. inSubcell(thisOctal,subcell, locator)) then
+!                                  write(*,*) "Screw up in partner checks z"
+!                                  stop
+!                               end if
+!                            end do
+!
+!
+!                         else
+!                            print *, "Direction Error In EvenUpGrid (3D)"
+!                            stop
+!                                                      
+!                         end if
+!
+!                         !Then use the cells to find the highest refinement neighbour
+!                         do i = 1, 3
+!                            call getHydroValues(grid, vecstore(i), nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+!                            if(nd2 > nd) then
+!                               nd = nd2
+!                            end if
+!                         end do
+!                        
+!                      end if
 !                   end if
-                   
-                else if(thisOctal%threeD) then
-                      !As with 2D, need to ensure that all cells in contact are checked across an mpi boundary
-                      rVec = subcellCentre(thisOctal, subcell)
-                      nVec = subcellCentre(neighbourOctal, neighbourSubcell)
-                      octVec = VECTOR(x, y, z)
-                      vecStore(1) = octVec
-                      
-!                      print *, "doing 3D evenup"
-
-                      !Reminder of my labels
-                      ! _______
-                      !|i  |ii |   z        x        y
-                      !|___|___|   ^        ^        ^
-                      !|iii|iV |   |        |        |
-                      !|___|___|   |____>y, |____>z, |____x
-                      !                 
-
-                      !If the result of initial check is inconclusive we need to check other cells of the neighbour
-                      if((nd - thisOctal%nDepth)==1) then
-
-                         !Work round the neighbouring cells clockwise and get their positions
-
-                         !Note that this process may not actually reach each "quarter" first time
-                         !If it encounters a cell of higher refinement it might get lost (but only within the neighbour cube)
-                         !This is no problem since if it occurs it implies refinement is necessary 
-                         
-                         if(abs(dirVec(j)%x) == 1.d0) then
-                            if(rVec%y > octVec%y) then
-                               if(rVec%z > octVec%z) then
-                                  !Have found (i)
-                                  
-                                  !goto (ii)
-                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iv)
-                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iii)
-                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-
-                               else if(rVec%z < octVec%z) then
-                                  !Have found (iii)
-
-                                  !goto (i)                                                                                                                                                         
-                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(ii)                                                                                                                                                         
-                                  vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iv)                                                                                         
-                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-
-                               end if
-                               
-                            else if (rVec%y < octVec%y) then
-                               if(rVec%z > octVec%z) then
-                                  !have found ii
-                                  !goto (iv)
-                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iii)
-                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(i)
-                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-
-                               else if(rVec%z < octVec%z) then
-                                  !have found iv
-                                  !goto (iii)
-                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(i)
-                                  !vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(ii)
-                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-
-                               end if
-                            end if
-
-                            !vecstore check                                                                                                                            
-                            do i = 1, 3
-                               locator = vector(rVec%x, vecStore(i)%y, vecStore(i)%z)
-                               if(.not. inSubcell(thisOctal,subcell, locator)) then
-                                  write(*,*) "Screw up in partner checks x"
-                                  stop
-                               end if
-                            end do
-
-                                                     
-                         else if(abs(dirVec(j)%y) == 1.d0) then !x-->y, y-->z, z-->x 
-                            if(rVec%z > octVec%z) then
-                               if((rVec%x > octVec%x)) then
-                               !Have found (i)       
-
-                                  !goto (ii)
-                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iv)
-                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iii)
-                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                                                                                                                             
-                               else if(rVec%x < octVec%x) then
-                                  !Have found (iii)
-                                  !goto (i)
-                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(ii)
-                                  vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iv)
-                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               end if
-
-                            else if (rVec%z < octVec%z) then
-                               if(rVec%x > octVec%x) then
-                                  !have found ii
-                                  !goto (iv)
-                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iii)
-                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(i)
-                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               else if(rVec%x < octVec%x) then
-                                  !have found iv
-                                  !goto (iii)
-                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(i)
-                                  !vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(ii)
-                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               end if
-                            end if
-
-                            !vecstore check                                                                                                                            
-                            do i = 1, 3
-                               locator = vector(vecStore(i)%x, rVec%y, vecStore(i)%z)
-                               if(.not. inSubcell(thisOctal,subcell, locator)) then
-                                  write(*,*) "Screw up in partner checks y"
-                                  stop
-                               end if
-                            end do
-
-
-                         else if(abs(dirVec(j)%z) == 1.d0) then !x-->y, y-->z, z-->x 
-                            if(rVec%x > octVec%x) then
-                               if(rVec%y > octVec%y) then
-                                  !Have found (i)
-                                  !goto (ii) 
-                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iv)
-                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iii)
-                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-
-                               else if(rVec%y < octVec%y) then
-                                  !Have found (iii)
-                                  !goto (i)
-                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(ii)
-                                  vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iv)
-                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               end if
-
-                            else if (rVec%x < octVec%x) then
-                               if(rVec%y > octVec%y) then
-                                  !have found ii
-                                  !goto (iv)
-                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(iii)
-                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(i)
-                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               else if(rVec%y < octVec%y) then
-                                  !have found iv
-                                  !goto (iii)
-                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(i)
-                                  !vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                                  !goto(ii)
-                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-                               end if
-                            end if
-
-                            !vecstore check
-                            do i = 1, 3
-                               locator = vector(vecStore(i)%x, vecStore(i)%y, rVec%z)
-                               if(.not. inSubcell(thisOctal,subcell, locator)) then
-                                  write(*,*) "Screw up in partner checks z"
-                                  stop
-                               end if
-                            end do
-
-
-                         else
-                            print *, "Direction Error In EvenUpGrid (3D)"
-                            stop
-                                                      
-                         end if
-
-                         !Then use the cells to find the highest refinement neighbour
-                         do i = 1, 3
-                            call getHydroValues(grid, vecstore(i), nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
-                            if(nd2 > nd) then
-                               nd = nd2
-                            end if
-                         end do
-                        
-                      end if
-                   end if
-                end if
+!                end if
                 
                 !                   if (((neighbourOctal%nDepth-thisOctal%nDepth) > 1).and. (thisOCtal%ndepth < maxDepthAMR)) then
                 if (((nd-thisOctal%nDepth) > 1).and. (thisOctal%nDepth < maxDepthAMR)) then
@@ -6917,11 +6947,11 @@ end subroutine refineGridGeneric2
        write(*,*) "There is a bug somewhere: ",myrank
        stop
     endif
-!    WRITE(*,*) "ATTEMPTNG TO SPLIT",depth,thisOctal%nDepth, maxdepth
+    WRITE(*,*) "ATTEMPTNG TO SPLIT", depth, thisOctal%nDepth,  myRank
     if (((depth-thisOctal%nDepth) > 1).and.(thisOctal%nDepth < maxDepthAMR)) then
        call addNewChildWithInterp(thisOctal,subcell,grid)
        localChanged = .true.
-!       write(*,*) "split at locator"
+       write(*,*) "split at locator"
     endif
 
   end subroutine splitAtLocator
@@ -6994,6 +7024,7 @@ end subroutine refineGridGeneric2
 
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
                       nLocs = nLocs + 1
+                      print *, "found ", nLocs, "on other threads", myRank
                       loc(nLocs) = octVec
                       thread(nLocs) = neighbourOctal%mpiThread(neighbourSubcell)
                       depth(nLocs) = thisOctal%nDepth
