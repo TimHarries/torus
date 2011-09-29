@@ -3502,10 +3502,10 @@ end subroutine sumFluxes
     integer :: nCornerGroup, cornergroup(100)
     integer :: nHydroThreads 
     logical :: converged
-    integer :: nUnrefine, jt
+    integer :: nUnrefine, jt, count
 
     nUnrefine = 0
-
+    count = 0
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     nHydroThreads = nThreadsGlobal - 1
 
@@ -3618,6 +3618,10 @@ end subroutine sumFluxes
     open (444, file="tcHistory.dat", status="unknown")
 
     do while(currentTime < tEnd)
+
+
+       write(plotfile,'(a,i4.4,a)') "start",it,".vtk"
+       call writeVTKfile(grid, plotfile)
        if (myrank == 1) write(*,*) "current time " ,currentTime
        jt = jt + 1
        tc = 0.d0
@@ -3660,6 +3664,7 @@ end subroutine sumFluxes
                "rhow         ", &
                "phi          "/))
 
+          
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
              nCornerBound, cornerGroup, nCornerGroup)
           write(plotfile,'(a,i4.4,a)') "postStep.vtk"
@@ -3678,6 +3683,7 @@ end subroutine sumFluxes
        call findMassOverAllThreads(grid, totalmass)
        if (writeoutput) write(*,*) "Total mass: ",totalMass
 
+
        if(doUnrefine) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 20) then
@@ -3687,31 +3693,40 @@ end subroutine sumFluxes
              iUnrefine = 0
           endif
        end if
-
+    
        if (myrank == 1) call tune(6,"Hydrodynamics step")
 !Thaw - temprorary extra evenup
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
        if(doRefine) then
           call refinegridGeneric(grid, amrTolerance)
        end if
+
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       if(doUnrefine) then
+
+       if(doUnrefine .and. grid%currentTime /= 0.d0) then
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
           call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           iUnrefine = 0
        end if
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        currentTime = currentTime + dt
        !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
 
 
+
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
+
 
        if (currentTime .ge. nextDumpTime) then
           it = it + 1
@@ -6279,7 +6294,7 @@ end subroutine refineGridGeneric2
     integer, parameter :: tag = 1
     logical :: globalChanged(512)
     integer :: status(MPI_STATUS_SIZE)
-    logical :: evenAcrossThreads
+    logical :: evenAcrossThreads, converged
     logical :: allThreadsConverged
     character(len=30) :: vtkFilename
 
@@ -6336,7 +6351,8 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
              
              nLocsGlobal = SUM(tempnLocs)
-             
+
+
              do thisThread = 1, nThreads - 1
                 if(thisThread == myRank) then
                    do iThread = 1, nThreads-1
@@ -6356,14 +6372,17 @@ end subroutine refineGridGeneric2
                          if (nTemp(1) > 0) then
                             do i = 1, nTemp(1)
                                call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+!                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
                             enddo
                          endif
+                         
                       endif
                    enddo
                 else
-                          write(*,*) "rank ",myRank," receiving message from ",ithread
+
+
                    call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
-                          write(*,*) "received ",nSent
+                         ! write(*,*) myRank, "received ",nSent, "from ", thisThread
                    if (nSent(1) > 0) then
                       do i = 1, nSent(1)
                          call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, MPI_COMM_WORLD, status, ierr)
@@ -6371,31 +6390,37 @@ end subroutine refineGridGeneric2
                          eLocs(i)%y = tempsent(2)
                          eLocs(i)%z = tempsent(3)
                          eDepth(i) = nint(tempsent(4))
+                         
                       enddo
                    endif
                    nExternalLocs = nSent(1)
-                endif
-             enddo
-             
-!             print *, elocs
-!             print *, edepth
-             print *, "----------------"
-             print *, "nExternalLocs ", nExternalLocs
-             print *, "----------------"
 
-             do iThread = 1, nThreadsGlobal-1
-                if (myrankGlobal /= iThread) then
-                   call hydroValuesServer(grid, iThread)
-                else
                    do i = 1, nExternalLocs
                       call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
-!                      if(localChanged) converged = .false.
-                   enddo
-                   call shutdownServers()
-                endif
+                      converged=.true.
+                      if(ANY(localChanged)) converged = .false.
+                   enddo 
+
+               endif
+!             enddo
+
+!             do iThread = 1, nThreadsGlobal-1
+!                if (myrankGlobal /= iThread) then
+!                   call hydroValuesServer(grid, iThread)
+!                else
+!                   if(myRank == 2) then
+!                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
+!                   end if
+!                   do i = 1, nExternalLocs
+!                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
+!                      converged=.true.
+!                      if(ANY(localChanged)) converged = .false.
+!                   enddo
+ !                 call shutdownServers()
+ !              endif
                 call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             enddo
-!          end do
+  !           enddo
+             end do
           
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftersplit",dumpfiles,"_",iter,".vtk"
@@ -6418,7 +6443,7 @@ end subroutine refineGridGeneric2
                 call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              enddo
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+            call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 !             if (myrank == 1) write(*,*) "second evenup ",tConverged(1:nThreadsGlobal-1)
              if (ALL(tConverged(1:nthreadsGlobal-1))) exit
           enddo
@@ -6430,7 +6455,7 @@ end subroutine refineGridGeneric2
           call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 
 !          if (myrank == 1) write(*,*) "globalChanged ",globalChanged(1:nThreadsGlobal-1)
-          if (ANY(globalChanged(1:nThreadsGlobal-1))) then
+          if (ANY(globalChanged(1:nThreadsGlobal-1)) .or. .not. converged) then
              allThreadsConverged = .false.
           else
              allThreadsConverged = .true.
@@ -6946,6 +6971,8 @@ end subroutine refineGridGeneric2
        call addNewChildWithInterp(thisOctal,subcell,grid)
        localChanged = .true.
 !       write(*,*) "split at locator"
+!    else
+!       WRITE(*,*) "ATTEMPTNG TO SPLIT FAILED", depth, thisOctal%nDepth,  myRank, maxDepthAMR
     endif
 
   end subroutine splitAtLocator
@@ -7019,6 +7046,7 @@ end subroutine refineGridGeneric2
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
                       nLocs = nLocs + 1
 !                      print *, "found ", nLocs, "on other threads", myRank
+!                      print *, octVec
                       loc(nLocs) = octVec
                       thread(nLocs) = neighbourOctal%mpiThread(neighbourSubcell)
                       depth(nLocs) = thisOctal%nDepth

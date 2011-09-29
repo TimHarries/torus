@@ -541,7 +541,9 @@ contains
                    write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
                    write(*,*) "myrank ",myrank
                    write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
+                   write(*,*) "at ", pVec%x, pVec%y, pVec%z
                    stop
+
                 endif
                 tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
                 tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
