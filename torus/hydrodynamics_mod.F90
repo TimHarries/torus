@@ -3566,14 +3566,14 @@ end subroutine sumFluxes
           call calculateRhoE(grid%octreeRoot, direction)
 
           call evenUpGridMPI(grid,.true., dorefine)
-          call writeVTKfile(grid, "evenUpA.vtk")
+
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call refinegridGeneric(grid, amrTolerance)          
           end if
           call evenUpGridMPI(grid, .true.,dorefine)
-          call writeVTKfile(grid, "evenUpB.vtk")
+
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
@@ -3691,15 +3691,12 @@ end subroutine sumFluxes
        if (myrank == 1) call tune(6,"Hydrodynamics step")
 !Thaw - temprorary extra evenup
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
-       call writeVTKfile(grid, "evenUpC.vtk")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if(doRefine) then
           call refinegridGeneric(grid, amrTolerance)
        end if
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
-       call writeVTKfile(grid, "evenUpD.vtk")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call writeVTKfile(grid, "miscA.vtk")
        if(doUnrefine) then
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
@@ -3707,18 +3704,14 @@ end subroutine sumFluxes
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           iUnrefine = 0
        end if
-       call writeVTKfile(grid, "miscB.vtk")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call writeVTKfile(grid, "miscC.vtk")
        currentTime = currentTime + dt
        !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
 
 
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
-
-       call writeVTKfile(grid, "miscD.vtk")
 
        if (currentTime .ge. nextDumpTime) then
           it = it + 1
