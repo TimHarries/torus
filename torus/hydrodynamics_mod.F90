@@ -6347,6 +6347,7 @@ end subroutine refineGridGeneric2
 
        if (evenAcrossThreads) then             
              nLocs = 0
+             nExternalLocs = 0
              call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
              call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
              
@@ -6383,44 +6384,45 @@ end subroutine refineGridGeneric2
 
                    call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
                          ! write(*,*) myRank, "received ",nSent, "from ", thisThread
+                  
                    if (nSent(1) > 0) then
                       do i = 1, nSent(1)
                          call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, MPI_COMM_WORLD, status, ierr)
-                         eLocs(i)%x = tempsent(1)
-                         eLocs(i)%y = tempsent(2)
-                         eLocs(i)%z = tempsent(3)
-                         eDepth(i) = nint(tempsent(4))
+                         eLocs(nExternalLocs + i)%x = tempsent(1)
+                         eLocs(nExternalLocs + i)%y = tempsent(2)
+                         eLocs(nExternalLocs + i)%z = tempsent(3)
+                         eDepth(nExternalLocs + i) = nint(tempsent(4))
                          
                       enddo
                    endif
-                   nExternalLocs = nSent(1)
+                   nExternalLocs = nExternalLocs + nSent(1)
 
-                   do i = 1, nExternalLocs
-                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
-                      converged=.true.
-                      if(ANY(localChanged)) converged = .false.
-                   enddo 
-
-               endif
-!             enddo
-
-!             do iThread = 1, nThreadsGlobal-1
-!                if (myrankGlobal /= iThread) then
-!                   call hydroValuesServer(grid, iThread)
-!                else
-!                   if(myRank == 2) then
-!                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
-!                   end if
 !                   do i = 1, nExternalLocs
 !                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
 !                      converged=.true.
 !                      if(ANY(localChanged)) converged = .false.
-!                   enddo
- !                 call shutdownServers()
- !              endif
-                call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-  !           enddo
-             end do
+!                   enddo 
+
+               endif
+             enddo
+
+             do iThread = 1, nThreadsGlobal-1
+                if (myrankGlobal /= iThread) then
+                   call hydroValuesServer(grid, iThread)
+                else
+                   if(myRank == 2) then
+                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
+                   end if
+                   do i = 1, nExternalLocs
+                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
+                      converged=.true.
+                      if(ANY(localChanged)) converged = .false.
+                   enddo
+                 call shutdownServers()
+              endif
+               call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+            enddo
+!           end do
           
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftersplit",dumpfiles,"_",iter,".vtk"
