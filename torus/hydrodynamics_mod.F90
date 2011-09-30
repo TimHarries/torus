@@ -1003,7 +1003,7 @@ contains
 
                 else
                    nCornerBound = getNCornerBoundFromDirection(direction, i)
-                   print *, "mirrorOctal thread ", mirrorOctal%mpiThread(subcell), myRank, nCornerBound
+!                   print *, "mirrorOctal thread ", mirrorOctal%mpiThread(subcell), myRank, nCornerBound
                    if(.not. associated(thisOctal%mpiCornerStorage)) then
 
                       print *, direction
@@ -6410,9 +6410,9 @@ end subroutine refineGridGeneric2
                 if (myrankGlobal /= iThread) then
                    call hydroValuesServer(grid, iThread)
                 else
-                   if(myRank == 2) then
-                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
-                   end if
+!                   if(myRank == 2) then
+!                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
+!                   end if
                    do i = 1, nExternalLocs
                       call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
                       converged=.true.
