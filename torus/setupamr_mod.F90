@@ -18,7 +18,6 @@ module setupamr_mod
 
 contains
     
-
   subroutine setupamrgrid(grid)
     use cluster_class
     use gridio_mod
@@ -134,6 +133,12 @@ contains
           call readgridKengo(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+         
+       case("turbulence")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call readGridTurbulence(grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("cluster")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
@@ -875,6 +880,80 @@ contains
           enddo
         end subroutine fillGridFogel
 
+!routine to read in the velocity field produced by the generating code of M. R. Bate.
+      subroutine readgridTurbulence(grid)
+      use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
+
+      type(GRIDTYPE) :: grid
+      type(OCTAL), pointer :: thisOctal
+      integer :: subcell
+      integer :: i, ierr
+      real(double) :: u, v, w
+      real(double) :: x, y, z, dx
+      type(VECTOR) :: locator, cen, minusBound
+
+      if(readTurb) then
+         
+         dx = grid%octreeRoot%subcellSize/dble(nturblines)
+
+         cen = grid%octreeRoot%centre         
+
+         minusBound%x = cen%x - grid%octreeRoot%subcellSize + grid%halfsmallestsubcell
+         minusBound%y = cen%y - grid%octreeRoot%subcellSize + grid%halfsmallestsubcell
+         minusBound%z = cen%z - grid%octreeRoot%subcellSize + grid%halfsmallestsubcell
+
+
+!         print *, "importing turbulent velocity field", dx
+         open(1, file=turbvelfilex, status="old", iostat=ierr)
+         if(ierr /= 0) then
+            print *, "Trouble opening " //turbvelfilex
+         end if
+         open(2, file=turbvelfiley, status="old", iostat=ierr)
+         if(ierr /= 0) then
+            print *, "Trouble opening " //turbvelfiley
+         end if
+         open(3, file=turbvelfilez, status="old", iostat=ierr)
+         if(ierr /= 0) then
+            print *, "Trouble opening " //turbvelfilez
+         end if
+
+ !        print *, "reading lines", nTurblines
+         thisOctal => grid%octreeRoot
+         
+
+         do i=1, nTurblines
+            read(1, *, iostat=ierr) u, x, y, z
+            if(ierr /= 0) then
+               print *, "error reading from " //turbvelfilex
+            end if
+            read(2, *, iostat=ierr) v, x, y, z
+            if(ierr /= 0) then
+               print *, "error reading from " //turbvelfiley
+            end if
+            read(3, *, iostat=ierr) w, x, y, z
+            if(ierr /= 0) then
+               print *, "error reading from " //turbvelfilez
+            end if
+!
+!            print *, "u ", u
+!            print *, "v ", v
+!            print *, "w ", w
+!
+
+            locator = VECTOR(minusBound%x + x*dx, minusBound%y + y*dx, minusBound%z + z*dx)
+            call findSubcellLocal(locator, thisOctal, subcell)
+            thisOctal%rhou(subcell) = thisOctal%rho(subcell)*u
+            thisOctal%rhov(subcell) = thisOctal%rho(subcell)*v
+            thisOctal%rhow(subcell) = thisOctal%rho(subcell)*w
+            thisOctal%velocity(subcell) = VECTOR(u, v, w)
+            thisOctal%energy(subcell) = thisOctal%energy(subcell)+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+            thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+         end do
+      end if
+
+!      print *, "Turbulent velocity field import completed"
+
+      end subroutine readgridTurbulence
 
         subroutine readgridKengo(grid)
           type(GRIDTYPE) :: grid
@@ -935,7 +1014,7 @@ contains
          read(11) arrtmp
          do k=1,kmax
             do j=1,jmax
-               do i=1,imax
+                do i=1,imax
                   rho(i,j,k)=arrtmp(i,j,k)*rho0
                enddo
             enddo

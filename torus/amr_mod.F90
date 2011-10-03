@@ -6779,6 +6779,7 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
 !2. Then run a radiation hydro calculation with periodic ±y, ±z and reflecting -x, freeoutnoin +x
   subroutine calcRadiativeRoundUpDensity(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    use inputs_mod, only : readTurb 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real(double) :: cs, a, b, c, eThermal, rand
@@ -6821,10 +6822,19 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
          c = 0.d0
     end if
 
-    thisOctal%velocity(subcell) = VECTOR(a ,b, c)
+      
+
+!    thisOctal%velocity(subcell) = VECTOR(a ,b, c)
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+!The kinetic energy is handled when the grid is read
+    if(readTurb) then
+       thisOctal%energy(subcell) = ethermal !+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    else
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    end if
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%gamma(subcell) = 1.0
     thisOctal%iEquationOfState(subcell) = 1

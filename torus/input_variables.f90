@@ -101,6 +101,12 @@
   integer :: idump                    !Hydrodynamics time step dump number
   real(double) :: gridDistanceScale   !Scale of grid
 
+  logical :: readTurb !read in a turbulent velocity grid
+  character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)
+  character(len=20) :: turbvelfiley    !file for tubrulent velocty field (y)
+  character(len=20) :: turbvelfilez    !file for tubrulent velocty field (z)
+  integer :: nTurbLines                !No. of lines in turbvel files
+
   real(double) :: inflowPressure
   real(double) :: inflowRho
   real(double) :: inflowRhoE
