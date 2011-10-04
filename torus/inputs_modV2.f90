@@ -1780,7 +1780,7 @@ contains
     character(len=20) :: keyword
     character(len=80) :: outputImageType, imageFilename
     integer :: thisnpixels
-
+    real, allocatable :: lambdaImage(:) 
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
@@ -1791,6 +1791,7 @@ contains
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i8,a)", 1, ok, .false.)
     call setNumImages(nimage)
+    allocate (lambdaImage(nimage))
 
     call getLogical("inarcsec", imageinArcsec, cLine, fLine, nLines, &
          "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1880,6 +1881,8 @@ contains
   call getInteger("fitsbitpix", fitsBitpix, cLine, fLine, nLines, &
       "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
        
+  deallocate (lambdaImage)
+
   end subroutine readImageParameters
 
   subroutine readSpectrumParameters(cLine, fLine, nLines)

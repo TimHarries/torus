@@ -202,8 +202,8 @@ module source_mod
 !    end subroutine randomSource
 
 
-    subroutine randomSource(source, nSource, iSource, weight,lamArray, nLambda, initialize)
-      use inputs_mod, only : lambdaImage
+    subroutine randomSource(source, nSource, iSource, weight,lamArray, nLambda, initialize, lambdaMono)
+
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       integer, intent(out) :: iSource
@@ -214,6 +214,8 @@ module source_mod
       real(double) :: r, t
       integer :: i
       logical, optional :: initialize
+! Wavelength used when initialize is present and nLambda=1
+      real, optional    :: lambdaMono
 
       if (nSource == 1) then
          iSource = 1
@@ -235,10 +237,14 @@ module source_mod
                        dble(lamArray(nLambda))) * (fourPi * (source(i)%radius*1.d10)**2) /lsol
                enddo
             else
-               do i = 1, nSource
-                  prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaImage(1))) * &
-                       (fourPi * (source(i)%radius*1.d10)**2)
-               enddo
+               if (present(lambdaMono)) then
+                  do i = 1, nSource
+                     prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaMono)) * &
+                          (fourPi * (source(i)%radius*1.d10)**2)
+                  enddo
+               else
+                  call writeFatal("lambdaMono needs to be provided in call to randomSource")
+               end if
             endif
             prob(1:nSource) = prob(1:nSource)/SUM(prob(1:nSource))
             allocate(weightArray(1:nSource))

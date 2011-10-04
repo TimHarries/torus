@@ -4851,7 +4851,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
     if (Writeoutput) write(*,*) "power per photon ",powerperphoton
 
-    Call randomSource(source, nSource, iSource, weightSource, nLambda=nLams, initialize=.true.)
+    Call randomSource(source, nSource, iSource, weightSource, nLambda=nLams, initialize=.true., &
+         lambdaMono=LambdaImage)
 
     if (myRankGlobal == 0) then
        np = 0

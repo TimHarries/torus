@@ -287,7 +287,7 @@ module angularImage
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid
-      type(datacube), intent(IN) :: cube
+      type(datacube), intent(INOUT) :: cube
       type(MOLECULETYPE), intent(IN) :: thisMolecule
       integer, intent(IN) :: itrans
       real(double), intent(IN) :: deltaV

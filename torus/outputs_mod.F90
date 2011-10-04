@@ -17,7 +17,7 @@ contains
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use inputs_mod, only : lambdaImage, mie, gridDistance, nLambda, nv
+    use inputs_mod, only : mie, gridDistance, nLambda, nv
     use inputs_mod, only : outfile, npixels, nImage, inclinationArray
     use inputs_mod, only : lamStart, lamEnd, lineEmission
     use inputs_mod, only : monteCarloRT
@@ -279,9 +279,9 @@ contains
              stokesImage = .true.
              outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
-             lamStart = lambdaImage(i)
-             lamEnd = lambdaImage(i)
-             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
+             lamStart = getImageWavelength(i)
+             lamEnd   = lamStart
+             call setupXarray(grid, xarray, nlambda, lamMin=lamStart, lamMax=lamEnd, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -319,9 +319,9 @@ contains
              stokesImage = .true.
              outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
-             lamStart = lambdaImage(i)
-             lamEnd = lambdaImage(i)
-             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage(i), lamMax=lambdaImage(i), &
+             lamStart = getImageWavelength(i)
+             lamEnd   = lamStart
+             call setupXarray(grid, xarray, nlambda, lamMin=lamStart, lamMax=lamEnd, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call do_phaseloop(grid, .true., 0., 0., 0.,  &

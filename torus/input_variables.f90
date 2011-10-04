@@ -327,7 +327,6 @@
   real :: singleInclination ! Inclination angle to use for for inclineX, inclineY, inclineZ
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
   logical :: imageInArcsec  ! Are images in arcsec or physical units? (image_mod and phaseloop_mod)
-  real :: lambdaImage(10)  ! Wavelengths for images. 
 
   ! file names 
   character(len=80) :: outFile           ! used in phaseloop_mod
