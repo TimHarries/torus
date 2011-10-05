@@ -131,7 +131,7 @@ contains
        if(grid%geometry == "molefil") deltaTforDump = tdump
        if(grid%geometry == "turbulence") then
 !turbulence phase
-          deltaTforDump = 3.14d12
+          deltaTforDump = 1.57d12 !50kyr
           tend = 3.14d13        !1Myr
           noPhoto = .true.
        end if

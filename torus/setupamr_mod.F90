@@ -894,14 +894,20 @@ contains
 
       if(readTurb) then
          
-         dx = grid%octreeRoot%subcellSize/dble(nturblines)
+         dx = 2.d0*grid%octreeRoot%subcellSize/dble(nturblines)
 
-         cen = grid%octreeRoot%centre         
 
-         minusBound%x = cen%x - grid%octreeRoot%subcellSize + grid%halfsmallestsubcell
-         minusBound%y = cen%y - grid%octreeRoot%subcellSize + grid%halfsmallestsubcell
-         minusBound%z = cen%z - grid%octreeRoot%subcellSize + grid%halfsmallestsubcell
+         cen = grid%octreeRoot%centre
 
+         minusBound%x = cen%x - grid%octreeRoot%subcellSize + dx/2.d0!grid%halfsmallestsubcell
+         minusBound%y = cen%y - grid%octreeRoot%subcellSize + dx/2.d0!grid%halfsmallestsubcell
+         Minusbound%z = cen%z - grid%octreeRoot%subcellSize + dx/2.d0!grid%halfsmallestsubcell
+
+!         print *, "dx ", dx
+!         print *, "cen ", cen
+!         print *, "minusBound%x", minusBound%x
+!         print *, "minusBound%y", minusBound%y
+!         print *, "minusBound%z", minusBound%z
 
 !         print *, "importing turbulent velocity field", dx
          open(1, file=turbvelfilex, status="old", iostat=ierr)
@@ -920,8 +926,7 @@ contains
  !        print *, "reading lines", nTurblines
          thisOctal => grid%octreeRoot
          
-
-         do i=1, nTurblines
+         do i=1, (nTurblines*nTurbLines*nTurbLines)
             read(1, *, iostat=ierr) u, x, y, z
             if(ierr /= 0) then
                print *, "error reading from " //turbvelfilex
@@ -940,7 +945,11 @@ contains
 !            print *, "w ", w
 !
 
-            locator = VECTOR(minusBound%x + x*dx, minusBound%y + y*dx, minusBound%z + z*dx)
+            locator = VECTOR(minusBound%x + dble(x-1)*dx, minusBound%y + &
+               dble(y-1)*dx, minusBound%z + dble(z-1)*dx)
+!            print *, "cell found", locator
+ !              print *, "x,y,z ", x, y, z
+ !              print *, "posses ", minusBound%x + dble(x-1)*dx, minusBound%y + dble(y-1)*dx, minusBound%z + dble(z-1)*dx
             call findSubcellLocal(locator, thisOctal, subcell)
             thisOctal%rhou(subcell) = thisOctal%rho(subcell)*u
             thisOctal%rhov(subcell) = thisOctal%rho(subcell)*v
