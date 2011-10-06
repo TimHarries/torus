@@ -888,11 +888,19 @@ contains
       type(OCTAL), pointer :: thisOctal
       integer :: subcell
       integer :: i, ierr
-      real(double) :: u, v, w
-      real(double) :: x, y, z, dx
+      real(double), allocatable :: u(:), v(:), w(:)
+      real(double), allocatable :: x(:), y(:), z(:)
+      real(double) ::  dx, range,  max, min
       type(VECTOR) :: locator, cen, minusBound
 
       if(readTurb) then
+
+         allocate(u(nturblines**3))
+         allocate(v(nturblines**3))
+         allocate(w(nturblines**3))
+         allocate(x(nturblines**3))
+         allocate(y(nturblines**3))
+         allocate(z(nturblines**3))
          
          dx = 2.d0*grid%octreeRoot%subcellSize/dble(nturblines)
 
@@ -926,39 +934,81 @@ contains
  !        print *, "reading lines", nTurblines
          thisOctal => grid%octreeRoot
          
-         do i=1, (nTurblines*nTurbLines*nTurbLines)
-            read(1, *, iostat=ierr) u, x, y, z
+         do i=1, (nTurblines**3)
+            read(1, *, iostat=ierr) u(i), x(i), y(i), z(i)
             if(ierr /= 0) then
                print *, "error reading from " //turbvelfilex
             end if
-            read(2, *, iostat=ierr) v, x, y, z
+            read(2, *, iostat=ierr) v(i), x(i), y(i), z(i)
             if(ierr /= 0) then
                print *, "error reading from " //turbvelfiley
             end if
-            read(3, *, iostat=ierr) w, x, y, z
+            read(3, *, iostat=ierr) w(i), x(i), y(i), z(i)
             if(ierr /= 0) then
                print *, "error reading from " //turbvelfilez
             end if
-!
-!            print *, "u ", u
-!            print *, "v ", v
-!            print *, "w ", w
-!
+        end do
 
-            locator = VECTOR(minusBound%x + dble(x-1)*dx, minusBound%y + &
-               dble(y-1)*dx, minusBound%z + dble(z-1)*dx)
-!            print *, "cell found", locator
- !              print *, "x,y,z ", x, y, z
- !              print *, "posses ", minusBound%x + dble(x-1)*dx, minusBound%y + dble(y-1)*dx, minusBound%z + dble(z-1)*dx
-            call findSubcellLocal(locator, thisOctal, subcell)
-            thisOctal%rhou(subcell) = thisOctal%rho(subcell)*u
-            thisOctal%rhov(subcell) = thisOctal%rho(subcell)*v
-            thisOctal%rhow(subcell) = thisOctal%rho(subcell)*w
-            thisOctal%velocity(subcell) = VECTOR(u, v, w)
-            thisOctal%energy(subcell) = thisOctal%energy(subcell)+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-            thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-         end do
+        
+        if(maxval(abs(u)) > maxval(abs(v))) then
+           if(maxval(abs(u)) > maxval(abs(w))) then
+              max = maxval(abs(u))
+           else
+              max = maxval(abs(w))
+           end if
+        else
+           if(maxval(abs(v)) > maxval(abs(w))) then
+              max = maxval(abs(v))
+           else
+              max = maxval(abs(w))
+           end if
+        end if
+
+
+        if(minval(abs(u)) < minval(abs(v))) then
+           if(minval(abs(u)) < minval(abs(w))) then
+              min = minval(abs(u))
+           else
+              min = minval(abs(w))
+           end if
+        else
+           if(minval(abs(v)) < minval(abs(w))) then
+              min = minval(abs(v))
+           else
+              min = minval(abs(w))
+           end if
+        end if
+
+        range = max-min
+
+        do i = 1, nturblines**3
+
+           locator = VECTOR(minusBound%x + dble(x(i)-1)*dx, minusBound%y + &
+           dble(y(i)-1)*dx, minusBound%z + dble(z(i)-1)*dx)
+           
+           call findSubcellLocal(locator, thisOctal, subcell)
+           thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
+           thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
+           thisOctal%rhow(subcell) = thisOctal%rho(subcell)*(w(i)/max)*10.d0*sqrt(thisOCtal%rho(subcell)*thisOctal%energy(subcell))
+           thisOctal%velocity(subcell) = VECTOR((u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
+              (v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
+              (w(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)))
+           thisOctal%energy(subcell) = thisOctal%energy(subcell)+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+           
+        end do
+
+         deallocate(u)
+         deallocate(v)
+         deallocate(w)
+         deallocate(x)
+         deallocate(y)
+         deallocate(z)
+
       end if
+
+
+
 
 !      print *, "Turbulent velocity field import completed"
 
