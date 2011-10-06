@@ -234,6 +234,10 @@ contains
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
 
+!Otherwise periodic boundaries are automatically used
+    call getLogical("dirichlet", dirichlet, cLine, fLine, nLines, &
+         "Use dirichlet boundary conditions: ","(a,1l,1x,a)", .true., ok, .false.)
+
     call getLogical("severedamping", severedamping, cLine, fLine, nLines, &
          "Severe damping: ","(a,1l,1x,a)", .false., ok, .false.)
 

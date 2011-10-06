@@ -2415,7 +2415,7 @@ end subroutine sumFluxes
 
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
-    use inputs_mod, only : nBodyPhysics, severeDamping
+    use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -2432,9 +2432,9 @@ end subroutine sumFluxes
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
-   if (selfGravity) then
-!       call periodBoundary(grid, justGrav = .true.)
-!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+   if (selfGravity .and. .not. dirichlet) then
+       call periodBoundary(grid, justGrav = .true.)
+       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     
@@ -2642,9 +2642,9 @@ end subroutine sumFluxes
     call transferTempStorage(grid%octreeRoot)
 
     !THAW
-    if (selfGravity) then
-!       call periodBoundary(grid, justGrav = .true.)
-!       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+    if (selfGravity .and. .not. dirichlet) then
+       call periodBoundary(grid, justGrav = .true.)
+       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
 
@@ -7535,7 +7535,7 @@ end subroutine refineGridGeneric2
   end subroutine gSweepLevel
   
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
-    use inputs_mod, only :  maxDepthAMR
+    use inputs_mod, only :  maxDepthAMR, dirichlet
     use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid
@@ -7567,9 +7567,11 @@ end subroutine refineGridGeneric2
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
-          if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
-          call applyDirichlet(grid, iDepth)
-          if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+          if(dirichlet) then
+             if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+             call applyDirichlet(grid, iDepth)
+             if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+          end if
 
           dx = returnCodeUnitLength(gridDistancescale*grid%octreeRoot%subcellSize/dble(2.d0**(iDepth-1)))
           if (grid%octreeRoot%twoD) then
@@ -7597,10 +7599,12 @@ end subroutine refineGridGeneric2
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
 
             !Thaw - trying to remove expansion by removing periodic gravity
-!             call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
-             !             call imposeboundary(grid%octreeroot)
-!             call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
+            if(.not. dirichlet) then
+               call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
+!             call imposeboundary(grid%octreeroot)
+               call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
+            end if
 
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
@@ -7626,11 +7630,11 @@ end subroutine refineGridGeneric2
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
 
-
-    if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
-    call applyDirichlet(grid)
-    if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
-
+    if(dirichlet) then
+       if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+       call applyDirichlet(grid)
+       if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+    end if
 !    call reapplyGhostCellPhi(grid%octreeRoot)
 
     if (grid%octreeRoot%twoD) then
@@ -7659,6 +7663,12 @@ end subroutine refineGridGeneric2
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange = tempFracChange
+
+
+       if(.not. dirichlet) then
+       call periodBoundary(grid, justGrav = .true.)
+       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+       end if
 
 
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"

@@ -86,6 +86,7 @@
 
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
+  logical :: dirichlet                !Use dirichlet boundary conditions - otherwise periodic used by default
   logical :: severeDamping            ! Turn on damping
   logical :: dumpRadial               ! write a text radial cut each dump
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
