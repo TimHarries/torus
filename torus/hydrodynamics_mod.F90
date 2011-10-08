@@ -834,7 +834,6 @@ contains
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd
     real(double) :: xnext, fac, px, py, pz
-    logical :: fineToCoarse
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -889,7 +888,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
              
              if(thisOctal%nDepth > nd .and. fluxinterp .and. .not. thisOctal%ghostCell(subcell)) then
                 if(.not. thisOctal%oneD) then
-                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse = .false.)
+                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, &
+                      fineToCoarse=.false.)
                    else
                       fac = 0.d0
                    end if
@@ -925,7 +925,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
     integer :: myRank, ierr, nCornerBound
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd, iTot, i, ID(2)
-    real(double) :: xnext, m, dx, df, px, py, pz, scale
+    real(double) :: xnext, m, dx, df, px, py, pz
     logical, intent(in) :: fineToCoarse
     logical :: upper
 
@@ -988,9 +988,14 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    call findsubcelllocal(locator, communityoctal, communitysubcell)
 
                    !Get first try values
-                   call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
-                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-                  
+                   if(octalOnTHread(communityOctal, communitySubcell, myRank)) then
+                      call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, community(i), q, &
+                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                   else
+                      call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
+                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                   end if
+               
                    rVec = VECTOR(px, py , pz)
 
                    if(i == 1) then
@@ -999,14 +1004,21 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       upper = .false.
                    end if
 
-                   if(octalOnthread(communityoctal, communitysubcell, myRank) .and. (nd-thisOctal%nDepth == 0)) then                      
+                   if(octalOnthread(communityoctal, communitysubcell, myRank) .and. (nd-thisOctal%nDepth == 0)) then
                       probe = subcellCentre(communityoctal, communitysubcell) - direction*(thisOctal%subcellSize/2.d0 &
                       + 0.01d0*grid%halfsmallestsubcell)
 
                       mirrorOctal=>thisOctal
                       call findsubcelllocal(probe,mirrorOctal, mirrorSubcell)
-                      Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
-                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                   
+
+                      if(octalOnTHread(mirrorOctal, mirrorSubcell, myRank)) then
+                         Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
+                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                      else
+                         Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, community(i), q, &
+                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                      end if
 
                       mVec = VECTOR(px, py, pz)
 
@@ -1028,8 +1040,13 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
                          call findsubcelllocal(locator, faceOctal, faceSubcell)
 
-                         call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), q, &
-                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                         if(octalOnThread(faceOctal, faceSubcell, myRank)) then
+                            call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, direction, q, &
+                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                         else
+                            call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), q, &
+                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                         end if
 
                          ID(i) = 2
                       else
@@ -1040,7 +1057,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
                          end if
 
                          call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitysubcell, direction, q, &
-                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)                          
+                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                          ID(i) = 3
                       end if
                    else
@@ -2400,7 +2417,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
     type(vector) :: direction
 
     call setupx(grid%octreeroot, grid, direction)
-!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupqx(grid%octreeroot, grid, direction)
 !    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
