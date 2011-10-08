@@ -989,10 +989,10 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
                    !Get first try values
                    if(octalOnTHread(communityOctal, communitySubcell, myRank)) then
-                      call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, community(i), q, &
+                      call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
                       rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                    else
-                      call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
+                      call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, community(i), q, &
                       rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                    end if
                
@@ -3831,7 +3831,7 @@ end subroutine sumFluxes
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
-       if (currentTime .ge. nextDumpTime .or. grid%geometry == "kelvin") then
+       if (currentTime .ge. nextDumpTime) then
           it = it + 1
           nextDumpTime = nextDumpTime + tDump
           grid%iDump = it
