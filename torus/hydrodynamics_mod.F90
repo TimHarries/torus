@@ -1016,8 +1016,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
                          Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
                          rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                       else
-                         Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, community(i), q, &
-                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                         Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, community(i), &
+                         q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                       end if
 
                       mVec = VECTOR(px, py, pz)
@@ -1044,8 +1044,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
                             call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, direction, q, &
                             rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                          else
-                            call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), q, &
-                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+                            call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), &
+                            q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                          end if
 
                          ID(i) = 2
