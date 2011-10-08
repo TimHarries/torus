@@ -599,10 +599,7 @@ contains
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
 !                          write(*,*) myRank, " temp storage sent"
-
              
-
-
           endif
        end do
     endif

@@ -3856,10 +3856,10 @@ CONTAINS
          !Coarse to fine
          
          if(thisOctal%twoD) then
-            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.1 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
          else if (thisOctal%threeD) then
-            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.1 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
          end if
          
@@ -6670,13 +6670,13 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
     thisOctal%pressure_i(subcell) = 2.5d0
     thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0.d0, 0.d0, u1))/cSpeed
 
-    thisOctal%boundaryCondition(subcell) = 2
-    if (.not.inOctal(grid%octreeRoot, VECTOR(thisOctal%xmin-0.1d0*grid%halfSmallestSubcell,0.d0,0.d0))) then
-       thisOctal%boundaryCondition(subcell) = 2
-    endif
-    if (.not.inOctal(grid%octreeRoot, VECTOR(thisOctal%xmax+0.1d0*grid%halfSmallestSubcell,0.d0,0.d0))) then
-       thisOctal%boundaryCondition(subcell) = 2
-    endif
+!    thisOctal%boundaryCondition(subcell) = 2
+!    if (.not.inOctal(grid%octreeRoot, VECTOR(thisOctal%xmin-0.1d0*grid%halfSmallestSubcell,0.d0,0.d0))) then
+!       thisOctal%boundaryCondition(subcell) = 2
+!    endif
+!    if (.not.inOctal(grid%octreeRoot, VECTOR(thisOctal%xmax+0.1d0*grid%halfSmallestSubcell,0.d0,0.d0))) then
+!       thisOctal%boundaryCondition(subcell) = 2
+!    endif
 
     thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
     thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
@@ -6691,10 +6691,10 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
     thisOctal%energy(subcell) = thisOctal%energy(subcell) + eKinetic
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
 
-    zplusbound = 1
-    zminusbound = 1
-    xplusbound = 2
-    xminusbound = 2
+!    zplusbound = 1
+ !   zminusbound = 1
+  !  xplusbound = 2
+   ! xminusbound = 2
 
   end subroutine Calckelvindensity
 

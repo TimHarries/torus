@@ -1,7 +1,6 @@
 #ifdef HYDRO
 ! hydrodynamics module added by tjh on 18th june 2007
 
-
 Module hydrodynamics_mod
 #ifdef MPI
 
@@ -835,6 +834,7 @@ contains
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd
     real(double) :: xnext, fac, px, py, pz
+    logical :: fineToCoarse
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -862,15 +862,13 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
 
    
-             !thisoctal%flux_i_plus_1(subcell) = flux
+thisoctal%flux_i_plus_1(subcell) = flux
 
-             !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient    
+            !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient    
              if(thisOctal%nDepth > nd .and. fluxinterp) then
                 if(.not. thisOctal%oneD) then
-                   neighbourOctal%flux_i(neighboursubcell) = flux
-!                   probe = subcellCentre(neighbourOctal, neighbourSubcell)
-                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
-!                   if(fac /= 0.d0) print *, "fac", fac
+                   fac = 0.d0
+!                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse=.true.)
                    else
                    fac = 0.d0
                    end if
@@ -888,12 +886,18 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
              thisoctal%flux_i_minus_1(subcell) = flux
-
-
-             thisoctal%flux_i_minus_1(subcell) = flux
              
+             if(thisOctal%nDepth > nd .and. fluxinterp .and. .not. thisOctal%ghostCell(subcell)) then
+                if(.not. thisOctal%oneD) then
+                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse = .false.)
+                   else
+                      fac = 0.d0
+                   end if
+             else
+                fac = 0.d0
+             end if   
 
-   
+             thisOctal%flux_i(subcell) = thisOctal%flux_i(subcell) + fac
 
           endif
        endif
@@ -902,31 +906,42 @@ contains
 
 
 !THaw - Flux interpolation routine                                                                                                                                                                                                       
-  subroutine normalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
+  subroutine normalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse)
     use mpi
     type(gridtype) :: grid
     type(octal), pointer :: thisoctal
     type(octal), pointer :: neighbourOctal
     type(octal), pointer :: communityOctal
+    type(octal), pointer :: faceOctal
     type(octal), pointer :: mirrorOctal
-    integer :: subcell, neighbourSubcell, communitySubcell, mirrorSubcell
+    integer :: subcell, neighbourSubcell, communitySubcell, mirrorSubcell, faceSubcell
     type(vector) :: direction
-    type(vector) :: rVec, cVec
+    type(vector) :: rVec, cVec, mVec
     type(vector), allocatable :: community(:)
-    type(vector) :: locator
+    type(vector) :: locator, probe
     type(vector) :: nVec
     real(double), intent(out) :: fac
     real(double), allocatable ::  xpos(:), f(:)
     integer :: myRank, ierr, nCornerBound
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
-    integer :: nd, iTot, i
-    real(double) :: xnext, m, dx, df, px, py, pz
-!    logical, intent(in) :: coarseToFine
+    integer :: nd, iTot, i, ID(2)
+    real(double) :: xnext, m, dx, df, px, py, pz, scale
+    logical, intent(in) :: fineToCoarse
+    logical :: upper
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-    nVec = subcellCentre(neighbourOctal, neighbourSubcell)
+      if(.not. fineToCoarse) then
+         call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, &
+         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+
+      else
+         call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, direction, q, &
+         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+      end if
+         
+    nVec = VECTOR(px, py, pz)
 
     fac = 0.d0
     if(neighbourOctal%twoD) then
@@ -946,19 +961,93 @@ contains
           stop
        end if
 
-       do i = 1, iToT
+       ID = 0
 
-          locator = subcellcentre(neighbouroctal, neighboursubcell) + community(i) * &
-          (neighbouroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-          
+       do i = 1, iToT
+ 
+          if(fineToCoarse) then
+             locator = nVec + community(i) * &
+             (neighbouroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+          else
+             locator = subcellCentre(thisOctal, subcell) + community(i) * &
+             (thisOctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+          end if
+
           if(inOctal(grid%octreeRoot, locator)) then
-             if(octalOnThread(neighbouroctal, neighboursubcell, myRank)) then
-                communityoctal => neighbouroctal
-                call findsubcelllocal(locator, communityoctal, communitysubcell)
-                call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, &
-                rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-               
-                rVec = subcellcentre(communityoctal, communitysubcell)
+             if(octalOnThread(neighbouroctal, neighboursubcell, myRank) .or. (.not. fineToCoarse)) then
+                          
+                if(fineToCoarse) then
+                   communityoctal => neighbouroctal
+                
+                   call findsubcelllocal(locator, communityoctal, communitysubcell)
+                   call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, &
+                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                else
+!check we got the sufficiently far away cell
+                   communityoctal => thisoctal
+                   call findsubcelllocal(locator, communityoctal, communitysubcell)
+
+                   !Get first try values
+                   call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
+                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                  
+                   rVec = VECTOR(px, py , pz)
+
+                   if(i == 1) then
+                      upper = .true.
+                   else 
+                      upper = .false.
+                   end if
+
+                   if(octalOnthread(communityoctal, communitysubcell, myRank) .and. (nd-thisOctal%nDepth == 0)) then                      
+                      probe = subcellCentre(communityoctal, communitysubcell) - direction*(thisOctal%subcellSize/2.d0 &
+                      + 0.01d0*grid%halfsmallestsubcell)
+
+                      mirrorOctal=>thisOctal
+                      call findsubcelllocal(probe,mirrorOctal, mirrorSubcell)
+                      Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
+                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+
+                      mVec = VECTOR(px, py, pz)
+
+                      if(mVec == nVec) then
+!Found the neighbour again, need to move one more cell
+
+                         !THE BUG LIES HERE ITS NOT GETTING ITS NEIGHBOUR VALUES PROPERLY
+                         if(i == 1) then
+                            upper = .false.
+                         else 
+                            upper = .true.
+                         end if
+                         dx = thisOctal%subcellSize*griddistancescale
+
+                         faceOctal=>communityOctal
+                        
+                         locator = rVec + community(i) * &
+                         (thisOctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+
+                         call findsubcelllocal(locator, faceOctal, faceSubcell)
+
+                         call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), q, &
+                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+
+                         ID(i) = 2
+                      else
+                        if(i == 1) then
+                            upper = .true.
+                         else 
+                            upper = .false.
+                         end if
+
+                         call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitysubcell, direction, q, &
+                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)                          
+                         ID(i) = 3
+                      end if
+                   else
+                      ID(i) = 1
+                   end if
+                end if
+                rVec = VECTOR(px, py, pz)
                 f(i) = flux
                 if(abs(direction%x) == 1.d0) then
                    xpos(i) = rVec%z
@@ -968,27 +1057,46 @@ contains
                    print *, "unrecognized direction!"
                    stop
                 end if
-
+                
+!                if(i == 2) then
+!                   dx = thisOctal%subcellSize*griddistancescale
+!
+!                   m = (f(1) - f(2))/(xpos(1) - xpos(2))
+!                   
+!                   df = abs(m*dx)/2.d0
+!
+!                   if((xpos(1) - xpos(2))/dx /= 3.d0 .and. (xpos(1) - xpos(2))/dx /= 2.5d0 .and. (xpos(1) - xpos(2))/dx /= 3.5d0 &
+!                      .and. (ID(1) /= 2 .and. ID(2) /= 2)) then 
+!                      print *, "((xpos(1) - xpos(2))/dx)", ((xpos(1) - xpos(2))/dx)
+!                      print *, "dx ", dx
+!                      print *, "xpos1 ", xpos(1)
+!                      print *, "xpos2 ", xpos(2)
+!                      print *, "ID ", ID
+!                      print *, "m  ", m
+!                      print *, "df ", df
+!                      print *, "rVec ", rVec
+!                      print *, "direction ", direction
+!                      print *, "flux1 ", f(1)
+!                      print *, "flux2 ", f(2)
+!                   end if
+!                end if
              else
+
                 !If the neighbour is not on the same thread then it will not hold the community values
                 !Need to scan along the MPI boundary and probe into the next domain until the community cell is found
                 !The community cell values can then be obtained from its the boundary partner on the native side of the domain. 
 
+                if(.not. fineToCoarse) then
+                   call torus_abort("Coarse to fine problem in flux interpolation")
+                end if
+
                 mirrorOctal => thisOctal
                 !Move along the native side of the domain by 1 cell in the appropriate direction
                 
-!                print *, "A ", subcellcentre(thisoctal, subcell), myRank
-
                 locator = subcellcentre(thisoctal, subcell) + community(i) * &
                 (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)      
 
                 call findsubcelllocal(locator, mirrorOctal, mirrorSubcell)
-
- !               print *, "B ", subcellcentre(mirroroctal, mirrorsubcell), myRank
-  !              print *, "community(i)", community(i)
-   !             print *, "thisOctalsubcellsize", thisOctal%subcellSize
-
-!                nVec = subcellCentre(neighbourOctal, neighbourSubcell)
 
 
                 if(octalOnThread(mirrorOctal,mirrorSubcell, myRank)) then
@@ -1003,7 +1111,6 @@ contains
 
                 else
                    nCornerBound = getNCornerBoundFromDirection(direction, i)
-!                   print *, "mirrorOctal thread ", mirrorOctal%mpiThread(subcell), myRank, nCornerBound
                    if(.not. associated(thisOctal%mpiCornerStorage)) then
 
                       print *, direction
@@ -1039,22 +1146,12 @@ contains
                    end if
                    
                 else
-
-!                   print *, "************"
-!                   print *, "Failed first time with:"
-!                   print *, "cvec", cvec
-!                   print *, "nvec", nvec
-!                   print *, "direction ", direction
-!                   print *, "subcellCentre(mirrorOctal, mirrorSubcell)", subcellCentre(mirrorOctal, mirrorSubcell)
-!                   print *, "thisoctal%nd", thisOctal%ndepth
-!!                   print *, "neighbourOctal%nd ", neighbourOctal%nDepth
-!                   print *, "mirrorOctal%nd", mirrorOctal%nDepth!
-!                   print *, "************"
-
                    !Found the same cell
-
                    !Move along one more cell width
 
+                   if(.not. fineToCoarse) then
+                      call torus_abort("FUUUUUUU")
+                   end if
 
                    locator = subcellcentre(mirrorOctal, mirrorSubcell) + community(i) * &
                    (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
@@ -1102,73 +1199,88 @@ contains
                 
              end if
           else
-!At the edge just use the gradient over half the distance                                                                                                                                                                   
-             f(i)  = neighbourOctal%flux_i(subcell)
-             if(abs(direction%x) == 1.d0) then
-                xpos(i) = nVec%z
-             else if(abs(direction%z) == 1.d0) then
-                xpos(i) = nVec%x
-             else
-                print *, "unrecognized direction!"
-                stop
-             end if
+!!At the edge just use the gradient over half the distance                                                                                                                                                                   
+!
+!Irrelevant as edge cells are not considered
+ !            if(fineToCoarse) then
+  !              f(i)  = neighbourOctal%flux_i(subcell)
+   !             if(abs(direction%x) == 1.d0) then
+    !               xpos(i) = nVec%z
+     !           else if(abs(direction%z) == 1.d0) then
+      !             xpos(i) = nVec%x
+       !         else
+        !           print *, "unrecognized direction!"
+         !          stop
+          !      end if
+           !  end if
           end if
        end do
        
-       !Flux gradient                                                                                                                                                                                                                    
-       !print *, "f(1)", f(1), myRank
-       !print *, "f(2)", f(2), myRank
-       !print *, "xpos(1)", xpos(1), myRank
-       !print *, "xpos(2)", xpos(2), myRank
-       !print *, "(f(1) - f(2))", (f(1) - f(2)), myRank
-       !print *, "(xpos(1) - xpos(2))", (xpos(1) - xpos(2)), myRank
        m = (f(1) - f(2))/(xpos(1) - xpos(2))
-
- !      print *, "m calculation successful!", m
 
        dx = thisOctal%subcellSize*griddistancescale
 
-       !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                  
-       df = abs(m*dx)/2.d0
+!       if((xpos(1) - xpos(2))/dx /= 3.d0 .or. (xpos(1) - xpos(2))/dx /= 2.5d0 .or. (xpos(1) - xpos(2))/dx /= 3.5d0) then 
+!          print *,( xpos(1) - xpos(2))/dx
+!       end if
+
+       !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                 
+        df = abs(m*dx)/2.d0
 
        rVec = subcellCentre(thisOctal, subcell)!                                                                                                                                                                                         
-       if(m > 0.d0) then !Positive gradient                                                                                                                                                                                              
 
-          if(abs(direction%x) == 1.d0) then !悉 advection                                                                                                                                                                                
-             if(rVec%z > nVec%z) then         !Upper cell                                                                                                                                                                                
+
+       if(fineToCoarse) then
+          if(m > 0.d0) then     !Positive gradient                                                                                                                                                                                              
+             
+             if(abs(direction%x) == 1.d0) then !悉 advection                                                                                                                                                                                
+                if(rVec%z > nVec%z) then !Upper cell                                                                                                                                                                                
                    fac = df
-             else                             !lower cell                                                                                                                                                                                
+                else            !lower cell                                                                                                                                                                                
                    fac = -df
-             end if
-          else                                !您 advection                                                                                                                                                                              
-
-             if(rVec%x > nVec%x) then         !Right cell                                                                                                                                                                                
-                fac = df
-             else                             !Left cell                                                                                                                                                                                 
+                end if
+             else               !您 advection                                                                                                                                                                              
+                
+                if(rVec%x > nVec%x) then !Right cell                                                                                                                                                                                
+                   fac = df
+                else            !Left cell                                                                                                                                                                                 
                    fac = -df
+                end if
              end if
+          else if (m < 0.d0) then !Negative gradient                                                                                                                                                               
+             if(abs(direction%x) == 1.d0) then !悉 advection                                                                                                                                                                                
+                if(rVec%z > nVec%z) then !Upper cell                                                                                                                                                                                
+                   fac = -df
+                else            !lower cell                                                                                                                                                                                
+                   fac = df
+                end if
+             else               !您 advection                                                                                                                                                                              
+                
+                if(rVec%x > nVec%x) then !Right cell                                                                                                                                                                                
+                   fac = -df
+                else            !Left cell                                                                                                                                                                                 
+                   fac = df
+                end if
+                
+             end if
+
+          else                  !No gradient present                                                                                                                                                                                    
+             fac = 0.d0
           end if
-       else if (m < 0.d0) then   !Negative gradient                                                                                                                                                               
-          if(abs(direction%x) == 1.d0) then !悉 advection                                                                                                                                                                                
-             if(rVec%z > nVec%z) then         !Upper cell                                                                                                                                                                                
-                fac = -df
-             else                             !lower cell                                                                                                                                                                                
-                fac = df
-             end if
-          else                                !您 advection                                                                                                                                                                              
 
-             if(rVec%x > nVec%x) then         !Right cell                                                                                                                                                                                
-                fac = -df
-             else                             !Left cell                                                                                                                                                                                 
-                fac = df
-             end if
-
+      else 
+          if(upper .and. m > 0.d0) then
+             fac = df
+          else if(upper .and. m < 0.d0) then
+             fac = -df
+          else if (.not. upper .and. m > 0.d0) then
+             fac = -df
+          else if(.not. upper .and. m < 0.d0) then
+             fac = df
+          else
+             fac = 0.d0
           end if
-
-       else                      !No gradient present                                                                                                                                                                                    
-          fac = 0.d0
        end if
-
     else !3D case                                                                                                                                                                                                                        
 
        !Only going to do the 2D properly for now                                                                                                                                                                                         
@@ -2288,15 +2400,24 @@ contains
     type(vector) :: direction
 
     call setupx(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupqx(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call fluxlimiter(grid%octreeroot)
     call constructflux(grid%octreeroot, dt)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
-    call setupflux(grid%octreeroot, grid, direction)
+ !   call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound) 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+ !   call setupflux(grid%octreeroot, grid, direction)
+!      if(fluxinterp) then
+      call setupflux(grid%octreeroot, grid, direction)
+ !     end if
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound) 
+ !   call setupflux(grid%octreeroot, grid, direction, interp=.false.)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup) 
     call updatecellq(grid%octreeroot, dt)
-    
+
   end subroutine advectq
 
 
@@ -2680,13 +2801,11 @@ end subroutine sumFluxes
     integer :: cornerGroup(:), nCornerGroup
     real(double) :: dt
     type(VECTOR) :: direction
-
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
-
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2704,8 +2823,6 @@ end subroutine sumFluxes
     end if
 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
-!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
-!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=3)
     call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2755,11 +2872,12 @@ end subroutine sumFluxes
 !    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=1)
 !    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup, useThisBound=2)
     call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    
+
     !call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
     !call imposeboundary(grid%octreeroot)
     !call periodboundary(grid)
@@ -2769,12 +2887,14 @@ end subroutine sumFluxes
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+
     !call computePressureW(grid, grid%octreeRoot, direction)
     call computepressureGeneral(grid, grid%octreeroot, .true.)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+
     if(rhieChow) then
        call rhiechowui(grid%octreeroot, grid, direction, dt)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
@@ -2806,7 +2926,7 @@ end subroutine sumFluxes
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     
     !call imposeboundary(grid%octreeroot)
     !call periodboundary(grid)
@@ -3564,16 +3684,14 @@ end subroutine sumFluxes
 
           !    call calculateEnergy(grid%octreeRoot, gamma, mu)
           call calculateRhoE(grid%octreeRoot, direction)
-
+          
           call evenUpGridMPI(grid,.true., dorefine)
-
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call refinegridGeneric(grid, amrTolerance)          
           end if
           call evenUpGridMPI(grid, .true.,dorefine)
-
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
@@ -3587,8 +3705,6 @@ end subroutine sumFluxes
           call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
        endif
     endif
-
-
 
     tc = 0.d0
     if (myrank /= 0) then
@@ -3619,24 +3735,19 @@ end subroutine sumFluxes
 
     do while(currentTime < tEnd)
 
-
-       write(plotfile,'(a,i4.4,a)') "start",it,".vtk"
-       call writeVTKfile(grid, plotfile)
        if (myrank == 1) write(*,*) "current time " ,currentTime
        jt = jt + 1
        tc = 0.d0
+
        if (myrank /= 0) then
           tc(myrank) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
        endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
+
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
        write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
-
-       !       if ((jt < 2000).and.(grid%geometry=="sedov")) then
-       !          dt = MINVAL(tc(1:nHydroThreads)) * 1.d-4
-       !       endif
 
        if ((currentTime + dt).gt.tEnd) then
           nextDumpTime = tEnd
@@ -3654,28 +3765,8 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          write(plotfile,'(a,i4.4,a)') "preStep.vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-               "u_i          ", &
-               "hydrovelocity", &
-               "rhou         ", &
-               "rhov         ", &
-               "rhow         ", &
-               "phi          "/))
-
-          
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
              nCornerBound, cornerGroup, nCornerGroup)
-          write(plotfile,'(a,i4.4,a)') "postStep.vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-               "u_i          ", &
-               "hydrovelocity", &
-               "rhou         ", &
-               "rhov         ", &
-               "rhow         ", &
-               "phi          "/))
        end if
 
        call findEnergyOverAllThreads(grid, totalenergy)
@@ -3695,7 +3786,7 @@ end subroutine sumFluxes
        end if
     
        if (myrank == 1) call tune(6,"Hydrodynamics step")
-!Thaw - temprorary extra evenup
+
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -3705,8 +3796,7 @@ end subroutine sumFluxes
        end if
 
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
-
-
+       
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        if(doUnrefine .and. grid%currentTime /= 0.d0) then
@@ -3720,15 +3810,11 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        currentTime = currentTime + dt
-       !       if (myRank == 1) write(*,*) "current time ",currentTime,dt
-
-
 
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
-
-       if (currentTime .ge. nextDumpTime) then
+       if (currentTime .ge. nextDumpTime .or. grid%geometry == "kelvin") then
           it = it + 1
           nextDumpTime = nextDumpTime + tDump
           grid%iDump = it
@@ -3744,7 +3830,9 @@ end subroutine sumFluxes
                "rhou         ", &
                "rhov         ", &
                "rhow         ", &
-               "phi          "/))
+               "phi          ", &
+               "edges        ", &
+               "q_i          "/))
           if (grid%geometry == "sedov") &
                call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
 
@@ -4293,7 +4381,6 @@ end subroutine sumFluxes
                    thisOctal%rhoe(subcell) =  thisOctal%rho(subcell)*thisOctal%energy(subcell)
 
                 case(4) ! free outflow, no inflow
-
                    locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
