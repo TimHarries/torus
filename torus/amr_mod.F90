@@ -215,7 +215,7 @@ CONTAINS
        call calcHydro1DDensity(thisOctal, subcell)
 
     CASE("kelvin")
-       call calcKelvinDensity(thisOctal, subcell,grid)
+       call calcKelvinDensity(thisOctal, subcell)
 
     CASE("rtaylor")
        call calcRTaylorDensity(thisOctal, subcell)
@@ -6634,10 +6634,9 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
 
   end subroutine calcHydro1DDensity
 
-  subroutine calcKelvinDensity(thisOctal,subcell,grid)
+  subroutine calcKelvinDensity(thisOctal,subcell)
 
-    use inputs_mod
-    type(GRIDTYPE), intent(in) :: grid
+    use inputs_mod  
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
