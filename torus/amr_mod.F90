@@ -3891,11 +3891,14 @@ CONTAINS
       if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       
       if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
       
 
+!      if(abs(thisOctal%zmax) < 0.28 .and. abs(thisOctal%zmin) > 0.22) split = .true.
+
 !      if ((thisOctal%xMax < 0.75d0).and.(thisOctal%xMin > 0.25d0).and.&
-!           (thisOctal%zMax < 0.1d0).and.(thisOctal%zMin > -0.1d0)) split = .true.
+ !          (thisOctal%zMax < 0.1d0).and.(thisOctal%zMin > -0.1d0)) split = .true.
+
    case("rtaylor")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
       if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.

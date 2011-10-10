@@ -867,7 +867,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
              if(thisOctal%nDepth > nd .and. fluxinterp) then
                 if(.not. thisOctal%oneD) then
                    fac = 0.d0
-!                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse=.true.)
+                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse=.true.)
                    else
                    fac = 0.d0
                    end if
@@ -1025,7 +1025,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       if(mVec == nVec) then
 !Found the neighbour again, need to move one more cell
 
-                         !THE BUG LIES HERE ITS NOT GETTING ITS NEIGHBOUR VALUES PROPERLY
                          if(i == 1) then
                             upper = .false.
                          else 
@@ -1075,28 +1074,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    stop
                 end if
                 
-!                if(i == 2) then
-!                   dx = thisOctal%subcellSize*griddistancescale
-!
-!                   m = (f(1) - f(2))/(xpos(1) - xpos(2))
-!                   
-!                   df = abs(m*dx)/2.d0
-!
-!                   if((xpos(1) - xpos(2))/dx /= 3.d0 .and. (xpos(1) - xpos(2))/dx /= 2.5d0 .and. (xpos(1) - xpos(2))/dx /= 3.5d0 &
-!                      .and. (ID(1) /= 2 .and. ID(2) /= 2)) then 
-!                      print *, "((xpos(1) - xpos(2))/dx)", ((xpos(1) - xpos(2))/dx)
-!                      print *, "dx ", dx
-!                      print *, "xpos1 ", xpos(1)
-!                      print *, "xpos2 ", xpos(2)
-!                      print *, "ID ", ID
-!                      print *, "m  ", m
-!                      print *, "df ", df
-!                      print *, "rVec ", rVec
-!                      print *, "direction ", direction
-!                      print *, "flux1 ", f(1)
-!                      print *, "flux2 ", f(2)
-!                   end if
-!                end if
              else
 
                 !If the neighbour is not on the same thread then it will not hold the community values
@@ -1167,15 +1144,13 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    !Move along one more cell width
 
                    if(.not. fineToCoarse) then
-                      call torus_abort("FUUUUUUU")
+                      call torus_abort("fine to coarse mistaken for coarse to fine")
                    end if
 
                    locator = subcellcentre(mirrorOctal, mirrorSubcell) + community(i) * &
                    (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
                    
                    call findsubcelllocal(locator, mirrorOctal, mirrorSubcell) 
- !                  print *, "locator 2", locator
- !                  print *, "A2 ", subcellcentre(mirroroctal, mirrorsubcell), myRank
 
                    !Probe across the mpi boundary and check if the corresponding cell is the community subcell
                    locator = subcellcentre(mirrorOctal, mirrorSubcell) + direction * & 
@@ -1200,8 +1175,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       else if(abs(direction%z) == 1.d0) then
                          xpos(i) = cVec%x
                       else
-                         print *, "unrecognized direction!"
-                         stop
+                         call torus_abort("unrecognized direction!")
                       end if
                    else
                       print *, "-----------------------"
@@ -1212,24 +1186,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       call torus_abort("Warning, Neighbour cells differ in refinement by more than one depth!")                     
                    end if
                 end if
-      !          print *, "DONE CREEPING", myRank
-                
              end if
-          else
-!!At the edge just use the gradient over half the distance                                                                                                                                                                   
-!
-!Irrelevant as edge cells are not considered
- !            if(fineToCoarse) then
-  !              f(i)  = neighbourOctal%flux_i(subcell)
-   !             if(abs(direction%x) == 1.d0) then
-    !               xpos(i) = nVec%z
-     !           else if(abs(direction%z) == 1.d0) then
-      !             xpos(i) = nVec%x
-       !         else
-        !           print *, "unrecognized direction!"
-         !          stop
-          !      end if
-           !  end if
           end if
        end do
        
@@ -1237,15 +1194,10 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
        dx = thisOctal%subcellSize*griddistancescale
 
-!       if((xpos(1) - xpos(2))/dx /= 3.d0 .or. (xpos(1) - xpos(2))/dx /= 2.5d0 .or. (xpos(1) - xpos(2))/dx /= 3.5d0) then 
-!          print *,( xpos(1) - xpos(2))/dx
-!       end if
-
        !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                 
         df = abs(m*dx)/2.d0
 
        rVec = subcellCentre(thisOctal, subcell)!                                                                                                                                                                                         
-
 
        if(fineToCoarse) then
           if(m > 0.d0) then     !Positive gradient                                                                                                                                                                                              
@@ -3848,7 +3800,7 @@ end subroutine sumFluxes
                "rhov         ", &
                "rhow         ", &
                "phi          ", &
-               "edges        ", &
+               "pressure     ", &
                "q_i          "/))
           if (grid%geometry == "sedov") &
                call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
@@ -3925,7 +3877,7 @@ end subroutine sumFluxes
           end do
        else 
           thisOctal%phi_gas = 0.d0
-       endif
+       endif 
     enddo
   end subroutine zeroPhigas
 
@@ -7705,7 +7657,7 @@ end subroutine refineGridGeneric2
             !Thaw - trying to remove expansion by removing periodic gravity
             if(.not. dirichlet) then
                call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
-!             call imposeboundary(grid%octreeroot)
+              call imposeboundary(grid%octreeroot)
                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
             end if
@@ -7770,8 +7722,8 @@ end subroutine refineGridGeneric2
 
 
        if(.not. dirichlet) then
-       call periodBoundary(grid, justGrav = .true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+          call periodBoundary(grid, justGrav = .true.)
+          call transferTempStorage(grid%octreeRoot, justGrav = .true.)
        end if
 
 

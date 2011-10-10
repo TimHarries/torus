@@ -2580,19 +2580,26 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end subroutine calculateIonizationBalanceTimeDep
 
   subroutine quickThermalCalc(thisOctal)
+    use mpi
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
+    integer :: ierr, myRank
+
+      call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
-          thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+          if(octalOnThread(thisOCtal, subcell, myRank)) then
+             thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+          end if
        endif
-
+       
     enddo
   end subroutine quickThermalCalc
 
   subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+    use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
@@ -2605,32 +2612,36 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
     real :: underCorrection = 1.
-    integer :: nIter
+    integer :: nIter, ierr, myRank
     
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
+
+ !THAW - trying to root out mpi things
+          if(octalOnThread(thisOctal, subcell, myRank)) then
           
-          if (thisOctal%inflow(subcell)) then
-
-!             write(*,*) thisOctal%nCrossings(subcell),thisOctal%undersampled(subcell)
-
-             if (.not.thisOctal%undersampled(subcell)) then
+             if (thisOctal%inflow(subcell)) then
                 
-                 
-               call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
-!                if (thisOctal%ionFrac(subcell,1) > 0.9d0) write(*,*) "total heating ",totalheating
-                if (totalHeating < 1.d-30) then
-                   thisOctal%temperature(subcell) = tLow
-                else
-                   nIter = 0
-                   converged = .false.
+!             write(*,*) thisOctal%nCrossings(subcell),thisOctal%undersampled(subcell)
+                
+                if (.not.thisOctal%undersampled(subcell)) then
                    
-                   t1 = tlow
-                   t2 = 30000.
+                   
+                   call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+!                if (thisOctal%ionFrac(subcell,1) > 0.9d0) write(*,*) "total heating ",totalheating
+                   if (totalHeating < 1.d-30) then
+                      thisOctal%temperature(subcell) = tLow
+                   else
+                      nIter = 0
+                      converged = .false.
+                      
+                      t1 = tlow
+                      t2 = 30000.
 !
-
+                      
 !                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
 !                      t1 = tlow
 !                      t2 = 2000.
@@ -2642,69 +2653,70 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 !                   endif
 !                   t1 = tLow
 !                   t2 = 50000.
-                   found = .true.
-                   
-                   if (found) then
-                      y1 = (HHecooling(grid, thisOctal, subcell, t1) &
-                           - totalHeating)
-                      y2 = (HHecooling(grid, thisOctal, subcell, t2) &
-                           - totalHeating)
-                      if (y1*y2 > 0.d0) then
-                         if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
-                            tm = t1
-                         else
-                            tm  = t2
+                      found = .true.
+                      
+                      if (found) then
+                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
+                         - totalHeating)
+                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
+                         - totalHeating)
+                         if (y1*y2 > 0.d0) then
+                            if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
+                               tm = t1
+                            else
+                               tm  = t2
 !                            write(*,*) "Cell set to hot. Cooling is ", &
 !                                 HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1), " heating is ", totalHeating
-                         endif
-                         converged = .true.
-                      endif
-                      if (totalHeating < 1.d-30) then
-                         tm = t1
-                         converged = .true.
-                      endif
-                      
-                      ! Find root of heating and cooling by bisection
-                      
-                      do while(.not.converged)
-                         tm = 0.5*(t1+t2)
-                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
-                              - totalheating)
-                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
-                              - totalheating)
-                         ym = (HHecooling(grid, thisOctal, subcell, tm) &
-                              - totalheating)
-                         
-                         if (y1*ym < 0.d0) then
-                            t1 = t1
-                            t2 = tm
-                         else if (y2*ym < 0.d0) then
-                            t1 = tm
-                            t2 = t2
-                         else
+                            endif
                             converged = .true.
+                         endif
+                         if (totalHeating < 1.d-30) then
+                            tm = t1
+                            converged = .true.
+                         endif
+                         
+! Find root of heating and cooling by bisection
+                         
+                         do while(.not.converged)
                             tm = 0.5*(t1+t2)
-                            write(*,*) t1, t2, y1,y2,ym
-                         endif
-                         
-                         if (abs((t1-t2)/t1) .le. 1.e-2) then
-                            converged = .true.
-                         endif
-                         niter = niter + 1
+                            y1 = (HHecooling(grid, thisOctal, subcell, t1) &
+                            - totalheating)
+                            y2 = (HHecooling(grid, thisOctal, subcell, t2) &
+                            - totalheating)
+                            ym = (HHecooling(grid, thisOctal, subcell, tm) &
+                            - totalheating)
+                            
+                            if (y1*ym < 0.d0) then
+                               t1 = t1
+                               t2 = tm
+                            else if (y2*ym < 0.d0) then
+                               t1 = tm
+                               t2 = t2
+                            else
+                               converged = .true.
+                               tm = 0.5*(t1+t2)
+                               write(*,*) t1, t2, y1,y2,ym
+                            endif
+                            
+                            if (abs((t1-t2)/t1) .le. 1.e-2) then
+                               converged = .true.
+                            endif
+                            niter = niter + 1
 !                         if (myrankGlobal == 1) write(*,*) niter,tm, abs(t1-t2)/t1
-                      enddo
-                   endif
-                   deltaT = tm - thisOctal%temperature(subcell)
-                   thisOctal%temperature(subcell) = &
-                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,tLow)
+                         enddo
+                      endif
+                      deltaT = tm - thisOctal%temperature(subcell)
+                      thisOctal%temperature(subcell) = &
+                      max(thisOctal%temperature(subcell) + underCorrection * deltaT,tLow)
 !                                write(*,*) thisOctal%temperature(subcell), niter
-                endif
-             else
+                   endif
+                else
                 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                endif
              endif
-          endif
+          end if
        endif
-    enddo
+      enddo
   end subroutine calculateThermalBalance
 
   subroutine calculateEquilibriumTemperature(grid, thisOctal, subcell, epsOverDeltaT, Teq)
