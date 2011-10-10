@@ -984,11 +984,11 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    call findsubcelllocal(locator, communityoctal, communitysubcell)
 
                    if(octalOnTHread(communityOctal, communitySubcell, myRank)) then
-                      call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, &
-                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                      call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
+                      direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                    else
-                      call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, community(i), q, &
-                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                      call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
+                      community(i), q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                    end if
 
                    ID(i) = 1
