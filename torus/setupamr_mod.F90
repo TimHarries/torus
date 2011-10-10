@@ -883,16 +883,19 @@ contains
 !routine to read in the velocity field produced by the generating code of M. R. Bate.
       subroutine readgridTurbulence(grid)
       use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
-
+      use mpi
       type(GRIDTYPE) :: grid
       type(OCTAL), pointer :: thisOctal
       integer :: subcell
-      integer :: i, ierr
+      integer :: i
       real(double), allocatable :: u(:), v(:), w(:)
       real(double), allocatable :: x(:), y(:), z(:)
       real(double) ::  dx, range,  max, min
       type(VECTOR) :: locator, cen, minusBound
+      integer :: myRank, ierr
 
+
+      call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
       if(readTurb) then
 
          allocate(u(nturblines**3))
@@ -903,7 +906,6 @@ contains
          allocate(z(nturblines**3))
          
          dx = 2.d0*grid%octreeRoot%subcellSize/dble(nturblines)
-
 
          cen = grid%octreeRoot%centre
 
@@ -985,17 +987,23 @@ contains
 
            locator = VECTOR(minusBound%x + dble(x(i)-1)*dx, minusBound%y + &
            dble(y(i)-1)*dx, minusBound%z + dble(z(i)-1)*dx)
-           
+          
            call findSubcellLocal(locator, thisOctal, subcell)
-           thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
-           thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
-           thisOctal%rhow(subcell) = thisOctal%rho(subcell)*(w(i)/max)*10.d0*sqrt(thisOCtal%rho(subcell)*thisOctal%energy(subcell))
-           thisOctal%velocity(subcell) = VECTOR((u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
+           if(octalOnThread(thisOctal, subcell, myRank)) then
+           
+              
+              thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
+              thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
+              thisOctal%rhow(subcell) = thisOctal%rho(subcell)*(w(i)/max)*10.d0*sqrt(thisOCtal%rho(subcell)*thisOctal%energy(subcell))
+              thisOctal%velocity(subcell) = VECTOR((u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
               (v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
               (w(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)))
-           thisOctal%energy(subcell) = thisOctal%energy(subcell)+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-           
+              
+                           
+              thisOctal%energy(subcell) = thisOctal%energy(subcell)+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+              
+              thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+           end if
         end do
 
          deallocate(u)
@@ -1007,10 +1015,6 @@ contains
 
       end if
 
-
-
-
-!      print *, "Turbulent velocity field import completed"
 
       end subroutine readgridTurbulence
 

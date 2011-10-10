@@ -3802,7 +3802,7 @@ CONTAINS
     !  if(rVec%x > 0.6 .and. rVec%x < 0.7 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
    case("hydro1d")
-
+      if(ghostCell(grid, thisOCtal, subcell) .and. thisOctal%nDepth < maxDepthAMR) split = .true.
 
       if(dorefine .or. dounrefine) then
          rVec = subcellCentre(thisOctal, subcell)
@@ -3818,8 +3818,9 @@ CONTAINS
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          !Coarse to fine
          if(rVec%x > 0.6 .and. rvec%x < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-         
       end if
+
+
 
    case("diagSod")
 !      rVec = subcellCentre(thisOctal, subcell)
@@ -3855,13 +3856,16 @@ CONTAINS
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          !Coarse to fine
          
-         if(thisOctal%twoD) then
-            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+         if((rvec%x < 0.8d0) .and. (rvec%x > 0.2d0) .and. (rvec%z < 0.1d0) .and.  &
+            (rvec%z > -0.1d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
-         else if (thisOctal%threeD) then
-            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-
-         end if
+!         if(thisOctal%twoD) then
+!            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+!
+!         else if (thisOctal%threeD) then
+!            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+!
+ !        end if
          
         
       end if
@@ -4996,10 +5000,56 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
       enddo
       edgeCell=.false.
       if (thisOctal%twoD.and.(nProbeOutside >= 1)) edgeCell = .true.
-      if (thisOctal%threeD.and.(nProbeOutside >= 2)) edgeCell = .true.
-
+      if (thisOctal%threeD.and.(nProbeOutside >= 1)) edgeCell = .true.
 
   END FUNCTION edgeCell
+
+
+logical  FUNCTION ghostCell(grid, thisOctal, subcell)
+      type(OCTAL) :: thisOctal
+      type(GRIDTYPE) :: grid
+      integer :: subcell
+      type(VECTOR) :: probe(6), rVec, locator
+      integer :: nProbeOutside, nProbes, iProbe
+
+
+      if (thisOctal%oned) then
+         nProbes = 2
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+      endif
+      if (thisOctal%twod) then
+         nProbes = 4
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+         probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+         probe(4) = VECTOR(0.d0, 0.d0, -1.d0)
+      endif
+      if (thisOctal%threeD) then
+         nProbes = 6
+         probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+         probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+         probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+         probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+         probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+         probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
+      endif
+
+      rVec = subcellCentre(thisOctal, subcell)
+      nProbeOutside = 0
+      do iProbe = 1, nProbes
+         locator = rVec + &
+         (thisOctal%subcellsize + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
+         if (.not.inOctal(grid%octreeRoot, locator).or. &
+         (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &
+          nProbeOutside = nProbeOutside + 1
+      enddo
+      ghostCell=.false.
+      if (thisOctal%twoD.and.(nProbeOutside >= 1)) ghostCell = .true.
+      if (thisOctal%threeD.and.(nProbeOutside >= 1)) ghostCell = .true.
+
+
+  END FUNCTION ghostCell
 
 
   
@@ -6600,7 +6650,8 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
        endif
 
     else if(thisOctal%twoD) then
-       if((rvec%z+rVec%x) <= 0.05) then
+!       if((rvec%z+rVec%x) <= 0.05) then
+       if((rvec%z) <= -0.3d0) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
@@ -6823,10 +6874,8 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
       else
          c = 0.d0
     end if
-
       
-
-!    thisOctal%velocity(subcell) = VECTOR(a ,b, c)
+!    thisOctal%velocity(subcell)= VECTOR(a ,b, c)
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -6856,6 +6905,9 @@ logical  FUNCTION edgeCell(grid, thisOctal, subcell)
     endif
     
     thisOctal%etaCont(subcell) = 0.
+     
+!      print *, "thisOctal%energy(subcell)", thisOctal%energy(subcell)
+
   end subroutine
 
 !http://www.astrosim.net/code/doku.php?id=home:codetest:hydrotest:wengen:wengen3

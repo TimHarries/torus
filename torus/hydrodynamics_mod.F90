@@ -2567,6 +2567,7 @@ end subroutine sumFluxes
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
    if (selfGravity .and. .not. dirichlet) then
+      print *, "doing periodics"
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
@@ -2781,10 +2782,8 @@ end subroutine sumFluxes
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
-
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
          call doAccretion(grid, globalsourceArray, globalnSource, dt)
-
 
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
          call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
@@ -2802,8 +2801,8 @@ end subroutine sumFluxes
        if (myrankglobal == 1) call tune(6,"Self-gravity")
     endif
 
-
   end subroutine hydroStep3d
+
 
   subroutine hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
       nCornerBound, cornerGroup, nCornerGroup)
@@ -3225,6 +3224,20 @@ end subroutine sumFluxes
           
           call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
          
+
+          call findEnergyOverAllThreads(grid, totalenergy)
+          call findMassOverAllThreads(grid, totalmass)
+          if(myRank == 1) then
+             endM = totalMass
+             endE = totalEnergy
+             print *, "dM (%) = ", (1.d0 - (endM/iniM))*100.d0
+             print *, "dE (%) = ", (1.d0 - (endE/iniE))*100.d0
+             print *, "endM", endM
+             print *, "iniM", iniM
+             print *, "endE", endE
+             print *, "iniE", iniE             
+          end if
+
           if(dounrefine) then
              iUnrefine = iUnrefine + 1
              
@@ -3256,7 +3269,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
@@ -6186,7 +6199,7 @@ end subroutine refineGridGeneric2
     unrefine = .false.
 
 
-    if ((nc > 1).and..not.cornerCell) then
+    if ((nc > 1).and..not.cornerCell .and. .not. ghostcell) then
 
        unrefine = .true.
        meancs = SUM(cs(1:nc))/dble(nc)
@@ -7525,9 +7538,11 @@ end subroutine refineGridGeneric2
                 fracChange = max(frac, fracChange)
              else
                 fracChange = 1.d30
+!                frac = fracChange
              endif
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
-             thisOctal%chiline(subcell) = frac
+!             thisOctal%chiline(subcell) = frac
+             thisOctal%chiline(subcell) = fracChange
 
              thisOctal%phi_gas(subcell) = newPhi
              
@@ -7702,7 +7717,7 @@ end subroutine refineGridGeneric2
             !Thaw - trying to remove expansion by removing periodic gravity
             if(.not. dirichlet) then
                call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
-              call imposeboundary(grid%octreeroot)
+               call imposeboundary(grid%octreeroot)
                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
             end if
@@ -7714,16 +7729,13 @@ end subroutine refineGridGeneric2
                 call updatePhiTree(grid%octreeRoot, i)
              enddo
 
-
              if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
-
           
           call updatePhiTree(grid%octreeRoot, iDepth)
 
        enddo
-
 
     endif
 
@@ -7762,14 +7774,17 @@ end subroutine refineGridGeneric2
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        fracChange = 0.d0
        call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
-       call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-       fracChange = tempFracChange
-
 
        if(.not. dirichlet) then
           call periodBoundary(grid, justGrav = .true.)
           call transferTempStorage(grid%octreeRoot, justGrav = .true.)
        end if
+
+       call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+       fracChange = tempFracChange
+
+
+
 
 
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"

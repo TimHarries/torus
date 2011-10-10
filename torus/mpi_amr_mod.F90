@@ -114,8 +114,8 @@ contains
                    if (thisOctal%twoD) then
                       dv = thisOctal%subcellSize**2
                    else if (thisOctal%oned) then
-                      dv = thisOctal%subcellSize
-                      
+                      dv = thisOctal%subcellSize                      
+
                    endif
                 endif
                 !             totalVolume = totalVolume + dv
@@ -2330,7 +2330,8 @@ contains
              tempStorage(7) = thisOctal%pressure_i(Subcell)
              call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           else
-             tempStorage(1) = thisOctal%phi_i(Subcell)
+!             tempStorage(1) = thisOctal%phi_i(Subcell)
+             tempStorage(1) = thisOctal%phi_gas(Subcell)
              call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           endif
        endif
@@ -2380,7 +2381,8 @@ contains
              tempStorage(7) = thisOctal%pressure_i(Subcell)
              call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           else
-             tempStorage(1) = thisOctal%phi_i(Subcell)
+!             tempStorage(1) = thisOctal%phi_i(Subcell)
+             tempStorage(1) = thisOctal%phi_gas(Subcell)
              call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
           endif
        endif

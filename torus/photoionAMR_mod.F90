@@ -281,16 +281,16 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        endif
-    enddo
-
-    if (myrank /= 0) then
-       
-       call calculateEnergyFromTemperature(grid%octreeRoot)
-       
-       call calculateRhoE(grid%octreeRoot, direction)
-              
-    endif
- end if
+      enddo
+      
+      if (myrank /= 0) then
+         
+         call calculateEnergyFromTemperature(grid%octreeRoot)
+         
+         call calculateRhoE(grid%octreeRoot, direction)
+         
+      endif
+      end if
 
  if(grid%geometry == "hii_test") then
     tEnd = 3.14d13 !1x10^6 year
@@ -387,7 +387,7 @@ contains
           timeSinceLastRecomb = 0.d0
        else
           timeSinceLastRecomb = timeSinceLastRecomb + dt
-          call writeInfo("Skipping photoionoization loop",TRIVIAL)
+         call writeInfo("Skipping photoionoization loop",TRIVIAL)
 !          if(quickThermal) then
 !             nTimes = 3
 !             do i = 1, nTimes
@@ -418,7 +418,17 @@ contains
        
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+       call writeVtkFile(grid, mpiFilename, &
+            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+            "hydrovelocity","sourceCont   ","pressure     "/))
+
        if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+
+       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
+       call writeVtkFile(grid, mpiFilename, &
+            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+            "hydrovelocity","sourceCont   ","pressure     "/))
 
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
