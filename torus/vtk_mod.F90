@@ -2248,9 +2248,9 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      else
         nValueType = 4
         valueType(1) = "rho"
-        valueType(2) = "q_i"
-        valueType(3) = "rhow"
-        valueType(4) = "rhoe"
+        valueType(2) = "velocity"
+        valueType(3) = "temperature"
+        valueType(4) = "mpithread"
      endif
   endif
 

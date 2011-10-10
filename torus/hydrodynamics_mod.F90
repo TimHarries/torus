@@ -864,10 +864,12 @@ contains
 thisoctal%flux_i_plus_1(subcell) = flux
 
             !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient    
-             if(thisOctal%nDepth > nd .and. fluxinterp) then
+             if(thisOctal%nDepth > nd .and. fluxinterp .and. .not. thisOctal%ghostcell(subcell)) then
                 if(.not. thisOctal%oneD) then
                    fac = 0.d0
-!                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse=.true.)
+                   !Dont worry about fine to coarse - it isn't that useful
+!                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, &
+!                      fineToCoarse=.true.)
                    else
                    fac = 0.d0
                    end if
@@ -935,7 +937,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
       if(.not. fineToCoarse) then
          call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, &
          rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-
       else
          call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, direction, q, &
          rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
@@ -966,8 +967,9 @@ thisoctal%flux_i_plus_1(subcell) = flux
        do i = 1, iToT
  
           if(fineToCoarse) then
+             !Neighbour(subcell) should be twice the size of thisOctal(subcell) if fine to coarse is occuring
              locator = nVec + community(i) * &
-             (neighbouroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             (thisOctal%subcellsize+0.01d0*grid%halfsmallestsubcell)
           else
              locator = subcellCentre(thisOctal, subcell) + community(i) * &
              (thisOctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -980,8 +982,17 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    communityoctal => neighbouroctal
                 
                    call findsubcelllocal(locator, communityoctal, communitysubcell)
-                   call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, &
-                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+
+                   if(octalOnTHread(communityOctal, communitySubcell, myRank)) then
+                      call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, direction, q, &
+                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                   else
+                      call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, community(i), q, &
+                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                   end if
+
+                   ID(i) = 1
+
                 else
 !check we got the sufficiently far away cell
                    communityoctal => thisoctal
@@ -1100,19 +1111,22 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    
                    communityoctal => mirrorOctal
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
+      
                    call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
                    rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                   ID(i) = 2
 
                 else
                    nCornerBound = getNCornerBoundFromDirection(direction, i)
                    if(.not. associated(thisOctal%mpiCornerStorage)) then
-
                       print *, direction
                       print *, community
                       print *, "centre ", subcellCentre(thisOctal, subcell)
                       print *, "nCornerBound{",i,")", nCornerBound
-!                      print *, thisOctal%mpiCornerStorage
+                      call torus_abort("Corner storage not allocated when it should have been")
+                      
                    end if
+                   ID(i) = 3
                    px = thisOctal%mpiCornerStorage(subcell, nCornerBound, 1)
                    py = thisOctal%mpiCornerStorage(subcell, nCornerBound, 2)
                    pz = thisOctal%mpiCornerStorage(subcell, nCornerBound, 3)
@@ -1123,7 +1137,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
                 if(cVec%x /= nVec%x .or. cVec%z /= nVec%z) then
                    !Found the community subcell
-                  
+
 !                   !Get the values ...
 !                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
 !                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
@@ -1143,21 +1157,33 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    !Found the same cell
                    !Move along one more cell width
 
+                   !THAW - pretty sure that it is this section that will be the origin of any woes
+
                    if(.not. fineToCoarse) then
                       call torus_abort("fine to coarse mistaken for coarse to fine")
                    end if
 
                    locator = subcellcentre(mirrorOctal, mirrorSubcell) + community(i) * &
                    (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
-                   
-                   call findsubcelllocal(locator, mirrorOctal, mirrorSubcell) 
+                  
+                   faceOctal=>mirrorOctal
 
-                   !Probe across the mpi boundary and check if the corresponding cell is the community subcell
-                   locator = subcellcentre(mirrorOctal, mirrorSubcell) + direction * & 
-                   (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
+                   call findsubcelllocal(locator, faceOctal, faceSubcell) 
+
+!                   if(octalOnThread(faceOctal, faceSubcell, myRank)) then
+                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, direction, q, rho, &
+                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+!                   else
+!                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, community(i), q, rho, &
+!                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+!                   End if
+
+!Probe across the mpi boundary and check if the corresponding cell is the community subcell
+                   locator = VECTOR(px, py, pz) + direction * & 
+                      (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
 
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
-                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, &
+                   call getneighbourvalues(grid, faceoctal, facesubcell, communityoctal, communitysubcell, direction, q, rho, &
                    rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                    
                    cvec = VECTOR(px, py, pz)
@@ -1165,10 +1191,13 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    if(cVec%x /= nVec%x .or. cVec%z /= nVec%z) then
                     !Found the community subcell 
                     !Get the values ...  
-                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
-                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)  
-                      
+!                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
+!                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)  
+!                      
 !                      rVec = subcellcentre(communityoctal, communitysubcell) 
+
+
+                      ID(i) = 4
                       f(i) = flux
                       if(abs(direction%x) == 1.d0) then
                          xpos(i) = cVec%z
@@ -1177,6 +1206,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       else
                          call torus_abort("unrecognized direction!")
                       end if
+
                    else
                       print *, "-----------------------"
                       print *, "cvec", cvec, myrank
@@ -1196,6 +1226,20 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
        !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                 
         df = abs(m*dx)/2.d0
+
+        if(fineToCoarse) then
+           if(abs(df) >= 1.d-4) then
+              print *, "df ", df
+              print *, "subcellCentre(thisOctal, subcell)", subcellCentre(thisOctal, subcell)
+              print *, "rank ", myRank
+              print *, "ID ", ID
+              print *, "xpos(1) ", xpos(1)
+              print *, "xpos(2) ", xpos(2)
+              print *, "f(1) ", f(1)
+              print *, "f(2) ", f(2)
+           end if
+
+        end if
 
        rVec = subcellCentre(thisOctal, subcell)!                                                                                                                                                                                         
 
@@ -3390,15 +3434,16 @@ end subroutine sumFluxes
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
           call writeVtkFile(grid, "beforeselfgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " /))
-          call zeroPhiGas(grid%octreeRoot)
-          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-
-          call zeroSourcepotential(grid%octreeRoot)
-          if (globalnSource > 0) then
-             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
-          endif
-          call sumGasStarGravity(grid%octreeRoot)
+          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " /))
+          
+             call zeroPhiGas(grid%octreeRoot)
+             call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+             
+             call zeroSourcepotential(grid%octreeRoot)
+             if (globalnSource > 0) then
+                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+             endif
+             call sumGasStarGravity(grid%octreeRoot)
 
           call writeVtkFile(grid, "afterselfgrav.vtk", &
                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
