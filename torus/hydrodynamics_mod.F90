@@ -867,7 +867,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
              if(thisOctal%nDepth > nd .and. fluxinterp) then
                 if(.not. thisOctal%oneD) then
                    fac = 0.d0
-                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse=.true.)
+!                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, fineToCoarse=.true.)
                    else
                    fac = 0.d0
                    end if
