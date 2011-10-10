@@ -121,7 +121,7 @@ cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ > ${TORUS_TEST_DIR}/torus_dai
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
-mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk N.J.Mayne@exeter.ac.uk tjh202@exeter.ac.uk"
+mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk tjh202@exeter.ac.uk claire@astro.ex.ac.uk"
 for user in ${mail_to}; do
     /sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar ${user} < ${LOG_FILE}
 done
