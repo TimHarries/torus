@@ -3856,7 +3856,8 @@ CONTAINS
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          !Coarse to fine
          
-         if((rvec%x < 0.8d0) .and. (rvec%x > 0.2d0) .and. (rvec%z < 0.1d0) .and.  &
+!         if((rvec%x < 0.8d0) .and. (rvec%x > 0.2d0) .and. (rvec%z < 0.1d0) .and.  &
+         if((rvec%z < 0.1d0) .and.  &
             (rvec%z > -0.1d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
 !         if(thisOctal%twoD) then

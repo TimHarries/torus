@@ -2565,7 +2565,6 @@ end subroutine sumFluxes
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
    if (selfGravity .and. .not. dirichlet) then
-      print *, "doing periodics"
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
@@ -3451,13 +3450,23 @@ end subroutine sumFluxes
              call zeroPhiGas(grid%octreeRoot)
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
              
+             if(.not. dirichlet) then
+                call periodBoundary(grid, justGrav = .true.)
+                call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+!             if (myrankglobal == 1) call tune(6,"Periodic boundary")
+             end if
+
+             call writeVtkFile(grid, "midpointgrav.vtk", &
+               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+               "phigas       ","phi          "/))
+
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
                 call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
              endif
              call sumGasStarGravity(grid%octreeRoot)
 
-          call writeVtkFile(grid, "afterselfgrav.vtk", &
+             call writeVtkFile(grid, "afterselfgrav.vtk", &
                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
                "phigas       ","phi          "/))
           if (myrank == 1) write(*,*) "Done"
@@ -3840,7 +3849,7 @@ end subroutine sumFluxes
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
-       if (currentTime .ge. nextDumpTime) then
+       if (currentTime .ge. nextDumpTime .or. grid%geometry == "diagSod") then
           it = it + 1
           nextDumpTime = nextDumpTime + tDump
           grid%iDump = it
@@ -3975,7 +3984,8 @@ end subroutine sumFluxes
                 thisOctal%energy(subcell) = thisOctal%tempStorage(subcell,6)
                 thisOctal%pressure_i(subcell) = thisOctal%tempStorage(subcell,7)
              else
-                thisOctal%phi_i(subcell) = thisOctal%tempStorage(subcell,1)
+!                thisOctal%phi_i(subcell) = thisOctal%tempStorage(subcell,1)
+                thisOctal%phi_gas(subcell) = thisOctal%tempStorage(subcell,1)
              endif
           endif
        endif
@@ -4016,7 +4026,8 @@ end subroutine sumFluxes
                 thisOctal%energy(subcell) = thisOctal%tempStorage(subcell,6)
                 thisOctal%pressure_i(subcell) = thisOctal%tempStorage(subcell,7)
              else
-                thisOctal%phi_i(subcell) = thisOctal%tempStorage(subcell,1)
+!                thisOctal%phi_i(subcell) = thisOctal%tempStorage(subcell,1)
+                thisOctal%phi_gas(subcell) = thisOctal%tempStorage(subcell,1)
              endif
           endif
        enddo
@@ -7717,7 +7728,7 @@ end subroutine refineGridGeneric2
             !Thaw - trying to remove expansion by removing periodic gravity
             if(.not. dirichlet) then
                call periodBoundaryLevel(grid, iDepth, justGrav = .true.)
-               call imposeboundary(grid%octreeroot)
+!               call imposeboundary(grid%octreeroot)
                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
             end if

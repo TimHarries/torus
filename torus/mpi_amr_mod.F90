@@ -2256,8 +2256,6 @@ contains
                 loc(3) = thisOctal%gravboundaryPartner(subcell)%z
              endif
 
-
-
              tOctal => thisOctal
              tSubcell = 1
              if (.not.dojustGrav) then
