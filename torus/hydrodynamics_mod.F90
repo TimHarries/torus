@@ -877,8 +877,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
                 fac = 0.d0
              end if
 
-
-
              thisoctal%flux_i_plus_1(subcell) = flux + fac
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -3861,6 +3859,7 @@ end subroutine sumFluxes
                "phi          ", &
                "pressure     ", &
                "q_i          "/))
+               
           if (grid%geometry == "sedov") &
                call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
 

@@ -718,6 +718,7 @@ contains
       character(len=*) :: valueType
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime = .true.
+!      real :: u2, cs, eThermal
 
       kabs = 0.d0
       do subcell = 1, thisOctal%maxChildren
