@@ -55,9 +55,11 @@ contains
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
+    use inputs_mod, only : dirichlet
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
-         setupx, setupqx, computecouranttime, unrefinecells
+         setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
+         zerophigas, zerosourcepotential, applysourcepotential
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto
     use parallel_mod, only: torus_abort
@@ -228,30 +230,32 @@ contains
        endif
     end if
 
-    if(grid%currentTime == 0.d0 .and. .not. readGrid .and. .not. noPhoto) then
+    if(grid%currentTime == 0.d0 .and. .not. readGrid) then
        call ionizeGrid(grid%octreeRoot)
 
-       looplimitTime = deltaTForDump
-       do irefine = 1, 1
-          if (irefine == 1) then
-             call writeInfo("Calling photoionization loop",TRIVIAL)
-             call setupNeighbourPointers(grid, grid%octreeRoot)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                  looplimittime, .false.,.true.)
-             call writeInfo("Done",TRIVIAL)
-          else
-             call writeInfo("Calling photoionization loop",TRIVIAL)
-             call setupNeighbourPointers(grid, grid%octreeRoot)
-             call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
-                  loopLimitTime, looplimittime, .false., .true.)
-             call writeInfo("Done",TRIVIAL)
-          endif
-                    
-          call writeInfo("Dumping post-photoionization data", TRIVIAL)
-          call writeVtkFile(grid, "start.vtk", &
-               valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
 
-
+       if(.not. noPhoto) then
+          looplimitTime = deltaTForDump
+          do irefine = 1, 1
+             if (irefine == 1) then
+                call writeInfo("Calling photoionization loop",TRIVIAL)
+                call setupNeighbourPointers(grid, grid%octreeRoot)
+                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                looplimittime, .false.,.true.)
+                call writeInfo("Done",TRIVIAL)
+             else
+                call writeInfo("Calling photoionization loop",TRIVIAL)
+                call setupNeighbourPointers(grid, grid%octreeRoot)
+                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
+                loopLimitTime, looplimittime, .false., .true.)
+                call writeInfo("Done",TRIVIAL)
+             endif
+             
+             call writeInfo("Dumping post-photoionization data", TRIVIAL)
+             call writeVtkFile(grid, "start.vtk", &
+             valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
+          end do
+       end if
           
           if (myrank /= 0) then
              call calculateEnergyFromTemperature(grid%octreeRoot)
@@ -264,36 +268,68 @@ contains
              if (.not.grid%splitOverMpi) then
                 do
                    gridConverged = .true.
-                call setupEdges(grid%octreeRoot, grid)
-                !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
-                call unsetGhosts(grid%octreeRoot)
-                call setupGhostCells(grid%octreeRoot, grid)
-                if (gridConverged) exit
-             end do
-          else
-             call evenUpGridMPI(grid, .false., .true.)
+                   call setupEdges(grid%octreeRoot, grid)
+!             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+                   call unsetGhosts(grid%octreeRoot)
+                   call setupGhostCells(grid%octreeRoot, grid)
+                   if (gridConverged) exit
+                end do
+             else
+                call evenUpGridMPI(grid, .false., .true.)
+             endif
+             
+             call evenUpGridMPI(grid,.false.,.true.)      
+             call refineGridGeneric(grid, 5.d-3)
+             call writeInfo("Evening up grid", TRIVIAL)    
+             call evenUpGridMPI(grid, .false.,.true.)
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
+             !THAW - self gravity
+
+             if (doselfGrav) then
+                if (myrank == 1) call tune(6, "Self-Gravity")
+                if (myrank == 1) write(*,*) "Doing multigrid self gravity"
+                call writeVtkFile(grid, "beforeselfgrav.vtk", &
+                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+                ,"phi          " /))
+                
+                call zeroPhiGas(grid%octreeRoot)
+                call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+                
+                if(.not. dirichlet) then
+                   call periodBoundary(grid, justGrav = .true.)
+                   call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+                end if
+                                
+                call zeroSourcepotential(grid%octreeRoot)
+                if (globalnSource > 0) then
+                   call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+                endif
+                call sumGasStarGravity(grid%octreeRoot)
+                
+                call writeVtkFile(grid, "afterselfgrav.vtk", &
+                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+                "phigas       ","phi          "/))
+                if (myrank == 1) write(*,*) "Done"
+                if (myrank == 1) call tune(6, "Self-Gravity")
+              
+             endif
+             
           endif
-
-          call evenUpGridMPI(grid,.false.,.true.)      
-          call refineGridGeneric(grid, 5.d-3)
-          call writeInfo("Evening up grid", TRIVIAL)    
-          call evenUpGridMPI(grid, .false.,.true.)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
+!       enddo
+       
+       if (myrank /= 0) then
+          
+          call calculateEnergyFromTemperature(grid%octreeRoot)
+          
+          call calculateRhoE(grid%octreeRoot, direction)
+          
        endif
-      enddo
-      
-      if (myrank /= 0) then
-         
-         call calculateEnergyFromTemperature(grid%octreeRoot)
-         
-         call calculateRhoE(grid%octreeRoot, direction)
-         
-      endif
       end if
-
- if(grid%geometry == "hii_test") then
-    tEnd = 3.14d13 !1x10^6 year
+      
+      if(grid%geometry == "hii_test") then
+         tEnd = 3.14d13         !1x10^6 year
  else if(grid%geometry == "bonnor" .or. grid%geometry=="radcloud") then
     tEnd = 200.d0*3.14d10 !200kyr 
  end if

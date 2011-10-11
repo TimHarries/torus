@@ -135,12 +135,12 @@ contains
 
          
        case("turbulence")
+#ifdef MPI
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-#ifdef mpi
           call readGridTurbulence(grid)
-#endif
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+#endif
 
        case("cluster")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
@@ -883,7 +883,7 @@ contains
         end subroutine fillGridFogel
 
 
-#ifdef mpi
+#ifdef MPI
 !routine to read in the velocity field produced by the generating code of M. R. Bate.
       subroutine readgridTurbulence(grid)
       use mpi

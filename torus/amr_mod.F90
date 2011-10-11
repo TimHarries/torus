@@ -3858,7 +3858,7 @@ CONTAINS
          
 !         if((rvec%x < 0.8d0) .and. (rvec%x > 0.2d0) .and. (rvec%z < 0.1d0) .and.  &
          if((rvec%z < 0.1d0) .and.  &
-            (rvec%z > -0.1d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+            (rvec%z > -0.15d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
 !         if(thisOctal%twoD) then
 !            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
