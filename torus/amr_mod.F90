@@ -11408,7 +11408,7 @@ end function readparameterfrom2dmap
   end subroutine interpFromParent
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
-    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner
+    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner, rGapInner
     use inputs_mod, only : maxMemoryAvailable
     use memory_mod, only : humanreadablememory, globalMemoryFootprint
     type(gridtype) :: grid
@@ -11505,7 +11505,10 @@ end function readparameterfrom2dmap
 
 
                 if ((grid%geometry.eq."shakara").and.&
-                     ((rVec%x+thisOctal%subcellsize/2.d0) < rinner)) split = .false.
+                     ((sqrt(rVec%x**2+rVec%y**2)+thisOctal%subcellsize/2.d0) < rinner)) split = .false.
+
+                if ((grid%geometry.eq."shakara").and.&
+                     (sqrt(rVec%x**2+rVec%y**2) > 0.9*rGapInner)) split = .false.
 
 
 
@@ -11752,7 +11755,7 @@ end function readparameterfrom2dmap
           r = sqrt(cellCentre%x**2 + cellCentre%y**2)
           thisOctal%dustTypeFraction(subcell,:) = 0.d0
           thisOctal%fixedTemperature(subcell) = .true.
-          if ((r > rSublimation).and.(thisRho > thisOctal%rho(subcell))) then
+          if ((r > rSublimation).and.(thisRho >= thisOctal%rho(subcell))) then
              thisOctal%dustTypeFraction(subcell,1) = 1.d0
              thisOctal%fixedTemperature(subcell) = .false.
              thisOctal%inflow(subcell) = .true.

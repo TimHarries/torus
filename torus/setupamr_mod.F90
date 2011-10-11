@@ -343,7 +343,8 @@ contains
              call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline  ", &
                                                                      "chiline  ", &
                                                                      "inflow   ", &
-                                                                     "cornervel"/))
+                                                                     "cornervel", &
+                                                                     "fixedtemp"/))
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)

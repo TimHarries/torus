@@ -243,7 +243,10 @@ module source_mod
                           (fourPi * (source(i)%radius*1.d10)**2)
                   enddo
                else
-                  call writeFatal("lambdaMono needs to be provided in call to randomSource")
+                  do i = 1, nSource
+                     prob(i) = sourceLuminosityMonochromatic(source(i), dble(lamArray(1))) * &
+                          (fourPi * (source(i)%radius*1.d10)**2)
+                  enddo
                end if
             endif
             prob(1:nSource) = prob(1:nSource)/SUM(prob(1:nSource))
