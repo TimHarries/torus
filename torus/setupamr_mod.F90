@@ -882,7 +882,7 @@ contains
 
 !routine to read in the velocity field produced by the generating code of M. R. Bate.
       subroutine readgridTurbulence(grid)
-      use mpi
+!      use mpi
       use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
       type(GRIDTYPE) :: grid
       type(OCTAL), pointer :: thisOctal
@@ -892,10 +892,10 @@ contains
       real(double), allocatable :: x(:), y(:), z(:)
       real(double) ::  dx, range,  max, min
       type(VECTOR) :: locator, cen, minusBound
-      integer :: myRank
+!      integer :: myRank
 
 
-      call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+ !     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
       if(readTurb) then
 
          allocate(u(nturblines**3))
@@ -989,7 +989,7 @@ contains
            dble(y(i)-1)*dx, minusBound%z + dble(z(i)-1)*dx)
           
            call findSubcellLocal(locator, thisOctal, subcell)
-           if(octalOnThread(thisOctal, subcell, myRank)) then
+           if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
                      
               thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
                  thisOctal%energy(subcell))

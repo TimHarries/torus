@@ -3447,7 +3447,8 @@ end subroutine sumFluxes
           if (myrank == 1) call tune(6, "Self-Gravity")
           if (myrank == 1) write(*,*) "Doing multigrid self gravity"
           call writeVtkFile(grid, "beforeselfgrav.vtk", &
-          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " /))
+          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+            ,"phi          " /))
           
              call zeroPhiGas(grid%octreeRoot)
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
