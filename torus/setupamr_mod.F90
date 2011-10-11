@@ -1,6 +1,6 @@
 module setupamr_mod
 
-  use cmfgen_class
+  Use cmfgen_class
   use stateq_mod
   use amr_mod
   use vtk_mod
@@ -882,17 +882,17 @@ contains
 
 !routine to read in the velocity field produced by the generating code of M. R. Bate.
       subroutine readgridTurbulence(grid)
-      use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
       use mpi
+      use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
       type(GRIDTYPE) :: grid
       type(OCTAL), pointer :: thisOctal
       integer :: subcell
-      integer :: i
+      integer :: i, ierr
       real(double), allocatable :: u(:), v(:), w(:)
       real(double), allocatable :: x(:), y(:), z(:)
       real(double) ::  dx, range,  max, min
       type(VECTOR) :: locator, cen, minusBound
-      integer :: myRank, ierr
+      integer :: myRank
 
 
       call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -990,8 +990,7 @@ contains
           
            call findSubcellLocal(locator, thisOctal, subcell)
            if(octalOnThread(thisOctal, subcell, myRank)) then
-           
-              
+                     
               thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
                  thisOctal%energy(subcell))
               thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
