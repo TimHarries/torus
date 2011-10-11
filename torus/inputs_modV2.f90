@@ -158,7 +158,7 @@ contains
          "Number of photons in image","(a,i8,a)", 0, ok, .false.)
 
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 8, ok, .false.)
+         "Number of photons in image","(a,i8,a)", 10, ok, .false.)
 
     if (nBodyPhysics) then
        call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &

@@ -1,7 +1,7 @@
 #ifdef HYDRO
 ! hydrodynamics module added by tjh on 18th june 2007
 
-Module hydrodynamics_mod
+module hydrodynamics_mod
 #ifdef MPI
 
   use inputs_mod
@@ -2512,7 +2512,6 @@ end subroutine sumFluxes
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     end if
     call pressureforceu(grid%octreeroot, dt)
-!
     call imposeboundary(grid%octreeroot)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
@@ -3051,12 +3050,19 @@ end subroutine sumFluxes
   end subroutine sumGasStarGravity
 
   function soundSpeed(thisOctal, subcell) result (cs)
+    use mpi
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: cs, rhoPhys
     real(double) :: u2, eKinetic, eTot, eThermal
     logical, save :: firstTime = .true.
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
+    integer :: myRank, ierr
+
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+    if(octalOnThread(thisOctal, subcell,myRank)) then
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic 
           if (thisOctal%threed) then
@@ -3104,7 +3110,7 @@ end subroutine sumFluxes
           write(*,*) "Unknown equation of state passed to sound speed ", thisOctal%iEquationofState(subcell)
           
     end select
-
+    end if
 
   end function soundSpeed
 

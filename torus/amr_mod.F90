@@ -324,9 +324,6 @@ CONTAINS
     CASE("gaussian")
        CALL assign_gaussian(thisOctal,subcell)
 
-    CASE("radHydro")
-       CALL assign_radHydro(thisOctal, subcell)
-
     CASE("hii_test")
        CALL assign_hii_test(thisOctal,subcell)
 
@@ -3856,9 +3853,9 @@ CONTAINS
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          !Coarse to fine
          
-!         if((rvec%x < 0.8d0) .and. (rvec%x > 0.2d0) .and. (rvec%z < 0.1d0) .and.  &
-         if((rvec%z < 0.1d0) .and.  &
-            (rvec%z > -0.15d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+         if((rvec%x < 0.6d0) .and. (rvec%x > 0.4d0) .and. (rvec%z < 0.4d0) .and.  &
+!         if((rvec%z < 0.1d0) .and.  &
+            (rvec%z > 0.2d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
 !         if(thisOctal%twoD) then
 !            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
@@ -3909,12 +3906,8 @@ CONTAINS
       if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-!Thaw
    case("gaussian")
       if (thisOctal%nDepth < maxDepthAMR) split = .true.
-
-   case("radHydro")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.      
 
    case("sedov")
       rInner = 0.02d0
@@ -8569,47 +8562,6 @@ end function readparameterfrom2dmap
     thisOctal%iEquationOfState(subcell) = 0
 
   end subroutine assign_gaussian
-
-!Thaw 1D radiation hydrodynamics test
-  subroutine assign_radHydro(thisOctal,subcell)
-    use inputs_mod, only : xplusbound, xminusbound
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    INTEGER, INTENT(IN) :: subcell
-    type(VECTOR) :: rVec
-    real(double) :: x, gd, z, eThermal
-
-    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-
-    x = 0.d0
-    z = 0.d0
-    xplusbound = 2
-    xminusbound = 2
-    rVec = subcellCentre(thisOctal, subcell)
-    x = rVec%x
-    z = rVec%z
-    gd = 0.5d0
-    thisOctal%rho(subcell) = 10.d0 * mHydrogen
-    thisOctal%boundaryCondition(subcell) = 1
-    thisOctal%gamma(subcell) = 3.d0/5.d0
-    thisOctal%etaCont(subcell) = 0.
-    thisOctal%inFlow(subcell) = .true.
-    thisOctal%velocity = VECTOR(0.,0.,0.)
-    thisOctal%biasCont3D = 1.
-    thisOctal%etaLine = 1.e-30
-
-    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-    thisOctal%phi_i(subcell) = 0.d0
-    thisOctal%iEquationOfState(subcell) = 1
-
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%ionFrac(subcell,1) = 1.
-    thisOctal%ionFrac(subcell,2) = 1.e-10
-
-  end subroutine assign_radHydro
-
 
   subroutine assign_hii_test(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
