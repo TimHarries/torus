@@ -992,9 +992,12 @@ contains
            if(octalOnThread(thisOctal, subcell, myRank)) then
            
               
-              thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
-              thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell))
-              thisOctal%rhow(subcell) = thisOctal%rho(subcell)*(w(i)/max)*10.d0*sqrt(thisOCtal%rho(subcell)*thisOctal%energy(subcell))
+              thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
+                 thisOctal%energy(subcell))
+              thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
+                 thisOctal%energy(subcell))
+              thisOctal%rhow(subcell) = thisOctal%rho(subcell)*(w(i)/max)*10.d0*sqrt(thisOCtal%rho(subcell)* &
+                 thisOctal%energy(subcell))
               thisOctal%velocity(subcell) = VECTOR((u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
               (v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
               (w(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)))
