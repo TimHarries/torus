@@ -14,12 +14,12 @@ contains
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec
     
-    r = modulus(rVec)
+    r = real(modulus(rVec))
     if (r < grid%rCore) then
        rhoOut = 1.e-30
     else
        v = v0 + (vTerm - v0) * (1. - grid%rCore/r)**beta
-       rhoOut = mdot / (fourPi * (r*1.e10)**2 * v) * returnSpiralFactor(rVec, 10.*grid%rCore/real(twoPi))
+       rhoOut = real(mdot / (fourPi * (r*1.e10)**2 * v) * returnSpiralFactor(rVec, 10.*grid%rCore/real(twoPi)))
     endif
 
   end function spiralWindDensity
@@ -32,18 +32,18 @@ contains
     type(VECTOR) :: rVec
     fac  = 1.
 
-    r = modulus(rVec)
-    theta = atan2(rVec%y, rVec%x)
-    if (theta < 0.) theta = theta + twoPi
-    mu = rVec%z/r
+    r = real(modulus(rVec))
+    theta = real(atan2(rVec%y, rVec%x))
+    if (theta < 0.) theta = theta + real(twoPi)
+    mu = real(rVec%z/r)
     if (abs(mu) < 0.5) then
        n = 0
        rSpiral2 = 0.
        do while (rSpiral2 < r)
           n = n + 1
-          rSpiral2 = alpha*(theta+(real(n)*twoPi))
+          rSpiral2 = real(alpha*(theta+(real(n)*twoPi)))
        enddo
-       rSpiral1= alpha*(theta+(real(n-1)*twoPi))
+       rSpiral1= real(alpha*(theta+(real(n-1)*twoPi)))
        x = (r - rSpiral1)/(rSpiral2 - rSpiral1)
        
        if (((x > 0.).and.(x < 0.1)).or.(x > 0.9)) then

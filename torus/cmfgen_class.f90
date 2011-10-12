@@ -386,7 +386,7 @@ contains
     if (r<cmfgen_opacity%Rmin) then ! inside of the star
        out = 1000.0d0
     else
-       out = loginterp_dble(cmfgen_opacity%T, cmfgen_opacity%nd, cmfgen_opacity%R, r)        
+       out = real(loginterp_dble(cmfgen_opacity%T, cmfgen_opacity%nd, cmfgen_opacity%R, r))
     end if
 
   END FUNCTION cmfgen_temperature

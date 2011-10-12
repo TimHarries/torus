@@ -55,7 +55,7 @@ contains
     real(oct) :: x
 
     x = modulus(thisGaussian%centre - position)
-    eval = thisGaussian%amplitude * exp(-x**2 / (2.*thisGaussian%sigma**2))
+    eval = real(thisGaussian%amplitude * exp(-x**2 / (2.*thisGaussian%sigma**2)))
   end function eval
 
   subroutine createDiscGaussians(ng, gArray)
@@ -78,7 +78,7 @@ contains
 
     rProb(1) = 0.
     do i = 2, 1000
-       rProb(i) = massWeight(i) * (rAxis(i)/rAxis(1))**(betaDisc-alphaDisc)*(twoPi*rAxis(i))*(rAxis(i)-rAxis(i-1))
+       rProb(i) = real(massWeight(i) * (rAxis(i)/rAxis(1))**(betaDisc-alphaDisc)*(twoPi*rAxis(i))*(rAxis(i)-rAxis(i-1)))
     enddo
     do i = 2, 1000
        rProb(i) = rProb(i) + rProb(i-1)
@@ -96,10 +96,10 @@ contains
        r = rAxis(n)+(r1-rProb(n))/(rProb(n+1)-rProb(n))*(rAxis(n+1)-rAxis(n))
        clumpMass = massWeight(n) + (r1-rProb(n))/(rProb(n+1)-rProb(n))*(massWeight(n+1)-massWeight(n))
        clumpMass = 1./clumpMass
-       h = height * (r / (100.*autocm/1.e10))**betaDisc
+       h = real(height * (r / (100.*autocm/1.e10))**betaDisc)
        z = gasdev() * h
        call randomNumberGenerator(getReal=ang)
-       ang = ang * twoPi
+       ang = ang * real(twoPi)
        position%x = r * cos(ang)
        position%y = r * sin(ang)
        position%z = z * 1.e-6

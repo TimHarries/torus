@@ -340,7 +340,7 @@ contains
     call spherical_coordinates(point, r,    theta,     phi)
     !                                 [R*]   [rad]     [rad]
 
-    out = cir3d_data%Twind  ! for now is just isothermal wind!
+    out = real(cir3d_data%Twind)  ! for now is just isothermal wind!
 
   END FUNCTION Luc_cir3d_temperature
 

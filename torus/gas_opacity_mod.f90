@@ -133,7 +133,7 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
   
 
 
-  vTherm = sqrt(3.*kerg*temperature/(mu*mHydrogen))
+  vTherm = real(sqrt(3.*kerg*temperature/(mu*mHydrogen)))
   vTherm = sqrt(vTherm**2 + (2.e5)**2)
 
   partFunc = 0.
@@ -144,15 +144,15 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
   kapArray(1:nLam)  = 0.
 
   do j = 1, nLam
-     lam1 = (1.-10.*vTherm/cSpeed)*lamArray(j)
-     lam2 = (1.+10.*vTherm/cSpeed)*lamArray(j)
+     lam1 = real((1.-10.*vTherm/cSpeed)*lamArray(j))
+     lam2 = real((1.+10.*vTherm/cSpeed)*lamArray(j))
      call locate(lambda, nLines, lam1, i1)
      call locate(lambda, nLines, lam2, i2)
      do i = i1,i2
-        dv = cSpeed * (lambda(i)-lamArray(j))/lamArray(j)
-        gaussFac = 1./(vTherm*sqrt(2.*pi))*exp(-(dv**2)/(2.*vTherm**2))
+        dv = real(cSpeed * (lambda(i)-lamArray(j))/lamArray(j))
+        gaussFac = real(1./(vTherm*sqrt(2.*pi))*exp(-(dv**2)/(2.*vTherm**2)))
         if (partfunc /= 0.) then
-           fac =  exp(-dble(excitation(i)/(kEv * temperature))) / partFunc * dble(g(i))
+           fac =  real(exp(-dble(excitation(i)/(kEv * temperature))) / partFunc * dble(g(i)))
         else
            fac = 0.
         endif
@@ -352,7 +352,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
      if (firstTime) then
         allocate(rayScatter(1:grid%nLambda))
         do i = 1, grid%nLambda
-           rayScatter(i) = nhi * atomhydrogenRayXsection(dble(grid%lamArray(i)))*1.d10
+           rayScatter(i) = real(nhi * atomhydrogenRayXsection(dble(grid%lamArray(i)))*1.d10)
         enddo
         
         firstTime = .false.
@@ -834,10 +834,10 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
      CONGF=.01502*TABLOG(IGFLOG) * XISO(ISO)
 !     write(*,*) wlvac,congf,elo
 
-     lambda(i) = wlvac*10. ! nm to angstroms
-     gf(i) = congf
-     wavenumber(i) = elo
-     excitation(i) = elo
+     lambda(i) = real(wlvac*10.) ! nm to angstroms
+     gf(i) = real(congf)
+     wavenumber(i) = real(elo)
+     excitation(i) = real(elo)
   enddo
   close(20)
   open(20,file="/h/th/molecules/eh2opartridge.asc",status="old", form="formatted")

@@ -24,7 +24,7 @@ contains
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
     integer(bigInt), save :: iSeed = 0 
     integer(bigInt) :: iseed_syncval
-    real :: r
+    real(double) :: r
     integer :: i, j
 
     !$OMP THREADPRIVATE (iSeed)

@@ -376,27 +376,27 @@ contains
     if (r >= jets%Rdisk_min .and. r < jets%Rmax &
        .and. abs(cos_theta) > cos_theta_o_jets) then
 
-       out = rho_jets + rho_disk
+       out = real(rho_jets + rho_disk)
 
     elseif (r >= jets%Rdisk_min .and. r < jets%Rmax &
          .and. abs(cos_theta) > cos_theta_o_disk .and. &
          abs(cos_theta) < cos_theta_o_jets ) then
 
-       out = rho_disk
+       out = real(rho_disk)
 
     else if (r >= jets%Rmin .and.  r < jets%Rdisk_min) then
 
        ! Spherical wind up to the disk radius
-       out = rho_disk
+       out = real(rho_disk)
 
     elseif (abs(pointVec%z)<jets%h_disk/2.0 .and.  &
          (r>jets%Rdisk_min .and. r<jets%Rdisk_max)) then
 
-       out = jets%rho_scale*rho_max_disk_wind
+       out = real(jets%rho_scale*rho_max_disk_wind)
 
     else
        
-       out = rho_min_disk_wind
+       out = real(rho_min_disk_wind)
 
     end if
                    
@@ -507,7 +507,7 @@ contains
     
     Vr = Vinf * (1.0d0 - Rp)**beta  + jets%Vo  ! [km/s]
 
-    out = Vr ! [km/s]
+    out = real(Vr) ! [km/s]
 
     
   END FUNCTION JetsVelocity
@@ -573,7 +573,7 @@ contains
 
     starPosn = grid%starPos1
     pointVec = (point - starPosn)
-    r = modulus( pointVec )
+    r = real(modulus( pointVec ))
 
 
 
@@ -602,7 +602,7 @@ contains
 
 
     if (pointVec%z /= 0.0d0)then
-       cos_theta = pointVec%z/r
+       cos_theta = real(pointVec%z/r)
     else
        cos_theta = 0.0d0
     end if
@@ -630,7 +630,7 @@ contains
 
     !
     Rp = jets%Rmin/r          
-    out = Tcore*(Rp**e6) ! [10^4 K]                      
+    out = real(Tcore*(Rp**e6)) ! [10^4 K]                      
     
 
   END FUNCTION JetsTemperature
@@ -664,7 +664,7 @@ contains
 
     point = subcellCentre(thisOctal,subcell)
     pointVec = (point - starPosn)
-    r = modulus( pointVec ) 
+    r = real(modulus( pointVec ) )
 
                       
     ! test if the point lies within the star
@@ -683,7 +683,7 @@ contains
 !    thisOctal%inFlow(subcell) = .TRUE.       
 !!===========================================================   
 
-    Vr = JetsVelocity(pointVec, grid)/ dble(cSpeed/1.0e5)
+    Vr = real(JetsVelocity(pointVec, grid)/ dble(cSpeed/1.0e5))
     ! in [c]
     
     vp = pointVec*real((Vr/r),kind=oct)  ! vector operation done here
@@ -843,11 +843,11 @@ contains
 
     if (rval <= jets%Rmin) then
        rval = jets%Rmin
-       out =  ( jets%Rmin/(rval*rval) ) * Vinf * beta *(r.dot.n)/rval/nval
+       out =  real(( jets%Rmin/(rval*rval) ) * Vinf * beta *(r.dot.n)/rval/nval)
     else
-       out =  ( jets%Rmin/(rval*rval) ) * Vinf * beta &
+       out =  real(( jets%Rmin/(rval*rval) ) * Vinf * beta &
             * (1.0-jets%Rmin/rval)**(beta-1.0)  &
-            * (r.dot.n)/rval/nval
+            * (r.dot.n)/rval/nval)
     end if
 
     out = abs(out)      ! The units of the output should be sec^-1.
@@ -945,7 +945,7 @@ contains
     r = rr/rmin          ! dimensionless radius
     if ( r >= rmin*0.5_oc  .and. r < rmax ) then
 !    if ( r >= rmin  .and. r < rmax ) then
-       out = rho_0/(r**2)
+       out = real(rho_0/(r**2))
     else
        out = (rho_0/ (rmax**2))*1.0e-9
     end if

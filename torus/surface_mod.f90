@@ -178,7 +178,7 @@ end subroutine readSurface
     ok = .true.
 
     surface%centre = centre
-    surface%radius = radius
+    surface%radius = real(radius)
     surface%nElements = 0
     surface%nTheta = ntheta
 
@@ -280,7 +280,7 @@ end subroutine readSurface
     ok = .true.
 
     surface%centre = centre
-    surface%radius = radius
+    surface%radius = real(radius)
     surface%nElements = 0
     surface%nTheta = ntheta
 
@@ -350,12 +350,12 @@ end subroutine readSurface
 !    td = (-1.d0) * direction
 
     td = direction
-    theta = acos(td%z/modulus(td))
-    phi = atan2(td%y,td%x)
-    if (phi < 0.d0) phi = phi + twoPi
+    theta = real(acos(td%z/modulus(td)))
+    phi = real(atan2(td%y,td%x))
+    if (phi < 0.d0) phi = phi + real(twoPi)
 
-    itheta = real(surface%ntheta)*theta/pi + 1
-    iphi =  real(surface%ntheta)*phi/twopi + 1
+    itheta = int(real(surface%ntheta)*theta/pi) + 1
+    iphi =  int(real(surface%ntheta)*phi/twopi) + 1
 
     iPhi = min(surface%nTheta, iphi)
     iTheta = min(surface%nTheta, iTheta)
@@ -403,10 +403,10 @@ end subroutine readSurface
     surface%nElements = surface%nElements + 1
     surface%element(surface%nElements)%norm = rVec
     surface%element(surface%nElements)%position = radius * rVec
-    surface%element(surface%nElements)%area = area
-    surface%element(surface%nElements)%dTheta = dTheta
-    surface%element(surface%nElements)%dPhi = dphi
-    surface%element(surface%nElements)%temperature = teff
+    surface%element(surface%nElements)%area = real(area)
+    surface%element(surface%nElements)%dTheta = real(dTheta)
+    surface%element(surface%nElements)%dPhi = real(dphi)
+    surface%element(surface%nElements)%temperature = real(teff)
   end subroutine addElement
 
   subroutine testSurface(surface)
@@ -531,7 +531,7 @@ end subroutine readSurface
         surface%element(iElement)%hotFlux(:) = &
            pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed/surface%nuArray(:))) !* &
 !                  ((1.e20*surface%element(iElement)%area)/(fourPi*TTauriRstar**2))
-        surface%element(iElement)%temperature = Taccretion
+        surface%element(iElement)%temperature = real(Taccretion)
       else 
         surface%element(iElement)%hot = .false.
       end if
@@ -559,9 +559,9 @@ end subroutine readSurface
 
     do i = 1, SIZE(surface%element)
        inRing = .false.
-       cosTheta = abs((surface%element(i)%position%z)/(modulus(surface%element(i)%position)))
-       phi = atan2(surface%element(i)%position%y, surface%element(i)%position%x)
-       if (phi < 0.) phi = phi+twoPi
+       cosTheta = real(abs((surface%element(i)%position%z)/(modulus(surface%element(i)%position))))
+       phi = real(atan2(surface%element(i)%position%y, surface%element(i)%position%x))
+       if (phi < 0.) phi = real(phi+twoPi)
        if ((cosTheta > cosTheta2).and.(cosTheta < cosTheta1)) then
           if ( ((phi > phiStart1).and.(phi < phiEnd1)).or.((phi > phiStart2).and.(phi < phiEnd2))) then
              inRing = .true.
@@ -722,7 +722,7 @@ end subroutine readSurface
           surface%element(iElement)%hotFlux(:) = &
                pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:))) !* &
           !                  ((1.e20*surface%element(iElement)%area)/(fourPi*TTauriRstar**2))
-         surface%element(iElement)%temperature = T
+         surface%element(iElement)%temperature = real(T)
          Tmin = MIN(Tmin, T)
          Tmax = MAX(Tmax, T)
          Tsum = Tsum + T
@@ -806,9 +806,9 @@ end subroutine readSurface
                                surface%element(i)%hotFlux(lineIndex),&
                                surface%element(i)%hotFlux(lineIndex+1))
         fAccretion = fAccretion + (accretionFlux * surface%element(i)%area)                 
-        surface%element(i)%prob = (accretionFlux + coreContFlux) * surface%element(i)%area
+        surface%element(i)%prob = real((accretionFlux + coreContFlux) * surface%element(i)%area)
       else
-        surface%element(i)%prob = coreContFlux * surface%element(i)%area
+        surface%element(i)%prob = real(coreContFlux * surface%element(i)%area)
       end if
     end do
     !! have to average fAccretion over stellar surface to get it in same units as coreContFlux 
@@ -860,15 +860,15 @@ end subroutine readSurface
           photoOmega = photoOmega + geometricalFactor
           if (surface%element(i)%hot) then
              photoFlux = photoFlux + &
-                         geometricalFactor * &
-                         (surface%element(i)%hotFlux + surface%hNuArray)
+                         real(geometricalFactor * &
+                         (surface%element(i)%hotFlux + surface%hNuArray))
           else
-             photoFlux = photoFlux + geometricalFactor * surface%hNuArray
+             photoFlux = photoFlux + real(geometricalFactor * surface%hNuArray)
           endif
        endif
     enddo
     if (photoOmega>0) then
-       photoFlux = photoFlux / photoOmega
+       photoFlux = real(photoFlux / photoOmega)
     else
        ! the point must be below the surafce!!
        photoFlux = 1.0e-20
@@ -894,9 +894,9 @@ end subroutine readSurface
        cosTheta = rVec .dot. surface%element(i)%norm
        if (cosTheta < 0.) then
           if (surface%element(i)%hot) then
-             hotOmega = hotOmega + abs(cosTheta)*surface%element(i)%area / dist**2
+             hotOmega = real(hotOmega + abs(cosTheta)*surface%element(i)%area / dist**2)
           else
-             photoOmega = photoOmega + abs(cosTheta)*surface%element(i)%area / dist**2
+             photoOmega = real(photoOmega + abs(cosTheta)*surface%element(i)%area / dist**2)
           endif
        endif
     enddo
@@ -919,7 +919,7 @@ end subroutine readSurface
     integer :: i 
     real :: ip_max, ip
     real :: mp
-    real :: imax
+    integer :: imax
     
     
     ! now we go through all the surface elements.
@@ -927,13 +927,13 @@ end subroutine readSurface
     ! What you really need is a better data structure.
     ip_max = -1.0e20
     imax =1 
-    mp = modulus(position)
+    mp = real(modulus(position))
     do i = 1, thisSurface%nElements
        ! finding the inner product of the surface position vector 
        ! and the input position vector.
-       ip = position .dot. thisSurface%element(i)%position
+       ip = real(position .dot. thisSurface%element(i)%position)
        ! normalize it just in case..
-       ip = ip / mp / MODULUS(thisSurface%element(i)%position)
+       ip = real(ip / mp / MODULUS(thisSurface%element(i)%position))
 
        if (ip > ip_max) then
           ip_max = ip

@@ -363,7 +363,7 @@ contains
 
        call getDouble("CMFGEN_Rmin", CMFGEN_Rmin, 1.d0, cLine, fLine, nLines, &
             "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
-       rcore = CMFGEN_Rmin      ! [10^10cm]
+       rcore = real(CMFGEN_Rmin)      ! [10^10cm]
 
 
        call getDouble("CMFGEN_Rmax", CMFGEN_Rmax, 1.d0, cLine, fLine, nLines, &
@@ -499,10 +499,10 @@ contains
             "Curtains 2: Phi end: (degrees): ","(a,f7.1,1x,a)", 330.0, ok, .false.)
 
        !  converting the angles in radians  (RK) 
-       curtainsPhi1s =    curtainsPhi1s * (pi/180.0) 
-       curtainsPhi1e =    curtainsPhi1e * (pi/180.0) 
-       curtainsPhi2s =    curtainsPhi2s * (pi/180.0) 
-       curtainsPhi2e =    curtainsPhi2e * (pi/180.0) 
+       curtainsPhi1s =    curtainsPhi1s * real(pi/180.0) 
+       curtainsPhi1e =    curtainsPhi1e * real(pi/180.0) 
+       curtainsPhi2s =    curtainsPhi2s * real(pi/180.0) 
+       curtainsPhi2e =    curtainsPhi2e * real(pi/180.0) 
 
 
        ! The following two are used for "constantcurtans" geometry  (RK)
@@ -511,7 +511,7 @@ contains
        call getReal("curtain_width", curtain_width, 1., cLine, fLine, nLines, &
             "Width of each curtain (degree) : ","(a,f7.1,1x,a)", 120.0, ok, .false.)
        ! converting the curtain width from degrees to radians.
-       curtain_width =  curtain_width*Pi/180.0
+       curtain_width =  curtain_width*real(Pi/180.0)
 
 
        call getString("mdottype", mDotType, cLine, fLine, nLines, &
@@ -871,9 +871,9 @@ contains
 !       mCore = mCore * mSol
 !       mDisc = mDisc * mSol
 
-       rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
-            * (rInner*1.d10)**alphaDisc * &
-            (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+       rho0  = real(mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/real(100.d0*autocm)**betaDisc  &
+            * (rInner*1.e10)**alphaDisc * &
+            (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) ))
 
            
     end select
@@ -1910,22 +1910,22 @@ contains
           write(message,'(a,f6.2,a,f6.2,a)') &
                "SED inclination range is from ", firstInclination, " to ", lastInclination, " degrees"
           call writeInfo(message,TRIVIAL)
-          firstInclination = firstInclination * degToRad
-          lastInclination = lastInclination * degToRad
+          firstInclination = firstInclination * real(degToRad)
+          lastInclination = lastInclination * real(degToRad)
        else
           allocate(inclinations(nInclination))
           call getRealArray("inclinations", inclinations, 1.0, cLine, fLine, nLines, &
                "Inclinations (deg): ",90., ok, .false.)
-          inclinations(:) = inclinations(:) * degToRad
+          inclinations(:) = inclinations(:) * real(degToRad)
        end if
     else
        call getReal("firstinc", firstInclination, 1.0, cLine, fLine, nLines, &
             "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
-       firstInclination = firstInclination * degToRad
+       firstInclination = firstInclination * real(degToRad)
        if (nInclination > 1) &
             call getReal("lastinc", lastInclination, 1.0, cLine, fLine, nLines, &
             "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
-       lastInclination = lastInclination * degToRad
+       lastInclination = lastInclination * real(degToRad)
     end if
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &

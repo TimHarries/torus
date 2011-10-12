@@ -461,9 +461,9 @@ contains
     elseif ( (this%Rs < r .and. r < this%Rmax*1.05d0) .and. r < Rdisc) then 
        ! in funnel flow
        if (this%isothermal) then
-          out = this%T_flow  ! for now is just isothermal flow.
+          out = real(this%T_flow)  ! for now is just isothermal flow.
        else
-          out = interp_temperature(this%romanova_output, r, theta, phi)  ! in [g/cm^3] 
+          out = real(interp_temperature(this%romanova_output, r, theta, phi))  ! in [g/cm^3] 
        end if
     else 
        ! in the disc 

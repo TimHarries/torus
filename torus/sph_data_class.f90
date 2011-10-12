@@ -479,7 +479,7 @@ contains
           rhon = junkArray(irho)
        end if
        h = junkArray(ih)
-       itype = junkArray(iitype)
+       itype = int(junkArray(iitype))
        gaspartmass = junkArray(imass)
 
        icount = icount + 1
@@ -1601,7 +1601,7 @@ contains
        endif
        nullify(previousOctal)
        firsttime = .true.
-       return
+       goto 666
     endif
               
     posVec = point
@@ -1761,7 +1761,7 @@ contains
           Clusterparameter = VECTOR(1d-99, 0.d0, 0.d0) ! CO density
        endif
     endif
-
+666 continue
   End function Clusterparameter
 
   subroutine findnearestparticles(pos, partcount, r, shouldreuse)
@@ -1929,7 +1929,6 @@ contains
           endif
        endif
     enddo
-    
   end subroutine findnearestparticles
 
   Subroutine doWeights(sumweight)

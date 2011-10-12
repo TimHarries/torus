@@ -217,10 +217,10 @@ contains
     real,intent(in) :: wavelength
     real            :: nu, fac
 
-    nu = cSpeed / (wavelength*angstromToCm)
-    fac= log(2.)+log(hCgs) + 3.*log(nu) - 2.*log(cSpeed)
+    nu = real(cSpeed / (wavelength*angstromToCm))
+    fac= real(log(2.)+log(hCgs) + 3.*log(nu) - 2.*log(cSpeed))
     if (hCgs*nu/(kerg*temperature) < 33.) then
-       blackBody = exp(fac)/(exp(hCgs*nu/(kErg*temperature))-1.)
+       blackBody = real(exp(fac)/(exp(hCgs*nu/(kErg*temperature))-1.))
     else
        blackBody = 0.
     endif
@@ -283,7 +283,7 @@ contains
        X=X+ONE
        SER=SER+COF(J)/X
     enddo
-    GAMMLN=TMP+LOG(STP*SER)
+    GAMMLN=real(TMP+LOG(STP*SER))
     RETURN
   END FUNCTION GAMMLN
 
@@ -309,7 +309,7 @@ contains
        stop
     endif
     GR=(LY2-LY1)/(LX2-LX1)
-    ANS=LY1+GR*(LX-LX1)
+    ANS=real(LY1+GR*(LX-LX1))
     LOGINT_single=EXP(ANS)
   END FUNCTION LOGINT_SINGLE
 
@@ -336,7 +336,7 @@ contains
     endif
     GR=(LY2-LY1)/(LX2-LX1)
     ANS=LY1+GR*(LX-LX1)
-    LOGINT_dble=EXP(ANS)
+    LOGINT_dble=real(EXP(ANS))
   END FUNCTION LOGINT_DBLE
 
   SUBROUTINE dswap(a,b)
@@ -709,8 +709,8 @@ contains
           ns=i
           dif=dift
        endif
-       c(i)=ya(i)
-       d(i)=ya(i)
+       c(i)=real(ya(i))
+       d(i)=real(ya(i))
     end do
     y=ya(ns)
     ns=ns-1
@@ -1290,7 +1290,7 @@ contains
     pure real function gauss(sigma, dx)
       real, intent(in) :: sigma, dx
       real :: fac
-      fac = 1./(sigma*sqrt(twoPi))
+      fac = real(1./(sigma*sqrt(twoPi)))
       gauss = fac * exp(-(dx**2)/(2.*sigma**2))
     end function gauss
 
@@ -1370,8 +1370,8 @@ contains
       real, intent(in) :: v, mass, temperature
       real :: fac, fac2
 
-      fac = (4./sqrt(pi))*(mass/(2.*kErg*temperature))**1.5
-      fac2 = v**2 * exp(-mass*v**2 / (2.*Kerg*temperature))
+      fac = real((4./sqrt(pi))*(mass/(2.*kErg*temperature))**1.5)
+      fac2 = real(v**2 * exp(-mass*v**2 / (2.*Kerg*temperature)))
       fvmaxwellian = fac * fac2
     end function fvmaxwellian
 
@@ -1941,15 +1941,15 @@ contains
       !                          C_vdw   = 5.53e-3 [A], 
       !                          C_stark = 1.47e-2 [A], 
 
-      bigGamma = &
+      bigGamma = real(&
            &    C_rad  &
            &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
-           &  + C_stark*(Ne/1.e12)  ! [Angstrom]
+           &  + C_stark*(Ne/1.e12))  ! [Angstrom]
 
 
 
       ! convert units 
-      bigGamma = (bigGamma*1.e-8) * nu**2   / cSpeed  ! [1/s]
+      bigGamma = real((bigGamma*1.e-8) * nu**2   / cSpeed)  ! [1/s]
       !                  [cm]       * [1/s^2] / [cm/s]
     end function bigGamma
 
@@ -2235,9 +2235,9 @@ contains
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
          if (xArray(j+1) /= xArray(j)) then
-            newYarray(i) = yArray(j) + (yArray(j+1)-yArray(j))*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
+            newYarray(i) = real(yArray(j) + (yArray(j+1)-yArray(j))*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j)))
          else
-            newYarray(i) = yArray(j)
+            newYarray(i) = real(yArray(j))
          endif
       enddo
       yArray(1:newNx) = newYArray(1:newNx)
@@ -2565,9 +2565,9 @@ contains
     do i = 1, nArray
        if (array(i) /= 0.) then
           wavelength = 1./array(i)
-          freq = cSpeed / wavelength
-          energy = freq * hcgs
-          array(i) = energy * ergtoEv
+          freq = real(cSpeed / wavelength)
+          energy = real(freq * hcgs)
+          array(i) = real(energy * ergtoEv)
        else
           array(i) = 1.e-20
        endif
@@ -3824,9 +3824,9 @@ END SUBROUTINE GAUSSJ
        call writeWarning("Surface flux file appears to be in wavelength space: converting")
        do i = 1, n
           nu = cSpeed / (1.d-8 * nuArray(i)) ! hz
-          nuTemp(i) = nu
-          fTemp(i) = (fArray(i)*1.d8) ! erg/s/cm^2/angs -> erg/s/cm^2/cm
-          fTemp(i) = fTemp(i) * cspeed / nu**2 ! erg/s/cm^2/Hz
+          nuTemp(i) = real(nu)
+          fTemp(i) = real(fArray(i)*1.d8) ! erg/s/cm^2/angs -> erg/s/cm^2/cm
+          fTemp(i) = real(fTemp(i) * cspeed / nu**2) ! erg/s/cm^2/Hz
        end do
        do i = 1, n
           nuArray(i) = nuTemp(n-i+1)

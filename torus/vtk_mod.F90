@@ -3264,10 +3264,13 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   sizeOfFloat = 4
   sizeofInt = 4
   sizeofint1 = 1
+
 #ifdef MEMCHECK
-  sizeOfFloat = sizeof(float)
-  sizeOfInt = sizeof(int)
-  sizeOfInt1 = sizeof(int1)
+
+!  sizeofFloat = sizeof(float)
+!  sizeofInt = sizeof(int)
+!  sizeofInt1 = sizeof(int1)
+
 #endif
 
 #ifdef MPI
@@ -3676,7 +3679,7 @@ end subroutine writeParallelXMLVtkFileAMR
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then
                   rVec = subcellCentre(thisOctal,subcell)
-                  d = thisOctal%subcellSize/2.d0
+                  d = real(thisOctal%subcellSize/2.d0)
                   
                   nPointsInCell = 8
 
@@ -3724,19 +3727,19 @@ end subroutine writeParallelXMLVtkFileAMR
 
                else
                   rVec = subcellCentre(thisOctal, subcell)
-                  d = thisOctal%subcellSize/2.d0
+                  d = real(thisOctal%subcellSize/2.d0)
                   zp = REAL(rVec%z + d)
                   zm = REAL(rVec%z - d)
-                  r1 = sqrt(rVec%x**2 + rVec%y**2) - d
-                  r2 = sqrt(rVec%x**2 + rVec%y**2) + d
-                  phi = atan2(rVec%y, rVec%x)
-                  dphi = returndPhi(thisOctal)
+                  r1 = real(sqrt(rVec%x**2 + rVec%y**2) - d)
+                  r2 = real(sqrt(rVec%x**2 + rVec%y**2) + d)
+                  phi = real(atan2(rVec%y, rVec%x))
+                  dphi = real(returndPhi(thisOctal))
                   phi1 = phi - dphi
                   phi2 = phi + dphi
                   nPhi = max(1, nint(dphi/(10.d0*degtorad)))
                   do iPhi = 1, nPhi
-                     phiStart = phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi)
-                     phiEnd   = phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi)
+                     phiStart = real(phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi))
+                     phiEnd   = real(phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi))
 
 
                      nPoints = nPoints + 1
@@ -3784,7 +3787,7 @@ end subroutine writeParallelXMLVtkFileAMR
                endif
             else
                rVec = subcellCentre(thisOctal,subcell)
-               d = thisOctal%subcellSize/2.d0
+               d = real(thisOctal%subcellSize/2.d0)
                xp = REAL(rVec%x + d)
                xm = REAL(rVec%x - d)
                zp = REAL(rVec%z + d)

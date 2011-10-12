@@ -100,7 +100,7 @@ contains
 
     thisIon%Xsec = 0.d0
     do  i = 1, nFreq
-       e = hCgs * freq(i) * ergtoEv
+       e = real(hCgs * freq(i) * ergtoEv)
 !       print *, "e", e
  !      print *, "thisIon%iPot", thisIon%iPot
   !     print *, "i", i
@@ -1027,7 +1027,7 @@ subroutine addTransition(thisIon,term1, term2, lambda, a, gamma1, gamma2, gamma3
 
   thisIon%transition(k)%i = i
   thisIon%transition(k)%j = j
-  thisLam = 1.e8*cSpeed / ((thisIon%level(j)%energy - thisIon%level(i)%energy)/ergToEv/hCgs)
+  thisLam = real(1.e8*cSpeed / ((thisIon%level(j)%energy - thisIon%level(i)%energy)/ergToEv/hCgs))
 
   thisIon%transition(k)%energy = (thisIon%level(j)%energy - thisIon%level(i)%energy)
   if (thisIon%transition(k)%energy < 0.) then
@@ -1078,7 +1078,7 @@ subroutine addTransition2(thisIon,term1, term2, lambda, a, t, gamma, nt)
 
   thisIon%transition(k)%i = i
   thisIon%transition(k)%j = j
-  thisLam = 1.e8*cSpeed / ((thisIon%level(j)%energy - thisIon%level(i)%energy)/ergToEv/hCgs)
+  thisLam = real(1.e8*cSpeed / ((thisIon%level(j)%energy - thisIon%level(i)%energy)/ergToEv/hCgs))
 
   thisIon%transition(k)%energy = (thisIon%level(j)%energy - thisIon%level(i)%energy)
   if (thisIon%transition(k)%energy < 0.) then

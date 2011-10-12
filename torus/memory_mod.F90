@@ -252,49 +252,49 @@ module memory_mod
       integer, pointer :: p(:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfInteger
 
     function mySizeOfReal(p) result (i)
       real, pointer :: p(:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfReal
 
     function mySizeOfDouble(p) result (i)
       real(double), pointer :: p(:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfDouble
 
     function mySizeOfDouble2d(p) result (i)
       real(double), pointer :: p(:,:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfDouble2d
 
     function mySizeOfDouble3d(p) result (i)
       real(double), pointer :: p(:,:,:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfDouble3d
 
     function mySizeOfLogical(p) result (i)
       logical, pointer :: p(:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfLogical
 
     function mySizeOfVector(p) result (i)
       type(VECTOR), pointer :: p(:)
       integer :: i
       i = 0
-      if (associated(p)) i = sizeof(p)
+      if (associated(p)) i = int(sizeof(p))
     end function mySizeOfVector
 #endif
 

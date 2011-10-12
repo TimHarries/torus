@@ -319,7 +319,7 @@ contains
     if ( sphData%useSphTem ) then 
        thisOctal%temperature(subcell) =  max(real(clusterparam%y), tMinGlobal)
     else
-       thisOctal%temperature(subcell) =  max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4))
+       thisOctal%temperature(subcell) =  real(max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4)))
     end if
 
 ! Set H2 number density from SPH particles if present

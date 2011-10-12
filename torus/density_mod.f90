@@ -160,9 +160,9 @@ contains
 
     starPosn = grid%starPos1
     pointVec = (point - starPosn) * 1.e10_oc
-    r = modulus( pointVec ) 
+    r = real(modulus( pointVec ) )
     
-    theta = ACOS(MIN(ABS(pointVec%z/r),1.d0))
+    theta = real(ACOS(MIN(ABS(pointVec%z/r),1.d0)))
     rM  = r / SIN(theta)**2
     y = SIN(theta)**2 
 
@@ -218,7 +218,7 @@ contains
 
     r = modulus( pointVec ) 
     theta = acos( pointVec%z  / r )
-    y = SIN(theta)**2 
+    y = real(SIN(theta)**2 )
 
     IF (TTauriInFlow(point,grid,ignoreDisk)) then 
 !    
@@ -257,9 +257,9 @@ contains
     radius = (flowPointRm * bigR**2)**(1./3.) 
     y = radius / flowPointRm
 
-    TTauriFlowSpeedFunc = SQRT((2.0 * bigG * TTauriMstar / TTauriRstar) * &
+    TTauriFlowSpeedFunc = real(SQRT((2.0 * bigG * TTauriMstar / TTauriRstar) * &
                           (TTauriRstar / radius(:) - TTauriRstar/flowPointRm)) * &
-                          (3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y))) 
+                          (3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y))) )
     TTauriFlowSpeedFunc = 1. / TTauriFlowSpeedFunc 
     
   end function TTauriFlowSpeedFunc
@@ -378,14 +378,14 @@ contains
 
 
     r_oct = modulus( pointVec ) 
-    r = r_oct
+    r = real(r_oct)
     
     if (TTauriInFlow(point,grid,ignoreDisk)) then
       
 
 
 
-      theta = acos( pointVec%z  / r )
+      theta = real(acos( pointVec%z  / r ))
       if (abs(modulo(theta,real(pi))) > 1.e-10 ) then 
         rM  = r / sin(theta)**2
       else
@@ -400,7 +400,7 @@ contains
       ! calculate the start and end points for the integration
 
       !rEnd = rM * 0.9999 
-      rStart = sqrt(pointVec%x**2 + pointVec%y**2)
+      rStart = real(sqrt(pointVec%x**2 + pointVec%y**2))
 
       flowPointRm = rM ! this gets passed to TTauriFlowSpeedFunc through a module
       !timeInFlow = qsimp(TTauriFlowSpeedFunc,rStart,rEnd)
@@ -409,7 +409,7 @@ contains
 
       timeFlowStart = grid%timeNow - timeInFlow
 
-      azimuth = ATAN2(pointVec%y,pointVec%x)
+      azimuth = real(ATAN2(pointVec%y,pointVec%x))
 
       select case (MdotType)
  
@@ -471,8 +471,8 @@ contains
               clumps(iClump)%duration  = mDotParameter4
               clumps(iClump)%mDot  = mDotParameter2
               call randomNumberGenerator(getReal=uniformRandom)
-              clumps(iClump)%azimuth = (uniformRandom * twoPi) - pi
-              clumps(iClump)%angularSize = mDotParameter5 * degToRad 
+              clumps(iClump)%azimuth = real((uniformRandom * twoPi) - pi)
+              clumps(iClump)%angularSize = real(mDotParameter5 * degToRad )
 
               call randomNumberGenerator(getReal=uniformRandom)
               timeToNextClump = -meanTime * log(1-uniformRandom)
@@ -517,7 +517,7 @@ contains
           TTauriVariableMdot = mdotparameter1 + mdotparameter2*timeFlowStart
 
         case ('constantcurtains')  
-          if (azimuth < 0.) azimuth = azimuth + twoPi
+          if (azimuth < 0.) azimuth = real(azimuth + twoPi)
           if (in_curtain(azimuth)) then ! using a function in this module
             TTauriVariableMdot = mdotparameter1
           else 
@@ -527,7 +527,7 @@ contains
         case ('semicurtains')  
           ! one curtain is only above the disc, and one is only below.
           
-          if (azimuth < 0.) azimuth = azimuth + twoPi
+          if (azimuth < 0.) azimuth = real(azimuth + twoPi)
           if ((curtainsPhi1e < curtainsPhi1s).and.((azimuth > curtainsPhi1s).or. &
                (azimuth < curtainsPhi1e)).and.(pointVec%z > 0.d0)) then
             TTauriVariableMdot = mdotparameter1
@@ -543,8 +543,8 @@ contains
 
           
         case ('test')
-          if (azimuth < 0.) azimuth = azimuth + twoPi
-          azimuth = azimuth / twoPi
+          if (azimuth < 0.) azimuth = real(azimuth + twoPi)
+          azimuth = real(azimuth / twoPi)
           azimuth = azimuth * 20 
           if (MOD(azimuth,2.0) > 1.0) then 
             IF (MOD(timeFlowStart,3600.) > 1700.) then
@@ -565,7 +565,7 @@ contains
           stop
       end select
       
-      TTauriVariableMdot = TTauriVariableMdot * secsToYears * mSol
+      TTauriVariableMdot = real(TTauriVariableMdot * secsToYears * mSol)
 !print *, 'TTauriVariableMdot = ',TTauriVariableMdot
       
     else
@@ -720,7 +720,7 @@ contains
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r
-    r = modulus(point)
+    r = real(modulus(point))
     testDensity = 1.e-30
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
        testDensity = rho * (grid%rInner / r)**2
@@ -733,7 +733,7 @@ contains
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r
-    r = modulus(point)
+    r = real(modulus(point))
     testDensity = 1.e-30
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
        testDensity = grid%densityScaleFac*rho * (grid%rInner / r)**rPower
@@ -751,9 +751,9 @@ contains
     logical :: withGrid
     if (PRESENT(grid)) withGrid = .true.
 
-    r = modulus(point)*1.e10
+    r = real(modulus(point)*1.e10)
 
-    mu = (abs(point%z)*1.e10) /r
+    mu = real((abs(point%z)*1.e10) /r)
 
     r_c = erInner
     alpha = 2.25
@@ -765,27 +765,27 @@ contains
  ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
 ! this is from Momose et al. 1998 ApJ 504 314
 
-       rhoEnv = (mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r**(-1.5) * &
+       rhoEnv = real((mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r**(-1.5) * &
        (1. + abs(mu)/mu_0)**(-0.5) * &
-       (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.)
+       (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.))
 
        fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
        fac = exp(-fac*10.d0)
-       rhoEnv = rhoEnv * fac
+       rhoEnv = real(rhoEnv * fac)
        rhoEnv = max(rhoEnv, tiny(rhoEnv))
     endif
 
-    rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
-         (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
+    rho0  = real(mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
+         (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) ))
 
-    r = sqrt(point%x**2 + point%y**2)*1.e10
+    r = real(sqrt(point%x**2 + point%y**2)*1.e10)
     h = 0.01 * rStellar * (r/rStellar)**beta
     rhoDisc = 1.d-30
     if ((r > drInner).and.(r < drOuter)) then
-       rhoDisc = rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2)
+       rhoDisc = real(rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2))
        fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
        fac = exp(-fac*10.d0)
-       rhoDisc = rhoDisc * fac
+       rhoDisc = real(rhoDisc * fac)
        rhoDisc = max(rhoDisc, tiny(rhoDisc))
     endif
 
@@ -805,19 +805,19 @@ contains
     logical :: withGrid
     if (PRESENT(grid)) withGrid = .true.
 
-    rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
+    rho0  = real(mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
          * (rCore*1.e10)**(alphaDisc-betaDisc) * &
-         (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+         (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) ))
     r = sqrt(point%x**2 + point%y**2)
     h = height * rCore * (r/rCore)**betaDisc
     rhoDisc = 1.d-30
     if ((r > rInner).and.(r < rOuter)) then
-       rhoDisc = rho0 * (rCore/r)**alphaDisc  * exp(-0.5*(point%z/h)**2)
+       rhoDisc = real(rho0 * (rCore/r)**alphaDisc  * exp(-0.5*(point%z/h)**2))
        fac =  1.d0-min(dble(r - rInner)/(0.02d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
-       rhoDisc = rhoDisc * fac 
+       rhoDisc = real(rhoDisc * fac )
        if (planetGap) then
-          rhoDisc = rhoDisc * fractGap2(r*1.e10/autocm)
+          rhoDisc = real(rhoDisc * fractGap2(r*1.e10/autocm))
        endif
        rhoDisc = max(rhoDisc, tiny(rhoDisc))
     endif
@@ -832,11 +832,11 @@ contains
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r,v
-    r = modulus(point)
+    r = real(modulus(point))
     testDensity = tiny(testDensity)
     if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
-       v = 0.001d5+(vterm-0.001d5)*(1.d0 - grid%rinner/r)**beta
-       testDensity = mdot / (fourPi * r**2 * v *1.e20)
+       v = real(0.001d5+(vterm-0.001d5)*(1.d0 - grid%rinner/r)**beta)
+       testDensity = real(mdot / (fourPi * r**2 * v *1.e20))
     endif
   end function wrshellDensity
 
@@ -851,10 +851,10 @@ contains
     
     rd = rOuter / 2.
     benchmarkDensity = 1.e-30
-    r = sqrt(point%x**2 + point%y**2)
+    r = real(sqrt(point%x**2 + point%y**2))
     if ((r > rInner).and.(r < rOuter)) then
        hr = height * (r/rd)**1.125
-       benchmarkDensity = rho * ((r / rd)**(-1.))*exp(-pi/4.*(point%z/hr)**2)
+       benchmarkDensity = real(rho * ((r / rd)**(-1.))*exp(-pi/4.*(point%z/hr)**2))
     endif
 !    if ((r < rInner).and.(abs(point%z) < rInner)) then
 !       r = rInner
@@ -889,7 +889,7 @@ contains
        phi1 = pi
        phi2 = pi+pi/2.
        turns = 0.
-       dphi = (phi2 - phi1) + twoPi * turns
+       dphi = real((phi2 - phi1) + twoPi * turns)
        d = binarySep/(1.+massRatio)
        call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
        r1 = min(x1, x2)
@@ -902,7 +902,7 @@ contains
        phi1 = 0.
        phi2 = pi/2.
        turns = 0.
-       dphi = (phi2 - phi1) + twoPi * turns
+       dphi = real((phi2 - phi1) + twoPi * turns)
        d = -binarySep*(1.-1./(1.+massRatio))
        call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
        r1 = min(x1, x2)
@@ -1051,11 +1051,11 @@ contains
     !    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
 
     b = (1.d0/twoPi)*log(20.d0)
-    warpRadius = rInner * exp(b * phi)
+    warpRadius = real(rInner * exp(b * phi))
 
-    rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
+    rho0  = real(mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
          * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
-         ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
+         ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) ))
 
     phi1 = phi
     phi2 = phi1 - pi
@@ -1110,18 +1110,18 @@ contains
     rho0 = 2.e-5
 
     melvinDensity = 1.e-30
-    r = modulus(point) * 1.e10
-    mu = point%z * 1.e10 / r
-    z = point%z * 1.e10
+    r = real(modulus(point) * 1.e10)
+    mu = real(point%z * 1.e10 / r)
+    z = real(point%z * 1.e10)
     zMaxxed = 6.d16 !thap  
 
-    bigR = sqrt(point%x**2 + point%y**2)*1.e10
-    H_R = H_0 * (bigR / (100.*auToCm))**beta
+    bigR = real(sqrt(point%x**2 + point%y**2)*1.e10)
+    H_R = real(H_0 * (bigR / (100.*auToCm))**beta)
 
     rhoEnv = 100.*mHydrogen
     if (r > r_c) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
-       rhoEnv = (Mdot/(8. * pi * r_c * sqrt(bigG * Mstar)))  ! Equation 1
+       rhoEnv = real(Mdot/(8. * pi * r_c * sqrt(bigG * Mstar)))  ! Equation 1
        rhoEnv = rhoEnv * 1./sqrt(1.+mu_0) * 1./sqrt(r)
     endif
     rhoDisc = 1.d-30
@@ -1141,7 +1141,7 @@ contains
     endif
 
     if (bigR > Rcav) then
-       cavZ = tan(pi/2.-0.5*openingAngle)*(bigR - Rcav) ! Eq 4                                                            
+       cavZ = real(tan(pi/2.-0.5*openingAngle)*(bigR - Rcav)) ! Eq 4
        if (abs(z) > cavZ) then   !In cavity     ?                                                                         
           melvinDensity = 1.d30
           if(abs(z) < zMaxxed) then !thap                                                                                 
@@ -1412,7 +1412,7 @@ subroutine calcPlanetMass
 
       mPlanetOld = mPlanet
       fracOld = frac
-      mPlanet = mPlanet + step
+      mPlanet = real(mPlanet + step)
       frac = fractgap2(rGapEdge)
 !      write (*,*) frac, mPlanet, step
       if (abs(frac-target) < (tol * target)) then
@@ -1422,7 +1422,7 @@ subroutine calcPlanetMass
             if (fracOld < target) then
                step = -1. * step
                frac = fracOld
-               mPlanet = mPlanetOld
+               mPlanet = real(mPlanetOld)
             else ! (fracOld > target)
                step = -1. * (reduxFac * step)
             end if
@@ -1434,7 +1434,7 @@ subroutine calcPlanetMass
             else ! (fracOld > target)
                step = -1. * step
                frac = fracOld
-               mPlanet = mPlanetOld
+               mPlanet = real(mPlanetOld)
             end if
          end if
       end if
@@ -1525,7 +1525,7 @@ end subroutine calcPlanetMass
     nFound = 0
 
     ! check if point is inside star, or well outside the accreting region
-    starDistance = modulus(point-starPosn)
+    starDistance = real( modulus(point-starPosn))
     IF ( (starDistance < rStar) .OR.           &
          (starDistance > maxSizeMagFieldGrid) ) then
 

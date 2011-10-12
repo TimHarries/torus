@@ -160,8 +160,8 @@ CONTAINS
                rValue, thetaValue, phiValue, velValue, rhoValue, areaValue
           IF (magStreamFileDegrees) THEN
             ! need to convert to radians
-            thetaValue = thetaValue * DegToRad
-            phiValue = phiValue * DegToRad
+            thetaValue = thetaValue * real(DegToRad)
+            phiValue = phiValue * real(DegToRad)
           END IF
         IF (returnVal /= 0) THEN
           EXIT 
@@ -206,7 +206,7 @@ CONTAINS
             magFieldGrid(iSample)%position + &
               vector(starPosn%x,starPosn%y,starPosn%z)
                                               
-          magFieldGrid(iSample)%velocity = (velValue * 1.e5) / cSpeed 
+          magFieldGrid(iSample)%velocity = real((velValue * 1.e5) / cSpeed )
 !          magFieldGrid(iSample)%velocity = (velValue * 1.e-5) 
           IF (scaleFlowRho) THEN
             rhoValue = rhoValue * flowRhoScale
@@ -252,7 +252,7 @@ CONTAINS
             magFieldHotspots(iStream)%radius_1e10 = thisSample%radius
 
             magFieldHotspots(iStream)%position%r = 1.0
-            magFieldHotspots(iStream)%speed = thisSample%velocity * cSpeed
+            magFieldHotspots(iStream)%speed = real(thisSample%velocity * cSpeed)
             ! approximation, radius will not be quite correct 
             magFieldHotspots(iStream)%radius = &
               thisSample%radius / Rstar ! 1.e10 cm to radians
@@ -261,14 +261,14 @@ CONTAINS
             ! for temperature, assume uniform circular cross-section
             !   and all kinetic energy radiated as a blackbody
             magFieldHotspots(iStream)%temperature =          & 
-              ((0.5 * magFieldHotspots(iStream)%rho *        &
+              real(((0.5 * magFieldHotspots(iStream)%rho *        &
                 (magFieldHotSpots(iStream)%speed)**3 )         &
-                / stefanBoltz )**0.25 
+                / stefanBoltz )**0.25 )
                 
             IF (limitSpotTemp) CALL rescaleHotSpot(magFieldHotspots(iStream), maxSpotTemp)
 
             ! work out how far beneath the surface "subSurfacePosn" should lie
-            distance = COS(magFieldHotspots(iStream)%radius) ! (Rstar)
+            distance = real(COS(magFieldHotspots(iStream)%radius)) ! (Rstar)
             spSubSurfacePosn = magFieldHotspots(iStream)%position
             spSubSurfacePosn%r = distance * Rstar
             magFieldHotspots(iStream)%subSurfacePosn = spSubSurfacePosn ! convert to XYZ

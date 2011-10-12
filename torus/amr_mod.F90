@@ -2125,7 +2125,7 @@ CONTAINS
     END IF
 
     
-    lambda(nSamples) = length
+    lambda(nSamples) = real(length)
     directionReal = direction
 
     localPointer => thisOctal
@@ -2171,8 +2171,8 @@ CONTAINS
     If (grid%geometry(1:4) == "jets" ) then
        ! using routines in jets_mod.f90
        rho(nSamples) = Density(pointVec, grid)                 ! in [g/cm^3]
-       Vr = JetsVelocity(pointVec, grid)/(cSpeed/1.0e5)        ! in [c]
-       r = modulus(pointVec)
+       Vr = real(JetsVelocity(pointVec, grid)/(cSpeed/1.0e5))        ! in [c]
+       r = real(modulus(pointVec))
        Rs = get_jets_parameter("Rmin")
        if (r < Rs) r =Rs
        velocity(nSamples) = REAL(Vr, kind=oct)*(pointVec/REAL(r,kind=oct))
@@ -2331,7 +2331,7 @@ CONTAINS
 
       IF (PRESENT(temperature))   temperature = resultOctal%temperature(subcell)
       IF (PRESENT(rho))                   rho = resultOctal%rho(subcell)
-      IF (PRESENT(chiLine))           chiLine = resultOctal%chiLine(subcell)
+      IF (PRESENT(chiLine))           chiLine = real(resultOctal%chiLine(subcell))
 
 !      IF (PRESENT(chiLine)) then
 !         CALL interpAMR(resultOctal, point, chiLine)
@@ -3046,7 +3046,7 @@ CONTAINS
     ! the line of sight velocity gradient
 
     IF (ABS(dx) >= 1.e-20) THEN
-       amrGridDirectionalDeriv = (abs(dphi / dx))
+       amrGridDirectionalDeriv = real(abs(dphi / dx))
     ELSE
        amrGridDirectionalDeriv = 1.e-20
     ENDIF
@@ -3516,7 +3516,7 @@ CONTAINS
 
       r = sqrt(cellcentre%x**2 + cellCentre%y**2)
       phi = atan2(cellCentre%y,cellCentre%x)
-      height = discHeightFunc( phi,hOverR) * r
+      height = real(discHeightFunc( phi,hOverR) * r)
       if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
          if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
             if (abs(cellCentre%z-height) < 2.d0*cellSize) then
@@ -3618,7 +3618,7 @@ CONTAINS
 
      if (ttauriwarp) then
         phi = atan2(cellCentre%y,cellCentre%x)
-        height = discHeightFunc(phi,hOverR) * r
+        height = real(discHeightFunc(phi,hOverR) * r)
         if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
            if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
               if (abs(cellCentre%z-height) < 2.d0*cellSize) then
@@ -5361,7 +5361,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
 
-    r = modulus(point)
+    r = real(modulus(point))
     if (r < (ttauriRstar/1.d10)) thisOctal%inflow(subcell) = .false.
 
 
@@ -5386,8 +5386,8 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
           IF (useHartmannTemp) THEN
              ! need to calculate the flow point AS IF the magnetosphere
              !   was the same size as the one in the Hartmann et al paper
-             r = modulus( pointVec ) 
-             theta = acos( pointVec%z  / r )
+             r = real(modulus( pointVec ) )
+             theta = real(acos( pointVec%z  / r ))
         
              rM  = r / SIN(theta)**2
         
@@ -5400,9 +5400,9 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
              rMnorm = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
         
              ! convert rM to Hartmann units
-             rM = 2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol))
+             rM = real(2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol)))
         
-             bigR = SQRT(pointVec%x**2+pointVec%y**2)
+             bigR = real(SQRT(pointVec%x**2+pointVec%y**2))
              bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
              bigR = min(bigR,TTauriRouter)
              bigR = max(bigR,0.0)
@@ -5410,11 +5410,11 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
              ! get the equivalent bigR for the Hartmann geometry
              ! first work out the intersection angle (at the stellar surface) for
              !   the current flow line  
-             thetaStarHartmann = ASIN(SQRT((2.0*rSol)/rM))
+             thetaStarHartmann = real(ASIN(SQRT((2.0*rSol)/rM)))
              ! work out bigR for this point
-             bigRstarHartmann = (2.0*rSol) * SIN(thetaStarHartmann) 
+             bigRstarHartmann = real((2.0*rSol) * SIN(thetaStarHartmann) )
              
-             bigR = bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann))
+             bigR = real(bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann)))
              
              r = (rM * bigR**2)**(1./3.) ! get r in the Hartmann setup
              
@@ -5732,10 +5732,10 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
           if (containedParticles > 0) then 
             
-            addedDensity = (real(containedParticles) * particleMass) / &
-                            (real(thisOctal%subcellSize,kind=db)*1.e10_db)**3
+            addedDensity = real((real(containedParticles) * particleMass) / &
+                            (real(thisOctal%subcellSize,kind=db)*1.e10_db)**3)
             ! calculate the density change in the subcell
-            deltaRho = addedDensity / thisOctal%rho(iSubcell)
+            deltaRho = real(addedDensity / thisOctal%rho(iSubcell))
 
             if (.not. undoPrevious) then
               thisOctal%rho(iSubcell) = thisOctal%rho(iSubcell) + addedDensity
@@ -5861,7 +5861,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        end if
        lowerLine = 1
        upperLine = 2 
-       subPos    = 0.0
+       subPos    = 0
     ELSE IF (radius > 5.0) THEN
        if (.not. warned_already_02) then
           PRINT *, 'In hartmannTemp, rM value is out of range! (',rM,')'
@@ -5875,16 +5875,16 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        lowerLine = INT(radius) + 1
        upperLine = lowerLine + 1 
 !       subPos = radius - REAL(lowerline)
-       subPos = radius - 1.0
+       subPos = int(radius) - 1
     END IF
       
     IF (inTheta > pi) THEN
-      theta = inTheta - pi
+      theta = inTheta - real(pi)
     ELSE
       theta = inTheta
     END IF
     
-    IF (inTheta > pi/2.0) theta = pi - theta
+    IF (inTheta > pi/2.0) theta = real(pi - theta)
     
     ! find the index position in each field line 
     do i = 1, 5 
@@ -5950,7 +5950,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     ! test if the radius is greater than this fieldline's max radius
     IF ( RAD  > rM ) RETURN 
     
-    radius = (rM * RAD**2)**(1./3.)  
+    radius = real((rM * RAD**2)**(1./3.)  )
 
     ! test if the point lies inside the star
     IF ( radius < 1.0 ) RETURN
@@ -6087,7 +6087,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 30.
@@ -6164,7 +6164,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10000.
@@ -6229,7 +6229,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     TYPE(vector) :: rVec
 
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10000.
@@ -6253,7 +6253,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     
 
     rVec = subcellCentre(thisOctal,subcell)
-    r = rVec%y**2 + rVec%z**2
+    r = real(rVec%y**2 + rVec%z**2)
     r = r**0.5
     thisOctal%rho(subcell) = 1.d-40
     thisOctal%ionFrac(subcell,1) = 1.
@@ -6395,7 +6395,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 1.e-3
@@ -6456,12 +6456,12 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     shockDirection = VECTOR(0.,0.,0.)
 
 
-    dx = (grid%octreeRoot%subcellSize-stagVec%z)/real(nsteps)
+    dx = real((grid%octreeRoot%subcellSize-stagVec%z)/real(nsteps))
     yDist(1) = dx*10.
-    xDist(1) = stagVec%z 
+    xDist(1) = real(stagVec%z )
     direction(1) = VECTOR(0.,1.,0.)
     do j = 2,nsteps
-       xDist(j) = stagVec%z + real(j-1)*(grid%octreeroot%subcellsize-stagVec%z)/real(nSteps-1)
+       xDist(j) = real(stagVec%z + real(j-1)*(grid%octreeroot%subcellsize-stagVec%z)/real(nSteps-1))
        ddash1 = sqrt((xDist(j-1) + d1)**2 + yDist(j-1)**2)
        ddash2 = sqrt((xDist(j-1) - d2)**2 + yDist(j-1)**2)
 
@@ -6482,11 +6482,11 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        if (rvec%x > ydist(i)) then
           direction2 = (rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
           call normalize(direction2)
-          r = modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
+          r = real(modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1))))
           if (r > rStar1) then
-             v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
+             v = real(vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1)
              thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
-             thisOctal%temperature(subcell) = 0.9d0 * teff1
+             thisOctal%temperature(subcell) = real(0.9d0 * teff1)
              thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
 !             thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
              thisOctal%atomAbundance(subcell, :) =  1.d0 / (4.d0*mHydrogen)
@@ -6495,11 +6495,11 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        else
           direction2 = (rVec - VECTOR(0.d0, 0.d0, dble(d2)))
           call normalize(direction2)
-          r = modulus(rVec - VECTOR(0.d0, 0.d0, dble(d2)))
+          r = real(modulus(rVec - VECTOR(0.d0, 0.d0, dble(d2))))
           if (r > rStar2) then
-             v = vNought2 + (vterm2-vNought2)*(1.d0 - rstar2/r)**beta2
+             v = real(vNought2 + (vterm2-vNought2)*(1.d0 - rstar2/r)**beta2)
              thisOctal%rho(subcell) = mdot2 / (fourPi * (r*1.d10)**2 * v)
-             thisOctal%temperature(subcell) = 0.9d0 * teff2
+             thisOctal%temperature(subcell) = real(0.9d0 * teff2)
              thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
 !             thisOctal%atomAbundance(subcell, 1) =  0.71d0 / mHydrogen
              thisOctal%atomAbundance(subcell, :) =  0.27d0 / (4.d0*mHydrogen)
@@ -6509,11 +6509,11 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     else
        direction2 = (rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
        call normalize(direction2)
-       r = modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1)))
+       r = real(modulus(rVec - VECTOR(0.d0, 0.d0, -dble(d1))))
        if (r > rStar1) then
-          v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
+          v =  real(vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1)
           thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
-          thisOctal%temperature(subcell) = 0.9d0 * teff1
+          thisOctal%temperature(subcell) = real(0.9d0 * teff1)
           thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
 !          thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
           thisOctal%atomAbundance(subcell, :) =  1.d0 / (4.d0*mHydrogen)
@@ -6538,7 +6538,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     real(double) :: v
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real( modulus(rVec))
 
     thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 30000.
@@ -6548,7 +6548,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
     if (((r-thisOctal%subcellSize/2.d0) > grid%rInner)) then !.and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 30000.d0 + (100000.d0-30000.d0)*(rcore/r)**4
+       thisOctal%temperature(subcell) = real(30000.d0 + (100000.d0-30000.d0)*(rcore/r)**4)
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
@@ -6705,11 +6705,11 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
     u1 = 0.d0
     if (abs(rVec%z-0.25d0) < 0.025d0) then
-       u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+       u1 = real(0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) ))
     else if (abs(rVec%z+0.25d0) < 0.025d0) then
-       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+       u1 = real(0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) ))
     endif
-!    u1 = -0.025d0
+!    u1 = -0.025
     
 !    thisOctal%velocity(subcell) = VECTOR(0.5d0, 0.d0, 0.d0)/cspeed
 !    if (modulus(rvec-VECTOR(0.5d0,0.d0, 0.d0)) < 0.2d0) thisOctal%rho(subcell) = 0.5d0
@@ -6770,7 +6770,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     
     u1 = 0.d0
     if (thisOctal%threed) then
-       u1 = 0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0
+       u1 = real(0.01d0*(1.d0+cos(twoPi*rVec%x))*(1.d0+cos(twoPi*rVec%y))*(1.d0+cos(twoPi*rVec%z))/8.d0)
     else
           if(rVec%x > 0.20 .and. rVec%x < 0.30 ) then
              u1 = -0.055
@@ -6927,10 +6927,10 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
     if((rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm)) then
        thisOctal%rho(subcell) = 3.13e-7*(mUnit/(lUnit**3.d0))
-       thisOctal%temperature(subcell) = tInt
+       thisOctal%temperature(subcell) = real(tInt)
     else
        thisOctal%rho(subcell) = 3.13e-8*(mUnit/(lUnit**3.d0))
-       thisOctal%temperature(subcell) = tExt
+       thisOctal%temperature(subcell) = real(tExt)
     end if
 
     thisOctal%gamma(subcell) = gamma
@@ -7572,7 +7572,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     endif
 
     
-    thisOctal%temperature(subcell) = temp
+    thisOctal%temperature(subcell) = real(temp)
     thisOCtal%rho(subcell) = rho
     thisOctal%pressure_i(subcell) =  p
     thisOctal%velocity(subcell) = (u/cSpeed) * Vvec
@@ -7633,14 +7633,14 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     rOuterGap = 3. * auToCm / 1.e10
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = min_rho
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
     rd = rOuter / 2.
-    r = sqrt(rVec%x**2 + rVec%y**2)
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
        if ((r > rInner).and.(r < rOuter)) then
           hr = height * (r/rd)**1.125
@@ -7755,7 +7755,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        firsttime = .false.
     endif
 
-    r1 = modulus(subcellCentre(thisOctal,subcell))
+    r1 = real(modulus(subcellCentre(thisOctal,subcell)))
     thisOctal%temperature(subcell) = 1d-20
     if(r1 > r(nr) .or. r1 < r(1)) then 
        thisOctal%nh2(subcell) = 1.e-20
@@ -7798,7 +7798,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        firsttime = .false.
     endif
 
-    r1 = modulus(subcellCentre(thisOctal,subcell))
+    r1 = real(modulus(subcellCentre(thisOctal,subcell)))
 
     if(r1 > r(nr) .or. r1 < r(1)) then 
        thisOctal%nh2(subcell) = 1.e-20
@@ -7848,7 +7848,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        firsttime = .false.
     endif
 
-    r1 = modulus(subcellCentre(thisOctal,subcell))
+    r1 = real(modulus(subcellCentre(thisOctal,subcell)))
 
     if(r1 > r(nr)) then
        thisOctal%nh2(subcell) = 1.e-20
@@ -7939,7 +7939,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     character(len=10) :: out
 
     rvec = subcellCentre(thisOctal,subcell)
-    r = sqrt(rVec%x**2 + rVec%y**2)
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
 
     thisOctal%temperature(subcell) = tcbr 
     thisOctal%nh2(subcell) = 1d-20
@@ -7957,7 +7957,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.*mhydrogen)
        
        out ='abundance'
-       thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+       thisOctal%molabundance(subcell) = real(readparameterfrom2dmap(rvec,out,.true.))
 
        out='td'
 !       thisOctal%temperaturedust(subcell) = readparameterfrom2dmap(rvec,out,.true.)
@@ -8014,8 +8014,8 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
       firsttime = .false.
    endif
 
-    r = sqrt(point%x**2+point%y**2)
-    z = abs(point%z)
+    r = real(sqrt(point%x**2+point%y**2))
+    z = real(abs(point%z))
 
     if(r .gt. rgrid(1) .and. r .lt. rgrid(nr)) then
        call locate(rgrid,size(rgrid),r,r1)
@@ -8257,7 +8257,7 @@ end function readparameterfrom2dmap
        thisOctal%nh2(subcell) = nh20 * (r **(-2.75)) * exp(-((z/H)**2))!(in cm-3) 
        thisOctal%rho(subcell) = thisOctal%nh2(subcell) * 2. * mHydrogen
 
-       thisOctal%temperature(subcell) = t0 / sqrt(r) 
+       thisOctal%temperature(subcell) = real(t0 / sqrt(r) )
     else
        thisOctal%nh2(subcell) = 1.d-60
        thisOctal%rho(subcell) = 1.d-60 * 2. * mhydrogen
@@ -8342,7 +8342,7 @@ end function readparameterfrom2dmap
     real :: v1, r1
     type(VECTOR) :: vel
 
-    r1 = modulus(point) * 3.24077649e-9 ! 10^10cm -> pc
+    r1 = real(modulus(point) * 3.24077649e-9) ! 10^10cm -> pc
     WaterBenchmarkVelocity = VECTOR(1d-20,1d-20,1d-20)
 
     if ((r1 > 0.001) .and. (r1 < 0.1)) then
@@ -8374,7 +8374,7 @@ end function readparameterfrom2dmap
        firsttime = .false.
     endif
 
-    r1 = modulus(point)
+    r1 = real(modulus(point))
     AGBStarVelocity = VECTOR(1d-20,1d-20,1d-20)
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
@@ -8683,7 +8683,7 @@ end function readparameterfrom2dmap
     endif
 
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
     thisOctal%inflow(subcell) = .true.
     thisOctal%temperature(subcell) = 100. 
     thisOctal%etaCont(subcell) = 0.
@@ -8714,7 +8714,7 @@ end function readparameterfrom2dmap
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     endif
 
-    r = sqrt(rVec%x**2 + rVec%y**2)
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
     if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
 ! tinkered from 10K - I figured the cooler bits will gently drop but a 
@@ -8730,7 +8730,7 @@ end function readparameterfrom2dmap
           thisOctal%nhii(subcell) = thisOctal%ne(subcell)
        endif
 
-       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       h = real(height * (r / (100.d0*autocm/1.d10))**betaDisc)
     
     endif
     thisOctal%biasCont3D = 1.
@@ -8754,7 +8754,7 @@ end function readparameterfrom2dmap
 
     if (hydrodynamics) then
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
-       thisOctal%temperature(subcell) = (1.d-15*10.d0)/thisOCtal%rho(subcell)
+       thisOctal%temperature(subcell) = real((1.d-15*10.d0)/thisOCtal%rho(subcell))
        thisOctal%velocity(subcell) = keplerianVelocity(rvec)
        thisOctal%boundaryCondition(subcell) = 4
        thisOctal%iEquationOfState(subcell) = 1
@@ -8764,7 +8764,7 @@ end function readparameterfrom2dmap
           thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        endif
        thisOctal%gamma(subcell) = 7.d0/5.d0
-       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell)
+       ethermal = real(1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell))
        thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
        thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
        zplusbound = 2
@@ -8788,24 +8788,24 @@ end function readparameterfrom2dmap
     TYPE(vector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
     thisOctal%inflow(subcell) = .true.
     thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
-    r = sqrt(rVec%x**2 + rVec%y**2)
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
     if ((r > rInner).and.(r < rOuter)) then
        if (hydroWarp) then
          thisOctal%rho(subcell) = hydroWarpDensity(rVec, grid)
-         thisOctal%temperature(subcell) = hydroWarpTemperature(rVec, grid)
+         thisOctal%temperature(subcell) = real(hydroWarpTemperature(rVec, grid))
        else
          thisOctal%rho(subcell) = density(rVec, grid)
          thisOctal%temperature(subcell) = 20.
        end if
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
-       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       h = real(height * (r / (100.d0*autocm/1.d10))**betaDisc)
     endif
 
 
@@ -8849,7 +8849,7 @@ end function readparameterfrom2dmap
     real :: r
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
+    r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = 1.e-33
     thisOctal%temperature(subcell) = 10.
@@ -9128,7 +9128,7 @@ end function readparameterfrom2dmap
     rhat = point
     call normalize(rHat)
     if (r1 > rCore) then
-       v = v0 + (vTerm - v0) * (1. - rCore/r1)**beta
+       v = real(v0 + (vTerm - v0) * (1. - rCore/r1)**beta)
        ostarVelocity  = (dble(v/cSpeed)) * rHat
     else
        ostarVelocity  = VECTOR(0., 0., 0.)
@@ -10207,7 +10207,7 @@ end function readparameterfrom2dmap
     SUM(childOctal%rhow(1:nVals)) / nValsREAL
    
     parentOctal%temperature(parentSubcell) = &
-     SUM(childOctal%temperature(1:nVals)) / nValsREAL
+     real(SUM(childOctal%temperature(1:nVals)) / nValsREAL)
 
 
 !!THAW - conservation normalization
@@ -10432,17 +10432,17 @@ end function readparameterfrom2dmap
     point = subcellCentre(thisOctal,subcell)
     pointVec = (point - starPosn) 
     
-    r = modulus( pointVec ) 
+    r = real(modulus( pointVec ) )
     pointVecNorm = pointVec 
     CALL normalize(pointVecNorm)
 
     IF (r > grid%rInner .AND. r < grid%rOuter) THEN
 
        ! calculate the velocity
-       velocity = REAL((v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta),kind=oct)
+       velocity = v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta
 
        ! calculate the density
-       rho = mDot / ( fourPi * (r*1.e10)**2 * velocity)
+       rho = real(mDot / ( fourPi * (r*1.e10)**2 * velocity))
 
        ! store the data 
        thisOctal%inFlow(subcell) = .TRUE.
@@ -10484,13 +10484,13 @@ end function readparameterfrom2dmap
 
     pointVec = (point - starPosn) 
     
-    r = modulus( pointVec ) 
+    r = real(modulus( pointVec ) )
     pointVecNorm = pointVec 
     CALL normalize(pointVecNorm)
     pointVecNormSingle = pointVecNorm
     
     IF (r > rInner .AND. r < rOuter) THEN
-       velocity = REAL((v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta),kind=oct)
+       velocity = v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta
        windTestVelocity = (velocity / cSpeed) * pointVecNormSingle
     ELSE
        windTestVelocity = vector(1.e-25,1.e-25,1.e-25)
@@ -10829,7 +10829,7 @@ end function readparameterfrom2dmap
       DO iSubcell = 1, thisOctal%maxChildren, 1
 
 !        newDensity = TTauriDensity(subcellCentre(thisOctal,iSubcell),grid)
-         newDensity = Density(subcellCentre(thisOctal,iSubcell),grid)
+         newDensity = real(Density(subcellCentre(thisOctal,iSubcell),grid))
           IF ( ABS((newDensity/(MAX(thisOctal%rho(iSubcell),1.d-25))-1.0)) > 0.1 ) &
             thisOctal%changed(iSubcell) = .TRUE.
          
@@ -11183,14 +11183,14 @@ end function readparameterfrom2dmap
          freq = cSpeed / (grid%lamArray(i)*1.e-8)
          dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
          do j = 1, nDustType
-            kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
+            kappaP = kappaP + real(thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  thisOctal%rho(subcell) *&
-                 dble(bnu(dble(freq),dble(temperature)))  * dfreq
+                 dble(bnu(dble(freq),dble(temperature)))  * dfreq)
          enddo
          norm = norm + dble(bnu(dble(freq),dble(temperature)))  * dfreq
       enddo
       if (norm /= 0.d0) then
-         kappaP = (kappaP / norm) /1.d10
+         kappaP = real((kappaP / norm) /1.d10)
       else
          kappaP = tiny(kappap)
       endif
@@ -11201,9 +11201,9 @@ end function readparameterfrom2dmap
 
       if (PRESENT(kappaAbs)) then
          if (present(lambda)) then
-            e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
+            e = real((hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev)
          else
-            e = (hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev
+            e = real((hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev)
             !            write(*,*) "! using rough grid"
          endif
          call phfit2(1, 1, 1 , e , h0)
@@ -11253,7 +11253,7 @@ end function readparameterfrom2dmap
 
           rVec = subcellCentre(thisOctal, subcell)
           nx = nx + 1
-          xAxis(nx) = rVec%x
+          xAxis(nx) = real(rVec%x)
        end if
     end do
 
@@ -11277,7 +11277,7 @@ end function readparameterfrom2dmap
     kappaSca = 0.d0; kappaAbs = 0.d0
     nz = 0
     tau = 0.
-    halfSmallestSubcell = grid%halfSmallestSubcell
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
 
     ! bottom up
 
@@ -11287,14 +11287,14 @@ end function readparameterfrom2dmap
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
        nz = nz + 1
        temp = subCellCentre(thisOctal, subcell)
-       zAxis(nz) = temp%z
+       zAxis(nz) = real(temp%z)
 
        call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
             kappaSca=kappaSca, kappaAbs=kappaAbs)
 
 
        if (nz > 1) then
-          tau = tau + thisOctal%subcellsize*(kappaSca+kappaAbs)
+          tau = tau + real(thisOctal%subcellsize*(kappaSca+kappaAbs))
        endif
        if (.not.present(thisTau)) then
           thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
@@ -11313,12 +11313,12 @@ end function readparameterfrom2dmap
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
        nz = nz + 1
        temp = subCellCentre(thisOctal, subcell)
-       zAxis(nz) = temp%z
+       zAxis(nz) = real(temp%z)
        call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
             kappaSca=kappaSca, kappaAbs=kappaAbs)
 
        if (nz > 1) then
-          tau = tau + thisOctal%subcellsize*(kappaAbs+kappaSca)
+          tau = tau + real(thisOctal%subcellsize*(kappaAbs+kappaSca))
        endif
        thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
        currentPos = VECTOR(xpos, yPos, zAxis(nz)-0.5*thisOctal%subcellsize-halfSmallestSubcell)
@@ -11446,7 +11446,7 @@ end function readparameterfrom2dmap
           call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
                kappaSca=ksca, kappaAbs=kabs, kappaScaDust=kscaDust, kappaAbsDust=kabsDust)
 
-          thisTau  = thisOctal%subcellSize * (kscaDust + kabsDust)
+          thisTau  = real(thisOctal%subcellSize * (kscaDust + kabsDust))
 
           r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
           centre = subcellCentre(thisOctal, subcell)
@@ -11493,7 +11493,7 @@ end function readparameterfrom2dmap
                 call returnKappa(grid, neighbourOctal, neighboursubcell, ilambda=ilambda,&
                      kappaSca=ksca, kappaAbs=kabs, kappaScaDust=kscaDust, kappaAbsDust=kabsDust)
 
-                neighbourTau = neighbourOctal%subcellSize * (kscaDust + kabsDust)
+                neighbourTau = real(neighbourOctal%subcellSize * (kscaDust + kabsDust))
 
                 if ((grid%geometry.eq."whitney").and.&
                      (modulus(subcellCentre(thisOctal,subcell)) > 0.9*erouter/1.e10)) split = .false.
@@ -11711,7 +11711,7 @@ end function readparameterfrom2dmap
              thisOctal%inflow(subcell) = .true.
              thisOctal%rho(subcell) = rhoBlandfordPayne(cellCentre)
              thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre)
-             thisOctal%temperature(subcell) = DW_temperature
+             thisOctal%temperature(subcell) = real(DW_temperature)
 
 !             IF ((thisoctal%threed).and.(subcell == 8)) &
                   CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
@@ -11894,9 +11894,9 @@ end function readparameterfrom2dmap
              thisHeating = fac / thisR**3
              localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
              call locate(gamma, 8, localCooling, j)
-             thisOctal%temperature(subcell) = logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j))
+             thisOctal%temperature(subcell) = real(logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j)))
              thisoctal%temperature(subcell) = max(3.30, min(5.0, thisOctal%temperature(subcell)))
-             thisOctal%temperature(subcell) = 10.d0**thisOctal%temperature(subcell)
+             thisOctal%temperature(subcell) = real(10.d0**thisOctal%temperature(subcell))
           endif
        endif
     enddo
@@ -12627,7 +12627,7 @@ end function readparameterfrom2dmap
           STOP
        END IF
        
-       lambda(nSamples) = endLength
+       lambda(nSamples) = real(endLength)
        hitCore = .TRUE.
        IF (PRESENT(kappaSca))      kappaSca(nSamples) = 0.
        IF (PRESENT(kappaAbs))      kappaAbs(nSamples) = 1.e20
@@ -12775,7 +12775,7 @@ end function readparameterfrom2dmap
     real :: halfSmallestSubcell
 
     nz = 0
-    halfSmallestSubcell = grid%halfSmallestSubcell
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
 
     currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
 
@@ -13261,8 +13261,8 @@ end function readparameterfrom2dmap
        tau = tau + distToNextCell*kappaExt
        if (PRESENT(nTau)) then
           nTau = nTau + 1
-          xArray(nTau) = xArray(nTau-1) + distToNextCell
-          tauArray(nTau) = tau
+          xArray(nTau) = real(xArray(nTau-1) + distToNextCell)
+          tauArray(nTau) = real(tau)
           if (nTau == SIZE(xArray)) then
              call writeWarning("tau array size reached. aborting tau run")
              goto 666
@@ -13526,7 +13526,7 @@ end function readparameterfrom2dmap
           
           surface%element(i)%hotFlux(:) = &
                pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:)))
-          surface%element(i)%temperature = T
+          surface%element(i)%temperature = real(T)
           accretingArea = accretingArea + area
        end if
     enddo

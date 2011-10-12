@@ -49,7 +49,7 @@ contains
 
     allocate(inBuffer(1:nIn))
     inBuffer(1:nIn) = inArray(1:nIn)
-    iMax = compressBound(nIn)
+    iMax = int(compressBound(nIn))
     allocate(outBuffer(1:iMax))
 
     c_inbuffer = c_loc(inBuffer(1))

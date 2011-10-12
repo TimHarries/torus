@@ -600,7 +600,7 @@ contains
     ! returns the great circle distance between two points
     !   on a spherical surface
  
-    REAL :: distance ! (radians)
+    REAL(double) :: distance ! (radians)
     TYPE(spVector), INTENT(IN) :: pointA, pointB
       ! the "r" components of the vectors are ignored
     
@@ -608,8 +608,8 @@ contains
     
     dLon = pointB%phi - pointA%phi
     dLat = pointB%theta - pointA%theta
-    a = (SIN(dLat/2.))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.)**2
-    distance = 2. * ASIN(MIN(1.0_db,SQRT(a)))
+    a = (SIN(dLat/2.d0))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.d0)**2
+    distance = 2.d0 * ASIN(MIN(1.0_db,SQRT(a)))
   
   END FUNCTION greatCircleDistance
   
