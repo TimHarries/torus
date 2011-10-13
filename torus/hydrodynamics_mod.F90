@@ -3272,7 +3272,7 @@ end subroutine sumFluxes
           !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
           !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
           !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
+          write(plotfile,'(a,i4.4,a)') "sod.dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
@@ -3855,7 +3855,7 @@ end subroutine sumFluxes
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
-       if (currentTime .ge. nextDumpTime .or. grid%geometry == "diagSod") then
+       if (currentTime .ge. nextDumpTime) then
           it = it + 1
           nextDumpTime = nextDumpTime + tDump
           grid%iDump = it

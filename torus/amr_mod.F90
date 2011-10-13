@@ -3853,17 +3853,17 @@ CONTAINS
          if (thisOctal%nDepth < minDepthAMR) split = .true.
          !Coarse to fine
          
-         if((rvec%x < 0.6d0) .and. (rvec%x > 0.4d0) .and. (rvec%z < 0.4d0) .and.  &
+!         if((rvec%x < 0.6d0) .and. (rvec%x > 0.4d0) .and. (rvec%z < 0.4d0) .and.  &
 !         if((rvec%z < 0.1d0) .and.  &
-            (rvec%z > 0.2d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+ !           (rvec%z > 0.2d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
 
-!         if(thisOctal%twoD) then
-!            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-!
-!         else if (thisOctal%threeD) then
-!            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-!
- !        end if
+         if(thisOctal%twoD) then
+            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+
+         else if (thisOctal%threeD) then
+            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+
+         end if
          
         
       end if
@@ -6644,9 +6644,9 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        endif
 
     else if(thisOctal%twoD) then
-!       if((rvec%z+rVec%x) <= 0.05) then
-       if((rvec%z) <= -0.3d0) then
-          thisOctal%rho(subcell) = 1.d0
+       if((rvec%z+rVec%x) <= 0.05) then
+!       if((rvec%z) <= -0.3d0) then
+          thisOctal%rho(subcell) = 0.25d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
