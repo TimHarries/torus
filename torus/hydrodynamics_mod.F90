@@ -1225,19 +1225,19 @@ thisoctal%flux_i_plus_1(subcell) = flux
        !Flux variation for coarse cell centre to fine cell centre, perpendicular to advection direction                                                                                                                                 
         df = abs(m*dx)/2.d0
 
-        if(fineToCoarse) then
-           if(abs(df) >= 1.d-4) then
-              print *, "df ", df
-              print *, "subcellCentre(thisOctal, subcell)", subcellCentre(thisOctal, subcell)
-              print *, "rank ", myRank
-              print *, "ID ", ID
-              print *, "xpos(1) ", xpos(1)
-              print *, "xpos(2) ", xpos(2)
-              print *, "f(1) ", f(1)
-              print *, "f(2) ", f(2)
-           end if
+        !if(fineToCoarse) then
+        !   if(abs(df) >= 1.d-4) then
+       !       print *, "df ", df
+      !        print *, "subcellCentre(thisOctal, subcell)", subcellCentre(thisOctal, subcell)
+     !         print *, "rank ", myRank
+    !          print *, "ID ", ID
+   !           print *, "xpos(1) ", xpos(1)
+  !            print *, "xpos(2) ", xpos(2)!
+!              print *, "f(1) ", f(1)
+ !             print *, "f(2) ", f(2)
+!           end if!
 
-        end if
+!        end if
 
        rVec = subcellCentre(thisOctal, subcell)!                                                                                                                                                                                         
 
