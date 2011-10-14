@@ -1272,7 +1272,7 @@ contains
                   thisOctal%atomLevel(subcell,:,:), nstar, &
                   dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
                   ifreq=ifreq)
-             tau = alphaNu * ds(iray)
+             tau = real(alphaNu * ds(iray))
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
              else
@@ -2052,7 +2052,7 @@ contains
 
                       if (myRankisZero) then
                          open(69, file=ifilename, status="old", position = "append", form="formatted")
-                         rCore = source(1)%radius
+                         rCore = real(source(1)%radius)
                          if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
                               log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) /ntot)
 
@@ -3770,12 +3770,12 @@ contains
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
                 
                 cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
-                     + intensityAlongRayGeneric(rayPos, viewVec, grid,  &
-                     -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay)
+                     + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+                     -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
                 totArea = totArea + Area(iray)
              enddo
 !             write(*,*) "Pixel done with ",nRay, " rays. check on area ",totArea/(dx**2)
-             cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) / SUM(area(1:nRay))
+             cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) / real(SUM(area(1:nRay)))
              
           enddo
        enddo

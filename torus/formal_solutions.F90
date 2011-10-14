@@ -1165,7 +1165,7 @@ contains
     
     dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
     ! Number density of HI N_H = N_HI + Np, but Np=Ne
-    N_HI(1:ntau) = rho(1:ntau)/mass_ion - Ne(1:nTau)
+    N_HI(1:ntau) = real(rho(1:ntau)/mass_ion - Ne(1:nTau))
     
     !
     !
@@ -1225,14 +1225,14 @@ contains
              chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
              dtau = chil*dL(i-1)
              
-             tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
+             tauAbsLine(i) = real(tauAbsLine(i-1) +  abs(dtau))
              
              if (inflow(i)) then
-                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+                tauSca(i) = real(tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1))))
+                tauAbs(i) = real(tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1))))
              else
-                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+                tauSca(i) = real(tauSca(i-1) + dL(i-1)*ksca(i-1))
+                tauAbs(i) = real(tauAbs(i-1) + dL(i-1)*kabs(i-1))
              end if
              
           else ! not inflow
@@ -1378,7 +1378,7 @@ contains
           
 !          tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau_l)
           ! Now the tau is zero on the observer's side
-          tauAbsLine(j) = tauAbsLine(j-1) +  abs(dtau_l)
+          tauAbsLine(j) = real(tauAbsLine(j-1) +  abs(dtau_l))
 
           if (inflow(i-1)) then  
              chiSca_mid = 0.5*(ksca(i)+ksca(i-1))
@@ -1387,8 +1387,8 @@ contains
              chiSca_mid = ksca(i)
              chiAbs_mid = kabs(i)
           end if
-          tauSca(j) = tauSca(j-1) + dL(i-1)*chiSca_mid
-          tauAbs(j) = tauAbs(j-1) + dL(i-1)*chiAbs_mid
+          tauSca(j) = real(tauSca(j-1) + dL(i-1)*chiSca_mid)
+          tauAbs(j) = real(tauAbs(j-1) + dL(i-1)*chiAbs_mid)
           dtau_c = (chiSca_mid + chiAbs_mid)*dL(i-1)
           dtau   = dtau_c + dtau_l
 
@@ -1495,7 +1495,7 @@ contains
     character(len=80) :: message
     message = filename
 
-    offset = 1.0e-4*R_star
+    offset = real(1.0e-4*R_star)
     ! initializes the map
     F_map = initImage(npix, npix, 2.*REAL(R_max), 2.*REAL(R_max),-1.0, 1.0)
 
@@ -1503,15 +1503,15 @@ contains
     nsize = 2*npix+1
     del = REAL(2.0d0*R_max)/REAL(nsize)
 
-    flux_min = MAX(1.0d-23, MINVAL(flux_ray) )! limit the minimum value
+    flux_min = real(MAX(1.0d-23, MINVAL(flux_ray) ))! limit the minimum value
 
     ! Very naive search algorithm here! (Slow)
     ! This section should be improved later.    
     do j =1, nsize
-       y = -R_max + REAL(j-1)*del + del/2.0 + offset ! mid point
+       y = real(-R_max + REAL(j-1)*del + del/2.0 + offset) ! mid point
        iy = -npix + (j-1)
        do i =1, nsize
-          x = -R_max + REAL(i-1)*del + del/2.0 + offset  ! mid point
+          x = real(-R_max + REAL(i-1)*del + del/2.0 + offset)  ! mid point
           ix = -npix + (i-1)      
           flux = 0.0
           do k = 1, nray
@@ -1601,7 +1601,7 @@ contains
     ALLOCATE(vel_pos(nsize))
     ALLOCATE(pos(nsize))
 
-    offset = 1.0e-4*R_star
+    offset = real(1.0e-4*R_star)
     
 
     ! finding the conversion factor.
@@ -1615,11 +1615,11 @@ contains
     ! Very naive search algorithm here! (Slow)
     ! This section should be improved later.    
     do j =1, nsize
-       y = -R_max + REAL(j-1)*pixsize + pixsize/2.0 + offset ! mid point
+       y = real(-R_max + REAL(j-1)*pixsize + pixsize/2.0 + offset) ! mid point
        pos(j) = y
        FL(:) = 0.0d0
        do i =1, nsize
-          x = -R_max + REAL(i-1)*pixsize + pixsize/2.0 + offset  ! mid point
+          x = real(-R_max + REAL(i-1)*pixsize + pixsize/2.0 + offset)  ! mid point
           ix = -npix + (i-1)      
           do k = 1, nray
              if (in_this_area(dble(x), dble(y), ray(k), dr(k), dphi) )then
@@ -1930,7 +1930,7 @@ contains
             dlam = (L(i)-L(i-1))/real(nAdd+1)
             do j = 1, nAdd+1
                newNtau = newNtau + 1
-               newL(newNTau) = real(j-1)*dlam + L(i-1)
+               newL(newNTau) = real(real(j-1)*dlam + L(i-1))
                newInFlow(newNTau) = inFlow(i-1)
             enddo
          else

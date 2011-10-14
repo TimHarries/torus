@@ -131,7 +131,7 @@ module image_mod
      real :: slitPA, slitWidth, slitLength, ang
      type(VECTOR) :: slitPosition
 
-     ang = slitPA + pi/2.
+     ang = real(slitPA + pi/2.)
      initPVimage%slitDirection = VECTOR(cos(ang), sin(ang), 0.)
      initPVimage%slitPosition = slitPosition
      initPVimage%slitLength = slitLength
@@ -167,25 +167,25 @@ module image_mod
      integer :: iv, ip
      real :: xSlit, ySlit
 
-     velInkms = thisVel * cSpeed/1.e5
+     velInkms = real(thisVel * cSpeed/1.e5)
 
      xProj =  rotationAxis .cross. viewVec
      call normalize(xProj)
      yProj = viewVec .cross. xProj
      call normalize(yProj)
      
-     xDist = thisPhoton%position .dot. xProj
-     yDist = thisPhoton%position .dot. yProj
-     xDist = (xDist / distance) * radiansToArcsec
-     yDist = (yDist / distance) * radiansToArcSec
+     xDist = real(thisPhoton%position .dot. xProj)
+     yDist = real(thisPhoton%position .dot. yProj)
+     xDist = real((xDist / distance) * radiansToArcsec)
+     yDist = real((yDist / distance) * radiansToArcSec)
 
      pVec = VECTOR(xDist,yDist,0.) - thisImage%slitPosition
 
      slitNorm = thisImage%slitDirection .cross. rotationAxis
      call normalize(slitNorm)
 
-     xSlit = slitNorm .dot. pVec
-     ySlit = thisImage%slitDirection .dot. pVec
+     xSlit = real(slitNorm .dot. pVec)
+     ySlit = real(thisImage%slitDirection .dot. pVec)
 
 
      if ( (xSlit >= (-thisImage%slitWidth/2.)).and. &
@@ -194,7 +194,7 @@ module image_mod
              (ySlit <= ( thisImage%slitLength/2.)) ) then
            call locate(thisImage%pAxis, thisImage%np, ySlit, ip)
            call locate(thisImage%vAxis, thisImage%nv, velinkms, iv)
-           thisImage%pixel(iv, ip) = thisImage%pixel(iv,ip) + thisPhoton%stokes%i * weight
+           thisImage%pixel(iv, ip) = real(thisImage%pixel(iv,ip) + thisPhoton%stokes%i * weight)
         endif
      endif
    end subroutine addPhotontoPVimage
@@ -219,8 +219,8 @@ module image_mod
      call normalize(xProj)
      yProj = observerDirection .cross. xProj
      call normalize(yProj)
-     xDist = (thisPhoton%position) .dot. xProj
-     yDist = (thisPhoton%position) .dot. yProj
+     xDist = real((thisPhoton%position) .dot. xProj)
+     yDist = real((thisPhoton%position) .dot. yProj)
            
 
      call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
@@ -295,8 +295,8 @@ module image_mod
            
 !           xDist = (thisPhoton%position - center) .dot. xProj
 !           yDist = (thisPhoton%position - center) .dot. yProj
-           xDist = (thisPhoton%position) .dot. xProj
-           yDist = (thisPhoton%position) .dot. yProj
+           xDist = real((thisPhoton%position) .dot. xProj)
+           yDist = real((thisPhoton%position) .dot. yProj)
            
 
            call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
@@ -311,10 +311,10 @@ module image_mod
               
               thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                    + thisPhoton%stokes * weight * filter_response
-              thisImageSet(i)%vel(xPix,yPix) = thisImageSet(i)%vel(xPix, yPix)  &
-                   + velincgs * (thisPhoton%stokes%i*weight*filter_response)
-              thisImageSet(i)%totWeight(xPix,yPix) = thisImageSet(i)%totWeight(xPix,yPix) &
-                   + (thisPhoton%stokes%i*weight*filter_response)
+              thisImageSet(i)%vel(xPix,yPix) = real(thisImageSet(i)%vel(xPix, yPix)  &
+                   + velincgs * (thisPhoton%stokes%i*weight*filter_response))
+              thisImageSet(i)%totWeight(xPix,yPix) = real(thisImageSet(i)%totWeight(xPix,yPix) &
+                   + (thisPhoton%stokes%i*weight*filter_response))
 
            endif
 !        endif
@@ -359,7 +359,7 @@ module image_mod
       allocate(smoothed(1:thisImage%nv, 1:thisImage%np))
       
       do j = 1, thisImage%nv
-         ip = (5.*pSigma)/(thisImage%pAxis(2)-thisImage%pAxis(1))
+         ip = int((5.*pSigma)/(thisImage%pAxis(2)-thisImage%pAxis(1)))
          do i = 1, thisImage%np
             tot = 0.
             ip1 = max(1,i-ip)
@@ -374,7 +374,7 @@ module image_mod
       thisImage%pixel(1:thisImage%nv, 1:thisImage%np) = &
            smoothed(1:thisImage%nv, 1:thisImage%np)
 
-      iv = (5.*vSigma)/(thisImage%vAxis(2)-thisImage%vAxis(1))
+      iv = int((5.*vSigma)/(thisImage%vAxis(2)-thisImage%vAxis(1)))
       do i = 1, thisImage%np
          do j = 1, thisImage%nv
             tot = 0.
@@ -434,7 +434,7 @@ module image_mod
        write(*,*) f5, f95
        do i = 1, nx
           do j = 1, ny
-             t = (min(f95, max(f5, image(1)%pixel(i,j)%i))-f5)/(f95-f5)
+             t = real((min(f95, max(f5, image(1)%pixel(i,j)%i))-f5)/(f95-f5))
              rImage(i, j) = int(255.*t)
           enddo
        enddo
@@ -444,7 +444,7 @@ module image_mod
        write(*,*) f5, f95
        do i = 1, nx
           do j = 1, ny
-             t = (min(f95, max(f5, image(2)%pixel(i,j)%i))-f5)/(f95-f5)
+             t = real((min(f95, max(f5, image(2)%pixel(i,j)%i))-f5)/(f95-f5))
              gImage(i, j) = int(255.*t)
           enddo
        enddo
@@ -454,7 +454,7 @@ module image_mod
        write(*,*) f5, f95
        do i = 1, nx
           do j = 1, ny
-             t = (min(f95, max(f5, image(3)%pixel(i,j)%i))-f5)/(f95-f5)
+             t = real((min(f95, max(f5, image(3)%pixel(i,j)%i))-f5)/(f95-f5))
              bImage(i, j) = int(255.*t)
           enddo
        enddo
@@ -485,7 +485,7 @@ module image_mod
           do j = 1, image%ny
              if (image%pixel(i,j)%i > 1.e-29) then
                 n = n + 1
-                values(n) = image%pixel(i,j)%i
+                values(n) = real(image%pixel(i,j)%i)
              endif
           enddo
        enddo
@@ -547,7 +547,7 @@ module image_mod
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
 
        ! Factor of 1.0e20 converts dx to cm from Torus units
-       array = FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad
+       array = real(FluxToMegaJanskies * PerAngstromToPerHz  * array * scale / strad)
 
        if(present(pointTest)) then
           call dumpPointTestData(array, strad, perAngstromToPerHz)
@@ -702,19 +702,19 @@ module image_mod
        array = 1.e-30
        select case(type)
           case("intensity")
-             array = image%pixel%i * scale
+             array = real(image%pixel%i * scale)
 !             print *, "image%pixel%i", image%pixel%i
           case("stokesq")
              where (image%pixel%i /= 0.d0) 
-                array = image%pixel%q * scale
+                array = real(image%pixel%q * scale)
              end where
           case("stokesu")
              where (image%pixel%i /= 0.d0) 
-                array = image%pixel%u * scale 
+                array = real(image%pixel%u * scale )
              end where
           case("pol")
              where (image%pixel%i /= 0.d0) 
-                array = sqrt(image%pixel%q**2 + image%pixel%u**2)
+                array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
              end where
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type

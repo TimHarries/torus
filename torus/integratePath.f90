@@ -322,8 +322,8 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                  kscaInterp = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
               else
                  r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
-                 kabsInterp = grid%oneKappaAbs(1,iLambda) * r
-                 kscaInterp = grid%oneKappaSca(1,iLambda) * r
+                 kabsInterp = real(grid%oneKappaAbs(1,iLambda) * r)
+                 kscaInterp = real(grid%oneKappaSca(1,iLambda) * r)
               endif
            else
               if (.not.grid%oneKappa) then
@@ -413,12 +413,12 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
      ! find the project velocity
 
      thisVel = (lambda0 - wavelength)/lambda0
-     thisVel = thisVel  + (uHat .dot. vVec)  
+     thisVel = real(thisVel  + (uHat .dot. vVec)  )
 
      if (grid%resonanceLine) then
         lambda2 = grid%lambda2
         thisVel2 = (lambda2 - wavelength)/lambda2
-        thisVel2 = thisVel2  + (uHat .dot. vVec) 
+        thisVel2 = real(thisVel2  + (uHat .dot. vVec) )
      endif
 
 
@@ -433,8 +433,8 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
            ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
         else
            r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
-           kabs(nTau) = grid%oneKappaAbs(1,iLambda) * r
-           ksca(nTau) = grid%oneKappaSca(1,iLambda) * r
+           kabs(nTau) = real(grid%oneKappaAbs(1,iLambda) * r)
+           ksca(nTau) = real(grid%oneKappaSca(1,iLambda) * r)
         endif
      else
         if (.not.grid%oneKappa) then
@@ -453,9 +453,9 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
      posIndex(nTau,2) = i2
      posIndex(nTau,3) = i3
 
-     posOffset(nTau,1) = t1
-     posOffset(nTau,2) = t2
-     posOffset(nTau,3) = t3
+     posOffset(nTau,1) = real(t1)
+     posOffset(nTau,2) = real(t2)
+     posOffset(nTau,3) = real(t3)
 
      ! first position held as vector
 
@@ -468,13 +468,13 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
      if (.not.contPhoton) then
 
 
-        nu = cSpeed / (lambda0*angstromtocm)
+        nu = real(cSpeed / (lambda0*angstromtocm))
 
         if (.not. usePops) then
            chil = interpGridChil(grid,i1,i2,i3,t1,t2,t3)
         else
-           chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-           chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+           chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+           chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
         endif
 
 
@@ -482,11 +482,11 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
         tauSob = tauSob / directionalDeriv(grid,rVec,i1,i2,i3,uHat)
 
         if (tauSob < 0.01) then
-          escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+          escProb = real(1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob))))
         else if (tauSob < 15.) then
-          escProb = (1.0d0-exp(-tauSob))/tauSob
+          escProb = real((1.0d0-exp(-tauSob))/tauSob)
         else
-          escProb = 1.d0/tauSob
+          escProb = real(1.d0/tauSob)
         end if
         localTau = tauSob
      endif
@@ -495,7 +495,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
      ! first projected velocity 
 
      if (contPhoton) then
-        projVel(1) = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) .dot. uHat
+        projVel(1) = real(interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) .dot. uHat)
      else
         projVel(1) = thisVel
      endif
@@ -521,7 +521,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
         endif
 
         fVec = VECTOR(dx, dy, dz)
-        dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
+        dlambda = real(abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z))
 
      else
         r1 = grid%rAxis(i1)
@@ -564,11 +564,11 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
      if (grid%geometry == "ttauri") then
         tVec = intersectionLinePlane(rVec, uHat, grid%diskNormal, 0.d0, ok)
         if (ok) then
-           minDist = modulus(tVec)
+           minDist = real(modulus(tVec))
            if (minDist > grid%diskRadius) then
               hitCore = .true.
               hitDisk = .true.
-              distToDisk = modulus(tVec-rVec)
+              distToDisk = real(modulus(tVec-rVec))
            endif
         endif
      endif
@@ -612,7 +612,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
               rHat = (-1.d0)*(rVec / r)
               cosTheta  = uHat .dot. rHat
               call solveQuadDble(1.d0,-2.d0*r*cosTheta,r*r-dble(grid%rCore*grid%rCore),x1,x2,ok)
-              dlambda = max(x1,x2) * fudgeFactor
+              dlambda = real(max(x1,x2) * fudgeFactor)
               rVec = rVec +  dble(dlambda) * uHat   
               r = modulus(rVec)
               mu = rVec%z/r
@@ -721,8 +721,8 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                  ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
               else
                  r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
-                 kabs(nTau) = grid%oneKappaAbs(1,iLambda) * r
-                 ksca(nTau) = grid%oneKappaSca(1,iLambda) * r
+                 kabs(nTau) = real(grid%oneKappaAbs(1,iLambda) * r)
+                 ksca(nTau) = real(grid%oneKappaSca(1,iLambda) * r)
               endif
            else
               if (.not.grid%oneKappa) then
@@ -740,15 +740,15 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
            posIndex(nTau,1) = i1
            posIndex(nTau,2) = i2
            posIndex(nTau,3) = i3
-           posOffset(nTau,1) = t1
-           posOffset(nTau,2) = t2
-           posOffset(nTau,3) = t3
+           posOffset(nTau,1) = real(t1)
+           posOffset(nTau,2) = real(t2)
+           posOffset(nTau,3) = real(t3)
 
            rVecArray(nTau) = rVec
 
            lambda(nTau) = lambda(nTau-1) + dlambda
            dlam(nTau-1) = dLambda
-           projVel(nTau) = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) .dot. uHat
+           projVel(nTau) = real(interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) .dot. uHat)
 
 
            ! get the new length increment
@@ -770,7 +770,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
               endif
 
               fVec = VECTOR(dx, dy, dz)
-              dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
+              dlambda = real(abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z))
 
 !              dlambda = abs(fvec .dot. uHat)
 !              dlambda = min(dx,dy,dz)
@@ -847,13 +847,13 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                     t2 = posOffset(i,2)
                     t3 = posOffset(i,3)
 
-                    nu = cSpeed / (lambda0*angstromtocm)
+                    nu = real(cSpeed / (lambda0*angstromtocm))
 
                     if (.not.usePops) then
                        tauSob = interpGridChil(grid,i1,i2,i3,t1,t2,t3) / nu
                     else
-                       chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                       chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+                       chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                       chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
                        tauSob = chil / nu
                     endif
 
@@ -869,14 +869,14 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                     t2 = posOffset(i+1,2)
                     t3 = posOffset(i+1,3)
 
-                    nu = cSpeed / (lambda0*angstromtocm)
+                    nu = real(cSpeed / (lambda0*angstromtocm))
 
 
                     if (.not.usePops) then
                        tauSob = interpGridChil(grid,i1,i2,i3,t1,t2,t3) / nu
                     else
-                       chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                       chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+                       chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                       chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
                        tauSob = chil / nu
                     endif
 
@@ -888,7 +888,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                     if ((projVel(i+1)-projVel(i)) /= 0.) then
                        x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
                     endif
-                    tauSob = tauSob1  + x * (tauSob2 - tauSob1)
+                    tauSob = real(tauSob1  + x * (tauSob2 - tauSob1))
 
                     ! somethings gone wrong - usually numerical problems 
 
@@ -929,13 +929,13 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                        t2 = posOffset(i,2)
                        t3 = posOffset(i,3)
 
-                       nu = cSpeed / (lambda2*angstromtocm)
+                       nu = real(cSpeed / (lambda2*angstromtocm))
 
                        if (.not.usePops) then
                           tauSob = interpGridChil(grid,i1,i2,i3,t1,t2,t3) / nu
                        else
-                          chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                          chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+                          chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                          chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
                           tauSob = chil / nu
                        endif
                        
@@ -951,14 +951,14 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                        t2 = posOffset(i+1,2)
                        t3 = posOffset(i+1,3)
 
-                       nu = cSpeed / (lambda2*angstromtocm)
+                       nu = real(cSpeed / (lambda2*angstromtocm))
 
 
                        if (.not.usePops) then
                           tauSob = interpGridChil(grid,i1,i2,i3,t1,t2,t3) / nu
                        else
-                          chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                          chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+                          chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                          chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
                           tauSob = chil / nu
                        endif
                        
@@ -970,7 +970,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                        if ((projVel(i+1)-projVel(i)) /= 0.) then
                           x = (thisVel2-projVel(i))/(projVel(i+1)-projVel(i))
                        endif
-                       tauSob = tauSob1  + x * (tauSob2 - tauSob1)
+                       tauSob = real(tauSob1  + x * (tauSob2 - tauSob1))
 
                        ! somethings gone wrong - usually numerical problems 
 
@@ -1023,7 +1023,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                     thisVel = real(j-1)/real(nLambda-1)
 !                    thisVel = lamStart + thisVel*(lamEnd-lamStart)
                     thisVel = (thisVel-lambda0)/lambda0
-                    thisVel = -thisVel  + (uHat .dot. vVec) - (wavelength - lambda0)/lambda0
+                    thisVel = -real(thisVel  + (uHat .dot. vVec) - (wavelength - lambda0)/lambda0)
 
                     ! now find resonances
 
@@ -1043,12 +1043,12 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                           t2 = posOffset(i,2)
                           t3 = posOffset(i,3)
 
-                          nu = cSpeed / (lambda0*angstromtocm)
+                          nu = real(cSpeed / (lambda0*angstromtocm))
                           if (.not. usePops) then
                              tauSob = interpGridChil(grid,i1,i2,i3,t1,t2,t3) / nu
                           else
-                             chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                             chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+                             chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                             chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
                              tauSob = chil / nu
                           endif
 
@@ -1062,12 +1062,12 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                           t2 = posOffset(i+1,2)
                           t3 = posOffset(i+1,3)
 
-                          nu = cSpeed / (lambda0*angstromtocm)
+                          nu = real(cSpeed / (lambda0*angstromtocm))
                           if (.not.usePops) then
                              tauSob = interpGridChil(grid,i1,i2,i3,t1,t2,t3) / nu
                           else
-                             chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                             chil = 1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel)))
+                             chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                             chil = real(1.e10*chil* (grid%n(i1,i2,i3,mLevel)-( ( gM / gN) * grid%n(i1,i2,i3,nLevel))))
                              tauSob = chil / nu
                           endif
 
@@ -1077,7 +1077,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
                           if ((projVel(i+1)-projVel(i)) /= 0.) then
                              x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
                           endif
-                          tauSob = tauSob1  + x * (tauSob2 - tauSob1)
+                          tauSob = real(tauSob1  + x * (tauSob2 - tauSob1))
 
 
                           ! might have gone wrong due to rounding errors
@@ -1292,8 +1292,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
         do i = 2, nTau, 1 
 ! RK CHANGED THE FOLLOWINGS
            dlambda(i) = lambda(i)-lambda(i-1)
-           tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
-           tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
+           tauSca(i) = real(tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i)))
+           tauAbs(i) = real(tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i)))
 !           tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
 !           tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
 
@@ -1329,12 +1329,12 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      ! find the projected velocity
 
      thisVel = (lambda0 - wavelength)/lambda0  
-     thisVel = thisVel  + (uHat .dot. vVec)    ! (+ve when toward observer!)
+     thisVel = real(thisVel  + (uHat .dot. vVec))    ! (+ve when toward observer!)
 
      if (grid%resonanceLine) then
         lambda2 = grid%lambda2
         thisVel2 = (lambda2 - wavelength)/lambda2
-        thisVel2 = thisVel2  + (uHat .dot. vVec) 
+        thisVel2 = real(thisVel2  + (uHat .dot. vVec) )
      endif
 
 
@@ -1349,7 +1349,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
 
 !     linePhotonAlbedo(1:nTau) = kSca(1:nTau) / (kSca(1:nTau)+kAbs(1:nTau)+chiLine(1:nTau))
-     linePhotonAlbedo(1:nTau) = kSca(1:nTau) / (kSca(1:nTau)+kAbs(1:nTau))
+     linePhotonAlbedo(1:nTau) = real(kSca(1:nTau) / (kSca(1:nTau)+kAbs(1:nTau)))
 
 
 
@@ -1366,23 +1366,23 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      if (.not.contPhoton) then
 
         if (usePops) then
-           chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-           chil = 1.e10 * chil * (levelPop(1,mLevel)&
-                          -( ( gM / gN) * (levelPop(1,nLevel))))
+           chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+           chil = real(1.e10 * chil * (levelPop(1,mLevel)&
+                          -( ( gM / gN) * (levelPop(1,nLevel)))))
         else
           chil = chiLine(1)
         endif
 
-        nu  = cSpeed / (lambda0*angstromtocm)
+        nu  = real(cSpeed / (lambda0*angstromtocm))
         tauDouble = chil  / (nu  * velocityDeriv(1))
         
         if (tauDouble < 0.01_db) then
-          escProb = 1.0_db-tauDouble*0.5_db* &
-            (1.0_db - tauDouble/3.0_db*(1.0_db - tauDouble*0.25_db*(1.0_db - 0.2_db*tauDouble)))
+          escProb = real(1.0_db-tauDouble*0.5_db* &
+            (1.0_db - tauDouble/3.0_db*(1.0_db - tauDouble*0.25_db*(1.0_db - 0.2_db*tauDouble))))
         else if (tauDouble < 15.0_db) then
-          escProb = (1.0_db-exp(-tauDouble))/tauDouble
+          escProb = real((1.0_db-exp(-tauDouble))/tauDouble)
         else
-          escProb = 1.0_db/tauDouble
+          escProb = real(1.0_db/tauDouble)
         end if
         localTau = real(tauDouble)
 
@@ -1412,8 +1412,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      tauSca(1:2) = 0.
 
      do i = 2, nTau, 1
-        tauSca(i) = tauSca(i-1) + dlambda(i-1)*0.5*(ksca(i-1)+ksca(i))
-        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*0.5*(kabs(i-1)+kabs(i))
+        tauSca(i) = real(tauSca(i-1) + dlambda(i-1)*0.5*(ksca(i-1)+ksca(i)))
+        tauAbs(i) = real(tauAbs(i-1) + dlambda(i-1)*0.5*(kabs(i-1)+kabs(i)))
 !        tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
 !        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
@@ -1441,16 +1441,16 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
               ! Setting up the Tau_sov 
               if (usePops) then
-                 chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                 chiLine(1:nTau) = 1.e10 * chil * (levelPop(1:nTau,mLevel)&
-                      -( ( gM / gN) * (levelPop(1:nTau,nLevel))))
+                 chil=real((((pi*eCharge**2)/(mElectron*cSpeed))*fStrength))
+                 chiLine(1:nTau) = real((1.e10 * chil * (levelPop(1:nTau,mLevel)&
+                      -( ( gM / gN) * (levelPop(1:nTau,nLevel))))))
               endif              
-              nu  = cSpeed / (lambda0*angstromtocm)
+              nu  = real(cSpeed / (lambda0*angstromtocm))
               tauSob(1:nTau) = chiLine(1:nTau)  / (nu  * velocityDeriv(1:nTau))
               
               ! for resonance line case
               if (grid%resonanceLine) then
-                 nu2  = cSpeed / (lambda2*angstromtocm)
+                 nu2  = real(cSpeed / (lambda2*angstromtocm))
                  tauSob2(1:nTau) = chiLine(1:nTau)  / (nu2  * velocityDeriv(1:nTau))
               end if
 
@@ -1470,7 +1470,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
                     x = 1.
                     if ((projVel(i+1)-projVel(i)) /= 0.) then
-                       x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
+                       x = real((thisVel-projVel(i))/(projVel(i+1)-projVel(i)))
                     endif
                     tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
 
@@ -1518,7 +1518,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                        
                        x = 1.
                        if ((projVel(i+1)-projVel(i)) /= 0.) then
-                          x = (thisVel2-projVel(i))/(projVel(i+1)-projVel(i))
+                          x = real((thisVel2-projVel(i))/(projVel(i+1)-projVel(i)))
                        endif
                        tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
 
@@ -1570,12 +1570,12 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
               if (.not.thinLine) then
 
                  if (usePops) then
-                    chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
-                    chiLine(1:nTau) = 1.e10 * chil * (levelPop(1:nTau,mLevel)&
-                                   -( ( gM / gN) * (levelPop(1:nTau,nLevel))))
+                    chil=real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength)
+                    chiLine(1:nTau) = real(1.e10 * chil * (levelPop(1:nTau,mLevel)&
+                                   -( ( gM / gN) * (levelPop(1:nTau,nLevel)))))
                  endif
                     
-                 nu  = cSpeed / (lambda0*angstromtocm)
+                 nu  = real(cSpeed / (lambda0*angstromtocm))
                  tauSob(1:nTau) = chiLine(1:nTau)  / (nu  * velocityDeriv(1:nTau))
                  
                  ! loop over all wavelength bins
@@ -1616,7 +1616,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
    
                           x = 1.
                           if ((projVel(i+1)-projVel(i)) /= 0.) then
-                             x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
+                             x = real((thisVel-projVel(i))/(projVel(i+1)-projVel(i)))
                           endif
                           tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
 
@@ -1830,7 +1830,7 @@ end subroutine integratePathAMR
 
     ! find the projected velocity [c]
     Vn1 = uHat .dot. vVec         ! projected velocity of the local gas at emission location
-    thisVel = Vn1 + (lambda0-wavelength)/lambda0
+    thisVel = real(Vn1 + (lambda0-wavelength)/lambda0)
 !    thisVel = (wavelength-lambda0)/lambda0
 
 
@@ -1902,7 +1902,7 @@ end subroutine integratePathAMR
     
     dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
     ! Number density of HI N_H = N_HI + Np, but Np=Ne
-    N_HI(1:ntau) = rho(1:ntau)/meanMoleMass - Ne(1:nTau)
+    N_HI(1:ntau) = real(rho(1:ntau)/meanMoleMass - Ne(1:nTau))
 
 
 !---------------------------------------------------------------
@@ -1962,17 +1962,17 @@ end subroutine integratePathAMR
           chil = chil/(1.0d0+projVel_mid)
           dtau = chil*dL(i-1)
           ! line albedo added here - tjh
-          kappa_total = (kSca(i-1) + kAbs(i-1) + chil)
+          kappa_total = real((kSca(i-1) + kAbs(i-1) + chil))
           !             kappa_total = (kSca(i) + kAbs(i))  ! don't include line opacity for albedo
           if (kappa_total >0.0) then
-             linePhotonAlbedo(i) = kSca(i-1) / kappa_total
+             linePhotonAlbedo(i) = real(kSca(i-1) / kappa_total)
           else
              linePhotonAlbedo(i) = 0.0
           end if
 
-          tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
-          tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-          tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+          tauAbsLine(i) = real(tauAbsLine(i-1) +  abs(dtau))
+          tauSca(i) = real(tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1))))
+          tauAbs(i) = real(tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1))))
           !------------------------------------------------------------
 !          tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
 !          tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
@@ -1997,8 +1997,8 @@ end subroutine integratePathAMR
        tauExt(1:2) = 1.0e-25
        do i = 2, nTau
           if (inflow(i-1)) then
-             tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-             tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+             tauSca(i) = real(tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1))))
+             tauAbs(i) = real(tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1))))
              !------------------------------------------------------------
 !             tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
 !             tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
@@ -2177,17 +2177,17 @@ end subroutine integratePathAMR
              chil = chil/(1.0d0+projVel_mid)
              dtau = chil*dL(i-1)
              ! line albedo added here - tjh
-             kappa_total = (kSca(i-1) + kAbs(i-1) + chil)
+             kappa_total = real((kSca(i-1) + kAbs(i-1) + chil))
              !             kappa_total = (kSca(i) + kAbs(i))  
              if (kappa_total >0.0) then
-                linePhotonAlbedo(i) = kSca(i-1) / kappa_total
+                linePhotonAlbedo(i) = real(kSca(i-1) / kappa_total)
              else
                 linePhotonAlbedo(i) = 0.0
              end if
           
-             tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
-             tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-             tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+             tauAbsLine(i) = real(tauAbsLine(i-1) +  abs(dtau))
+             tauSca(i) = real(tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1))))
+             tauAbs(i) = real(tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1))))
              !------------------------------------------------------------
 !             tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
 !             tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
@@ -2213,8 +2213,8 @@ end subroutine integratePathAMR
        tauExt(1:2) = 1.0e-25
        do i = 2, nTau
           if ( inflow(i-1) ) then
-             tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-             tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+             tauSca(i) = real(tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1))))
+             tauAbs(i) = real(tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1))))
              !------------------------------------------------------------
 !             tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
 !             tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
@@ -2290,7 +2290,7 @@ end subroutine integratePathAMR
                 ! transform this back to observer's frame value
                 chil = chil/(1.0d0+projVel_mid)
                 dtau = chil*dL(i-1)
-                tauCont(i,j) = tauCont(i-1,j) + abs(dtau)
+                tauCont(i,j) = real(tauCont(i-1,j) + abs(dtau))
              else
                 tauCont(i,j) = tauCont(i-1,j)
              endif ! (inflow(i-1))
@@ -2670,7 +2670,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
      ! direction of the beam...
      do i = 1, ntest
-        theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
+        theta = real(2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01)
         x1 = cos(theta); x2 = sin(theta)
         octVec = VECTOR(x1, x2, 0.0)
         !           call Normalize(octVec)  ! just in case ..
@@ -2721,7 +2721,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      
      ! direction of the beam...
      do i = 1, ntest
-        theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
+        theta = real(2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01)
         x1 = cos(theta); x2 = sin(theta)
         octVec = VECTOR(x2, 0.0, x1)
         !          call Normalize(octVec)  ! just in case ..
@@ -2774,7 +2774,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      
      ! direction of the beam...
      do i = 1, ntest
-        theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
+        theta = real(2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01)
         x1 = cos(theta); x2 = sin(theta)
         octVec = VECTOR(x2, 0.0, x1)
         !          call Normalize(octVec)  ! just in case ..

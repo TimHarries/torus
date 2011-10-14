@@ -550,7 +550,7 @@ contains
            lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
            lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
            do i = 1, nLambda
-              xArray(i) = lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1)
+              xArray(i) = real(lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1))
            enddo
         endif
      endif
@@ -563,8 +563,8 @@ contains
           lamEnd = 1.d7
           logLamStart = log10(lamStart)
           logLamEnd = log10(lamEnd)
-          xArray(1) = lamStart
-          xArray(2) = lamEnd
+          xArray(1) = real(lamStart)
+          xArray(2) = real(lamEnd)
           nCurrent = 2
 #ifdef PHOTOION
           call refineLambdaArray(xArray, nCurrent, grid)
@@ -574,7 +574,7 @@ contains
              fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
              fac = 10.**fac
              nCurrent=nCurrent + 1
-             xArray(nCurrent) = fac
+             xArray(nCurrent) = real(fac)
              call sort(nCurrent, xArray)
           enddo
        endif
@@ -593,7 +593,7 @@ contains
          do i = 1, nlambda
             fac = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
             fac = 10.**fac
-            xArray(i) = fac
+            xArray(i) =real(fac)
         enddo
         
        end subroutine setupLogSpacing
@@ -629,10 +629,10 @@ contains
 
          if (nLambda > 1) then
             do i = 1, nlambda
-               xArray(i) = LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart)
+               xArray(i) = real(LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart))
             enddo
          else 
-            xArray(1) = lamStart
+            xArray(1) = real(lamStart)
          endif
        end subroutine setupLinSpacing
 

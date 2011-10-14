@@ -135,8 +135,8 @@ contains
 
              ! the azimuthal speed
              
-             vPhi = (vRot/cSpeed/(grid%rAxis(i)/rMin)) * &
-                                     sqrt(1.-grid%muAxis(j)**2)
+             vPhi = real((vRot/cSpeed/(grid%rAxis(i)/rMin)) * &
+                                     sqrt(1.-grid%muAxis(j)**2))
 
              ! current velocity - purely radial
 
@@ -165,7 +165,7 @@ contains
 
        ! work out the starting phase of this arm
 
-       spiralPhase = twoPi * real(iSpiral-1)/real(nSpiral)
+       spiralPhase = real(twoPi * real(iSpiral-1)/real(nSpiral))
 
        ! loop over all radii
 
@@ -179,23 +179,23 @@ contains
           do j = 1, 10000
              r = rMin + (r0 - rMin) * real(j-1)/9999.
              call locate(grid%rAxis, grid%nr, real(r), i1)
-             w = modulus(grid%velocity(i1,1,1))/modulus(grid%velocity(grid%nr,1,1))
-             tot = tot + ((r0-rMin)/(10000.*rMin)) * (1. - (rMin/r)**2) / w
+             w = real(modulus(grid%velocity(i1,1,1))/modulus(grid%velocity(grid%nr,1,1)))
+             tot = real(tot + ((r0-rMin)/(10000.*rMin)) * (1. - (rMin/r)**2) / w)
           enddo
           phi0 = tot * vRot/modulus(grid%velocity(grid%nr,1,1))/cSpeed
           phi0 = phi0 + phaseOffSet + spiralPhase
 
-          x0 = r0 * cos(phi0)
-          y0 = r0 * sin(phi0)
+          x0 = real(r0 * cos(phi0))
+          y0 = real(r0 * sin(phi0))
 
           tot = 0.
           do j = 1, 10000
              r = rMin + (r1 - rMin) * real(j-1)/9999.
              call locate(grid%rAxis, grid%nr, real(r), i1)
-             w = modulus(grid%velocity(i1,1,1))/modulus(grid%velocity(grid%nr,1,1))
-             tot = tot + ((r1-rMin)/(10000.*rMin)) * (1. - (rMin/r)**2) / w
+             w = real(modulus(grid%velocity(i1,1,1))/modulus(grid%velocity(grid%nr,1,1)))
+             tot = real(tot + ((r1-rMin)/(10000.*rMin)) * (1. - (rMin/r)**2) / w)
           enddo
-          phi1 = -tot * vRot/modulus(grid%velocity(grid%nr,1,1))/cSpeed
+          phi1 = real(-tot * vRot/modulus(grid%velocity(grid%nr,1,1))/cSpeed)
           phi1 = phi1 + phaseOffSet + spiralPhase
 
           x1 = r1 * cos(phi1)
@@ -286,8 +286,8 @@ contains
 
              ! azimuthal speed
 
-             vPhi = (vRot/cSpeed/(grid%rAxis(i)/rMin)) * &
-                                       sqrt(1.-grid%muAxis(j)**2)
+             vPhi = real((vRot/cSpeed/(grid%rAxis(i)/rMin)) * &
+                                       sqrt(1.-grid%muAxis(j)**2))
 
 
              ! initial field is purely radial
@@ -403,7 +403,7 @@ contains
     character(len=*) :: ramanDist
 
     mHot = 0.6 * mSol
-    rDisk = modulus(hotSourcePosition-coolStarPosition)/2.
+    rDisk = real(modulus(hotSourcePosition-coolStarPosition)/2.)
 
     zAxis = VECTOR(0.,0.,1.)
 
@@ -445,10 +445,10 @@ contains
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))-hotSourcePosition
                 rHat = rVec
                 call normalize(rHat)
-                r = modulus(rVec)
-                cosPhi = rHat .dot. coolDirection
+                r = real(modulus(rVec))
+                cosPhi = real(rHat .dot. coolDirection)
                 phi = acos(cosPhi)
-                rStrom = modulus(hotSourcePosition-coolStarPosition)/ (1. + 2.*cos(2.*phi))
+                rStrom = real(modulus(hotSourcePosition-coolStarPosition)/ (1. + 2.*cos(2.*phi)))
                 if (((rVec%x > 0.).or.((rStrom > 0.) .and.(r < rStrom)).or.(rStrom < 0.))) then
                    grid%kappaAbs(i,j,k,1) = 1.e-30
                    grid%kappaSca(i,j,k,1) = 1.e-30
@@ -467,11 +467,11 @@ contains
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))-hotSourcePosition
                 rHat = rVec
                 call normalize(rHat)
-                r = modulus(rVec)
-                cosPhi = rHat .dot. coolDirection
+                r = real(modulus(rVec))
+                cosPhi = real(rHat .dot. coolDirection)
                 phi = acos(cosPhi)
                 fac = 2./3.
-                rStrom = modulus(hotSourcePosition-coolStarPosition)/ (fac*(1. + 2.*cos(phi)))
+                rStrom = real(modulus(hotSourcePosition-coolStarPosition)/ (fac*(1. + 2.*cos(phi))))
                 if (((rStrom < 0.) .or.(r < rStrom))) then
                    grid%kappaAbs(i,j,k,1) = 1.e-30
                    grid%kappaSca(i,j,k,1) = 1.e-30
@@ -484,12 +484,12 @@ contains
 
     case("hole")
 
-       rHole = 0.5*modulus(coolStarPosition - hotSourcePosition)
+       rHole = real(0.5*modulus(coolStarPosition - hotSourcePosition))
        do i = 1, grid%nx
           do j = 1, grid%ny
              do k = 1, grid%nz
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))-hotSourcePosition
-                r = modulus(rVec)
+                r = real(modulus(rVec))
                 if (r < rHole) then
                    grid%kappaAbs(i,j,k,1) = 1.e-30
                    grid%kappaSca(i,j,k,1) = 1.e-30
@@ -511,8 +511,8 @@ contains
        do j = 1, 100
           mu = 2.*real(j-1)/99.-1.
           do i = 1, 1000       
-             ang = twoPi*real(i)/999.
-             r = 2.*ang/twoPi*modulus(hotSourcePosition-coolStarPosition)
+             ang = real(twoPi*real(i)/999.)
+             r = real(2.*ang/twoPi*modulus(hotSourcePosition-coolStarPosition))
              fac = sqrt(1.-mu**2)
              rVec = VECTOR(fac*r*cos(ang),-fac*r*sin(ang),r*mu)
              dr = rVec - oldrVec 
@@ -545,11 +545,11 @@ contains
        allocate(done(1:grid%nx,1:grid%ny,1:grid%nz))
        done = .false.
        oldrVec = VECTOR(0.,0.,0.)
-       rMin = 0.1*modulus(hotSourcePosition - coolStarPosition)
-       rMax = 0.5*modulus(hotSourcePosition - coolStarPosition)
+       rMin = real(0.1*modulus(hotSourcePosition - coolStarPosition))
+       rMax = real(0.5*modulus(hotSourcePosition - coolStarPosition))
        do k = 1,100
           do i = 1, 1000       
-             ang = twoPi*real(i)/999.
+             ang = real(twoPi*real(i)/999.)
              r = rMin + (rMax-rMin)*real(k-1)/99.
              rVec = VECTOR(r*cos(ang),r*sin(ang),0.)
              dr = rVec .cross. zAxis
@@ -560,7 +560,7 @@ contains
              call hunt(grid%zAxis,grid%nz,real(rvec%z), i3)
              if (.not.done(i1,i2,i3)) then
                 rho = 1.e10
-                grid%kappaSca(i1,i2,i3,1) = rho * sigmaE * (34. + 6.6)
+                grid%kappaSca(i1,i2,i3,1) = real(rho * sigmaE * (34. + 6.6))
                 grid%velocity(i1,i2,i3) = (50.e5/cSpeed) * dr
                 done(i1,i2,i3) = .true.
              endif
@@ -586,10 +586,10 @@ contains
        allocate(done(1:grid%nx,1:grid%ny,1:grid%nz))
        done = .false.
        do i = 1, 1000       
-          ang = twoPi*real(i-1)/999.
+          ang = real(twoPi*real(i-1)/999.)
           do j = 1, 1000
              rVec = (dble(j-1)/999.d0)*VECTOR(dble(rDisk*cos(ang)),dble(rDisk*sin(ang)),0.d0)
-             r = modulus(rVec)
+             r = real(modulus(rVec))
              vHat = rVec .cross. zAxis
              if (modulus(vHat) /= 0.) call normalize(vHat)
              rVec = hotSourcePosition + rVec
@@ -599,9 +599,9 @@ contains
              call hunt(grid%zAxis,grid%nz,real(rvec%z), i3)
              if (.not.done(i1,i2,i3)) then
                 rho = 1.e10
-                grid%kappaSca(i1,i2,i3,1) = rho * sigmaE * (34. + 6.6)
+                grid%kappaSca(i1,i2,i3,1) = real(rho * sigmaE * (34. + 6.6))
                 if (r /= 0.) then
-                   v = sqrt(bigG * mHot / r)/cSpeed
+                   v = real(sqrt(bigG * mHot / r)/cSpeed)
                 else
                    v = 0.
                 endif
@@ -623,7 +623,7 @@ contains
        deallocate(done)
 
     case ("plane")
-       xCen = 0.5*(hotSourcePosition%x + coolStarPosition%x)
+       xCen = real(0.5*(hotSourcePosition%x + coolStarPosition%x))
        do i = 1, grid%nx
           do j = 1, grid%ny
              do k = 1, grid%nz
@@ -647,7 +647,7 @@ contains
           do j = 1, grid%ny
              do k = 1, grid%nz
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j), grid%zAxis(k)) - coolStarPosition
-                r = modulus(rVec)
+                r = real(modulus(rVec))
                 rHat = rVec
                 call normalize(rHat)
                 if (r > grid%rCore) then
@@ -666,7 +666,7 @@ contains
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))-hotSourcePosition
                 rHat = rVec
                 call normalize(rHat)                
-                cosAng = abs(rHat .dot. zAxis)
+                cosAng = real(abs(rHat .dot. zAxis))
                 ang = acos(cosAng)
 
                 if (ang < openingAng) then
@@ -697,7 +697,7 @@ contains
                 rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))-hotSourcePosition
                 rHat = rVec
                 call normalize(rHat)                
-                cosAng = abs(rHat .dot. zAxis)
+                cosAng = real(abs(rHat .dot. zAxis))
                 ang = acos(cosAng)
 
                 if (ang < openingAng) then
@@ -705,8 +705,8 @@ contains
                         (40.e5/cSpeed)*rHat
 
                    grid%kappaAbs(i,j,k,1) = rho * fac * 1.e-30
-                   grid%kappaSca(i,j,k,1) = rho * fac * (34.+6.6)*sigmaE
-                   grid%kappaAbsRed(i,j,k,1) = 1.e-30
+                   grid%kappaSca(i,j,k,1) = real(rho * fac * (34.+6.6)*sigmaE)
+                   Grid%kappaabsred(i,j,k,1) = 1.e-30
                    grid%kappaAbsRed(i,j,k,1) = 1.e-30
                 endif
 
@@ -754,7 +754,7 @@ contains
     iMin = i1
 
     do i = 1, 100
-       rotationAngle = twoPi * real(i-1)/99.
+       rotationAngle = real(twoPi * real(i-1)/99.)
        do j = iMin,grid%nr
           xDist = max(grid%rAxis(j),binarySep10-stagPoint)
           yDist = (xDist -(binarySep10-stagPoint)) * tan(openingAngle)

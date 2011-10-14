@@ -242,7 +242,7 @@ module angularImage
 
 ! Intensity as brightness temperature
         thisLambda = cSpeed / thisMolecule%transfreq(itrans)
-        cube%intensity(:,:,iv) = real(temp(:,:,1)) * (thisLambda**2) / (2.0 * kErg)
+        cube%intensity(:,:,iv) = real((temp(:,:,1)) * (thisLambda**2) / (2.0 * kErg))
         if (wantTau ) cube%tau(:,:,iv)       = real(temp(:,:,2))
         cube%nCol(:,:)         = real(temp(:,:,3)) 
         if ( splitCubes ) then 
@@ -311,8 +311,8 @@ module angularImage
          subpixels = 0
       endif
 
-      theta_min = ( 90.0 - centrevecy ) - 0.5 * imageside 
-      phi_min   = ( centrevecx - 90.0 ) - 0.5 * imageside
+      theta_min = real(( 90.0 - centrevecy ) - 0.5 * imageside )
+      phi_min   = real(( centrevecx - 90.0 ) - 0.5 * imageside)
 
       delta_theta = imageside / real(npixels)
       delta_phi   = imageside / real(npixels)
@@ -367,7 +367,7 @@ module angularImage
             call normalize(viewvec)
 
             imagegrid(ipixels,jpixels,:) = &
-                 AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV, subpixels)
+                 real(AngPixelIntensity(viewvec,grid,thisMolecule,iTrans,deltaV, subpixels))
 
          enddo
 !$OMP END DO
@@ -620,11 +620,11 @@ module angularImage
 
         if ( thermalLineWidth ) then 
            ! Calculate thermal line width in cm/s.
-           sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / (thisMolecule%molecularWeight * amu) )
+           sigma_thermal = real(sqrt (  (kErg * thisOctal%temperature(subcell)) / (thisMolecule%molecularWeight * amu) ))
            ! Add turbulent line width 
-           sigma_thermal = sigma_thermal + ( vturb * 1.0d5) 
+           sigma_thermal = real(sigma_thermal + ( vturb * 1.0d5) )
            ! Convert to Torus units (v/c)
-           sigma_thermal = sigma_thermal / cspeed
+           sigma_thermal = real(sigma_thermal / cspeed)
            dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
         else
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))

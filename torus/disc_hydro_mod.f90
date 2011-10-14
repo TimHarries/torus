@@ -50,20 +50,20 @@ contains
     real :: drho
 
     mu = 2.3 ! mean mole mass assuming pure H_2/He
-    radiusAU = (radius * 1.e10) / autocm
+    radiusAU = real((radius * 1.e10) / autocm)
 
 
     allocate(oldRho(1:nz), lnrho(1:nz),doubleRho(1:nz))
-    oldRho(1:nz) = rho(1:nz)
+    oldRho(1:nz) = real(rho(1:nz))
 
     converged = .false.
 
     lnrho(1) = 0.
     do i = 2, nz
-       dz = (zAxis(i)-zAxis(i-1))
+       dz = real((zAxis(i)-zAxis(i-1)))
        dTdz = (temperature(i)-temperature(i-1))/dz
-       fac = (mu * mHydrogen * bigG * mStar * zAxis(i)/ (kErg * radius**3))/1.e30
-       fac2 = -1.d0*(dTdz + fac)/temperature(i)
+       fac = real((mu * mHydrogen * bigG * mStar * zAxis(i)/ (kErg * radius**3))/1.e30)
+       fac2 = real(-1.d0*(dTdz + fac)/temperature(i))
        lnrho(i) = lnrho(i-1) + fac2 * dz
     enddo
 
@@ -109,8 +109,8 @@ contains
 
     if (geometry == "planetgap") then
 
-       fac =  1.d0-min(dble(radius - rInner)/(0.02d0*rinner),1.d0)
-       fac = exp(-fac*10.d0)
+       fac =  real(1.d0-min(dble(radius - rInner)/(0.02d0*rinner),1.d0))
+       fac = real(exp(-fac*10.d0))
        scalefac = sigma0 * (radius/rCore)**(betaDisc-alphaDisc) * fac 
        if (planetGap) then
           scalefac = scalefac * fractGap2(dble(radiusAU))
@@ -124,8 +124,8 @@ contains
     endif
 
     if (geometry == "warpeddisc") then
-       fac =  1.d0-min(dble(radius - rInner)/(0.05d0*rinner),1.d0)
-       fac = exp(-fac*10.d0)
+       fac =  real(1.d0-min(dble(radius - rInner)/(0.05d0*rinner),1.d0))
+       fac = real(exp(-fac*10.d0))
        scalefac = sigma0 * (radius/rOuter)**(betaDisc-alphaDisc) * fac
 
        write (137,*) radiusAU, scalefac
@@ -172,7 +172,7 @@ contains
     real :: halfSmallestSubcell
 
     nz = 0
-    halfSmallestSubcell = grid%halfSmallestSubcell
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
 
     currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
 
@@ -279,22 +279,22 @@ contains
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
-    xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
-    smallestSubcell = 2. * grid%halfSmallestSubcell
+    xPos = real(grid%halfSmallestSubcell - grid%octreeRoot%subcellSize)
+    smallestSubcell = real(2. * grid%halfSmallestSubcell)
     
 
 
 
   if (grid%octreeRoot%twod) then
-    xPos = grid%halfSmallestSubcell
+    xPos = real(grid%halfSmallestSubcell)
     yPos = 0.
 !    do while (xPos < (2.* grid%octreeRoot%subcellSize))
 !       radius = xPos
 !
 
     do i = 1, nx
-       radius = xAxis(i)
-       xPos = xAxis(i)
+       radius = real(xAxis(i))
+       xPos = real(xAxis(i))
        if ((radius > grid%rInner).and.(radius < grid%rOuter)) then
           call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, +1.)
 
@@ -318,7 +318,7 @@ contains
     enddo
   else if (grid%octreeRoot%threed) then
     do while (xPos < grid%octreeRoot%subcellSize)
-       yPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
+       yPos = real(grid%halfSmallestSubcell - grid%octreeRoot%subcellSize)
        do while (yPos < grid%octreeRoot%subcellSize)
           radius = sqrt(xPos**2 + yPos**2)
           if ((radius > grid%rInner).and.(radius < grid%rOuter)) then
@@ -384,7 +384,7 @@ contains
     
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
-    sigma0 = rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi)
+    sigma0 = real(rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi))
 
 
     converged = .false.
@@ -517,7 +517,7 @@ contains
           ! chris
           if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
              if (geometry.ne."warpeddisc") then
-                rGapCM = rGap * autocm / 1.d10
+                rGapCM = real(rGap * autocm / 1.d10)
              end if
 
           end if

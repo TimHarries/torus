@@ -209,7 +209,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer :: nFromEnv
   integer(kind=bigInt) :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
-  integer :: i, iSlit, istep, ispline 
+  integer(kind=bigint) :: i
+  integer :: iSlit, istep, ispline 
   type(VECTOR) :: viewVec, outVec, thisVec
   type(VECTOR) :: amrGridCentre
 
@@ -410,7 +411,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      if (rotateView.and.(nPhase /= 1)) then
         if (writeoutput) write(*,'(a)') "Rotating view..."
-        phi = -rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1)
+        phi = real(-rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1))
         viewVec =  arbitraryRotate(thisVec, dble(phi), rotationAxis)
         outVec = (-1.d0) * viewVec
         if (writeoutput) write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
@@ -419,14 +420,14 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      if (phaseOffset /= 0.) then
         if (writeoutput) write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
-        phi = twoPi * phaseOffset
+        phi = real(twoPi * phaseOffset)
         viewVec =  arbitraryRotate(viewVec, dble(phi), rotationAxis)
         outVec = (-1.d0) * viewVec
      endif
 
 
      if (tiltView.and.(nPhase /= 1)) then
-        phi = -twoPi * real(iPhase-1)/real(nPhase-1)
+        phi = real(-twoPi * real(iPhase-1)/real(nPhase-1))
         viewVec =  arbitraryRotate(thisVec, dble(phi), xAxis)
         outVec = (-1.d0) * viewVec
      endif
@@ -516,7 +517,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
          grid%geometry == "romanova") then      
         ! Nu must be set again here since it is not assigned when the population/grid 
         ! file is read from a file!  (RK changed here.)
-        nu = cSpeed / (lamLine * angstromtocm)
+        nu = real(cSpeed / (lamLine * angstromtocm))
         call contread(contFluxFile, nu, coreContinuumFlux)
         call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, dble(teff), &
              source(1)%spectrum)
@@ -732,7 +733,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         endif
 
         totEnvelopeEmission = totDustContinuumEmission
-        chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
+        chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
 !        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
 !        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
 
@@ -874,7 +875,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            totLineEmission = 0.
         endif
 
-        nu = cSpeed / (lamLine * angstromtocm)
+        nu = real(cSpeed / (lamLine * angstromtocm))
         if (writeoutput) write(*,'(a,e12.3)') "Line emission: ",totLineEmission
         totCoreContinuumEmission = 0.d0
         select case(grid%geometry)
@@ -932,8 +933,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         endif
 
 
-        nuStart = cSpeed / (grid%lamArray(1) * angstromtocm)
-        nuEnd = cSpeed / (grid%lamArray(grid%nLambda) * angstromtocm)
+        nuStart = real(cSpeed / (grid%lamArray(1) * angstromtocm))
+        nuEnd = real(cSpeed / (grid%lamArray(grid%nLambda) * angstromtocm))
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
         if (writeoutput) write(*,'(a,e12.3)') "Wind cont emission: ",totWindContinuumEmission
@@ -951,7 +952,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            totCoreContinuumEmission1 = totCoreContinuumEmission1 * (nuStart-nuEnd) * fourPi * grid%rStar1**2
            totCoreContinuumEmission2 = totCoreContinuumEmission2 * (nuStart-nuEnd) * fourPi * grid%rStar2**2
            totCoreContinuumEmission = totCoreContinuumEmission1 + totCoreContinuumEmission2
-           grid%lumRatio = totCoreContinuumEmission1 / totCoreContinuumEmission
+           grid%lumRatio = real(totCoreContinuumEmission1 / totCoreContinuumEmission)
 
            if (writeoutput) write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
         endif
@@ -997,11 +998,11 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 
         if ((totContinuumEmission + totLineEmission) /= 0.) then
-           chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
-           chanceContinuum = totContinuumEmission / &
-                (totContinuumEmission + totLineEmission)
-           grid%chanceWindOverTotalContinuum = totWindContinuumEmission &
-                / max(1.d-30,totContinuumEmission)
+           chanceLine = real(totLineEmission/(totContinuumEmission + totLineEmission))
+           chanceContinuum = real(totContinuumEmission / &
+                (totContinuumEmission + totLineEmission))
+           grid%chanceWindOverTotalContinuum = real(totWindContinuumEmission &
+                / max(1.d-30,totContinuumEmission))
         else
            chanceLine =0.
            chanceContinuum = 1.
@@ -1060,7 +1061,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         deallocate(contWeightArray)
      end if
 
-     nContPhotons = (probContPhoton * real(nPhotons) / real(nOuterLoop))
+     nContPhotons = nint((probContPhoton * real(nPhotons) / real(nOuterLoop)))
      if (writeoutput) write(*,*) "Number of continuum photons: ",nContPhotons
 
 
@@ -1119,7 +1120,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
        if (rotateView.and.(nPhase /= 1)) then
          write(*,'(a)') "Rotating view..."
-         phi = -rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1)
+         phi = real(-rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1))
          viewVec =  arbitraryRotate(thisVec, dble(phi), rotationAxis)
          outVec = (-1.d0) * viewVec
          write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
@@ -1128,13 +1129,13 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
        if (phaseOffset /= 0.) then
          write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
-         phi = twoPi * phaseOffset
+         phi = real(twoPi * phaseOffset)
          viewVec =  arbitraryRotate(viewVec, dble(phi), rotationAxis)
          outVec = (-1.d0) * viewVec
        endif
 
        if (tiltView.and.(nPhase /= 1)) then
-         phi = -twoPi * real(iPhase-1)/real(nPhase-1)
+         phi = real(-twoPi * real(iPhase-1)/real(nPhase-1))
          viewVec =  arbitraryRotate(thisVec, dble(phi), xAxis)
          outVec = (-1.d0) * viewVec
        endif
@@ -1192,9 +1193,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         if (setImageSize == 0.) then
            if (grid%adaptive) then
               if (amr2d) then
-                 imageSize = 4.*grid%octreeRoot%subcellSize
+                 imageSize = real(4.*grid%octreeRoot%subcellSize)
               else
-                 imageSize = 2.*grid%octreeRoot%subcellSize          
+                 imageSize = real(2.*grid%octreeRoot%subcellSize          )
               endif
            else if (grid%cartesian) then
               imageSize = grid%xAxis(grid%nx)-grid%xAxis(1)
@@ -1206,7 +1207,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         endif
 
         if (imageInArcsec.and.(setImageSize /= 0.)) then
-           imagesize = objectdistance * (setImageSize / 3600.) * degtorad / 1.e10
+           imagesize = real(objectdistance * (setImageSize / 3600.) * degtorad / 1.e10)
         endif
 
 !     if (molecular) then
@@ -1337,7 +1338,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      weightSource = 1.d0
      if (nSource > 0) &
-     call randomSource(source, nSource, i, weightSource,grid%lamArray, nLambda, initialize=.true.)  
+     call randomSource(source, nSource, j, weightSource,grid%lamArray, nLambda, initialize=.true.)  
 
      if (mie.or.photoionization.or.lineEmission) then
         nInnerLoop = nPhotons / nOuterLoop
@@ -1402,7 +1403,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            endif
 
            totEnvelopeEmission = totDustContinuumEmission
-           chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
+           chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
 
 
 !           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
@@ -1667,26 +1668,26 @@ endif ! (doPvimage)
      endif
 
      if (stokesimage) then
-        do i = 1, nImageLocal
-           name_filter = get_filter_name(filters, i)
-           bandwidth = 0.5*FWHM_filters(filters, i)  ! 1/2 of FWHM  [A]
-           lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
+        do i1 = 1, nImageLocal
+           name_filter = get_filter_name(filters, i1)
+           bandwidth = 0.5*FWHM_filters(filters, i1)  ! 1/2 of FWHM  [A]
+           lambda_eff = lambda_eff_filters(filters, i1) ! Effective wavelength of filter in [A]   
 !           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
-!           call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
+!           call writeImage(obsImageSet(i1), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
            if (torusVersion(2:2) == "2") specfile = originaloutfile
 
 
 #ifdef USECFITSIO
-           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
+           call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity")
            if (polarizationImages) then
               header = specfile(1:index(specfile,".fits")-1)
               write(specFile,'(a,a)') trim(header)//"_pol.fits"
-              call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol")
               write(specFile,'(a,a)') trim(header)//"_q.fits"
-              call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesq")
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq")
               write(specFile,'(a,a)') trim(header)//"_u.fits"
-              call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "stokesu")
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu")
            endif
 #endif
 
@@ -1995,10 +1996,10 @@ CONTAINS
                  goto 999 
               endif
 
-              thisLam = thisPhoton%lambda + (thisPhoton%velocity .dot. viewVec) * 1031.928
+              thisLam = real(thisPhoton%lambda + (thisPhoton%velocity .dot. viewVec) * 1031.928)
               j = findIlambda(thisLam, o6xArray, no6pts, ok)
               if (ok) then
-                 obs_weight = oneOnFourPi * exp(-tauExt(nTau))
+                 obs_weight = real(oneOnFourPi * exp(-tauExt(nTau)))
 !$OMP ATOMIC
                  o6yArray(j) = o6yArray(j) + obs_weight
                  thisVel = (thisLam-lamLine)/lamLine
@@ -2086,10 +2087,10 @@ CONTAINS
                  vray = -(thisPhoton%velocity .dot. outVec)
                  vovercsqr = modulus(thisPhoton%velocity)**2
                  fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
-                 observedlambda = thisPhoton%lambda / fac
+                 observedlambda = real(thisPhoton%lambda / fac)
                  tau_tmp = tauExt(nTau)
                  exp_minus_tau = EXP(-tau_tmp)
-                 obs_weight = oneOnFourPi * exp_minus_tau * escProb
+                 obs_weight = real(oneOnFourPi * exp_minus_tau * escProb)
               endif
 
               if (thisPhoton%contPhoton.and.(.not.contWindPhoton)) then
@@ -2109,9 +2110,9 @@ CONTAINS
 !                    obs_weight = 1.0e-30
 !                 else
                     if (lineEmission) then
-                       obs_weight = abs(t)*exp(-tauExt(nTau)) / pi
+                       obs_weight = real(abs(t)*exp(-tauExt(nTau)) / pi)
                     else
-                       obs_weight = oneOnFourPi*abs(t)*exp(-tauExt(nTau))
+                       obs_weight = real(oneOnFourPi*abs(t)*exp(-tauExt(nTau)))
                     endif
 !                 end if
                  observedlambda = thisPhoton%lambda
@@ -2119,12 +2120,12 @@ CONTAINS
 
               if (.not.flatSpec.and.(.not.hitCore)) then
                  if (contWindPhoton) then
-                    obs_weight = oneOnFourPi*exp(-tauExt(nTau))
+                    obs_weight = real(oneOnFourPi*exp(-tauExt(nTau)))
                  else 
                     if (.not.pointSource) then
-                       obs_weight = (outVec.dot.rHatinStar)*exp(-tauExt(nTau))/pi
+                       obs_weight = real((outVec.dot.rHatinStar)*exp(-tauExt(nTau))/pi)
                     else
-                       obs_weight = oneOnFourPi * exp(-tauExt(nTau))
+                       obs_weight = real(oneOnFourPi * exp(-tauExt(nTau)))
                     endif
                     if (obs_weight < 0.) obs_weight = 0.
                  endif
@@ -2178,11 +2179,11 @@ CONTAINS
 !$OMP END CRITICAL ( updateYarray )
                     endif
 
-                    obs_weight = oneOnFourPi * escProb * exp(-tauExt(nTau))*fac2
+                    obs_weight = real(oneOnFourPi * escProb * exp(-tauExt(nTau))*fac2)
 
-                    meanr0_line = meanr0_line + modulus(thisPhoton%position) * &
-                         (thisPhoton%stokes%i * obs_weight)
-                    wtot0_line = wtot0_line + (thisPhoton%stokes%i * obs_weight)
+                    meanr0_line = real(meanr0_line + modulus(thisPhoton%position) * &
+                         (thisPhoton%stokes%i * obs_weight))
+                    wtot0_line = real(wtot0_line + (thisPhoton%stokes%i * obs_weight))
                     
 
                     thisVel = (observedLambda-lamLine)/lamLine
@@ -2200,7 +2201,7 @@ CONTAINS
                  else  ! contunuum photon
                     fac1 = 1.
                     if (.not.contWindPhoton) then
-                       fac1 = 2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi
+                       fac1 = real(2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi)
                     else
                        fac1 = oneOnfourPi
                     endif
@@ -2208,7 +2209,7 @@ CONTAINS
                     vray = -(thisPhoton%velocity .dot. outVec)
                     vovercsqr = modulus(thisPhoton%velocity)**2
                     fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
-                    observedlambda = thisPhoton%lambda / fac
+                    observedlambda = real(thisPhoton%lambda / fac)
                     
                     i1 = 0
 !
@@ -2256,9 +2257,9 @@ CONTAINS
                        endif
 !$OMP END CRITICAL ( updateYarray )
 
-                       meanr0_cont = meanr0_cont + modulus(thisPhoton%position) &
-                            * thisPhoton%stokes%i*obs_weight
-                       wtot0_cont = wtot0_cont + thisPhoton%stokes%i*obs_weight
+                       meanr0_cont = real(meanr0_cont + modulus(thisPhoton%position) &
+                            * thisPhoton%stokes%i*obs_weight)
+                       wtot0_cont = real(wtot0_cont + thisPhoton%stokes%i*obs_weight)
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImageLocal, &
@@ -2316,7 +2317,7 @@ CONTAINS
                tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
                fac=1.0d0-exp(-tau_bnd)
                call randomNumberGenerator(getReal=r1)
-               thisTau = min(-log(1.d0-r1*fac),tau_bnd)  
+               thisTau = real(min(-log(1.d0-r1*fac),tau_bnd)  )
                escaped = .false.!
                ! This is done so to force the first scattering if 
                ! MAXSCAT>0. 
@@ -2377,7 +2378,7 @@ CONTAINS
                  if ((tauExt(j+1) - tauExt(j)) /= 0.) then
                     t = (thisTau - tauExt(j)) / (tauExt(j+1) - tauExt(j))
                  endif
-                 dlambda = lambda(j) + (lambda(j+1)-lambda(j))*t
+                 dlambda = real(lambda(j) + (lambda(j+1)-lambda(j))*t)
               else
                  dlambda = lambda(nTau)
               endif
@@ -2426,7 +2427,7 @@ CONTAINS
 
                     if (noScattering) albedo = 0.
 
-                    obs_weight = fac*oneOnFourPi*exp(-thisTaudble)
+                    obs_weight = real(fac*oneOnFourPi*exp(-thisTaudble))
 
 
 !                    write(*,*) iStep, lambda(istep),obs_weight,tauExt(istep),tauExtObs(nTauObs)
@@ -2452,8 +2453,8 @@ CONTAINS
               ! adjusting the photon weights 
               if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
                  if (j < nTau) then
-                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
-                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
+                    contWeightArray(1:nLambda) = real(contWeightArray(1:nLambda) *  &
+                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) ))
                  else
                     contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
                  end if
@@ -2506,7 +2507,7 @@ CONTAINS
                  if (grid%geometry /= "binary") then
 
                     if (grid%rCore /= 0.) then
-                       r = modulus(thisPhoton%position)/grid%rCore
+                       r = real(modulus(thisPhoton%position)/grid%rCore)
                     else 
                        r = 10.
                     endif
@@ -2515,8 +2516,8 @@ CONTAINS
                        albedo = 0.
                     endif
                  else
-                    r1 = modulus(thisPhoton%position - grid%starpos1)/dble(grid%rStar1)
-                    r2 = modulus(thisPhoton%position - grid%starpos2)/dble(grid%rStar2)
+                    r1 = real(modulus(thisPhoton%position - grid%starpos1)/dble(grid%rStar1))
+                    r2 = real(modulus(thisPhoton%position - grid%starpos2)/dble(grid%rStar2))
                     r = min (r1, r2)
                     if (r < 1.01) then
                        albedo = 0.5
@@ -2581,9 +2582,9 @@ CONTAINS
                     vray = -(obsPhoton%velocity .dot. outVec)
                     vovercsqr = modulus(thisPhoton%velocity)**2
                     fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
-                    observedlambda = obsPhoton%lambda / fac
+                    observedlambda = real(obsPhoton%lambda / fac)
                     
-                    obs_weight = oneOnFourPi*exp(-tauExt(nTau)) * 34./(6.6+34.)
+                    obs_weight = real(oneOnFourPi*exp(-tauExt(nTau)) * 34./(6.6+34.))
 
                     j = findIlambda(observedLambda, o6xArray, no6pts, ok)
                     if (ok) then
@@ -2639,9 +2640,9 @@ CONTAINS
                     vovercsqr = modulus(obsPhoton%velocity)**2
                     fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
                     if (.not.doRaman) then
-                       observedlambda = obsPhoton%lambda / fac
+                       observedlambda = real(obsPhoton%lambda / fac)
                     else
-                       observedlambda = obsPhoton%redlambda / fac
+                       observedlambda = real(obsPhoton%redlambda / fac)
                     endif
 
 
@@ -2656,7 +2657,7 @@ CONTAINS
 
                     ramanWeight = 1.
                     if (doRaman) ramanWeight = 6.6 / (34.+6.6)
-                    obs_weight = oneOnFourPi*exp(-tauExt(nTau)) * ramanWeight
+                    obs_weight = real(oneOnFourPi*exp(-tauExt(nTau)) * ramanWeight)
 
 
                     iLambda = findIlambda(observedlambda, grid%lamArray, nLambda, ok)
@@ -2723,7 +2724,7 @@ CONTAINS
 
                     if (obsPhoton%linePhoton) then
                        iLambda = findIlambda(observedlambda, grid%lamArray, nLambda, ok)
-                       obs_weight = oneOnFourPi*exp(-tauExt(nTau))
+                       obs_weight = real(oneOnFourPi*exp(-tauExt(nTau)))
 
 
                        if (obsPhoton%resonanceLine) obs_weight = obs_weight * directionalWeight
@@ -2754,7 +2755,7 @@ CONTAINS
                        vray = -(obsPhoton%velocity .dot. outVec)
                        vovercsqr = modulus(obsPhoton%velocity)**2
                        fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
-                       observedlambda = obsPhoton%lambda / fac
+                       observedlambda = real(obsPhoton%lambda / fac)
 
                        do iLambda = 1,nLambda
 
@@ -2779,8 +2780,8 @@ CONTAINS
                           if (thinLine) fac3 = 0.
 
 
-                          obs_weight = exp(-(tauExt(nTau)+fac3)) * oneOnFourpi & 
-                          * fac2 * directionalWeight * contWeightArray(i1)
+                          obs_weight = real(exp(-(tauExt(nTau)+fac3)) * oneOnFourpi & 
+                          * fac2 * directionalWeight * contWeightArray(i1))
 
 !$OMP CRITICAL ( updateYarray )
                           if (ok) then

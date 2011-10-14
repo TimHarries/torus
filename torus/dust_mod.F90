@@ -382,21 +382,21 @@ contains
        elseif (((lambda(i)*real(angsToMicrons)) >= lamRef(1)) .and. &
             (lambda(i)*real(angsToMicrons) <= lamRef(nRef))) then
           call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
-          t = (lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j))
+          t = real((lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j)))
           mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
           mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
        else
           call writeWarning("Extrapolating grain properties")
           dydx = (log10(tempReal(nref)) - log10(tempReal(nRef-1))) / &
                (log10(lamRef(nref))-log10(lamRef(nRef-1)))
-          mReal(i) = log10(tempReal(nref)) + dydx * &
-               (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
-          mReal(i) = 10.d0**mreal(i)
+          mReal(i) = real(log10(tempReal(nref)) + dydx * &
+               (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef))))
+          mReal(i) = real(10.d0**mreal(i))
           dydx = (log10(tempIm(nref)) - log10(tempIm(nRef-1))) / &
                (log10(lamRef(nref))-log10(lamRef(nRef-1)))
-          mImg(i) = log10(tempIm(nref)) + dydx * &
-               (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
-          mImg(i) = 10.d0**mImg(i)
+          mImg(i) = real(log10(tempIm(nref)) + dydx * &
+               (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef))))
+          mImg(i) = real(10.d0**mImg(i))
        endif
     enddo
 
@@ -611,8 +611,8 @@ contains
        if (writeoutput) write(20,*) "# Note that the opacities are per gram of dust"
 
        do i = 1, grid%nLambda
-          rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
-               aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
+          rayleigh = real((8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
+               aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3)
           rayleigh = rayleigh / meanParticleMass
           if (writeoutput) &
                write(20,*) grid%lamArray(i)*angstomicrons,&
@@ -761,8 +761,8 @@ contains
           thisOctal%DustTypeFraction(subcell,1:2) = 0.d0
           thisOctal%DustTypeFraction(subcell,1) = 1.d0
           rVec = subcellCentre(thisOctal, subcell)
-          x = rVec%x
-          z = rVec%z
+          x = real(rVec%x)
+          z = real(rVec%z)
           if ( (x > rInner).and.(x < rOuter)) then
              call returnScaleHeight(grid, x, height)
              fac = exp(-abs(z/height))
@@ -877,7 +877,7 @@ contains
        else
 
           temperature = thisOctal%temperature(subcell)
-          sublimationTemp = max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2))
+          sublimationTemp = real(max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2)))
           if (temperature < sublimationTemp) newFrac = 1.
 
           if (temperature >= sublimationTemp) then
@@ -914,10 +914,10 @@ contains
 
           if (deltaFrac /= 0.) then
              nfrac = nfrac + 1
-             totFrac = totFrac + abs(deltaFrac)
+             totFrac = totFrac + real(abs(deltaFrac))
           endif
 
-          thisOctal%oldFrac(subcell) = frac
+          thisOctal%oldFrac(subcell) = real(frac)
 
        end if
     end do
@@ -954,7 +954,7 @@ contains
              exit
           endif
        enddo
-       height = z(j) + (z(j+1)-z(j))*(rho_over_e - rho(j))/(rho(j+1)-rho(i))
+       height = real(z(j) + (z(j+1)-z(j))*(rho_over_e - rho(j))/(rho(j+1)-rho(i)))
        height = height / 1.e10
     endif
 666 continue
@@ -975,7 +975,7 @@ contains
     real :: halfSmallestSubcell
 
     nz = 0
-    halfSmallestSubcell = grid%halfSmallestSubcell
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
 
     currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
 
@@ -988,8 +988,8 @@ contains
        temperature(nz) = temptemp
        rho(nz) = rhotemp
        temp = subCellCentre(thisOctal, subcell)
-       zAxis(nz) = temp%z
-       subcellsize(nz) = thisOctal%subcellsize
+       zAxis(nz) = real(temp%z)
+       subcellsize(nz) = real(thisOctal%subcellsize)
        !       endif
        currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
        !       else
@@ -1026,7 +1026,7 @@ contains
              if (.not.associated(thisOctal%oldFrac)) then
                 allocate(thisOctal%oldFrac(1:thisOctal%maxChildren))
              endif
-             thisOctal%oldFrac(subcell) = fac
+             thisOctal%oldFrac(subcell) = real(fac)
           endif
        end if
     end do
@@ -1071,9 +1071,9 @@ contains
           if (rosselandkappa /= 0.) then
              rosselandKappa = (bnutot / rosselandKappa)/1.d10
           endif
-          grid%kappaRossArray(j,k) = rosselandKappa
+          grid%kappaRossArray(j,k) = real(rosselandKappa)
        enddo
-       grid%tempRossArray(k) = temperature
+       grid%tempRossArray(k) = real(temperature)
     enddo
   end subroutine createRossArray
 
@@ -1538,7 +1538,7 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   !
   ! Finding the mean mass now.
   do i = 1, n
-     vol = (4./3.)* pi * (a(i)*microntocm)**3
+     vol = real((4./3.)* pi * (a(i)*microntocm)**3)
      mass(i) = vol * density * f(i)    ! weighted by dist function
   end do
   

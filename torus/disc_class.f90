@@ -658,13 +658,13 @@ contains
     real(double) :: x, y, z, w, fac
     
 
-    M = 1.989d33*this%Mcore ! [g] mass of the central object
+    M = real(1.989d33*this%Mcore) ! [g] mass of the central object
 
 
     cellCentre = subcellCentre(thisOctal, subcell)
     x = cellCentre%x; y = cellCentre%y; z = cellCentre%z
     w = x*x + y*y
-    r =SQRT(w+z*z)
+    r =real(SQRT(w+z*z))
     w = SQRT(w)
 
     if (w < this%Rh ) then

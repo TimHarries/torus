@@ -245,7 +245,7 @@ main_loop:  DO N=1,NSTOP
 !
 !*** Augment sums for Qsca and g=<cos(theta)>
           junk = (ABS(AN)**2+ABS(BN)**2)
-          QSCA=QSCA+real(2.*EN+1.)*JUNK
+          QSCA=QSCA+real((2.*EN+1.)*JUNK)
 !          GSCA=GSCA+REAL(((2.*EN+1.)/(EN*(EN+1.)))*
 !     &         (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN)))
 
@@ -256,7 +256,7 @@ main_loop:  DO N=1,NSTOP
 !             (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN))
           JUNK = JUNK *  &
              (REAL(AN)*REAL(BN)+AIMAG(AN)*AIMAG(BN))
-          GSCA=GSCA+JUNK
+          GSCA=GSCA+real(JUNK)
 
           IF(N.GT.1)THEN
 !              GSCA=GSCA+REAL(((EN-1.)*(EN+1.)/EN)*                        &

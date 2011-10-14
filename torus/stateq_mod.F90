@@ -224,11 +224,11 @@ contains
     totomega = 0.
     
     do i = 1, ntheta
-       theta = pi*real(i-1)/real(ntheta-1)
+       theta = real(pi*real(i-1)/real(ntheta-1))
        nphi = max(2,nint(real(ntheta)*sin(theta)))
-       dphi = twopi / real(nphi-1)
+       dphi = real(twopi / real(nphi-1))
        do j = 1, nphi-1
-          phi = twopi * real(j-1)/real(nphi-1)
+          phi = real(twopi * real(j-1)/real(nphi-1))
           direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           domega = sin(theta)*dtheta*dphi
           totomega = totomega + domega
@@ -276,7 +276,7 @@ contains
           else
              escProb = 1./tau_mn
           end if
-          beta_mn = beta_mn + escprob * domega
+          beta_mn = real(beta_mn + escprob * domega)
 
        enddo
     enddo
@@ -343,11 +343,11 @@ contains
     endif
 
     tostar = starposition - rVec
-    disttostar = modulus(tostar)
+    disttostar = real(modulus(tostar))
     tostar = tostar / dble(disttostar)
 
     tooccult = occultposition - rVec
-    disttooccult = modulus(tooccult)
+    disttooccult = real(modulus(tooccult))
     tooccult = tooccult / dble(disttooccult)
 
     sinang = starradius / disttostar
@@ -360,11 +360,11 @@ contains
     totomega = 0.
     do i = 1, ntheta
        theta0 = (2.*real(i-1)/real(nTheta-1)-1.)*ang
-       theta = thetaToStar + theta0
+       theta = real(thetaToStar + theta0)
        dTheta = 2.*ang/real(nTheta-1)
        do j = 1, nphi
           phi0 = (2.*real(j-1)/real(nPhi-1)-1.)*ang
-          phi = phiToStar + phi0
+          phi = real(phiToStar + phi0)
 !          if (phi < 0.) phi = phi + twoPi
 !          if (phi > twoPi) phi = phi - twoPi
 !       if (theta > pi) theta = theta - pi
@@ -373,15 +373,15 @@ contains
           dphi = 2.*ang/real(nPhi-1)
           occulted = .false.
           direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
-          if (theta > pi) theta = theta - pi
-          if (theta < 0.) theta = theta + pi
+          if (theta > pi) theta = real(theta - pi)
+          if (theta < 0.) theta = real(theta + pi)
           dOmega = dtheta*dphi
 
-          dotprod = direction .dot. tostar
+          dotprod = real(direction .dot. tostar)
           escProb = 0.
           if ((dotprod > 0.)  .and. (acos(min(1.,max(-1.,dotprod))) < 1.01*ang)) then
 
-             dotprod = direction .dot. tooccult
+             dotprod = real(direction .dot. tooccult)
              if ((dotprod > 0.).and.(distToOccult < distToStar)) then
                 sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
                 if ((sinang*disttooccult) < occultradius) then 
@@ -406,18 +406,18 @@ contains
 
 
                    tau_cmn = (pi*echarge**2)/(melectron*cspeed)
-                   tau_cmn = tau_cmn * gDegen(m) * fStrength(m,n)
+                   tau_cmn = real(tau_cmn * gDegen(m) * fStrength(m,n))
                    if (grid%adaptive) then
-                      tau_cmn = tau_cmn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
-                                              (thisOctal%N(thisSubcell,n)/gDegen(n))) ! eq 5.
+                      tau_cmn = real(tau_cmn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
+                                              (thisOctal%N(thisSubcell,n)/gDegen(n)))) ! eq 5.
                    else 
-                      tau_cmn = tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
-                                              (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
+                      tau_cmn = real(tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
+                                              (grid%n(i1,i2,i3,n)/gDegen(n)))) ! eq 5.
                    endif
                    if (tau_cmn < 0.) then
                       tau_cmn = 0. !abs(tau_cmn)
                    endif
-                   tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
+                   tau_cmn = real(tau_cmn  / (cSpeed / lambdaTrans(m,n)))
                    if (grid%adaptive) then
                       if (grid%geometry(1:4) == "jets")  then
                          tau_cmn = tau_cmn/dV_dn_jets(rVec, direction)
@@ -434,10 +434,10 @@ contains
                 endif
 
                 if (tau_cmn < 0.1) then
-                   escProb = 1.d0-tau_cmn*0.5d0*(  1.0d0 - tau_cmn/3.0d0*( 1.0d0 - &
-                        tau_cmn*0.25d0*(1.0d0 -0.20d0*tau_cmn) )  )
+                   escProb = real(1.d0-tau_cmn*0.5d0*(  1.0d0 - tau_cmn/3.0d0*( 1.0d0 - &
+                        tau_cmn*0.25d0*(1.0d0 -0.20d0*tau_cmn) )  ))
                 else
-                   escprob = (1.d0 - exp(-tau_cmn))/tau_cmn
+                   escprob = real((1.d0 - exp(-tau_cmn))/tau_cmn)
                 endif
                 beta_cmn = beta_cmn + escprob * domega
                 totOmega = totOmega + dOmega
@@ -445,7 +445,7 @@ contains
           endif
        enddo
     enddo
-    beta_cmn =   beta_cmn / fourpi
+    beta_cmn =   real(beta_cmn / fourpi)
 !    write(*,*) "calc",pi*starradius**2/disttostar**2
 
 
@@ -500,11 +500,11 @@ contains
     endif
 
     tostar = starposition - rvec
-    disttostar = modulus(tostar)
+    disttostar = real(modulus(tostar))
     tostar = tostar / dble(disttostar)
 
     tooccult = occultposition - rvec
-    disttooccult = modulus(tooccult)
+    disttooccult = real(modulus(tooccult))
     tooccult = tooccult / dble(disttooccult)
 
     h  = sqrt(max(0.,(disttostar**2 - starradius**2)))
@@ -513,28 +513,28 @@ contains
 
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
-    dtheta = pi / real(ntheta-1)
-    dphi = twopi / real(nphi-1)
+    dtheta = real(pi / real(ntheta-1))
+    dphi = real(twopi / real(nphi-1))
     betacmn = 0.
     totomega = 0.
     do i = 1, ntheta
-       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
-       if (theta > pi) theta = theta - pi
-       if (theta < 0.) theta = theta + pi
+       theta = real(thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang)
+       if (theta > pi) theta = real(theta - pi)
+       if (theta < 0.) theta = real(theta + pi)
        dTheta = 2.*ang/real(nTheta-1)
        do j = 1, nphi
-          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
-          if (phi < 0.) phi = phi + twoPi
-          if (phi > twoPi) phi = phi + twoPi
+          phi = real(phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang)
+          if (phi < 0.) phi = real(phi + twoPi)
+          if (phi > twoPi) phi = real(phi + twoPi)
           dphi = 2.*ang/real(nPhi-1)
           occulted = .false.
           direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           domega = sin(theta)*dtheta*dphi
-          dotprod = direction .dot. tostar
+          dotprod = real(direction .dot. tostar)
           escProb = 0.
           if ((dotprod > 0.) .and. (acos(min(1.,max(-1.,dotprod))) < ang)) then
 
-             dotprod = direction .dot. tooccult
+             dotprod = real(direction .dot. tooccult)
              if ((dotprod > 0.).and.(distToOccult < distToStar)) then
                 sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
                 if ((sinang*disttooccult) < occultradius) then 
@@ -559,12 +559,12 @@ contains
 
 
                    tau_cmn = (pi*echarge**2)/(melectron*cspeed)
-                   tau_cmn = tau_cmn * gDegen(m) * fStrength(m,n)
-                   tau_cmn = tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
+                   tau_cmn = real(tau_cmn * gDegen(m) * fStrength(m,n))
+                   tau_cmn = real(tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - (grid%n(i1,i2,i3,n)/gDegen(n)))) ! eq 5.
                    if (tau_cmn < 0.) then
                       tau_cmn = 0. !abs(tau_cmn)
                    endif
-                   tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
+                   tau_cmn = real(tau_cmn  / (cSpeed / lambdaTrans(m,n)))
                    tau_cmn = tau_cmn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
                 endif
 
@@ -580,7 +580,7 @@ contains
           endif
        enddo
     enddo
-    betacmn =   betacmn / fourpi
+    betacmn =   real(betacmn / fourpi)
 !    write(*,*) "calc",fourPi*(pi*starradius**2)/(fourPi * disttostar**2)
 !    write(*,*) "found",totOmega
   end subroutine beta_cmn_sub
@@ -761,7 +761,7 @@ contains
 20     continue
        nnu1 = nnu1  - 1
        close(20)
-       hnu1(1:nnu1) = hnu1(1:nnu1) / fourPi   ! Converts from flux to flux momemnt
+       hnu1(1:nnu1) = real(hnu1(1:nnu1) / fourPi)   ! Converts from flux to flux momemnt
 
        if (grid%geometry == "binary") then
           open(20,file=contfile2,status="old",form="formatted")
@@ -773,7 +773,7 @@ contains
 40        continue
           nnu2 = nnu2  - 1
           close(20)
-          hnu2(1:nnu2) = hnu2(1:nnu2) / fourPi   ! Converts from flux to flux momemnt
+          hnu2(1:nnu2) = real(hnu2(1:nnu2) / fourPi)   ! Converts from flux to flux momemnt
        endif
 
        if (threeD) then
@@ -820,7 +820,8 @@ contains
                             write(*,*) visFrac1, visFrac2
                             grid%ne(i1,i2,i3) = xall(maxlevels+1)
                             do i = 1 , maxLevels
-                               departCoeffall(i) = real(xall(i))/boltzSaha(i, grid%Ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
+                               departCoeffall(i) = real(real(xall(i))/boltzSaha(i, grid%Ne(i1,i2,i3), &	
+                                    dble(grid%temperature(i1,i2,i3))))
                                grid%n(i1,i2,i3,i) = xall(i)
                                if ((.not.lte).and.debugInfo) then
                                   write(*,'(i3,1p,e12.3,e12.3)') &
@@ -864,7 +865,8 @@ contains
                       if (.not.grid%inStar(i1,i2,i3)) then
                          if (modulus(rVec-grid%starpos1) /= 0.) then
                             if (.not.lte) then
-                               departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.0_db,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+                               departCoeff(1) = real(1./(0.5*(1.-sqrt(max(0.0_db, &
+                                    (1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2))))))
                             endif
                          endif
                          if (iIter == 1) then
@@ -872,11 +874,11 @@ contains
                                x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
                             enddo
                             x(maxlevels+1) = grid%ne(i1,i2,i3)
-                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                            oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                          else
-                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                            oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                             do i = 1, maxlevels
                                x(i) = grid%n(i1,i2,i3,i)
                             enddo
@@ -900,7 +902,7 @@ contains
                          endif
                          if (.not.lte) write(*,*) "Grid: ",i1,i2,i3
                          do i = 1 , maxLevels
-                            departCoeff(i) = real(x(i))/boltzSaha(i, grid%Ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
+                            departCoeff(i) = real(real(x(i))/boltzSaha(i, grid%Ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3))))
 
                             if (.not.lte) write(*,'(i3,1p,e12.3,e12.3)') i,departCoeff(i), x(i)/oldLevels(i)
                             grid%n(i1,i2,i3,i) = x(i)
@@ -921,7 +923,7 @@ contains
                    do k = 1, grid%nz
                       if (k /= i3) then
                          rVec = vector(grid%xaxis(i), grid%yaxis(j), grid%zaxis(k))
-                         ang = atan2(rVec%z, rVec%y)
+                         ang = real(atan2(rVec%z, rVec%y))
                          thisVec = rotateX(rVec, dble(ang))
                          call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
                          if (.not.grid%inStar(i1,i2,i3)) then
@@ -957,7 +959,7 @@ contains
                       do i2 = 1, grid%nmu
                          departCoeffAll = 1.d0
                          ang = 0.
-                         sinTheta = sqrt(1.d0 - grid%muAxis(i2)**2)
+                         sinTheta = real(sqrt(1.d0 - grid%muAxis(i2)**2))
                          rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
                               grid%raxis(i1)*sinTheta*sin(ang), &
                               grid%rAxis(i1)*grid%muAxis(i2))
@@ -971,11 +973,11 @@ contains
                                   xall(i) = grid%n(i1,i2,i3,i) * dble(departCoeffAll(i))
                                enddo
                                xall(maxlevels+1) = grid%ne(i1,i2,i3)
-                               oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                               oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                               oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                               oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                             else
-                               oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                               oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                               oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                               oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                                do i = 1, maxlevels
                                   xall(i) = grid%n(i1,i2,i3,i)
                                enddo
@@ -1000,7 +1002,8 @@ contains
                             endif
                             if ((.not.lte).and.debuginfo) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
                             do i = 1 , maxLevels
-                               departCoeffall(i) = real(xall(i))/boltzSaha(i, xall(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+                               departCoeffall(i) = real(real(xall(i))/boltzSaha(i, xall(maxlevels+1), &
+                                    dble(grid%temperature(i1,i2,i3))))
 
                                if ((.not.lte).and.debugInfo) then
                                   write(*,'(i3,1p,e12.3,e12.3, e12.3)') &
@@ -1044,11 +1047,11 @@ contains
                                x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
                             enddo
                             x(maxlevels+1) = grid%ne(i1,i2,i3)
-                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                            oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                          else
-                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                            oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                             do i = 1, maxlevels
                                x(i) = grid%n(i1,i2,i3,i)
                             enddo
@@ -1072,7 +1075,7 @@ contains
                          endif
                          if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
                          do i = 1 , maxLevels
-                            departCoeff(i) = real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+                            departCoeff(i) = real(real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3))))
 
                             if (.not.lte) then
                                write(*,'(i3,1p,e12.3,e12.3)') &
@@ -1101,7 +1104,7 @@ contains
                    do k = 1, grid%nz
                       if (j /= i2) then
                          rVec = vector(grid%xaxis(i), grid%yaxis(j), grid%zaxis(k))
-                         ang = atan2(rVec%y, rVec%x)
+                         ang = real(atan2(rVec%y, rVec%x))
                          thisVec = rotateZ(rVec, dble(ang))
                          call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
                          if (.not.grid%inStar(i1,i2,i3)) then
@@ -1133,14 +1136,14 @@ contains
 
  if (oneD) then
     
-    nIter = 1.
+    nIter = 1
     
     departCoeff = 1.
     do iIter = 1, nIter
        do i1 = 1,grid%na1
           i2 = 1
           i3 = 1
-          sinTheta = sqrt(1.d0 - grid%muAxis(i2)**2)
+          sinTheta = real(sqrt(1.d0 - grid%muAxis(i2)**2))
           rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
                grid%raxis(i1)*sinTheta*sin(ang), &
                grid%rAxis(i1)*grid%muAxis(i2))
@@ -1148,7 +1151,7 @@ contains
           where (departCoeff < 0.) 
              departCoeff = 1.
           end where
-          departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.0_db,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+          departCoeff(1) = real(1./(0.5*(1.-sqrt(max(0.0_db,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2))))))
           
           
           if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
@@ -1158,11 +1161,11 @@ contains
                    x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
                 enddo
                 x(maxlevels+1) = grid%ne(i1,i2,i3)
-                oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
              else
-                oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-                oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                oldLevels(1:maxLevels) = real(grid%n(i1,i2,i3,1:maxLevels))
+                oldLevels(maxLevels+1) = real(grid%ne(i1,i2,i3))
                 do i = 1, maxlevels
                    x(i) = grid%n(i1,i2,i3,i)
                 enddo
@@ -1186,7 +1189,7 @@ contains
              endif
              if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
              do i = 1 , maxLevels
-                departCoeff(i) = real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+                departCoeff(i) = real(real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3))))
                 
                 if (.not.lte) then
                    write(*,'(i3,1p,e12.3,e12.3,e12.3,e12.3)') &
@@ -1507,7 +1510,7 @@ contains
           ep(i+1)=(exp(-x)-x*ep(i))/real(i)
        enddo
     endif
-    expint=ep(n)
+    expint=real(ep(n))
   end function expint
 
 
@@ -1570,7 +1573,7 @@ contains
     gii = 1.e0_db + 0.1728e0_db * (u-1.e0_db) / ((nDouble*(u+1.e0_db))**twoThirds)
     term = 0.0496e0_db * (1.e0_db+u*(u+1.333e0_db))/(nDouble*(u+1.e0_db)**(fourThirds))
     if ((term/gii).le.0.25e0_db) then
-       giia=gii-term
+       giia=real(gii-term)
        return
     else
        giia = 1.0_db
@@ -1968,16 +1971,16 @@ contains
     real    :: w, x1, freq, tot, jnu
 
     if (nStar == 1) then
-       r = modulus(rVec-grid%starPos1)
+       r = real(modulus(rVec-grid%starPos1))
        x1 = sqrt(max(0.,(1. - grid%rStar1**2 / r**2)))
        w = 0.5*(1. - x1)
     else
-       r = modulus(rVec-grid%starPos2)
+       r = real(modulus(rVec-grid%starPos2))
        x1 = sqrt(max(0.,1. - grid%rStar2**2 / r**2))
        w = 0.5*(1. - x1)
     endif
 
-    freq = ((hydE0eV-eTrans(n))*1.602192e-12)/hcgs
+    freq = real(((hydE0eV-eTrans(n))*1.602192e-12)/hcgs)
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) " "
        write(*,*) "Error in [steteq_mod::integral1]. Freq out of range!"
@@ -2000,45 +2003,45 @@ contains
 
     if (grid%adaptive) then 
             
-       fac1  = (fourPi/(hCgs*freq))*annu(n,dble(freq))* &
+       fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hCgs*freq/(kErg*thisOctal%temperature(thisSubcell)))
+            *exp(-hCgs*freq/(kErg*thisOctal%temperature(thisSubcell))))
        jnu = 4.*w*hnu(imin+1)
-       fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
+       fac2  = real((fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
             ((2.*real(dble(hcgs)*dble(nuArray(imin+1))**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hcgs*nuArray(imin+1)/(kErg*thisOctal%temperature(thisSubcell)))
+            *exp(-hcgs*nuArray(imin+1)/(kErg*thisOctal%temperature(thisSubcell))))
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
        do i = iMin+1, nNu-1
           Jnu = 4.*w*hnu(i)
-          fac1  = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
+          fac1  = real((fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
                ((2.*real(dble(hCgs)*dble(nuArray(i))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hCgs*nuArray(i)/(kErg*thisOctal%temperature(thisSubcell)))
+               *exp(-hCgs*nuArray(i)/(kErg*thisOctal%temperature(thisSubcell))))
           Jnu = 4.*w*hnu(i+1)
-          fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
+          fac2  = real((fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
                ((2.*real(dble(hcgs)*dble(nuArray(i+1))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hcgs*nuArray(i+1)/(kErg*thisOctal%temperature(thisSubcell)))
+               *exp(-hcgs*nuArray(i+1)/(kErg*thisOctal%temperature(thisSubcell))))
           tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
        enddo
 
     else ! not adaptive
             
-       fac1  = (fourPi/(hCgs*freq))*annu(n,dble(freq))* &
+       fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3)))
+            *exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3))))
        jnu = 4.*w*hnu(imin+1)
-       fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
+       fac2  =real( (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
             ((2.*real(dble(hcgs)*dble(nuArray(imin+1))**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hcgs*nuArray(imin+1)/(kErg*grid%temperature(i1,i2,i3)))
+            *exp(-hcgs*nuArray(imin+1)/(kErg*grid%temperature(i1,i2,i3))))
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
        do i = iMin+1, nNu-1
           Jnu = 4.*w*hnu(i)
-          fac1  = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
+          fac1  = real((fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
                ((2.*real(dble(hCgs)*dble(nuArray(i))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hCgs*nuArray(i)/(kErg*grid%temperature(i1,i2,i3)))
+               *exp(-hCgs*nuArray(i)/(kErg*grid%temperature(i1,i2,i3))))
           Jnu = 4.*w*hnu(i+1)
-          fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
+          fac2  = real((fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
                ((2.*real(dble(hcgs)*dble(nuArray(i+1))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hcgs*nuArray(i+1)/(kErg*grid%temperature(i1,i2,i3)))
+               *exp(-hcgs*nuArray(i+1)/(kErg*grid%temperature(i1,i2,i3))))
           tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
        enddo
 
@@ -2060,17 +2063,17 @@ contains
     real :: w, x1, freq, tot, jnu
 
     if (nStar == 1) then
-       r = modulus(rVec-grid%starPos1)
+       r = real(modulus(rVec-grid%starPos1))
        x1 = sqrt(max(0.,(1. - grid%rStar1**2 / r**2)))
        w = 0.5*(1. - x1)
     else
-       r = modulus(rVec-grid%starPos2)
+       r = real(modulus(rVec-grid%starPos2))
        x1 = sqrt(max(0.,1. - grid%rStar2**2 / r**2))
        w = 0.5*(1. - x1)
     endif
 
     tot = 0.
-    freq = ((hydE0eV-eTrans(n))*1.602192e-12)/hcgs
+    freq = real(((hydE0eV-eTrans(n))*1.602192e-12)/hcgs)
     if ((freq < nuArray(1)).or.(freq > nuArray(nNu))) then
        write(*,*) " "
        write(*,*) "Error in [steteq_mod::integral2]. Freq out of range!", &
@@ -2090,15 +2093,15 @@ contains
        call hunt(nuArray, nNu, freq, iMin)
        jnu = 4.*w*logint(freq,nuArray(imin), nuArray(iMin+1), hnu(imin), hnu(imin+1))
     endif
-    fac1  = (fourPi/(hcgs*freq))*annu(n,dble(freq))*jnu
+    fac1  = real((fourPi/(hcgs*freq))*annu(n,dble(freq))*jnu)
     jnu = 4.*w*hnu(imin+1)
-    fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))*jnu
+    fac2  = real((fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))*jnu)
     tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
     do i = iMin+1, nNu-1
        Jnu = 4.*w*hnu(i)
-       fac1  = (fourPi/(hcgs*nuArray(i)))*annu(n,dble(nuArray(i)))*jnu
+       fac1  = real((fourPi/(hcgs*nuArray(i)))*annu(n,dble(nuArray(i)))*jnu)
        Jnu = 4.*w*hnu(i+1)
-       fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))*jnu
+       fac2  = real((fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))*jnu)
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
     enddo
     integral2 = tot
@@ -2124,16 +2127,16 @@ contains
 
 
     if (nStar == 1) then
-       r = modulus(rVec-grid%starPos1)
+       r = real(modulus(rVec-grid%starPos1))
        x1 = sqrt(max(0.,(1. - grid%rStar1**2 / r**2)))
        w = 0.5*(1. - x1)
     else
-       r = modulus(rVec-grid%starPos2)
+       r = real(modulus(rVec-grid%starPos2))
        x1 = sqrt(max(0.,1. - grid%rStar2**2 / r**2))
        w = 0.5*(1. - x1)
     endif
 
-    freq = ((hydE0eV-eTrans(n))*1.602192e-12)/hcgs
+    freq = real(((hydE0eV-eTrans(n))*1.602192e-12)/hcgs)
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) " "
        write(*,*) "Error in [steteq_mod::integral1_new]. Freq out of range!", &
@@ -2179,45 +2182,45 @@ contains
 
     if (grid%adaptive) then 
             
-       fac1  = (fourPi/(hCgs*freq))*annu(n,dble(freq))* &
+       fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu)&
-            *exp(-hCgs*freq/(kErg*thisOctal%temperature(thisSubcell)))
+            *exp(-hCgs*freq/(kErg*thisOctal%temperature(thisSubcell))))
        jnu = 4.*w* (photoOmega *hnu(imin+1) + hotOmega * hnu2(imin+1)) / (photoOmega + hotOmega)
-       fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
+       fac2  = real((fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
             ((2.*real(dble(hcgs)*dble(nuArray(imin+1))**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hcgs*nuArray(imin+1)/(kErg*thisOctal%temperature(thisSubcell)))
+            *exp(-hcgs*nuArray(imin+1)/(kErg*thisOctal%temperature(thisSubcell))))
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
        do i = iMin+1, nNu-1
           Jnu = 4.*w* (photoOmega * hnu(i) + hotOmega * hnu2(i)) / (photoOmega + hotOmega)
-          fac1  = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
+          fac1  = real((fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
                ((2.*real(dble(hCgs)*dble(nuArray(i))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hCgs*nuArray(i)/(kErg*thisOctal%temperature(thisSubcell)))
+               *exp(-hCgs*nuArray(i)/(kErg*thisOctal%temperature(thisSubcell))))
           Jnu = 4.*w*(photoOmega * hnu(i+1) + hotOmega * hnu2(i+1)) / (photoOmega + hotOmega)
-          fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
+          fac2  = real((fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
                ((2.*real(dble(hcgs)*dble(nuArray(i+1))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hcgs*nuArray(i+1)/(kErg*thisOctal%temperature(thisSubcell)))
+               *exp(-hcgs*nuArray(i+1)/(kErg*thisOctal%temperature(thisSubcell))))
           tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
        enddo
 
     else ! not adaptive
             
-       fac1  = (fourPi/(hCgs*freq))*annu(n,dble(freq))* &
+       fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3)))
+            *exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3))))
        jnu = 4.*w*hnu(imin+1)
-       fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
+       fac2  = real((fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
             ((2.*real(dble(hcgs)*dble(nuArray(imin+1))**3) / (cSpeed*cSpeed)) + jnu) &
-            *exp(-hcgs*nuArray(imin+1)/(kErg*grid%temperature(i1,i2,i3)))
+            *exp(-hcgs*nuArray(imin+1)/(kErg*grid%temperature(i1,i2,i3))))
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
        do i = iMin+1, nNu-1
           Jnu = 4.*w*hnu(i)
-          fac1  = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
+          fac1  = real((fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
                ((2.*real(dble(hCgs)*dble(nuArray(i))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hCgs*nuArray(i)/(kErg*grid%temperature(i1,i2,i3)))
+               *exp(-hCgs*nuArray(i)/(kErg*grid%temperature(i1,i2,i3))))
           Jnu = 4.*w*hnu(i+1)
-          fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
+          fac2  = real((fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
                ((2.*real(dble(hcgs)*dble(nuArray(i+1))**3) / (cSpeed*cSpeed)) + jnu) &
-               *exp(-hcgs*nuArray(i+1)/(kErg*grid%temperature(i1,i2,i3)))
+               *exp(-hcgs*nuArray(i+1)/(kErg*grid%temperature(i1,i2,i3))))
           tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
        enddo
 
@@ -2244,16 +2247,16 @@ contains
     tot = 0.
 
     if (nStar == 1) then
-       r = modulus(rVec-grid%starPos1)
+       r = real(modulus(rVec-grid%starPos1))
        x1 = sqrt(max(0.,(1. - grid%rStar1**2 / r**2)))
        w = 0.5*(1. - x1)
     else
-       r = modulus(rVec-grid%starPos2)
+       r = real(modulus(rVec-grid%starPos2))
        x1 = sqrt(max(0.,1. - grid%rStar2**2 / r**2))
        w = 0.5*(1. - x1)
     endif
 
-    freq = ((hydE0eV-eTrans(n))*1.602192e-12)/hcgs
+    freq = real(((hydE0eV-eTrans(n))*1.602192e-12)/hcgs)
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) " "
        write(*,*) "Error in [steteq_mod::integral2_new]. Freq out of range!"
@@ -2292,18 +2295,18 @@ contains
     endif
 
     jnu = (photoOmega * jnuPhoto + hotOmega * jnuHot) / (photoOmega + hotOmega)
-    fac1  = (fourPi/(hcgs*freq))*annu(n,dble(freq))*jnu
+    fac1  = real((fourPi/(hcgs*freq))*annu(n,dble(freq))*jnu)
 
 
     jnu = 4.*w* (photoOmega * hnu(imin+1) + hotOmega * hnu2(imin+1)) / (photoOmega + hotOmega)
-    fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))*jnu
+    fac2  = real((fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))*jnu)
 
     tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
     do i = iMin+1, nNu-1
        Jnu = 4.*w*(photoOmega *hnu(i) + hotOmega * hnu2(i))/(photoOmega + hotOmega)
-       fac1  = (fourPi/(hcgs*nuArray(i)))*annu(n,dble(nuArray(i)))*jnu
+       fac1  = real((fourPi/(hcgs*nuArray(i)))*annu(n,dble(nuArray(i)))*jnu)
        Jnu = 4.*w*(photoOmega *hnu(i+1) + hotOmega * hnu2(i+1))/(photoOmega + hotOmega)
-       fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))*jnu
+       fac2  = real((fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))*jnu)
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
     enddo
     integral2_new = tot
@@ -2715,8 +2718,8 @@ contains
       rVec = VECTOR(grid%xAxis(i1), grid%yAxis(i2), grid%zAxis(i3))
       toStar = starPos - rVec
       toOccult = occultPos - rVec
-      distToStar = modulus(toStar)
-      distToOccult = modulus(toOccult)
+      distToStar = real(modulus(toStar))
+      distToOccult = real(modulus(toOccult))
       toStar = toStar / dble(distToStar)
       toOccult = toOccult / dble(distToOccult)
       
@@ -2733,26 +2736,26 @@ contains
       cosang = h / distToStar
       ang = acos(min(1.,max(-1.,cosAng)))
       call getPolar(toStar, r, thetaTostar, phiToStar)
-      dtheta = pi / real(ntheta-1)
-      dphi = twopi / real(nphi-1)
+      dtheta = real(pi / real(ntheta-1))
+      dphi = real(twopi / real(nphi-1))
       do i = 1, ntheta
-       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
-       if (theta > pi) theta = theta - pi
-       if (theta < 0.) theta = theta + pi
+       theta = real(thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang)
+       if (theta > pi) theta = real(theta - pi)
+       if (theta < 0.) theta = real(theta + pi)
        dTheta = 2.*ang/real(nTheta-1)
        do j = 1, nphi
-          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
-          if (phi < 0.) phi = phi + twoPi
-          if (phi > twoPi) phi = phi + twoPi
+          phi = real(phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang)
+          if (phi < 0.) phi = real(phi + twoPi)
+          if (phi > twoPi) phi = real(phi + twoPi)
           dphi = 2.*ang/real(nPhi-1)
 
           direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           domega = sin(theta)*dtheta*dphi
-          dotprod = direction .dot. tostar
+          dotprod = real(direction .dot. tostar)
           if ((dotprod > 0.) .and. (acos(min(1.,max(-1.,dotprod))) < ang)) then
 
              visFrac = visFrac + dOmega
-             dotprod = direction .dot. tooccult
+             dotprod = real(direction .dot. tooccult)
              if (dotprod > 0.) then
                 sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
                 if ((sinang*disttooccult) < occultradius) then 
@@ -2762,7 +2765,7 @@ contains
           endif
        enddo
     enddo
-    visFrac = (visFrac-occultedFrac)/visFrac
+    visFrac = real((visFrac-occultedFrac)/visFrac)
 666 continue
   end subroutine occultTest
 
@@ -2792,7 +2795,7 @@ contains
        enddo
     enddo
 
-    transe = abs(eTrans(n)-eTrans(m))
+    transe = real(abs(eTrans(n)-eTrans(m)))
     freq = cspeed/lambdaTrans(m,n)
 
     grid%etaLine = 1.e-20
@@ -2805,12 +2808,12 @@ contains
        do i2 = 1, grid%na2
           do i3 = 1, grid%na3
              if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
-                grid%kappasca(i1,i2,i3,1) = grid%ne(i1,i2,i3) * sigmaE * 1.e10
+                grid%kappasca(i1,i2,i3,1) = real(grid%ne(i1,i2,i3) * sigmaE * 1.e10)
                 !
                 ! calculate the line opacity and emissivity
                 !
-                chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength(m,n)
-                chil = chil* (grid%n(i1,i2,i3,m)-( ( gDegen(m) / gDegen(n)) * grid%n(i1,i2,i3,n)))
+                chil = real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength(m,n))
+                chil = real(chil* (grid%n(i1,i2,i3,m)-( ( gDegen(m) / gDegen(n)) * grid%n(i1,i2,i3,n))))
                 grid%chiLine(i1,i2,i3) = 1.e10*chil
                 
                 if (grid%n(i1,i2,i3,n) == 0.d0) then
@@ -2820,7 +2823,7 @@ contains
                    write(*,*) grid%temperature(i1,i2,i3)
                    stop
                 endif
-                fac=( ((grid%n(i1,i2,i3,m)*gDegen(n))/(grid%n(i1,i2,i3,n)*gDegen(m)))-1.d0)
+                fac=real(( ((grid%n(i1,i2,i3,m)*gDegen(n))/(grid%n(i1,i2,i3,n)*gDegen(m)))-1.d0))
                 grid%etaLine(i1,i2,i3)=1.e10*chil*real((2.d0*dble(hcgs)*dble(freq)**3)/(dble((cSpeed*cSpeed))))/fac
 
 !                write(*,*) i1,i2,i3,grid%etaline(i1,i2,i3)/grid%chiline(i1,i2,i3)
@@ -2829,16 +2832,16 @@ contains
                 !
                 chi=0.d0
                 do j=1,maxLevels
-                   thresh=(hydE0eVdb-eTrans(j))
+                   thresh=real(hydE0eVdb-eTrans(j))
                    if (transe.ge.thresh) then
-                      chi=chi+(grid%n(i1,i2,i3,j)- &
+                      chi=chi+real((grid%n(i1,i2,i3,j)- &
                            boltzsaha(j, grid%ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))* &
-                           exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))* annu(j,dble(freq))
+                           exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))* annu(j,dble(freq)))
                    endif
                 enddo
                 
-                chi=chi+real(grid%ne(i1,i2,i3))**2*alpkk(freq,dble(grid%temperature(i1,i2,i3)))*&
-                     (1.d0-exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))
+                chi=chi+real(real(grid%ne(i1,i2,i3))**2*alpkk(freq,dble(grid%temperature(i1,i2,i3)))*&
+                     (1.d0-exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3)))))
 !                chi=chi+grid%ne(i1,i2,i3)*sigmaE
                 
                 grid%kappaabs(i1,i2,i3,1) = chi * 1.e10
@@ -2847,15 +2850,15 @@ contains
                 ! 
                 eta=0.d0
                 do j=1,20
-                   thresh=(hydE0eVdb-eTrans(j))
+                   thresh=real((hydE0eVdb-eTrans(j)))
                    if (transe.ge.thresh) then
-                      eta=eta+boltzsaha(j, grid%ne(i1,i2,i3),dble(grid%temperature(i1,i2,i3))) &
-                           *annu(j,freq)*exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3)))
+                      eta=eta+real(boltzsaha(j, grid%ne(i1,i2,i3),dble(grid%temperature(i1,i2,i3))) &
+                           *annu(j,freq)*exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))
                    endif
                 enddo
                 
-                eta=eta + (grid%ne(i1,i2,i3)**2) * alpkk(freq,dble(grid%temperature(i1,i2,i3)))* &
-                     exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3)))
+                eta=eta + real((grid%ne(i1,i2,i3)**2) * alpkk(freq,dble(grid%temperature(i1,i2,i3)))* &
+                     exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))
                 
                 eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
                 
@@ -3294,15 +3297,15 @@ contains
                 xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
                 if (.not. propogateCoeffs .and. .not. firstTime) &
-                       previousXall = xAll(1:maxLevels)
+                       previousXall = real(xAll(1:maxLevels))
                        
                 rVec = subcellCentre(thisOctal,iSubcell)
 
                 !call photoSolidAngle(rVec, starSurface, hotOmega, photoOmega)
                 photoFlux1 = photoFluxIntegral(rVec, starSurface, SIZE(starSurface%nuArray))
-                photoFlux1 = photoFlux1 / fourPi   ! Converts from flux to flux moment
+                photoFlux1 = real(photoFlux1 / fourPi)   ! Converts from flux to flux moment
                 hNu1(1:nNu1) = photoFlux1(1:nNu1)
-                nuArray1(1:nNu1) = starSurface%nuArray(:)
+                nuArray1(1:nNu1) = real(starSurface%nuArray(:))
 
                 if (isBinary) then
                   print *, 'Binary geometry not implemented for amrStateq surface models'
@@ -3405,12 +3408,12 @@ contains
                 if (propogateCoeffs .or. setupCoeffs .or. associated(thisOctal%departCoeff)) then
 
                    ! we work out the Ne ratio of non-LTE to LTE...
-                   previousNeRatio = thisOctal%Ne(iSubcell) / NeLTE
+                   previousNeRatio = real(thisOctal%Ne(iSubcell) / NeLTE)
                   
                    ! and the departure coefficients from LTE at the current (non-LTE) Ne
                    departCoeff(1:maxLevels) = real(xall(1:maxLevels))/                         &
-                                                 boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
-                                                 real(thisOctal%temperature(iSubcell),kind=db))
+                                                 real(boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
+                                                 real(thisOctal%temperature(iSubcell),kind=db)))
                    ! store these in the octal
                    thisOctal%departCoeff(iSubcell,1:maxLevels) = departCoeff(:)
                    thisOctal%departCoeff(iSubcell,maxLevels+1) = previousNeRatio
@@ -3423,8 +3426,8 @@ contains
                       modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
                    write(*,*) '  level   dep.coeff      N          N LTE     start N  '
                    do i = 1 , maxLevels
-                      departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
-                                                real(thisOctal%temperature(iSubcell),kind=db))
+                      departCoeff(i) = real(xall(i))/real(boltzSaha(i, thisOctal%Ne(iSubcell),          &
+                                                real(thisOctal%temperature(iSubcell),kind=db)))
                       write(*,'(a5,i3,1p,e12.3,e12.3,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i),&
                        boltzSaha(i, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)),&
                        previousXall(i)
@@ -3925,15 +3928,15 @@ contains
                 xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
                 if (.not. propogateCoeffs .and. .not. firstTime) &
-                       previousXall = xAll(1:maxLevels)
+                       previousXall = real(xAll(1:maxLevels))
                        
                 rVec = subcellCentre(thisOctal,iSubcell)
 
                 !call photoSolidAngle(rVec, starSurface, hotOmega, photoOmega)
                 photoFlux1 = photoFluxIntegral(rVec, starSurface, SIZE(starSurface%nuArray))
-                photoFlux1 = photoFlux1 / fourPi   ! Converts from flux to flux moment
+                photoFlux1 = real(photoFlux1 / fourPi)   ! Converts from flux to flux moment
                 hNu1(1:nNu1) = photoFlux1(1:nNu1)
-                nuArray1(1:nNu1) = starSurface%nuArray(:)
+                nuArray1(1:nNu1) = real(starSurface%nuArray(:))
 
                 if (isBinary) then
                   print *, 'Binary geometry not implemented for amrStateq surface models'
@@ -4034,12 +4037,12 @@ contains
                 if (propogateCoeffs .or. setupCoeffs .or. associated(thisOctal%departCoeff)) then
 
                    ! we work out the Ne ratio of non-LTE to LTE...
-                   previousNeRatio = thisOctal%Ne(iSubcell) / NeLTE
+                   previousNeRatio = real(thisOctal%Ne(iSubcell) / NeLTE)
                   
                    ! and the departure coefficients from LTE at the current (non-LTE) Ne
                    departCoeff(1:maxLevels) = real(xall(1:maxLevels))/                         &
-                                                 boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
-                                                 real(thisOctal%temperature(iSubcell),kind=db))
+                                                 real(boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
+                                                 real(thisOctal%temperature(iSubcell),kind=db)))
                    ! store these in the octal
                    thisOctal%departCoeff(iSubcell,1:maxLevels) = departCoeff(:)
                    thisOctal%departCoeff(iSubcell,maxLevels+1) = previousNeRatio
@@ -4052,8 +4055,8 @@ contains
                       modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
                    write(*,*) '  level   dep.coeff      N          N LTE     start N  '
                    do i = 1 , maxLevels
-                      departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
-                                                real(thisOctal%temperature(iSubcell),kind=db))
+                      departCoeff(i) = real(xall(i))/real(boltzSaha(i, thisOctal%Ne(iSubcell),          &
+                                                real(thisOctal%temperature(iSubcell),kind=db)))
                       write(*,'(a5,i3,1p,e12.3,e12.3,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i),&
                        boltzSaha(i, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)),&
                        previousXall(i)
@@ -4154,7 +4157,7 @@ contains
           call LTElevels(thisOctal%temperature(iSubcell),            &
                          thisOctal%rho(iSubcell), NeLTE, dummy, nLTE)
           thisOctal%departCoeff(iSubcell,stateqMaxLevels+1) = &
-             thisOctal%Ne(iSubcell) / NeLTE
+             real(thisOctal%Ne(iSubcell) / NeLTE)
           thisOctal%departCoeff(iSubcell,1:stateqMaxLevels) = real(thisOctal%N(iSubcell,1:stateqMaxLevels)/  &
              boltzSaha(allLevels, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)))
         else 
@@ -5108,7 +5111,7 @@ contains
     real :: tr , te
 ! based on Milahas equation 5.45 - W = 0.5 for near photosphere
 
-    f = 0.5 * (Tr/Te)*exp(-hydE0Ev/(kEv*Tr))/(exp(-hydE0Ev/(Kev*Te)))
+    f = real(0.5 * (Tr/Te)*exp(-hydE0Ev/(kEv*Tr))/(exp(-hydE0Ev/(Kev*Te))))
   end function approxIonization
 
 

@@ -495,7 +495,7 @@ module molecular_mod
                     do isubcell = 1, thisoctal%maxchildren
                        call LTEpops(thisMolecule, dble(thisOctal%temperature(isubcell)), &
                        dble(thisOctal%departcoeff(1:5,isubcell)))
-                       thisoctal%departcoeff(1:5,isubcell) = 1.d0 / thisoctal%departcoeff(1:5,isubcell)
+                       thisoctal%departcoeff(1:5,isubcell) = real(1.d0 / thisoctal%departcoeff(1:5,isubcell))
                     enddo
                  endif
               endif
@@ -574,9 +574,9 @@ module molecular_mod
                                  
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), levelpops(1:5))
                  do i = 1, 5
-                    thisoctal%departcoeff(i,subcell) = max(levelpops(i),1d-30)
+                    thisoctal%departcoeff(i,subcell) = real(max(levelpops(i),1d-30))
                  enddo
-                 thisoctal%departcoeff(1:5,subcell) = 1.d0 / thisoctal%departcoeff(1:5,subcell)
+                 thisoctal%departcoeff(1:5,subcell) = real(1.d0 / thisoctal%departcoeff(1:5,subcell))
               endif
 ! Fill cells with molecular level populations - LTE or small
               if (.not. associated(thisOctal%molecularLevel)) &
@@ -1284,9 +1284,9 @@ module molecular_mod
                 maxlocerror = maxloc(error(1:minlevel))
                 maxerrorloc = maxlocerror(1)
 ! 3 parameters shoehorned into 1 variable (for space).
-                thisoctal%convergence(subcell) = 100.0 * iter + &
+                thisoctal%convergence(subcell) = real(100.0 * iter + &
                                                  real(maxerrorloc-1) + &
-                                                 min(0.99_db,maxval(error(1:minlevel))) 
+                                                 min(0.99_db,maxval(error(1:minlevel))) )
 
 ! (R)MeanSquare error over minlevel-1 levels. RMS must be less than 1e-10 (MS < 1e-20) 
                 fac = sum(error(1:max(2,minlevel-1))**2) ! convergence criterion
@@ -2539,8 +2539,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
          
          do ipixels = ix1, ix2
             index = (/ipixels,jpixels/)
-            imagegrid(ipixels,jpixels,:) = PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
-                 iTrans,deltaV, subpixels)
+            imagegrid(ipixels,jpixels,:) = real(PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
+                 iTrans,deltaV, subpixels))
             pixelcorner = pixelcorner + imagebasis(1)
          enddo
       enddo
@@ -3214,9 +3214,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
         if ( h21cm ) then 
            ! Calculate line width in cm/s.
-           sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+           sigma_thermal = real(sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen))
            ! Convert to Torus units (v/c)
-           sigma_thermal = sigma_thermal / cspeed
+           sigma_thermal = real(sigma_thermal / cspeed)
            dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
         else
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
@@ -3658,7 +3658,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         else
 
            if(lineimage) then
-              lambda = (cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans) ! cm to Angstroms
+              lambda = real((cspeed_sgl * 1e8) / thisMolecule%transfreq(iTrans)) ! cm to Angstroms
            else
               lambda = lamline
            endif
@@ -4221,7 +4221,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            
            do i = 0, nlamb
               
-              lamb = (10.0**(dble(i) * log10(lamend/lamstart) / 500.0)) * lamstart
+              lamb = real((10.0**(dble(i) * log10(lamend/lamstart) / 500.0)) * lamstart)
               
               call continuumIntensityAlongRay(VECTOR(1.d-10,1d-10,1d-10),VECTOR(1.0,1d-20,1.d-20), &
                                               grid, lamb, dummy, tau, .true.)
@@ -4654,11 +4654,11 @@ END SUBROUTINE sobseq
 
    do i=2,size(levelpops)
       fac = abs(thisMolecule%energy(i)-thisMolecule%energy(i-1)) / (kev*temperature)
-      levelpops(i) = max(1d-30,levelpops(i-1) * thisMolecule%g(i)/thisMolecule%g(i-1) * exp(-fac))
+      levelpops(i) = real(max(1d-30,levelpops(i-1) * thisMolecule%g(i)/thisMolecule%g(i-1) * exp(-fac)))
       nsum = nsum + levelpops(i)
    enddo
 
-   levelpops = levelpops / nsum
+   levelpops = real(levelpops / nsum)
 
  end subroutine LTEpopsReal
 
@@ -4729,7 +4729,7 @@ END SUBROUTINE sobseq
    cube%vAxis(:) = cube%vAxis(:) + dataCubeVelocityOffset
 
 ! Output as brightness temperature
-   cube%intensity(:,:,:) = cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg)
+   cube%intensity(:,:,:) = real(cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg))
 
 #if USECFITSIO
    if(writeoutput) call writedatacube(cube, datacubeFilename)
@@ -4863,14 +4863,14 @@ end subroutine compare_molbench
             if(r .lt. router .and. r .gt. rinner) then
                if(icount .eq. 2) then 
                   out='td'
-                  thisOctal%temperature(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+                  thisOctal%temperature(subcell) = real(readparameterfrom2dmap(rvec,out,.false.))
                   out = 'nh2'           
                   thisOctal%rho(subcell) = readparameterfrom2dmap(rvec,out,.true.) * 2. * mHydrogen
                   out = 'abundance'
-                  thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+                  thisOctal%molAbundance(subcell) = real(readparameterfrom2dmap(rvec,out,.true.))
                else
                   out = 'abundance'
-                  thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+                  thisOctal%molAbundance(subcell) = real(readparameterfrom2dmap(rvec,out,.true.))
                endif
             else
                thisOctal%temperature(subcell) = tcbr
@@ -4880,19 +4880,19 @@ end subroutine compare_molbench
          else
             
             out='td'
-            thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+            thisOctal%temperaturegas(subcell) = real(readparameterfrom2dmap(rvec,out,.false.))
             thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
             thisOctal%temperature(subcell) = thisOctal%temperaturegas(subcell) / thisOctal%temperaturedust(subcell)
             
             out = 'nh2'
             
-            thisOctal%temperaturegas(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+            thisOctal%temperaturegas(subcell) = real(readparameterfrom2dmap(rvec,out,.true.))
             
             thisOctal%nh2(subcell) = (thisOctal%temperaturegas(subcell) * 2. *mhydrogen) / thisOctal%rho(subcell)
             thisOctal%rho(subcell) = thisOctal%nh2(subcell)
             
             out = 'abundance'
-            thisOctal%molAbundance(subcell) = readparameterfrom2dmap(rvec,out,.false.)
+            thisOctal%molAbundance(subcell) = real(readparameterfrom2dmap(rvec,out,.false.))
          end if
       endif
    end do
@@ -4989,7 +4989,7 @@ end subroutine compare_molbench
       
       alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
       
-      step = (oldstep + min(max(25.d0/abs(alty2),0.5_db),4.d0))/2.d0
+      step = real((oldstep + min(max(25.d0/abs(alty2),0.5_db),4.d0))/2.d0)
       oldstep = step
       
     end function nextStep
@@ -5198,9 +5198,9 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
         if ( h21cm ) then 
            ! Calculate line width in cm/s.
-           sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+           sigma_thermal = real(sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen))
            ! Convert to Torus units (v/c)
-           sigma_thermal = sigma_thermal / cspeed
+           sigma_thermal = real(sigma_thermal / cspeed)
            dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
         else
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
@@ -5398,11 +5398,11 @@ endif
          do iv = 1,nv
             ! converting intensity to flux which is stored in intensity
             if(reverse) then
-               cube%intensity(ipixel,jpixel,iv) = cube%intensity(ipixel,jpixel,iv) &
-                                                  / (dx * 1e-3 * thismolecule%transfreq(itrans))
+               cube%intensity(ipixel,jpixel,iv) = real(cube%intensity(ipixel,jpixel,iv) &
+                                                  / (dx * 1e-3 * thismolecule%transfreq(itrans)))
             else
-               cube%intensity(ipixel,jpixel,iv) = cube%intensity(ipixel,jpixel,iv) &
-                                                  * dx * 1e-3 * thismolecule%transfreq(itrans)
+               cube%intensity(ipixel,jpixel,iv) = real(cube%intensity(ipixel,jpixel,iv) &
+                                                  * dx * 1e-3 * thismolecule%transfreq(itrans))
             endif
          enddo
       enddo
@@ -5711,9 +5711,9 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
         if ( h21cm ) then 
            ! Calculate line width in cm/s.
-           sigma_thermal = sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen)
+           sigma_thermal = real(sqrt (  (kErg * thisOctal%temperature(subcell)) / mHydrogen))
            ! Convert to Torus units (v/c)
-           sigma_thermal = sigma_thermal / cspeed
+           sigma_thermal = real(sigma_thermal / cspeed)
            dvAcrossCell = abs(dvAcrossCell / sigma_thermal)
         else
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))

@@ -691,7 +691,7 @@ contains
     real(double) :: u0, u1, u2, N1overN0, N2overN1, pe, ci
     real(double) :: n0overn1,n1overn2
        pe = ne * kerg * t
-       tReal = t
+       tReal = real(t)
        select case(thisAtom%nz)
        case(1)
           u0 = getUT(treal, uCoeff(1,:))
@@ -787,7 +787,7 @@ contains
     real(double) :: u0, u1, u2, N1overN0,  pe, ci
     real(double) :: n0overn1,n1overn2
        pe = ne * kerg * t
-       tReal = t
+       tReal = real(t)
        select case(thisAtom%nz)
        case(1)
           u0 = getUT(treal, uCoeff(1,:))
@@ -855,7 +855,7 @@ contains
     real(double) :: u0, u1, u2, N1overN0,  pe, ci
     real(double) :: n0overn1,n1overn2
        pe = ne * kerg * t
-       tReal = t
+       tReal = real(t)
        select case(thisAtom%nz)
        case(1)
           u0 = getUT(treal, uCoeff(1,:))
@@ -1710,7 +1710,7 @@ contains
     gii = 1.e0_db + 0.1728e0_db * (u-1.e0_db) / ((nDouble*(u+1.e0_db))**twoThirds)
     term = 0.0496e0_db * (1.e0_db+u*(u+1.333e0_db))/(nDouble*(u+1.e0_db)**(fourThirds))
     if ((term/gii).le.0.25e0_db) then
-       giia=gii-term
+       giia=real(gii-term)
        return
     else
        giia = 1.0_db

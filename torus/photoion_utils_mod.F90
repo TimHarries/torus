@@ -77,7 +77,7 @@ contains
     real(double):: a, t, t0, t1, b
     
     ! based on Verner and Ferland (1996) ApJS 103 467
-    vernerFerland = a / (sqrt(t/t0) * (1.d0+sqrt(t/t0))**(1.d0-b) * (1.d0+sqrt(t/t1))**(1.d0+b))
+    vernerFerland = real(a / (sqrt(t/t0) * (1.d0+sqrt(t/t0))**(1.d0-b) * (1.d0+sqrt(t/t1))**(1.d0+b)))
     
   end function vernerFerland
 
@@ -207,7 +207,7 @@ subroutine createSahaMilneTables(hTable, heTable)
      heTable%Clyc(i,1) = 0.d0
      do j = 2, nFreq
 
-        e = hTable%freq(j) * hcgs* ergtoev
+        e = real(hTable%freq(j) * hcgs* ergtoev)
         call phfit2(1, 1, 1 , e , hxsec)
 
         dFreq = hTable%freq(j)-hTable%freq(j-1)
@@ -215,7 +215,7 @@ subroutine createSahaMilneTables(hTable, heTable)
              dble(hxsec/1.d10) *  exp(-hcgs*(hTable%freq(j)-nu0_h)/(kerg*hTable%temp(i)))
         hTable%Clyc(i,j) = hTable%Clyc(i,j-1) + jnu * dfreq
         
-        e = heTable%freq(j) * hcgs * ergtoev
+        e = real(heTable%freq(j) * hcgs * ergtoev)
         call phfit2(2, 2, 1 , e , hexsec)
         
         dFreq = heTable%freq(j)-heTable%freq(j-1)
@@ -469,7 +469,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
 
   do i = 1, n
-     pops(i) = max(1.d-30,matrixB(i))
+     pops(i) = real(max(1.d-30,matrixB(i)))
   enddo
 
   deallocate(matrixA, matrixB, tempMatrix, qeff, rates)
@@ -510,7 +510,7 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   thisGamma = thisIon%transition(iTransition)%gamma(i) + &
        fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
 
-  boltzFac =  exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
+  boltzFac =  real(exp(-thisIon%transition(iTransition)%energy / (kev*temperature)))
 
   fac = (8.63e-6 / sqrt(temperature)) * thisGamma
 

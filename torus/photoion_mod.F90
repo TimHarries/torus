@@ -285,7 +285,7 @@ contains
              call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, photonPacketWeight, nFreq, freq)
              if (.not. escaped) then
 
-                thisLam = (cSpeed / thisFreq) * 1.e8
+                thisLam = real((cSpeed / thisFreq) * 1.e8)
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
@@ -340,7 +340,7 @@ contains
                 write(*,*) 1.e8*cspeed/thisFreq
                 write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
 
-                thisLam = (cSpeed / thisFreq) * 1.e8
+                thisLam = real((cSpeed / thisFreq) * 1.e8)
                 call locate(lamArray, nLambda, real(thisLam), iLam)
 
                 call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
@@ -379,7 +379,7 @@ contains
 
        epsOverDeltaT = (lCore) / dble(nMonte)
 
-       num_undersampled = 0.0
+       num_undersampled = 0
        call  identifyUndersampled(grid%octreeRoot, num_undersampled)
 
 
@@ -1159,9 +1159,9 @@ end subroutine photoIonizationloop
     coolColl = 0.
     if (TeUsed > 5000.) then 
        
-       coolColl = (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
+       coolColl = real((ch12*exp(-th12/TeUsed)*Te4**ex12 + &
             & ch13*exp(-th13/TeUsed)*Te4**ex13) * &
-            & hcRyd*(nh-nhii)*Ne
+            & hcRyd*(nh-nhii)*Ne)
        
     else
        
@@ -1780,24 +1780,24 @@ subroutine dumpLexington(grid, epsoverdt)
 
         v = cellVolume(thisOctal, subcell)
 
-        HI = HI + thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
-        HeI = HeI + thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon))
-        OII = OII + thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
-        OIII = OIII + thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon))
-        CII = CII + thisOctal%ionfrac(subcell,returnIonNumber("C II", grid%ion, grid%nIon))
-        CIII = CIII + thisOctal%ionfrac(subcell,returnIonNumber("C III", grid%ion, grid%nIon))
-        CIV = CIV + thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
-        NII = NII + thisOctal%ionfrac(subcell,returnIonNumber("N II", grid%ion, grid%nIon))
-        NIII = NIII + thisOctal%ionfrac(subcell,returnIonNumber("N III", grid%ion, grid%nIon))
-!        NIV = NIV + thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon))
-!        NeI = NeI + thisOctal%ionfrac(subcell,returnIonNumber("Ne I", grid%ion, grid%nIon))
-        NeII = NeII + thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon))
-        NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
-!        NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
-        netot = netot + thisOctal%ne(subcell)
+        HI = HI     + real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
+        HeI = HeI   + real(thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon)))
+        OII = OII   + real(thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon)))
+        OIII = OIII + real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
+        CII = CII   + real(thisOctal%ionfrac(subcell,returnIonNumber("C II", grid%ion, grid%nIon)))
+        CIII = CIII + real(thisOctal%ionfrac(subcell,returnIonNumber("C III", grid%ion, grid%nIon)))
+        CIV = CIV   + real(thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon)))
+        NII = NII   + real(thisOctal%ionfrac(subcell,returnIonNumber("N II", grid%ion, grid%nIon)))
+        NIII = NIII + real(thisOctal%ionfrac(subcell,returnIonNumber("N III", grid%ion, grid%nIon)))
+!        NIV = NIV  + real(thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon)))
+!        NeI = NeI  + real(thisOctal%ionfrac(subcell,returnIonNumber("Ne I", grid%ion, grid%nIon)))
+        NeII = NeII + real(thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon)))
+        NeIII = NeIII + real(thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon)))
+!        NeIV = NeIV + real(thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon)))
+        netot = netot + real(thisOctal%ne(subcell))
         call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDT)
         heating = heating + totalHeating
-        fac = thisOctal%nh(subcell) * returnAbundance(8) !* thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon))
+        fac = real(thisOctal%nh(subcell) * returnAbundance(8)) !* thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon))
         fac = 1.
         oirate = oirate + &
              fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O I", grid%ion, grid%nIon)))
@@ -2057,7 +2057,7 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
      n2 = nFreq
      do i = n1, n2
         
-        e = freq(i) * hcgs* ergtoev
+        e = real(freq(i) * hcgs* ergtoev)
 
 
         call phfit2(grid%ion(iIon)%z, grid%ion(iIon)%n, grid%ion(iIon)%outerShell , e , hxsec)
@@ -2231,16 +2231,16 @@ end subroutine addFreeFreeContinua
         end if
 
         ! set txg
-        txg = 0.66666667*(2.0*z+xlrkt)
+        txg = real(0.66666667*(2.0*z+xlrkt))
         gamma2 = 10**(txg*1.5)
 
         con = 0.72727273*xlrkt+0.90909091
         do j=1,8
             ir = 9
-            b(11) = d(j,11)
-            b(10) = txg*b(11)+d(j,10)
+            b(11) = real(d(j,11))
+            b(10) = real(txg*b(11)+d(j,10))
             do i=1,9
-                b(ir) = txg*b(ir+1)-b(ir+2)+d(j,ir)
+                b(ir) = real(txg*b(ir+1)-b(ir+2)+d(j,ir))
                 ir = ir-1
             end do
             c(j) = 0.25*(b(1)-b(3))
@@ -2249,7 +2249,7 @@ end subroutine addFreeFreeContinua
         ! sum U expansion
         ! loop through energy at fixed temperature
         do i = 1, size(xlf)
-            txu = 0.72727273*xlf(i)+con
+            txu = real(0.72727273*xlf(i)+con)
             u = 10**((txu - .90909091)/.72727273)
             ! criteria set by hummer limits. it is a wedge from
             ! log(hnu),log(T)) =
@@ -2490,7 +2490,7 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
   ! HeI lines 
 
   call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
-  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
+  fac = real((log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i)))
 
   do j = 1, 32
      aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
@@ -2498,8 +2498,8 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
      cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
      t = thisOctal%temperature(subcell)/1.e4
      emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
-     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
-          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
+     emissivity = emissivity * real(thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
+          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance)
 
      lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
      call locate(freq, nFreq, lineFreq, k)
@@ -2570,7 +2570,7 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
 
   do i = 1, nFreq
-     thisLam = (cSpeed / freq(i)) * 1.e8
+     thisLam = real((cSpeed / freq(i)) * 1.e8)
      if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
         call hunt(lamArray, nLambda, real(thisLam), iLam)
         spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
@@ -2907,7 +2907,7 @@ end subroutine readHeIIrecombination
        call randomNumberGenerator(getDouble=r)
        call locate(tSpec, nFreq, r, i)
        fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
-       thisLambda = lamspec(i) + fac * (lamspec(i+1)-lamspec(i))
+       thisLambda = real(lamspec(i) + fac * (lamspec(i+1)-lamspec(i)))
     else
        thisLambda = 1000.e4
   endif
@@ -2991,10 +2991,10 @@ end subroutine readHeIIrecombination
        enddo
        lamSpec(1:nFreq)= tspec
        do i = 1, nFreq
-          dlam2 = 1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1)
+          dlam2 = real(1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1))
           spectrum(i) = spectrum(i) / dlam2
        enddo
-       bias = spectrum(iLambda)/fac
+       bias = real(spectrum(iLambda)/fac)
     else
        allocate(prob(1:nFreq))
        prob(1:nFreq) = spectrum(1:nFreq)
@@ -3007,7 +3007,7 @@ end subroutine readHeIIrecombination
        call locate(prob, nFreq, r, i)
        t = (r - prob(i))/(prob(i+1)-prob(i))
        thisFreq = freq(i) + t * (freq(i+1)-freq(i))
-       thisLam = 1.d8 * cspeed/thisFreq
+       thisLam = real(1.d8 * cspeed/thisFreq)
        call locate(lamArray, nLambda, thisLam, iLambda)
        bias = 1.d0
     endif
@@ -3217,7 +3217,7 @@ end subroutine readHeIIrecombination
     type(OCTAL), pointer :: thisOctal
     real(double) :: totalFlux
     integer :: subcell
-    integer :: iPhoton
+    integer(bigint) :: iPhoton
     integer :: iSource
     type(VECTOR) :: rHat, observerDirection
     type(IMAGETYPE) :: thisimage
@@ -3227,7 +3227,7 @@ end subroutine readHeIIrecombination
     real(double) :: lCore, probsource, r
     real(double) :: powerPerPhoton
     real(double) :: totalLineEmission, chanceSource, weightSource, weightEnv
-    integer :: iBeg, iEnd
+    integer(kind=bigint) :: iBeg, iEnd
     character(len=80) :: message
 #ifdef MPI
     real(double) :: tempTotalFlux
@@ -3432,7 +3432,7 @@ end subroutine readHeIIrecombination
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
             kappaAbs=kappaAbsGas, kappaSca=kappaScaGas)
        kappaExt = kappaAbsGas + kappaScaGas
-       thisPhoton%tau = thisPhoton%tau + tval * kappaExt
+       thisPhoton%tau = real(thisPhoton%tau + tval * kappaExt)
        thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
        if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
           endLoop = .true.

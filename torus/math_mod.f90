@@ -47,14 +47,14 @@ contains
 
 
     interpGridChil = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* grid%chiline(i1  , i2   , i3   ) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* grid%chiline(i1  , i2   , i3   ) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* grid%chiline(i1+1, i2   , i3   ) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* grid%chiline(i1+1, i2+1 , i3   ) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* grid%chiline(i1  , i2+1 , i3+1 ) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* grid%chiline(i1  , i2+1 , i3   ) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* grid%chiline(i1+1, i2   , i3+1 ) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* grid%chiline(i1  , i2   , i3+1 ) + &
-         ((t1   )  * (t2   ) * (t3   ))* grid%chiline(i1+1, i2+1 , i3+1 )
+         ((t1   )  * (t2   ) * (t3   ))* grid%chiline(i1+1, i2+1 , i3+1 ))
 
 !    interpGridChil = &
 !          grid%chiline(i1  , i2   , i3   ) * weight(1)+ &
@@ -85,14 +85,14 @@ contains
 
 
     interpGridKappaSca = &
-         ((1.e0-t1)  * (1.e0-t2) * (1.e0-t3))* log10(grid%kappaSca(i1  , i2   , i3   , ilambda)) + &
+         real(((1.e0-t1)  * (1.e0-t2) * (1.e0-t3))* log10(grid%kappaSca(i1  , i2   , i3   , ilambda)) + &
          ((t1   )  *   (1.e0-t2) * (1.e0-t3))* log10(grid%kappaSca(i1+1, i2   , i3   , ilambda)) + &
          ((t1   )  *   (t2   ) *   (1.e0-t3))* log10(grid%kappaSca(i1+1, i2+1 , i3   , ilambda)) + &
          ((1.e0-t1)  * (t2   ) *     (t3   ))* log10(grid%kappaSca(i1  , i2+1 , i3+1 , ilambda)) + &
          ((1.e0-t1)  * (t2   )   * (1.e0-t3))* log10(grid%kappaSca(i1  , i2+1 , i3   , ilambda)) + &
          ((t1   )  *   (1.e0-t2) *   (t3   ))* log10(grid%kappaSca(i1+1, i2   , i3+1 , ilambda)) + &
          ((1.e0-t1)  * (1.e0-t2) *   (t3   ))* log10(grid%kappaSca(i1  , i2   , i3+1 , ilambda)) + &
-         ((t1   )  *   (t2   ) *     (t3   ))* log10(grid%kappaSca(i1+1, i2+1 , i3+1 , ilambda))
+         ((t1   )  *   (t2   ) *     (t3   ))* log10(grid%kappaSca(i1+1, i2+1 , i3+1 , ilambda)))
 
     
     interpGridKappaSca = 10.e0**interpGridKappaSca
@@ -106,14 +106,14 @@ contains
     real(double) :: t1, t2, t3
 
     interpGridKappaScaRed = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(grid%kappaScaRed(i1  , i2   , i3   , ilambda)) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(grid%kappaScaRed(i1  , i2   , i3   , ilambda)) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* log10(grid%kappaScaRed(i1+1, i2   , i3   , ilambda)) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* log10(grid%kappaScaRed(i1+1, i2+1 , i3   , ilambda)) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* log10(grid%kappaScaRed(i1  , i2+1 , i3+1 , ilambda)) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* log10(grid%kappaScaRed(i1  , i2+1 , i3   , ilambda)) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* log10(grid%kappaScaRed(i1+1, i2   , i3+1 , ilambda)) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* log10(grid%kappaScaRed(i1  , i2   , i3+1 , ilambda)) + &
-         ((t1   )  * (t2   ) * (t3   ))* log10(grid%kappaScaRed(i1+1, i2+1 , i3+1 , ilambda))
+         ((t1   )  * (t2   ) * (t3   ))* log10(grid%kappaScaRed(i1+1, i2+1 , i3+1 , ilambda)))
 
     interpGridKappaScaRed = 10.e0**interpGridKappaScaRed
 
@@ -129,14 +129,14 @@ contains
 
 
     interpGridKappaAbs = &
-         ((1.e0-t1)  * (1.e0-t2) * (1.e0-t3)) * log10((grid%kappaAbs(i1  , i2   , i3   , ilambda))) + &
+         real(((1.e0-t1)  * (1.e0-t2) * (1.e0-t3)) * log10((grid%kappaAbs(i1  , i2   , i3   , ilambda))) + &
          ((t1   )  * (1.e0-t2) * (1.e0-t3))   * log10((grid%kappaAbs(i1+1, i2   , i3   , ilambda))) + &
          ((t1   )  * (t2   ) * (1.e0-t3))     * log10((grid%kappaAbs(i1+1, i2+1 , i3   , ilambda))) + &
          ((1.e0-t1)  * (t2   ) * (t3   ))     * log10((grid%kappaAbs(i1  , i2+1 , i3+1 , ilambda))) + &
          ((1.d0-t1)  * (t2   ) * (1.e0-t3))   * log10((grid%kappaAbs(i1  , i2+1 , i3   , ilambda))) + &
          ((t1   )  * (1.e0-t2) * (t3   ))     * log10((grid%kappaAbs(i1+1, i2   , i3+1 , ilambda))) + &
          ((1.e0-t1)  * (1.e0-t2) * (t3   ))   * log10((grid%kappaAbs(i1  , i2   , i3+1 , ilambda))) + &
-         ((t1   )  * (t2   ) * (t3   ))       * log10((grid%kappaAbs(i1+1, i2+1 , i3+1 , ilambda)))
+         ((t1   )  * (t2   ) * (t3   ))       * log10((grid%kappaAbs(i1+1, i2+1 , i3+1 , ilambda))))
 
     if (interpGridKappaAbs  > 20.) then
        write(*,*) grid%kappaAbs(i1-1:i1+1,i2-1:i2+1,i3-1:i3+1,1)
@@ -158,14 +158,14 @@ contains
 
 
     interpGridKappaAbsRed = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10((grid%kappaAbsRed(i1  , i2   , i3   , ilambda))) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10((grid%kappaAbsRed(i1  , i2   , i3   , ilambda))) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* log10((grid%kappaAbsRed(i1+1, i2   , i3   , ilambda))) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* log10((grid%kappaAbsRed(i1+1, i2+1 , i3   , ilambda))) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* log10((grid%kappaAbsRed(i1  , i2+1 , i3+1 , ilambda))) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* log10((grid%kappaAbsRed(i1  , i2+1 , i3   , ilambda))) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* log10((grid%kappaAbsRed(i1+1, i2   , i3+1 , ilambda))) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* log10((grid%kappaAbsRed(i1  , i2   , i3+1 , ilambda))) + &
-         ((t1   )  * (t2   ) * (t3   ))* log10((grid%kappaAbsRed(i1+1, i2+1 , i3+1 , ilambda)))
+         ((t1   )  * (t2   ) * (t3   ))* log10((grid%kappaAbsRed(i1+1, i2+1 , i3+1 , ilambda))))
 
     if (interpGridKappaAbsRed  > 20.) then
        write(*,*) grid%kappaAbsRed(i1-1:i1+1,i2-1:i2+1,i3-1:i3+1,1)
@@ -202,14 +202,14 @@ contains
     i = nx
 
     interpGridScalar = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1  , i2   , i3   , ilambda) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1  , i2   , i3   , ilambda) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1+1, i2   , i3   , ilambda) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* scalargrid(i1+1, i2+1 , i3   , ilambda) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* scalargrid(i1  , i2+1 , i3+1 , ilambda) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* scalargrid(i1  , i2+1 , i3   , ilambda) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* scalargrid(i1+1, i2   , i3+1 , ilambda) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* scalargrid(i1  , i2   , i3+1 , ilambda) + &
-         ((t1   )  * (t2   ) * (t3   ))* scalargrid(i1+1, i2+1 , i3+1 , ilambda)
+         ((t1   )  * (t2   ) * (t3   ))* scalargrid(i1+1, i2+1 , i3+1 , ilambda))
 
   end  function interpGridScalar
 
@@ -226,14 +226,14 @@ contains
 
 
     interpGridScalar4 = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(scalargrid(i1  , i2   , i3   , ilambda)) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(scalargrid(i1  , i2   , i3   , ilambda)) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* log10(scalargrid(i1+1, i2   , i3   , ilambda)) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* log10(scalargrid(i1+1, i2+1 , i3   , ilambda)) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* log10(scalargrid(i1  , i2+1 , i3+1 , ilambda)) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* log10(scalargrid(i1  , i2+1 , i3   , ilambda)) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* log10(scalargrid(i1+1, i2   , i3+1 , ilambda)) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* log10(scalargrid(i1  , i2   , i3+1 , ilambda)) + &
-         ((t1   )  * (t2   ) * (t3   ))* log10(scalargrid(i1+1, i2+1 , i3+1 , ilambda))
+         ((t1   )  * (t2   ) * (t3   ))* log10(scalargrid(i1+1, i2+1 , i3+1 , ilambda)))
 
     interpGridScalar4 = 10.e0**interpGridScalar4
 
@@ -249,14 +249,14 @@ contains
 
 
     interpGridScalar2 = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1  , i2   , i3   ) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1  , i2   , i3   ) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* scalargrid(i1+1, i2   , i3   ) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* scalargrid(i1+1, i2+1 , i3   ) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* scalargrid(i1  , i2+1 , i3+1 ) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* scalargrid(i1  , i2+1 , i3   ) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* scalargrid(i1+1, i2   , i3+1 ) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* scalargrid(i1  , i2   , i3+1 ) + &
-         ((t1   )  * (t2   ) * (t3   ))* scalargrid(i1+1, i2+1 , i3+1 )
+         ((t1   )  * (t2   ) * (t3   ))* scalargrid(i1+1, i2+1 , i3+1 ))
 
   end  function interpGridScalar2
 
@@ -272,14 +272,14 @@ contains
 
 
     interpGridScalar3 = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(scalargrid(i1  , i2   , i3   )) + &
+         real(((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(scalargrid(i1  , i2   , i3   )) + &
          ((t1   )  * (1.d0-t2) * (1.d0-t3))* log10(scalargrid(i1+1, i2   , i3   )) + &
          ((t1   )  * (t2   ) * (1.d0-t3))* log10(scalargrid(i1+1, i2+1 , i3   )) + &
          ((1.d0-t1)  * (t2   ) * (t3   ))* log10(scalargrid(i1  , i2+1 , i3+1 )) + &
          ((1.d0-t1)  * (t2   ) * (1.d0-t3))* log10(scalargrid(i1  , i2+1 , i3   )) + &
          ((t1   )  * (1.d0-t2) * (t3   ))* log10(scalargrid(i1+1, i2   , i3+1 )) + &
          ((1.d0-t1)  * (1.d0-t2) * (t3   ))* log10(scalargrid(i1  , i2   , i3+1 )) + &
-         ((t1   )  * (t2   ) * (t3   ))* log10(scalargrid(i1+1, i2+1 , i3)+1 )
+         ((t1   )  * (t2   ) * (t3   ))* log10(scalargrid(i1+1, i2+1 , i3)+1 ))
 
 
     interpGridScalar3 = 10.e0**interpGridScalar3
@@ -423,7 +423,7 @@ contains
 
     ! first line of sight velocity
 
-    phi1 = direction .dot. interpGridVelocity(grid,j1,j2,j3,t1,t2,t3)
+    phi1 = real(direction .dot. interpGridVelocity(grid,j1,j2,j3,t1,t2,t3))
 
     ! now go forward a bit from current position
 
@@ -451,9 +451,9 @@ contains
 
     ! the second position l.o.s. velocity
 
-    phi2 = direction .dot. interpGridVelocity(grid,j1,j2,j3,t1,t2,t3)
+    phi2 = real(direction .dot. interpGridVelocity(grid,j1,j2,j3,t1,t2,t3))
 
-    dx = modulus(position2 - position1)
+    dx = real(modulus(position2 - position1))
 
     dphi = phi2-phi1
 
@@ -484,10 +484,10 @@ contains
     sigma = velFWHM / 2.35
     
     do i = 1, nLambda
-       thisVel = cSpeed * (xArray(i) - lamLine)/lamLine
-       fac1 = relInt - 1.d0
+       thisVel = real(cSpeed * (xArray(i) - lamLine)/lamLine)
+       fac1 = real(relInt - 1.d0)
        fac2 = -(thisVel**2 / (2.*sigma**2))
-       sourceSpectrum(i) = 1.d0 + fac1 * exp(fac2)
+       sourceSpectrum(i) = real( 1.d0 + fac1 * exp(fac2))
     enddo
   end subroutine computeCoreEmissionProfile
 
@@ -735,14 +735,14 @@ contains
                 do j = 1, grid%nMu
                    do k = 1, grid%nPhi
                       if (grid%inUse(i,j,k)) then
-                         nu = cSpeed / (lambda0*angstromtocm)
-                         tauSob = chi(i,j,k)*rAxis(i)/nu/modulus(grid%velocity(i,j,k))
+                         nu = real(cSpeed / (lambda0*angstromtocm))
+                         tauSob = real(chi(i,j,k)*rAxis(i)/nu/modulus(grid%velocity(i,j,k)))
                          if (tauSob < 0.1) then
-                            escProb=1.d0-tauSob*0.5*(  1.d0 - tauSob/3.0* ( 1.d0 - tauSob*0.25*(1.d0 -0.20e0*tauSob)))
+                            escProb=real(1.d0-tauSob*0.5*(  1.d0 - tauSob/3.0* ( 1.d0 - tauSob*0.25*(1.d0 -0.20e0*tauSob))))
                          else if (tauSob < 15.e0) then
-                            escProb = (1.d0 - exp(-tauSob))/tauSob
+                            escProb = real((1.d0 - exp(-tauSob))/tauSob)
                          else
-                            escProb = 1.d0/tauSob
+                            escProb = real(1.d0/tauSob)
                          endif
                          grid%biasLine3d(i,j,k) = max(1.e-6,escProb)
                       endif
@@ -751,14 +751,14 @@ contains
              enddo
 
              do i = nr, 1, -1
-                nu = cSpeed / (lambda0*angstromtocm)
-                tauSob = chi(i,1,1)*rAxis(i)/nu/modulus(grid%velocity(i,1,1))
+                nu = real(cSpeed / (lambda0*angstromtocm))
+                tauSob = real(chi(i,1,1)*rAxis(i)/nu/modulus(grid%velocity(i,1,1)))
                 if (tauSob < 0.1) then
-                   escProb=1.d0-tauSob*0.5*(  1.d0 - tauSob/3.0* ( 1.d0 - tauSob*0.25*(1.d0 -0.20e0*tauSob)))
+                   escProb=real(1.d0-tauSob*0.5*(  1.d0 - tauSob/3.0* ( 1.d0 - tauSob*0.25*(1.d0 -0.20e0*tauSob))))
                 else if (tauSob < 15.e0) then
-                   escProb = (1.d0 - exp(-tauSob))/tauSob
+                   escProb = real((1.d0 - exp(-tauSob))/tauSob)
                 else
-                   escProb = 1.d0/tauSob
+                   escProb = real(1.d0/tauSob)
                 endif
                 bias(i) = escProb
                 bias(i) = max(1.e-6,bias(i))
@@ -864,7 +864,7 @@ contains
                    else
                       fac = grid%biasCont3D(i,j,k)
                    endif
-                   tot = tot + dble(eta(i,j,k))*dV*fac
+                   tot = tot + real(dble(eta(i,j,k))*dV*fac)
                 endif
              enddo
           enddo
@@ -910,7 +910,7 @@ contains
                    else
                       fac = grid%biasCont3D(i,j,k)
                    endif
-                   tot = tot + dble(eta(i,j,k))*dV*fac
+                   tot = tot + real(dble(eta(i,j,k))*dV*fac)
                 endif
              enddo
              yProbDist(i,j) =  tot
@@ -952,7 +952,7 @@ contains
                 tot = 0.
                 dV = dble(dx)*dble(dy)*dble(dz)
                 if (.not.grid%inStar(i,j,k).and.grid%inUse(i,j,k)) then
-                   tot = tot + dble(eta(i,j,k))*dv
+                   tot = tot + real(dble(eta(i,j,k))*dv)
                 endif
                 if (lineEmission) then
                    fac = grid%biasLine3D(i,j,k)
@@ -1012,7 +1012,7 @@ stop
                 dTheta = acos(muAxis(j+1))-acos(muAxis(j))
                 mu = 0.5*(muAxis(j+1) + muAxis(j))
                 dPhi = phiAxis(k+1) - phiAxis(k)
-                sinTheta = sqrt(1.d0 - mu**2)
+                sinTheta = real(sqrt(1.d0 - mu**2))
 !                r = 0.5*(rAxis(i) + rAxis(i-1))
                 r = rAxis(i)
                 phi = 0.5*(phiAxis(k+1) + phiAxis(k))
@@ -1029,7 +1029,7 @@ stop
                    else
                       fac = grid%biasCont3D(i1,i2,i3)
                    endif
-                   tot = tot + dble(fac2)*dV*fac
+                   tot = tot + real(dble(fac2)*dV*fac)
                 endif
 
 !                tot = tot +  fac * dV * &
@@ -1060,7 +1060,7 @@ stop
                 dTheta = acos(muAxis(2))-acos(muAxis(1))
              endif
              mu = muAxis(j)
-             sinTheta = sqrt(1.d0 - mu**2)
+             sinTheta = real(sqrt(1.d0 - mu**2))
              dr = rAxis(2) - rAxis(1)
              r = rAxis(i)
 
@@ -1079,7 +1079,7 @@ stop
                 call getIndices(grid, rVec, i1, i2, i3, t1, t1, t3)
 
 
-                tot = tot + interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV
+                tot = tot + real(interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV)
 !                tot = tot + eta(i,j,k)*dv
 
              enddo
@@ -1113,7 +1113,7 @@ stop
                 dTheta = abs(acos(muAxis(2))-acos(muAxis(1)))
              endif
              mu = muAxis(j)
-             sinTheta = max(1.d-20,sqrt(1.d0 - muAxis(j)**2))
+             sinTheta = real(max(1.d-20,sqrt(1.d0 - muAxis(j)**2)))
              do k = 2, nPhi
                 dPhi = phiAxis(k) - phiAxis(k-1)
                 if (i > 1) then
@@ -1128,7 +1128,7 @@ stop
                 call getIndices(grid, rVec, i1, i2, i3, t1, t1, t3)
 
                 phiProbDist(i,j,k) = phiProbDist(i,j,k-1)  &
-                     + interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV
+                     + real(interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV)
 
              enddo
           enddo
@@ -1151,11 +1151,11 @@ stop
        write(*,*) "Bias correction: ",totalEmission/scaleFac
        if (lineEmission) then
           where(grid%inUse)
-             grid%biasLine3d = grid%biasLine3d * totalEmission/scaleFac
+             grid%biasLine3d = real(grid%biasLine3d * totalEmission/scaleFac)
           end where
        else
           where(grid%inUse)
-             grid%biasCont3D = grid%biasCont3d * totalEmission/scaleFac
+             grid%biasCont3D = real(grid%biasCont3d * totalEmission/scaleFac)
           end where
        endif
 

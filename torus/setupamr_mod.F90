@@ -374,7 +374,7 @@ contains
              call findTotalMass(grid%octreeRoot, totalMass)
              write(*,*) "mass envelope ",massEnvelope
              write(*,*) "total mass ",totalmass
-             scaleFac = massEnvelope / totalMass
+             scaleFac = real(massEnvelope / totalMass)
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 
@@ -820,7 +820,7 @@ contains
                 end do
              else
 
-                Mcore = sourcemass(1)
+                Mcore = real(sourcemass(1))
                 rVec = subcellCentre(thisOctal, subcell)
                 thisR = sqrt(rVec%x**2 + rVec%y**2)
                 thisZ = abs(rVec%z)
@@ -855,21 +855,21 @@ contains
                         (     fac1)*(     fac3)* rho(j+1,k2+1)  
 
 
-                   thisOctal%temperature(subcell) = max(3.d0,(1.d0-fac1)*(1.d0-fac2)* t(j,k1) + &
+                   thisOctal%temperature(subcell) = real(max(3.d0,(1.d0-fac1)*(1.d0-fac2)* t(j,k1) + &
                         (     fac1)*(1.d0-fac3)* t(j+1,k2) + &
                         (1.d0-fac1)*(     fac2)* t(j,k1+1) + &
-                        (     fac1)*(     fac3)* t(j+1,k2+1) ) 
+                        (     fac1)*(     fac3)* t(j+1,k2+1) ) )
 
 
                    if (molecularPhysics) then
-                      thisOctal%molAbundance(subcell) = (1.d0-fac1)*(1.d0-fac2)* abundance(j,k1) + &
+                      thisOctal%molAbundance(subcell) = real((1.d0-fac1)*(1.d0-fac2)* abundance(j,k1) + &
                            (     fac1)*(1.d0-fac3)* abundance(j+1,k2) + &
                            (1.d0-fac1)*(     fac2)* abundance(j,k1+1) + &
-                           (     fac1)*(     fac3)* abundance(j+1,k2+1)  
+                           (     fac1)*(     fac3)* abundance(j+1,k2+1)  )
 
                       thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
 
-                      thisOctal%molAbundance(subcell) = thisOctal%molAbundance(subcell) * 2.d0
+                      thisOctal%molAbundance(subcell) = real(thisOctal%molAbundance(subcell) * 2.d0)
                    endif
                 endif
                 if (molecularPhysics) then

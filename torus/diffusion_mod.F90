@@ -36,7 +36,7 @@ contains
        else
           thisOctal%oldtemperature(subcell) = thisOctal%temperature(subcell)
           if (thisOctal%diffusionApprox(subcell).and.(.not.thisOctal%fixedTemperature(subcell))) then
-             thisOctal%temperature(subcell) = max(thisOctal%chiline(subcell),3.d0)
+             thisOctal%temperature(subcell) = real(max(thisOctal%chiline(subcell),3.d0))
           endif
        endif
     enddo
@@ -111,7 +111,7 @@ contains
              end if
           end do
        else
-          thisOctal%temperature(subcell) = (thisOctal%eDens(subcell)/arad)**0.25d0
+          thisOctal%temperature(subcell) = real((thisOctal%eDens(subcell)/arad)**0.25d0)
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
           thisOctal%kappaRoss(subcell) = kRos
           thisOctal%diffusionCoeff(subcell) =  cSpeed / max(1.d-20,(kRos * thisOctal%rho(subcell)))
@@ -160,8 +160,8 @@ contains
              end if
           end do
        else
-          deltaT = abs(thisOctal%eDens(subcell)-thisOctal%oldeDens(subcell)) &
-                / thisOctal%oldEdens(subcell)
+          deltaT = real(abs(thisOctal%eDens(subcell)-thisOctal%oldeDens(subcell)) &
+                / thisOctal%oldEdens(subcell))
           dtMax = max(dtMax, deltaT)
           if (deltaT > tol) converged = .false.
           
@@ -636,7 +636,7 @@ contains
                 endif
                 !$OMP CRITICAL
                 thisOctal%eDens(subcell) = enPlus1
-                thisOctal%temperature(subcell) = sqrt(sqrt(enPlus1 * OneOveraRad))
+                thisOctal%temperature(subcell) = real(sqrt(sqrt(enPlus1 * OneOveraRad)))
                 !$OMP END CRITICAL
                 deltaE = abs(enPlus1-thisOctal%oldeDens(subcell)) &
                      / thisOctal%oldEdens(subcell)

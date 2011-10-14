@@ -231,7 +231,7 @@ contains
        endif
 
 
-       nMonte = photonsPerStep ! min(1000000,photonsPerSecond * deltaT)
+       nMonte = int(photonsPerStep) ! min(1000000,photonsPerSecond * deltaT)
 
        sedFluxStep  = 0.d0
        sedFluxScatStep = 0.d0
@@ -432,7 +432,7 @@ contains
     real(double) :: tempDouble
     real(double), allocatable :: tempDoubleArray(:)
 #endif
-    treal= dumpfromnow
+    treal= real(dumpfromnow)
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
     
@@ -499,7 +499,7 @@ contains
 !    weightSource = 1.d0
 !    fracSource =  sourceLuminosity / (sourceLuminosity + luminosity)
 
-    nFromSource = fracSource * nFromMatter
+    nFromSource = int(fracSource * nFromMatter)
     nFromGas = nFromMatter - nFromSource
 
     if (myrankGlobal == 0) then
@@ -1055,7 +1055,7 @@ contains
           end do
        else
           thisOctal%temperature(subcell) = &
-               max(0.d0,temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 7.d0/5.d0, 2.33d0))
+               real(max(0.d0,temperatureFunc(thisOctal%uDens(subcell), thisOctal%rho(subcell), 7.d0/5.d0, 2.33d0)))
        endif
     enddo
   end subroutine calculateTemperatureFromUdens

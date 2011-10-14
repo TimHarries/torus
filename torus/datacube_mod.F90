@@ -597,7 +597,7 @@ subroutine TranslateCubeIntensity(cube,constant)
   type(DATACUBE) :: cube
   real(double) :: constant
   
-  cube%intensity = cube%intensity + constant
+  cube%intensity = cube%intensity + real(constant)
     
 end subroutine TranslateCubeIntensity
 

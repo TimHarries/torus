@@ -548,7 +548,7 @@ contains
       do i = 1, nMuMie
          do m = 1, 4
             do n = 1, 4
-               miePhase(i)%element(m,n) = miePhase(i)%element(m,n) / normFac
+               miePhase(i)%element(m,n) = real(miePhase(i)%element(m,n) / normFac)
             enddo
          enddo
       enddo
@@ -654,10 +654,10 @@ contains
         a2 = exp(loga2)
         da = a2 - a1
         a = 0.5*(a1+a2)
-        x = 2.*pi*(a * micronsToCm)/(lambda*1.e-8)
+        x = real(2.*pi*(a * micronsToCm)/(lambda*1.e-8))
         x = max(1.e-5, x)
         x = min(2.*real(pi)*1000./0.1, x)
-        gfac = pi*(a * micronsToCm)**2
+        gfac = real(pi*(a * micronsToCm)**2)
 
 !       .........................................
 !       .  set the complex index of refraction  .

@@ -147,7 +147,7 @@ module fits_utils_mod
          ! subtract 1000 to provide some leeway so the conversion doesn't overflow
          bscale = (max - min) / real ( (2_bigInt**bitpix)-1000_bigInt )
          bzero = (max + min) / 2.0
-         blank = (2_bigInt**bitpix)/2_bigInt * (-1)
+         blank = int((2_bigInt**bitpix)/2_bigInt * (-1))
       else
          ! float so no scaling required
          return

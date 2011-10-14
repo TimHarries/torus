@@ -99,7 +99,7 @@ contains
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then
                   rVec = subcellCentre(thisOctal,subcell)
-                  d = thisOctal%subcellSize/2.d0
+                  d = real(thisOctal%subcellSize/2.d0)
                   xp = REAL(rVec%x + d)
                   xm = REAL(rVec%x - d)
                   yp = REAL(rVec%y + d)
@@ -124,19 +124,19 @@ contains
                   write(lunit,*) xp, yp, zp
                else
                   rVec = subcellCentre(thisOctal, subcell)
-                  d = thisOctal%subcellSize/2.d0
+                  d = real(thisOctal%subcellSize/2.d0)
                   zp = REAL(rVec%z + d)
                   zm = REAL(rVec%z - d)
-                  r1 = sqrt(rVec%x**2 + rVec%y**2) - d
-                  r2 = sqrt(rVec%x**2 + rVec%y**2) + d
-                  phi = atan2(rVec%y, rVec%x)
-                  dphi = returndPhi(thisOctal)
-                  phi1 = phi - dphi
-                  phi2 = phi + dphi
+                  r1 = real(sqrt(rVec%x**2 + rVec%y**2) - d)
+                  r2 = real(sqrt(rVec%x**2 + rVec%y**2) + d)
+                  phi = real(atan2(rVec%y, rVec%x))
+                  dphi = real(returndPhi(thisOctal))
+                  phi1 = real(phi - dphi)
+                  phi2 = real(phi + dphi)
                   nPhi = max(1, nint(dphi/(10.d0*degtorad)))
                   do iPhi = 1, nPhi
-                     phiStart = phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi)
-                     phiEnd   = phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi)
+                     phiStart = real(phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi))
+                     phiEnd   = real(phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi))
 
                      write(lunit,*) r1*cos(phiStart), r1*sin(phiStart), zm
                      
@@ -157,7 +157,7 @@ contains
                endif
             else
                rVec = subcellCentre(thisOctal,subcell)
-               d = thisOctal%subcellSize/2.d0
+               d = real(thisOctal%subcellSize/2.d0)
                xp = REAL(rVec%x + d)
                xm = REAL(rVec%x - d)
                zp = REAL(rVec%z + d)
@@ -225,7 +225,7 @@ contains
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then
                   rVec = subcellCentre(thisOctal,subcell)
-                  d = thisOctal%subcellSize/2.d0
+                  d = real(thisOctal%subcellSize/2.d0)
                   xp = REAL(rVec%x + d)
                   xm = REAL(rVec%x - d)
                   yp = REAL(rVec%y + d)
@@ -276,19 +276,19 @@ contains
 
                else
                   rVec = subcellCentre(thisOctal, subcell)
-                  d = thisOctal%subcellSize/2.d0
+                  d = real(thisOctal%subcellSize/2.d0)
                   zp = REAL(rVec%z + d)
                   zm = REAL(rVec%z - d)
-                  r1 = sqrt(rVec%x**2 + rVec%y**2) - d
-                  r2 = sqrt(rVec%x**2 + rVec%y**2) + d
-                  phi = atan2(rVec%y, rVec%x)
-                  dphi = returndPhi(thisOctal)
+                  r1 = real(sqrt(rVec%x**2 + rVec%y**2) - d)
+                  r2 = real(sqrt(rVec%x**2 + rVec%y**2) + d)
+                  phi = real(atan2(rVec%y, rVec%x))
+                  dphi = real(returndPhi(thisOctal))
                   phi1 = phi - dphi
                   phi2 = phi + dphi
                   nPhi = max(1, nint(dphi/(10.d0*degtorad)))
                   do iPhi = 1, nPhi
-                     phiStart = phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi)
-                     phiEnd   = phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi)
+                     phiStart = real(phi1 + (phi2 - phi1) * dble(iphi-1)/dble(nphi))
+                     phiEnd   = real(phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi))
 
 
                      nPoints = nPoints + 1
@@ -336,7 +336,7 @@ contains
                endif
             else
                rVec = subcellCentre(thisOctal,subcell)
-               d = thisOctal%subcellSize/2.d0
+               d = real(thisOctal%subcellSize/2.d0)
                xp = REAL(rVec%x + d)
                xm = REAL(rVec%x - d)
                zp = REAL(rVec%z + d)
@@ -1030,13 +1030,13 @@ contains
                   endif
                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
                        kappaSca=ksca, kappaAbs=kabs)
-                  value = thisOctal%subcellSize * (ksca + kabs)
+                  value = real(thisOctal%subcellSize * (ksca + kabs))
                   write(lunit, *) real(value)
 
                case("ross")
 
                   call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
-                  value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+                  value = real(thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10)
 
                   write(lunit, *) real(value)
 
@@ -1786,8 +1786,8 @@ endif
      nbig = 2**16
 !     blockSize = max(nBytesUncompressed/4, nbig)
      blockSize = 2**15
-     nBlocks = nBytesUncompressed / blockSize
-     lastBlockSize = nBytesUncompressed - nBlocks * blockSize 
+     nBlocks = int(nBytesUncompressed / blockSize)
+     lastBlockSize = int(nBytesUncompressed - nBlocks * blockSize )
      if (lastBlockSize > 0) nBlocks = nBlocks + 1
      if (lastBlockSize == 0) lastBlockSize = blockSize
 
@@ -1827,7 +1827,7 @@ endif
      iHeader(5 : 8) = transfer(blockSize, iHeader(5 : 8))
      iHeader(9 :12) = transfer(lastBlockSize, iHeader(9:12))
      do i = 1, nBlocks
-        i4 = sizeCompressedBlock(i)
+        i4 = int(sizeCompressedBlock(i))
         iHeader(13 + (i-1)* 4: 13 + i*4 - 1) = transfer(i4, &
              iHeader(13 + (i-1)* 4: 13 + i*4 - 1))
      enddo
@@ -1903,8 +1903,8 @@ endif
      endif
 
      nBytesUncompressed = SIZE(iBytesUncompressed, kind=bigint)
-     nBlocks = nBytesUncompressed / blockSize
-     lastBlockSize = nBytesUncompressed - nBlocks * blockSize 
+     nBlocks = int(nBytesUncompressed / blockSize)
+     lastBlockSize = int(nBytesUncompressed - nBlocks * blockSize )
 
      if (doLastTime) then
         if (lastBlockSize > 0) nBlocks = nBlocks + 1
@@ -1966,14 +1966,14 @@ endif
         if (allocated(savedBlockSize)) deallocate(savedBlockSize)
         totalBlocks = nBlocks
         allocate(savedBlockSize(1:totalBlocks))
-        savedBlockSize(1:totalBlocks) = sizeCompressedBlock(1:nBlocks)
+        savedBlockSize(1:totalBlocks) = int(sizeCompressedBlock(1:nBlocks))
      else
         allocate(tempBlocks(1:totalBlocks+nBlocks))
         tempBlocks(1:totalBlocks) = savedBlockSize(1:totalBlocks)
         deallocate(savedBlockSize)
         allocate(savedBlockSize(1:totalBlocks+nBlocks))
         savedBlockSize(1:totalBlocks) = tempBlocks(1:totalBlocks)
-        savedBlockSize(totalBlocks+1:totalBlocks+nBlocks) = sizeCompressedBlock(1:nBlocks)
+        savedBlockSize(totalBlocks+1:totalBlocks+nBlocks) = int(sizeCompressedBlock(1:nBlocks))
         totalBlocks = totalBlocks + nBlocks
 
      endif
@@ -2033,7 +2033,7 @@ endif
        if (PRESENT(nBytesHeader)) then
           iarray(1:4) = transfer(nBytesHeader, iarray(1:4))
        else
-          i4 = nBytes
+          i4 = int(nBytes)
           iarray(1:4) = transfer(i4, iarray(1:4))
        endif
        if (PRESENT(iArray64))   iArray(5:) = transfer(iArray64, iArray(5:))
@@ -2045,7 +2045,7 @@ endif
        nBytes = nBytes + inputnPad
        allocate(iArray(1:nBytes))
        if (inputnPad > 0) then
-          iArray(1:inputNPad) = inputipad(1:inputnpad)
+          iArray(1:inputNPad) = int(inputipad(1:inputnpad),kind=1)
        endif
        if (PRESENT(iArray64))   iArray((inputnpad+1):) = transfer(iArray64, iArray((inputnpad+1):))
        if (PRESENT(iArray32))   iArray((inputnpad+1):) = transfer(iArray32, iArray((inputnpad+1):))
@@ -2069,7 +2069,7 @@ endif
 
     nPad = 0
     if (mod(nBytes,3_bigint) /= 0) then
-       nPad = 3-mod(nBytes,3_bigint)
+       nPad = 3-int(mod(nBytes,3_bigint))
     endif
 
     if (writeDebug) write(*,*) "nPad ",nPad
@@ -2125,7 +2125,7 @@ endif
         endif
         if (write32) then
            do j = 1, 4
-              i6 = ibits(i32temp,26,6)
+              i6 = int(ibits(i32temp,26,6),kind=1)
               icount = icount + 1
               string(icount) = returnbase64char(i6)
               i32temp = ishft(i32temp, 6)
@@ -2184,7 +2184,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   integer(kind=bigint), allocatable :: connectivity(:)
   real, pointer :: points(:,:)
   integer :: nCellsGlobal
-  integer :: nBytesPoints, nBytesCellTypes, nBytesConnect, nBytesOffsets
+  integer(kind=bigint) :: nBytesPoints, nBytesCellTypes, nBytesConnect, nBytesOffsets
   real, pointer :: rArray(:,:)
   real :: float
   integer :: int,  iValues
@@ -2211,9 +2211,9 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   sizeofInt = 4
   sizeofint1 = 1
 #ifdef MEMCHECK
-  sizeOfFloat = sizeof(float)
-  sizeOfInt = sizeof(int)
-  sizeOfInt1 = sizeof(int1)
+!  sizeOfFloat = sizeof(float)
+!  sizeOfInt = sizeof(int)
+!  sizeOfInt1 = sizeof(int1)
 #endif
 
   !
@@ -2303,10 +2303,15 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   if (Writeoutput) then
 
 
-     nBytesPoints = sizeofFloat * 3 * nPointsGlobal
-     nBytesConnect =  sizeofInt * nPointsGlobal
-     nBytesOffsets = sizeofint * nCellsGlobal
-     nBytesCellTypes = sizeofint1 * nCellsGlobal
+!     nBytesPoints = sizeofFloat * 3 * nPointsGlobal
+!     nBytesConnect =  sizeofInt * nPointsGlobal
+!     nBytesOffsets = sizeofint * nCellsGlobal
+!     nBytesCellTypes = sizeofint1 * nCellsGlobal
+
+     nBytesPoints = 4 * 3 * nPointsGlobal
+     nBytesConnect = 4 * nPointsGlobal
+     nBytesOffsets = 4 * nCellsGlobal
+     nBytesCellTypes = 1 * nCellsGlobal
   endif
 
   if (writeheader) then
@@ -2652,174 +2657,174 @@ end subroutine writeXMLVtkFileAMR
             select case (valueType)
                case("rho")
 
-                  rArray(1, n) = returnPhysicalUnitDensity(thisOctal%rho(subcell))
+                  rArray(1, n) = real(returnPhysicalUnitDensity(thisOctal%rho(subcell)))
 
                case("J=0")
-                  rArray(1, n) = thisOctal%molecularlevel(1,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(1,subcell))
 
                case("J=1")
-                  rArray(1, n) = thisOctal%molecularlevel(2,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(2,subcell))
 
                case("J=2")
-                  rArray(1, n) = thisOctal%molecularlevel(3,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(3,subcell))
 
                case("J=3")
-                  rArray(1, n) = thisOctal%molecularlevel(4,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(4,subcell))
 
                case("J=4")
-                  rArray(1, n) = thisOctal%molecularlevel(5,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(5,subcell))
 
                case("J=5")
-                  rArray(1, n) = thisOctal%molecularlevel(6,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(6,subcell))
 
                case("J=10")
-                  rArray(1, n) = thisOctal%molecularlevel(11,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(11,subcell))
 
                case("J=16")
-                  rArray(1, n) = thisOctal%molecularlevel(17,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(17,subcell))
 
                case("dI")
-                  rArray(1, n) = thisOctal%newmolecularlevel(1,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(1,subcell))
 
                case("dIattenuated")
-                  rArray(1, n) = thisOctal%newmolecularlevel(2,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(2,subcell))
 
                case("i0")
-                  rArray(1, n) = thisOctal%newmolecularlevel(3,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(3,subcell))
 
 ! galLon and galLat re-use storage used for i0 and dIattenuated 
                case("galLon")
-                  rArray(1, n) = thisOctal%newmolecularlevel(2,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(2,subcell))
 
                case("galLat")
-                  rArray(1, n) = thisOctal%newmolecularlevel(3,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(3,subcell))
 
                case("crossing")
-                  rArray(1, n) = thisOctal%newmolecularlevel(4,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(4,subcell))
 
                case("tauacrosscell")
-                  rArray(1, n) = thisOctal%newmolecularlevel(5,subcell)
+                  rArray(1, n) = real(thisOctal%newmolecularlevel(5,subcell))
 
                case("tau10")
-                  rArray(1, n) = thisOctal%tau(1,subcell)
+                  rArray(1, n) = real(thisOctal%tau(1,subcell))
 
                case("tau21")
-                  rArray(1, n) = thisOctal%tau(2,subcell)
+                  rArray(1, n) = real(thisOctal%tau(2,subcell))
 
                case("tau32")
-                  rArray(1, n) = thisOctal%tau(3,subcell)
+                  rArray(1, n) = real(thisOctal%tau(3,subcell))
 
                case("tau43")
-                  rArray(1, n) = thisOctal%tau(4,subcell)
+                  rArray(1, n) = real(thisOctal%tau(4,subcell))
 
                case("tau54")
-                  rArray(1, n) = thisOctal%tau(5,subcell)
+                  rArray(1, n) = real(thisOctal%tau(5,subcell))
 
                case("tau65")
-                  rArray(1, n) = thisOctal%tau(6,subcell)
+                  rArray(1, n) = real(thisOctal%tau(6,subcell))
 
                case("tau76")
-                  rArray(1, n) = thisOctal%tau(7,subcell)
+                  rArray(1, n) = real(thisOctal%tau(7,subcell))
 
                case("tau87")
-                  rArray(1, n) = thisOctal%tau(8,subcell)
+                  rArray(1, n) = real(thisOctal%tau(8,subcell))
 
                case("level0error")
-                  rArray(1, n) = 10**((real(thisOctal%levelconvergence(1,subcell)) / 6553.6) - 4)
+                  rArray(1, n) = real(10**((real(thisOctal%levelconvergence(1,subcell)) / 6553.6) - 4))
 
                case("level1error")
-                  rArray(1, n) = 10**((real(thisOctal%levelconvergence(2,subcell)) / 6553.6) - 4)
+                  rArray(1, n) = real(10**((real(thisOctal%levelconvergence(2,subcell)) / 6553.6) - 4))
 
                case("level2error")
-                  rArray(1, n) = 10**((real(thisOctal%levelconvergence(3,subcell)) / 6553.6) - 4)
+                  rArray(1, n) = real(10**((real(thisOctal%levelconvergence(3,subcell)) / 6553.6) - 4))
 
                case("level3error")
-                  rArray(1, n) = 10**((real(thisOctal%levelconvergence(4,subcell)) / 6553.6) - 4)
+                  rArray(1, n) = real(10**((real(thisOctal%levelconvergence(4,subcell)) / 6553.6) - 4))
 
                case("level4error")
-                  rArray(1, n) = 10**((real(thisOctal%levelconvergence(5,subcell)) / 6553.6) - 4)
+                  rArray(1, n) = real(10**((real(thisOctal%levelconvergence(5,subcell)) / 6553.6) - 4))
 
                case("niter")
-                  rArray(1, n) = int(thisOctal%convergence(subcell)/100)
+                  rArray(1, n) = real(int(thisOctal%convergence(subcell)/100))
 
                case("nh2")
-                  rArray(1, n) = real(thisOctal%nh2(subcell))
+                  rArray(1, n) = real(real(thisOctal%nh2(subcell)))
 
                case("convergence")
-                  rArray(1, n) = mod(thisOctal%convergence(subcell),1.0)
+                  rArray(1, n) = real(mod(thisOctal%convergence(subcell),1.0))
 
                case("adot")
-                  rArray(1, n) = real(thisOctal%adot(subcell))
+                  rArray(1, n) = real(real(thisOctal%adot(subcell)))
 
                case("slowestlevel")
-                  rArray(1, n) = floor(mod(thisoctal%convergence(subcell),100.0))
+                  rArray(1, n) = real(floor(mod(thisoctal%convergence(subcell),100.0)))
 
                case("molabundance")
-                  rArray(1, n) = thisOctal%molabundance(subcell)
+                  rArray(1, n) = real(thisOctal%molabundance(subcell))
 
                case("bnu")
-                  rArray(1, n) = real(thisOctal%bnu(1,subcell))
+                  rArray(1, n) = real(real(thisOctal%bnu(1,subcell)))
 
                case("dc0")
-                  rArray(1, n) = thisOctal%molecularlevel(1,subcell) * thisOctal%departcoeff(1,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(1,subcell) * thisOctal%departcoeff(1,subcell))
 
                case("dc1")
-                  rArray(1, n) = thisOctal%molecularlevel(2,subcell) * thisOctal%departcoeff(2,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(2,subcell) * thisOctal%departcoeff(2,subcell))
 
                case("dc2")
-                  rArray(1, n) = thisOctal%molecularlevel(3,subcell) * thisOctal%departcoeff(3,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(3,subcell) * thisOctal%departcoeff(3,subcell))
 
                case("dc3")
-                  rArray(1, n) = thisOctal%molecularlevel(4,subcell) * thisOctal%departcoeff(4,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(4,subcell) * thisOctal%departcoeff(4,subcell))
 
                case("dc4")
-                  rArray(1, n) = thisOctal%molecularlevel(5,subcell) * thisOctal%departcoeff(5,subcell)
+                  rArray(1, n) = real(thisOctal%molecularlevel(5,subcell) * thisOctal%departcoeff(5,subcell))
 
                case("jnu10")
-                  rArray(1, n) = thisOctal%jnu(1,subcell)
+                  rArray(1, n) = real(thisOctal%jnu(1,subcell))
 
                case("jnu")
-                  rArray(1, n) = thisOctal%biasLine3d(subcell)
+                  rArray(1, n) = real(thisOctal%biasLine3d(subcell))
 
                case("biasline")
-                  rArray(1, n) = thisOctal%biasLine3d(subcell)
+                  rArray(1, n) = real(thisOctal%biasLine3d(subcell))
 
                case("dust1")
-                  rArray(1, n) = real(thisOctal%dustTypeFraction(subcell,1))
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,1)))
 
                case("dust2")
-                  rArray(1, n) = real(thisOctal%dustTypeFraction(subcell,2))
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,2)))
 
                case("bias")
-                  rArray(1, n) = real(thisOctal%biasCont3d(subcell))
+                  rArray(1, n) = real(real(thisOctal%biasCont3d(subcell)))
 
                case("mpithread")
-                  rArray(1, n) = real(thisOctal%mpithread(subcell))
+                  rArray(1, n) = real(real(thisOctal%mpithread(subcell)))
 
                case("bcond")
-                  rArray(1, n) = real(thisOctal%boundaryCondition(subcell))
+                  rArray(1, n) = real(real(thisOctal%boundaryCondition(subcell)))
 
 
                case("deltaT")
-                  rArray(1, n) = real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell))
+                  rArray(1, n) = real(real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell)))
 
 
                case("scattered")
-                  rArray(1, n) = real(thisOctal%scatteredIntensity(subcell,5,3))
+                  rArray(1, n) = real(real(thisOctal%scatteredIntensity(subcell,5,3)))
 
                case("hydrovelocity")
                   if (thisOctal%threeD) then
-                     rArray(1, n) = real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(1, n) = real(real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5))
                      rArray(2, n) = real(returnPhysicalUnitSpeed(thisOctal%rhov(subcell)/thisOctal%rho(subcell))/1.e5)
                      rArray(3, n) = real(returnPhysicalUnitSpeed(thisOctal%rhow(subcell)/thisOctal%rho(subcell))/1.e5)
                   else
-                     rArray(1, n) = real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(1, n) = real(real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5))
                      rArray(2, n) = real(returnPhysicalUnitSpeed(thisOctal%rhow(subcell)/thisOctal%rho(subcell))/1.e5)
                      rArray(3, n) = real(returnPhysicalUnitSpeed(thisOctal%rhov(subcell)/thisOctal%rho(subcell))/1.e5)
                   endif
 
                case("radmom")
-                     rArray(1, n) = real(thisOctal%radiationMomentum(subcell)%x/1.d20)
+                     rArray(1, n) = real(real(thisOctal%radiationMomentum(subcell)%x/1.d20))
                      rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%y/1.d20)
                      rArray(3, n) = real(thisOctal%radiationMomentum(subcell)%z/1.d20)
                case("velocity")
@@ -2830,11 +2835,11 @@ end subroutine writeXMLVtkFileAMR
                         thisoctal%velocity(subcell)%z = 0.d0
                      endif
                      if (thisOctal%threed) then
-                        rArray(1, n) = real(thisOctal%velocity(subcell)%x*cspeed/1.e5)
+                        rArray(1, n) = real(real(thisOctal%velocity(subcell)%x*cspeed/1.e5))
                         rArray(2, n) = real(thisOctal%velocity(subcell)%y*cspeed/1.e5)
                         rArray(3, n) = real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
                      else
-                        rArray(1, n) = real(thisOctal%velocity(subcell)%x*cspeed/1.e5)
+                        rArray(1, n) = real(real(thisOctal%velocity(subcell)%x*cspeed/1.e5))
                         rArray(2, n) = real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
                         rArray(3, n) = real(thisOctal%velocity(subcell)%y*Cspeed/1.e5)
                      endif
@@ -2842,85 +2847,85 @@ end subroutine writeXMLVtkFileAMR
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
                       actualSubcell=subcell) 
-                 rArray(1, n) = real(vel%x*cspeed/1.e5)
+                 rArray(1, n) = real(real(vel%x*cspeed/1.e5))
                  rArray(2, n) = real(vel%y*cspeed/1.e5)
                  rArray(3, n) = real(vel%z*cspeed/1.e5)
 
                case("ne")
-                  rArray(1, n) = real(thisOctal%ne(subcell))
+                  rArray(1, n) = real(real(thisOctal%ne(subcell)))
 
                case("pressure")
-                  rArray(1, n) = real(thisOctal%pressure_i(subcell))
+                  rArray(1, n) = real(real(thisOctal%pressure_i(subcell)))
 
                case("inflow")
                   if (thisOctal%inflow(subcell)) then
-                     rArray(1, n) = 1.
+                     rArray(1, n) = real(1.)
                   else
-                     rArray(1, n) = 0.
+                     rArray(1, n) = real(0.)
                   endif
 
                case("haschild")
                   if (thisOctal%haschild(subcell)) then
-                     rArray(1, n) = 1.
+                     rArray(1, n) = real(1.)
                   else
-                     rArray(1, n) = 0.
+                     rArray(1, n) = real(0.)
                   endif
 
                case("NH2")
-                  rArray(1, n) = real( thisOctal%NH2(subcell) )
+                  rArray(1, n) = real(real( thisOctal%NH2(subcell) ))
 
                case("fixedtemp")
                   if (thisOctal%fixedTemperature(subcell)) then
-                     rArray(1, n) = 1.
+                     rArray(1, n) = real(1.)
                   else
-                     rArray(1, n) = 0.
+                     rArray(1, n) = real(0.)
                   endif
 
 #ifdef PHOTOION
                case("HI")
-                  rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon)))
+                  rArray(1, n) = real(real(thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))))
 
                case("HeI")
-                  rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon)))
+                  rArray(1, n) = real(real(thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon))))
 
                case("HeII")
-                  rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("He II", grid%ion, grid%nIon)))
+                  rArray(1, n) = real(real(thisOctal%ionfrac(subcell,returnIonNumber("He II", grid%ion, grid%nIon))))
 
                case("OI")
-                  rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon)))
+                  rArray(1, n) = real(real(thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon))))
 
                case("OII")
-                  rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon)))
+                  rArray(1, n) = real(real(thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))))
 
                case("OIII")
-                  rArray(1, n) = real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon)))
+                  rArray(1, n) = real(real(thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon))))
 #endif
 
                case("sourceCont")
-                  rArray(1, n) = real(thisOctal%normSourceContribution(subcell, 1))
+                  rArray(1, n) = real(real(thisOctal%normSourceContribution(subcell, 1)))
 
                case("logRho")
-                  rArray(1, n) = log10(returnPhysicalUnitDensity(thisOctal%rho(subcell)))
+                  rArray(1, n) = real(log10(returnPhysicalUnitDensity(thisOctal%rho(subcell))))
 
                case("temperature")
-                  rArray(1, n) = real(thisOctal%temperature(subcell))
+                  rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
                case("chiline")
-                  rArray(1, n) = max( real(thisOctal%chiline(subcell)), min_single_prec )
+                  rArray(1, n) = real(max( real(thisOctal%chiline(subcell)), min_single_prec ))
 
 
                case("microturb")
-                  rArray(1, n) = max( real(thisOctal%microturb(subcell)*cspeed/1.e5), min_single_prec )
+                  rArray(1, n) = real(max( real(thisOctal%microturb(subcell)*cspeed/1.e5), min_single_prec ))
 
                case("etaline")
-                  rArray(1, n) = max ( real(thisOctal%etaline(subcell)), min_single_prec )
+                  rArray(1, n) = real(max ( real(thisOctal%etaline(subcell)), min_single_prec ))
 
                case("n4")
-                  rArray(1, n) = max ( real(thisOctal%atomLevel(subcell,1,4)), min_single_prec )
+                  rArray(1, n) = real(max ( real(thisOctal%atomLevel(subcell,1,4)), min_single_prec ))
 
                case("sourceline")
-                  rArray(1, n) = max ( real(thisOctal%etaline(subcell)), min_single_prec )/ &
-                       max( real(thisOctal%chiline(subcell)), min_single_prec )
+                  rArray(1, n) = real(max ( real(thisOctal%etaline(subcell)), min_single_prec )/ &
+                       max( real(thisOctal%chiline(subcell)), min_single_prec ))
 
                case("tau")
                   if (firstTime) then
@@ -2930,7 +2935,7 @@ end subroutine writeXMLVtkFileAMR
                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
                        kappaSca=ksca, kappaAbs=kabs)
                   value = thisOctal%subcellSize * (ksca + kabs)
-                  rArray(1, n) = real(value)
+                  rArray(1, n) = real(real(value))
 
                case("ross")
 
@@ -3238,7 +3243,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   integer(kind=bigint), allocatable :: connectivity(:)
   real, pointer :: points(:,:)
   integer :: nCellsGlobal
-  integer :: nBytesPoints, nBytesCellTypes, nBytesConnect, nBytesOffsets
+  integer(kind=bigint) :: nBytesPoints, nBytesCellTypes, nBytesConnect, nBytesOffsets
   real, pointer :: rArray(:,:)
   real :: float
   integer :: int,  iValues
@@ -3390,11 +3395,15 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      
 
   if (Writeoutput) then
+!     nBytesPoints = sizeofFloat * 3 * nPointsGlobal
+!     nBytesConnect =  sizeofInt * nPointsGlobal
+!     nBytesOffsets = sizeofint * nCellsGlobal
+!     nBytesCellTypes = sizeofint1 * nCellsGlobal
 
-     nBytesPoints = sizeofFloat * 3 * nPointsGlobal
-     nBytesConnect =  sizeofInt * nPointsGlobal
-     nBytesOffsets = sizeofint * nCellsGlobal
-     nBytesCellTypes = sizeofint1 * nCellsGlobal
+     nBytesPoints = 4 * 3 * nPointsGlobal
+     nBytesConnect =  4 * nPointsGlobal
+     nBytesOffsets = 4 * nCellsGlobal
+     nBytesCellTypes = 1 * nCellsGlobal
   endif
 
   allocate(points(1:3, 1:nPoints))

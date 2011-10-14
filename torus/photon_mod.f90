@@ -78,8 +78,8 @@ contains
 !       stop
 !    endif
 
-    qdash = cosx * thisPhoton%stokes%q + sinx * thisPhoton%stokes%u
-    udash =-sinx * thisPhoton%stokes%q + cosx * thisPhoton%stokes%u
+    qdash = real(cosx * thisPhoton%stokes%q + sinx * thisPhoton%stokes%u)
+    udash =real(-sinx * thisPhoton%stokes%q + cosx * thisPhoton%stokes%u)
 
     thisPhoton%stokes%q = qdash
     thisPhoton%stokes%u = udash
@@ -144,7 +144,7 @@ contains
     if (firstTime)  then
        allocate(cosArray(1:nMuMie))
        do i = 1, nMumie
-          cosArray(i) = -1.d0 + 2.d0*dble(i-1)/dble(nMuMie-1)
+          cosArray(i) = real(-1.d0 + 2.d0*dble(i-1)/dble(nMuMie-1))
        enddo
        allocate(miePhaseTemp(1:nDustType))
        firstTime = .false.
@@ -204,11 +204,11 @@ contains
           
           ! determine cos phi
           
-          w = 2.d0*r1 - 1.d0
-          t = sqrt(1.d0-w*w)
+          w = real(2.d0*r1 - 1.d0)
+          t = real(sqrt(1.d0-w*w))
           call randomNumberGenerator(getReal=r2)
 
-          ang = Pi * (2.*r2-1.d0)
+          ang = real(Pi * (2.*r2-1.d0))
           u = t*cos(ang)
           v = t*sin(ang)
           outgoing%x = u
@@ -231,13 +231,13 @@ contains
 
     ! cos theta is the scattering angle
 
-    costheta = incoming .dot.  outgoing
+    costheta = real(incoming .dot.  outgoing)
 
     sVec = obsNormal .cross. incoming
     call normalize(sVec)
-    cosGamma = obsNormal .dot. outPhoton%normal
-    sinGamma = incoming .dot. (obsNormal .cross. outPhoton%normal)
-    cos2Gamma = 2.*cosGamma*cosGamma - 1.d0
+    cosGamma = real(obsNormal .dot. outPhoton%normal)
+    sinGamma = real(incoming .dot. (obsNormal .cross. outPhoton%normal))
+    cos2Gamma = real(2.*cosGamma*cosGamma - 1.d0)
     sin2Gamma = 2.*sinGamma*cosGamma
 
     ! rotate to new normal
@@ -292,9 +292,9 @@ contains
 
        refNormal = zAxis .cross. ((-1.d0)*outgoing)
        call normalize(refNormal)
-       cosGamma = refNormal .dot. obsNormal
-       sinGamma = outgoing .dot. (refNormal .cross. obsNormal)
-       cos2Gamma = 2.*cosGamma*cosGamma - 1.d0
+       cosGamma = real(refNormal .dot. obsNormal)
+       sinGamma = real(outgoing .dot. (refNormal .cross. obsNormal))
+       cos2Gamma = 2.*cosGamma*cosGamma - 1.
        sin2Gamma = 2.*sinGamma*cosGamma
        call rotate(outPhoton, cos2Gamma, sin2Gamma)
        outPhoton%normal = refNormal .cross. obsNormal
@@ -304,9 +304,9 @@ contains
 
        outPhoton%normal = sVec .cross. incoming
        call normalize(outPhoton%normal)
-       cosGamma = outPhoton%normal .dot. outPhoton%oldNormal
-       sinGamma = outgoing .dot. (outPhoton%normal .cross. outPhoton%oldNormal)
-       cos2Gamma = 2.*cosGamma*cosGamma - 1.d0
+       cosGamma = real(outPhoton%normal .dot. outPhoton%oldNormal)
+       sinGamma = real(outgoing .dot. (outPhoton%normal .cross. outPhoton%oldNormal))
+       cos2Gamma = 2.*cosGamma*cosGamma - 1.
        sin2Gamma = 2.*sinGamma*cosGamma
        outPhoton%oldNormal = outPhoton%normal
     endif
@@ -347,10 +347,10 @@ contains
        endif
 
        if (.not.mie_scattering) then
-          vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
-          vovercsqr = (outPhoton%velocity-thisPhoton%velocity) .dot. &
-               (outPhoton%velocity-thisPhoton%velocity)
-          fac = (1.d0 - 0.5d0*vovercsqr*(1.d0-0.25d0*vovercsqr))/(1.d0 + vray)
+          vray = real((outPhoton%velocity-thisPhoton%velocity) .dot. incoming)
+          vovercsqr = real((outPhoton%velocity-thisPhoton%velocity) .dot. &
+               (outPhoton%velocity-thisPhoton%velocity))
+          fac = real((1.d0 - 0.5d0*vovercsqr*(1.d0-0.25d0*vovercsqr))/(1.d0 + vray))
           outPhoton%lambda = outPhoton%lambda  / fac
        endif
 
@@ -367,18 +367,18 @@ contains
           outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
        endif
 
-       vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
-       vovercsqr = (outPhoton%velocity-thisPhoton%velocity) .dot. &
-            (outPhoton%velocity-thisPhoton%velocity)
-       fac = (1.d0 - 0.5*vovercsqr*(1.d0-0.25*vovercsqr))/(1.d0 + vray)
+       vray = real((outPhoton%velocity-thisPhoton%velocity) .dot. incoming)
+       vovercsqr = real((outPhoton%velocity-thisPhoton%velocity) .dot. &
+            (outPhoton%velocity-thisPhoton%velocity))
+       fac = real((1.d0 - 0.5*vovercsqr*(1.d0-0.25*vovercsqr))/(1.d0 + vray))
 
        outPhoton%lambda = outPhoton%lambda / fac
 
-       nuRest = cSpeed / (outPhoton%lambda*angstromtoCm)
+       nuRest = real(cSpeed / (outPhoton%lambda*angstromtoCm))
        nuRest = nuRest - 2.466067749E15
-       vray = outPhoton%velocity .dot. outgoing
-       nuRest = nuRest * (1.d0 + vRay)
-       outPhoton%redlambda = 1.e8 * cSpeed / nuRest   ! in Angs
+       vray = real(outPhoton%velocity .dot. outgoing)
+       nuRest = real(nuRest * (1.d0 + vRay))
+       outPhoton%redlambda = real(1.e8 * cSpeed / nuRest)   ! in Angs
 
 
     endif 
@@ -679,24 +679,24 @@ contains
                    tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
                    call locate(grid%xProbDistCont, grid%nx, r1, i1)
                    t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
-                   x = grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1))
+                   x = real(grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1)))
 
 
-                   tempYProbDist(1:grid%ny) = grid%yProbDistCont(i1,1:grid%ny) + t1 * &
-                        (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
+                   tempYProbDist(1:grid%ny) = real(grid%yProbDistCont(i1,1:grid%ny) + t1 * &
+                        (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny)))
                    tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
 
                    call randomNumberGenerator(getReal=r2)
                    call locate(tempYProbDist, grid%ny, r2, i2)
                    t2 = (r2 - tempYProbDist(i2)) / &
                         (tempYProbDist(i2+1) - tempYProbDist(i2))
-                   y = grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2))
+                   y = real(grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2)))
 
                    tempZProbDist(1:grid%nz) = &
-                        (1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
+                        real((1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
                         (   t1)*(1.d0-t2) * grid%zProbDistCont(i1+1, i2  , 1:grid%nz) +&
                         (1.d0-t1)*(   t2) * grid%zProbDistCont(i1  , i2+1, 1:grid%nz) +&
-                        (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz)
+                        (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz))
                    tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
 
@@ -704,7 +704,7 @@ contains
                    call locate(tempZProbDist, grid%nz, r3, i3)
                    t3 = (r3 - tempZProbDist(i3)) / &
                         (tempZProbDist(i3+1) - tempZProbDist(i3))
-                   z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
+                   z = real(grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3)))
 
 
                    thisPhoton%position  = VECTOR(x,y,z)
@@ -739,24 +739,24 @@ contains
                    tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
                    call locate(grid%xProbDistCont, grid%nx, r1, i1)
                    t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
-                   x = grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1))
+                   x = real(grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1)))
 
 
-                   tempYProbDist(1:grid%ny) = grid%yProbDistCont(i1,1:grid%ny) + t1 * &
-                        (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
+                   tempYProbDist(1:grid%ny) = real(grid%yProbDistCont(i1,1:grid%ny) + t1 * &
+                        (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny)))
                    tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
 
                    call randomNumberGenerator(getReal=r2)
                    call locate(tempYProbDist, grid%ny, r2, i2)
                    t2 = (r2 - tempYProbDist(i2)) / &
                         (tempYProbDist(i2+1) - tempYProbDist(i2))
-                   y = grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2))
+                   y = real(grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2)))
 
                    tempZProbDist(1:grid%nz) = &
-                        (1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
+                        real((1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
                         (   t1)*(1.d0-t2) * grid%zProbDistCont(i1+1, i2  , 1:grid%nz) +&
                         (1.d0-t1)*(   t2) * grid%zProbDistCont(i1  , i2+1, 1:grid%nz) +&
-                        (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz)
+                        (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz))
                    tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
 
@@ -764,7 +764,7 @@ contains
                    call locate(tempZProbDist, grid%nz, r3, i3)
                    t3 = (r3 - tempZProbDist(i3)) / &
                         (tempZProbDist(i3+1) - tempZProbDist(i3))
-                   z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
+                   z = real(grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3)))
 
 
                    thisPhoton%position  = VECTOR(x,y,z)
@@ -826,25 +826,25 @@ contains
                 call randomNumberGenerator(getReal=r1)
                 call locate(grid%rProbDistCont, grid%nr, r1, i1)
                 t1 = (r1-grid%rProbDistCont(i1))/(grid%rProbDistCont(i1+1)-grid%rProbDistCont(i1))
-                r = grid%rAxis(i1) + t1 * (grid%rAxis(i1+1)-grid%rAxis(i1))
+                r = real(grid%rAxis(i1) + t1 * (grid%rAxis(i1+1)-grid%rAxis(i1)))
 
                 call randomNumberGenerator(getReal=r2)
                 call locate(grid%muProbDistCont(i1,1:grid%nmu), grid%nmu, r2, i2)
                 t2 = (r2-grid%muProbDistCont(i1,i2))/(grid%muProbDistCont(i1,i2+1)-grid%muProbDistCont(i1,i2))
-                mu = grid%muAxis(i2) + t2 * (grid%muAxis(i2+1)-grid%muAxis(i2))
+                mu = real(grid%muAxis(i2) + t2 * (grid%muAxis(i2+1)-grid%muAxis(i2)))
 
                 call randomNumberGenerator(getReal=r3)
                 call locate(grid%phiProbDistCont(i1,i2,1:grid%nphi), grid%nphi, r3, i3)
                 t3 = (r3-grid%phiProbDistCont(i1,i2,i3))/(grid%phiProbDistCont(i1,i2,i3+1)-grid%phiProbDistCont(i1,i2,i3))
-                phi = grid%phiAxis(i3) + t3 * (grid%phiAxis(i3+1)-grid%phiAxis(i3))
+                phi = real(grid%phiAxis(i3) + t3 * (grid%phiAxis(i3+1)-grid%phiAxis(i3)))
 
                 if (.not.grid%inUse(i1,i2,i3)) then
                    goto 980
                 endif
 
 
-                x = r * sqrt(1.d0-mu*mu) * cos(phi)
-                y = r * sqrt(1.d0-mu*mu) * sin(phi)
+                x = real(r * sqrt(1.d0-mu*mu) * cos(phi))
+                y = real(r * sqrt(1.d0-mu*mu) * sin(phi))
                 z = r * mu
                 if (useBias.and.(.not.grid%cartesian)) then
                    biasWeight = interpGridScalar2(grid%biasCont3d,grid%nr,grid%nmu,grid%nphi,i1,i2,i3,t1,t2,t3)
@@ -861,16 +861,16 @@ contains
           else ! not (contWindPhoton)
 
 
-             r = grid%rCore*1.0001d0
+             r = real(grid%rCore*1.0001d0)
              select case(grid%geometry)
 
                 case("disk")
                    if (nSpot > 0) then
                       rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
                       if (nSpot == 1) then
-                         maxTheta = Pi * fSpot   
+                         maxTheta = real(Pi * fSpot   )
                       else
-                         maxTheta = Pi * fSpot * 0.5
+                         maxTheta = real(Pi * fSpot * 0.5)
                       endif
 
                       spotPhoton = .false.
@@ -882,12 +882,12 @@ contains
                          cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
                          thisTheta = acos(cosThisTheta)
                          call randomNumberGenerator(getReal=r1)
-                         thisPhi = twoPi * r1
+                         thisPhi = real(twoPi * r1)
                          rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
                          
                          tVec = zAxis .cross. rSpot  
                          call normalize(tVec)
-                         rotAngle = zAxis .dot. rSpot
+                         rotAngle = real(zAxis .dot. rSpot)
                          rotAngle = acos(rotAngle)
                          rHat = arbitraryrotate(rHat,dble(rotAngle),tVec)
                          if (nSpot == 2) then
@@ -900,11 +900,11 @@ contains
                          thisPhoton%position = dble(r) * rHat
                       else
                          tVec = randomUnitVector()
-                         ang = tVec .dot. rSpot
+                         ang = real(tVec .dot. rSpot)
                          ang = acos(ang)
                          do while (ang < maxTheta)
                             tVec = randomUnitVector()
-                            ang = tVec .dot. rSpot
+                            ang = real(tVec .dot. rSpot)
                             ang = acos(ang)
                          enddo
                          thisPhoton%position = dble(r)*tVec
@@ -986,12 +986,12 @@ contains
           prob(1:nbias) = prob(1:nbias) / prob(nbias)
           call randomNumberGenerator(getDouble=rd)
           call locate(prob, nbias, rd, i)
-          t = (rd-prob(i))/(prob(i+1)-prob(i))
+          t = real((rd-prob(i))/(prob(i+1)-prob(i)))
 !          do i = 1, nbias
 !             write(99,*) lambias(i),prob(i)
 !          enddo
 !          stop
-          thisPhoton%lambda = lambias(i) + t * (lambias(i+1)-lambias(i))
+          thisPhoton%lambda = real(lambias(i) + t * (lambias(i+1)-lambias(i)))
           thisPhoton%stokes = thisPhoton%stokes * real(weightArray(i) +t*(weightArray(i+1)-weightArray(i)))
           call locate(lambda, nLambda, thisPhoton%lambda, ilambda)
        else
@@ -1159,12 +1159,12 @@ contains
 
        else
           call randomNumberGenerator(getReal=r1)
-          w = 1.d0 - r1*sin(5.*degToRad)
+          w = real(1.d0 - r1*sin(5.*degToRad))
           call randomNumberGenerator(getReal=r2)
           if (r2 < 0.5) w = -w
-          t = sqrt(1.d0-w*w)
+          t = real(sqrt(1.d0-w*w))
           call randomNumberGenerator(getReal=r2)
-          ang = pi*(2.*r2-1.d0)
+          ang = real(pi*(2.*r2-1.d0))
           u = t*cos(ang)
           v = t*sin(ang)
           thisPhoton%direction%x = u
@@ -1180,14 +1180,14 @@ contains
 
        if (.not.contWindPhoton) then
           if (.not.grid%geometry=="rolf") then
-             t = (thisPhoton%direction .dot. rHat)
+             t = real(thisPhoton%direction .dot. rHat)
 
              ! must be outwards from the photosphere if this is a core continuum photon
 
              if ((t < 0.).and.(r3_oct /= 0.).and.(grid%lineEmission).and.(.not.contWindPhoton)) then
                 thisPhoton%direction = (-1.d0)*thisPhoton%direction
              endif
-             t = (thisPhoton%direction .dot. rHat)
+             t = real(thisPhoton%direction .dot. rHat)
              directionalWeight = abs(2.*t)
           endif
 
@@ -1213,7 +1213,7 @@ contains
 
        if (.not.grid%cartesian .and. .not. grid%adaptive) then
           if (grid%rCore /= 0.) then
-             vPhi = (vRot/cSpeed)*sqrt(max(0.d0,1.d0-(thisPhoton%position%z/grid%rCore)**2))
+             vPhi = real((vRot/cSpeed)*sqrt(max(0.d0,1.d0-(thisPhoton%position%z/grid%rCore)**2)))
              perp = thisPhoton%position .cross. zAxis
              call normalize(perp)
              thisPhoton%velocity = dble(vPhi)*perp
@@ -1253,7 +1253,7 @@ contains
              tempXprobdist(1:grid%nx) = grid%xProbDistLine(1:grid%nx)
              call locate(grid%xProbDistLine, grid%nx, r1, i1)
              t1 = (r1 - grid%xProbDistLine(i1))/(grid%xProbDistLine(i1+1)-grid%xProbDistLine(i1))
-             x = grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1))
+             x = real(grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1)))
 
              if (grid%geometry == "rolf") then
                 x = x + (grid%xAxis(2) - grid%xAxis(1))/2.
@@ -1262,14 +1262,14 @@ contains
              endif
 
 
-             tempYProbDist(1:grid%ny) = grid%yProbDistLine(i1,1:grid%ny) + t1 * &
-                  (grid%yProbDistLine(i1+1,1:grid%ny) - grid%yProbDistLine(i1,1:grid%ny))
+             tempYProbDist(1:grid%ny) = real(grid%yProbDistLine(i1,1:grid%ny) + t1 * &
+                  (grid%yProbDistLine(i1+1,1:grid%ny) - grid%yProbDistLine(i1,1:grid%ny)))
              tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
              call randomNumberGenerator(getReal=r2)
              call locate(tempYProbDist, grid%ny, r2, i2)
              t2 = (r2 - tempYProbDist(i2)) / &
                   (tempYProbDist(i2+1) - tempYProbDist(i2))
-             y = grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2))
+             y = real(grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2)))
 
              if (grid%geometry == "rolf") then
                 y = y + (grid%yAxis(2) - grid%yAxis(1))/2.
@@ -1279,17 +1279,17 @@ contains
 
 
              tempZProbDist(1:grid%nz) = &
-                  (1.d0-t1)*(1.d0-t2) * grid%zProbDistLine(i1  , i2  , 1:grid%nz) +&
+                  real((1.d0-t1)*(1.d0-t2) * grid%zProbDistLine(i1  , i2  , 1:grid%nz) +&
                   (   t1)*(1.d0-t2) * grid%zProbDistLine(i1+1, i2  , 1:grid%nz) +&
                   (1.d0-t1)*(   t2) * grid%zProbDistLine(i1  , i2+1, 1:grid%nz) +&
-                  (   t1)*(   t2) * grid%zProbDistLine(i1+1, i2+1, 1:grid%nz)
+                  (   t1)*(   t2) * grid%zProbDistLine(i1+1, i2+1, 1:grid%nz))
              tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
              call randomNumberGenerator(getReal=r3)
              call locate(tempZProbDist, grid%nz, r3, i3)
              t3 = (r3 - tempZProbDist(i3)) / &
                   (tempZProbDist(i3+1) - tempZProbDist(i3))
-             z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
+             z = real(grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3)))
 
 
              if (grid%geometry == "rolf") then
@@ -1378,7 +1378,7 @@ contains
 
              if (sourceOctal%twod) then
                 call randomNumberGenerator(getReal=ang)
-                ang = ang * twoPi
+                ang = real(ang * twoPi)
                 thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
              endif
 
@@ -1388,19 +1388,19 @@ contains
 
 
           if (thisPhoton%resonanceLine) then
-             r = grid%rCore*1.00001d0
+             r = real(grid%rCore*1.00001d0)
              rHat = randomUnitVector()
              thisPhoton%position = dble(r) * rHat
              thisPhoton%originalNormal = thisPhoton%position
              thisPhoton%direction = randomUnitVector()
-             t = (thisPhoton%direction .dot. rHat)
+             t = real(thisPhoton%direction .dot. rHat)
 
              ! must be outwards from the photosphere if this is a core continuum photon
 
              if (t < 0.) then
                 thisPhoton%direction = (-1.0d0)*thisPhoton%direction
              endif
-             t = (thisPhoton%direction .dot. rHat)
+             t = real(thisPhoton%direction .dot. rHat)
              directionalWeight = abs(2.*t)
              call normalize(thisPhoton%originalNormal)
              thisPhoton%velocity = VECTOR(1.e-30,1.e-30,1.e-30)
@@ -1420,28 +1420,28 @@ contains
              temprProbDistLine(1:grid%nr) = grid%rProbDistLine(1:grid%nr)
              call locate(temprProbDistLine, grid%nr, r1, i1)
              t1 = (r1-temprProbDistLine(i1))/(temprProbDistLine(i1+1)-temprProbDistLine(i1))
-             r = grid%rAxis(i1) + t1 * (grid%rAxis(i1+1)-grid%rAxis(i1))
+             r = real(grid%rAxis(i1) + t1 * (grid%rAxis(i1+1)-grid%rAxis(i1)))
 
 
              call randomNumberGenerator(getReal=r1)
-             tempMuProbDistLine(1:grid%nMu) = grid%muProbDistLine(i1,1:grid%nMu) + t1 * &
-                  (grid%muProbDistLine(i1+1,1:grid%nMu) - grid%muProbDistLine(i1,1:grid%nMu))
+             tempMuProbDistLine(1:grid%nMu) = real(grid%muProbDistLine(i1,1:grid%nMu) + t1 * &
+                  (grid%muProbDistLine(i1+1,1:grid%nMu) - grid%muProbDistLine(i1,1:grid%nMu)))
              call locate(tempmuProbDistLine, grid%nMu, r1, i2)
              t2 = (r1-tempmuProbDistLine(i2))/(tempmuProbDistLine(i2+1)-tempmuProbDistLine(i2))
-             mu = grid%muAxis(i2) + t2 * (grid%muAxis(i2+1)-grid%muAxis(i2))
+             mu = real(grid%muAxis(i2) + t2 * (grid%muAxis(i2+1)-grid%muAxis(i2)))
 
 
              call randomNumberGenerator(getReal=r1)
              tempphiProbDistLine(1:grid%nphi) = &
-                  (1.d0-t1)*(1.d0-t2) * grid%phiProbDistLine(i1  , i2  , 1:grid%nphi) +&
+                  real((1.d0-t1)*(1.d0-t2) * grid%phiProbDistLine(i1  , i2  , 1:grid%nphi) +&
                   (   t1)*(1.d0-t2) * grid%phiProbDistLine(i1+1, i2  , 1:grid%nphi) +&
                   (1.d0-t1)*(   t2) * grid%phiProbDistLine(i1  , i2+1, 1:grid%nphi) +&
-                  (     t1)*(   t2) * grid%phiProbDistLine(i1+1, i2+1, 1:grid%nphi)
+                  (     t1)*(   t2) * grid%phiProbDistLine(i1+1, i2+1, 1:grid%nphi))
              tempphiProbDistLine(1:grid%nphi) = tempphiprobDistLine(1:grid%nphi) / tempphiprobDistLine(grid%nPhi)
              call locate(tempphiProbDistLine(1:grid%nPhi), grid%nPhi, r1, i3)
              t3 = (r1-tempphiProbDistLine(i3)) / & 
                   (tempphiProbDistLine(i3+1)-tempphiProbDistLine(i3))
-             phi = grid%phiAxis(i3) + t3 * (grid%phiAxis(i3+1)-grid%phiAxis(i3))
+             phi = real(grid%phiAxis(i3) + t3 * (grid%phiAxis(i3+1)-grid%phiAxis(i3)))
 
                 if (.not.grid%inUse(i1,i2,i3)) then
                    goto 990
@@ -1449,7 +1449,7 @@ contains
              ! set up the position
 
 
-             sinTheta = sqrt(1.d0-mu**2)
+             sinTheta = real(sqrt(1.d0-mu**2))
              thisPhoton%position%x = r*cos(phi)*sinTheta
              thisPhoton%position%y = r*sin(phi)*sinTheta
              thisPhoton%position%z = r*mu
@@ -1476,7 +1476,7 @@ contains
                 ! Setting the velocity at the emission location + offset 
                 !  velocity (rVel) by the thermal motion of gas.
                 rVel = thermalHydrogenVelocity(temperature)  ! [C] (vector)
-                vTherm = sqrt(2.* kErg * temperature/mHydrogen)/cSpeed
+                vTherm = real(sqrt(2.* kErg * temperature/mHydrogen)/cSpeed)
 !                if (thisPhoton%linePhoton) then
 !
 !                   do i = 1, nv
@@ -1506,12 +1506,12 @@ contains
 !                   rVel = vArray(i) *  randomUnitVector()
 !                   thisPhoton%stokes = thisPhoton%stokes  * (1./vbias(i))
 !                endif
-                dopShift = modulus(rVel)/vTherm - 1.
+                dopShift = real(modulus(rVel)/vTherm - 1.)
                 thisPhoton%velocity = velocity + rVel
                 
                 ! We shuffle the emission frequency acoording to the shape 
                 ! of the Voigt profile.
-                N_HI = MAX((rho/mHydrogen - Ne), 1.d-25) ! number density of HI.
+                N_HI = real(MAX((rho/mHydrogen - Ne), 1.d-25)) ! number density of HI.
                 nu = cSpeed_dbl/dble(lamline*angstromtocm)  ! [Hz]
                 if (VoigtProf) then
                    Gamma = bigGamma(dble(N_HI), dble(temperature), dble(Ne), nu)
@@ -1560,7 +1560,7 @@ contains
 !          if (StarkBroadening) then 
              ilambda = int(real(nLambda)* &
                   (lambda_shuffled-lambda(1))/(lambda(nLambda)-lambda(1)))+1
-             thisPhoton%lambda = lambda_shuffled
+             thisPhoton%lambda = real(lambda_shuffled)
 !          else
 !             ilambda = int(real(nLambda)* &
 !                  (lamLine-lambda(1))/(lambda(nLambda)-lambda(1)))+1             
@@ -1632,14 +1632,14 @@ contains
 
        ! polar case assumes evenly space mu and phi axes
 
-       r = modulus(thisPhoton%position)
-       mu = thisPhoton%position%z / r
+       r = real(modulus(thisPhoton%position))
+       mu = real(thisPhoton%position%z / r)
        if ((thisPhoton%position%x == 0.) .and. (thisPhoton%position%y == 0.)) then
           phi = 0.
        else
-          phi = atan2(thisPhoton%position%y, thisPhoton%position%x)
+          phi = real(atan2(thisPhoton%position%y, thisPhoton%position%x))
        endif
-       if (phi < 0.) phi = phi + twoPi
+       if (phi < 0.) phi = phi + real(twoPi)
        call locate(grid%rAxis, grid%nr, r, i1)
        i2 = int(real(grid%nMu)*0.5*(mu+1.d0))+1
        i3 = int(real(grid%nphi)*phi/twoPi)+1
@@ -1656,15 +1656,15 @@ contains
     mHot = 0.6 * mSol
     vMax = 30.e5
 
-    rInner = (bigG *  mHot)/(vMax**2)
+    rInner = real((bigG *  mHot)/(vMax**2))
     call randomNumberGenerator(getReal=r)
-    radius = rInner + rSol * sqrt(r)
+    radius = rInner + real(rSol * sqrt(r))
 
-    v = sqrt(bigG * mHot/radius)
+    v = real(sqrt(bigG * mHot/radius))
 
 
     call randomNumberGenerator(getReal=ang)
-    ang = 2.*pi*ang
+    ang = real(2.*pi*ang)
 
     rHat = VECTOR(cos(ang),sin(ang),0.)
     vHat = rHat .cross. zAxis
@@ -1705,9 +1705,9 @@ contains
     enddo
     position = VECTOR(grid%rAxis(grid%nr), x, y)
     direction = VECTOR(-1.,0.,0.)
-    d = modulus(position)
+    d = real(modulus(position))
     toPlanet = (-1.d0/dble(d))*position
-    cosTheta = toPlanet .dot. direction
+    cosTheta = real(toPlanet .dot. direction)
     call solveQuad(1.,-2.*d*cosTheta,d*d-grid%rAxis(grid%nr)*grid%rAxis(grid%nr),x1,x2,ok)
     x = min(x1,x2)
     position = position + dble(x)*direction
@@ -1784,8 +1784,8 @@ contains
           call scatterPhoton(grid, thisPhoton, givenVec, outPhoton, .true., &
                miePhase, nDustType, nLambda, lamArray, nMuMie, .false., disc, &
                currentOctal, currentSubcell)
-          wArray(i) = outPhoton%stokes%i
-          angArray(i) = acos(thisPhoton%direction.dot.outPhoton%direction)*radtodeg
+          wArray(i) = real(outPhoton%stokes%i)
+          angArray(i) = real(acos(thisPhoton%direction.dot.outPhoton%direction)*radtodeg)
        enddo
        write(*,'(4f13.3)') lamArray(iLam),  SUM(wArray)/real(nTrials),  MINVAL(wArray), maxVal(wArray)
  !      write(*,*) lamArray(iLam), "angle ", SUM(angArray)/real(nTrials),  MINVAL(angArray), maxVal(angArray)

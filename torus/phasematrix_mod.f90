@@ -125,7 +125,7 @@ contains
 
     mean%element = 0.
     do i = 1 , n
-       mean%element = mean%element + f(i) * a(i)%element
+       mean%element = real(mean%element + f(i) * a(i)%element)
     enddo
 !    write(*,*) "mean element(1,1): ",mean%element(1,1)
 
@@ -344,7 +344,7 @@ contains
        do m = 1, nLambda
           do i = 2, nMuMie
              do k = 1, nDustType
-                prob(i,m) = prob(i,m) + max(1.d-20,dustTypeFraction(k))*miePhase(k,m,i)%element(1,1)
+                prob(i,m) = prob(i,m) + real(max(1.d-20,dustTypeFraction(k))*miePhase(k,m,i)%element(1,1))
              enddo
           enddo
           do i = 2, nMuMie
@@ -364,10 +364,10 @@ contains
          (cosArray(j+1)-cosArray(j))*(r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam))
 
     if (present(weight)) then
-       weight = SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) + & 
+       weight = real(SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) + & 
             (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
              SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) ) * &
-            (r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam))
+            (r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam)))
        if (weight < 0.d0) then
           write(*,*) "weight ", weight, " ilam ", ilam, " j ",j
        endif
@@ -407,7 +407,7 @@ contains
     do i = 1, nDustType
        do j = 1, nLambda
           if ((miePhase(i,j,nMuMie)%element(1,1)/miePhase(i,j,nMuMie-1)%element(1,1)) > 10.d0) then
-             miePhase(i,j,nMuMie)%element  = 10.d0 * miePhase(i,j,nMuMie-1)%element
+             miePhase(i,j,nMuMie)%element  = real(10.d0 * miePhase(i,j,nMuMie-1)%element)
              if (writeoutput.and.firstTime) then
                 write(*,*) "! Undersampeld miephase fixed (near 180)"
                 firstTime = .false.
@@ -415,7 +415,7 @@ contains
           endif
 
           if ((miePhase(i,j,1)%element(1,1)/miePhase(i,j,2)%element(1,1)) > 10.d0) then
-             miePhase(i,j,1)%element  = 10.d0 * miePhase(i,j,2)%element
+             miePhase(i,j,1)%element  = real(10.d0 * miePhase(i,j,2)%element)
              if (writeoutput.and.firstTime) then
                 write(*,*) "! Undersampeld miephase fixed (near 0)"
                 firstTime = .false.
@@ -469,7 +469,7 @@ contains
 
     if (normalizeSpectrum) then
        if (yMedian(1)%i /= 0.) then
-          x = 1.d0/yMedian(1)%i
+          x = real(1.d0/yMedian(1)%i)
           !        x = 1.d0/yArray(nLambda)%i
        else
           x  = 1.d0
@@ -572,7 +572,7 @@ contains
     endif
 
     if (velocitySpace) then
-       tmpXarray(1:nLambda) = cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5 ! wavelength to km/s
+       tmpXarray(1:nLambda) = real(cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5) ! wavelength to km/s
     endif
 
     write(message,*) "Writing spectrum to ",trim(outfile),".dat"

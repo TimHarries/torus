@@ -897,7 +897,7 @@ contains
        y = parent%child(newChildIndex)%centre%y
        z = parent%child(newChildIndex)%centre%z
        parent%child(newChildIndex)%inFlow = in_discwind(this, x, y, z, parent%subcellSize / 2.0_oc)
-       parent%child(newChildIndex)%temperature = this%Twind
+       parent%child(newChildIndex)%temperature = real(this%Twind)
 
 
        ! put some data in the eight subcells of the new child

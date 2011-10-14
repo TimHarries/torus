@@ -17,7 +17,8 @@ do i = 1, grid%nx
   do j = 1, grid%ny
     do k = 1, grid%nz
      do m = 1, grid%nLambda
-       grid%kappaSca(i,j,k,m) = grid%kappaSca(i,j,k,m) + sigmaRayleigh(grid%lamArray(m))*abundance*grid%rho(i,j,k)/mHydrogen*scale
+       grid%kappaSca(i,j,k,m) = real(grid%kappaSca(i,j,k,m) + sigmaRayleigh(grid%lamArray(m))*&
+            abundance*grid%rho(i,j,k)/mHydrogen*scale)
      enddo
     enddo
   enddo
@@ -29,8 +30,8 @@ do i = 1, grid%nr
   do j = 1, grid%nmu
     do k = 1, grid%nPhi
      do m = 1, grid%nLambda
-       grid%kappaSca(i,j,k,m)=grid%kappaSca(i,j,k,m)+sigmaRayleigh(grid%lamArray(m))*abundance*grid%rho(i,j,k)/mHydrogen*&
-           scale
+       grid%kappaSca(i,j,k,m)=real(grid%kappaSca(i,j,k,m)+sigmaRayleigh(grid%lamArray(m))*abundance*grid%rho(i,j,k)/mHydrogen*&
+           scale)
      enddo
     enddo
   enddo

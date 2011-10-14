@@ -106,7 +106,7 @@ contains
 
 
     thetaStart = theta1
-    thetaEnd = pi - theta1
+    thetaEnd = real(pi - theta1)
 
 
     grid%rho = 1.e-25
@@ -143,7 +143,7 @@ contains
           grid%muAxis(i) = 2.*(real(i-1)/real(grid%nMu-1)) - 1.
        enddo
        do i = 1, grid%nPhi
-          grid%phiAxis(i) = twoPi * real(i-1)/real(grid%nPhi-1)
+          grid%phiAxis(i) = real(twoPi * real(i-1)/real(grid%nPhi-1))
        enddo
     endif
 
@@ -174,16 +174,16 @@ contains
 
              r = rM * sin(theta)**2
 
-             y = r/rM
+             y = real(r/rM)
 
              vP = VECTOR(3.*sqrt(y)*sqrt(1.-y)/sqrt(4.-3.*y),0., &
                   (2.-3.*y)/sqrt(4.-3.*y))
-             modVp = sqrt((2.*bigG*mStar / rStar)*(rStar/r - rStar/rM))
+             modVp = real(sqrt((2.*bigG*mStar / rStar)*(rStar/r - rStar/rM)))
 
              vP = (-1.*(modVp/cSpeed)) * vP
 
-             rho = (mdot * rStar)/(4.*pi*(rStar/rInner - rStar/rOuter))
-             rho = rho * r**(-5./2.) / sqrt(2.*bigG * mStar)
+             rho = real((mdot * rStar)/(4.*pi*(rStar/rInner - rStar/rOuter)))
+             rho = real(rho * r**(-5./2.) / sqrt(2.*bigG * mStar))
              rho = rho * sqrt(4.- 3.*y) / sqrt(1.-min(y,0.99))
 
              posVec = VECTOR(r * sin(theta), 0.d0, r*cos(theta)) / 1.d010
@@ -207,7 +207,8 @@ contains
        do j = 1, grid%na2
           do k = 1, grid%na3
              if (grid%inUse(i,j,k).and.(.not.grid%inStar(i,j,k))) then
-                grid%temperature(i,j,k) = max(5000.d0,7500.-2500.*(grid%rho(i,j,k)/mHydrogen - minRho)/(maxRho - minRho))
+                grid%temperature(i,j,k) = real( &
+                     max(5000.d0,7500.-2500.*(grid%rho(i,j,k)/mHydrogen - minRho)/(maxRho - minRho)))
              endif
           enddo
        enddo
@@ -217,10 +218,10 @@ contains
     write(*,*) "rho",minRho,maxRho
 
     Laccretion = (bigG*mStar*mDot/rStar)*(1.-(2.*rStar/(rOuter+rInner)))
-    Taccretion = Laccretion / ((fourPi * rStar**2)*stefanBoltz* &
-         abs(cos(theta1)-cos(theta2)))
+    Taccretion = real(Laccretion / ((fourPi * rStar**2)*stefanBoltz* &
+         abs(cos(theta1)-cos(theta2))))
 
-    sAccretion = (fourPi * rStar**2)*abs(cos(theta1)-cos(theta2))/1.e20
+    sAccretion = real((fourPi * rStar**2)*abs(cos(theta1)-cos(theta2))/1.e20)
     Taccretion = Taccretion**0.25
 
     write(*,*) "accretion lum/temp",Laccretion/Lsol, Taccretion
@@ -247,7 +248,7 @@ contains
     
     open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
     do i = 1, nNu
-       fNu(i) = fNu(i) + blackbody(tAccretion, 1.e8*REAL(cSpeed)/ nuArray(i))*(1.e20*sAccretion/(fourPi*rStar**2))
+       fNu(i) = real(fNu(i) + blackbody(tAccretion, 1.e8*REAL(cSpeed)/ nuArray(i))*(1.e20*sAccretion/(fourPi*rStar**2)))
        write(22,*) nuArray(i), fNu(i)
     enddo
     close(22)
@@ -298,7 +299,7 @@ contains
 
     grid%etaLine = grid%etaLine * 0.2
     
-    nu = cSpeed/(lamLine * angstromtocm )
+    nu = real(cSpeed/(lamLine * angstromtocm ))
 
 
     if (curtains) then
@@ -307,8 +308,8 @@ contains
              do k = 1, grid%nz
                 if (grid%chiLine(i,j,k) == 0.) grid%chiLine(i,j,k) = 1.e-30
                 ang = atan2(grid%yAxis(j),grid%xAxis(i))
-                if (ang < 0.) ang = ang + twoPi
-                ang = ang * radToDeg
+                if (ang < 0.) ang = real(ang + twoPi)
+                ang = real(ang * radToDeg)
                 if (((ang > 30.).and.(ang < 150.)).or.((ang > 210.).and.(ang < 330.))) then
                    grid%etaLine(i,j,k) = 1.e-30
                    grid%etaCont(i,j,k) = 1.e-30
@@ -389,7 +390,7 @@ contains
         write(*,*) "Distorting grid..."    
         do i = 1, nVec
           do j = 1, nPhi
-             phi = twoPi * real(j-1)/real(nPhi-1)
+             phi = real(twoPi * real(j-1)/real(nPhi-1))
              thisVec = rotateZ(distortionVec(i), dble(phi))
              thisVec = thisVec / 1.d10
              call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
@@ -501,7 +502,7 @@ contains
        do j = 1, grid%ny
           do k = 1, grid%nz
              rVec = VECTOR(grid%xAxis(i), grid%yAxis(j), grid%zAxis(k))
-             r = modulus(rVec)
+             r = real(modulus(rVec))
              if (r > grid%rCore) then
                 rHat = rVec
                 call normalize(rHat)
@@ -509,7 +510,7 @@ contains
                 v = v0 + (vTerm-v0) * (1. - (grid%rCore/r)**2)
                 
                 grid%velocity(i, j, k) = (v / cSpeed) * rHat
-                grid%rho(i, j, k) = mDot / (fourPi * (r*1.e10)**2 * v)
+                grid%rho(i, j, k) = real(mDot / (fourPi * (r*1.e10)**2 * v))
                 grid%inUse(i,j,k) = .true.
              else
                 grid%inStar(i,j,k) = .true.
@@ -579,7 +580,7 @@ contains
     grid%muAxis = -grid%muAxis
 
     do i = 1, grid%nPhi
-       grid%phiAxis(i) = twoPi * real(i-1)/real(grid%nphi-1)
+       grid%phiAxis(i) = real(twoPi * real(i-1)/real(grid%nphi-1))
     enddo
 
     do i = 1, grid%nr/2
@@ -606,11 +607,11 @@ contains
              rVec = VECTOR(grid%rAxis(i)*cos(grid%phiAxis(k))*sinTheta, &
                   grid%rAxis(i)*sin(grid%phiAxis(k))*sinTheta, &
                   grid%rAxis(i)*grid%muAxis(j))
-             bigR = sqrt(rVec%x**2 + rVec%y**2)
+             bigR = real(sqrt(rVec%x**2 + rVec%y**2))
              if (bigR > rHole) then
                 bigH = 0.05 * bigR
                 rho = rhoNought * (bigR/grid%rAxis(1))**(-3./2.)
-                rho = rho * exp ( -(rVec%z**2/(2.*bigH**2)))
+                rho = real( rho * exp ( -(rVec%z**2/(2.*bigH**2))))
                 grid%rho(i,j,k) = rho
              endif
           enddo

@@ -174,19 +174,19 @@ contains
        call initJetsAMR(grid)
 
     case ("luc_cir3d") 
-       rStar  = CIR_Rstar*Rsol/1.0d10   ! in [10^10cm] 
+       rStar  = real(CIR_Rstar*Rsol/1.0d10)   ! in [10^10cm] 
        grid%rCore = rStar
        grid%rStar1 = rStar
        grid%starPos1 = vector(0.,0.,0.)
 
     case ("cmfgen") 
-       rStar  = get_cmfgen_data_array_element("R", 1)   ! in [10^10cm] 
+       rStar  = real(get_cmfgen_data_array_element("R", 1))   ! in [10^10cm] 
        grid%rCore = rStar
        grid%rStar1 = rStar
        grid%starPos1 = vector(0.,0.,0.)
 
     case ("romanova") 
-       rStar  = ROM_Rs*Rsol/1.0d10   ! in [10^10cm] 
+       rStar  = real(ROM_Rs*Rsol/1.0d10)   ! in [10^10cm] 
        grid%rCore = rStar
        grid%rStar1 = rStar
        grid%rStar2 = 0.
@@ -327,7 +327,7 @@ contains
     enddo
 
     do i = 1, grid%nPhi
-       grid%phiAxis(i) = twoPi*real(i-1)/real(grid%nphi-1)
+       grid%phiAxis(i) = real(twoPi*real(i-1)/real(grid%nphi-1))
     enddo
 
     ! density grid has latitudinal dependence
@@ -385,9 +385,9 @@ contains
     ! now loop over a spherical polar coord sphere
 
     do i = 1, nTheta
-       theta = pi*real(i-1)/real(nTheta-1)
+       theta = real(pi*real(i-1)/real(nTheta-1))
        do j = 1, nPhi
-          phi = (2.*real(j-1)/real(nPhi-1)-1.)*pi
+          phi = real((2.*real(j-1)/real(nPhi-1)-1.)*pi)
           do k = 1, nRad
              r = radius * real(k-1)/real(nRad-1)
              rVec%x = r*sin(theta)*cos(phi)
@@ -477,7 +477,7 @@ contains
 
        do j = 1, nPhi
 
-          phi = 2.*pi*real(j-1)/real(nPhi-1)
+          phi = real(2.*pi*real(j-1)/real(nPhi-1))
           x = r * cos(phi)
           y = r * sin(phi)
 
@@ -719,7 +719,7 @@ contains
 
     fac = 2.
     if (dust) fac=50.
-    mdot = 10.**logMassLossRate * mSol / (365.25 * 24. * 60. * 60.)
+    mdot = real(10.**logMassLossRate * mSol / (365.25 * 24. * 60. * 60.))
 
     do i = 1, grid%nx
        grid%xAxis(i) = (fac*real(i-1)/real(grid%nx-1) - fac/2.)*binarySep
@@ -741,9 +741,9 @@ contains
        do j = 1, grid%ny
           do k = 1, grid%nz
              r = sqrt(grid%xAxis(i)**2 + grid%yAxis(j)**2 + grid%zAxis(k)**2)
-             rho = mdot / (4. * pi * r**2 * v)
+             rho = real(mdot / (4. * pi * r**2 * v))
              if (.not.dust) then
-                grid%rho(i,j,k) = rho/mHydrogen
+                grid%rho(i,j,k) = real(rho/mHydrogen)
              endif
           enddo
        enddo
@@ -798,7 +798,7 @@ contains
 
     write(*,*) "stagpoint/binarysep",stagpoint/binarysep
     do j = 1 , 200
-       rotAng = twoPi * real(j-1)/199.
+       rotAng = real(twoPi * real(j-1)/199.)
        do i = 1, 100
           do k = 1, 100
              ang = minAng + (maxAng-minAng)*(real(k-1)/99.)
@@ -810,15 +810,15 @@ contains
              call locate(grid%xAxis,Grid%nx, real(rVec%x), i1)
              call locate(grid%yAxis,Grid%ny, real(rVec%y), i2)
              call locate(grid%zAxis,Grid%nz, real(rVec%z), i3)
-             r = modulus(rVec)
-             rho = mdot / (4. * pi * r**2 * v)
+             r = real(modulus(rVec))
+             rho = real(mdot / (4. * pi * r**2 * v))
              if (.not.done(i1,i2,i3)) then
                 if (dust) then
 
                    if ((r > 2.*binarySep).and.(r < 100.*binarySep)) then
-                      rho = rho / (4.*mHydrogen)  ! helium number density
+                      rho = real(rho / (4.*mHydrogen))  ! helium number density)
                       rho = rho * 0.2             ! carbon number density
-                      rho = rho * (12.*mHydrogen) ! carbon mass density
+                      rho = real(rho * (12.*mHydrogen)) ! carbon mass density
                       rho = 0.1 * rho / meanDustParticleMass
                       totalDustMass = totalDustMass + &
                            dble(rho)*vElement*dble(meanDustParticleMass)
@@ -873,10 +873,10 @@ contains
 
     write(*,'(a,f4.1)') "Filling bipolar with opening angle of ",openingAng
     do i = 1, grid%nz
-       rInner = abs(sqrt(abs(grid%zAxis(i)))*sin(openingAng*degToRad))
+       rInner = real(abs(sqrt(abs(grid%zAxis(i)))*sin(openingAng*degToRad)))
        rOuter = rInner * 0.1
        do j=1,nCircle
-          ang = twoPi * real(j-1)/real(nCircle-1)
+          ang = real(twoPi * real(j-1)/real(nCircle-1))
           do k = 1, nRad
              rDash = rInner + (rOuter - rInner) * (real(k-1)/real(nRad-1))
              xDash = rDash * cos(ang)
@@ -899,7 +899,7 @@ contains
        zDash = zMin + (zMax - zMin)*real(k-1)/real(nZ-1)
        call locate(grid%zAxis, grid%nz, zDash, i3)
        do i = 1, nCircle
-          ang = twoPi * real(i-1)/real(nCircle-1)
+          ang = real(twoPi * real(i-1)/real(nCircle-1))
           do j = 1, nRad
              rDash = rInner + (rOuter - rInner) * (real(j-1)/real(nRad-1))
              xDash = rDash * cos(ang)
@@ -1005,7 +1005,7 @@ contains
     enddo
 
     do i = 1, grid%nPhi
-       grid%phiAxis(i) = twoPi*real(i-1)/real(grid%nphi-1)
+       grid%phiAxis(i) = real(twoPi*real(i-1)/real(grid%nphi-1))
     enddo
 
 
@@ -1013,8 +1013,8 @@ contains
        do j = 1, grid%nmu
           do k = 1 , grid%nphi
              vr = 10.e5+(vel-10.e5)*(1.-grid%rAxis(1)/grid%rAxis(i))
-             grid%rho(i,j,k) = log(mdot)-log(fourPi)-log(vr)- &
-                  2.*log(grid%rAxis(i)*scale)-log(mHydrogen)+log(1.-kfac*grid%muAxis(j)**2)
+             grid%rho(i,j,k) = real(log(mdot)-log(fourPi)-log(vr)- &
+                  2.*log(grid%rAxis(i)*scale)-log(mHydrogen)+log(1.-kfac*grid%muAxis(j)**2))
              grid%rho(i,j,k) = exp(grid%rho(i,j,k))
              w = grid%muAxis(j)
              t = sqrt(1.-w*w)
@@ -1087,7 +1087,7 @@ contains
     enddo
 
     do i = 1, grid%nPhi
-       grid%phiAxis(i) = twoPi*real(i-1)/real(grid%nphi-1)
+       grid%phiAxis(i) = real(twoPi*real(i-1)/real(grid%nphi-1))
     enddo
 
 
@@ -1097,7 +1097,7 @@ contains
        do j = 1, grid%nmu
           do k = 1 , grid%nphi
              v = 10.e5+(vel-10.e5)*(1.- radius/grid%rAxis(i))**1
-             grid%rho(i,j,k) = log(mdot)-log(fourPi)-log(v)-2.*log(grid%rAxis(i)*scale)-log(mHydrogen)
+             grid%rho(i,j,k) = real(log(mdot)-log(fourPi)-log(v)-2.*log(grid%rAxis(i)*scale)-log(mHydrogen))
              grid%rho(i,j,k) = exp(grid%rho(i,j,k))
           enddo
        enddo
@@ -1108,7 +1108,7 @@ contains
     thickness = 0.2
     woundFac = 0.75
     phaseOffset = 0.25*twoPi
-    nSpiral = 2.
+    nSpiral = 2
 
     call locate(grid%muAxis,grid%nMu,muStart,j1)
     call locate(grid%muAxis,grid%nMu,muEnd,j2)
@@ -1137,7 +1137,7 @@ contains
 
              do j = min(j1,j2), max(j1,j2)
                 v = 10.e5+(vel-10.e5)*(1.- radius/grid%rAxis(i2))**1
-                grid%rho(i2,j,k) = log(mdot)-log(fourPi)-log(v)-2.*log(grid%rAxis(i2)*scale)-log(mHydrogen) + log(5.)
+                grid%rho(i2,j,k) = real(log(mdot)-log(fourPi)-log(v)-2.*log(grid%rAxis(i2)*scale)-log(mHydrogen) + log(5.))
                 grid%rho(i2,j,k) = exp(grid%rho(i2,j,k))
              enddo
           enddo
@@ -1206,16 +1206,16 @@ contains
              rVec = VECTOR(grid%xAxis(i), grid%yAxis(j), grid%zAxis(k))-coolStarPosition
              rHat = rVec
              call normalize(rHat)
-             r = modulus(rVec)
-             mu = (grid%zAxis(k)-coolStarPosition%z) / r
+             r = real(modulus(rVec))
+             mu = real((grid%zAxis(k)-coolStarPosition%z) / r)
              fac = 1.
              !             fac = abs(mu)+1.
              if (r > rCool) then
                 v =  max(1.e5,vinf*(1.-rCool/r)**beta)
                 grid%velocity(i,j,k) = (v/cSpeed) * rHat
                 !                grid%velocity(i,j,k)%z = grid%velocity(i,j,k)%z * fac**2
-                rho = mdot / (4.* pi * (r*1.e10)**2 * v)
-                rho = rho / mHydrogen                
+                rho = real(mdot / (4.* pi * (r*1.e10)**2 * v))
+                rho = real(rho / mHydrogen                )
                 grid%kappaAbs(i,j,k,1:1) = sigmaAbsBlue * rho
                 grid%kappaSca(i,j,k,1:1) = sigmaScaBlue * rho
                 grid%kappaAbsRed(i,j,k,1:1) = sigmaAbsRed * rho
@@ -1303,7 +1303,7 @@ contains
     enddo
 
     do i = 1, grid%nPhi
-       grid%phiAxis(i) = twoPi*real(i-1)/real(grid%nphi-1)
+       grid%phiAxis(i) = real(twoPi*real(i-1)/real(grid%nphi-1))
     enddo
 
     grid%isotropic = .true.
@@ -1899,9 +1899,9 @@ contains
        if (i2 == grid%ny) i2 = i2 - 1
        if (i3 == grid%nz) i3 = i3 - 1
 
-       t1 = (rVec%x-grid%xAxis(i1))/(grid%xAxis(i1+1)-grid%xAxis(i1))
-       t2 = (rVec%y-grid%yAxis(i2))/(grid%yAxis(i2+1)-grid%yAxis(i2))
-       t3 = (rVec%z-grid%zAxis(i3))/(grid%zAxis(i3+1)-grid%zAxis(i3))
+       t1 = real((rVec%x-grid%xAxis(i1))/(grid%xAxis(i1+1)-grid%xAxis(i1)))
+       t2 = real((rVec%y-grid%yAxis(i2))/(grid%yAxis(i2+1)-grid%yAxis(i2)))
+       t3 = real((rVec%z-grid%zAxis(i3))/(grid%zAxis(i3+1)-grid%zAxis(i3)))
 
 !       if ((abs(t1) > 1.) .or. (abs(t2) > 1.) .or. (abs(t3) > 1.)) then
 !          write(*,*) "bug in getindices"
@@ -1922,16 +1922,16 @@ contains
        endif
        if (i1 == grid%nr) i1 = grid%nr-1
 
-       t1 = (r-grid%rAxis(i1))/(grid%rAxis(i1+1)-grid%rAxis(i1))
+       t1 = real((r-grid%rAxis(i1))/(grid%rAxis(i1+1)-grid%rAxis(i1)))
 
 
        call hunt(grid%muAxis, grid%nMu, real(mu), i2)
        if (i2 == grid%nMu) i2 = grid%nMu-1
-       t2 = (mu-grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2))
+       t2 = real((mu-grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2)))
 
        call hunt(grid%phiAxis, grid%nPhi, real(phi), i3)
        if (i3 == grid%nPhi) i3=i3-1
-       t3 = (phi-grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3))
+       t3 = real( (phi-grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3)))
 
     endif
 
@@ -3079,7 +3079,7 @@ contains
 
 
     do i = 1, grid%nPhi
-       grid%phiAxis(i) = twoPi*real(i-1)/real(grid%nPhi-1)
+       grid%phiAxis(i) = real(twoPi*real(i-1)/real(grid%nPhi-1))
     enddo
     do i = 1, grid%nMu
        grid%muAxis(i) = 2.*real(i-1)/real(grid%nMu-1)-1.
@@ -3095,10 +3095,10 @@ contains
              sinTheta = sqrt(1.-grid%muAxis(j)**2)
              rHat = VECTOR(sinTheta*cos(grid%phiAxis(k)), sinTheta*sin(grid%phiAxis(k)), grid%muAxis(j))
              vel = v0 + (vterm-v0)*(1.-grid%rCore / grid%rAxis(i))**beta
-             grid%rho(i,j,k) = (mdot / (fourPi * grid%rAxis(i)**2 * vel))/mHydrogen
+             grid%rho(i,j,k) = real((mdot / (fourPi * grid%rAxis(i)**2 * vel))/mHydrogen)
              grid%velocity(i,j,k) = (vel/cSpeed) * rHat
              grid%kappaAbs(i,j,k,1) = (1.e-20*grid%rho(i,j,k))**2
-             grid%kappaSca(i,j,k,1) = grid%rho(i,j,k) * sigmaE / 4.
+             grid%kappaSca(i,j,k,1) = real(grid%rho(i,j,k) * sigmaE / 4.)
           enddo
        enddo
     enddo
@@ -3835,7 +3835,7 @@ contains
                 dTheta = acos(grid%muAxis(j+1))-acos(grid%muAxis(j))
                 mu = 0.5*(grid%muAxis(j+1) + grid%muAxis(j))
                 dPhi = grid%phiAxis(k+1) - grid%phiAxis(k)
-                sinTheta = sqrt(1.d0 - mu**2)
+                sinTheta = real(sqrt(1.d0 - mu**2))
                 r = 0.5*(grid%rAxis(i) + grid%rAxis(i-1))
                 phi = 0.5*(grid%phiAxis(k+1) + grid%phiAxis(k))
                 dr = grid%rAxis(i) - grid%rAxis(i-1)

@@ -65,7 +65,7 @@ contains
 
     call randomNumberGenerator(getreal=r2)
     mu = 2.*r2 -1.
-    sinTheta = sqrt(1.- mu*mu)
+    sinTheta = real(sqrt(1.- mu*mu))
 
     ! random azimuth
 
@@ -127,7 +127,7 @@ contains
        if (blobs(j)%inUse) then
           
           call getIndices(grid, blobs(j)%position, i1, i2, i3, t1, t2, t3)
-          vel = modulus(grid%velocity(i1,1,1))*cSpeed/1.e10
+          vel = real(modulus(grid%velocity(i1,1,1))*cSpeed/1.e10)
           if (i1 /= grid%nr) then
              timeScale = (grid%rAxis(i1+1)-grid%rAxis(i1))/vel
           else
@@ -230,7 +230,7 @@ contains
              do j = 1, grid%nMu
                 do k = 1, grid%nPhi
              
-                   distance = modulus(posGrid(i,j,k) - blobs(m)%position)
+                   distance = real(modulus(posGrid(i,j,k) - blobs(m)%position))
                    fac1 = distance**2 / (2.*blobs(m)%radius**2)
 
                    if (fac1 < 10.) then
@@ -240,7 +240,7 @@ contains
                    
                       
                       facGrid(i,j,k) = min(facgrid(i,j,k) + fac2 * exp(-fac1),blobs(m)%contrast)
-                      r = modulus(posGrid(i,j,k)/dble(grid%rAxis(1)))
+                      r = real(modulus(posGrid(i,j,k)/dble(grid%rAxis(1))))
 !                      if ((fac1 < 1.) .and. (r > 1.) .and. (r < 3.)) then
 !                         write(*,*) r,facGrid(i,j,k)
 !                      endif
@@ -486,7 +486,7 @@ contains
           write(blobfile,'(a,i3.3,a)') "run",i,".blob"
           call readBlobs(blobfile, maxBlobs, blobs, .true.)
           thisTime = t1 + real(i-1)*(t2-t1)/real(nPhase-1)
-          projVel = blobs(j)%velocity .dot. viewVec
+          projVel = real(blobs(j)%velocity .dot. viewVec)
           if (blobs(j)%inUse) then
              if (firsttime) then
                 write(20,*) "move",projVel*1.e5,thisTime

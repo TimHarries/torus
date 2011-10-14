@@ -77,8 +77,8 @@ module interferometry_mod
       do m = 1, nx
          do n = 1, ny
             nu = nu + &
-            cmplx(image(m,n), 0.d0) &
-                 * exp(cmplx(-twoPi,0.d0) * cmplx(0.d0, 1.d0) * cmplx((xAxis(m)*u + yAxis(n)*v),0.d0))
+            dble(cmplx(image(m,n), 0.d0) &
+                 * exp(cmplx(-twoPi,0.d0) * cmplx(0.d0, 1.d0) * cmplx((xAxis(m)*u + yAxis(n)*v),0.d0)))
          enddo
       enddo
       nu = nu / SUM(image)
