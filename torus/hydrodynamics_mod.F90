@@ -5661,8 +5661,9 @@ end subroutine sumFluxes
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
 
+    call setAllUnchanged(grid%octreeRoot)
+
     do
-       call setAllUnchanged(grid%octreeRoot)
        globalConverged(myRankGlobal) = .true.
        do iThread = 1, nThreadsGlobal-1
           if (myrankGlobal /= iThread) then 
