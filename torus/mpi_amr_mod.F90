@@ -2690,8 +2690,9 @@ end subroutine dumpStromgrenRadius
     real(double) :: rhowCorner(8)
     real(double) :: eCorner(8)
     real(double) :: phiCorner(8)
+    real(double) :: pressureCorner(8)
     real(double) :: weight, totalWeight
-    real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi
+    real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi, pressure
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
     real(double) :: oldMass, newMass, factor, xh, yh, zh
     real(double) :: oldEnergy, newEnergy
@@ -2916,6 +2917,7 @@ end subroutine dumpStromgrenRadius
     rhovCorner = 0.d0
     rhowCorner = 0.d0
     phicorner  = 0.d0
+    pressureCorner = 0.d0
 
     if (debug) then
        write(*,*) "addnewchild with interp debug"
@@ -2925,7 +2927,7 @@ end subroutine dumpStromgrenRadius
        do iDir = 1, nDir
           position = corner(iCorner) + dir(iDir)
           if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(parent, parentSubcell, position))) then
-             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh)
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure)
              weight = abs(parent%ndepth - nd)+1.d0
 
              totalWeight = totalWeight + weight
@@ -2937,6 +2939,7 @@ end subroutine dumpStromgrenRadius
              rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
              eCorner(iCorner) = eCorner(iCorner) + weight * energy
              phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
+             pressureCorner(iCorner) = pressureCorner(iCorner) + weight * pressure
           else
              weight = 1.d0
              totalWeight = totalWeight + weight
@@ -2948,6 +2951,7 @@ end subroutine dumpStromgrenRadius
              rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
              eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
              phiCorner(iCorner) = phiCorner(iCorner) + parent%phi_i(parentSubcell)
+             pressureCorner(iCorner) = pressureCorner(iCorner) + parent%pressure_i(parentSubcell)
           endif
        enddo
        rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
@@ -2957,6 +2961,7 @@ end subroutine dumpStromgrenRadius
        rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
        eCorner(iCorner) = eCorner(iCorner) / totalWeight
        phiCorner(iCorner) = phiCorner(iCorner) / totalWeight
+       pressureCorner(iCorner) = pressureCorner(iCorner) / totalWeight
     enddo
     x1 = thisOctal%xMin
     x2 = thisOctal%xMax
@@ -3040,6 +3045,15 @@ end subroutine dumpStromgrenRadius
                                     (1.d0 - u) * (       v) * (       w) * phiCorner(7) + &
                                     (       u) * (       v) * (       w) * phiCorner(8) 
 
+          thisOctal%pressure_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * pressureCorner(1) + &
+                                    (       u) * (1.d0 - v) * (1.d0 - w) * pressureCorner(2) + &
+                                    (1.d0 - u) * (1.d0 - v) * (       w) * pressureCorner(3) + &
+                                    (       u) * (1.d0 - v) * (       w) * pressureCorner(4) + &
+                                    (1.d0 - u) * (       v) * (1.d0 - w) * pressureCorner(5) + &
+                                    (       u) * (       v) * (1.d0 - w) * pressureCorner(6) + &
+                                    (1.d0 - u) * (       v) * (       w) * pressureCorner(7) + &
+                                    (       u) * (       v) * (       w) * pressureCorner(8) 
+
        endif
        if (thisOctal%twod) then
           rVec = subcellcentre(thisOctal, iSubcell)
@@ -3086,6 +3100,11 @@ end subroutine dumpStromgrenRadius
                (       u) * (1.d0 - v) * phiCorner(2) + &
                (1.d0 - u) * (       v) * phiCorner(3) + &
                (       u) * (       v) * phiCorner(4)
+
+          thisOctal%pressure_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * pressureCorner(1) + &
+               (       u) * (1.d0 - v) * pressureCorner(2) + &
+               (1.d0 - u) * (       v) * pressureCorner(3) + &
+               (       u) * (       v) * pressureCorner(4)
        endif
 
        if (thisOctal%oned) then
@@ -3250,16 +3269,16 @@ end subroutine dumpStromgrenRadius
     enddo
   end subroutine shutdownServers
 
-  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
     use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
-    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
+    real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     type(VECTOR) :: position, rVec
     real(double) :: loc(3)
     type(OCTAL), pointer :: thisOctal, parent
     integer :: iThread
-    integer, parameter :: nStorage = 11
+    integer, parameter :: nStorage = 12
     real(double) :: tempStorage(nStorage)
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
@@ -3270,7 +3289,6 @@ end subroutine dumpStromgrenRadius
     call findSubcellLocal(position, thisOctal, subcell)
     
     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
-    
        
        if (.not.thisOctal%changed(subcell)) then
           rVec = subcellCentre(thisOctal, subcell)
@@ -3285,6 +3303,7 @@ end subroutine dumpStromgrenRadius
           x = rVec%x
           y = rVec%y
           z = rVec%z
+          pressure = thisOctal%pressure_i(subcell)
        else
           parent => thisOctal%parent
           rVec = subcellCentre(parent, thisOctal%parentsubcell)
@@ -3299,6 +3318,7 @@ end subroutine dumpStromgrenRadius
           x = rVec%x
           y = rVec%y
           z = rVec%z
+          pressure = parent%pressure_i(subcell)
        endif
     else
        iThread = thisOctal%mpiThread(subcell)
@@ -3318,7 +3338,7 @@ end subroutine dumpStromgrenRadius
        x = tempstorage(9)
        y = tempstorage(10)
        z = tempstorage(11)
-
+       pressure = tempstorage(12)
 !       print *, "position ", position
 !       print *, "rVec ", x, y, z
 !       print *, "rho ", rho
@@ -3336,7 +3356,7 @@ end subroutine dumpStromgrenRadius
     type(OCTAL), pointer :: parent
     integer :: subcell
     integer :: iThread
-    integer, parameter :: nStorage = 11
+    integer, parameter :: nStorage = 12
     real(double) :: tempStorage(nStorage)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -3367,7 +3387,7 @@ end subroutine dumpStromgrenRadius
              tempStorage(9) = rVec%x
              tempStorage(10) = rVec%y
              tempStorage(11) = rVec%z
-
+             tempstorage(12) = thisOCtal%pressure_i(subcell)
           else
              parent => thisOctal%parent
              tempStorage(1) = parent%nDepth
@@ -3378,7 +3398,8 @@ end subroutine dumpStromgrenRadius
              tempStorage(6) = parent%rhow(thisOctal%parentsubcell)        
              tempStorage(7) = parent%energy(thisOctal%parentsubcell)        
              tempStorage(8) = parent%phi_i(thisOctal%parentsubcell)        
-          endif
+             tempstorage(12) = parent%pressure_i(subcell)
+         endif
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
     enddo

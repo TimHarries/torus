@@ -5702,7 +5702,7 @@ end subroutine sumFluxes
     real(double) :: limit
     integer :: myRank, ierr
     logical :: refineOnGradient
-    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     real(double) :: bigJ, cs, rhoJeans, speed1, speed2
     integer :: nd
 
@@ -5769,7 +5769,7 @@ end subroutine sumFluxes
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
-                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
                
                 split = .false.
 
@@ -6623,7 +6623,7 @@ end subroutine refineGridGeneric2
     real(double) :: r
     logical, optional :: inherit
     integer :: myRank, ierr
-    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     integer :: nd!, nd2
 
     converged = .true.
@@ -6763,7 +6763,7 @@ end subroutine refineGridGeneric2
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
-                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
                 if(nd > thisOctal%nDepth) then
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
@@ -6800,7 +6800,7 @@ end subroutine refineGridGeneric2
                 neighbourOctal => thisOctal
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
-                call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
+                call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
 !                if(.not. thisOctal%ghostcell(subcell)) then
 !                   if(thisOctal%twoD) then
 !                     
