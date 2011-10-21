@@ -3333,7 +3333,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: loc(3)
     type(VECTOR) :: position, rVec
     type(OCTAL), pointer :: thisOctal
-    type(OCTAL), pointer :: parent
+!    type(OCTAL), pointer :: parent
     integer :: subcell
     integer :: iThread
     integer, parameter :: nStorage = 11
