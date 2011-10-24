@@ -968,7 +968,7 @@ contains
 
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ","inflow    "/))
+            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     "/))
 
        !    !
        !    ! Write grid structure to a tmp file.

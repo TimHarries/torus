@@ -7538,7 +7538,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: gamma, ethermal, soundSpeed
+    real(double) :: ethermal, soundSpeed
     real(double) :: sigma, r, v
     type(VECTOR) :: zAxis = VECTOR(0.d0, 0.d0, 1.d0), vVec
 
