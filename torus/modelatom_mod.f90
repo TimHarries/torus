@@ -90,7 +90,9 @@ contains
        write(message, '(a, a, a, i2)') "Transition found: name=",trim(AtomArray(iAtom)%name), ", iTrans=",iTrans 
        call writeInfo(message,TRIVIAL)
     else
-       call writeFatal("Transition not found in identiftyTransition")
+       write(message,'(a,f10.1)') "Transition not found in identifyTransition: ",lamline
+       call writeFatal(message)
+       
     endif
   end subroutine identifyTransitionCmf
 

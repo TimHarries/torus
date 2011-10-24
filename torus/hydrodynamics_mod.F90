@@ -8783,33 +8783,31 @@ end subroutine minMaxDepth
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: cellMass, radialMomentum, timeStep
-    type(VECTOR) :: cellCentre, rVec, totalMomentum, deltaMom
+    type(VECTOR) :: cellCentre, rVec, initialMomentum, finalMomentum, deltaMom
     real(double) :: u2, ekinetic, ethermal, eTot, deltaM
 
     cellCentre = subcellCentre(thisOctal, subcell)
-    rVec = source%position - cellCentre
+    rVec = cellCentre - source%Position
     call normalize(rVec)
 
 
     cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
     deltaM = thisOctal%etaline(subcell) * timestep
 
-    totalMomentum = (cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)) * &
+    initialMomentum = cellMass * &
          VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell)-source%velocity%x, &
                 thisOctal%rhov(subcell)/thisOctal%rho(subcell)-source%velocity%y, &
                 thisOctal%rhow(subcell)/thisOctal%rho(subcell)-source%velocity%z)
-    radialMomentum = totalMomentum .dot. rVec
+    radialMomentum = initialMomentum .dot. rVec
 
 
-    totalMomentum = totalMomentum - radialMomentum * rVec
-
-    deltaMom = deltaMom + radialMomentum * rVec
-    deltaMom = VECTOR(0.d0, 0.d0, 0.d0)
+    finalMomentum = initialMomentum - radialMomentum * rVec
 
     radialMomentum = radialMomentum * (1.d0 - deltaM/cellMass)
 
-    totalMomentum = totalMomentum + radialMomentum * rVec
+    finalMomentum = finalMomentum + radialMomentum * rVec
 
+    deltaMom = deltaMom + (finalMomentum - initialMomentum)
  
     if (thisOctal%threed) then
        u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
@@ -8823,20 +8821,22 @@ end subroutine minMaxDepth
     cellMass = cellMass - deltaM
     thisOctal%rho(subcell) = cellMass / (cellVolume(thisOctal, subcell)*1.d30)
 
-!    thisOctal%rhou(subcell) = totalMomentum%x / (cellVolume(thisOctal, subcell)*1.d30)
-!    thisOctal%rhov(subcell) = totalMomentum%y / (cellVolume(thisOctal, subcell)*1.d30)
-!    thisOctal%rhow(subcell) = totalMomentum%z / (cellVolume(thisOctal, subcell)*1.d30)
+    thisOctal%rhou(subcell) = finalMomentum%x / (cellVolume(thisOctal, subcell)*1.d30)
+    thisOctal%rhov(subcell) = finalMomentum%y / (cellVolume(thisOctal, subcell)*1.d30)
+    thisOctal%rhow(subcell) = finalMomentum%z / (cellVolume(thisOctal, subcell)*1.d30)
 
-!    if (thisOctal%threed) then
-!       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-!    else
-!       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-!    endif
-!    eKinetic = u2 / 2.d0
-!
-!    Etot = eThermal + eKinetic
+    if (thisOctal%threed) then
+       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    else
+       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    endif
+    eKinetic = u2 / 2.d0
 
-!    thisOctal%rhoe(subcell) = eTot * thisOctal%rho(subcell)
+
+
+    Etot = eThermal + eKinetic
+
+    thisOctal%rhoe(subcell) = eTot * thisOctal%rho(subcell)
 
 
   end subroutine correctMomentumOfGas
@@ -8953,7 +8953,7 @@ end subroutine minMaxDepth
 
   end subroutine doAccretion
 
-  recursive subroutine correctMomenta(thisOctal, source, timestep, deltaMom)
+  recursive subroutine correctMomenta(thisOctal, source, timestep,deltaMom)
     use mpi
     type(SOURCETYPE) :: source
     type(octal), pointer   :: thisoctal

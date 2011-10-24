@@ -6,7 +6,6 @@ module spectrum_mod
   use messages_mod
   use unix_mod
   implicit none
-
   public
 
   type SPECTRUMTYPE
@@ -225,7 +224,7 @@ module spectrum_mod
       spectrum%dlambda(nLambda) = spectrum%lambda(nlambda)-spectrum%lambda(nLambda-1)
       
       do i = 1, nLambda
-         spectrum%flux(i) = pi*bLambda(spectrum%lambda(i), dble(teff)) * 1.d-8 ! (per cm to per angstrom)
+         spectrum%flux(i) = max(1.d-30,pi*bLambda(spectrum%lambda(i), dble(teff)) * 1.d-8) ! (Per cm to per angstrom)
       enddo
       spectrum%nLambda = nLambda
       where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
@@ -277,6 +276,9 @@ module spectrum_mod
       bolFlux =  integrateSpectrumOverBand(spectrum, 0.d0, 1.d30)
       if (writeoutput) write(*,*) "X-ray flux added LX/LBol",xRayFlux/bolFlux
       
+
+      call probSpectrum(spectrum)
+
     end subroutine addXray
 
       
@@ -418,7 +420,7 @@ module spectrum_mod
          tmpSpectrum%flux(1:i) = spectrum%flux(1:i)
 
          tmpSpectrum%lambda(i+1) = lambda
-         tmpSpectrum%flux(i+2) = flux 
+         tmpSpectrum%flux(i+1) = flux 
 
          tmpSpectrum%lambda(i+2:newnLambda) = spectrum%lambda(i+1:spectrum%nLambda)
          tmpSpectrum%flux(i+2:newnLambda) = spectrum%flux(i+1:spectrum%nLambda)
@@ -436,7 +438,6 @@ module spectrum_mod
       spectrum%dlambda(spectrum%nLambda) = spectrum%lambda(spectrum%nlambda) - &
            spectrum%lambda(spectrum%nLambda-1)
       
-
       
       666 continue
      end subroutine insertWavelength
@@ -627,6 +628,8 @@ module spectrum_mod
       endif
       call freeSpectrum(spec1)
       call freeSpectrum(spec2)
+      call probSpectrum(spectrum)
+
     end subroutine fillSpectrumKurucz
 
      subroutine createInterpolatedSpectrum(spectrum, spec1, spec2, t)

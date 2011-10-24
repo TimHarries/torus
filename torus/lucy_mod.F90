@@ -47,7 +47,7 @@ contains
     logical :: gridConverged
     integer :: nDustType
     logical, optional :: finalPass
-    type(SOURCETYPE) :: source(:), thisSource
+    type(SOURCETYPE) :: source(:)
     integer :: nLucy
     ! threshold value for undersampled cell in percent (for stopping iteration).
     real, intent(in) :: percent_undersampled_min  
@@ -417,7 +417,7 @@ contains
                  call testRandomOMP()
 #endif
                 !$OMP PARALLEL DEFAULT(NONE) &
-                !$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
+                !$OMP PRIVATE(iMonte, iSource, rVec, uHat, rHat) &
                 !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
                 !$OMP PRIVATE(thisOctal, albedo, r) &
                 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
@@ -447,8 +447,7 @@ contains
 
                    thisPhotonAbs = 0
                    call randomSource(source, nSource, iSource, packetWeight)
-                   thisSource = source(iSource)
-                   call getPhotonPositionDirection(thisSource, rVec, uHat, rHat,grid, weight=weight)
+                   call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
                    packetWeight = packetWeight * weight
                    thermalphoton = .true.
                    directPhoton = .true.
@@ -467,8 +466,9 @@ contains
                    sOctal => thisOctal
 
                    escaped = .false.
-                   call getWavelength(thisSource%spectrum, wavelength, wavelengthWeight)
+                   call getWavelength(source(isource)%spectrum, wavelength, wavelengthWeight)
                    packetWeight = packetWeight * wavelengthWeight
+
                    thisFreq = cSpeed/(wavelength / 1.e8)
                    thislam = wavelength
 
@@ -968,7 +968,7 @@ contains
 
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  "/))
+            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ","inflow    "/))
 
        !    !
        !    ! Write grid structure to a tmp file.
@@ -1794,7 +1794,6 @@ contains
                 endif
 
                 thisOctal%temperature(subcell) = min(thisOctal%temperature(subcell), 10000.)
-
              endif
 
 

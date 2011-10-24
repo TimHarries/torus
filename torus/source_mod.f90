@@ -332,6 +332,19 @@ module source_mod
     endif
   end subroutine testRandomSource
 
+    subroutine testSourceSpectrum(source, nsource)
+    integer :: nSource, isource
+    type(SOURCETYPE) :: Source(:)
+    integer :: i
+    real(double) :: packetweight, wavelength
+    do isource = 1, nSource
+       do i = 1 , 10
+           call getWavelength(source(isource)%spectrum, wavelength, PacketWeight)
+           write(*,*) i, wavelength,packetweight
+        enddo
+     end do
+   end subroutine testSourceSpectrum
+
     real(double) function sumSourceLuminosityMonochromatic(grid, source, nsource, lam) result (tot)
       integer :: nSource
       type(SOURCETYPE) :: source(:)

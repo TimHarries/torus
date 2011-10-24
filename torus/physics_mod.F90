@@ -278,6 +278,7 @@ contains
 
     end do
        if (Writeoutput) call testRandomSource(source, nsource)
+       if (Writeoutput) call testSourceSpectrum(source, nsource)
        
  endif
   end subroutine setupSources
@@ -368,7 +369,7 @@ contains
         call randomNumberGenerator(syncIseed=.true.)
 #endif
 
-        call fillDustUniform(grid, grid%octreeRoot)
+!        call fillDustUniform(grid, grid%octreeRoot)
         if (.not.variableDustSublimation) call doSmoothOnTau(grid)
 
         
@@ -545,7 +546,6 @@ contains
      if (PRESENT(atomicDataCube)) then
         if (atomicDataCube) then
            nLambda = nv
-           write(*,*) "nlambda, nv ",nlambda,nv
            allocate(xArray(1:nLambda))
            lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
            lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
@@ -686,7 +686,6 @@ contains
        xRayFlux = integrateSpectrumOverBand(globalSourceArray(1)%spectrum, &
             (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8, &
             (cSpeed / (0.1d0 * 1000.d0 * evtoerg/hcgs))*1.d8)
-
        if (writeoutput) write(*,*) "EUV/X-ray flux (erg/s)", &
             xRayFlux*fourPi*globalSourceArray(1)%radius**2*1.d20
 

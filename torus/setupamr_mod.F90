@@ -1036,7 +1036,7 @@ contains
 
 ! *** parameters for grid configuration
 ! *** imax,jmax,kmax: grid size, lmax: max of levels
-      integer, parameter :: imax=64, jmax=64, kmax=32, lmax=20
+      integer, parameter :: imax=64, jmax=64, kmax=64, lmax=10
 ! *** ibl,jbl,kbl: offset between coarse and fine levels
 ! *** relation between coarse and fine levels is:
 ! *** rho(ibl+i,jbl+j,kbl+k,l-1)=
@@ -1044,7 +1044,7 @@ contains
 !      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
 
 ! *** conversion factors from computational units to cgs units.
-      real(double), parameter :: rho0=1.104d-18, l0=2.01318d16
+      real(double), parameter :: rho0=1.104d-17, l0=6.3728748d15 
 
 ! *** input/output variables
       integer levmin,levmax
@@ -1063,14 +1063,15 @@ contains
       logical :: converged
       type(VECTOR) :: point
       type(OCTAL), pointer :: thisOctal
-      levmin = 1
+      levmin = 5
       levmax = 9
       do l=levmin,levmax
-         write(fn,'(a,i1,a)') "disk9233776.",l,".d"
+         write(fn,'(a,i1,a)') "st798128.",l,".d"
          open(11,file=fn,form='unformatted')
          read(11) version,i,j,k,level,lstep(l),time(l)
          write(*,*) version, i, j, k,level,lstep(l),time(l)
          read(11) xtmp
+         if (Writeoutput)write(*,*) xtmp
          read(11) ytmp
          read(11) ztmp
          do i=1,imax
@@ -1144,7 +1145,7 @@ contains
 !      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
 
 ! *** conversion factors from computational units to cgs units.
-      real(double), parameter :: l0=2.01318d16
+      real(double), parameter :: l0=6.3728748d15
 
 ! *** input/output variables
       integer levmin,levmax
@@ -1161,12 +1162,12 @@ contains
       character(len=80) :: fn
       type(VECTOR) :: point
       type(OCTAL), pointer :: thisOctal
-      levmin = 1
+      levmin = 5
       levmax = 9
       do l=levmin,levmax
-         write(fn,'(a,i1,a)') "disk9233776.",l,".d"
+         write(fn,'(a,i1,a)') "st798128.",l,".d"
          open(11,file=fn,form='unformatted')
-         write(fn,'(a,i1,a)') "output9233776.",l,".d"
+         write(fn,'(a,i1,a)') "out798128.",l,".d"
          open(12,file=fn,form='unformatted')
          read(11) version,i,j,k,level,lstep(l),time(l)
          write(12) version,i,j,k,level,lstep(l),time(l)
@@ -1210,7 +1211,6 @@ contains
 
       enddo
     end subroutine writegridKengo
-
 
 
 

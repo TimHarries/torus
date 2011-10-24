@@ -256,6 +256,12 @@ CONTAINS
     CASE("bondi")
        CALL calcBondiDensity(thisOctal,subcell)
 
+    CASE("bondihoyle")
+       CALL calcBondiHoyleDensity(thisOctal,subcell)
+
+    CASE("krumdisc")
+       CALL calcKrumholzDiscDensity(thisOctal,subcell)
+
     CASE("shu")
        CALL calcShuDensity(thisOctal,subcell)
 
@@ -6946,7 +6952,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     inflowRhoe = inflowEnergy * inflowRho
     inflowPressure = kErg*tExt*thisOctal%rho(subcell)
 
-  end subroutine
+  end subroutine calcBlobTestDensity
 
 
  subroutine calcBruntDensity(thisOctal, subcell)
@@ -7485,6 +7491,86 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
   end subroutine calcnbodyDensity
+
+  subroutine calcBondiHoyleDensity(thisOctal,subcell)
+
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: gamma, ethermal, soundSpeed
+    real(double) :: rho0, r0, n
+
+    gamma = 7.d0/5.d0
+    rho0 = 1.0d0
+    r0 = 0.4d0
+    soundSpeed = 0.01d0
+    n = 2.d0
+    ethermal = 0.1d0
+    rVec = subcellCentre(thisOctal, subcell)
+
+
+    thisOctal%temperature(subcell) = 10.d0
+    thisOCtal%rho(subcell) = 1.d-25
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+
+    soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+    inflowSpeed = 3.d0*soundSpeed
+    thisOctal%velocity(subcell) = VECTOR(inflowSpeed/cSpeed, 0.d0, 0.d0)
+
+    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%iEquationOfState(subcell) = 1
+
+    inflowPressure = thisOctal%pressure_i(subcell)
+    inflowRho = 1.d-25
+    inflowMomentum = inflowRho * inflowSpeed
+    inflowEnergy = thisOctal%energy(subcell)
+    inflowRhoE = inflowEnergy * inflowRho
+
+
+
+  end subroutine calcBondiHoyleDensity
+
+  subroutine calcKrumholzDiscDensity(thisOctal,subcell)
+
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: gamma, ethermal, soundSpeed
+    real(double) :: sigma, r, v
+    type(VECTOR) :: zAxis = VECTOR(0.d0, 0.d0, 1.d0), vVec
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)
+    v = sqrt(bigG * mSol /(r*1.d10))
+    vVec = rVec .cross. zAxis
+    call normalize(vVec)
+    vVec = (v/cSpeed) * vVec
+
+    thisOctal%temperature(subcell) = 10.d0
+    sigma = 0.1d0 * 2d5/min(r,2d5)
+
+    if ((abs(rVec%z - thisOctal%subcellsize/2.d0) < thisOctal%subcellSize/10.d0).and.(r<2d5)) then
+       thisOctal%rho(subcell) = sigma / (thisOctal%subcellSize*1.d10)
+    else
+       thisOctal%rho(subcell) = (sigma / (thisOctal%subcellSize*1.d10))/100.d0
+       thisOctal%temperature(subcell) = 1000.d0
+    endif
+
+
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+
+    soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+    thisOctal%velocity(subcell) = vVec
+
+    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%iEquationOfState(subcell) = 1
+
+
+  end subroutine calcKrumholzDiscDensity
 
   subroutine calcBondiDensity(thisOctal,subcell)
     use inputs_mod, only : gridDistanceScale
@@ -10889,7 +10975,9 @@ end function readparameterfrom2dmap
     real(double) :: kappaH, kappaHe
     real :: e, h0, he0
 #endif
-
+#ifdef _OPENMP
+!$OMP THREADPRIVATE (firstTime, nlambda, tgasArray, oneKappaAbsT, oneKAppaScaT)
+#endif
 
 
     if ( present(reset_kappa) ) then 

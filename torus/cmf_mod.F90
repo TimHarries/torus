@@ -3168,6 +3168,7 @@ contains
           tauStep = 0.d0
           tautmp = tau
           iStep = 0.d0
+          if (allocated(distArray)) write(*,*) "Error: dist array already allocated"
           allocate(distArray(1:nTau))
           do i = 1, ntau
              distArray(i) = tval * dble(i-1)/dble(nTau-1)
@@ -3269,7 +3270,10 @@ contains
                 i0 = i0 + iStep
                 tau = tau + tauStep
              endif
-
+             if ((.not. ok).and.(ntau > 100000)) then
+                write(*,*) "ntau cap limit reached ",alphanu,dustopac
+                ok = .true.
+             endif
           enddo
           rhoCol = rhoCol + tVal*thisOctal%rho(subcell)*1.d10
           oldPosition = currentPosition
@@ -3865,6 +3869,9 @@ contains
        area(1:3) = 0.33333*dx*dy
     else
        call removeIdenticalPoints(nRay, xRay, yRay)
+       if (allocated(xtmp)) then
+          write(*,*) "Error xtmp already allocated"
+       endif
        allocate(xtmp(1:nray),ytmp(1:nRay))
        xtmp(1:nRay) = xRay(1:nray) - (xcen-dx/2.d0)
        ytmp(1:nray) = yRay(:nRay) - (yCen-dy/2.d0)

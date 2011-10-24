@@ -45,22 +45,29 @@ contains
           temp((i-1)*3+2) = source(i)%force%y
           temp((i-1)*3+3) = source(i)%force%z
        enddo
+!       write(*,*) myrankGlobal, " force ",source(1)%force
        call MPI_ALLREDUCE(temp, temp2, n, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+
        do i = 1, nSource
           source(i)%force%x = temp2((i-1)*3+1)
           source(i)%force%y = temp2((i-1)*3+2)
           source(i)%force%z = temp2((i-1)*3+3)
        enddo
+
+ !      if (writeoutput) write(*,*) "total ",source(1)%force
        deallocate(temp, temp2)
     endif
 #endif
+!    if (writeoutput) then
+!       write(*,*) "forces ",source(1)%force
+!    endif
 !    call writeInfo("Done.",TRIVIAL)
 
 !    call writeInfo("Calculating source potential for gas", TRIVIAL)
 !    call writeInfo("Done.", TRIVIAL)
 
 !    call writeInfo("Calculating source-source forces", TRIVIAL)
-    call sourceSourceForces(source, nSource, eps)
+    if (nSource > 1) call sourceSourceForces(source, nSource, eps)
 !    call writeInfo("Done.", TRIVIAL)
 
   end subroutine calculateGasSourceInteraction
@@ -122,7 +129,7 @@ contains
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    call calculateEps(source, nsource,eps)
+    call calculateEps(grid%halfSmallestSubcell,source, nsource,eps)
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))
@@ -187,10 +194,10 @@ contains
 !    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
   end subroutine updateSourcePositions
 
-  subroutine calculateEps(source, nsource, eps)
+  subroutine calculateEps(halfSmallestSubcell, source, nsource, eps)
     type(SOURCETYPE) :: source(:)
     integer :: nSource
-    real(double) :: eps, r, minsep
+    real(double) :: eps, r, minsep, halfSmallestSubcell
     integer :: i, j
 
     minSep = 1.d30
@@ -203,7 +210,7 @@ contains
        enddo
     enddo
     eps = 1.d-6 * minSep
-    eps = max(eps, 1000.d0*autocm)
+    eps = max(eps, halfSmallestSubcell*1.d10/128.d0)
 
   end subroutine calculateEps
 
@@ -223,7 +230,7 @@ contains
 
 
     if (inputEps == 0.d0) then
-       call calculateEps(source, nSource, eps)
+       call calculateEps(grid%halfSmallestSubcell, source, nSource, eps)
     else
        eps = inputEps
     endif
@@ -309,7 +316,8 @@ contains
           cen = subcellCentre(thisOctal, subcell)
           dv = cellVolume(thisOctal, subcell)*1.d30
           do iSource = 1, nSource
-             if (.not.inSubcell(thisOctal, subcell, source(isource)%position)) then
+!             if (.not.inSubcell(thisOctal, subcell, source(isource)%position)) then
+             if (modulus(cen - source(iSource)%position) > 2.d0*thisOctal%subcellSize) then
                 rVec = source(isource)%position - cen
                 r = modulus(rVec)
                 source(iSource)%force = source(iSource)%force - &
@@ -532,7 +540,7 @@ contains
     do nstp=1,maxstp
        call derivs(x,y,dydx,grid, graveps)
        do  i=1,nvar
-          yscal(i)=abs(y(i))+abs(h*dydx(i))+tiny
+          yscal(i)=abs(y(i))+abs(h*dydx(i))
        enddo
        if(kmax.gt.0)then
           if(abs(x-xsav).gt.abs(dxsav)) then
@@ -553,6 +561,7 @@ contains
        else
           nbad=nbad+1
        endif
+!       if (Writeoutput) write(*,*) "x1, x2, x, h ",x1,x2,x,h
        if((x-x2)*(x2-x1).ge.zero)then
           do i=1,nvar
              ystart(i)=y(i)
@@ -603,7 +612,10 @@ contains
        call rzextr(i,xest,yseq,y,yerr,nv,nuse)
        errmax=0.
        do j=1,nv
-          errmax=max(errmax,abs(yerr(j)/yscal(j)))
+          if (yscal(j) /= 0.d0) then
+             errmax=max(errmax,abs(yerr(j)/yscal(j)))
+!             write(*,*) "err ",yerr(j), yscal(j), y(j)
+          endif
        enddo
        errmax=errmax/eps
        if(errmax.lt.one) then

@@ -49,6 +49,10 @@ program torus
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
 #endif
+#ifdef _OPENMP
+  call omp_set_dynamic(.false.)
+#endif
+
 
 #ifdef MPI
   ! FOR MPI IMPLEMENTATION=======================================================

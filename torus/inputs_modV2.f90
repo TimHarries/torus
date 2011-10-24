@@ -38,6 +38,8 @@ contains
     oneKappa = .false.
     monteCarloRT = .false.
 
+    biasToLyman = .false.
+
     nDustType = 1
     tMinGlobal = 3.
     filter_set_name = "natural"
