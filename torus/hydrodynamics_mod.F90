@@ -3700,6 +3700,7 @@ end subroutine sumFluxes
        enddo
 
        call writeInfo("Calling exchange across boundary", TRIVIAL)
+       call evenUpGridMPI(grid,.true., dorefine)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
@@ -3736,11 +3737,13 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
+
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
+          call computepressureGeneral(grid, grid%octreeroot, .false.)
           !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-
+          
           call writeInfo("Checking Boundary Partner Vectors", TRIVIAL)
           call checkBoundaryPartners(grid%octreeRoot, grid)
           call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
@@ -3831,6 +3834,11 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       call setupX(grid%octreeRoot, grid, direction)
+       call setupQX(grid%octreeRoot, grid, direction)
+       call computepressureGeneral(grid, grid%octreeroot, .false.)
+
 
        if(doRefine) then
           call refinegridGeneric(grid, amrTolerance)
@@ -3839,6 +3847,12 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       call setupX(grid%octreeRoot, grid, direction)
+       call setupQX(grid%octreeRoot, grid, direction)
+       call computepressureGeneral(grid, grid%octreeroot, .false.)
+       
 
        if(doUnrefine .and. grid%currentTime /= 0.d0) then
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
@@ -3850,6 +3864,11 @@ end subroutine sumFluxes
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+       direction = VECTOR(1.d0, 0.d0, 0.d0)
+       call setupX(grid%octreeRoot, grid, direction)
+       call setupQX(grid%octreeRoot, grid, direction)
+       call computepressureGeneral(grid, grid%octreeroot, .false.)
+       
        currentTime = currentTime + dt
 
        !Perform another boundary partner check
@@ -5657,6 +5676,8 @@ end subroutine sumFluxes
     logical :: globalConverged(512), tConverged(512)
     integer :: ierr
     real(double) :: tol
+    real(double) :: index = 1.d0
+
     globalConverged = .false.
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
@@ -5669,7 +5690,8 @@ end subroutine sumFluxes
           if (myrankGlobal /= iThread) then 
              call hydroValuesServer(grid, iThread)
           else
-             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, inheritval=.false.)
+             call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, index, inheritval=.false.)
+             index = index + 1.d0
              call shutdownServers()
           endif
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -5684,7 +5706,7 @@ end subroutine sumFluxes
   end subroutine refineGridGeneric
 
 
-  recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, inheritval)
+  recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol, refineonrhoe
     use mpi
@@ -5705,6 +5727,8 @@ end subroutine sumFluxes
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     real(double) :: bigJ, cs, rhoJeans, speed1, speed2
     integer :: nd
+    integer :: index1, index2, step
+    real(double) :: index
 
     converged = .true.
     converged_tmp=.true.
@@ -5718,14 +5742,25 @@ end subroutine sumFluxes
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
+    if(mod(index, 2.d0) /= 0.d0) then
+       index1 = 1
+       index2 = thisOctal%maxChildren
+       step = 1
+    else
+       index2 = 1
+       index1 = thisOctal%maxChildren
+       step = -1
+    end if
 
-    do subcell = 1, thisOctal%maxChildren
+    do subcell = index1, index2, step
+
+!    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call refineGridGeneric2(child, grid, converged, limit, inheritval)
+                call refineGridGeneric2(child, grid, converged, limit, index, inheritval)
                 if (.not.converged) return
                 if (.not.converged) converged_tmp = converged
                 exit
