@@ -6429,6 +6429,7 @@ end subroutine refineGridGeneric2
     logical :: evenAcrossThreads, converged
     logical :: allThreadsConverged
     character(len=30) :: vtkFilename
+    real(double) :: index = 1.d0
 
 !    character(len=20) :: plotfile
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -6462,7 +6463,8 @@ end subroutine refineGridGeneric2
              if (myrankGlobal /= iThread) then
                 call hydroValuesServer(grid, iThread)
              else
-                call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), inherit=inheritFlag)
+                call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
+                index = index + 1.d0
                 call unsetGhosts(grid%octreeRoot)
                 call setupEdges(grid%octreeRoot, grid)
                 call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
@@ -6568,7 +6570,8 @@ end subroutine refineGridGeneric2
                 if (myrankGlobal /= iThread) then
                    call hydroValuesServer(grid, iThread)
                 else
-                   call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), inherit=inheritFlag)
+                   call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
+                   index = index + 1.d0
                    call unsetGhosts(grid%octreeRoot)
                    call setupEdges(grid%octreeRoot, grid)
                    call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
@@ -6608,7 +6611,7 @@ end subroutine refineGridGeneric2
 666 continue
   end subroutine evenUpGridMPI
 
-  recursive subroutine evenUpGrid(thisOctal, grid,  converged, inherit)
+  recursive subroutine evenUpGrid(thisOctal, grid,  converged, index, inherit)
     use inputs_mod, only : maxDepthAMR
     use mpi
     type(gridtype) :: grid
@@ -6625,20 +6628,33 @@ end subroutine refineGridGeneric2
     integer :: myRank, ierr
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     integer :: nd!, nd2
+    real(double) :: index
+    integer :: index1, index2, step
 
     converged = .true.
     converged_tmp=.true.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-    do subcell = 1, thisOctal%maxChildren
+
+    if(mod(index, 2.d0) /= 0.d0) then
+       index1 = 1
+       index2 = thisOctal%maxChildren
+       step = 1
+    else
+       index2 = 1
+       index1 = thisOctal%maxChildren
+       step = -1
+    end if
+
+    do subcell = index1, index2, step
 
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call evenUpGrid(child, grid,  converged, inherit)
+                call evenUpGrid(child, grid,  converged, index, inherit)
                 if (.not.converged) return
                 if (.not.converged) converged_tmp = converged
                 exit

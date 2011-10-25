@@ -6652,7 +6652,8 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     else if(thisOctal%twoD) then
        if((rvec%z+rVec%x) <= 0.05) then
 !       if((rvec%z) <= -0.3d0) then
-          thisOctal%rho(subcell) = 0.15d0
+!          thisOctal%rho(subcell) = 0.15d0
+          thisOctal%rho(subcell) = 1.d0
           thisOctal%energy(subcell) = 2.5d0
           thisOctal%pressure_i(subcell) = 1.d0
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
