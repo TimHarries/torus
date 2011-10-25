@@ -3691,16 +3691,14 @@ end subroutine sumFluxes
 
 
        if (myRank == 1) write(*,*) "CFL set to ", cflNumber
-
-
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        do i = 1, nPairs
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
 
-       call writeInfo("Calling exchange across boundary", TRIVIAL)
-       call evenUpGridMPI(grid,.true., dorefine)
+!          call evenUpGridMPI(grid,.true., dorefine)
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
@@ -3735,8 +3733,6 @@ end subroutine sumFluxes
           end if
           call evenUpGridMPI(grid, .true.,dorefine)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
 
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
