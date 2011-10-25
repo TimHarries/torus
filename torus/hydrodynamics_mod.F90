@@ -8746,16 +8746,18 @@ end subroutine minMaxDepth
     type(VECTOR) :: cellCentre, pointVelocity, pointPosition
     real(double) :: x, y, z
     real(double) :: esp, jsp, deltaX
+    integer, parameter :: nsub = 8 
     
     cellCentre = subcellCentre(thisOctal, subcell)
     deltaX = thisOctal%subcellSize * gridDistanceScale
     n = 0 
-    do i = 1, 8
-       do j = 1, 8
-          do k = 1, 8
-             x = thisOctal%subcellSize/16.d0 + thisOctal%subcellSize * dble(i-1)/8.d0 - cellCentre%x - thisOctal%subcellSize/2.d0
-             y = thisOctal%subcellSize/16.d0 + thisOctal%subcellSize * dble(j-1)/8.d0 - cellCentre%y - thisOctal%subcellSize/2.d0
-             z = thisOctal%subcellSize/16.d0 + thisOctal%subcellSize * dble(k-1)/8.d0 - cellCentre%z - thisOctal%subcellSize/2.d0
+    do i = 1, nsub
+       do j = 1, nsub
+          do k = 1, nsub
+             x = cellcentre%x + (dble(i-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+             y = cellcentre%y + (dble(j-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+             z = cellcentre%z + (dble(k-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
+
              pointPosition = (VECTOR(x, y, z) - source%position)*gridDistanceScale
              pointVelocity = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell) - source%velocity%x, &
                                     thisOctal%rhov(subcell)/thisOctal%rho(subcell) - source%velocity%y, &
@@ -8914,6 +8916,8 @@ end subroutine minMaxDepth
              allocate(thisOctal%etaline(1:thisOctal%maxChildren))
              thisOctal%etaline = 0.d0
           endif
+          if (rk < thisOctal%subcellSize/4.d0)  n = 0
+             
           write(*,*) "sink is on thread ",myrankglobal
           write(*,*) "using n for correction: ",n
           thisOctal%etaLine(subcell) = thismdot * thisOctal%chiline(subcell) * (1.d0 - dble(n)/8.d0**3)
