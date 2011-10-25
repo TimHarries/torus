@@ -8775,7 +8775,7 @@ end subroutine minMaxDepth
        allocate(thisOctal%etaline(1:thisOctal%maxChildren))
        thisOctal%etaLine(subcell) = 0.d0
     endif
-    thisOctal%etaline(subcell) =  mdot * (1.d0 - dble(n)/8.d0**3) * thisOctal%chiline(subcell)
+!    thisOctal%etaline(subcell) =  mdot * (1.d0 - dble(n)/8.d0**3) * thisOctal%chiline(subcell)
   end subroutine correctMdot
 
   subroutine correctMomentumOfGas(source, thisOctal, subcell, timestep, deltaMom)

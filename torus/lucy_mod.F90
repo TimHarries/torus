@@ -436,6 +436,7 @@ contains
                 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
                 !$OMP REDUCTION (+: nAbs, nScat, nInf, nDiffusion, nKilled) 
 
+                 call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
                 !$OMP DO SCHEDULE(DYNAMIC,10)
                 photonloop: do iMonte = imonte_beg, imonte_end
