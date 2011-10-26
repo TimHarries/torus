@@ -5982,7 +5982,8 @@ end subroutine sumFluxes
              maxGradient = max(grad, maxGradient)
 
              if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
-                if((maxGradient > amrtemperaturetol) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+
+                if((maxGradient > amrtemperaturetol) .and. (thisOctal%nDepth < maxDepthAMR)) then 
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
                    exit
@@ -6012,7 +6013,7 @@ end subroutine sumFluxes
              maxGradient = max(grad, maxGradient)
 
              if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
-                if((maxGradient > amrRhoeTol) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+                if((maxGradient > amrRhoeTol) .and. (thisOctal%nDepth < maxDepthAMR)) then                   
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
                    exit
@@ -6785,7 +6786,7 @@ end subroutine refineGridGeneric2
 
                 direction = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
                 
-                !Make it a unit vector                                                                                                                                                                                                
+                !Make it a unit vector                                                        
                 if(direction%x > 0.d0) direction%x = direction%x / direction%x
                 if(direction%x < 0.d0) direction%x = -direction%x / direction%x
                 if(direction%y > 0.d0) direction%y = direction%y / direction%y
@@ -6821,16 +6822,16 @@ end subroutine refineGridGeneric2
 
              if(abs(direction%x) > abs(direction%y)) then
                 direction%y = 0.d0
-                if(abs(direction%x) > abs(direction%z)) then !We are moving in the 悉 direction                                                                                                      
+                if(abs(direction%x) > abs(direction%z)) then !We are moving in the 悉 direction
                    direction%z = 0.d0
-                else                                         !Moving in the 您 direction                                                                                                             
+                else                                         !Moving in the 您 direction       
                    direction%x = 0.d0
                    end if
              else
                 direction%x = 0.d0
-                if(abs(direction%y) > abs(direction%z)) then !We are moving in the 悠 direction                                                                                                      
+                if(abs(direction%y) > abs(direction%z)) then !We are moving in the 悠 direction
                    direction%z = 0.d0
-                   else                                         !Moving in the 您 direction                                                                                                             
+                   else                                         !Moving in the 您 direction    
                    direction%y = 0.d0
                    end if
              end if
@@ -6856,7 +6857,7 @@ end subroutine refineGridGeneric2
                 exit
              end if
 
-             !Thaw - special case for periodics                                                                                                                                                                                       
+             !Thaw - special case for periodics                    
              if(thisOctal%boundaryCondition(subcell) == 2) then
                 !direction will still be valid from above
 
