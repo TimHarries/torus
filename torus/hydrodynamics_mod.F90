@@ -5760,7 +5760,8 @@ end subroutine sumFluxes
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
-    use inputs_mod, only : refineonionization, massTol, refineonrhoe
+    use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
+    use inputs_mod, only : amrspeedtol, amrionfractol
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5883,7 +5884,7 @@ end subroutine sumFluxes
                    if (Speed1 > 1.d-10 .and. speed2 > 1.d-10) then
                       grad = abs(speed1-speed2) / speed1
                       maxGradient = max(grad, maxGradient)
-                      if (grad > limit) then
+                      if (grad > amrspeedtol) then
                          split = .true.
 !                         print *, "grad, limit", grad, limit
                       endif
@@ -5981,7 +5982,7 @@ end subroutine sumFluxes
              maxGradient = max(grad, maxGradient)
 
              if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
-                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+                if((maxGradient > amrtemperaturetol) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
                    exit
@@ -6011,7 +6012,7 @@ end subroutine sumFluxes
              maxGradient = max(grad, maxGradient)
 
              if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
-                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+                if((maxGradient > amrRhoeTol) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
                    exit
@@ -6044,7 +6045,7 @@ end subroutine sumFluxes
 !             maxGradient = max(grad, maxGradient)
 !
 !             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
-!                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
+!                if((maxGradient > amrspeedtol) .and. (thisOctal%nDepth < maxDepthAMR)) then                                        
 !                   call addNewChildWithInterp(thisOctal, subcell, grid)
 !                   converged = .false.
 !                   exit
@@ -6074,7 +6075,7 @@ end subroutine sumFluxes
 
              if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
 !                if ((thisOctal%ionFrac(subcell,1) > 0.9d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) < 0.1d0) .and. &
-                if((maxGradient > limit) .and. (thisOctal%nDepth < maxDepthAMR)) then
+                if((maxGradient > amrIonFracTol) .and. (thisOctal%nDepth < maxDepthAMR)) then
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
                    exit

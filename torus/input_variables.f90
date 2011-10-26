@@ -687,6 +687,10 @@
   real(double) :: massTol !cell mass tolerance
   logical :: refineOnIonization !refine grid using ionization gradient
   real(double) :: amrTolerance !maximum gradient before AMR grid refines
+  real(double) :: amrTemperatureTol !maximum temperature gradient before AMR grid refines 
+  real(double) :: amrSpeedTol !maximum speed grad before AMR grid refines
+  real(double) :: amrIonFracTol !maximum ion frac grad before AMR grid refines
+  real(double) :: amrRhoeTol !Maximum rhoe grad before AMR grid refines
 
   ! Grid smoothing based on optical depth
   real :: lambdaSmooth

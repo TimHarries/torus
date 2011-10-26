@@ -955,6 +955,27 @@ contains
 
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
          "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-3, ok, .false.)
+
+
+    if(refineontemperature) then
+       call getDouble("amrtemperaturetol", amrTemperatureTol, 1.d0 , cLine, fLine, nLines, &
+            "Maximum temperature gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-3, ok, .false.)
+    end if
+
+    if(refineonspeed) then
+       call getDouble("amrspeedtol", amrSpeedTol, 1.d0 , cLine, fLine, nLines, &
+            "Maximum speed gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-3, ok, .false.)
+    end if
+    
+    if(refineonionization) then
+       call getDouble("amrionfractol", amrIonFracTol, 1.d0 , cLine, fLine, nLines, &
+            "Maximum ionization fraction gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-3, ok, .false.)
+    end if
+
+    if(refineonrhoe) then
+       call getDouble("amrrhoetol", amrRhoeTol, 1.d0 , cLine, fLine, nLines, &
+            "Maximum rhoe gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-3, ok, .false.)
+    end if
   
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
