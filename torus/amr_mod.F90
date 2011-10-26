@@ -3893,14 +3893,14 @@ CONTAINS
 !      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 !      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-!      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
 
-      if((abs(thisOctal%zMax) < 0.33).and.(abs(thisOctal%zMin) > 0.17) &
-           .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!      if((abs(thisOctal%zMax) < 0.33).and.(abs(thisOctal%zMin) > 0.17) &
+ !          .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 !      if((abs(thisOctal%zMin) < 0.245).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
       
       if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
