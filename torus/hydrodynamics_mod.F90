@@ -946,7 +946,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
           stop
        end if
 
-       call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, neighbourSubcell, grid)
+       call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, &
+            neighbourSubcell, grid)
        
        m = (f(1) - f(2))/(xpos(1) - xpos(2))
 
@@ -1007,7 +1008,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
        communitySubset(1) = community(1)
        communitySubset(2) = community(2)
 
-       call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, neighbourSubcell, grid)
+       call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, &
+            neighbourSubcell, grid)
 !Calculate gradients and flux modification factor
        m_a = (f(1) - f(2))/(xpos(1) - xpos(2))
 
@@ -1016,7 +1018,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
        right = .false.
 
-       call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, neighbourSubcell, grid)
+       call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, &
+            neighbourSubcell, grid)
        if(upper) right = .true.
        
        m_b = (f(1) - f(2))/(xpos(1) - xpos(2))
