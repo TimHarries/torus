@@ -1,7 +1,7 @@
 module amr_mod
   
  
-! 21 nov
+  ! 21 nov
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
 
@@ -3879,8 +3879,15 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere","empty", "turbulence","gravtest", "brunt")
+   case("bonnor", "unisphere","empty", "turbulence","gravtest")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+   case("brunt")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+
 
    case("radcloud", "blobtest")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -6952,7 +6959,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     thisOCtal%pressure_i(subcell) = (gamma-1.d0) * eThermal * thisOctal%rho(subcell)
 
     inflowRho = 3.13e-8*(mUnit/(lUnit**3.d0))
-    inflowSpeed = 1.d8
+    inflowSpeed = 1.d8/3.08e10
     inflowMomentum = inflowSpeed * inflowRho
     inflowEnergy = ((kErg*tExt)/(gamma-1.d0)) + (0.5d0*(inflowSpeed**2.d0))
     inflowRhoe = inflowEnergy * inflowRho
@@ -6988,10 +6995,10 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 !      thisOctal%rho(subcell) = 0.d0
  !  end if
 
-    centre(1) = VECTOR(-15.d0, 25.d0, 0.d0)
-    centre(2) = VECTOR(-30.d0, 25.d0, 0.d0)
-    centre(3) = VECTOR(15.d0, 25.d0, 0.d0)
-    centre(4) = VECTOR(30.d0, 25.d0, 0.d0)
+    centre(1) = VECTOR(0.d0, 0.d0, 0.d0)
+!    centre(2) = VECTOR(-30.d0, 25.d0, 0.d0)
+!    centre(3) = VECTOR(15.d0, 25.d0, 0.d0)
+!    centre(4) = VECTOR(30.d0, 25.d0, 0.d0)
 !    centre(5) = VECTOR(75.d0, 25.d0, 0.d0)
      
    do j = 1, numClouds
@@ -7024,8 +7031,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
             thisOctal%velocity(subcell) = VECTOR(0.d0, -3.d5, 0.d0) !-3kms^-1
          endif
       end do
-
-
 
     thisOctal%temperature = 10.d0
     ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)

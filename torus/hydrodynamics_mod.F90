@@ -89,6 +89,7 @@ contains
   end subroutine checkDeviations
 
 
+
   recursive subroutine fluxlimiter(thisoctal)
     use inputs_mod, only : limiterType
     use mpi
@@ -130,11 +131,16 @@ contains
 
 
              select case (limitertype)
+
+!superbee flux limiter is default
              case("superbee")
                 a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
                 b = min(2.d0, thisoctal%rlimit(subcell))
                 thisoctal%philimit(subcell) = max(0.d0, a, b)
                 
+
+!Use with caution, this is not in the literature, developed by THAW
+!Tries to improve flux limiter by accounting for non-constant grid spacing
              case("modified_superbee")
                 if (dq /= 0.d0) then
                    if (thisoctal%u_interface(subcell) .ge. 0.d0) then
@@ -177,6 +183,7 @@ contains
                 thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
                 abs(thisoctal%rlimit(subcell))) / (1 + abs(thisoctal%rlimit(subcell)))
                
+!i.e no flux limiter
              case("donorcell")
                 thisOctal%philimit(subcell) = 0.d0
 
@@ -269,7 +276,7 @@ contains
 
   end subroutine updatephitree
 
-
+!Set up the i-1/2 flux for each cell on the grid
   recursive subroutine constructflux(thisoctal, dt)
     use mpi
     integer :: myrank, ierr
@@ -323,6 +330,7 @@ contains
     enddo
   end subroutine constructflux
 
+!Perform the actual advection
   recursive subroutine updatecellq(thisoctal, dt)
     use mpi
     integer :: myrank, ierr
@@ -392,18 +400,15 @@ contains
 
           if (.not.thisoctal%ghostcell(subcell)) then
 
-
 !             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * &
 !                  (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell)) / dx
-
-
           endif
        endif
     enddo
   end subroutine synchronizefluxes
 
 
-!THaw boundary partners should be directly opposite their ghosts
+!boundary partners should be directly opposite their ghosts, this routine checks that this is the case
   recursive subroutine checkBoundaryPartners(thisOctal, grid)
     type(gridtype) :: grid
     type(octal), pointer :: thisOctal
@@ -427,22 +432,6 @@ contains
              bVec = thisOctal%boundaryPartner(subcell)
 
              direction = bVec - rVec
-             
-!             if(abs(direction%x) > abs(direction%y)) then
-!                direction%y = 0.d0
-!                if(abs(direction%x) > abs(direction%z)) then !We are moving in the ±x direction                                                                                                         
-!                   direction%z = 0.d0
-!                else                                         !Moving in the ±z direction                                                                                                                
-!                   direction%x = 0.d0
-!                end if
-!             else
-!                direction%x = 0.d0
-!                if(abs(direction%y) > abs(direction%z)) then !We are moving in the ±y direction                                                                                                         
-!                   direction%z = 0.d0
-!                else                                         !Moving in the ±z direction                                                                                                            $
-!                   direction%y = 0.d0
-!                end if
-!             end if
 
              !Make it a unit vector                                                                                                                                                                     
              if(direction%x > 0.d0) direction%x = direction%x / direction%x
@@ -451,8 +440,8 @@ contains
              if(direction%y < 0.d0) direction%y = -direction%y / direction%y
              if(direction%z > 0.d0) direction%z = direction%z / direction%z
              if(direction%z < 0.d0) direction%z = -direction%z / direction%z
-
-             
+ 
+!Check that boundary partners are directly opposite one another
              if((abs(direction%x) + abs(direction%y) + abs(direction%z)) /= 1.d0) then
                 print *, "boundary partner is at a diagonal!"
                 print *, "direction ", direction
@@ -469,6 +458,7 @@ contains
   end subroutine checkBoundaryPartners
 
 
+!Set up cell centre values for given propagation direction
   recursive subroutine setupx(thisoctal, grid, direction)
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -520,6 +510,7 @@ contains
     enddo
   end subroutine dumpx
 
+!set up neighbour positions and values of the advecting quantity
   recursive subroutine setupqx(thisoctal, grid, direction)
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
@@ -544,14 +535,13 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
+
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           thisoctal%x_i_minus_1(subcell) = 0.d0
           thisoctal%x_i_plus_1(subcell) = 0.d0
 
           if (.not.thisoctal%edgecell(subcell)) then
-!          if (.not.thisoctal%ghostcell(subcell)) then
 
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -573,24 +563,7 @@ contains
 !             thisoctal%x_i_minus_2(subcell) = xnext
              thisoctal%q_i_minus_1(subcell) = q
              thisoctal%q_i_minus_2(subcell) = qnext
-!
-!             if (thisoctal%ndepth == nd) then
-!                thisoctal%q_i_minus_1(subcell) = q
-!
-!             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                thisoctal%q_i_minus_1(subcell) = (q + thisOctal%q_i!(subcell))*2.d0/3.d0
-!                !
-!             els!e!!
-!
-!                thisoctal%u_interface(subcell) = &
-!                     (2.d0/3.d0)*(((thisoctal%rhou(subcell)/thisoctal%rho(subcell))/2.d0) + &
-!                     (rhou_i_minus_1/rho_i_minus_1))
-!             endif
 
-
-
-!             write(*,*) "q: ", thisoctal%q_i_minus_2(subcell), thisoctal%q_i_minus_1(subcell), thisoctal%q_i(subcell), &
-!                  thisoctal%q_i_plus_1(subcell)
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrankGlobal," error in setting up x_i values"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell)
@@ -601,6 +574,7 @@ contains
     enddo
   end subroutine setupqx
 
+!set up neighbour densities and gravtiational potentials
   recursive subroutine setuprhophi(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -654,6 +628,7 @@ contains
     enddo
   end subroutine setuprhophi
 
+!set up neighbour densities and cell interface advecting velocities - x direction
   recursive subroutine setupui(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -697,6 +672,8 @@ contains
              rho_i_minus_1 = rho
              rhou_i_minus_1 = rhou
           
+
+             !This is the velocity for the i'th cell at i-1/2
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
@@ -707,6 +684,7 @@ contains
 
   end subroutine setupui
 
+!set up neighbour densities and cell interface advecting velocities - y direction
   recursive subroutine setupvi(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -734,7 +712,6 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
@@ -747,15 +724,9 @@ contains
 
                 rho_i_minus_1 = rho
                 rhou_i_minus_1 = rhov
-
-!             if (thisoctal%ndepth == nd) then
                 weight = 0.5d0
-!             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                weight  = 0.666666666d0
-!             else
-!                weight  = 0.333333333d0 ! coarse to fine
-!             endif
 
+             !This is the velocity for the i'th cell at i-1/2
                 thisoctal%u_interface(subcell) = &
                      weight*thisoctal%rhov(subcell)/thisoctal%rho(subcell) + (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
 
@@ -764,6 +735,8 @@ contains
     enddo
   end subroutine setupvi
 
+
+!set up neighbour densities and cell interface advecting velocities - z direction
   recursive subroutine setupwi(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -791,7 +764,6 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
@@ -804,16 +776,9 @@ contains
 
                 rho_i_minus_1 = rho
                 rhou_i_minus_1 = rhow
-
-!             if (thisoctal%ndepth == nd) then
                 weight = 0.5d0
-!             else if (thisoctal%ndepth > nd) then ! fine to coarse
-!                weight  = 0.666666666d0
-!             else
-!                weight  = 0.333333333d0 ! coarse to fine
-!             endif
 
-
+             !This is the velocity for the i'th cell at i-1/2
                 thisoctal%u_interface(subcell) = &
                      weight*thisoctal%rhow(subcell)/thisoctal%rho(subcell) + (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
 
@@ -822,6 +787,8 @@ contains
     enddo
   end subroutine setupwi
 
+!setup the flux at i+1/2 and if necessary modify flux at i-1/2
+!note that thisOctal%flux_i is the flux at i-1/2
   recursive subroutine setupflux(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -849,11 +816,9 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
-!             thisoctal%x_i(subcell) = (subcellcentre(thisoctal, subcell) .dot. direction) * griddistancescale
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
@@ -861,23 +826,7 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
 
    
-thisoctal%flux_i_plus_1(subcell) = flux
-
-            !For fine cells constructing a +1 flux from a coarser cell, it is worth checking the flux gradient    
-             if(thisOctal%nDepth > nd .and. fluxinterp .and. .not. thisOctal%ghostcell(subcell)) then
-                if(.not. thisOctal%oneD) then
-                   fac = 0.d0
-                   !Dont worry about fine to coarse - it isn't that useful
-!                   call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac, &
-!                      fineToCoarse=.true.)
-                   else
-                   fac = 0.d0
-                   end if
-             else
-                fac = 0.d0
-             end if
-
-             thisoctal%flux_i_plus_1(subcell) = flux + fac
+             thisoctal%flux_i_plus_1(subcell) = flux
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -886,6 +835,9 @@ thisoctal%flux_i_plus_1(subcell) = flux
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
              thisoctal%flux_i_minus_1(subcell) = flux
              
+
+!If this cell is finer than the cell from which material is streaming, then it is worth doing a coarse to fine flux interpolation
+
              if(thisOctal%nDepth > nd .and. fluxinterp .and. .not. thisOctal%ghostCell(subcell)) then
                 if(.not. thisOctal%oneD) then
                    call NormalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
@@ -896,6 +848,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
                 fac = 0.d0
              end if   
 
+!Following the interpolation, modify the incoming flux by the appropriate factor
              thisOctal%flux_i(subcell) = thisOctal%flux_i(subcell) + fac
 
           endif
@@ -904,7 +857,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
   end subroutine setupflux
 
 
-!THaw - Flux interpolation routine                                                                                                                                                                                                       
+!Flux interpolation routine                                                                                                                                                                                                       
+!Determine the factor by which to modify the incoming flux in a cell
   subroutine normalFluxGradient(thisOctal, subcell, neighbourOctal, neighbourSubcell, grid, direction, fac)
     use mpi
     type(gridtype) :: grid
@@ -934,6 +888,9 @@ thisoctal%flux_i_plus_1(subcell) = flux
        allocate(community(iTot))
        allocate(xpos(iTot))
        allocate(f(iTot))
+
+!The community cells are those perpendicular to the advection direction, they are not the neighbour cells.
+
        !Get the direction of the neighbour's community cells                                                                                                                                                                             
        if(abs(direction%x) == 1.d0) then !Advecting in ±x-direction                                                                                                                                                                      
           community(1) = VECTOR(0.d0, 0.d0,1.d0)
@@ -946,9 +903,12 @@ thisoctal%flux_i_plus_1(subcell) = flux
           stop
        end if
 
+
+!Get the perpendicular flux gradient
        call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, &
             neighbourSubcell, grid)
        
+!Calculate the community flux gradient
        m = (f(1) - f(2))/(xpos(1) - xpos(2))
 
        dx = thisOctal%subcellSize*griddistancescale
@@ -958,6 +918,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
        rVec = subcellCentre(thisOctal, subcell)!                                                                                                                                                                                         
 
+!Give the modification factor the appropriate sign
        if(upper .and. m > 0.d0) then
           fac = df
        else if(upper .and. m < 0.d0) then
@@ -971,11 +932,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
        end if
     else !3D case                                                                                                                                                                                                                        
 
-       !Only going to do the 2D properly for now                                                                                                                                                                                         
-
        fac = 0.d0
 
-       !Holy cow, here we go..
        iTot = 4
        allocate(community(iTot))
        allocate(communitySubset(2))
@@ -1005,14 +963,18 @@ thisoctal%flux_i_plus_1(subcell) = flux
           stop
        end if
 
+
+!First get the community gradient in one direction
        communitySubset(1) = community(1)
        communitySubset(2) = community(2)
 
        call normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, &
             neighbourSubcell, grid)
-!Calculate gradients and flux modification factor
+!Calculate the community gradient
        m_a = (f(1) - f(2))/(xpos(1) - xpos(2))
 
+
+!Now repeat for the other direction
        communitySubset(1) = community(3)
        communitySubset(2) = community(4)
 
@@ -1032,8 +994,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
        rVec = subcellCentre(thisOctal, subcell)
 
-
-!Ignoring fine to coarse
 !Get the modification due to gradient in one direction
        if(upper .and. m_a > 0.d0) then
           fac_a = df_a
@@ -1072,7 +1032,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
   end subroutine normalFluxGradient
 
-
+!Find the flux gradient perpendicular to the advection direction
   subroutine   normalFluxGradientSingle(f, xpos, direction, community, upper, thisOctal, subcell, neighbourOctal, &
        neighbourSubcell, grid)
     use mpi
@@ -1098,14 +1058,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
     ID = 0
 
-
-!      if(.not. fineToCoarse) then
     call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, &
          rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-!      else
-!         call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, direction, q, &
-!         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-!      end if
          
     nVec = VECTOR(px, py, pz)
 
@@ -1228,17 +1182,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    print *, "unrecognized direction!"
                    stop
                 end if
-
-
-
-!                if(abs(direction%x) == 1.d0) then
-!                   xpos(i) = rVec%z
-!                else if(abs(direction%z) == 1.d0) then
-!                   xpos(i) = rVec%x
-!                else
-!                   print *, "unrecognized direction!"
-!                   stop
-!                end if
                 
              else
                 
@@ -1310,17 +1253,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       print *, "unrecognized direction!"
                       stop
                    end if
-
-
-
-!                   if(abs(direction%x) == 1.d0) then
-!                      xpos(i) = cVec%z
-!                   else if(abs(direction%z) == 1.d0) then
-!                      xpos(i) = cVec%x
-!                   else
-!                      print *, "unrecognized direction!"
-!                      stop
-!                   end if
                    
                 else
                    !Found the same cell
@@ -1382,15 +1314,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
                       end if
 
 
-
-!                      if(abs(direction%x) == 1.d0) then
-!                         xpos(i) = cVec%z
-!                      else if(abs(direction%z) == 1.d0) then
-!                         xpos(i) = cVec%x
-!                      else
-!                         call torus_abort("unrecognized direction!")
-!                      end if
-
                    else
                       print *, "-----------------------"
                       print *, "cvec", cvec, myrank
@@ -1403,9 +1326,9 @@ thisoctal%flux_i_plus_1(subcell) = flux
              end if
           end if
        end do
-
   end subroutine normalFluxGradientSingle
 
+!set up neighbour pressures
   recursive subroutine setuppressure(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -1458,6 +1381,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
     enddo
   end subroutine setuppressure
 
+!set up i±1 neighbour central velocities (u_i)   - x direction
+!note these are not advecting velocities (u_i-1/2) 
   recursive subroutine setupupm(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -1507,6 +1432,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
     enddo
   end subroutine setupupm
 
+!set up i±1 neighbour central velocities (u_i)   - y direction
+!note these are not advecting velocities (u_i-1/2) 
   recursive subroutine setupvpm(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -1556,6 +1483,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
     enddo
   end subroutine setupvpm
 
+!set up i±1 neighbour central velocities (u_i)   - z direction
+!note these are not advecting velocities (u_i-1/2) 
   recursive subroutine setupwpm(thisoctal, grid, direction)
     use mpi
     integer :: myrank, ierr
@@ -1606,11 +1535,9 @@ thisoctal%flux_i_plus_1(subcell) = flux
   end subroutine setupwpm
 
 
-  !Thaw - Rhie-Chow interpolation 
+!Rhie-Chow interpolation 
+!Modifies cell interface velocities to avoid odd-even decoupling 
   recursive subroutine rhiechowui(thisoctal, grid, direction, dt)
-     !Subroutine to modify the cell interface velocities according to Rhie-Chow
-     !interpolation
-
     use mpi
     integer :: myrank, ierr
     type(gridtype) :: grid
@@ -1641,6 +1568,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
              !if (.not.thisoctal%edgecell(subcell)) then
              dx = returnCodeUnitLength(thisoctal%subcellsize*gridDistanceScale)
        !      dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
+
+!The interface velocity is modified to account for the pressure gradient due to its nearest neighbours
              thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
                   ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                   (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
@@ -1651,6 +1580,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
   end subroutine rhiechowui
 
+!Calculate cell pressures, including the optional effects of artificial viscosity
   recursive subroutine computepressureGeneral(grid, thisOctal, withViscosity)
      use inputs_mod, only : etaViscosity, useViscosity
      use mpi
@@ -1681,23 +1611,17 @@ thisoctal%flux_i_plus_1(subcell) = flux
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle                                                                                                                                                             
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-
+!Get pressure, independent of viscosity
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
-  !        if(thisOctal%pressure_i(subcell) == 0.d0) then                                                                                                                                                                
-  !           print *, "ERROR, pressure is zero"                                                                                                                                                                         
-  !           stop                                                                                                                                                                                                       
-  !        end if                                                                                                                                                                                                        
 
+
+!Calculate viscosity contribution to cell pressure
           biggamma = 0.d0
-
-
           if(withViscosity) then
              if (.not.thisoctal%edgecell(subcell)) then
                 useviscosity = .false.
                 if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
                 if (useviscosity) then
-                   !     if ((thisoctal%u_i_plus_1(subcell) < 0.d0).and.(thisoctal%u_i_plus_1(subcell) .ge. thisoctal%u_i_minus_1(subcell))) &                                                                              
-                   !     useviscosity = .true.                                                                                                                                                                              
                    
                    biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
                         * thisoctal%rho(subcell)
@@ -1705,9 +1629,7 @@ thisoctal%flux_i_plus_1(subcell) = flux
                    biggamma = 0.d0
                 endif
              endif
-             
              thisoctal%pressure_i(subcell) = thisoctal%pressure_i(subcell) + biggamma
-             
           end if
 
           if (isnan(thisoctal%pressure_i(subcell))) then
@@ -1717,11 +1639,8 @@ thisoctal%flux_i_plus_1(subcell) = flux
              write(*,*) "cen ",subcellcentre(thisoctal, subcell)
              stop
           endif
-
        endif
-
     enddo
-
   end subroutine computepressureGeneral
 
   recursive subroutine pressureforceu(thisoctal, dt)
@@ -1766,7 +1685,6 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
 !             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
              dx = thisoctal%subcellsize * griddistancescale
-
 
 !             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
 !                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
