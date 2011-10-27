@@ -3338,6 +3338,7 @@ end subroutine sumFluxes
        
        if (myrankGlobal /= 0) then
 
+!refine the grid where necessary
           if(doRefine) then
              if (myrank == 1) call tune(6, "Initial refine")
              call refineGridGeneric(grid, amrTolerance)
@@ -3346,14 +3347,13 @@ end subroutine sumFluxes
        end if
        
        if(myRankGlobal /= 0) then
-          
+
+!evening up the grid ensures that no two neighbouring cells differ by more than one level of refinement          
           if(dorefine) then
              call evenUpGridMPI(grid,.false., dorefine)
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrank == 1) call tune(6, "Initial refine")
           end if
-          
        end if
        
        if(myRankGlobal /= 0) then
@@ -3365,7 +3365,9 @@ end subroutine sumFluxes
              
              call findMassOverAllThreads(grid, totalmass)
              if (writeoutput) write(*,*) "Total mass: ",totalMass/msol, " solar masses"
-             
+
+
+!initial gravity 
              if (myrank == 1) call tune(6, "Self-Gravity")
              if (myrank == 1) write(*,*) "Doing multigrid self gravity"
              call writeVtkFile(grid, "beforeselfgrav.vtk", &
@@ -3375,16 +3377,13 @@ end subroutine sumFluxes
              call zeroPhiGas(grid%octreeRoot)
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
              
+!for periodic self-gravity
              if(.not. dirichlet) then
                 call periodBoundary(grid, justGrav = .true.)
                 call transferTempStorage(grid%octreeRoot, justGrav = .true.)
                 !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
              end if
-             
-             call writeVtkFile(grid, "midpointgrav.vtk", &
-                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
-                  "phigas       ","phi          "/))
-             
+                         
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
                 call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
@@ -3396,12 +3395,14 @@ end subroutine sumFluxes
                   "phigas       ","phi          "/))
              if (myrank == 1) write(*,*) "Done"
              if (myrank == 1) call tune(6, "Self-Gravity")
-          endif
-          
+          endif          
        endif
     endif
     
     tc = 0.d0
+
+!calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
+!nearest neighbour
     if (myrank /= 0) then
        tc(myrank) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
@@ -3425,32 +3426,19 @@ end subroutine sumFluxes
     if (it ==0) nextDumpTime = 0.
     iUnrefine = 0
 
-
-!    write(plotfile,'(a)') "start.vtk"
-!    call writeVtkFile(grid, plotfile, &
-!         valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phi          " /))
-
     call findMassoverAllThreads(grid, initialMass)
 
        if (nBodyPhysics) then
           initialMass = initialMass + SUM(globalSourceArray(1:globalnSource)%mass)
        endif
 
+!loop until end of simulation time
     do while(currentTime <= tend)
        if (myrank /= 0) then
           tc(myrank) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
        endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-       !       write(*,*) "tc", tc(1:8)
-       !       if (myrank==1)write(*,*) "temp tc",temptc(1:nHydroThreads)
-
-!       if (firstStep) then 
-!          cflNumber = 1.d-2
-!          firstStep = .false.
-!       else
-!          cflNumber = 0.3d0
-!       endif
 
        dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
        if (writeoutput) write(*,*) "Courant time is ",dt
@@ -3466,27 +3454,22 @@ end subroutine sumFluxes
        endif
 
        if (myrankGlobal /= 0) then
-
-          !       smallTime = 0.3d0 * 1.d4*gridDistanceScale/2.e5
-          !       write(*,*) "myrank ",myrank, "smallest cell ",grid%halfSmallestSubcell
           if (myrank == 1) write(*,*) "courantTime", dt,cflnumber
-          !       if (myrank == 1) write(*,*) "smallTime", smallTime
           if (myrank == 1) call tune(6,"Hydrodynamics step")
-          !       if (dt > smallTime) dt = smallTime
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
+!perform a hydrodynamics step in the x, y and z directions
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
+!add/merge sink particles where necessary
           if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
 
           if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
 
-
           if (myrank == 1) call tune(6,"Hydrodynamics step")
 
-
+!unrefine the grid where necessary
           iUnrefine = iUnrefine + 1
           if(doUnRefine) then
              if (iUnrefine == 5) then
@@ -3500,32 +3483,29 @@ end subroutine sumFluxes
              endif
           end if
 
+!refine the grid where necessary
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call writeInfo("Refining grid part 2", TRIVIAL)    
              call refineGridGeneric(grid, amrTolerance)
-          !          
              call writeInfo("Done the refine part", TRIVIAL)                 
              call evenUpGridMPI(grid, .true., dorefine)
              call writeInfo("Done the even up part", TRIVIAL)    
-
-          !       if (doSelfGrav) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
              if (myrank == 1) call tune(6, "Loop refine")
              
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
              
-             if (myrank == 1) call tune(6, "Loop refine")
-                                !
+             if (myrank == 1) call tune(6, "Loop refine")                  
           end if
-
        endif
 
+!update the simulation time
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
        if (myRank == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
 
-
+!dump simulation data if simulation time is greater than next dump time
        if (currentTime .ge. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
@@ -3564,6 +3544,7 @@ end subroutine sumFluxes
     enddo
   end subroutine doHydrodynamics3d
 
+!The main routine for 2D hydrodynamics
   subroutine doHydrodynamics2d(grid)
     use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance
     use mpi
@@ -3620,18 +3601,18 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
-       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
+!Corner stuff is no longer necessary
+!       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
+!       do i = 1, nCornerPairs
+!!          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
+!       end do
+!
+!
+!       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
+!       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+!       call writeInfo("Done", TRIVIAL)
 
-       do i = 1, nCornerPairs
-          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
-       end do
-
-
-       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
-       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
-       call writeInfo("Done", TRIVIAL)
-
-
+!set up initial values
        if (it == 0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
@@ -3639,10 +3620,9 @@ end subroutine sumFluxes
           call calculateRhoV(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 0.d0, 1.d0)
           call calculateRhoW(grid%octreeRoot, direction)
-
-          !    call calculateEnergy(grid%octreeRoot, gamma, mu)
           call calculateRhoE(grid%octreeRoot, direction)
           
+!ensure that all cells are within one level of refinement of one another
           call evenUpGridMPI(grid,.true., dorefine)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3656,7 +3636,6 @@ end subroutine sumFluxes
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
           call computepressureGeneral(grid, grid%octreeroot, .false.)
-          !    call calculateEnergy(grid%octreeRoot, gamma, mu)
           
           call writeInfo("Checking Boundary Partner Vectors", TRIVIAL)
           call checkBoundaryPartners(grid%octreeRoot, grid)
@@ -3664,6 +3643,8 @@ end subroutine sumFluxes
        endif
     endif
 
+!calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
+!nearest neighbour
     tc = 0.d0
     if (myrank /= 0) then
        tc(myrank) = 1.d30
@@ -3681,16 +3662,14 @@ end subroutine sumFluxes
        nextDumpTime = grid%currentTime + tdump
     endif
 
-
     iUnrefine = 0
-    !    call writeInfo("Plotting grid", TRIVIAL)    
-
 
     jt = 0
 
-    !Thaw - trace courant time history
+    !trace courant time history
     open (444, file="tcHistory.dat", status="unknown")
 
+!loop until simulation end time
     do while(currentTime < tEnd)
 
        if (myrank == 1) write(*,*) "current time " ,currentTime
@@ -3723,16 +3702,18 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+!perform a hydrodynamics step in the x and z directions
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
              nCornerBound, cornerGroup, nCornerGroup)
        end if
 
+!get total mass/energy on the grid, for diagnostics
        call findEnergyOverAllThreads(grid, totalenergy)
        if (writeoutput) write(*,*) "Total energy: ",totalEnergy
        call findMassOverAllThreads(grid, totalmass)
        if (writeoutput) write(*,*) "Total mass: ",totalMass
 
-
+!unrefine the grid where necessary
        if(doUnrefine) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 20) then
@@ -3748,12 +3729,13 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+!not all values survive the refine - therefore need to re-add them if wanting to dump a vtk file
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
        call computepressureGeneral(grid, grid%octreeroot, .false.)
 
-
+!refine the grid where necessary
        if(doRefine) then
           call refinegridGeneric(grid, amrTolerance)
        end if
@@ -3788,6 +3770,7 @@ end subroutine sumFluxes
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
+!dump simulation data if the simulation time exceeds the next dump time
        if (currentTime .ge. nextDumpTime) then
           it = it + 1
           nextDumpTime = nextDumpTime + tDump
@@ -3810,17 +3793,13 @@ end subroutine sumFluxes
                
           if (grid%geometry == "sedov") &
                call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
-
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
-
-
     enddo
     close(444)
-
   end subroutine doHydrodynamics2d
 
-
+!clear the memory of what cells werer refined in the last refinement sweep 
   recursive subroutine zeroRefinedLastTime(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -3864,8 +3843,7 @@ end subroutine sumFluxes
 !    enddo
 !  end subroutine printRefinedLastTime
 
-
-
+!set the gas contribution to the gravitational potential across the grid to zero
   recursive subroutine zeroPhigas(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -3887,7 +3865,7 @@ end subroutine sumFluxes
     enddo
   end subroutine zeroPhigas
 
-
+!Update ghost cells with their boundary condition imposed values
   recursive subroutine transferTempStorage(thisOctal, justGrav)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -3932,6 +3910,7 @@ end subroutine sumFluxes
     if (associated(thisOCtal%tempStorage)) Deallocate(thisOctal%tempStorage)
   end subroutine transferTempStorage
 
+!Update ghost cells with their boundary condition imposed values
   recursive subroutine transferTempStorageLevel(thisOctal, nDepth, justGrav)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -4167,7 +4146,7 @@ end subroutine sumFluxes
     enddo
   end subroutine getArray
 
-
+!unclassify all ghost cells as ghosts
   recursive subroutine unsetGhosts(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -4243,8 +4222,7 @@ end subroutine sumFluxes
     enddo
   end subroutine boundaryCondCheck
 
-
-
+!set up the values that will be transferred to ghost cells in transferTempStorage
   recursive subroutine imposeBoundary(thisOctal)
     use inputs_mod, only : fixedRhoBound, rho_const
     type(octal), pointer   :: thisOctal, bOctal
