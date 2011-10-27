@@ -3054,6 +3054,7 @@ end subroutine sumFluxes
 
   end function soundSpeed
 
+!The main routine for 1D hydrodynamics
   subroutine doHydrodynamics1d(grid)
     use inputs_mod, only : tStart, tEnd, tDump, dorefine, amrTolerance
     use mpi
@@ -3077,11 +3078,9 @@ end subroutine sumFluxes
     mu = 2.d0
     nHydroThreads = nThreadsGlobal - 1
 
-
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     mu = 2.d0
-
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -3089,44 +3088,42 @@ end subroutine sumFluxes
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankGlobal /= 0) then
+!determine which mpi threads are in contact with one another (i.e. share a domain boundary)
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        do i = 1, nPairs
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
        enddo
 
+!do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
 
+!set up any initially defined velocities/rhoe
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call calculateRhoU(grid%octreeRoot, direction)
        direction = VECTOR(0.d0, 1.d0, 0.d0)
        call calculateRhoV(grid%octreeRoot, direction)
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
-
-       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
-       
+!ensure that all cells are within one level of refinement of one another       
        call evenUpGridMPI(grid,.false.,dorefine)
-       
+
+!refine the grid if necessary       
        if(dorefine) then
-!          call refineGridGeneric(grid, 1.d-2)
           call refineGridGeneric(grid, amrTolerance)
        call writeInfo("Evening up grid", TRIVIAL)    
        end if
-
        call evenUpGridMPI(grid, .false., dorefine)
-
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+!set up grid values
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
-       !    call calculateEnergy(grid%octreeRoot, gamma, mu)
-!       call calculateRhoE(grid%octreeRoot, direction) 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        call calculateRhoU(grid%octreeRoot, direction)
        direction = VECTOR(0.d0, 1.d0, 0.d0)
@@ -3141,13 +3138,19 @@ end subroutine sumFluxes
     nextDumpTime = 0.d0
     iUnrefine = 0
 
-          call findEnergyOverAllThreads(grid, totalenergy)
-          call findMassOverAllThreads(grid, totalmass)
-          iniM = totalMass
-          iniE = totalEnergy
+!get total mass/energy on grid (for diagnostics)
+    call findEnergyOverAllThreads(grid, totalenergy)
+    call findMassOverAllThreads(grid, totalmass)
+    iniM = totalMass
+    iniE = totalEnergy
+
+!loop until simulation end time
     do while(currentTime <= tend)
                
        tc = 0.d0
+
+!find the largest allowed time step on the grid, such that no cell advects material to cells other than
+!their nearest neighbours
        if (myrank /= 0) then
           tc(myrank) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
@@ -3158,16 +3161,15 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-!       if (myrank == 1) write(*,*) "courantTime", dt, it
        if (myrank == 1) call tune(6,"Hydrodynamics step")
-!       call writeInfo("calling hydro step",TRIVIAL)
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
+!perform a single hydrodynamics step 
           call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
          
-
+!mass/energy conservation diagnostics
           call findEnergyOverAllThreads(grid, totalenergy)
           call findMassOverAllThreads(grid, totalmass)
           if(myRank == 1) then
@@ -3181,9 +3183,9 @@ end subroutine sumFluxes
              print *, "iniE", iniE             
           end if
 
+!unrefine the grid where necessary
           if(dounrefine) then
-             iUnrefine = iUnrefine + 1
-             
+             iUnrefine = iUnrefine + 1             
              if (iUnrefine == 100) then
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
@@ -3191,27 +3193,27 @@ end subroutine sumFluxes
                 iUnrefine = 0
              endif
           end if
+ 
+!ensure all celss are within one level of refinement of one another
           call evenUpGridMPI(grid, .true., dorefine)
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call zeroRefinedLastTime(grid%octreeRoot)
+
+!refine the grid where necessary and ensure that all cells are within one level of refinement of one another
           if(dorefine) then
              call refineGridGeneric(grid, amrTolerance)
-           end if
-           call evenUpGridMPI(grid, .true., dorefine)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
+          end if
+          call evenUpGridMPI(grid, .true., dorefine)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)          
        else
-
        end if
 
-!          if (myRank == 1) write(*,*) "current time ",currentTime,dt
+!update the simulation time
        currentTime = currentTime + dt
+
+!dump simulation data if dump time is reached
        if (currentTime .gt. nextDumpTime) then
-          !Thaw
-          !  write(plotfile,'(a,i4.4,a)') "gaussian",it,".dat"
-          !call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
-          !VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           write(plotfile,'(a,i4.4,a)') "sod.dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
@@ -3223,7 +3225,7 @@ end subroutine sumFluxes
    
     enddo
 
-
+!final mass/energy conservation diagnostic
     call findEnergyOverAllThreads(grid, totalenergy)
     call findMassOverAllThreads(grid, totalmass)
     
@@ -3245,7 +3247,7 @@ end subroutine sumFluxes
 
   end subroutine doHydrodynamics1d
 
-
+!The main routine for 3D hydrodynamics
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
     use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance, dumpRadial
@@ -3274,31 +3276,22 @@ end subroutine sumFluxes
        close(57)
     endif
 
+!This should not be hardwired ! 
     if (grid%geometry == "shakara") doSelfGrav = .false.
     if (grid%geometry == "rtaylor") doSelfGrav = .false.
     if (grid%geometry == "diagSod") doSelfGrav = .false.
-
-!    dorefine = .true.
+    if (grid%geometry == "kelvin" ) doSelfGrav = .false.  
 
     nHydroThreads = nThreadsGlobal - 1
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-
     mu = 2.d0
-
     viewVec = VECTOR(-1.d0,0.d0,0.d0)
-    !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
     viewVec = rotateY(viewVec, 25.d0*degtorad)
 
-
-
     tff = 1.d0 / sqrt(bigG * (1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
+
     if (tdump == 0.d0) then
-       !    tDump = 0.01d0
-       !tDump = 1.d-2 * tff
-       
-!       tff = sqrt((3.d0*pi)/(32.d0*bigG*3.466d-21))
-       !tDump = 0.01d0 * tff
        tDump = 1.d0 * tff
     endif
 
@@ -3314,6 +3307,7 @@ end subroutine sumFluxes
     tdump = returnCodeUnitTime(tdump)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
+!determine which mpi threads are in contact with one another (i.e. share a domain boundary)
     if (myrankGlobal /= 0) then
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        do i = 1, nPairs
@@ -3321,91 +3315,76 @@ end subroutine sumFluxes
             write(*,'(a,i5,i4,a,i4,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
        enddo
 
-
+!do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
     endif
 
-
-
-!    if (readgrid) then
-!       if(myrankglobal /= 0) then
-!          call zeroPhiGas(grid%octreeRoot)
-!          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-!       endif
-!    endif
-
-
+!calculate initial values
     if (.not.readgrid) then
-    if (myrankGlobal /= 0) then
-
-
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call calculateRhoU(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 1.d0, 0.d0)
-       call calculateRhoV(grid%octreeRoot, direction)
-       direction = VECTOR(0.d0, 0.d0, 1.d0)
-       call calculateRhoW(grid%octreeRoot, direction)
-
-
-       call calculateRhoInCodeUnits(grid%octreeRoot)
-       call calculateEnergyInCodeUnits(grid%octreeRoot)
-       call calculatePhiInCodeUnits(grid%octreeRoot)
-
-       call calculateRhoE(grid%octreeRoot, direction)
-    end if
-
-    if (myrankGlobal /= 0) then
-
-
-       if(doRefine) then
-           if (myrank == 1) call tune(6, "Initial refine")
-           call refineGridGeneric(grid, amrTolerance)
-           call writeInfo("Evening up grid", TRIVIAL)    
+       if (myrankGlobal /= 0) then
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call calculateRhoU(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 1.d0, 0.d0)
+          call calculateRhoV(grid%octreeRoot, direction)
+          direction = VECTOR(0.d0, 0.d0, 1.d0)
+          call calculateRhoW(grid%octreeRoot, direction)
+          call calculateRhoInCodeUnits(grid%octreeRoot)
+          call calculateEnergyInCodeUnits(grid%octreeRoot)
+          call calculatePhiInCodeUnits(grid%octreeRoot)
+          call calculateRhoE(grid%octreeRoot, direction)
        end if
-   end if
-   
-    if(myRankGlobal /= 0) then
+       
+       if (myrankGlobal /= 0) then
 
-       if(dorefine) then
+          if(doRefine) then
+             if (myrank == 1) call tune(6, "Initial refine")
+             call refineGridGeneric(grid, amrTolerance)
+             call writeInfo("Evening up grid", TRIVIAL)    
+          end if
+       end if
+       
+       if(myRankGlobal /= 0) then
+          
+          if(dorefine) then
+             call evenUpGridMPI(grid,.false., dorefine)
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             
+             if (myrank == 1) call tune(6, "Initial refine")
+          end if
+          
+       end if
+       
+       if(myRankGlobal /= 0) then
           call evenUpGridMPI(grid,.false., dorefine)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          
-          if (myrank == 1) call tune(6, "Initial refine")
-       end if
-
-    end if
-
-    if(myRankGlobal /= 0) then
-       call evenUpGridMPI(grid,.false., dorefine)
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call setupX(grid%octreeRoot, grid, direction)
-       call setupQX(grid%octreeRoot, grid, direction)
-       if (doselfGrav) then
-
-          call findMassOverAllThreads(grid, totalmass)
-          if (writeoutput) write(*,*) "Total mass: ",totalMass/msol, " solar masses"
-
-          if (myrank == 1) call tune(6, "Self-Gravity")
-          if (myrank == 1) write(*,*) "Doing multigrid self gravity"
-          call writeVtkFile(grid, "beforeselfgrav.vtk", &
-          valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-            ,"phi          " /))
-          
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          call setupX(grid%octreeRoot, grid, direction)
+          call setupQX(grid%octreeRoot, grid, direction)
+          if (doselfGrav) then
+             
+             call findMassOverAllThreads(grid, totalmass)
+             if (writeoutput) write(*,*) "Total mass: ",totalMass/msol, " solar masses"
+             
+             if (myrank == 1) call tune(6, "Self-Gravity")
+             if (myrank == 1) write(*,*) "Doing multigrid self gravity"
+             call writeVtkFile(grid, "beforeselfgrav.vtk", &
+                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+                  ,"phi          " /))
+             
              call zeroPhiGas(grid%octreeRoot)
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
              
              if(.not. dirichlet) then
                 call periodBoundary(grid, justGrav = .true.)
                 call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-!             if (myrankglobal == 1) call tune(6,"Periodic boundary")
+                !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
              end if
-
+             
              call writeVtkFile(grid, "midpointgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
-               "phigas       ","phi          "/))
-
+                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+                  "phigas       ","phi          "/))
+             
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
                 call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
@@ -3413,15 +3392,15 @@ end subroutine sumFluxes
              call sumGasStarGravity(grid%octreeRoot)
 
              call writeVtkFile(grid, "afterselfgrav.vtk", &
-               valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
-               "phigas       ","phi          "/))
-          if (myrank == 1) write(*,*) "Done"
-          if (myrank == 1) call tune(6, "Self-Gravity")
+                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+                  "phigas       ","phi          "/))
+             if (myrank == 1) write(*,*) "Done"
+             if (myrank == 1) call tune(6, "Self-Gravity")
+          endif
+          
        endif
-
     endif
- endif
-
+    
     tc = 0.d0
     if (myrank /= 0) then
        tc(myrank) = 1.d30
@@ -3629,7 +3608,7 @@ end subroutine sumFluxes
        !    viewVec = rotateZ(viewVec, 20.d0*degtorad)
        viewVec = rotateY(viewVec, 25.d0*degtorad)
 
-
+!determine which mpi threads are in contact with one another (i.e. share a domain boundary)
        if (myRank == 1) write(*,*) "CFL set to ", cflNumber
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -3637,8 +3616,7 @@ end subroutine sumFluxes
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
 
-!          call evenUpGridMPI(grid,.true., dorefine)
-
+!do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
