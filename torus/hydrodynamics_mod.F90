@@ -1216,14 +1216,29 @@ thisoctal%flux_i_plus_1(subcell) = flux
                 end if
                 rVec = VECTOR(px, py, pz)
                 f(i) = flux
-                if(abs(direction%x) == 1.d0) then
+
+
+                if(abs(community(i)%z) == 1.d0) then
                    xpos(i) = rVec%z
-                else if(abs(direction%z) == 1.d0) then
+                else if(abs(community(i)%x) == 1.d0) then
                    xpos(i) = rVec%x
+                else if(abs(community(i)%y) == 1.d0) then
+                   xpos(i) = rVec%y
                 else
                    print *, "unrecognized direction!"
                    stop
                 end if
+
+
+
+!                if(abs(direction%x) == 1.d0) then
+!                   xpos(i) = rVec%z
+!                else if(abs(direction%z) == 1.d0) then
+!                   xpos(i) = rVec%x
+!                else
+!                   print *, "unrecognized direction!"
+!                   stop
+!                end if
                 
              else
                 
@@ -1284,14 +1299,28 @@ thisoctal%flux_i_plus_1(subcell) = flux
                   
 !                   rVec = subcellcentre(communityoctal, communitysubcell)
                    f(i) = flux
-                   if(abs(direction%x) == 1.d0) then
-                      xpos(i) = cVec%z
-                   else if(abs(direction%z) == 1.d0) then
-                      xpos(i) = cVec%x
+
+                   if(abs(community(i)%z) == 1.d0) then
+                      xpos(i) = rVec%z
+                   else if(abs(community(i)%x) == 1.d0) then
+                      xpos(i) = rVec%x
+                   else if(abs(community(i)%y) == 1.d0) then
+                      xpos(i) = rVec%y
                    else
                       print *, "unrecognized direction!"
                       stop
                    end if
+
+
+
+!                   if(abs(direction%x) == 1.d0) then
+!                      xpos(i) = cVec%z
+!                   else if(abs(direction%z) == 1.d0) then
+!                      xpos(i) = cVec%x
+!                   else
+!                      print *, "unrecognized direction!"
+!                      stop
+!                   end if
                    
                 else
                    !Found the same cell
@@ -1339,13 +1368,28 @@ thisoctal%flux_i_plus_1(subcell) = flux
 
                       ID(i) = 4
                       f(i) = flux
-                      if(abs(direction%x) == 1.d0) then
-                         xpos(i) = cVec%z
-                      else if(abs(direction%z) == 1.d0) then
-                         xpos(i) = cVec%x
+
+
+                      if(abs(community(i)%z) == 1.d0) then
+                         xpos(i) = rVec%z
+                      else if(abs(community(i)%x) == 1.d0) then
+                         xpos(i) = rVec%x
+                      else if(abs(community(i)%y) == 1.d0) then
+                         xpos(i) = rVec%y
                       else
-                         call torus_abort("unrecognized direction!")
+                         print *, "unrecognized direction!"
+                         stop
                       end if
+
+
+
+!                      if(abs(direction%x) == 1.d0) then
+!                         xpos(i) = cVec%z
+!                      else if(abs(direction%z) == 1.d0) then
+!                         xpos(i) = cVec%x
+!                      else
+!                         call torus_abort("unrecognized direction!")
+!                      end if
 
                    else
                       print *, "-----------------------"
