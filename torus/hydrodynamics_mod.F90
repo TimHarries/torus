@@ -1643,6 +1643,7 @@ contains
     enddo
   end subroutine computepressureGeneral
 
+!Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceu(thisoctal, dt)
     use mpi
     integer :: myrank, ierr
@@ -1666,12 +1667,8 @@ contains
              end if
           end do
        else
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
-
-
           if (.not.thisoctal%ghostcell(subcell)) then
-
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrank," error in setting up x_i values"
@@ -1683,42 +1680,21 @@ contains
 
              rhou = thisoctal%rhou(subcell)
 
-!             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
              dx = thisoctal%subcellsize * griddistancescale
-
-!             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
-!                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-
   
-             !Thaw - Rhie-Chow interpolation
-!             !print *, "rhou", thisoctal%rhou(subcell)
+!modify the cell velocity due to the pressure gradient
              if(rhieChow) then
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &
                      ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-                !print *, "rhou", thisoctal%rhou(subcell)
-
-!                write(*,*) "rhou pressure ", thisOctal%rhou(subcell),  (dt) * &
-!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
-!                    thisOctal%pressure_i(subcell)
-!
-
+                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx!
              else 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-
-
              end if
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
-
-             !     write(*,*) "rhou grav ",thisOctal%rhou(subcell),(dt/2.d0) * & !gravity
-!                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
-!                  thisoctal%phi_i_minus_1(subcell)) / dx 
-
 
              if (isnan(thisoctal%rhou(subcell))) then
                 write(*,*) "rhou ",thisoctal%rhou(subcell)
@@ -1727,26 +1703,7 @@ contains
                 write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
              endif
 
-!             if (thisoctal%rhou(subcell)/thisoctal%rho(subcell) > 1.d30) then
-!                write(*,*) "u ",thisoctal%rhou(subcell)/thisoctal%rho(subcell)/1.d5
-!                write(*,*) "rho ", thisoctal%rho(subcell)
-!                write(*,*) "rho i+1", thisoctal%rho_i_plus_1(subcell)
-!                write(*,*) "rho i-1", thisoctal%rho_i_minus_1(subcell)
-!                write(*,*) "pressure i + 1 " ,thisoctal%pressure_i_plus_1(subcell)
-!                write(*,*) "pressure i - 1 " ,thisoctal%pressure_i_minus_1(subcell)
-!                write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
-!                write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
-!             endif
-
-                
-!             write(*,*) thisoctal%rhou(subcell), thisoctal%pressure_i_plus_1(subcell), &
-!                  thisoctal%pressure_i_minus_1(subcell), thisoctal%x_i_plus_1(subcell), &
-!                  thisoctal%x_i_minus_1(subcell)
-
-!             if (iequationofstate == 0) then
-
-
-             !Thaw - apply similar rhie-chow interpolation here?
+!Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then             
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * &!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) * thisoctal%u_i_plus_1(subcell) - &
@@ -1755,21 +1712,18 @@ contains
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0)* & !gravity
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
-            
-
-
-!             endif
+           
              if (isnan(thisoctal%rhou(subcell))) then
                 write(*,*) "bug",thisoctal%rhou(subcell), &
                      thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
                 do;enddo
                 endif
              endif
-
        endif
     enddo
   end subroutine pressureforceu
 
+!Calculate the modification to cell velocity and energy due to the pressure gradient -y direction 
   recursive subroutine pressureforcev(thisoctal, dt)
     use mpi
     integer :: myrank, ierr
@@ -1792,12 +1746,8 @@ contains
              end if
           end do
        else
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
-
-
           if (.not.thisoctal%ghostcell(subcell)) then
-
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrank," error in setting up x_i values"
@@ -1808,26 +1758,13 @@ contains
              endif
 
              rhou = thisoctal%rhov(subcell)
-
-!             dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
              dx = thisoctal%subcellsize * griddistancescale
 
-
-         !    thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
-         !         (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-
+!modify the cell velocity due to the pressure gradient
             if(rhieChow) then
                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                     (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-                    !print *, "rhou", thisoctal%rhou(subcell)
-
-!                write(*,*) "rhov pressure ", thisOctal%rhov(subcell),  (dt) * &
-!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
-!                    thisOctal%pressure_i(subcell)
-
-
             else
                     thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
                     (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
@@ -1835,7 +1772,6 @@ contains
              thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
-
                     
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "rhov ",thisoctal%rhov(subcell)
@@ -1844,36 +1780,15 @@ contains
                 write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
              endif
 
-!             if (thisoctal%rhov(subcell)/thisoctal%rho(subcell) > 1.d10) then
-!                write(*,*) "u ",thisoctal%rhov(subcell)/thisoctal%rho(subcell)/1.d5
-!                write(*,*) "rho ", thisoctal%rho(subcell)
-!                write(*,*) "rho i+1", thisoctal%rho_i_plus_1(subcell)
-!                write(*,*) "rho i-1", thisoctal%rho_i_minus_1(subcell)
-!                write(*,*) "pressure i + 1 " ,thisoctal%pressure_i_plus_1(subcell)
-!                write(*,*) "pressure i - 1 " ,thisoctal%pressure_i_minus_1(subcell)
-!                write(*,*) "x i + 1 ", thisoctal%x_i_plus_1(subcell)
-!                write(*,*) "x i - 1 ", thisoctal%x_i_minus_1(subcell)
-!             endif
-
-                
-!             write(*,*) thisoctal%rhou(subcell), thisoctal%pressure_i_plus_1(subcell), &
-!                  thisoctal%pressure_i_minus_1(subcell), thisoctal%x_i_plus_1(subcell), &
-!                  thisoctal%x_i_minus_1(subcell)
-
-!             if (iequationofstate == 0) then
-
-
+!Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then 
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * &
                      (thisoctal%pressure_i_plus_1(subcell) * thisoctal%u_i_plus_1(subcell) - &
                      thisoctal%pressure_i_minus_1(subcell) * thisoctal%u_i_minus_1(subcell)) / dx
                      
-
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * & !gravity
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
-
              endif
-
 
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "bug",thisoctal%rhov(subcell), &
@@ -1885,7 +1800,7 @@ contains
     enddo
   end subroutine pressureforcev
 
-
+!Calculate the modification to cell velocity and energy due to the pressure gradient -z direction
   recursive subroutine pressureforcew(thisoctal, dt)
     use mpi
     integer :: myrank, ierr
@@ -1910,10 +1825,7 @@ contains
 
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
-
-
           if (.not.thisoctal%ghostcell(subcell)) then
-
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrank," error in setting up x_i values"
@@ -1925,42 +1837,23 @@ contains
 
              rhow = thisoctal%rhow(subcell)
 
-
-!             dx = 0.5d0 * (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
              dx = thisoctal%subcellsize * griddistancescale
 
-            ! thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
-            !      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-
-
+!modify the cell velocity due to the pressure gradient
             if(rhieChow) then
                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
                ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
                (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-               !print *, "rhou", thisoctal%rhou(subcell)
-
-!                write(*,*) "rhow pressure ", thisOctal%rhow(subcell),  (dt) * &
-!                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-!                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx, &
-!                    thisOctal%pressure_i(subcell)
-
             else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
                   (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-
             end if
 
              thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
-
-
-
-!             write(*,*) thisoctal%rhou(subcell), thisoctal%pressure_i_plus_1(subcell), &
-!                  thisoctal%pressure_i_minus_1(subcell), thisoctal%x_i_plus_1(subcell), &
-!                  thisoctal%x_i_minus_1(subcell)
-
+!Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * &
                      (thisoctal%pressure_i_plus_1(subcell) * thisoctal%u_i_plus_1(subcell) - &
@@ -1969,7 +1862,6 @@ contains
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * & !gravity
                   rhow * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
-
 
             if (isnan(thisoctal%rhow(subcell))) then
                 write(*,*) "bug",thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
@@ -1980,7 +1872,7 @@ contains
     enddo
   end subroutine pressureforcew
 
-
+!Use to damp oscillations/flow
   recursive subroutine damp(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2008,7 +1900,7 @@ contains
   end subroutine damp
 
 
-
+!copy cell rho to advecting quantity q
   recursive subroutine copyrhotoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2032,6 +1924,7 @@ contains
     enddo
   end subroutine copyrhotoq
 
+!copy cell ionfrac to advecting quantity q
   recursive subroutine copyIonfractoq(thisoctal, iion)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2055,6 +1948,7 @@ contains
     enddo
   end subroutine copyIonfractoq
 
+!copy cell rhoe to advecting quantity q
   recursive subroutine copyrhoetoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2078,6 +1972,7 @@ contains
     enddo
   end subroutine copyrhoetoq
 
+!copy cell rhou to advecting quantity q
   recursive subroutine copyrhoutoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2101,6 +1996,7 @@ contains
     enddo
   end subroutine copyrhoutoq
 
+!copy cell rhov to advecting quantity q
   recursive subroutine copyrhovtoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2124,6 +2020,7 @@ contains
     enddo
   end subroutine copyrhovtoq
 
+!copy cell rhow to advecting quantity q
   recursive subroutine copyrhowtoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2147,6 +2044,7 @@ contains
     enddo
   end subroutine copyrhowtoq
 
+!copy advecting quantity q back to cell rhov
   recursive subroutine copyqtorhov(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2172,6 +2070,7 @@ contains
     enddo
   end subroutine copyqtorhov
 
+!copy advecting quantity q back to cell rhow
   recursive subroutine copyqtorhow(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2197,6 +2096,7 @@ contains
     enddo
   end subroutine copyqtorhow
 
+!copy advecting quantity q back to cell rho
   recursive subroutine copyqtorho(thisoctal, direction)
     type(vector) :: direction
     type(octal), pointer   :: thisoctal
@@ -2248,6 +2148,7 @@ contains
     enddo
   end subroutine copyqtorho
 
+!copy advecting quantity q back to cell ionfrac
   recursive subroutine copyqtoIonfrac(thisoctal, direction, iion)
     type(vector) :: direction
     type(octal), pointer   :: thisoctal
@@ -2276,6 +2177,7 @@ contains
     enddo
   end subroutine copyqtoIonfrac
 
+!copy advecting quantity q back to cell rhoe
   recursive subroutine copyqtorhoe(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2301,6 +2203,7 @@ contains
     enddo
   end subroutine copyqtorhoe
 
+!copy advecting quantity q back to cell rhou
   recursive subroutine copyqtorhou(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2327,7 +2230,7 @@ contains
     enddo
   end subroutine copyqtorhou
 
-
+!copy cell rho to q, advect q, copy q back to cell rho
   subroutine advectrho(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2342,6 +2245,7 @@ contains
 
   end subroutine advectrho
 
+!copy cell ionfrac to q, advect q, copy q back to cell ionfrac
   subroutine advectIonFrac(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2359,6 +2263,7 @@ contains
 
   end subroutine advectIonFrac
 
+!copy cell rhoe to q, advect q, copy q back to cell rhoe
   subroutine advectrhoe(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2374,6 +2279,7 @@ contains
 
   end subroutine advectrhoe
 
+!copy cell rhou to q, advect q, copy q back to cell rhou
   subroutine advectrhou(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2389,6 +2295,7 @@ contains
 
   end subroutine advectrhou
 
+!copy cell rhov to q, advect q, copy q back to cell rhov
   subroutine advectrhov(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2404,6 +2311,7 @@ contains
 
   end subroutine advectrhov
 
+!copy cell rhow to q, advect q, copy q back to cell rhow
   subroutine advectrhow(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2419,7 +2327,7 @@ contains
 
   end subroutine advectrhow
 
-
+!Perform the advection on q
   subroutine advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -2432,24 +2340,17 @@ contains
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupqx(grid%octreeroot, grid, direction)
-!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call fluxlimiter(grid%octreeroot)
     call constructflux(grid%octreeroot, dt)
- !   call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
- !   call setupflux(grid%octreeroot, grid, direction)
-!      if(fluxinterp) then
-      call setupflux(grid%octreeroot, grid, direction)
- !     end if
-!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound) 
- !   call setupflux(grid%octreeroot, grid, direction, interp=.false.)
+    call setupflux(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup) 
     call updatecellq(grid%octreeroot, dt)
 
   end subroutine advectq
 
-
+!Sum all fluxes on the grid
 recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
   use mpi
   integer :: subcell, i
@@ -2459,8 +2360,6 @@ recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
   integer :: myRank, ierr
 
   call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-
-! totalFlux = 0.d0
 
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
@@ -2476,14 +2375,13 @@ recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
         if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
         if (.not.thisoctal%edgecell(subcell)) then
         totalFlux = totalFlux + thisOctal%flux_i(subcell)
-      !  print *, "thisflux = ", thisOctal%flux_i(subcell)
         end if
      end if
   end do
  ! print *, "total flux = ", totalFlux
 end subroutine sumFluxes
 
-
+!Perform a single hydrodynamics step, in one direction, for the 1D case. 
   subroutine  hydrostep1d(grid, dt, npairs, thread1, thread2, nbound, group, ngroup)
     type(gridtype) :: grid
     real(double) :: dt
@@ -2492,6 +2390,7 @@ end subroutine sumFluxes
     
     direction = vector(1.d0, 0.d0, 0.d0)
 
+!Boundary conditions
     call imposeboundary(grid%octreeroot)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
@@ -2499,9 +2398,12 @@ end subroutine sumFluxes
     direction = vector(1.d0, 0.d0, 0.d0)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
  
+!Set up the grid values
     call setupui(grid%octreeroot, grid, direction)
     call setupupm(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+
+!Make any necessary rhie-chow interpolation modifications to the advecting velocity
     if (rhieChow) then
      call computepressureGeneral(grid, grid%octreeroot, .false.) !Thaw Rhie-Chow might just need setuppressureu
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
@@ -2511,6 +2413,7 @@ end subroutine sumFluxes
      call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     end if
 
+!Advect rho, rhou, rhoe
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -2521,6 +2424,8 @@ end subroutine sumFluxes
     call setupupm(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
 
+
+!calculate and set up grid pressures
     call computepressureGeneral(grid, grid%octreeroot, .true.) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call setuppressure(grid%octreeroot, grid, direction)
@@ -2529,7 +2434,11 @@ end subroutine sumFluxes
        call rhiechowui(grid%octreeroot, grid, direction, dt)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     end if
+
+!update cell velocities and rhoe's due to pressure gradient
     call pressureforceu(grid%octreeroot, dt)
+
+!impose boundary conditions again
     call imposeboundary(grid%octreeroot)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
@@ -2560,8 +2469,6 @@ end subroutine sumFluxes
   end subroutine fullstep3d
 
     
-
-
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet
