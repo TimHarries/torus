@@ -2488,13 +2488,25 @@ end subroutine sumFluxes
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
+    if (selfGravity) then
+       if (myrankglobal == 1) call tune(6,"Self-gravity")
+       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call zeroSourcepotential(grid%octreeRoot)
+       if (globalnSource > 0) then
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+       endif
+       call sumGasStarGravity(grid%octreeRoot)
+       if (myrankglobal == 1) call tune(6,"Self-gravity")
+    endif
+
+
 !self gravity (periodic)
    if (selfGravity .and. .not. dirichlet) then
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
-    
+
 
 !Half a step (i.e. dt/2) in the x-direction
     if (myrankglobal == 1) call tune(6,"X-direction step")
