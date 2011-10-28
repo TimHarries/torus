@@ -6944,22 +6944,23 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
-    if((rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm)) then
+!    if((rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm)) then
+    if(sqrt(rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm/1.d10)) then
        thisOctal%rho(subcell) = 3.13e-7*(mUnit/(lUnit**3.d0))
-       thisOctal%temperature(subcell) = real(tInt)
+       thisOctal%temperature(subcell) = tInt
     else
        thisOctal%rho(subcell) = 3.13e-8*(mUnit/(lUnit**3.d0))
-       thisOctal%temperature(subcell) = real(tExt)
+       thisOctal%temperature(subcell) = tExt
     end if
 
     thisOctal%gamma(subcell) = gamma
     eThermal = (kErg*thisOctal%temperature(subcell))/(gamma - 1.d0)
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * eThermal
-    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%iEquationOfState(subcell) = 1
     thisOCtal%pressure_i(subcell) = (gamma-1.d0) * eThermal * thisOctal%rho(subcell)
 
     inflowRho = 3.13e-8*(mUnit/(lUnit**3.d0))
-    inflowSpeed = 1.d8/3.08e10
+    inflowSpeed = 1.d8
     inflowMomentum = inflowSpeed * inflowRho
     inflowEnergy = ((kErg*tExt)/(gamma-1.d0)) + (0.5d0*(inflowSpeed**2.d0))
     inflowRhoe = inflowEnergy * inflowRho

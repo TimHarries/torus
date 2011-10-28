@@ -116,7 +116,7 @@ contains
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-    print *, " RANK ", myRank, "JOINING THE FRAY"
+!    print *, " RANK ", myRank, "JOINING THE FRAY"
 
 !    deltaTforDump = 3.14d10 !1kyr
 !    if (grid%geometry == "hii_test") deltaTforDump = 2.d10
@@ -148,6 +148,11 @@ contains
           deltaTforDump = 3.14d11
           tend = 50.d0*deltaTforDump
        endif
+       
+       grid%currentTime = 0.d0
+       deltaTforDump = 3.14d11
+       tend = 50.d0*deltaTforDump
+
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
        if(justDump) then 
@@ -160,8 +165,8 @@ contains
        end if
     end if
 
-    call writeVtkFile(grid, "ini.vtk", &
-         valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont ", "mpithread  " /))
+!    call writeVtkFile(grid, "ini.vtk", &
+!         valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont ", "mpithread  " /))
 
     iunrefine = 0
     startFromNeutral = .false.
@@ -236,6 +241,7 @@ contains
 
        if(.not. noPhoto) then
           looplimitTime = deltaTForDump
+          looplimittime = 1.d30
           do irefine = 1, 1
              if (irefine == 1) then
                 call writeInfo("Calling photoionization loop",TRIVIAL)
@@ -290,9 +296,9 @@ contains
              if (doselfGrav) then
                 if (myrank == 1) call tune(6, "Self-Gravity")
                 if (myrank == 1) write(*,*) "Doing multigrid self gravity"
-                call writeVtkFile(grid, "beforeselfgrav.vtk", &
-                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-                ,"phi          " /))
+!                call writeVtkFile(grid, "beforeselfgrav.vtk", &
+!                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+!                ,"phi          " /))
                 
                 call zeroPhiGas(grid%octreeRoot)
                 call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
@@ -308,9 +314,9 @@ contains
                 endif
                 call sumGasStarGravity(grid%octreeRoot)
                 
-                call writeVtkFile(grid, "afterselfgrav.vtk", &
-                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
-                "phigas       ","phi          "/))
+!                call writeVtkFile(grid, "afterselfgrav.vtk", &
+!                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+!                "phigas       ","phi          "/))
                 if (myrank == 1) write(*,*) "Done"
                 if (myrank == 1) call tune(6, "Self-Gravity")
               
@@ -416,6 +422,7 @@ contains
           else
              looplimittime = deltaTForDump
           end if
+          looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., .true.)
 
@@ -454,17 +461,17 @@ contains
        
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
-       call writeVtkFile(grid, mpiFilename, &
-            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-            "hydrovelocity","sourceCont   ","pressure     "/))
+!       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!            "hydrovelocity","sourceCont   ","pressure     "/))
 
        if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
 
-       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
-       call writeVtkFile(grid, mpiFilename, &
-            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-            "hydrovelocity","sourceCont   ","pressure     "/))
+!       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!            "hydrovelocity","sourceCont   ","pressure     "/))
 
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1469,7 +1476,7 @@ end subroutine radiationHydro
              enddo
 
 
-             print *, "Rank ", myRank, "has nPeriodic : ", nPeriodic
+!             print *, "Rank ", myRank, "has nPeriodic : ", nPeriodic
              nPeriodic = 0
 
           endif
@@ -1663,25 +1670,25 @@ end subroutine radiationHydro
                                   thisThreadConverged = .true.
                                else
                                   thisThreadConverged = .false.                             
-                                  if(deltaT /= 0.d0 .and. .not. failed) then
-                                     write(*,*) "deltaT = ", deltaT
-                                     write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-                                     write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-                                     write(*,*) "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
-                                     write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
-                                     write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
-                                  end if
+!                                  if(deltaT /= 0.d0 .and. .not. failed) then
+!                                     write(*,*) "deltaT = ", deltaT
+!                                     write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+!                                     write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+!                                     write(*,*) "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
+!                                     write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
+!                                     write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
+!                                  end if
                                   failed = .true.
                                end if
                             else
                                thisThreadConverged = .false.  
-                               if(deltaT /= 0.d0 .and. .not. failed) then
-                                  write(*,*) "deltaT = ", deltaT
-                                  write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-                                  write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-                                  write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
-                                  write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
-                               end if
+!                               if(deltaT /= 0.d0 .and. .not. failed) then
+!                                  write(*,*) "deltaT = ", deltaT
+!                                  write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+!                                  write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+!                                  write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
+!                                  write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
+!                               end if
                                failed = .true.
                             end if
                          end if
@@ -1756,18 +1763,18 @@ end subroutine radiationHydro
      end if
      
 
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"
-
-     if(hydrodynamics) then
-        call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-             "hydrovelocity","sourceCont   ","pressure     "/))
-
-     else
-        call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"HI           " , "temperature  ", &
-             "sourceCont   "/))
-     end if
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!
+!     if(hydrodynamics) then
+!        call writeVtkFile(grid, mpiFilename, &
+!             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!             "hydrovelocity","sourceCont   ","pressure     "/))!
+!!
+ !    else
+ !       call writeVtkFile(grid, mpiFilename, &
+ !            valueTypeString=(/"HI           " , "temperature  ", &
+ !            "sourceCont   "/))
+ !    end if
 
      if(myRank /= 0) then
 !        iUnrefine = iUnrefine + 1
