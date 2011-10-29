@@ -1646,11 +1646,12 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceu(thisoctal, dt)
     use mpi
+    use inputs_mod, only : radiationPressure
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, rhou, dx
+    real(double) :: dt, rhou, dx, dv
     
 
 
@@ -1681,6 +1682,8 @@ contains
              rhou = thisoctal%rhou(subcell)
 
              dx = thisoctal%subcellsize * griddistancescale
+
+             dv = cellVolume(thisOctal, subcell) * 1.d30
   
 !modify the cell velocity due to the pressure gradient
              if(rhieChow) then
@@ -1695,6 +1698,15 @@ contains
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
+
+             if (radiationPressure) then
+                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                     dt * thisOctal%radiationMomentum(subcell)%x/dv
+                if (thisOctal%iequationOfState(subcell) /= 1) then
+                   thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) + dt * & 
+                         thisOctal%radiationMomentum(subcell)%x/dv
+                endif
+             endif
 
              if (isnan(thisoctal%rhou(subcell))) then
                 write(*,*) "rhou ",thisoctal%rhou(subcell)
@@ -1726,11 +1738,12 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient -y direction 
   recursive subroutine pressureforcev(thisoctal, dt)
     use mpi
+    use inputs_mod, only : radiationPressure
     integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, rhou, dx
+    real(double) :: dt, rhou, dx, dv
 
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
@@ -1759,6 +1772,7 @@ contains
 
              rhou = thisoctal%rhov(subcell)
              dx = thisoctal%subcellsize * griddistancescale
+             dv = cellVolume(thisOctal,subcell)*1.d30
 
 !modify the cell velocity due to the pressure gradient
             if(rhieChow) then
@@ -1790,6 +1804,15 @@ contains
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
 
+             if (radiationPressure) then
+                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+                     dt * thisOctal%radiationMomentum(subcell)%y/dv
+                if (thisOctal%iequationOfState(subcell) /= 1) then
+                   thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) + dt * &
+                         thisOctal%radiationMomentum(subcell)%y/dv
+                endif
+             endif
+
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "bug",thisoctal%rhov(subcell), &
                      thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
@@ -1807,7 +1830,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, rhow, dx
+    real(double) :: dt, rhow, dx, dv
 
     call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
@@ -1839,6 +1862,8 @@ contains
 
              dx = thisoctal%subcellsize * griddistancescale
 
+             dv = cellVolume(thisOctal, subcell) * 1.d30
+
 !modify the cell velocity due to the pressure gradient
             if(rhieChow) then
                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
@@ -1861,6 +1886,15 @@ contains
 
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * & !gravity
                   rhow * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
+             endif
+
+             if (radiationPressure) then
+                thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                     dt * thisOctal%radiationMomentum(subcell)%z / dv
+                if (thisOctal%iequationOfState(subcell) /= 1) then
+                   thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) + dt * &
+                        thisOctal%radiationMomentum(subcell)%z/dv
+                endif
              endif
 
             if (isnan(thisoctal%rhow(subcell))) then
@@ -8873,7 +8907,7 @@ end subroutine minMaxDepth
              allocate(thisOctal%etaline(1:thisOctal%maxChildren))
              thisOctal%etaline = 0.d0
           endif
-          if (rk < thisOctal%subcellSize/4.d0)  n = 0
+          if (rk < (thisOctal%subcellSize*gridDistanceScale)/4.d0)  n = 0
              
           write(*,*) "sink is on thread ",myrankglobal
           write(*,*) "using n for correction: ",n

@@ -159,7 +159,7 @@ contains
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     "/))
+               "hydrovelocity","sourceCont   ","pressure     ","radmom       "/))
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("vtk dump completed. Aborting...")
        end if
@@ -539,7 +539,7 @@ contains
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     "/))
+               "hydrovelocity","sourceCont   ","pressure     ","radmom       "/))
 
           write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
           call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename, grid)
@@ -1877,7 +1877,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     Photonmomentum = epsOverDeltaT / cSpeed
     thisLam = (cSpeed / thisFreq) * 1.e8
-
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then

@@ -89,6 +89,7 @@
   logical :: dirichlet                !Use dirichlet boundary conditions - otherwise periodic used by default
   logical :: severeDamping            ! Turn on damping
   logical :: dumpRadial               ! write a text radial cut each dump
+  logical :: radiationPressure        ! use radiation pressure terms
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   real(double) :: etaViscosity        !Artificial viscosity parameter
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times

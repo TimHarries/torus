@@ -333,6 +333,9 @@ CONTAINS
     CASE("hii_test")
        CALL assign_hii_test(thisOctal,subcell)
 
+    CASE("radpress")
+       CALL assign_radpresstest(thisOctal,subcell)
+
     CASE("whitney")
        CALL assign_whitney(thisOctal,subcell,grid)
 
@@ -8708,6 +8711,53 @@ end function readparameterfrom2dmap
     yplusbound = 1
     yminusbound = 1
   end subroutine assign_hii_test
+
+  subroutine assign_radpresstest(thisOctal,subcell)
+    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(vector) :: rVec
+    real(double) :: eThermal!, numDensity
+   
+    rVec = subcellCentre(thisOctal,subcell)
+    thisOctal%rho(subcell) = (1.d2)*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+
+
+    thisOctal%ionFrac(subcell,1) = 1.
+    thisOctal%ionFrac(subcell,2) = 1.e-10
+!    thisOctal%ionFrac(subcell,3) = 1.e-10
+!    thisOctal%ionFrac(subcell,4) = 1.       
+!    thisOctal%etaCont(subcell) = 0.
+    
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+
+
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+   
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = 0.d0
+    thisOctal%iEquationOfState(subcell) = 1
+
+    zplusbound = 1
+    zminusbound = 1
+    xplusbound = 1
+    xminusbound = 1
+    yplusbound = 1
+    yminusbound = 1
+  end subroutine assign_radpresstest
 
   subroutine assign_whitney(thisOctal,subcell,grid)
 

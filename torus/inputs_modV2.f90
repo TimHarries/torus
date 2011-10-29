@@ -1529,6 +1529,9 @@ contains
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
          "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("radpressure", radiationPressure, cLine, fLine, nLines, &
+         "Include radiation pressure terms: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("fluxinterp", fluxinterp, cLine, fLine, nLines, &
          "Interpolate flux at fine coarse boundaries: ","(a,1l,1x,a)", .false., ok, .false.)
 
