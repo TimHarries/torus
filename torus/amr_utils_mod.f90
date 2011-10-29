@@ -946,6 +946,21 @@ module amr_utils_mod
     endif
 
 
+    if(thisOctal%threeD) then
+       if(isnan(point%x) .or. isnan(point%y) .or. isnan(point%z)) then
+          inOctal = .false.
+       end if
+    else if (thisOCtal%twoD) then
+       if(isnan(point%x)  .or. isnan(point%z)) then
+          inOctal = .false.
+       end if
+    else
+       if(isnan(point%x)) then
+          inOctal = .false.
+       end if
+    end if
+
+
 666 continue
   END FUNCTION inOctal
 
@@ -1160,6 +1175,9 @@ module amr_utils_mod
              write(*,*) direction%x,direction%y,direction%z
              write(*,*) t(1:6)
              write(*,*) "denom: ", denom(1:6)
+             write(*,*) "subcen", subcen
+             write(*,*) "posvec", posvec
+             write(*,*) "t", t
              write(*,*) "normdiff%x: ", normdiff%x
              write(*,*) "normdiff%y: ", normdiff%y
              write(*,*) "normdiff%z: ", normdiff%z

@@ -6963,7 +6963,8 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     thisOCtal%pressure_i(subcell) = (gamma-1.d0) * eThermal * thisOctal%rho(subcell)
 
     inflowRho = 3.13e-8*(mUnit/(lUnit**3.d0))
-    inflowSpeed = 1.d8
+!    inflowSpeed = 1.d8
+    inflowSpeed = 1.d2
     inflowMomentum = inflowSpeed * inflowRho
     inflowEnergy = ((kErg*tExt)/(gamma-1.d0)) + (0.5d0*(inflowSpeed**2.d0))
     inflowRhoe = inflowEnergy * inflowRho

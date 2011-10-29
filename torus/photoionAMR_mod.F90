@@ -350,7 +350,7 @@ contains
 
     do while(grid%currentTime < tEnd)
        nstep = nstep + 1
-       write(*,*) "rank ", myRankGlobal, "on next loop", myRank
+!       write(*,*) "rank ", myRankGlobal, "on next loop", myRank
        tc = 0.d0
        tc(myrank+1) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRank+1))
@@ -562,7 +562,7 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
     close(444)
-    write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
+!    write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
  enddo
 end subroutine radiationHydro
 #endif
