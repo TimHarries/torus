@@ -5674,6 +5674,11 @@ end subroutine sumFluxes
     
     refineOnGradient = .not.photoionization      
 
+
+    if(photoionization .and. hydrodynamics) then 
+       refineongradient = .true.
+    end if
+
    if(refineonionization .and. .not. photoionization) then
       refineOnIonization = .false.
    end if

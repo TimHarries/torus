@@ -55,7 +55,7 @@ contains
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
-    use inputs_mod, only : dirichlet
+    use inputs_mod, only : dirichlet, amrtolerance
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
@@ -223,7 +223,7 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
           call evenUpGridMPI(grid,.false.,.true.)      
-          call refineGridGeneric(grid, 5.d-3)
+          call refineGridGeneric(grid, amrtolerance)
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,.true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -285,7 +285,7 @@ contains
              endif
              
              call evenUpGridMPI(grid,.false.,.true.)      
-             call refineGridGeneric(grid, 5.d-3)
+             call refineGridGeneric(grid, amrtolerance)
              call writeInfo("Evening up grid", TRIVIAL)    
              call evenUpGridMPI(grid, .false.,.true.)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -448,7 +448,7 @@ contains
              
              call evenUpGridMPI(grid,.false.,.true.)
 
-             call refineGridGeneric(grid, 5.d-3)
+             call refineGridGeneric(grid, amrtolerance)
 
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true.)
@@ -481,7 +481,7 @@ contains
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 3) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine,5.d-3)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrtolerance)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
