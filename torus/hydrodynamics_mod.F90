@@ -3587,6 +3587,7 @@ end subroutine sumFluxes
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
        if (currentTime  == tEnd) exit
+
     enddo
   end subroutine doHydrodynamics3d
 
