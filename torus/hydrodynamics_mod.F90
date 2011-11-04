@@ -2425,7 +2425,7 @@ end subroutine sumFluxes
     direction = vector(1.d0, 0.d0, 0.d0)
 
 !Boundary conditions
-    call imposeboundary(grid%octreeroot)
+    call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
@@ -2473,7 +2473,7 @@ end subroutine sumFluxes
     call pressureforceu(grid%octreeroot, dt)
 
 !impose boundary conditions again
-    call imposeboundary(grid%octreeroot)
+    call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
@@ -2518,7 +2518,7 @@ end subroutine sumFluxes
 
 !boundary conditions
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
-    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
@@ -2578,7 +2578,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
 !boundary conditions
-    call imposeboundary(grid%octreeroot)
+    call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
@@ -2639,7 +2639,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
 
 !boundary conditions
-    call imposeboundary(grid%octreeroot)
+    call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
@@ -2698,7 +2698,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
 !boundary conditions
-    call imposeboundary(grid%octreeroot)
+    call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
@@ -2751,7 +2751,7 @@ end subroutine sumFluxes
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
 !boundary conditions
-    call imposeboundary(grid%octreeroot)
+    call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
@@ -2780,7 +2780,7 @@ end subroutine sumFluxes
 
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
     call periodBoundary(grid)
-    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot, grid)
     call transferTempStorage(grid%octreeRoot)
 
     !periodic self gravity boundary conditions
@@ -2823,7 +2823,7 @@ end subroutine sumFluxes
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
 !boundary conditions
-    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
@@ -2872,7 +2872,7 @@ end subroutine sumFluxes
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
 !boundary conditions
-    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
@@ -2923,7 +2923,7 @@ end subroutine sumFluxes
     call pressureForceW(grid%octreeRoot, dt)
 
 !boundary conditions
-    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
@@ -2970,7 +2970,7 @@ end subroutine sumFluxes
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
 !boundary conditions
-    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
  
@@ -4270,13 +4270,14 @@ end subroutine sumFluxes
   end subroutine boundaryCondCheck
 
 !set up the values that will be transferred to ghost cells in transferTempStorage
-  recursive subroutine imposeBoundary(thisOctal)
+  recursive subroutine imposeBoundary(thisOctal, grid)
     use inputs_mod, only : fixedRhoBound, rho_const
     type(octal), pointer   :: thisOctal, bOctal
     type(octal), pointer  :: child 
+    type(GRIDTYPE) :: grid
     integer :: subcell, i, bSubcell
-    type(VECTOR) :: locator, dir
-    real(double) :: machNumber, Pr, rhor, gamma
+    type(VECTOR) :: locator, dir, rVec
+    real(double) :: machNumber, Pr, rhor, gamma,  posFactor
 
     gamma = 5.d0/3.d0
     machNumber = 2.d0
@@ -4287,7 +4288,7 @@ end subroutine sumFluxes
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call imposeBoundary(child)
+                call imposeBoundary(child, grid)
                 exit
              end if
           end do
@@ -4556,6 +4557,60 @@ end subroutine sumFluxes
                          thisOctal%tempStorage(subcell,5) = inflowMomentum
                       endif
                    endif
+
+                case(7) !inflow that varies as a function of position along the axis
+                                      locator = thisOctal%boundaryPartner(subcell)
+                   bOctal => thisOctal
+                   call findSubcellLocal(locator, bOctal, bSubcell)
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                   call normalize(dir)
+
+                   rVec = subcellCentre(thisOctal, subcell)
+                   if(xSlope) then
+                      posFactor = rVec%x-(grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize)
+                   else if(ySlope) then
+                      posFactor = rVec%y-(grid%octreeRoot%centre%y-grid%octreeRoot%subcellSize)
+                   else if(zSlope) then
+                      posFactor = rVec%z-(grid%octreeRoot%centre%z-grid%octreeRoot%subcellSize)
+                   end if
+
+
+                   Thisoctal%tempstorage(subcell,1) = inflowRho*rhograd*posFactor
+                   thisOctal%tempStorage(subcell,2) = inflowRhoE*rhoEgrad*posFactor
+
+                   thisOctal%tempStorage(subcell,6) = inflowEnergy*Egrad*posFactor
+                   thisOctal%tempStorage(subcell,7) = inflowPressure*Pgrad*posFactor
+
+
+                   if (thisOctal%twod.or.thisOctal%oneD) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = inflowMomentum*momgrad*posFactor
+                      endif
+                   else if (thisOctal%threed) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if (abs(dir%y) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,5) = 0.d0
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = 0.d0
+                         thisOctal%tempStorage(subcell,4) = 0.d0
+                         thisOctal%tempStorage(subcell,5) = inflowMomentum*momgrad*posFactor
+                      endif
+                   endif
+
 
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)

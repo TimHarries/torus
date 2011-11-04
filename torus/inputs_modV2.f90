@@ -1602,6 +1602,15 @@ contains
          "negative z boundary condition:  ","(a,a,a)","null",ok, .false.)
     if(zminusboundString(1:4) /= "null") zminusbound = getBoundaryCode(zminusboundString)
 
+    call getLogical("xslope", xslope, cLine, fLine, nLines, &
+         "Inflow gradient varies along x-direction: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("yslope", yslope, cLine, fLine, nLines, &
+         "Inflow gradient varies along y-direction: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("zslope", zslope, cLine, fLine, nLines, &
+         "Inflow gradient varies along z-direction: ","(a,1l,a)", .false., ok, .false.)
+
   end subroutine readHydrodynamicsParameters
 
 
@@ -2649,6 +2658,8 @@ end subroutine getVector
          getBoundaryCode = 5
       case("inflow")
          getBoundaryCode = 6
+      case("inflowGrad") 
+         getBoundaryCode = 7
       case DEFAULT
          print *, "Unrecognised boundary string:", boundaryString
          print *, "Halting."

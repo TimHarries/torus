@@ -6930,11 +6930,13 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 !Agertz et al. (2007) - fundamental differences between SPH and grid methods
   subroutine calcBlobTestDensity(thisOctal, subcell)
     use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    use inputs_mod, only : egrad, rhograd, rhoegrad, pgrad, momgrad
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: mUnit, vUnit, lUnit, eThermal, tExt, tInt, gamma
+    real(double) :: mUnit, vUnit, lUnit, eThermal, tExt, tInt, gamma, gridSize
 
+    gridSize = 1.d15
     tExt = 1.d7
     tInt = 1.d6
     gamma = 5.d0/3.d0
@@ -6969,6 +6971,13 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     inflowEnergy = ((kErg*tExt)/(gamma-1.d0)) + (0.5d0*(inflowSpeed**2.d0))
     inflowRhoe = inflowEnergy * inflowRho
     inflowPressure = kErg*tExt*thisOctal%rho(subcell)
+
+    momgrad = (inflowMomentum - (inflowMomentum/10.d0))/gridSize
+    egrad = (inflowEnergy - (inflowEnergy/10.d0))/gridSize
+    rhoegrad = (inflowRhoe - (inflowRhoe/10.d0))/gridSize
+    pgrad = (inflowPressure - (inflowPressure/10.d0))/gridSize
+    rhograd = (inflowRho - (inflowRho/10.d0))/gridSize
+    
 
   end subroutine calcBlobTestDensity
 

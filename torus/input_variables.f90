@@ -109,12 +109,26 @@
   character(len=20) :: turbvelfilez    !file for tubrulent velocty field (z)
   integer :: nTurbLines                !No. of lines in turbvel files
 
+!inflow condition parameteres
   real(double) :: inflowPressure
   real(double) :: inflowRho
   real(double) :: inflowRhoE
   real(double) :: inflowEnergy
   real(double) :: inflowMomentum
   real(double) :: inflowSpeed
+
+!gradient direction of inflow conditions
+  logical :: xslope
+  logical :: yslope
+  logical :: zslope
+
+!gradient value of inflow conditions
+  real(double) :: momgrad
+  real(double) :: egrad
+  real(double) :: rhoegrad
+  real(double) :: pgrad
+  real(double) :: rhograd
+
 
   !Boundary conditions (strings)
   character(len=20) :: xminusboundString, yminusboundString, zminusboundString
