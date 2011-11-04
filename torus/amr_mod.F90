@@ -3276,7 +3276,7 @@ CONTAINS
 
     use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use inputs_mod, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
-         ttauriRouter
+         ttauriRouter, sphereRadius
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
     use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
@@ -3882,8 +3882,20 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere","empty", "turbulence","gravtest")
+   case("bonnor", "unisphere","empty", "turbulence")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+   case("gravtest")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+      rVec = subcellCentre(thisOctal, subcell)
+
+      if(modulus(rVec) > (sphereRadius-(sphereRadius*0.25d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.25d0)) &
+           .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+
 
    case("brunt")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -7302,7 +7314,8 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        thisOctal%rho(subcell) = rhoSphere
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+!       thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+       thisOctal%rho(subcell) = 1.d-50
        thisOctal%temperature(subcell) = 100.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
@@ -7310,6 +7323,10 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = eThermal
     thisOctal%gamma(subcell) = 2.d0
+    thisOctal%pressure_i(subcell) = kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/(2.33d0*mHydrogen)
+    thisOctal%rhoe(subcell) = sqrt(thisOctal%pressure_i(subcell))*thisOctal%rho(subcell)
+
+
 
   end subroutine calcGravtest
 

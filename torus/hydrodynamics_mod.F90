@@ -3362,9 +3362,9 @@ end subroutine sumFluxes
        enddo
 
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
-       call writeInfo("Calling exchange across boundary", TRIVIAL)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call writeInfo("Done", TRIVIAL)
+!       call writeInfo("Calling exchange across boundary", TRIVIAL)
+!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!       call writeInfo("Done", TRIVIAL)
     endif
 
 !calculate initial values
@@ -3546,6 +3546,25 @@ end subroutine sumFluxes
           end if
        endif
 
+       if(doSelfGrav .and. myRankGlobal /= 0 .and. grid%geometry == "gravtest") then
+
+          call zeroPhiGas(grid%octreeRoot)
+          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+          
+          !for periodic self-gravity
+          if(.not. dirichlet) then
+             call periodBoundary(grid, justGrav = .true.)
+             call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+             !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
+          end if
+         
+          if (globalnSource > 0) then
+             call zeroSourcepotential(grid%octreeRoot)
+             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+          endif
+          call sumGasStarGravity(grid%octreeRoot)
+       end if
+
 !update the simulation time
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
@@ -3587,7 +3606,9 @@ end subroutine sumFluxes
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
        if (currentTime  == tEnd) exit
-
+       if(grid%geometry == "gravtest") then
+          call torus_abort("ENDING GRAV TEST")
+       end if
     enddo
   end subroutine doHydrodynamics3d
 
@@ -7488,7 +7509,7 @@ end subroutine refineGridGeneric2
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
-    real(double) ::  g(6), dx
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
     real(double) :: xnext, oldphi, px, py, pz
@@ -7537,11 +7558,7 @@ end subroutine refineGridGeneric2
              dir(6) = VECTOR(0.d0, 1.d0, 0.d0)
           endif
 
-
-
           if (.not.thisOctal%ghostCell(subcell)) then
-
-
              do n = 1, nDir
                 
                 locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
@@ -7553,7 +7570,7 @@ end subroutine refineGridGeneric2
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
-
+                
 
                 if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
                    x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
@@ -7562,36 +7579,56 @@ end subroutine refineGridGeneric2
                 else
                    if (nd == thisOctal%nDepth) then ! coarse/coarse or fine/fine
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
-                      x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                      !x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
                       dx = x2 - x1
-                      dx = sign(thisOctal%subcellSize, dx)
+
+!                      dx = sign(thisOctal%subcellSize, dx)
                    else if (nd > thisOctal%nDepth) then ! coarse cells with a fine boundary
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
-                      x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+!                      x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
                       dx = x2 - x1
-                      dx = sign(thisOctal%subcellSize, dx)
+!                      dx = sign(thisOctal%subcellSize, dx)
                    else
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n) ! fine cells
-                      x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+!                      x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
                       dx = x2 - x1
-                      dx = sign(thisOctal%subcellSize, dx)
+!                      dx = sign(thisOctal%subcellSize, dx)
                    endif
                 endif
-
-
+                dxArray(n) = dx
                 g(n) =   (phigas - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
-
-                
              enddo
 
-             if (thisOctal%twoD) then
-                d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
-                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
+!get the gravitational potential values at the cell interface
+             do n = 1, nDir
+                dx = dxArray(n)
+                dx = sign(thisOctal%subcellSize, dx)
+                dx = dx/2.d0
+!                dx = thisOctal%subcellSize/2.d0
+                phiInterface(n) = thisOctal%phi_gas(subcell) +  g(n)*(&
+                     returnCodeUnitLength(dx*gridDistanceScale))
+             end do
+
+!calculate the new gradient
+             do n = 1, nDir
+!                dx = dxArray(n)/2.d0                     
+                dx = thisOctal%subcellSize/2.d0
+!                g2(n) = (phiInterface(n) - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))                    
+                g2(n) = (phiInterface(n) - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+             end do
+
+             dx = thisOctal%subcellSize
+            if (thisOctal%twoD) then
+               d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:2))
              else
-                d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
-                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
-                d2phidx2(3) = (g(5) - g(6)) / (returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))
+                d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(3) = (g(5) - g(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
              deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
@@ -7669,11 +7706,7 @@ end subroutine refineGridGeneric2
              dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
           endif
           
-
-
           if (.not.thisOctal%ghostCell(subcell)) then 
-
-
              do n = 1, nDir
                 
                 locator = subcellCentre(thisOctal, subcell) + dir(n) * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -7700,7 +7733,6 @@ end subroutine refineGridGeneric2
                 else
                    newphi = 0.16666666666667d0*(SUM(g(1:6))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
                 endif
-
                 if (thisOctal%ghostCell(subcell)) then
                    ghostFracChange = max(fracChange, ghostFracChange)
                 endif
@@ -7713,8 +7745,7 @@ end subroutine refineGridGeneric2
                 else
                    fracChange = 1.d30
                 endif
-                thisOCtal%phi_gas(subcell) = newPhi
-             
+                thisOCtal%phi_gas(subcell) = newPhi             
           endif
        enddo
     endif
@@ -7733,7 +7764,7 @@ end subroutine refineGridGeneric2
     real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-4
     real(double) :: thisFrac
     integer :: it, ierr, i, j
-!    character(len=30) :: plotfile
+    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")

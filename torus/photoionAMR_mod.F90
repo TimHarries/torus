@@ -145,13 +145,13 @@ contains
        if(grid%geometry == "turbulence") then
 !reset clocks
           grid%currentTime = 0.d0
-          deltaTforDump = 3.14d11
+          deltaTforDump = 1.57d11
           tend = 50.d0*deltaTforDump
        endif
        
-       grid%currentTime = 0.d0
-       deltaTforDump = 3.14d11
-       tend = 50.d0*deltaTforDump
+!       grid%currentTime = 0.d0
+!       deltaTforDump = 3.14d11
+!       tend = 50.d0*deltaTforDump
 
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
