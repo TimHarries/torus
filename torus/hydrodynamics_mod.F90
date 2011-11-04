@@ -7764,7 +7764,7 @@ end subroutine refineGridGeneric2
     real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-4
     real(double) :: thisFrac
     integer :: it, ierr, i, j
-    character(len=30) :: plotfile
+!    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")

@@ -146,7 +146,7 @@ contains
 !reset clocks
           grid%currentTime = 0.d0
           deltaTforDump = 1.57d11
-          tend = 50.d0*deltaTforDump
+          tend = 40.d0*deltaTforDump
        endif
        
 !       grid%currentTime = 0.d0
