@@ -11,7 +11,7 @@ hydrodynamics T
 nbodyphysics T
 
 mindepthamr 5
-maxdepthamr 6
+maxdepthamr 5
 cfl 0.3
 
 amr3d T
