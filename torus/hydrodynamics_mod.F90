@@ -7622,13 +7622,13 @@ end subroutine refineGridGeneric2
 
              dx = thisOctal%subcellSize
             if (thisOctal%twoD) then
-               d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
+               d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:2))
              else
-                d2phidx2(1) = (g(1) - g(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                d2phidx2(2) = (g(3) - g(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                d2phidx2(3) = (g(5) - g(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(3) = (g2(5) - g2(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
              deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
