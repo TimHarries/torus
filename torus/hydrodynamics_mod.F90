@@ -7604,10 +7604,10 @@ end subroutine refineGridGeneric2
 
 !get the gravitational potential values at the cell interface
              do n = 1, nDir
-                dx = dxArray(n)
-                dx = sign(thisOctal%subcellSize, dx)
-                dx = dx/2.d0
-!                dx = thisOctal%subcellSize/2.d0
+!                dx = dxArray(n)
+!                dx = sign(thisOctal%subcellSize, dx)
+!                dx = dx/2.d0
+                dx = thisOctal%subcellSize/2.d0
                 phiInterface(n) = thisOctal%phi_gas(subcell) +  g(n)*(&
                      returnCodeUnitLength(dx*gridDistanceScale))
              end do
