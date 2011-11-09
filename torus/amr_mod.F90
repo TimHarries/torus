@@ -3892,7 +3892,7 @@ CONTAINS
 
       rVec = subcellCentre(thisOctal, subcell)
 
-      if(modulus(rVec) > (sphereRadius-(sphereRadius*0.25d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.25d0)) &
+      if(modulus(rVec) > (sphereRadius+(sphereRadius*0.15d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
            .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 
 

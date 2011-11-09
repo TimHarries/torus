@@ -1743,7 +1743,7 @@ contains
        phi = fac*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)) + & 
             neighbourOctal%phi_i(nSubcell(3)) + neighbourOctal%phi_i(nSubcell(4)))
 
-       phi = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
+       phigas = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
     endif

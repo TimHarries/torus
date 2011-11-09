@@ -10,7 +10,7 @@ writegrid F
 hydrodynamics T
 nbodyphysics T
 
-mindepthamr 5
+mindepthamr 4
 maxdepthamr 5
 cfl 0.3
 

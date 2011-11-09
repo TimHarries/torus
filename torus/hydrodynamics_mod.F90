@@ -7631,7 +7631,8 @@ end subroutine refineGridGeneric2
                 d2phidx2(3) = (g2(5) - g2(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
-             deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
+!             deltaT = (1.d0/6.d0)*(returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale))**2
+             deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*grid%halfSmallestSubcell))**2 / 6.d0
 !             deltaT = deltaT * timeToCodeUnits
 
              oldPhi = thisOctal%phi_gas(subcell)
@@ -7863,6 +7864,11 @@ end subroutine refineGridGeneric2
     do while (ANY(fracChange(1:nHydrothreads) > tol2))
        fracChange = 0.d0
        it = it + 1
+
+!       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas ", "rho    "/))
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !       thisFrac = 1.d30
@@ -7884,10 +7890,6 @@ end subroutine refineGridGeneric2
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange = tempFracChange
 
-
-
-
-
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
@@ -7895,9 +7897,6 @@ end subroutine refineGridGeneric2
             MAXVAL(fracChange(1:nHydroThreads))
 
 
-!             write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!             call writeVtkFile(grid, plotfile, &
-!                  valueTypeString=(/"chiline"/))
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
