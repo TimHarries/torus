@@ -2362,7 +2362,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #endif
   endif
 
-  goto 666!!!!!!!!!!!!
 
   if (writeheader) then
      open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
