@@ -3882,8 +3882,18 @@ CONTAINS
 
 !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
-   case("bonnor", "unisphere","empty", "turbulence")
+   case("bonnor", "empty")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+   case("unisphere")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+   case("turbulence")
+      if (thisOctal%nDepth < 7) split = .true.
+!      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+ !     if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 
    case("gravtest")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -3904,9 +3914,13 @@ CONTAINS
       if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 
 
-   case("radcloud", "blobtest")
+   case("radcloud")
       if (thisOctal%nDepth < minDepthAMR) split = .true.
   
+   case("blobtest")
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 
    case("kelvin")
       if (thisOctal%nDepth < minDepthAMR) split = .true.

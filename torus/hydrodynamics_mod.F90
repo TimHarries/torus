@@ -3362,9 +3362,9 @@ end subroutine sumFluxes
        enddo
 
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
-!       call writeInfo("Calling exchange across boundary", TRIVIAL)
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!       call writeInfo("Done", TRIVIAL)
+       call writeInfo("Calling exchange across boundary", TRIVIAL)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call writeInfo("Done", TRIVIAL)
     endif
 
 !calculate initial values
