@@ -7830,7 +7830,6 @@ end subroutine refineGridGeneric2
     real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-4
     real(double) :: thisFrac
     integer :: it, ierr, i, j
-    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
@@ -8667,7 +8666,7 @@ end subroutine minMaxDepth
     real(double) :: rhoJeans, bigJ, cs, e, rhomax
     real(double) :: temp(8)
     integer :: nSource
-    integer :: i, subcell, ierr, ithread, tag, ncells
+    integer :: i, subcell, ierr, ithread, tag
     logical :: createSink
     tag = 77
     do subcell = 1, thisOctal%maxChildren
@@ -9292,13 +9291,11 @@ end subroutine minMaxDepth
     integer :: iSource
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    integer :: n
-    real(double) :: rAcc, rK, rhobar, temp, thisMdot, localMdot, totalMdot, massCell
-    integer :: ierr, itemp
-    real(double) :: v(3), tempa(3)
+    real(double) :: rAcc, rK,  thisMdot
+    integer :: ierr
+    real(double) ::  tempa(3)
     real(double) :: accretedMass, cellMass
     type(VECTOR) :: gasMom, sourceMom, accretedMom, cellVelocity
-    type(VECTOR) :: deltaMom
     real(double) :: rhoCrit = 1.d-25, rhoLocal
     real(double) :: eGrav, eThermal, eKinetic
     logical :: accreting
