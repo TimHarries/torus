@@ -156,10 +156,11 @@ contains
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
        if(justDump) then 
-          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
+          write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     ","radmom       "/))
+               "hydrovelocity","sourceCont   ","pressure     ","radmom       ", "rhou         " &
+               , "rhov         ", "rhow         "/))
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("vtk dump completed. Aborting...")
        end if
