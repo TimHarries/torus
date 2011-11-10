@@ -428,7 +428,7 @@ contains
              rVec = cen - source(isource)%position
              r = modulus(rVec)
              thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) - &
-                  (bigG*source(isource)%mass/ (max(r*1.d10,eps)))
+                  (bigG*source(isource)%mass/ (max(r*1.d10,eps*1.d10)))
           enddo
        endif
     enddo

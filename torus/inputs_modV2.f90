@@ -350,6 +350,11 @@ contains
 
     select case(geometry)
 
+       case("bondi")
+          call getVector("bondicen", bondiCentre, 1.d0, cLine, fLine, nLines, &
+               "Centre of bondi accretion (10^10 cm): ", &
+               "(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
        case("fractal")
           call getReal("rho0", rho0, real(mhydrogen),cLine, fLine, nLines, &
                "Initial number density: ","(a,f6.1,1x,a)", 100., ok, .true.)

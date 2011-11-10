@@ -740,6 +740,7 @@
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
+  type(VECTOR) :: bondiCentre
 
 ! Parameters which control Torus behaviour
   logical           :: debug

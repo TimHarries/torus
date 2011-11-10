@@ -393,8 +393,9 @@ contains
 
        call fixParentPointers(grid%octreeRoot)
        call postSetupChecks(grid)
-       call writeVTKfile(grid, "rho.vtk")
-
+       do
+          call writeVTKfile(grid, "rho.vtk")
+       enddo
     endif
 #ifdef MPI
         if (grid%splitOverMPI) then

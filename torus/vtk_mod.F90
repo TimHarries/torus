@@ -1975,8 +1975,9 @@ endif
         savedBlockSize(1:totalBlocks) = tempBlocks(1:totalBlocks)
         savedBlockSize(totalBlocks+1:totalBlocks+nBlocks) = int(sizeCompressedBlock(1:nBlocks))
         totalBlocks = totalBlocks + nBlocks
-
+        deallocate(tempblocks)
      endif
+
 
      allocate(iHeader(1:(12 + totalBlocks*4)))
      iHeader(1 : 4) = transfer(totalBlocks, iHeader(1 : 4))
@@ -1989,6 +1990,7 @@ endif
      enddo
      deallocate(sizeCompressedBlock)
      deallocate(iBytesUncompressed)
+     if (PRESENT(lastTime)) deallocate(savedBlockSize)
 
    end subroutine convertAndCompressInSections
 
@@ -2284,8 +2286,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      if (myrankGlobal /= 0) then
         call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray)
         ncells = nSubcellArray(myRankGlobal)
-        deallocate(nSubcellArray)
      endif
+     deallocate(nSubcellArray)
   endif
 #endif
   nCellsGlobal = nVoxels
@@ -2360,6 +2362,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #endif
   endif
 
+  goto 666!!!!!!!!!!!!
+
   if (writeheader) then
      open(lunit, file=vtkFilename, form="unformatted",access="stream",status="old",position="append")
      buffer = lf//'        </DataArray>'//lf
@@ -2417,12 +2421,13 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
         oldoutnpad = outnpad
         oldoutipad = Outipad
         write(lunit) pstring2(1:nString2)
+        deallocate(pstring2)
      end do
 
-     deallocate(pString, pstring2)
+     deallocate(pString)
      deallocate(iBytes, iHeader)
 
-
+  
      buffer = lf//'        </DataArray>'//lf
      write(lunit) trim(buffer)
 
@@ -2446,8 +2451,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      deallocate(pString, pstring2)
      deallocate(iBytes, iHeader, offsets)
  
-
-
 
 
     buffer = lf//'        </DataArray>'//lf
@@ -3097,13 +3100,14 @@ end subroutine writeXMLVtkFileAMR
            oldoutnpad = outnpad
            oldoutipad = Outipad
            write(lunit) pstring2(1:nString2)
+           deallocate(pstring2)
         end do
  
 
         close(lunit)
 
 
-        deallocate(pString, pstring2)
+        deallocate(pString)
         deallocate(iBytes, iHeader)
 
      else
@@ -3195,19 +3199,21 @@ end subroutine writeXMLVtkFileAMR
            oldoutnpad = outnpad
            oldoutipad = Outipad
            write(lunit) pstring2(1:nString2)
+           deallocate(pstring2)
         end do
  
 
         close(lunit)
 
 
-        deallocate(pString, pstring2)
+        deallocate(pString)
         deallocate(iBytes, iHeader)
 
      else
      
         allocate(float32(1:int(nPoints,kind=bigint)*3))
         allocate(rArray(1:3, 1:int(nPoints,kind=bigint)))
+
         call getPoints(grid, nPoints, rarray)
         float32 = RESHAPE(rarray, (/SIZE(float32)/))
         j = int(nPoints,kind=bigint)*3

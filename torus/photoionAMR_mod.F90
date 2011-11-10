@@ -55,13 +55,13 @@ contains
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
-    use inputs_mod, only : dirichlet, amrtolerance
+    use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
-         zerophigas, zerosourcepotential, applysourcepotential
+         zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum
     use dimensionality_mod, only: setCodeUnit
-    use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto
+    use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -93,7 +93,12 @@ contains
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
 
-
+    if (nbodyPhysics) then
+       if (writeoutput) then
+          open(57, file="pos.dat", status="unknown", form="formatted")
+          close(57)
+       endif
+    endif
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -263,6 +268,8 @@ contains
              valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
           end do
        end if
+
+!       if (myrank /= 0) call addStellarWind(grid%octreeRoot, globalsourcearray(1))
           
           if (myrank /= 0) then
              call calculateEnergyFromTemperature(grid%octreeRoot)
@@ -367,7 +374,7 @@ contains
        endif
   
        if (myrank == 1) then
-          write(*,*) tc(1:9)
+          write(*,*) tc(2:nThreadsGlobal)
           write(*,*) "courantTime", dt
        endif
        dumpThisTime = .false.
@@ -381,6 +388,7 @@ contains
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
        if (myrank == 1) write(*,*) "Time step", dt
+       if (myRank == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -457,6 +465,8 @@ contains
       
           endif
 
+          if (severeDamping) call cutVacuum(grid%octreeRoot)
+
        if (myRank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
        
@@ -467,7 +477,9 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 
+
        if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+       if (severeDamping) call cutVacuum(grid%octreeRoot)
 
 !       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &

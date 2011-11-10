@@ -7629,7 +7629,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
   end subroutine calcKrumholzDiscDensity
 
   subroutine calcBondiDensity(thisOctal,subcell)
-    use inputs_mod, only : gridDistanceScale
+    use inputs_mod, only : gridDistanceScale, bondiCentre
     use utils_mod, only : alpha
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7637,13 +7637,13 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     real(double) :: ethermal, soundSpeed
     real(double) :: x, y, z, r, rBondi, rhoInfty, v
     real(double), parameter :: lambda = 1.12d0
-    rVec = subcellCentre(thisOctal, subcell)
+    rVec = subcellCentre(thisOctal, subcell)-bondiCentre
     vVec = (-1.d0)*rVec
     call normalize(vVec)
     r = modulus(rVec)*gridDistanceScale
     soundSpeed = sqrt(kerg*10.d0/(2.33d0 * mHydrogen))
     rBondi = bigG*msol/ soundSpeed**2
-    x = r / rBondi
+    x = max(r / rBondi, 0.5d0)
     rhoInfty = 1.d-25
     z = alpha(x)
     y = lambda / (x**2 * z)
@@ -8762,6 +8762,7 @@ end function readparameterfrom2dmap
    
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = (1.d2)*mHydrogen
+!    if (modulus(rvec) < 2.0d7) thisOctal%rho(subcell) = 1.d0 * mHydrogen
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
@@ -15381,7 +15382,7 @@ end function readparameterfrom2dmap
     thisOctal%gamma = parentOctal%gamma(parentSubcell)
     thisOctal%iEquationOfState = parentOctal%iEquationofState(parentSubcell)
     thisOctal%velocity = parentOctal%velocity(parentSubcell)
-
+    thisOctal%dustTypeFraction = parentOctal%dustTypeFraction
     if (thisOctal%oneD) then
 
        thisOctal%rhov = 0.d0
