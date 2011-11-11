@@ -946,19 +946,19 @@ module amr_utils_mod
     endif
 
 
-    if(thisOctal%threeD) then
-       if(isnan(point%x) .or. isnan(point%y) .or. isnan(point%z)) then
-          inOctal = .false.
-       end if
-    else if (thisOCtal%twoD) then
-       if(isnan(point%x)  .or. isnan(point%z)) then
-          inOctal = .false.
-       end if
-    else
-       if(isnan(point%x)) then
-          inOctal = .false.
-       end if
-    end if
+!    if(thisOctal%threeD) then
+!       if(isnan(point%x) .or. isnan(point%y) .or. isnan(point%z)) then
+!          inOctal = .false.
+!       end if
+!    else if (thisOCtal%twoD) then
+!       if(isnan(point%x)  .or. isnan(point%z)) then
+!          inOctal = .false.
+!       end if
+!    else
+!       if(isnan(point%x)) then
+!          inOctal = .false.
+!       end if
+!    end if
 
 
 666 continue

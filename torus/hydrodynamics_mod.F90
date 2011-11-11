@@ -8799,114 +8799,114 @@ end subroutine minMaxDepth
     enddo
   end subroutine recursaddSinks
 
-  subroutine returnControlVolumeCells(grid, sendToThisThread, pos, radius)
-    use mpi
-    type(GRIDTYPE) :: grid
-    real(double) :: rho(100), cs(100), vol(100), phi(100), xpos(100), ypos(100), zpos(100), vx(100),vy(100),vz(100)
-    real(double) :: rhoFromThread(100), csFromThread(100), volFromThread(100), phiFromThread(100)
-    real(double) :: xposFromThread(100), yposFromThread(100), zposFromThread(100), vxFromThread(100),vyFromThread(100),vzFromThread(100)
-    integer :: ncells
-    integer :: sendToThisThread
-    type(VECTOR) :: pos
-    real(double) :: radius
-    integer :: nCellsFromThread
-    integer :: status(MPI_STATUS_SIZE)
-    integer :: i, ierr, j
-    integer, parameter :: tag = 55
-    ncells = 0
-
-    call recursiveGetControlVolumeCells(grid%octreeRoot, pos, radius, &
-         ncells, rho, cs, vol, phi, xpos, ypos, zpos, vx, vy, vz)
-    if (myrankGlobal == sendToThisThread) then
-       do i = 1, nHydroThreadsGlobal
-          if (myrankGlobal /= i) then
-             call mpi_recv(nCellsFromThread, 1, MPI_INTEGER, i, tag, MPI_COMM_WORLD, status, ierr)
-             if (nCellsFromThread > 0) then
-                call mpi_recv(rhoFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(csFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(volFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(phiFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(xposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(yposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(zposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(vxFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(vyFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-                call mpi_recv(vzFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-
-                do j = 1, nCellsFromThread
-                   nCells = nCells + 1
-                   rho(nCells) = rhoFromThread(j)
-                   cs(nCells) = rhoFromThread(j)
-                   vol(nCells) = rhoFromThread(j)
-                   rho(nCells) = rhoFromThread(j)
-                   rho(nCells) = rhoFromThread(j)
-                   rho(nCells) = rhoFromThread(j)
-                enddo
-             endif
-          endif
-       enddo
-    else
-       call mpi_send(ncells, 1, MPI_INTEGER, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-       if (ncells > 0) then
-          call mpi_send(rho, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(cs, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(vol, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(phi, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(xpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(ypos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(zpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(vx, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(vy, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-          call mpi_send(vz, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-       endif
-    endif
-  end subroutine returnControlVolumeCells
-
-  recursive subroutine recursiveGetControlVolumeCells(thisOctal, pos, radius, &
-       ncells, rho, cs, vol, phi, xpos, ypos, zpos, vx, vy, vz)
-    type(OCTAL), pointer :: thisOctal, child
-    type(VECTOR) :: pos, centre 
-    real(double) :: radius, r
-    integer :: ncells
-    real(double) :: rho(:), cs(:), vol(:), phi(:), xpos(:), ypos(:), zpos(:)
-    real(double) :: vx(:), vy(:), vz(:)
-    integer :: subcell, i
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call recursiveGetControlVolumeCells(child,  pos, radius, &
-                     ncells, rho, cs, vol, phi, xpos, ypos, zpos, vx, vy, vz)
-
-                exit
-             end if
-          end do
-       else
-          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-          centre = subcellCentre(thisOctal, subcell)
-          r = modulus(pos - centre)
-          if (r < radius) then
-             nCells = nCells + 1
-             rho(nCells) = thisOctal%rho(subcell)
-             cs(ncells) = soundSpeed(thisOctal, subcell)
-             vol(ncells) = cellVolume(thisOctal, subcell) * 1.d30
-             phi(ncells) = thisOctal%phi_i(subcell)
-             xPos(ncells) = centre%x
-             yPos(ncells) = centre%y
-             zPos(ncells) = centre%z
-             vx(ncells) = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
-             vy(ncells) = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
-             vz(ncells) = thisOctal%rhow(subcell)/thisOctal%rho(subcell)
-          endif
-         
-       endif
-    enddo
-  end subroutine recursiveGetControlVolumeCells
-
-
+!  subroutine returnControlVolumeCells(grid, sendToThisThread, pos, radius)
+!    use mpi
+!    type(GRIDTYPE) :: grid
+!    real(double) :: rho(100), cs(100), vol(100), phi(100), xpos(100), ypos(100), zpos(100), vx(100),vy(100),vz(100)
+!    real(double) :: rhoFromThread(100), csFromThread(100), volFromThread(100), phiFromThread(100)
+!    real(double) :: xposFromThread(100), yposFromThread(100), zposFromThread(100), vxFromThread(100),vyFromThread(100),vzFromThread(100)
+!    integer :: ncells
+!    integer :: sendToThisThread
+!    type(VECTOR) :: pos
+!    real(double) :: radius
+!    integer :: nCellsFromThread
+!    integer :: status(MPI_STATUS_SIZE)
+!    integer :: i, ierr, j
+!    integer, parameter :: tag = 55
+!    ncells = 0
+!
+!    call recursiveGetControlVolumeCells(grid%octreeRoot, pos, radius, &
+!         ncells, rho, cs, vol, phi, xpos, ypos, zpos, vx, vy, vz)
+!    if (myrankGlobal == sendToThisThread) then
+!       do i = 1, nHydroThreadsGlobal
+!          if (myrankGlobal /= i) then
+!             call mpi_recv(nCellsFromThread, 1, MPI_INTEGER, i, tag, MPI_COMM_WORLD, status, ierr)
+!             if (nCellsFromThread > 0) then
+!                call mpi_recv(rhoFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(csFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(volFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(phiFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(xposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(yposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(zposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(vxFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(vyFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(vzFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!
+!                do j = 1, nCellsFromThread
+!                   nCells = nCells + 1
+!                   rho(nCells) = rhoFromThread(j)
+!                   cs(nCells) = rhoFromThread(j)
+!                   vol(nCells) = rhoFromThread(j)
+!                   rho(nCells) = rhoFromThread(j)
+!                   rho(nCells) = rhoFromThread(j)
+!                   rho(nCells) = rhoFromThread(j)
+!                enddo
+!             endif
+!          endif
+!       enddo
+!    else
+!       call mpi_send(ncells, 1, MPI_INTEGER, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!       if (ncells > 0) then
+!          call mpi_send(rho, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(cs, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(vol, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(phi, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(xpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(ypos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(zpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(vx, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(vy, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(vz, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!       endif
+!    endif
+!  end subroutine returnControlVolumeCells
+!
+!  recursive subroutine recursiveGetControlVolumeCells(thisOctal, pos, radius, &
+!       ncells, rho, cs, vol, phi, xpos, ypos, zpos, vx, vy, vz)
+!    type(OCTAL), pointer :: thisOctal, child
+!    type(VECTOR) :: pos, centre 
+!    real(double) :: radius, r
+!    integer :: ncells
+!    real(double) :: rho(:), cs(:), vol(:), phi(:), xpos(:), ypos(:), zpos(:)
+!    real(double) :: vx(:), vy(:), vz(:)
+!    integer :: subcell, i
+!
+!    do subcell = 1, thisoctal%maxchildren
+!       if (thisoctal%haschild(subcell)) then
+!          ! find the child
+!          do i = 1, thisoctal%nchildren, 1
+!             if (thisoctal%indexchild(i) == subcell) then
+!                child => thisoctal%child(i)
+!                call recursiveGetControlVolumeCells(child,  pos, radius, &
+!                     ncells, rho, cs, vol, phi, xpos, ypos, zpos, vx, vy, vz)
+!
+!                exit
+!             end if
+!          end do
+!       else
+!          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+!          centre = subcellCentre(thisOctal, subcell)
+!          r = modulus(pos - centre)
+!          if (r < radius) then
+!             nCells = nCells + 1
+!             rho(nCells) = thisOctal%rho(subcell)
+!             cs(ncells) = soundSpeed(thisOctal, subcell)
+!             vol(ncells) = cellVolume(thisOctal, subcell) * 1.d30
+!             phi(ncells) = thisOctal%phi_i(subcell)
+!             xPos(ncells) = centre%x
+!             yPos(ncells) = centre%y
+!             zPos(ncells) = centre%z
+!             vx(ncells) = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
+!             vy(ncells) = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
+!             vz(ncells) = thisOctal%rhow(subcell)/thisOctal%rho(subcell)
+!          endif
+!         
+!       endif
+!    enddo
+!  end subroutine recursiveGetControlVolumeCells
+!
+!
   function BondiHoyleRadius(source, thisOctal, subcell) result (rBH)
 
     real(double) :: rBH
