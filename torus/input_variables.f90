@@ -304,19 +304,16 @@
 ! SED parameters
 !----------------
 
-  logical, private :: sed, jansky, SIsed
+
   real    :: SEDlamMin, SEDlamMax
   logical :: SEDwavLin
   integer :: SEDnumLam
 
 !------------------------------
 ! Inclinations for SEDs/images 
+! Now held in sed_mod
 !------------------------------
 
-  integer, private :: nInclination  ! number of inclinations (phaseloop_mod)
-  real, private :: firstInclination ! first inclination angle (phaseloop_mod)
-  real, private :: lastInclination=80.0  ! last inclination angle (phaseloop_mod)
-  real, allocatable, private :: inclinations(:)
   real :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
 
 !--------------------------------

@@ -1937,6 +1937,11 @@ contains
     integer :: nLines
     logical :: ok, isRange
     character(len=80) :: message
+    logical :: sed, jansky, SIsed
+    integer :: nInclination
+    real    :: firstInclination
+    real    :: lastInclination=80.0
+    real, allocatable :: inclinations(:)
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
@@ -2039,13 +2044,13 @@ contains
 
     if (allocated(inclinations)) then 
        call setSedParameters(jansky,SIsed,sed,incList=inclinations)
+       deallocate(inclinations)
     else
        call setSedParameters(jansky,SIsed,sed,nInclination=nInclination,&
             firstInc=firstInclination,LastInc=LastInclination, cosSpacing=.true.)
     end if
 
   end subroutine readSpectrumParameters
-
 
 
 !-----------------------------------------------------------------------------------------
