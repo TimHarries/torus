@@ -5752,7 +5752,6 @@ end subroutine sumFluxes
     use inputs_mod, only : minDepthAMR, maxDepthAMR
     use mpi
     type(GRIDTYPE) :: grid
-    integer :: iThread
     logical :: globalConverged(512), tConverged(512)
     integer :: ierr, k, j
     real(double) :: tol

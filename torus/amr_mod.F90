@@ -3886,7 +3886,8 @@ CONTAINS
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("unisphere")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
+!      if (thisOctal%nDepth < minDepthAMR) split = .true.
+      if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
       if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
       if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 
@@ -4952,6 +4953,12 @@ CONTAINS
 
   END FUNCTION decideSplit
 
+integer FUNCTION halfRefined(minDepthAMR, maxDepthAMR)
+  integer :: minDepthAMR, maxDepthAMR
+
+  halfRefined = int((minDepthAMR + maxDepthAMR)/2)
+
+end FUNCTION halfRefined
 
 logical  FUNCTION cornerCell(grid, thisOctal, subcell)
       type(OCTAL) :: thisOctal
