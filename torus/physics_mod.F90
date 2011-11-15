@@ -310,7 +310,7 @@ contains
 #ifdef HYDRO
     use inputs_mod, only : hydrodynamics
 #ifdef MPI
-    use hydrodynamics_mod, only : doHydrodynamics
+    use hydrodynamics_mod, only : doHydrodynamics, setupevenuparray
 #endif
 #endif
 
@@ -342,7 +342,7 @@ contains
     integer, parameter :: nMuMie = 20
     integer :: nlower, nupper
     type(GRIDTYPE) :: grid
-
+    integer :: evenuparray(nthreadsGlobal-1)
     nLower = 2
     nUpper = 3
 
@@ -350,8 +350,9 @@ contains
 #ifdef PHOTOION
     if(optimizeStack .and. photoionPhysics .and. photoionEquilibrium) then
        call writeInfo("Optimizing photon stack size.", TRIVIAL)
+       call setupevenuparray(grid, evenuparray)
        call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
-            .true., sublimate=.false.)
+            .true., evenuparray, sublimate=.false.)
     end if
 #endif
 #endif
@@ -433,8 +434,9 @@ contains
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
         else
 #ifdef MPI 
+           call setupevenuparray(grid, evenuparray)
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
-                .true., sublimate=.false.)
+                .true., evenuparray, sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif

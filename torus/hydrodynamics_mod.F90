@@ -1,5 +1,5 @@
 #ifdef HYDRO
-! hydrodynamics module added by tjh on 18th june 2007
+! Hydrodynamics module added by tjh on 18th june 2007
 
 module hydrodynamics_mod
 #ifdef MPI
@@ -307,7 +307,6 @@ contains
              else
                 thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i(subcell)
              endif
-             !print *, "thisOctal%flux(subcell) = ", thisOctal%flux_i(subcell)
         
              if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) "problem with the x_i values"
@@ -2445,7 +2444,7 @@ recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
         end if
      end if
   end do
- ! print *, "total flux = ", totalFlux
+
 end subroutine sumFluxes
 
 !Perform a single hydrodynamics step, in the x direction, for the 1D case. 
@@ -3155,6 +3154,7 @@ end subroutine sumFluxes
     real(double) :: nextDumpTime, temptc(512)
     character(len=80) :: plotfile
     real(double) :: iniM, endM, iniE, endE
+    integer :: evenUpArray(nThreadsGlobal-1)
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -3177,6 +3177,10 @@ end subroutine sumFluxes
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
        enddo
 
+       call writeInfo("Setting up even up array", TRIVIAL)
+       call setupEvenUpArray(grid, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3193,14 +3197,14 @@ end subroutine sumFluxes
        call calculateRhoE(grid%octreeRoot, direction)
 
 !ensure that all cells are within one level of refinement of one another       
-       call evenUpGridMPI(grid,.false.,dorefine)
+       call evenUpGridMPI(grid,.false.,dorefine, evenUpArray)
 
 !refine the grid if necessary       
        if(dorefine) then
-          call refineGridGeneric(grid, amrTolerance)
+          call refineGridGeneric(grid, amrTolerance, evenuparray)
        call writeInfo("Evening up grid", TRIVIAL)    
        end if
-       call evenUpGridMPI(grid, .false., dorefine)
+       call evenUpGridMPI(grid, .false., dorefine, evenuparray)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !set up grid values
@@ -3278,16 +3282,16 @@ end subroutine sumFluxes
           end if
  
 !ensure all celss are within one level of refinement of one another
-          call evenUpGridMPI(grid, .true., dorefine)
+          call evenUpGridMPI(grid, .true., dorefine, evenuparray)
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call zeroRefinedLastTime(grid%octreeRoot)
 
 !refine the grid where necessary and ensure that all cells are within one level of refinement of one another
           if(dorefine) then
-             call refineGridGeneric(grid, amrTolerance)
+             call refineGridGeneric(grid, amrTolerance, evenuparray)
           end if
-          call evenUpGridMPI(grid, .true., dorefine)
+          call evenUpGridMPI(grid, .true., dorefine, evenuparray)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)          
        else
        end if
@@ -3349,6 +3353,7 @@ end subroutine sumFluxes
     integer :: nHydroThreads
     integer :: nGroup, group(5120)
 !    logical :: doRefine
+    integer :: evenUpArray(nThreadsGlobal-1)
     logical :: doSelfGrav
     logical, save  :: firstStep = .true.
 
@@ -3398,6 +3403,10 @@ end subroutine sumFluxes
             write(*,'(a,i5,i4,a,i4,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
        enddo
 
+       call writeInfo("Setting up even up array", TRIVIAL)
+       call setupEvenUpArray(grid, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3423,8 +3432,9 @@ end subroutine sumFluxes
 
 !refine the grid where necessary
           if(doRefine) then
+             call writeInfo("Initial refine", TRIVIAL)    
              if (myrank == 1) call tune(6, "Initial refine")
-             call refineGridGeneric(grid, amrTolerance)
+             call refineGridGeneric(grid, amrTolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
           end if
        end if
@@ -3433,14 +3443,14 @@ end subroutine sumFluxes
 
 !evening up the grid ensures that no two neighbouring cells differ by more than one level of refinement          
           if(dorefine) then
-             call evenUpGridMPI(grid,.false., dorefine)
+             call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrank == 1) call tune(6, "Initial refine")
           end if
        end if
        
        if(myRankGlobal /= 0) then
-          call evenUpGridMPI(grid,.false., dorefine)
+          call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
@@ -3561,7 +3571,7 @@ end subroutine sumFluxes
                 if (myrank == 1)call tune(6, "Unrefine grid")
                ! nUnrefine = 0
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
-                call evenUpGridMPI(grid, .true., dorefine)
+                call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrank == 1)call tune(6, "Unrefine grid")
                 iUnrefine = 0
@@ -3572,9 +3582,9 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
              call writeInfo("Refining grid part 2", TRIVIAL)    
-             call refineGridGeneric(grid, amrTolerance)
+             call refineGridGeneric(grid, amrTolerance, evenuparray)
              call writeInfo("Done the refine part", TRIVIAL)                 
-             call evenUpGridMPI(grid, .true., dorefine)
+             call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
              call writeInfo("Done the even up part", TRIVIAL)    
 
              if (myrank == 1) call tune(6, "Loop refine")
@@ -3671,6 +3681,7 @@ end subroutine sumFluxes
     integer :: nHydroThreads 
     logical :: converged
     integer :: nUnrefine, jt, count
+    integer :: evenUpArray(nThreadsGlobal-1)
 
     nUnrefine = 0
     count = 0
@@ -3704,7 +3715,13 @@ end subroutine sumFluxes
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
 
+
+       call writeInfo("Setting up even up array", TRIVIAL)
+       call setupEvenUpArray(grid, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
+       call writeInfo("Doing initial exchange", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
@@ -3730,13 +3747,19 @@ end subroutine sumFluxes
           call calculateRhoE(grid%octreeRoot, direction)
           
 !ensure that all cells are within one level of refinement of one another
-          call evenUpGridMPI(grid,.true., dorefine)
+!          call writeInfo("Evening up", TRIVIAL)
+!          call evenUpGridMPI(grid,.true., dorefine, evenUpArray)
+!          call writeInfo("Done", TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
-             call refinegridGeneric(grid, amrTolerance)          
+             call writeInfo("Refining", TRIVIAL)
+             call refinegridGeneric(grid, amrTolerance, evenuparray)          
+             call writeInfo("Done", TRIVIAL)
           end if
-          call evenUpGridMPI(grid, .true.,dorefine)
+          call writeInfo("Evening up", TRIVIAL)
+          call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
+          call writeInfo("Done", TRIVIAL)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -3833,7 +3856,7 @@ end subroutine sumFluxes
     
        if (myrank == 1) call tune(6,"Hydrodynamics step")
 
-       call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+       call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !not all values survive the refine - therefore need to re-add them if wanting to dump a vtk file
@@ -3844,10 +3867,10 @@ end subroutine sumFluxes
 
 !refine the grid where necessary
        if(doRefine) then
-          call refinegridGeneric(grid, amrTolerance)
+          call refinegridGeneric(grid, amrTolerance, evenuparray)
        end if
 
-       call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+       call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
        
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        
@@ -3860,7 +3883,7 @@ end subroutine sumFluxes
        if(doUnrefine .and. grid%currentTime /= 0.d0) then
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
-          call evenUpGridMPI(grid, .true., dorefine) !, dumpfiles=jt)
+          call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           iUnrefine = 0
        end if
@@ -5725,40 +5748,62 @@ end subroutine sumFluxes
      end select
    end function getBoundary
 
-  subroutine refineGridGeneric(grid, tol)
+  subroutine refineGridGeneric(grid, tol, evenupArray)
     use inputs_mod, only : minDepthAMR, maxDepthAMR
     use mpi
     type(GRIDTYPE) :: grid
     integer :: iThread
     logical :: globalConverged(512), tConverged(512)
-    integer :: ierr
+    integer :: ierr, k, j
     real(double) :: tol
     real(double) :: index = 1.d0
+    integer :: evenuparray(nThreadsGlobal-1)
+    integer :: endloop
+    integer, allocatable ::  safe(:, :)
 
     globalConverged = .false.
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
 
-    call setAllUnchanged(grid%octreeRoot)
+    if(grid%octreeRoot%twoD) then 
+       endloop = 4
+    else if(grid%octreeroot%threed) then
+       endloop = 8
+    else
+       endloop = 2
+    end if
 
+    allocate(safe(endloop, nThreadsGlobal-1))
+
+    safe = 0
+    do k = 1, endloop
+       do j = 1, nTHreadsGlobal-1
+          if(evenupArray(j) == k) then
+             safe(k, j) = j 
+          end if
+       end do
+    end do
+
+    call setAllUnchanged(grid%octreeRoot)
     do
        globalConverged(myRankGlobal) = .true.
-       do iThread = 1, nThreadsGlobal-1
-          if (myrankGlobal /= iThread) then 
-             call hydroValuesServer(grid, iThread)
+!       do iThread = 1, nThreadsGlobal-1
+       do k = 1, endloop
+          if(evenuparray(myRankGlobal) /= k) then
+              !         if (myrankGlobal /= iThread) then 
+             !call hydroValuesServer(grid, iThread)
+             call hydroValuesServer(grid, endloop)
           else
              call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, index, inheritval=.false.)
-             index = index + 1.d0
-             call shutdownServers()
+             call shutdownServers2(safe, k, endloop)
           endif
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        enddo
+       index = index + 1.d0
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        if (ALL(tConverged(1:nthreadsGlobal-1))) exit
     enddo
-
-
     666 continue
   end subroutine refineGridGeneric
 
@@ -5806,6 +5851,9 @@ end subroutine sumFluxes
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
+
+
+
     if(mod(index, 2.d0) /= 0.d0) then
        index1 = 1
        index2 = thisOctal%maxChildren
@@ -5832,7 +5880,6 @@ end subroutine sumFluxes
           end do
           if (.not.converged_tmp) converged=converged_tmp
        else
-
 
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
@@ -5867,9 +5914,8 @@ end subroutine sumFluxes
              if (inOctal(grid%octreeRoot, locator)) then
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-
                 call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
-               
+
                 split = .false.
 
                 grad = abs((thisOctal%rho(subcell)-rho) / &
@@ -5897,11 +5943,9 @@ end subroutine sumFluxes
                       maxGradient = max(grad, maxGradient)
                       if (grad > amrspeedtol) then
                          split = .true.
-!                         print *, "grad, limit", grad, limit
                       endif
                    endif
                 end if
-
                 if (split) then
  
                    if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
@@ -5989,7 +6033,7 @@ end subroutine sumFluxes
                   inherit=.true., interp=.false.)
           endif
           converged = .false.
-!        print *, "split D ", thisOctal%nDepth
+!        print *, "split E ", thisOctal%nDepth
 !        write(*,*) masstol, (thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3)
           exit
        endif
@@ -6129,7 +6173,6 @@ end subroutine sumFluxes
 
     if (.not.converged) exit
  endif
-
 end do
 
 end subroutine refineGridGeneric2
@@ -6526,8 +6569,49 @@ end subroutine refineGridGeneric2
     sigma = maxval(abs(x(1:n)))-minval(abs(x(1:n)))
   end function sigma
 
+!Set up an array of identifiers to speed up the even up grid process
+  subroutine setupEvenUpArray(grid, evenUpArray)
+    type(gridtype) :: grid
+    integer :: evenUpArray(nThreadsGlobal-1)
 
-   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, dumpfiles)
+
+    if(grid%octreeRoot%twoD) then
+       if((nthreadsGlobal-1) == 4) then
+          evenUpArray = (/1, 2, 3, 4/)
+       else if((nthreadsGlobal-1) == 16) then
+          evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
+       end if
+    else if(grid%octreeRoot%threeD) then
+       if((nthreadsGlobal-1) == 8) then
+!          evenUpArray = (/1, 0, 0, 1, 0, 1, 1, 0/)
+          evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8/)
+       else if((nthreadsGlobal-1) == 64) then
+!          evenUpArray = (/1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, & !pane 1
+!               0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, & !pane 2 
+!               1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, & !pane 3 
+!               0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0/) !pane 4
+
+!          evenUpArray = (/1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, & !pane 1
+!               1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, & !pane 2 
+!               1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, & !pane 3 
+!               1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0/)!pane 4
+ 
+          evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/)!pane 4
+
+
+       else
+          call torus_abort("unknown no. of hydro threads in setupEvenUpArray")
+       end if
+    else
+       evenUpArray = (/1, 2/)
+    end if
+
+  end subroutine setupEvenUpArray
+
+   subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, evenUpArray, dumpfiles)
     use mpi  
     use inputs_mod, only : minDepthAMR, maxDepthAMR
 
@@ -6540,11 +6624,11 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: locs(200000), eLocs(200000)
     integer :: nLocs(512), tempNlocs(20000)
     integer :: thread(100000), nLocsGlobal,i, depth(200000)
-
+    integer, intent(in) :: evenUpArray(:)
     real(double) :: temp(20000,4),tempsent(4)
     integer :: nTemp(1), nSent(1), eDepth(200000)
     integer :: iThread, nExternalLocs
-    integer :: iter
+    integer :: iter, k, endloop, j
     integer, parameter :: tag = 1
     logical :: globalChanged(512)
     integer :: status(MPI_STATUS_SIZE)
@@ -6552,6 +6636,7 @@ end subroutine refineGridGeneric2
     logical :: allThreadsConverged
     character(len=30) :: vtkFilename
     real(double) :: index = 1.d0
+    integer, allocatable ::  safe(:, :)
 
 !    character(len=20) :: plotfile
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -6574,26 +6659,51 @@ end subroutine refineGridGeneric2
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
 
     allThreadsConverged = .false.
+
+    if(grid%octreeRoot%twoD) then 
+       endloop = 4
+    else if(grid%octreeroot%threed) then
+       endloop = 8
+    else
+       endloop = 2
+    end if
+
+    allocate(safe(endloop, nThreadsGlobal-1))
+    safe = 0
+    do k = 1, endloop
+       do j = 1, nTHreadsGlobal-1
+          if(evenupArray(j) == k) then
+             safe(k, j) = j 
+          end if
+       end do
+    end do
+
     do while(.not.allThreadsConverged)
        call setAllUnchanged(grid%octreeRoot)
        localChanged = .false.
 
        globalConverged = .false.
-       do
+       do 
           globalConverged(myRankGlobal) = .true.
-          do iThread = 1, nThreadsGlobal-1
-             if (myrankGlobal /= iThread) then
-                call hydroValuesServer(grid, iThread)
+!          do iThread = 1, nThreadsGlobal-1
+          do k = 1, endloop
+!             if (myrankGlobal /= iThread) then
+             if(evenUpArray(myRankGlobal) /= k) then
+!                call hydroValuesServer(grid, iThread)
+                call hydroValuesServer(grid, endloop)
              else
                 call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
-                index = index + 1.d0
+
                 call unsetGhosts(grid%octreeRoot)
                 call setupEdges(grid%octreeRoot, grid)
                 call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
-                call shutdownServers()
+!                call shutdownServers()
+                call shutdownServers2(safe, k, endloop)
              endif
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          enddo
+!          enddo
+          end do
+          index = index + 1.d0
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 !          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nThreadsGlobal-1)
@@ -6662,9 +6772,11 @@ end subroutine refineGridGeneric2
                endif
              enddo
 
-             do iThread = 1, nThreadsGlobal-1
-                if (myrankGlobal /= iThread) then
-                   call hydroValuesServer(grid, iThread)
+!             do iThread = 1, nThreadsGlobal-1
+!                if (myrankGlobal /= iThread) then
+             do k = 1, endloop
+                if(evenUpArray(myRankGlobal) /= k) then
+                   call hydroValuesServer(grid, endloop)
                 else
 !                   if(myRank == 2) then
 !                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
@@ -6674,7 +6786,8 @@ end subroutine refineGridGeneric2
                       converged=.true.
                       if(ANY(localChanged)) converged = .false.
                    enddo
-                 call shutdownServers()
+!                 call shutdownServers()
+             call shutdownServers2(safe, k, endloop)
               endif
                call MPI_BARRIER(amrCOMMUNICATOR, ierr)
             enddo
@@ -6688,19 +6801,24 @@ end subroutine refineGridGeneric2
           globalConverged = .false.
           do
              globalConverged(myRankGlobal) = .true.
-             do iThread = 1, nThreadsGlobal-1
-                if (myrankGlobal /= iThread) then
-                   call hydroValuesServer(grid, iThread)
+!             do iThread = 1, nThreadsGlobal-1
+             do k = 1, endloop
+!                if (myrankGlobal /= iThread) then
+                if(evenUpArray(myRankGlobal) /= k) then
+!                   call hydroValuesServer(grid, iThread)
+                   call hydroValuesServer(grid, endloop)
                 else
                    call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
-                   index = index + 1.d0
+
                    call unsetGhosts(grid%octreeRoot)
                    call setupEdges(grid%octreeRoot, grid)
                    call setupGhosts(grid%octreeRoot, grid)!, flag=.true.)
-                   call shutdownServers()
+ !                  call shutdownServers()
+                   call shutdownServers2(safe, k, endloop)
                 endif
                 call MPI_BARRIER(amrCOMMUNICATOR, ierr)
              enddo
+             index = index + 1.d0
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
             call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 !             if (myrank == 1) write(*,*) "second evenup ",tConverged(1:nThreadsGlobal-1)
@@ -6727,8 +6845,6 @@ end subroutine refineGridGeneric2
        endif
 
     end do
-
-!    print *, "DONE AN EVEN UP"
 
 666 continue
   end subroutine evenUpGridMPI
@@ -6939,261 +7055,6 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
                 call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
-!                if(.not. thisOctal%ghostcell(subcell)) then
-!                   if(thisOctal%twoD) then
-!                     
-!!                      if(.not. octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then
-!                      rVec = subcellCentre(thisOctal, subcell)
-!                      bVec = subcellCentre(neighbourOctal, neighbourSubcell)
-!                      octVec = VECTOR(x, y, z) 
-!                      
-!                      !                      print *, "nd", nd, thisOctal%nDepth, myRank
-!                      if((nd - thisOctal%nDepth)==1) then
-!                         !THaw - need to ensure that both of the neighbours are of lower refinement(2D)
-!                         if(abs(dirVec(j)%z) == 1.d0) then
-!                            if(rVec%x > octVec%x) then                                  
-!!                               print *, "a1", octvec
-!                               octVec = octVec + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!!                               print *, "a2", octvec
-!                            else
-!!                               print *, "b1", octvec
-!                               octVec = octVec + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!!                               print *, "b2", octvec
-!                            end if
-!                            
-!                         else if (abs(dirVec(j)%x) == 1.d0) then
-!                            
-!                            if(rVec%z >octVec%z) then
-!!                               print *, "c1", octvec
-!                               octVec = octVec + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!!                               print *, "c2", octvec
-!                            else
-!!                               print *, "d1", octvec
-!                               octVec = octVec + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!!                               print *, "d2", octvec
-!                            end if
-!                            
-!                         else 
-!                            print *, "Unrecognized direction", dirVec(j)
-!                            stop
-!                         end if
-!                         
-!                         
-!                         call getHydroValues(grid, octVec, nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
-!                         
-!                         if(nd2 > nd) then
-!!                            print *, "nd1", nd
-!                            nd = nd2
-!!                            print *, "nd2", nd
-!                         end if
-!                      end if
-!!                   end if
-!                   
-!                else if(thisOctal%threeD) then
-!                      !As with 2D, need to ensure that all cells in contact are checked across an mpi boundary
-!                      rVec = subcellCentre(thisOctal, subcell)
-!                      nVec = subcellCentre(neighbourOctal, neighbourSubcell)
-!                      octVec = VECTOR(x, y, z)
-!                      vecStore(1) = octVec
-!                      
-!!                      print *, "doing 3D evenup"
-!
-!                      !Reminder of my labels
-!                      ! _______
-!                      !|i  |ii |   z        x        y
-!                      !|___|___|   ^        ^        ^
-!                      !|iii|iV |   |        |        |
-!                      !|___|___|   |____>y, |____>z, |____x
-!                      !                 
-!
-!                      !If the result of initial check is inconclusive we need to check other cells of the neighbour
-!                      if((nd - thisOctal%nDepth)==1) then
-!
-!                         !Work round the neighbouring cells clockwise and get their positions
-!
-!                         !Note that this process may not actually reach each "quarter" first time
-!                         !If it encounters a cell of higher refinement it might get lost (but only within the neighbour cube)
-!                         !This is no problem since if it occurs it implies refinement is necessary 
-!                         
-!                         if(abs(dirVec(j)%x) == 1.d0) then
-!                            if(rVec%y > octVec%y) then
-!                               if(rVec%z > octVec%z) then
-!                                  !Have found (i)
-!                                  
-!                                  !goto (ii)
-!                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iv)
-!                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iii)
-!                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!
-!                               else if(rVec%z < octVec%z) then
-!                                  !Have found (iii)
-!
-!                                  !goto (i)                                                                                                                                                         
-!                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(ii)                                                                                                                                                         
-!                                  vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iv)                                                                                         
-!                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!
-!                               end if
-!                               
-!                            else if (rVec%y < octVec%y) then
-!                               if(rVec%z > octVec%z) then
-!                                  !have found ii
-!                                  !goto (iv)
-!                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iii)
-!                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(i)
-!                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!
-!                               else if(rVec%z < octVec%z) then
-!                                  !have found iv
-!                                  !goto (iii)
-!                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(i)
-!                                  !vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(ii)
-!                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!
-!                               end if
-!                            end if
-!
-!                            !vecstore check                                                                                                                            
-!                            do i = 1, 3
-!                               locator = vector(rVec%x, vecStore(i)%y, vecStore(i)%z)
-!                               if(.not. inSubcell(thisOctal,subcell, locator)) then
-!                                  write(*,*) "Screw up in partner checks x"
-!                                  stop
-!                               end if
-!                            end do
-!
-!                                                     
-!                         else if(abs(dirVec(j)%y) == 1.d0) then !x-->y, y-->z, z-->x 
-!                            if(rVec%z > octVec%z) then
-!                               if((rVec%x > octVec%x)) then
-!                               !Have found (i)       
-!
-!                                  !goto (ii)
-!                                  vecStore(1) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iv)
-!                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iii)
-!                                  vecStore(3) = vecStore(2) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                                                                                                                             
-!                               else if(rVec%x < octVec%x) then
-!                                  !Have found (iii)
-!                                  !goto (i)
-!                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(ii)
-!                                  vecStore(2) = vecStore(1) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iv)
-!                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               end if
-!
-!                            else if (rVec%z < octVec%z) then
-!                               if(rVec%x > octVec%x) then
-!                                  !have found ii
-!                                  !goto (iv)
-!                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iii)
-!                                  vecStore(2) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(i)
-!                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               else if(rVec%x < octVec%x) then
-!                                  !have found iv
-!                                  !goto (iii)
-!                                  vecStore(1) = vecStore(1) + dirVec(6)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(i)
-!                                  !vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(ii)
-!                                  vecStore(3) = vecStore(2) + dirVec(1)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               end if
-!                            end if
-!
-!                            !vecstore check                                                                                                                            
-!                            do i = 1, 3
-!                               locator = vector(vecStore(i)%x, rVec%y, vecStore(i)%z)
-!                               if(.not. inSubcell(thisOctal,subcell, locator)) then
-!                                  write(*,*) "Screw up in partner checks y"
-!                                  stop
-!                               end if
-!                            end do
-!
-!
-!                         else if(abs(dirVec(j)%z) == 1.d0) then !x-->y, y-->z, z-->x 
-!                            if(rVec%x > octVec%x) then
-!                               if(rVec%y > octVec%y) then
-!                                  !Have found (i)
-!                                  !goto (ii) 
-!                                  vecStore(1) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iv)
-!                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iii)
-!                                  vecStore(3) = vecStore(2) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!
-!                               else if(rVec%y < octVec%y) then
-!                                  !Have found (iii)
-!                                  !goto (i)
-!                                  vecStore(1) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(ii)
-!                                  vecStore(2) = vecStore(1) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iv)
-!                                  vecStore(3) = vecStore(2) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               end if
-!
-!                            else if (rVec%x < octVec%x) then
-!                               if(rVec%y > octVec%y) then
-!                                  !have found ii
-!                                  !goto (iv)
-!                                  vecStore(1) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(iii)
-!                                  vecStore(2) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(i)
-!                                  vecStore(3) = vecStore(2) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               else if(rVec%y < octVec%y) then
-!                                  !have found iv
-!                                  !goto (iii)
-!                                  vecStore(1) = vecStore(1) + dirVec(4)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(i)
-!                                  !vecStore(2) = vecStore(1) + dirVec(2)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  vecStore(2) = vecStore(1) + dirVec(5)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                                  !goto(ii)
-!                                  vecStore(3) = vecStore(2) + dirVec(3)*(thisOctal%subcellSize/4.d0+0.01d0*grid%halfsmallestsubcell)
-!                               end if
-!                            end if
-!
-!                            !vecstore check
-!                            do i = 1, 3
-!                               locator = vector(vecStore(i)%x, vecStore(i)%y, rVec%z)
-!                               if(.not. inSubcell(thisOctal,subcell, locator)) then
-!                                  write(*,*) "Screw up in partner checks z"
-!                                  stop
-!                               end if
-!                            end do
-!
-!
-!                         else
-!                            print *, "Direction Error In EvenUpGrid (3D)"
-!                            stop
-!                                                      
-!                         end if
-!
-!                         !Then use the cells to find the highest refinement neighbour
-!                         do i = 1, 3
-!                            call getHydroValues(grid, vecstore(i), nd2, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z)
-!                            if(nd2 > nd) then
-!                               nd = nd2
-!                            end if
-!                         end do
-!                        
-!                      end if
-!                   end if
-!                end if
                 
                 !                   if (((neighbourOctal%nDepth-thisOctal%nDepth) > 1).and. (thisOCtal%ndepth < maxDepthAMR)) then
                 if (((nd-thisOctal%nDepth) > 1).and. (thisOctal%nDepth < maxDepthAMR)) then

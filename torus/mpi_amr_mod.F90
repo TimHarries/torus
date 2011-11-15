@@ -2091,26 +2091,18 @@ contains
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     do iThread = 1, nThreadsGlobal - 1
        if (iThread /= myRankGlobal) then
-          !write(*,*) myRankGlobal, " calling boundaryreceiverequests"
-          !print *, "alpha ", myRankGlobal, iThread
           call periodBoundaryReceiveRequests(grid, iThread, doJustGrav)
        else
-          !write(*,*) "now doing ", myRankGlobal
-          !print *, "beta", myRankGlobal
           call recursivePeriodSend(grid%octreeRoot, doJustGrav)
           loc(1) = 1.d30
           do i = 1, nThreadsGlobal-1
              if (i /= iThread) then
-           !     write(*,*) myRankGlobal, " sending terminate to ", i
                 call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
              endif
           enddo
        endif
-!       write(*,*) myrankGlobal, " waiting at barrier"
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-!       write(*,*) myrankGlobal, " dropped through barrier"
     enddo
-!    write(*,*) myRankGlobal, " HAS REACHED THE BARRIER"
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
   end subroutine periodBoundary
 
@@ -3269,13 +3261,29 @@ end subroutine dumpStromgrenRadius
     enddo
   end subroutine shutdownServers
 
+  subroutine shutdownServers2(check, k, endloop)
+    use mpi
+    integer :: iThread
+    real(double) :: loc(3)
+    integer, parameter :: tag = 50
+    integer :: ierr, endloop, k
+    integer :: check(endloop, nTHreadsGlobal-1)
+   
+    do iThread = 1, nThreadsGlobal-1
+       if (iThread /= myrankGlobal .and. .not. ANY(iThread == check(k,1:nThreadsGlobal-1))) then
+          loc = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+  end subroutine shutdownServers2
+
   subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
     use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
     real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     type(VECTOR) :: position, rVec
-    real(double) :: loc(3)
+    real(double) :: loc(4)
     type(OCTAL), pointer :: thisOctal, parent
     integer :: iThread
     integer, parameter :: nStorage = 12
@@ -3321,12 +3329,17 @@ end subroutine dumpStromgrenRadius
           pressure = parent%pressure_i(subcell)
        endif
     else
+!       print *, "RANK ", myRankGlobal, "PREPARING TO SEND"
        iThread = thisOctal%mpiThread(subcell)
        loc(1) = position%x
        loc(2) = position%y
        loc(3) = position%z
-       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       loc(4) = myRankGlobal
+!       print *, "RANK ", myRankGlobal, "SENDING TO ", iThread
+       call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+ !      print *, "RANK ", myRankGlobal, "SENT"
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+  !     print *, "RANK ", myRankGlobal, "RECVING"
        nd = nint(tempStorage(1))
        rho = tempStorage(2)
        rhoe = tempStorage(3)
@@ -3346,36 +3359,51 @@ end subroutine dumpStromgrenRadius
     endif
   end subroutine getHydroValues
 
-  subroutine hydroValuesServer(grid, iThread)
+  subroutine hydroValuesServer(grid, nworking)
     use mpi
     type(GRIDTYPE) :: grid
     logical :: stillServing
-    real(double) :: loc(3)
+    real(double) :: loc(4)
     type(VECTOR) :: position, rVec
     type(OCTAL), pointer :: thisOctal
     type(OCTAL), pointer :: parent
-    integer :: subcell
-    integer :: iThread
+    integer :: subcell, nworking
+    integer :: iThread, servingArray, workingTHreads(nworking)
     integer, parameter :: nStorage = 12
     real(double) :: tempStorage(nStorage)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
-    integer :: ierr
+    integer :: ierr, j
 
     stillServing = .true.
-
-    thisOctal => grid%octreeroot
+    servingArray = 0
+    workingTHreads = 0
+   thisOctal => grid%octreeroot
     do while (stillServing)
-       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+
+!       do iThread = 1, nThreadsGlobal-1
+!       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+       
+       call MPI_RECV(loc, 4, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
-       if (position%x > 1.d29) then
-          stillServing= .false.
+       iThread = int(loc(4))
+       if (position%x > 1.d29) then          
+          do j=1, nworking
+             if(workingThreads(j) == 0) then
+                workingThreads(j) = 1
+                exit
+             end if
+          end do
+          if(SUM(workingTHreads) == nworking) then
+             workingThreads = 0
+             stillServing= .false.
+          end if
        else
-          call findSubcellLocal(position, thisOctal, subcell)
-          if (.not.thisOctal%changed(subcell)) then
-             rVec = subcellCentre(thisOctal, subcell)
+             call findSubcellLocal(position, thisOctal, subcell)
+             if (.not.thisOctal%changed(subcell)) then
+                rVec = subcellCentre(thisOctal, subcell)
              tempStorage(1) = thisOctal%nDepth
              tempStorage(2) = thisOctal%rho(subcell)
              tempStorage(3) = thisOctal%rhoe(subcell)             
@@ -3400,10 +3428,10 @@ end subroutine dumpStromgrenRadius
              tempStorage(8) = parent%phi_i(thisOctal%parentsubcell)        
              tempstorage(12) = parent%pressure_i(subcell)
          endif
+
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
     enddo
-
   end subroutine hydroValuesServer
 
 !  subroutine fillVelocityCornersFromHydro(grid)

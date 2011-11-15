@@ -59,7 +59,7 @@ contains
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
-         zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum
+         zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
     use parallel_mod, only: torus_abort
@@ -89,7 +89,7 @@ contains
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     logical :: noPhoto=.false.
-
+    integer :: evenUpArray(nThreadsGlobal-1)
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
 
@@ -189,6 +189,11 @@ contains
 
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+       call writeInfo("Setting up even up array", TRIVIAL)
+       call setupEvenUpArray(grid, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+
+
        do i = 1, nPairs
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
@@ -223,15 +228,15 @@ contains
                 if (gridConverged) exit
              end do
           else
-             call evenUpGridMPI(grid, .false., .true.)
+             call evenUpGridMPI(grid, .false., .true., evenuparray)
           endif
           
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
-          call evenUpGridMPI(grid,.false.,.true.)      
-          call refineGridGeneric(grid, amrtolerance)
+          call evenUpGridMPI(grid,.false.,.true., evenuparray)      
+          call refineGridGeneric(grid, amrtolerance, evenuparray)
           call writeInfo("Evening up grid", TRIVIAL)    
-          call evenUpGridMPI(grid, .false.,.true.)
+          call evenUpGridMPI(grid, .false.,.true., evenuparray)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
@@ -253,13 +258,13 @@ contains
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                looplimittime, .false.,.true.)
+                looplimittime, .false.,.true., evenuparray)
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
-                loopLimitTime, looplimittime, .false., .true.)
+                loopLimitTime, looplimittime, .false., .true., evenuparray)
                 call writeInfo("Done",TRIVIAL)
              endif
              
@@ -289,13 +294,13 @@ contains
                    if (gridConverged) exit
                 end do
              else
-                call evenUpGridMPI(grid, .false., .true.)
+                call evenUpGridMPI(grid, .false., .true., evenuparray)
              endif
              
-             call evenUpGridMPI(grid,.false.,.true.)      
-             call refineGridGeneric(grid, amrtolerance)
+             call evenUpGridMPI(grid,.false.,.true., evenuparray)      
+             call refineGridGeneric(grid, amrtolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
-             call evenUpGridMPI(grid, .false.,.true.)
+             call evenUpGridMPI(grid, .false.,.true., evenuparray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
@@ -433,7 +438,8 @@ contains
           end if
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., .true.)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., .true. &
+               , evenuparray)
 
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
@@ -455,12 +461,12 @@ contains
 
           if (myRank /= 0) then
              
-             call evenUpGridMPI(grid,.false.,.true.)
+             call evenUpGridMPI(grid,.false.,.true., evenuparray)
 
-             call refineGridGeneric(grid, amrtolerance)
+             call refineGridGeneric(grid, amrtolerance, evenuparray)
 
              call writeInfo("Evening up grid", TRIVIAL)
-             call evenUpGridMPI(grid, .false.,.true.)
+             call evenUpGridMPI(grid, .false.,.true., evenuparray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
       
           endif
@@ -498,7 +504,7 @@ contains
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
-          call evenUpGridMPI(grid, .true., .true.)
+          call evenUpGridMPI(grid, .true., .true., evenuparray)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        endif
@@ -581,7 +587,7 @@ end subroutine radiationHydro
 #endif
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
-       sublimate)
+       evenuparray, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance
    !      optimizeStack, stackLimit, dStack
@@ -661,7 +667,7 @@ end subroutine radiationHydro
 
     integer :: dprCounter
 
-
+    integer :: evenuparray(nThreadsGlobal-1)
     integer :: k
     real(double) :: nuThresh
 
@@ -1806,8 +1812,8 @@ end subroutine radiationHydro
         if(doPhotoRefine) then!
            dprCounter = dprCounter + 1
            if(dprCounter == 4) then
-              call refineGridGeneric(grid, amrtolerance) 
-              call evenUpGridMPI(grid, .true., dorefine)
+              call refineGridGeneric(grid, amrtolerance, evenuparray) 
+              call evenUpGridMPI(grid, .true., dorefine, evenuparray)
               dprCounter = 0
            end if
 !           call writeInfo("Done the even up part", TRIVIAL)
