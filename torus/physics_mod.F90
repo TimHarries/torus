@@ -342,7 +342,11 @@ contains
     integer, parameter :: nMuMie = 20
     integer :: nlower, nupper
     type(GRIDTYPE) :: grid
+#ifdef MPI
+#ifdef PHOTOION
     integer :: evenuparray(nthreadsGlobal-1)
+#endif
+#endif
     nLower = 2
     nUpper = 3
 

@@ -4956,8 +4956,12 @@ CONTAINS
 integer FUNCTION halfRefined(minDepthAMR, maxDepthAMR)
   integer :: minDepthAMR, maxDepthAMR
 
-  halfRefined = int((minDepthAMR + maxDepthAMR)/2)
-
+  if(minDepthAMR == maxDepthAMR) then
+     halfRefined = minDepthAMR
+  else
+     halfRefined = int((minDepthAMR + maxDepthAMR)/2)
+  end if
+  
 end FUNCTION halfRefined
 
 logical  FUNCTION cornerCell(grid, thisOctal, subcell)
