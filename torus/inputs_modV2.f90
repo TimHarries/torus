@@ -1822,9 +1822,10 @@ contains
     logical :: ok
     integer :: i
     character(len=20) :: keyword
+    character(len=10) :: axisUnits
     character(len=80) :: outputImageType, imageFilename
     integer :: thisnpixels
-    real, allocatable :: lambdaImage(:) 
+    real :: lambdaImage, thisimagesize, defaultImageSize
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
@@ -1835,18 +1836,21 @@ contains
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i8,a)", 1, ok, .false.)
     call setNumImages(nimage)
-    allocate (lambdaImage(nimage))
 
-    call getLogical("inarcsec", imageinArcsec, cLine, fLine, nLines, &
-         "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
+         "Axis units for image:", "(a,a,1x,a)", "au", ok, .false.)
 
-    if (.not.imageinArcSec) then
-       call getReal("imagesize", setImageSize, real(autocm), cLine, fLine, nLines, &
-            "Image size (AU): ", "(a,1pe10.2,1x,a)", 1.0, ok, .true.)
+    write(message,*) "Image size ("//trim(axisUnits)//"): "
+    if ( nimage == 1 ) then 
+       ! imagesize must be provided if there is only one image
+       call getReal("imagesize", thisImageSize, 1.0, cLine, fLine, nLines, &
+            trim(message), "(a,1pe10.2,1x,a)", 1.0, ok, .true.)
     else
-       call getReal("imagesize", setImageSize, 1., cLine, fLine, nLines, &
-            "Image size (arcsec): ", "(a,1pe10.2,1x,a)", 0.0, ok, .true.)
-    endif
+       ! If there are multiple images we can specify a different size for 
+       ! each one, but read in imagesize to use as a default. 
+       call getReal("imagesize", defaultImageSize, 1.0, cLine, fLine, nLines, &
+            trim(message), "(a,1pe10.2,1x,a)", 1.0, ok, .false.)
+    end if
 
     call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
          "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1856,7 +1860,7 @@ contains
        call getString("imagefile", imageFilename, cLine, fLine, nLines, &
             "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
 
-       call getReal("lambdaimage", lambdaImage(1),1., cLine, fLine, nLines, &
+       call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
        if (photoionPhysics) then
           call getString("imagetype", outputimageType, cLine, fLine, nLines, &
@@ -1888,7 +1892,8 @@ contains
        call getReal("lamstart", lamstart, 1., cLine, fLine, nLines, &
             "LamStart (probably temporary - not sure what it does)","(a,f8.1,1x,a)", 6562.8, ok, .false.)
        
-       call setImageParams(1, lambdaImage(1), outputimageType, imageFilename, thisnpixels)
+       call setImageParams(1, lambdaImage, outputimageType, imageFilename, thisnpixels, axisUnits, &
+            thisimagesize)
     else
        do i = 1, nImage
 
@@ -1901,7 +1906,7 @@ contains
           call getString(keyword, imageFilename, cLine, fLine, nLines, &
                "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
           write(keyword,'(a,i1.1)') "lambdaimage",i
-          call getReal(keyword, lambdaImage(i),1., cLine, fLine, nLines, &
+          call getReal(keyword, lambdaImage, 1., cLine, fLine, nLines, &
                "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
           if (photoionPhysics) then
              write(keyword,'(a,i1.1)') "imagetype",i
@@ -1911,13 +1916,21 @@ contains
           write(keyword,'(a,i1.1)') "npixels",i
           call getInteger(keyword, thisnpixels, cLine, fLine, nLines, &
                "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+
+          ! Read size of this image or use default value if not specified.
+          write(keyword,'(a,i1.1)') "imagesize",i  
+          write(message,*) "Image size ("//trim(axisUnits)//"): "        
+          call getReal(keyword, thisImageSize, 1.0, cLine, fLine, nLines, &
+            trim(message), "(a,1pe10.2,1x,a)", defaultImageSize, ok, .false.)
+
           write(keyword,'(a,i1.1)') "inclination",i
           call getReal(keyword, inclinationArray(i), real(degtorad), cLine, fLine, nLines, &
                "Inclination of image: ","(a,f4.1,1x,a)",0., ok, .true.)
           write(keyword,'(a,i1.1)') "positionangle",i
           call getReal(keyword, positionAngle(i), real(degtorad), cLine, fLine, nLines, &
                "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-          call setImageParams(i, lambdaImage(i), outputimageType,imageFilename, thisnpixels)
+          call setImageParams(i, lambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
+               thisImageSize)
     enddo
 
  end if
@@ -1925,8 +1938,6 @@ contains
   call getInteger("fitsbitpix", fitsBitpix, cLine, fLine, nLines, &
       "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
        
-  deallocate (lambdaImage)
-
   end subroutine readImageParameters
 
   subroutine readSpectrumParameters(cLine, fLine, nLines)

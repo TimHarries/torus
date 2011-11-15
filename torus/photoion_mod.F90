@@ -3187,7 +3187,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageNum)
-    use inputs_mod, only : nPhotons, setimagesize, lamStart, amr2d
+    use inputs_mod, only : nPhotons, lamStart, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use image_utils_mod
 #ifdef USECFITSIO
@@ -3229,6 +3229,7 @@ end subroutine readHeIIrecombination
     real(double) :: totalLineEmission, chanceSource, weightSource, weightEnv
     integer(kind=bigint) :: iBeg, iEnd
     character(len=80) :: message
+    real :: imageSize
 #ifdef MPI
     real(double) :: tempTotalFlux
     integer :: i
@@ -3252,15 +3253,16 @@ end subroutine readHeIIrecombination
     call writeVtkFile(grid, "after_sublimate.vtk", &
          valueTypeString=(/"rho        ", "temperature", "dust1      "/))
 
+    imageSize = getImageSize(imageNum)/1.0e10
     if (amr2d) then 
-       imageXsize=2.0*setimagesize/1.e10
-       imageYsize=setimagesize/1.e10
+       imageXsize=2.0*imagesize
+       imageYsize=imagesize
        nXpix = 2*npix
        nYpix = npix
        thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0., yOffset= 0.5*imageYsize)
     else
-       imageXsize=setimagesize/1.e10
-       imageYsize=setimagesize/1.e10
+       imageXsize=imagesize
+       imageYsize=imagesize
        nXpix = npix
        nYpix = npix
        thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0.)

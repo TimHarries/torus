@@ -19,6 +19,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   use disc_class
   use image_mod, only: IMAGETYPE, PVIMAGETYPE, initImage, initPVImage, addPhotonToImage, addphotontopvimage, &
        createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm
+  use image_utils_mod
 #ifdef USECFITSIO
   use image_mod, only : writeFitsImage
 #endif
@@ -270,6 +271,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR) :: ramanSourceVelocity
 
   real :: probDust
+  real :: setImageSize
 
 ! Variables formerly in inputs_mod but not set in Torus V2 ----------------
   real :: ramVel=0.0
@@ -324,6 +326,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   biasPhiDirection = -1.d0
 
   objectDistance = griddistance * pctocm
+  ! Hardwired to 1. If multiple images are used this needs to be the 
+  ! size of the ith image (DMA).
+  setimagesize = getImageSize(1)
 
   if ( grid%geometry == "cmfgen" ) then 
      probContPhoton = 0.2
@@ -1207,7 +1212,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            imageSize = setImageSize / 1.e10
         endif
 
-        if (imageInArcsec.and.(setImageSize /= 0.)) then
+        if (trim(getAxisUnits())=="arcsec".and.(setImageSize /= 0.)) then
            imagesize = real(objectdistance * (setImageSize / 3600.) * degtorad / 1.e10)
         endif
 

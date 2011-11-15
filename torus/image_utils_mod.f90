@@ -10,7 +10,7 @@ module image_utils_mod
   implicit none
 
   public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixels, &
-       getImageFilename
+       getImageFilename, getAxisUnits, getImageSize
 
   private
 
@@ -22,6 +22,7 @@ module image_utils_mod
      character(len=80) :: type
      character(len=80) :: filename
      integer :: nPixels
+     real    :: ImageSize 
   END TYPE imageParameters
 
 !
@@ -29,6 +30,9 @@ module image_utils_mod
 !
   TYPE(imageParameters), private, allocatable, save :: myImages(:)
   integer, save :: numImages = 0 
+
+! Parameters shared by all images
+  character(len=10), save :: myAxisUnits
 
 contains 
 
@@ -49,8 +53,10 @@ contains
 ! This routine also does some basic validation of the 
 ! values it has been given. 
 !
-  subroutine setImageParams(i, lambda, type, filename, nPixels)
+  subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, &
+       imageSize)
     use messages_mod
+    use constants_mod, only: autocm, pctocm
     implicit none 
 
 ! Arguments
@@ -59,6 +65,8 @@ contains
     character(len=80), intent(in) :: type
     character(len=80), intent(in) :: filename
     integer, intent(in) :: nPixels
+    character(len=10), intent(in) :: axisUnits
+    real, intent(in) :: imageSize
 
 ! Local variables
     character(len=80) :: message
@@ -88,6 +96,32 @@ contains
        call writeWarning(message)
     end if
     myImages(i)%nPixels = nPixels
+
+! Axis units (e.g. au, pc, arcsec)
+    myAxisUnits = axisUnits
+
+! Size of image
+!
+    if (imageSize <= 0.0 ) then 
+       write(message,*) "Image size must be positive. It is ", imageSize
+       call writeWarning(message)
+    end if
+!
+! Set image size in cm or arcsec
+    select case (myAxisunits)
+       case ("au","AU")
+          myImages(i)%ImageSize = imageSize * real(autocm)
+       case ("pc","PC")
+          myImages(i)%ImageSize = imageSize * real(pctocm)
+       case ("cm")
+          myImages(i)%ImageSize = imageSize
+       case ("arcsec")
+          myImages(i)%ImageSize = imageSize
+       case default
+          myImages(i)%ImageSize = imageSize
+          write(message,*) "Unrecognised units for image axis: ", trim(axisunits)
+          call writeWarning(message)
+       end select
 
   end subroutine setImageParams
 
@@ -134,5 +168,22 @@ contains
     getImageFilename=myImages(i)%filename
 
   end function getImageFilename
+
+!
+! Return axis units
+!
+  function getAxisUnits
+
+    character(len=10) :: getAxisUnits
+    getAxisUnits=MyAxisUnits
+
+  end function getAxisUnits
+
+! Return size (length or angular) of ith image
+  function getImageSize(i)
+    integer, intent(in) :: i 
+    real :: getImageSize
+    getImageSize = myImages(i)%ImageSize
+  end function getImageSize
 
 end module image_utils_mod

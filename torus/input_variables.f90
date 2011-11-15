@@ -328,7 +328,6 @@
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
   real :: vMin, vMax             ! for createLucyImage
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
-  real :: setImageSize ! image size for createLucyImage and phaseloop_mod
   integer :: nv ! number of velocity channels
   integer :: npixels ! number of pixels 
   integer :: nImage ! Number of images to generate
@@ -339,7 +338,6 @@
   logical :: inclineX, inclineY, inclineZ ! which inclination to use for photoionisation images
   real :: singleInclination ! Inclination angle to use for for inclineX, inclineY, inclineZ
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
-  logical :: imageInArcsec  ! Are images in arcsec or physical units? (image_mod and phaseloop_mod)
 
   ! file names 
   character(len=80) :: outFile           ! used in phaseloop_mod

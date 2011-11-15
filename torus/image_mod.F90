@@ -633,7 +633,8 @@ module image_mod
      subroutine writeFitsImage(image, filename, objectDistance, type, pointTest, cylinderTest)
 
        use fits_utils_mod
-       use inputs_mod, only: lamStart, ImageinArcSec, fitsbitpix
+       use image_utils_mod
+       use inputs_mod, only: lamStart, fitsbitpix
 
 ! Arguments
        type(IMAGETYPE),intent(in) :: image
@@ -749,22 +750,38 @@ module image_mod
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
 
 
-
-       if (imageinarcsec) then
+       select case (getAxisUnits())
+       case ("arcsec")
           dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec
           dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec
           call ftpkys(unit,'CTYPE1'," X","x axis", status)
           call ftpkys(unit,'CUNIT1', "arcsec", "x axis unit", status)
           call ftpkys(unit,'CTYPE2'," Y","y axis", status)
           call ftpkyd(unit,'PIXEL', dx*1000.d0, 10, " ", status)
-       else
+       case ("au", "AU")
           dx = (dx * 1.d10)/autocm
           dy = (dy * 1.d10)/autocm
           call ftpkys(unit,'CTYPE1'," X","x axis", status)
           call ftpkys(unit,'CUNIT1', "AU", "x axis unit", status)
           call ftpkys(unit,'CTYPE2'," Y","y axis", status)
           call ftpkys(unit,'CUNIT2', "AU", "y axis unit", status)
-       endif
+       case ("pc","PC")
+          dx = (dx * 1.d10)/pctocm
+          dy = (dy * 1.d10)/pctocm
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkys(unit,'CUNIT1', "PC", "x axis unit", status)
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkys(unit,'CUNIT2', "PC", "y axis unit", status)
+       case ("cm")
+          dx = dx * 1.d10
+          dy = dy * 1.d10
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkys(unit,'CUNIT1', "cm", "x axis unit", status)
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkys(unit,'CUNIT2', "cm", "y axis unit", status)
+       case default
+          call writeFatal("Unrecognised units for image axis")
+       end select
 
 
 
@@ -809,7 +826,8 @@ module image_mod
      end subroutine pixelLocate
             
   subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
-    use inputs_mod, only : npixels, setimageSize, vmin, vmax
+    use image_utils_mod
+    use inputs_mod, only : npixels, vmin, vmax
     use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
 #ifdef USECFITSIO
     use inputs_mod, only : griddistance
@@ -842,7 +860,7 @@ module image_mod
     real(double) :: thisTheta, thisPhi
     real(double) :: scale, dlam, lamCen, lamStart, lamEnd
     real(double) :: objectDistance
-
+    real :: imageSize
 
     lamStart = 1.d4
     lamEnd = 1.01e4
@@ -858,7 +876,10 @@ module image_mod
 
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    image = initImage(npixels, npixels, setimageSize/1.e10, setimageSize/1.e10, vmin, vmax) 
+    ! Hardwired to 1. If multiple images are used this needs to be the 
+    ! size of the ith image (DMA). 
+    imageSize = getImageSize(1)/1.0d10
+    image = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax) 
 
     xVec = zHat .cross. viewVec
     call normalize(xVec)
