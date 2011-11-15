@@ -5085,7 +5085,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     endif
     call collateImages(thisImage)
 
-     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal-1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1))
 
