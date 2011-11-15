@@ -172,7 +172,7 @@ contains
 !
 ! Return axis units
 !
-  function getAxisUnits
+  function getAxisUnits()
 
     character(len=10) :: getAxisUnits
     getAxisUnits=MyAxisUnits
