@@ -3886,10 +3886,11 @@ CONTAINS
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 
    case("unisphere")
-!      if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
-      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if (thisOctal%nDepth < maxDepthAMR) split = .true.
+!      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
       if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
+
 
    case("turbulence")
       if (thisOctal%nDepth < 7) split = .true.

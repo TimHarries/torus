@@ -3275,7 +3275,7 @@ end subroutine sumFluxes
              iUnrefine = iUnrefine + 1             
              if (iUnrefine == 100) then
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
-                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 1.d-3)
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
@@ -3403,6 +3403,10 @@ end subroutine sumFluxes
             write(*,'(a,i5,i4,a,i4,a,i3,a,i3)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ",group(i)
        enddo
 
+!       if (it /= 1) then
+!          call writeVTKfile(grid, "start.vtk")
+!       endif
+
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
@@ -3440,6 +3444,19 @@ end subroutine sumFluxes
        end if
        
        if(myRankGlobal /= 0) then
+
+          if(doUnRefine) then
+             do i = 1, 3
+                if (myrank == 1)call tune(6, "Unrefine grid")
+                ! nUnrefine = 0
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
+                call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
+                !          write(*,*) "Unrefined ", nUnrefine, " cells"
+                if (myrank == 1)call tune(6, "Unrefine grid")
+                iUnrefine = 0
+             end do
+          end if
+
 
 !evening up the grid ensures that no two neighbouring cells differ by more than one level of refinement          
           if(dorefine) then
@@ -3570,7 +3587,7 @@ end subroutine sumFluxes
              if (iUnrefine == 5) then
                 if (myrank == 1)call tune(6, "Unrefine grid")
                ! nUnrefine = 0
-                call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
                 call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
                 if (myrank == 1)call tune(6, "Unrefine grid")
@@ -3846,9 +3863,9 @@ end subroutine sumFluxes
 !unrefine the grid where necessary
        if(doUnrefine) then
           iUnrefine = iUnrefine + 1
-          if (iUnrefine == 20) then
+          if (iUnrefine == 5) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -3882,7 +3899,7 @@ end subroutine sumFluxes
 
        if(doUnrefine .and. grid%currentTime /= 0.d0) then
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, nUnrefine, 5.d-3)
+          call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
           call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
           if (myrankglobal == 1) call tune(6, "Unrefine grid")
           iUnrefine = 0
@@ -5803,6 +5820,8 @@ end subroutine sumFluxes
        call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        if (ALL(tConverged(1:nthreadsGlobal-1))) exit
     enddo
+    deallocate(safe)
+
     666 continue
   end subroutine refineGridGeneric
 
@@ -6327,7 +6346,8 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: dirvec(6), locator, centre
 
     debug = .false.
-    limit  = 5.0d-3
+!    limit  = 5.0d-3
+    limit = splitlimit
 
     unrefine = .true.
     refinedLastTime = .false.
@@ -6380,6 +6400,7 @@ end subroutine refineGridGeneric2
 
     unrefine = .false.
 
+    if(cornercell) unrefine=.false.
 
     if ((nc > 1).and..not.cornerCell .and. .not. ghostcell) then
 
@@ -6487,6 +6508,8 @@ end subroutine refineGridGeneric2
             (.not.all(thisOctal%ionFrac(1:thisOctal%maxChildren,2) < 0.99d0)) ) unrefine = .false.
     endif
 
+    if(cornercell) unrefine=.false.
+
     if ((thisOctal%nChildren == 0).and.unrefine) then
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
             grid = grid, adjustGridInfo = .true.)
@@ -6585,21 +6608,28 @@ end subroutine refineGridGeneric2
 !          evenUpArray = (/1, 0, 0, 1, 0, 1, 1, 0/)
           evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8/)
        else if((nthreadsGlobal-1) == 64) then
-!          evenUpArray = (/1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, & !pane 1
-!               0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, & !pane 2 
-!               1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, & !pane 3 
-!               0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0/) !pane 4
-
-!          evenUpArray = (/1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, & !pane 1
-!               1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, & !pane 2 
-!               1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, & !pane 3 
-!               1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0/)!pane 4
- 
           evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
                1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2
                1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3
                1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/)!pane 4
 
+       else if(nTHreadsGlobal-1==512) then
+          evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 4
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 5
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 6
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 7
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
+               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/) !pane 8
 
        else
           call torus_abort("unknown no. of hydro threads in setupEvenUpArray")
@@ -6709,7 +6739,6 @@ end subroutine refineGridGeneric2
           if (ALL(tConverged(1:nthreadsGlobal-1))) exit
        enddo
 
-
        if (evenAcrossThreads) then             
              nLocs = 0
              nExternalLocs = 0
@@ -6717,8 +6746,6 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
              
              nLocsGlobal = SUM(tempnLocs)
-
-
              do thisThread = 1, nThreads - 1
                 if(thisThread == myRank) then
                    do iThread = 1, nThreads-1
@@ -6733,7 +6760,6 @@ end subroutine refineGridGeneric2
                                temp(nTemp(1),4) = dble(depth(i))
                             endif
                          enddo
-
                          call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
                          if (nTemp(1) > 0) then
                             do i = 1, nTemp(1)
@@ -6745,7 +6771,6 @@ end subroutine refineGridGeneric2
                       endif
                    enddo
                 else
-
 
                    call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
                          ! write(*,*) myRank, "received ",nSent, "from ", thisThread
@@ -6844,6 +6869,8 @@ end subroutine refineGridGeneric2
        endif
 
     end do
+
+    deallocate(safe)
 
 666 continue
   end subroutine evenUpGridMPI
