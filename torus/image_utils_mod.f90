@@ -144,7 +144,12 @@ contains
 
     character(len=80) :: getImageType
     integer, intent(in) :: i 
-    getImageType=myImages(i)%type
+
+    if (i <= numImages) then 
+       getImageType=myImages(i)%type
+    else
+       getImageType(1:4)="none"
+    endif
 
   end function getImageType
 
@@ -180,10 +185,17 @@ contains
   end function getAxisUnits
 
 ! Return size (length or angular) of ith image
+! If an invalid image number is requested then -1 is returned. 
   function getImageSize(i)
     integer, intent(in) :: i 
     real :: getImageSize
-    getImageSize = myImages(i)%ImageSize
+
+    if (i <= numImages) then 
+       getImageSize = myImages(i)%ImageSize
+    else
+       getImageSize = -1
+    end if
+
   end function getImageSize
 
 end module image_utils_mod
