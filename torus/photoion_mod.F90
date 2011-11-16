@@ -3187,7 +3187,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageNum)
-    use inputs_mod, only : nPhotons, lamStart, amr2d
+    use inputs_mod, only : nPhotons, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use image_utils_mod
 #ifdef USECFITSIO
@@ -3243,7 +3243,6 @@ end subroutine readHeIIrecombination
 
     call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0
-    lamstart  = lambdaLine ! used by convertion to Janskies
 
     call zeroEtaCont(grid%octreeRoot)
     
@@ -3364,7 +3363,7 @@ end subroutine readHeIIrecombination
 
 #ifdef USECFITSIO
     if (writeoutput) then
-       call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity")
+       call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity", lambdaLine)
     endif
 #else
     call writeInfo("FITSIO not enabled. Not writing "//trim(imageFilename),FORINFO)

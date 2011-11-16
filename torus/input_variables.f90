@@ -232,7 +232,6 @@
 !-----------------------------
 
   integer :: nLambda
-  real :: lamStart, lamEnd
   logical :: oneKappa
   logical :: lamfile              ! Read in wavelengths from a file? 
   character(len=80):: lamfilename ! File to use if lamfile=T

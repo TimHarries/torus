@@ -1703,15 +1703,15 @@ endif ! (doPvimage)
 
 
 #ifdef USECFITSIO
-           call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity")
+           call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity", real(lambda_eff))
            if (polarizationImages) then
               header = specfile(1:index(specfile,".fits")-1)
               write(specFile,'(a,a)') trim(header)//"_pol.fits"
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol")
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol", real(lambda_eff))
               write(specFile,'(a,a)') trim(header)//"_q.fits"
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq")
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq", real(lambda_eff))
               write(specFile,'(a,a)') trim(header)//"_u.fits"
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu")
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu", real(lambda_eff))
            endif
 #endif
 
@@ -1862,7 +1862,7 @@ CONTAINS
 !$OMP SHARED(weightLinePhoton, weightSource, flatSpec, secondSource, secondSourcePosition) &
 !$OMP SHARED(ramanSourceVelocity, doRaman) &
 !$OMP SHARED(weightContPhoton, outVec)&
-!$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, coolStarPosition) &
+!$OMP SHARED(opaqueCore, thinLine, coolStarPosition) &
 !$OMP SHARED(viewVec, o6xArray, rotationAxis, o6image, screened) &
 !$OMP SHARED(stokesImage, obsImageSet, doPvimage) &
 !$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &

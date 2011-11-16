@@ -1954,53 +1954,6 @@ contains
     end function bigGamma
 
 
-    
-    subroutine resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau, &
-         inFlow, newInFlow)
-      use  inputs_mod, only: lamstart, lamend, nlambda, lamline
-      integer, intent(in) :: nTau, maxtau
-      real, intent(in) :: lambda(nTau)
-      real(double), intent(in) :: projVel(nTau)
-      integer, intent(inout) :: newNtau
-      real, intent(inout)  :: newLambda(maxtau)
-      logical, intent(inout)  :: InFlow(nTau)
-      logical, intent(inout)  :: newInFlow(maxtau)
-      !
-      real(double) :: dProjVel  ! automatic array
-      integer :: nAdd 
-      integer :: i, j
-!      real, parameter :: dvel  = 10.e5/cSpeed
-      real :: dvel, dlam
-
-      ! -- using the values in inputs_mod module
-      dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
-      dvel = dvel/2.0  ! to be safe  
-      dvel = 1.e5/cspeed ! 1 km/s
-
-      newNTau = 0
-      do i = 2, nTau
-         dProjVel = projVel(i) - projVel(i-1)
-         ! if (i==2) we always add points
-         if (abs(dProjVel) > dVel .or. i==2) then
-            nAdd = nint(abs(dProjVel)/dVel)
-            dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
-            do j = 1, nAdd+1
-               newNtau = newNtau + 1
-               newLambda(newNTau) = real(j-1)*dlam + lambda(i-1)
-               newInFlow(newNTau) = inFlow(i-1)
-            enddo
-         else
-            newNtau = newNtau + 1
-            newLambda(newNTau) = lambda(i-1)
-            newInFlow(newNTau) = inFlow(i-1)
-         endif
-      enddo
-      newNtau = newNtau + 1
-      newLambda(newNTau) = lambda(nTau)
-      newInFlow(newNTau) = inFlow(nTau)
-    end subroutine resampleRay
-
-
     !
     ! Adding extra points near the resonace zone if any. 
     !

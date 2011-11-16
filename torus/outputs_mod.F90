@@ -18,7 +18,7 @@ contains
     use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use inputs_mod, only : mie, gridDistance, nLambda, nv
     use inputs_mod, only : outfile, npixels, nImage, inclinationArray
-    use inputs_mod, only : lamStart, lamEnd, lineEmission
+    use inputs_mod, only : lineEmission
     use inputs_mod, only : monteCarloRT
     use image_utils_mod
 #ifdef MPI
@@ -68,6 +68,7 @@ contains
     type(VECTOR) :: tvec(1)
     character(len=80) :: message
     real(double), allocatable :: flux(:)
+    real :: lambdaImage
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
@@ -277,9 +278,8 @@ contains
              nlambda = 1
              outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
-             lamStart = getImageWavelength(i)
-             lamEnd   = lamStart
-             call setupXarray(grid, xarray, nlambda, lamMin=lamStart, lamMax=lamEnd, &
+             lambdaImage = getImageWavelength(i)
+             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -316,9 +316,8 @@ contains
              nlambda = 1
              outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
-             lamStart = getImageWavelength(i)
-             lamEnd   = lamStart
-             call setupXarray(grid, xarray, nlambda, lamMin=lamStart, lamMax=lamEnd, &
+             lambdaImage = getImageWavelength(i)
+             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call do_phaseloop(grid, .true., 0., 0., 0.,  &

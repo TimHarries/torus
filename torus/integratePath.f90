@@ -2084,9 +2084,6 @@ end subroutine integratePathAMR
 !---------------------------------------------------------------
 !---------------------------------------------------------------
   
-!     ! Now resample rays using velocity gradiants
-! !    call resampleRay(L, nTau, projVel, maxTau, newL, newNTau, inflow, newInFlow)
-
 !     thisVel = (lambda0 - wavelength)/lambda0  
 !     thisVel = thisVel  + (uHat .dot. vVec)    ! (+ve when toward observer!)
 !     call resampleRay2(L, nTau, projVel, thisVel, maxTau, newL, newNTau, inflow, newInFlow)

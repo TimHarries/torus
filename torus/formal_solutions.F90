@@ -21,21 +21,19 @@ module formal_solutions
   implicit none
 
   public :: &
-       formal_sol_dust_AMR, &
-       compute_obs_line_flux
+       compute_obs_line_flux !,&
+!       formal_sol_dust_AMR
+
   
   private :: &
        integrate_formal, &
        setup_grid, &
-       create_obs_flux_map, &
        find_position_displacement,&
        in_this_area, &
        refine_ray_grid_by_tau, &
-       refine_ray_constant_vel
+       refine_ray_constant_vel !,&
+!       create_obs_flux_map
   
-
-
-
 contains
 
   !-----------------------------------------------------------------------------------------
@@ -64,168 +62,168 @@ contains
   !   
   !   ===> To avoid the underflow, the caluculations and the results are offset by "offset"!
   !
-  function formal_sol_dust_AMR(I0, tau0, wavelength, aVec, uHat, Grid, &
-       contPhoton, offset, tau_inf)  RESULT (I1)
-    use path_integral, only: intersectCubeAMR
-    use amr_mod, only: inOctal, amrGridValues
-    use octal_mod, only: OCTAL 
-
-    implicit none
-
-    real(double) ::  I1    ! output intensity.
-    !
-    real(double), intent(in)  ::  I0    ! input intensity
-    real(double), intent(in)  ::  tau0  ! optical depth at the initial point 
-
-    real(double), intent(in)          :: wavelength        ! the wavelength [A]
-    type(VECTOR), intent(in)  :: aVec          ! starting position vector
-    type(VECTOR), intent(in)  :: uHat          ! direction
-    type(GRIDTYPE), intent(in)     :: grid          ! the opacity grid
-    logical, intent(in)            :: contPhoton    ! is this a continuum photon?
-    real(double), intent(in) :: offset     ! offset scale factor
-    real(double), optional, intent(inout) :: tau_inf ! offset scale factor
-    
-    
-    type(VECTOR) :: octVec
-    integer :: subcell
-    real(double) :: tval
-    integer               :: nTau                   ! size of optical depth arrays
-    type(VECTOR)     :: rVec                   ! position vector
-!    real :: kappaScaReal, kappaAbsReal
-    real(double) :: kappaSca, kappaAbs
-    real(double) :: etaCont
-    real(oct) :: chi, eta, tau
-    real(double)  :: integral
-    integer :: ilambda
-    logical :: escaped
-    type(OCTAL), pointer :: thisOctal
-    type(OCTAL),pointer :: oldOctal
-    real(double) :: dtau, delta
-    real(double)::  I00                         ! input intensity
-
-    kappaAbs = 0.d0; kappaSca = 0.d0
-    I00 = I0*offset
-
-    !
-    ! Just checking ... 
-    ! 
-    
-    if (.not. grid%adaptive) then
-       write(*,*) "Error:: Non AMR option has not implemented yet"//&
-            &"in [formal_solutions::formal_sol_dust_AMR]."
-       write(*,*) "  Exiting program ..."
-       stop
-    end if
-    
-    if (.not. contPhoton) then
-       write(*,*) "Error:: linePhoton option has not implemented yet"//&
-            &" in [formal_solutions::formal_sol_dust_AMR]."
-       write(*,*) "  Exiting program ..."
-       stop     
-    end if
-
-
-    ! initialize variables
-    
-    ! locate this wavelength in the grid of wavelengths
-    if (grid%flatspec.or.(grid%doRaman)) then
-       iLambda = 1
-    else
-       call locate(grid%lamArray, grid%nLambda, real(wavelength), iLambda)
-    endif
-    
-    
-    !
-    !
-    ! First we find the optical depth to the observer (tau_inf).
-    rvec=avec
-    nTau = 1
-    escaped = .false.
-    oldOctal => grid%octreeRoot
-    tau_inf = 0.0
-    integral = 0.0
-    
-    do while (.not.escaped) 
-       octVec = rVec
-       if (.not.inOctal(grid%octreeRoot, octVec)) then
-          escaped = .true.
-       endif
-       if (.not.escaped) then
-          call intersectCubeAMR(grid, rVec, uHat, tVal)
-          call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLambda, &
-               foundOctal=thisOctal, foundSubcell=subcell, &
-               kappaAbs=kappaAbs,kappaSca=kappaSca, etaCont=etaCont, grid=grid)
-
-          nTau = nTau + 1
-          
-          eta = etaCont  ! [erg/s/sr/cm/cm^3]
-          chi = ( kappaSca + kappaAbs )  ! [1/10^10cm]
-
-          tau_inf = tau_inf + tval*chi  ! should be dimensionless
-                    
-          rVec = rVec + tval * uHat
-          oldOctal => thisOctal
-          
-       endif
-    end do
-
-
-    !
-    !  Now performs the integration
-    !
-    
-    rvec=avec
-    nTau = 1
-    escaped = .false.
-    oldOctal => grid%octreeRoot
-    tau = 0.0
-    integral = 0.0
-    
-    do while (.not.escaped) 
-       octVec = rVec
-       if (.not.inOctal(grid%octreeRoot, octVec)) then
-          escaped = .true.
-       endif
-       if (.not.escaped) then
-          call intersectCubeAMR(grid, rVec, uHat, tVal)
-          call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLambda, &
-               foundOctal=thisOctal, foundSubcell=subcell, &
-               kappaAbs=kappaAbs,kappaSca=kappaSca, etaCont=etaCont, grid=grid)
-
-          nTau = nTau + 1
-          
-!          eta = 0.0
-          eta = etaCont  ! [erg/s/sr/cm/cm^3]
-          chi = (kappaSca + kappaAbs)  !in [1/10^cm] I hope
-
-          dtau = tval*chi
-          tau = tau + dtau  ! now should be in dimensionless units
-          
-          if (chi > 0.0) then 
-             delta = (tau_inf - tau)
-             integral = integral + eta/(chi*1.0d-10) * EXP(-delta)*dtau * offset  
-             ! ----- [erg/s/sr/cm^2/cm * offset]
-          else
-             write(*,*) "Error:: chi <= 0 in [formal_solutions::formal_sol_dust_AMR]."
-             write(*,*) "  Exiting program ..."  
-          end if
-          
-          rVec = rVec + tval * uHat
-          oldOctal => thisOctal
-          
-       endif
-    end do
-    
-    integral = integral*1.e-8         ! per cm to converting to per Angstrome
-    delta = tau_inf-tau0
-    I1 = I00*EXP(-delta) + integral   ! should be in [erg/s/sr/cm^2/A * offset]
-
-    if (I1 < 1.0d-250) I1 = 1.0d-200 
-
-    
-  end function formal_sol_dust_AMR
-
-
+!!$  function formal_sol_dust_AMR(I0, tau0, wavelength, aVec, uHat, Grid, &
+!!$       contPhoton, offset, tau_inf)  RESULT (I1)
+!!$    use path_integral, only: intersectCubeAMR
+!!$    use amr_mod, only: inOctal, amrGridValues
+!!$    use octal_mod, only: OCTAL 
+!!$
+!!$    implicit none
+!!$
+!!$    real(double) ::  I1    ! output intensity.
+!!$    !
+!!$    real(double), intent(in)  ::  I0    ! input intensity
+!!$    real(double), intent(in)  ::  tau0  ! optical depth at the initial point 
+!!$
+!!$    real(double), intent(in)          :: wavelength        ! the wavelength [A]
+!!$    type(VECTOR), intent(in)  :: aVec          ! starting position vector
+!!$    type(VECTOR), intent(in)  :: uHat          ! direction
+!!$    type(GRIDTYPE), intent(in)     :: grid          ! the opacity grid
+!!$    logical, intent(in)            :: contPhoton    ! is this a continuum photon?
+!!$    real(double), intent(in) :: offset     ! offset scale factor
+!!$    real(double), optional, intent(inout) :: tau_inf ! offset scale factor
+!!$    
+!!$    
+!!$    type(VECTOR) :: octVec
+!!$    integer :: subcell
+!!$    real(double) :: tval
+!!$    integer               :: nTau                   ! size of optical depth arrays
+!!$    type(VECTOR)     :: rVec                   ! position vector
+!!$!    real :: kappaScaReal, kappaAbsReal
+!!$    real(double) :: kappaSca, kappaAbs
+!!$    real(double) :: etaCont
+!!$    real(oct) :: chi, eta, tau
+!!$    real(double)  :: integral
+!!$    integer :: ilambda
+!!$    logical :: escaped
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    type(OCTAL),pointer :: oldOctal
+!!$    real(double) :: dtau, delta
+!!$    real(double)::  I00                         ! input intensity
+!!$
+!!$    kappaAbs = 0.d0; kappaSca = 0.d0
+!!$    I00 = I0*offset
+!!$
+!!$    !
+!!$    ! Just checking ... 
+!!$    ! 
+!!$    
+!!$    if (.not. grid%adaptive) then
+!!$       write(*,*) "Error:: Non AMR option has not implemented yet"//&
+!!$            &"in [formal_solutions::formal_sol_dust_AMR]."
+!!$       write(*,*) "  Exiting program ..."
+!!$       stop
+!!$    end if
+!!$    
+!!$    if (.not. contPhoton) then
+!!$       write(*,*) "Error:: linePhoton option has not implemented yet"//&
+!!$            &" in [formal_solutions::formal_sol_dust_AMR]."
+!!$       write(*,*) "  Exiting program ..."
+!!$       stop     
+!!$    end if
+!!$
+!!$
+!!$    ! initialize variables
+!!$    
+!!$    ! locate this wavelength in the grid of wavelengths
+!!$    if (grid%flatspec.or.(grid%doRaman)) then
+!!$       iLambda = 1
+!!$    else
+!!$       call locate(grid%lamArray, grid%nLambda, real(wavelength), iLambda)
+!!$    endif
+!!$    
+!!$    
+!!$    !
+!!$    !
+!!$    ! First we find the optical depth to the observer (tau_inf).
+!!$    rvec=avec
+!!$    nTau = 1
+!!$    escaped = .false.
+!!$    oldOctal => grid%octreeRoot
+!!$    tau_inf = 0.0
+!!$    integral = 0.0
+!!$    
+!!$    do while (.not.escaped) 
+!!$       octVec = rVec
+!!$       if (.not.inOctal(grid%octreeRoot, octVec)) then
+!!$          escaped = .true.
+!!$       endif
+!!$       if (.not.escaped) then
+!!$          call intersectCubeAMR(grid, rVec, uHat, tVal)
+!!$          call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLambda, &
+!!$               foundOctal=thisOctal, foundSubcell=subcell, &
+!!$               kappaAbs=kappaAbs,kappaSca=kappaSca, etaCont=etaCont, grid=grid)
+!!$
+!!$          nTau = nTau + 1
+!!$          
+!!$          eta = etaCont  ! [erg/s/sr/cm/cm^3]
+!!$          chi = ( kappaSca + kappaAbs )  ! [1/10^10cm]
+!!$
+!!$          tau_inf = tau_inf + tval*chi  ! should be dimensionless
+!!$                    
+!!$          rVec = rVec + tval * uHat
+!!$          oldOctal => thisOctal
+!!$          
+!!$       endif
+!!$    end do
+!!$
+!!$
+!!$    !
+!!$    !  Now performs the integration
+!!$    !
+!!$    
+!!$    rvec=avec
+!!$    nTau = 1
+!!$    escaped = .false.
+!!$    oldOctal => grid%octreeRoot
+!!$    tau = 0.0
+!!$    integral = 0.0
+!!$    
+!!$    do while (.not.escaped) 
+!!$       octVec = rVec
+!!$       if (.not.inOctal(grid%octreeRoot, octVec)) then
+!!$          escaped = .true.
+!!$       endif
+!!$       if (.not.escaped) then
+!!$          call intersectCubeAMR(grid, rVec, uHat, tVal)
+!!$          call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLambda, &
+!!$               foundOctal=thisOctal, foundSubcell=subcell, &
+!!$               kappaAbs=kappaAbs,kappaSca=kappaSca, etaCont=etaCont, grid=grid)
+!!$
+!!$          nTau = nTau + 1
+!!$          
+!!$!          eta = 0.0
+!!$          eta = etaCont  ! [erg/s/sr/cm/cm^3]
+!!$          chi = (kappaSca + kappaAbs)  !in [1/10^cm] I hope
+!!$
+!!$          dtau = tval*chi
+!!$          tau = tau + dtau  ! now should be in dimensionless units
+!!$          
+!!$          if (chi > 0.0) then 
+!!$             delta = (tau_inf - tau)
+!!$             integral = integral + eta/(chi*1.0d-10) * EXP(-delta)*dtau * offset  
+!!$             ! ----- [erg/s/sr/cm^2/cm * offset]
+!!$          else
+!!$             write(*,*) "Error:: chi <= 0 in [formal_solutions::formal_sol_dust_AMR]."
+!!$             write(*,*) "  Exiting program ..."  
+!!$          end if
+!!$          
+!!$          rVec = rVec + tval * uHat
+!!$          oldOctal => thisOctal
+!!$          
+!!$       endif
+!!$    end do
+!!$    
+!!$    integral = integral*1.e-8         ! per cm to converting to per Angstrome
+!!$    delta = tau_inf-tau0
+!!$    I1 = I00*EXP(-delta) + integral   ! should be in [erg/s/sr/cm^2/A * offset]
+!!$
+!!$    if (I1 < 1.0d-250) I1 = 1.0d-200 
+!!$
+!!$    
+!!$  end function formal_sol_dust_AMR
+!!$
+!!$
 
 
 

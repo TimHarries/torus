@@ -1916,9 +1916,6 @@ contains
        call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
             "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
        
-       call getReal("lamstart", lamstart, 1., cLine, fLine, nLines, &
-            "LamStart (probably temporary - not sure what it does)","(a,f8.1,1x,a)", 6562.8, ok, .false.)
-       
        call setImageParams(1, lambdaImage, outputimageType, imageFilename, thisnpixels, axisUnits, &
             thisimagesize)
     else

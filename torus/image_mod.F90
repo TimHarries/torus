@@ -630,16 +630,17 @@ module image_mod
 !
 
 #ifdef USECFITSIO
-     subroutine writeFitsImage(image, filename, objectDistance, type, pointTest, cylinderTest)
+     subroutine writeFitsImage(image, filename, objectDistance, type, lambdaImage, &
+          pointTest, cylinderTest)
 
        use fits_utils_mod
        use image_utils_mod
-       use inputs_mod, only: lamStart
 
 ! Arguments
        type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type
        real(double) :: objectDistance
+       real, intent(in), optional :: lambdaImage
        logical, optional :: pointTest, cylinderTest
 ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
@@ -649,6 +650,7 @@ module image_mod
        real(double) :: scale,  dx, dy
        logical :: simple,extend
        logical :: oldFilePresent
+       character(len=80) :: message
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
@@ -723,21 +725,26 @@ module image_mod
 
 
 
-
-!       if(lamStart = 0.d0) 
-
        samplings = 0
 
-       if(present(pointTest)) then
-          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, &
-               samplings, pointTest=.true.)
-       else if(present(cylinderTest)) then
-          samplings = image%nSamples
-          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, &
-               samplings, cylinderTest=.true.)
+! Convert pixel units if a wavelength has been provided
+       if (present(lambdaImage)) then 
+          write(message,"(a,f10.2,a)") "Converting axis units to MJy/sr using lambda= ", &
+               lambdaImage, " Angstrom"
+          call writeInfo(message,FORINFO)
+          if(present(pointTest)) then
+             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                  samplings, pointTest=.true.)
+          else if(present(cylinderTest)) then
+             samplings = image%nSamples
+             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                  samplings, cylinderTest=.true.)
+          else
+             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+          end if
        else
-          call ConvertArrayToMJanskiesPerStr(array, lamstart, dx, objectDistance, samplings)
-       end if
+          call writeInfo("No wavelength provided, not converting axis units")
+       endif
 
        ! Add keywords for bitpix=16 and bitpix=8 
        call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
@@ -953,7 +960,7 @@ module image_mod
     end do
 
 #ifdef USECFITSIO
-    call writeFitsimage(image, "test.fits", griddistance*pctocm, "intensity")
+    call writeFitsimage(image, "test.fits", griddistance*pctocm, "intensity", lambda)
 #endif
   end subroutine createLucyImage
 
