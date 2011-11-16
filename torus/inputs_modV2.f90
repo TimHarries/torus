@@ -1823,7 +1823,7 @@ contains
     character(len=10) :: axisUnits
     character(len=80) :: outputImageType, imageFilename
     integer :: thisnpixels
-    real :: lambdaImage, thisimagesize, defaultImageSize
+    real :: lambdaImage, thisimagesize, defaultImageSize, wholeGrid
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
@@ -1838,16 +1838,35 @@ contains
     call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
          "Axis units for image:", "(a,a,1x,a)", "au", ok, .false.)
 
+    ! Size of the whole grid in image axis units
+    ! This is used as the default image size
+    select case (axisunits)
+    case ("au","AU")
+       wholeGrid = (amrGridSize*1.0d10) / real(autocm)
+    case ("pc","PC")
+       wholeGrid = (amrGridSize*1.0d10) / real(pctocm)
+    case ("cm")
+       wholeGrid = amrGridSize*1.0d10
+    case ("arcsec")
+       wholeGrid = (amrGridSize*1.0d10) / real(pctocm) ! pc
+       wholeGrid = wholeGrid / gridDistance            ! radians
+       wholeGrid = wholeGrid * (180.0/pi) * 3600.0     ! arcsec
+    case default
+       wholeGrid = amrGridSize
+       write(message,*) "Unrecognised units in  readImageParameters: ", trim(axisunits)
+       call writeWarning(message)
+    end select
+
     write(message,*) "Image size ("//trim(axisUnits)//"): "
     if ( nimage == 1 ) then 
        ! imagesize must be provided if there is only one image
        call getReal("imagesize", thisImageSize, 1.0, cLine, fLine, nLines, &
-            trim(message), "(a,1pe10.2,1x,a)", 1.0, ok, .true.)
+            trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
     else
        ! If there are multiple images we can specify a different size for 
        ! each one, but read in imagesize to use as a default. 
        call getReal("imagesize", defaultImageSize, 1.0, cLine, fLine, nLines, &
-            trim(message), "(a,1pe10.2,1x,a)", 1.0, ok, .false.)
+            trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
     end if
 
     call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
