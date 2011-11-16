@@ -1859,7 +1859,6 @@ contains
 
     write(message,*) "Image size ("//trim(axisUnits)//"): "
     if ( nimage == 1 ) then 
-       ! imagesize must be provided if there is only one image
        call getReal("imagesize", thisImageSize, 1.0, cLine, fLine, nLines, &
             trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
     else
