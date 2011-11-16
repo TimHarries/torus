@@ -50,7 +50,6 @@ contains
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
     use fits_utils_mod
-    use inputs_mod, only: FitsBitpix
 
     implicit none
     
@@ -664,7 +663,6 @@ subroutine freeDataCube(thiscube)
 #ifdef USECFITSIO
   subroutine writeCollapsedDataCube(thisCube, filename)
     use fits_utils_mod
-    use inputs_mod, only: FitsBitPix
 
     type(DATACUBE) :: thisCube
     character(len=*) :: filename
@@ -749,14 +747,16 @@ subroutine freeDataCube(thiscube)
 #endif
 
 
-  subroutine dumpCubeToVisibilityCurves(thisCube, visFile, wavelength)
-    use inputs_mod, only : gridDistance
+  subroutine dumpCubeToVisibilityCurves(thisCube, visFile, wavelength, gridDistance)
+
     type(DATACUBE) :: thisCube
     character(len=*) :: visFile
     character(len=80) :: tempFile
     real(double) :: wavelength
     real(double), allocatable :: dimage(:,:), xAxis(:), yAxis(:)
     integer :: iv
+    real, intent(in) :: gridDistance 
+
     allocate(dImage(1:thisCube%nx,1:thisCube%ny))
     allocate(xAxis(1:thisCube%nx))
     allocate(yAxis(1:thisCube%ny))

@@ -3425,7 +3425,8 @@ contains
        write(tempFilename,'(a,i3.3,a)') "spec",nFile,".dat"
        call dumpCubeToSpectrum(cube, tempFilename)
 !       write(tempFilename,'(a,i3.3)') "vis",nFile
-!       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq)
+! Import gridDistance from inputs_mod if this line needs to be reinstated. 
+!       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq, gridDistance)
        call torus_mpi_barrier
        call freeDataCube(cube)
 #else

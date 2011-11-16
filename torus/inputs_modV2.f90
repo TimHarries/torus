@@ -308,6 +308,7 @@ contains
 
     if (calcDataCube) call readDataCubeParameters(cLine, fLine, nLines)
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
+    if (calcDataCube.or.calcImage) call readFitsParameters(cLine, fLine, nLines)
     if (calcSpectrum) call readSpectrumParameters(cLine, fLine, nLines)
     if (calcPhotometry) call readPhotometryParameters(cLine, fLine, nLines)
 
@@ -1639,9 +1640,6 @@ contains
     TYPE(VECTOR) :: gridCentre
     character(len=100) :: message
 
-    call getInteger("fitsbitpix", FitsBitpix, cLine, fLine, nLines, &
-         "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
-
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
@@ -1950,11 +1948,20 @@ contains
     enddo
 
  end if
-
-  call getInteger("fitsbitpix", fitsBitpix, cLine, fLine, nLines, &
-      "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
-       
+   
   end subroutine readImageParameters
+
+  subroutine readFitsParameters(cLine, fLine, nLines)
+    use fits_utils_mod, only: fitsBitpix
+    character(len=80) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+
+    call getInteger("fitsbitpix", fitsBitpix, cLine, fLine, nLines, &
+         "FITS file BITPIX ","(a,i2,a)", -32, ok, .false.)
+
+  end subroutine readFitsParameters
 
   subroutine readSpectrumParameters(cLine, fLine, nLines)
     use sed_mod, only:  setSedParameters

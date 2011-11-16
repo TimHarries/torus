@@ -8,6 +8,9 @@ module fits_utils_mod
 
   implicit none
 
+  ! bitpix parameter for FITS representation of the data
+  integer, public :: FitsBitpix 
+
   contains 
 
     ! Report whether the value of bitpix is valid

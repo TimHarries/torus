@@ -634,7 +634,7 @@ module image_mod
 
        use fits_utils_mod
        use image_utils_mod
-       use inputs_mod, only: lamStart, fitsbitpix
+       use inputs_mod, only: lamStart
 
 ! Arguments
        type(IMAGETYPE),intent(in) :: image

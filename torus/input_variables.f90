@@ -324,7 +324,6 @@
   logical :: monteCarloRT
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
-  integer :: FitsBitpix ! bitpix parameter for FITS representation of the data
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
   real :: vMin, vMax             ! for createLucyImage
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
