@@ -3404,16 +3404,10 @@ end subroutine sumFluxes
        enddo
 
 !       if (it /= 1) then
-!          call writeVTKfile(grid, "start.vtk")
 !       endif
 
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
-       call writeInfo("Done", TRIVIAL)
-
-!do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
-       call writeInfo("Calling exchange across boundary", TRIVIAL)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
     endif
 
@@ -3432,6 +3426,11 @@ end subroutine sumFluxes
           call calculateRhoE(grid%octreeRoot, direction)
        end if
        
+!       call writeVTKfile(grid, "start.vtk")
+       call writeVtkFile(grid, "start.vtk", &
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+            ,"mpithread    " /))
+
        if (myrankGlobal /= 0) then
 
 !refine the grid where necessary
@@ -3445,17 +3444,17 @@ end subroutine sumFluxes
        
        if(myRankGlobal /= 0) then
 
-          if(doUnRefine) then
-             do i = 1, 3
-                if (myrank == 1)call tune(6, "Unrefine grid")
-                ! nUnrefine = 0
-                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
-                call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
-                !          write(*,*) "Unrefined ", nUnrefine, " cells"
-                if (myrank == 1)call tune(6, "Unrefine grid")
-                iUnrefine = 0
-             end do
-          end if
+!          if(doUnRefine) then
+!             do i = 1, 3
+!                if (myrank == 1)call tune(6, "Unrefine grid")
+!                ! nUnrefine = 0
+!                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
+!                call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
+!                !          write(*,*) "Unrefined ", nUnrefine, " cells"
+!                if (myrank == 1)call tune(6, "Unrefine grid")
+!                iUnrefine = 0
+!             end do
+!          end if
 
 
 !evening up the grid ensures that no two neighbouring cells differ by more than one level of refinement          
@@ -3465,6 +3464,12 @@ end subroutine sumFluxes
              if (myrank == 1) call tune(6, "Initial refine")
           end if
        end if
+
+!do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
+       call writeInfo("Calling exchange across boundary", TRIVIAL)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call writeInfo("Done", TRIVIAL)
+
        
        if(myRankGlobal /= 0) then
           call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
@@ -5363,6 +5368,12 @@ end subroutine sumFluxes
                 locator = rVec + &
                      (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
                 neighbourOctal => thisOctal
+!                print *, "FINDING SUBCELL"
+!                print *, "locator ", locator
+!                print *, "subcellCentre(thisOctal, subcell)", subcellCentre(thisOctal, subcell)
+!                print *, "thisOctal%subcellSize", thisOctal%subcellSize
+!                print *, "depth", thisOctal%nDepth
+
                 call findSubcellLocal(locator, neighbourOctal, neighboursubcell)
                 if (neighbourOctal%edgeCell(neighbourSubcell)) then
                    tVec = subcellCentre(thisOctal, subcell) + &
@@ -5792,6 +5803,8 @@ end subroutine sumFluxes
        endloop = 8
        if(nThreadsGlobal == 65) then
           nworking = 8
+       else if(nThreadsGlobal == 512) then
+          nworking = 32
        else
           nworking = 1
        end if
@@ -6700,12 +6713,37 @@ end subroutine refineGridGeneric2
 
     allThreadsConverged = .false.
 
+!    if(grid%octreeRoot%twoD) then 
+!       endloop = 4
+!       nworking = 4
+!    else if(grid%octreeroot%threed) then
+!!       endloop = 8
+
+!    else if(nThreadsGlobal == 512) then
+!          nworking = 32
+!       nworking = 8
+!    else
+!       endloop = 2
+!       nworking = 1
+!    end if
+
+
     if(grid%octreeRoot%twoD) then 
        endloop = 4
-       nworking = 4
+       if(nThreadsGlobal == 16) then
+          nworking = 4
+       else
+          nworking = 1
+       end if
     else if(grid%octreeroot%threed) then
        endloop = 8
-       nworking = 8
+       if(nThreadsGlobal == 65) then
+          nworking = 8
+       else if(nThreadsGlobal == 512) then
+          nworking = 32
+       else
+          nworking = 1
+       end if
     else
        endloop = 2
        nworking = 1
@@ -7529,6 +7567,7 @@ end subroutine refineGridGeneric2
                 
                 locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
                 neighbourOctal => thisOctal
+
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
@@ -7799,13 +7838,10 @@ end subroutine refineGridGeneric2
              if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
-          
           call updatePhiTree(grid%octreeRoot, iDepth)
-
        enddo
-
     endif
-
+        
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
@@ -7831,8 +7867,8 @@ end subroutine refineGridGeneric2
        it = it + 1
 
 !       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!       call writeVtkFile(grid, plotfile, &
-!            valueTypeString=(/"phigas ", "rho    "/))
+!       call writeVtkFile(grid, "MIDGRAV.vtk", &
+ !           valueTypeString=(/"phigas ", "rho    "/))
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 

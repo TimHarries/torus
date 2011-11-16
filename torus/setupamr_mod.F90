@@ -32,6 +32,7 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR
     use sph_data_class, only: sphdata
     use wr104_mod, only : readwr104particles
   
@@ -64,6 +65,7 @@ contains
     real :: scalefac
     character(len=80) :: message
     integer :: nVoxels, nOctals
+    integer :: counter, nTimes
 !    integer :: nUnrefine
 #ifdef MPI 
     integer :: i
@@ -137,14 +139,14 @@ contains
        case("turbulence")
 #ifdef MPI
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call readGridTurbulence(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 #endif
 
        case("cluster")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("theGalaxy")
@@ -161,7 +163,8 @@ contains
           end select
 
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("molcluster")
@@ -177,14 +180,16 @@ contains
           endif
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("wr104")
           objectDistance = griddistance * pctocm
           call readWR104Particles(sphdatafilename, sphdata , objectDistance)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
           do
@@ -197,7 +202,8 @@ contains
 
        case("clumpyagb")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
           call writeInfo("...grid smoothing complete", TRIVIAL)
@@ -239,7 +245,8 @@ contains
           call read_vh1
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false., romData=romData)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
           if (doSmoothGrid) then
@@ -258,7 +265,8 @@ contains
        case("ttauri")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false., romData=romData)
           if (doSmoothGrid) then
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
           do
@@ -297,7 +305,9 @@ contains
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
+          call writeInfo("Doing first grid split.", TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,wvars=.false., romData=romData)
           call writeInfo("grid split.", TRIVIAL)
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -325,6 +335,36 @@ contains
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
+
+        if(gridShuffle) then
+           call writeInfo("Shuffling the grid for more accurate initial configuration...", TRIVIAL)
+           nTimes = maxDepthAMR - minDepthAMR + 2
+           do counter = 1, nTimes
+              call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true., romData=romData)     
+              call fixParentPointers(grid%octreeRoot)
+              call finishGrid(grid%octreeRoot, grid, romData=romData)
+           end do
+
+           if (doSmoothGrid) then
+              call writeInfo("Smoothing adaptive grid structure 2...", TRIVIAL)
+              do
+                 gridConverged = .true.
+                 ! The following is Tim's replacement for soomthAMRgrid.
+                 call myScaleSmooth(smoothFactor, grid, &
+                      gridConverged,  inheritProps = .false., &
+                      interpProps = .false.)
+                 if (gridConverged) exit
+              end do
+              call writeInfo("...grid smoothing complete", TRIVIAL)
+           endif
+           
+           call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+           grid%nOctals = nOctals
+           call howmanysplits()
+           call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
+        end if
+
+
 
        select case (geometry)
 
@@ -368,6 +408,7 @@ contains
              call kill_all(young_cluster)
              write(message,*) "Mass removed by remove_too_close_cells: ", removedMass / mSol, " solar masses"
              call writeInfo(message, TRIVIAL)
+
 
           case("wr104")
              totalMass = 0.d0

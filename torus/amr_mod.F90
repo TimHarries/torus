@@ -1026,7 +1026,7 @@ CONTAINS
   END SUBROUTINE growChildArray
 
 
-  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid,&
+  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, wvars,&
        setChanged, romData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
@@ -1042,6 +1042,7 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
                                           !   routines that this subroutine calls
 
+    LOGICAL, INTENT(IN) :: wvars !refinegrid on hydro variables
     LOGICAL, INTENT(IN), OPTIONAL :: setChanged
     !
     INTEGER              :: iSubcell, iIndex ! loop counters
@@ -1052,11 +1053,9 @@ CONTAINS
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
-
-
     DO iSubcell = 1, thisOctal%maxChildren
       
-      IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,&
+      IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid, wvars,&
             splitInAzimuth, &
             romData=romData)) THEN
 
@@ -1115,8 +1114,7 @@ CONTAINS
       endif
     
     DO iIndex = 1, thisOctal%nChildren
-      
-      CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
+      CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid, wvars, &
                      setChanged, romData=romData)
       
    END DO
@@ -3268,7 +3266,7 @@ CONTAINS
 
 
 
-  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, splitInAzimuth,&
+  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, wvars, splitInAzimuth,&
        romData) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
@@ -3287,6 +3285,7 @@ CONTAINS
          ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
+    use inputs_mod, only : amrtolerance
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3300,8 +3299,9 @@ CONTAINS
 
     IMPLICIT NONE
 
-    TYPE(octal), intent(inout) :: thisOctal
-
+    TYPE(octal), target, intent(inout) :: thisOctal
+    type(octal), pointer :: neighbourOctal
+    integer :: neighbourSubcell
 !    TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
@@ -3340,1000 +3340,1052 @@ CONTAINS
     logical :: inflow, insideStar,outSideStar
     logical,save  :: firstTime = .true.
     logical,save  :: firstTimeTTauri = .true.
+    logical, intent(in) :: wvars
     real(double) :: lAccretion
     real(double), save :: astar
     type(VECTOR) :: minV, maxV
     real(double) :: vgradx, vgrady, vgradz, vgrad
     real(double) :: T, vturb, b, dphi, rhoc
+    type(VECTOR) :: centre, dirVec(6), locator
+    integer :: nDir
+    real(double) :: maxGradient, grad
 
     splitInAzimuth = .false.
     split = .false.
-    
-   select case(grid%geometry)
 
-    case("melvin")
 
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      if (thisOctal%nDepth < 4) split = .true.
-      if ((abs(cellCentre%z) < 2.e6) .and. &
-           (cellCentre%x  < 1.e6).and.(cellSize > 1.e4)) split = .true.
-      if ((density(cellCentre, grid) > 1.d29).and.(thisOctal%nDepth < 9)) split = .true.
-      if ((cellCentre%x < 7.e6).and.(thisOctal%nDepth < 7)) split = .true.
-         
+    if(wvars) then
 
-
-    case("hii_test")
-      rInner = 0.2d0*pctocm/1.d10
-      rVec = subcellCentre(thisOctal, subcell)
-      if (modulus(rVec) < rInner) then
-         split = .true.
-      endif
-      if ((modulus(rVec)-thisOctal%subcellSize/2.d0*sqrt(3.d0)) < rInner) then
-         split = .true.
-      endif
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-    case("whitney")
-
-       cellSize = thisOctal%subcellSize * 1.d10
-       cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
-       nr1 = 50
-       nr2 = 10
-       nr = nr1 + nr2
-
-      do i = 1, nr1
-         rgrid(i) = log10(0.5*drInner)+dble(i)*(log10(drOuter)-log10(0.5*drInner))/dble(nr1)
-      end do
-      do i = 1, nr2
-         rgrid(nr1+i) = log10(drOuter)+dble(i)*(log10(erOuter)-log10(drInner))/dble(nr2)
-      end do
-      rgrid(1:nr) = 10.d0**rgrid(1:nr)
-      r = modulus(cellcentre)
-      if (thisOctal%nDepth < 5) split = .true.
-      if ((r < rGrid(nr)).and.(r > rGrid(1))) then
-         call locate(rGrid, nr, r, i)      
-         if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
-      endif
-       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-       if ((r > drInner*0.9).and.(r < drOuter)) then
-          hr = 0.01 * rStellar * (r / rStellar)**1.25
-          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 1.)) split = .true.
-          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 1.)) split = .true.
-       endif
-       dr = tan(cavAngle/2.) * abs(cellCentre%z)
-       if ( ((abs(cellCentre%x) - cellsize/2.) < dr).and.(cellSize > dr/4.) .and.(abs(cellCentre%z)>erInner)) then
-          split = .true.
-       endif
-
-
-    case("jets","spiralwind","romanova")
-      nsample = 100
-      ! the density is only sampled at the centre of the grid
-      ! we will search in each subcell to see if any point exceeds the 
-      ! threshold density
-
-      ! get the size and centre of the current cell
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-    
-      ! check the density of random points in the current cell - 
-      !   if any of them exceed the critical density, set the flag
-      !   indicating the cell is to be split, and return from the function
-
-      ave_density = 0.0_db
-      minDensity = 1.e30
-      maxDensity = -1.e30
-      DO i = 1, nsample
-        searchPoint = cellCentre
-        call randomNumberGenerator(getreal=x)
-        call randomNumberGenerator(getreal=z)
-        if (thisOctal%threed) then
-
-           call randomNumberGenerator(getreal=y)
-
-           searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct)
-           searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
-           searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
-        else
-           searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
-           searchPoint%y = 0.d0
-           searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
-        endif
-        if (grid%geometry=="romanova") then
-           rho = romanova_density(romData, searchPoint)
-        else
-           ! using a generic density function in density_mod.f90
-!           if (grid%geometry == "ttauri") then
-!              searchPoint = rotateY(searchPoint,  dble(dipoleOffset))
-!           endif
-
-           rho = density(searchPoint,grid)
-        end if
-        ave_density  =  rho + ave_density
-        minDensity = min(minDensity, rho)
-        maxDensity = max(maxDensity, rho)
-      END DO
-
-      ave_density = ave_density / REAL(nsample,KIND=double)
-
-
-      if (thisOctal%threed) then
-         total_mass = maxDensity * (cellSize*1.e10_db)**3
-      else
-         total_mass = maxDensity * pi * ((searchPoint%x+cellsize/2.)**2-(searchPoint%x-cellsize/2.)**2)*cellsize*1.d30
-      endif
-
-
-      ! weigting toward the smaller radial positions
-      if (grid%geometry=="romanova") then
-         thisScale = grid%rstar1/modulus(cellCentre)
-         total_mass = total_mass * thisScale**3
-      elseif (grid%geometry=="ttauri") then
-         thisScale = grid%rstar1/modulus(cellCentre)
-         total_mass = total_mass * thisScale**4
-      end if
-
-
-      IF (total_mass > amrLimitScalar) then
-         split = .TRUE.
-      END IF
-
-
-
-      ! If 2D and uses large root cell special care must be taken
-      if (grid%geometry == "ttauri" .and. .not. thisOctal%threeD) then         
-!         if (cellSize > 40.d0  .and.  &
-!              (subcell == 1 .or. subcell == 3) )  split=.true.
-         close_to_star = .false.
-         r = modulus(cellcentre)
-         if (r < 300.d0) close_to_star =.true.
-         if (close_to_star) then
-            if (cellSize > 20.d0) split=.true.
-         else
-            ! Splits the two cells closer to the origin.
-            if (r < cellSize*2.0d0)  split = .true.
-         end if
-
-         !
-         ! We use a slightly higher resolution near the edge of the accretion flow
-!         if (ttau_fuzzy_edge) then
-            if (in_fuzzy_edge(cellCentre) ) then
-               if (total_mass*4.0d0 > amrLimitScalar) then
-               !               if (total_mass*20.0d0 > amrLimitScalar) then  ! for Halpha106
-               !               if (total_mass*40.0d0 > amrLimitScalar) then  ! for Halpha107
-                  !           ^^^^^ Note the extra factor here
-                  split = .TRUE.
-               end if
-            end if
-!         end if
-
-            
-
-         end if
-
-
-      if (grid%geometry == "romanova") then         
-         if (cellSize > 100.d0) split=.true.
-      end if
-
-      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
-         split = .true.
-         splitInAzimuth = .true.
-      endif
-
-      r = sqrt(cellcentre%x**2 + cellCentre%y**2)
-      phi = atan2(cellCentre%y,cellCentre%x)
-      height = real(discHeightFunc( phi,hOverR) * r)
-      if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
-         if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
-            if (abs(cellCentre%z-height) < 2.d0*cellSize) then
-               split = .true.
-               splitInAzimuth = .true.
-            endif
-         endif
-      endif
-
-  case("ttauri")
-
-     cellCentre = subcellCentre(thisOctal,subcell)
-     cellSize = thisOctal%subcellSize
-     r0 = modulus(cellCentre)
-
-     if (inflowMahdavi(cellcentre*1.d10).and.&
-          cellVolume(thisOctal,subcell)*1.d30*thisOctal%rho(subcell) > maxCellMass) &
-          split=.true.
-
-!     if (thisOctal%threed) then
-!        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
-!     endif
-
-     if (firstTimeTTauri) then
-        astar = accretingAreaMahdavi()
-        firstTimeTTauri = .false.
-     endif
-     
-     lAccretion = ((astar * ((r0*1.d10)/ttauriRstar)**3) / (twoPi*r0*1.d10))/1.d10
-
-     inflow=.false.
-     insideStar = .false.
-     outsideStar = .false.
-     do i = 1, 400
-        rVec = randomPositionInCell(thisOctal,subcell)
-        if (inFLowMahdavi(1.d10*rVec)) then
-           inFlow = .true.
-        endif
-        r = modulus(rVec)
-        if (r < (1.05*ttauriRstar/1.d10)) insideStar = .true.
-     enddo
-     r = sqrt(cellcentre%x**2 + cellCentre%y**2)
-
-     fac = (r*1.d10-TTauriRInner)/(TTauriRouter-TTauriRinner)
-
-
-     fac = 5d0
-
-     if (inFlow) then
-!        write(*,*) "c/l ",cellsize/laccretion
-
-!        if (cellsize > lAccretion/fac) split = .true.
-        if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
-             split = .true.
-
-!        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
-        if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 0.5d0)) then
-           split = .true.
-           splitinazimuth = .true.
-        endif
-     endif
-
-     if (insidestar) then
-        if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 5.)) then
-           split = .true.
-           splitInAzimuth = .true.
-        endif
-     endif
-
-     if (inflow) then
-        if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 7.5d0)) then
-           split = .true.
-           splitInAzimuth = .true.
-        endif
-     endif
-
-
-     if (ttauriwind) then
-        inflow = .false.
-        do i = 1, 1000
-           rVec = randomPositionInCell(thisOctal,subcell)
-           if (inFLowBlandfordPayne(rVec)) then
-              inFlow = .true.
-              exit
-           endif
-        enddo
-        
-        if (inflow) then
-           if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
-           if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.d0)) then
-              split = .true.
-              splitInAzimuth = .true.
-           endif
-!           if (abs(cellCentre%z) < 0.5*DW_rMax) then
-!              if ((cellSize/(DW_rMax-DW_rMin)) > 0.02) split = .true.
-!           endif
-        endif
-     endif
-
-     if (ttauriwarp) then
-        phi = atan2(cellCentre%y,cellCentre%x)
-        height = real(discHeightFunc(phi,hOverR) * r)
-        if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
-           if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
-              if (abs(cellCentre%z-height) < 2.d0*cellSize) then
-                 split = .true.
-                 splitInAzimuth = .true.
-              endif
-           endif
-        endif
-     endif
-
-     if (ttauridisc) then
-        cellSize = thisOctal%subcellSize 
-        cellCentre = subcellCentre(thisOctal,subCell)
-        r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-        hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-        
-        if ((r+cellsize/2.d0) > (ttauririnner/1.d10)) then
-           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
-           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-           if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
-                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-        endif
-     endif
-   case("lexington")
-      if (thisOctal%nDepth < mindepthamr) then
-         split = .true.
-      else
-         split = .false.
-      endif
-!      if (modulus(subcellCentre(thisoctal,subcell)) < 60.*grid%rinner) then
-!         if (thisOctal%nDepth < 7) split = .true.
-!      endif
-!      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
-!         if (thisOctal%nDepth < 7) split = .true.
-!      endif
-
-
-   case("point")
-      if (thisOctal%nDepth < mindepthamr) then
-         split = .true.
-      else
-         split = .false.
-      endif
-
-
-
-   case("imgTest")
-      if (thisOctal%nDepth < mindepthamr) then
-         split = .true.
-      else
-         split = .false.
-      endif
-
-
-
-   case("runaway")
-
-      call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
-
-      ! Split on mass per cell 
-      total_mass = cellVolume(thisOctal, subcell)  * 1.d30 * ave_density
-      if ( total_mass > amrlimitscalar .and. amrlimitscalar > 0.0 ) split = .true.
-
-      ! Split on density contrast
-      fac = ( maxDensity - minDensity ) / ( maxDensity + minDensity )
-      if ( npt_subcell >= 2 .and. fac > amrlimitscalar2 .and. amrlimitscalar2 > 0.0 ) split = .true. 
-
-
-   case("starburst")
-      if (thisOctal%nDepth < mindepthamr) then
-         split = .true.
-      else
-         split = .false.
-      endif
-
-   case("symbiotic")
-      if (thisOctal%nDepth < 5) then
-         split = .true.
-      else
-         split = .false.
-      endif
-
-   case("gammavel")
-
-      if (thisOctal%nDepth < 6) then
-         split = .true.
-      else
-         split = .false.
-      endif
-      massRatio = mass1/mass2
-      
-      d1 = binarySep * (1./(massRatio+1.))
-      d2 = binarySep - d1
-
-      rVec = subcellCentre(thisOctal,subcell)
-
-      do i = 1, 100
-         rgrid(i) = log10(0.9d0) + (log10(100.d0) - log10(0.9d0))*dble(i-1)/99.d0
-      enddo
-      rgrid(1:100) = 10.d0**rgrid(1:100)
-
-      r = modulus(rVec - VECTOR(0.d0,0.d0,-d1))/rstar1
-      if ((r > rgrid(1)).and.(r<rgrid(99))) then
-         call locate(rgrid,100,r,i)
-         if (thisOctal%subcellsize/rstar1 > (rgrid(i+1)-rgrid(i))) split = .true.
-      endif
-
-      r = modulus(rVec - VECTOR(0.d0,0.d0,d2))/rstar2
-      if ((r > rgrid(1)).and.(r<rgrid(99))) then
-         call locate(rgrid,100,r,i)
-         if (thisOctal%subcellsize/rstar2 > (rgrid(i+1)-rgrid(i))) split = .true.
-      endif
-
-
-
-   case ("testamr","proto")
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-
-      nr1 = 8
-      nr2 = 100
-      rgrid(1) = 0.8
-      rgrid(2) = 0.9
-      rgrid(3) = 0.999
-      rGrid(4) = 1.
-      rGrid(5) = 1.001
-      rGrid(6) = 1.002
-      rGrid(7) = 1.004
-      rGrid(8) = 1.008
-      rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
-      nr = nr1 + nr2
-!      do i = 1, nr1
-!         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(4.*grid%rInner)-log10(grid%rInner))/dble(nr1-1)
-!      end do
-      do i = 1, nr2
-         rgrid(nr1+i) = log10(1.01*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.01*grid%rInner))/dble(nr2)
-      end do
-      rgrid(1:nr) = 10.d0**rgrid(1:nr)
-      r = modulus(cellcentre)
-      if (thisOctal%nDepth < 4) split = .true.
-      if ((r-cellsize/2.) < grid%rOuter) then
-         call locate(rGrid, nr, r, i)      
-         if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
-      endif
-
-!      if (thisOctal%nDepth > 3) split = .false.
-   case ("wrshell")
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-
-      nr1 = 8
-      nr2 = 100
-      rgrid(1) = 0.8
-      rgrid(2) = 0.9
-      rgrid(3) = 0.999
-      rGrid(4) = 1.
-      rGrid(5) = 1.001
-      rGrid(6) = 1.002
-      rGrid(7) = 1.004
-      rGrid(8) = 1.008
-      rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
-      nr = nr1 + nr2
-      do i = 1, nr2
-         rgrid(nr1+i) = log10(1.01*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.01*grid%rInner))/dble(nr2)
-      end do
-      rgrid(1:nr) = 10.d0**rgrid(1:nr)
-      r = modulus(cellcentre)-cellsize/2.
-      if (thisOctal%nDepth < 4) split = .true.
-      call locate(rGrid, nr, r, i)      
-      if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
-      if ( (r+cellsize) < rgrid(1)) split = .false.
-
-
-   case("fluxTest")
-      rVec = subcellCentre(thisOctal, subcell)
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if(rVec%x > 0.5 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-    !  if(rVec%x > 0.6 .and. rVec%x < 0.7 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-
-   case("hydro1d")
-      if(ghostCell(grid, thisOCtal, subcell) .and. thisOctal%nDepth < maxDepthAMR) split = .true.
-
-      if(dorefine .or. dounrefine) then
-         rVec = subcellCentre(thisOctal, subcell)
-
-         if (thisOctal%nDepth < maxDepthAMR) split = .true.
-!         if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-         if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-         if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-      else
-         rVec = subcellCentre(thisOctal, subcell)
-         if (thisOctal%nDepth < minDepthAMR) split = .true.
-         !Coarse to fine
-         if(rVec%x > 0.6 .and. rvec%x < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-      end if
-
-
-
-   case("diagSod")
-!      rVec = subcellCentre(thisOctal, subcell)
-!      if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-
-      if(dorefine .or. dounrefine) then
-         rVec = subcellCentre(thisOctal, subcell)
-
-
-
-         if (thisOctal%nDepth < minDepthAMR) split = .true.
-         if(thisOctal%twoD) then
-            if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
-                 (thisOctal%nDepth < maxDepthAMR)) split = .true.
-         else if(thisoctal%threeD) then
-           ! if ( ((rVec%x) < 0.21).and. &
-           !      thisOctal%nDepth < maxDepthAMR) split = .true.
-
-         else
-            print *, "1D diag sod doesn't work"
-            stop
-         end if
-         
-         if(cornerCell(grid, thisOctal, subcell) .and. &
-            thisOctal%nDepth < maxDepthAMR) split = .true.
-
-!if ( ((rVec%x+rvec%z) < 0.06).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-         
-
-      else
-         rVec = subcellCentre(thisOctal, subcell)
-         if (thisOctal%nDepth < minDepthAMR) split = .true.
-         !Coarse to fine
-         
-!         if((rvec%x < 0.6d0) .and. (rvec%x > 0.4d0) .and. (rvec%z < 0.4d0) .and.  &
-!         if((rvec%z < 0.1d0) .and.  &
- !           (rvec%z > 0.2d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-
-         if(thisOctal%twoD) then
-            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-
-         else if (thisOctal%threeD) then
-            if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-
-         end if
-         
-        
-      end if
-
-
-
-
-!      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-   case("bonnor", "empty")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-   case("unisphere")
-      if (thisOctal%nDepth < maxDepthAMR) split = .true.
-!      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
-
-
-   case("turbulence")
-      if (thisOctal%nDepth < 7) split = .true.
-!      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
- !     if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-   case("gravtest")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-      rVec = subcellCentre(thisOctal, subcell)
-
-      if(modulus(rVec) > (sphereRadius+(sphereRadius*0.15d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
-           .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-
-
-   case("brunt")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-
-   case("radcloud")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-  
-   case("blobtest")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-   case("kelvin")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-!      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-
-!      if((abs(thisOctal%zMax) < 0.33).and.(abs(thisOctal%zMin) > 0.17) &
- !          .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if((abs(thisOctal%zMin) < 0.245).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      
-      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-!      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-      
-
-!      if(abs(thisOctal%zmax) < 0.28 .and. abs(thisOctal%zmin) > 0.22) split = .true.
-
-!      if ((thisOctal%xMax < 0.75d0).and.(thisOctal%xMin > 0.25d0).and.&
- !          (thisOctal%zMax < 0.1d0).and.(thisOctal%zMin > -0.1d0)) split = .true.
-
-   case("rtaylor")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-      if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-
-   case("gaussian")
-      if (thisOctal%nDepth < maxDepthAMR) split = .true.
-
-   case("sedov")
-      rInner = 0.02d0
-      rVec = subcellCentre(thisOctal, subcell)
-      if (sqrt((rVec%x-0.5d0)**2 + rVec%z**2) < rInner) then
-         split = .true.
-      endif
-      if ((sqrt((rVec%x-0.5d0)**2 + rVec%z**2)-thisOctal%subcellSize/2.d0*sqrt(2.d0)) < rInner) then
-         split = .true.
-      endif
-
-      ! Split is decided using mindepthAMR defined globally
-
-   case("protobin")
-
-      ! Split is decided using mindepthAMR defined globally
-
-!      if ((rVec%z > 0).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
-!      if ( (modulus(rVec)< 0.5d5).and.(thisOctal%nDepth < 10) ) split = .true.
-
-   case("benchmark")
-
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-!      if (thisOctal%nDepth < 6) split = .true.
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      rd = grid%rOuter / 2. 
-      hr = height * (r/rd)**1.125
-
-!      if (.not.thisOctal%cylindrical) then
-         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
-         if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
-!      else
-!         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
-!      endif
-
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 91.)) then
-         splitInAzimuth = .true.
-      endif
-      if ((r+cellsize/2.d0) < grid%rinner) split = .false.
-      if ((r-cellsize/2.d0) > rOuter) split = .false.
-
-   case("molebench")
-      cellCentre = subcellCentre(thisOctal, subcell)
-
-      nr = 50
-      if (firsttime) then
-         open(31, file="model_1.dat", status="old", form="formatted")
-         do i = nr,1,-1
-            read(31,*) rgrid(i)
-         enddo
-         rgrid = rgrid * 1.e-10
-         close(31)
-         firsttime = .false.
-      endif
-      rd = modulus(cellCentre)
-      call locate(rgrid, nr, rd, i)
-
-      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
-      if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
-      if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
-
-   case("molefil")
-
-      rhoc = 5.d-19
-      r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
-
-      cellCentre = subcellCentre(thisOctal, subcell)
-      rd = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
-         ! change the parameter
-      rd = rd+thisOctal%subcellSize/2.d0
-      OstrikerRho(1) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
-      rd = rd-thisOctal%subcellSize
-      OstrikerRho(2) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
-      if(abs((OstrikerRho(1) - OstrikerRho(2))/rhoc) .ge. 0.02) split = .true.
-
-   case("h2obench1")
-      cellCentre = subcellCentre(thisOctal, subcell)
-      ! mindepthamr replaces value of 8 in line below
-      if (thisOctal%nDepth < mindepthamr) split = .true.
-      nr = 200
-      if (firsttime) then
-         open(31, file="grid.dat", status="old", form="formatted")
-         do i = 1,nr
-            read(31,*) rgrid(i)
-         enddo
-         rgrid = rgrid * 3.08568025e8
-         close(31)
-         firsttime = .false.
-      endif
-      rd = modulus(cellCentre)
-      call locate(rgrid, nr, rd, i)
-!      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
-      if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
-      if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
-
-   case("h2obench2")
-      cellCentre = subcellCentre(thisOctal, subcell)
-      ! mindepthamr replaces value of 8 in line below
-      if (thisOctal%nDepth < mindepthamr) split = .true.
-      nr = 200
-      if (firsttime) then
-         open(31, file="grid.dat", status="old", form="formatted")
-         do i = 1,nr
-            read(31,*) rgrid(i)
-         enddo
-         rgrid = rgrid * 3.08568025e8
-         close(31)
-         firsttime = .false.
-      endif
-      rd = modulus(cellCentre)
-      call locate(rgrid, nr, rd, i)
-!      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
-      if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
-      if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
-
-   case("agbstar")
-      cellCentre = subcellCentre(thisOctal, subcell)
-      ! mindepthamr replaces 4
-      if (thisOctal%nDepth < mindepthamr) split = .true.
-      nr = 100
-      if (firsttime) then
-         open(31, file="mc_100.dat", status="old", form="formatted")
-         do i = nr,1,-1
-            read(31,*) rgrid(i)
-         enddo
-         close(31)
-         rgrid = rgrid * 1e-10
-         firsttime = .false.
-      endif
-
-      rd = modulus(cellCentre)
-      call locate(rgrid, nr, rd, i)
-      if (2. * thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
-      if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
-      if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
-                                                          
-   case("luc_cir3d") 
-      if (first_time) then
-         open(unit=77, file ="zeus_rgrid.dat", status="old")
-         do i = 1, 204
-            read(77,*) R_tmp(i)
-         end do
-         close(77)
-         R_tmp(:) = R_tmp(:) * get_dble_param(cir3d_data,"Rs") ! [10^10cm]
-         first_time=.false.         
-      end if
-      cellSize = thisOctal%subcellSize
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = modulus(cellcentre)
-      nr=204
-      call locate(R_tmp, nr, r, i)      
-      if (i == 0) i = nr-1
-      if (i == nr) i = nr-1
-      if (cellsize*amrlimitscalar > (R_tmp(i+1)-R_tmp(i))) then
-         split = .true.
-      else
-         split = .false.
-      end if
-
-      if (cellSize > 100.0d0)  split=.true.
-
-   case("wind") 
-      if (first_time) then
-         nr = 50
-         do i = 1, nr
-            r_tmp(i) = log10(grid%rcore) + real(i-1)/real(nr-1) * (log10(2.d0*grid%rcore) - log10(grid%rcore))
-         enddo
-         nr = 50
-         do i = 1, nr
-            r_tmp(i+50) = log10(2.*grid%rcore) + &
-                 real(i)/real(nr) * (log10(2.*grid%octreeRoot%subcellSize)-log10(2.*grid%rcore))
-         enddo
-         nr = 100
-         r_tmp(1:nr) = 10.d0**r_tmp(1:nr)
-        write(*,*) r_tmp(1:nr)/rcore
-         first_time=.false.         
-      end if
-      cellSize = thisOctal%subcellSize
-      cellCentre = subcellCentre(thisOctal,subCell)
-      nr = 100
-      r = modulus(cellcentre)+sqrt(2.)*cellSize/2.
-      if (r > grid%rCore) then
-         call locate(R_tmp, nr, r, i)      
-         if (cellsize > (R_tmp(i+1)-R_tmp(i))) then
-            split = .true.
-         else
-            split = .false.
-         end if
-      endif
-
-   case("cmfgen") 
-      nr = get_cmfgen_nd()
-      if (first_time) then
-         ! retriving the r grid in CMFGEN data.
-         ALLOCATE(R_cmfgen(nr))
-         call get_cmfgen_data_array("R", R_cmfgen) ! [10^10cm]
-         Rmin_cmfgen = get_cmfgen_Rmin()
-         first_time=.false.         
-      end if
-      cellSize = thisOctal%subcellSize
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = modulus(cellcentre)
-
-      if (r > R_cmfgen(nr) .or. r < Rmin_cmfgen ) then
-         split = .false.
-      else
-         call locate(R_cmfgen, nr, r, i)      
-         if (i == 0) i = nr-1
-         if (i == nr) i = nr-1
-
-         dR = ABS(R_cmfgen(i+1)-R_cmfgen(i))
-         thisScale = cellsize
-         
-         if ( thisScale > dR) then
-            split = .true.
-         else
-            split = .false.
-         end if
-      end if
-      if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen))  split=.true.
-      if ((r < Rmin_cmfgen).and.((r+sqrt(2.d0)*cellsize/2.d0)>rMin_cmfgen).and.&
-           (cellSize > (r_cmfgen(2)-r_cmfgen(1))) ) split = .true.
-
-   case ("cluster","molcluster","theGalaxy")
-
-! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine )) then
-         split = .true.
-         splitInAzimuth = .true.
-      endif
-
-! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
-      if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
-
-      if ( doVelocitySplit ) then 
-         call find_n_particle_in_subcell(nparticle, ave_density, &
-              thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell, v_min=minV, v_max=maxV)
-      else
-         call find_n_particle_in_subcell(nparticle, ave_density, &
-              thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
-      end if
-
-      total_mass = cellVolume(thisOctal, subcell)  * 1.d30
-
-      if ( thisOctal%cylindrical ) then
-         n_bin_az = nint(twoPi / thisOctal%dPhi)
-         massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
-      else if ( amr2d ) then
-         cellCentre = subcellCentre(thisOctal,subCell)
-         massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
-      else
-         massPerCell = amrlimitscalar
-      end if
-
- ! placeholder for maximum expected smoothing length
-      thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0)
-
-      total_mass = ave_density * total_mass
-
-      if (total_mass > massPerCell) then
-         split = .true.
-         mass_split = mass_split + 1
-      endif
-
-      ! Split in order to capture density gradients. 
-
-! Use sign of amrlimitscalar2 to determine which condition to use.
-! This allows testing of the grid generation method without recompiling the code
-
-      if ( amrlimitscalar2 > 0.0 ) then 
-         if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) then 
-            if(split) then
-               both_split = both_split + 1
-            else
-               density_split = density_split + 1
-               split = .true.
-            endif
-         end if
-      elseif (amrlimitscalar2 < 0.0 ) then
-         if (  (maxDensity / minDensity) > abs(amrlimitscalar2) ) then 
-            if(split) then
-               both_split = both_split + 1
-            else
-               density_split = density_split + 1
-               split = .true.
-            endif
-         end if
-      endif
-
-!      if(maxdensity .gt. 1d-13 .and. nparticle .gt. 1) then
-!         split = .true.
-!         maxdensity_split = maxdensity_split + 1
-!      endif
-
-
-      if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
-         if(ave_density .gt. 1d-13) then
-            T = 10.d0 * (ave_density * 1d13)**(0.4d0)
- ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO
-         Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5)
-            Vturb = sqrt(5.938e-4 * T + 0.09) / (cspeed * 1d-5)
-         else
-            Vturb = 1.03246E-06 ! above calculation with T = 10
-         endif
-
-         vgradx = maxV%x - minV%x
-         vgrady = maxV%y - minV%y
-         vgradz = maxV%z - minV%z
-         
-         vgrad = max(vgradx,max(vgrady,vgradz))
-
-         if(vgrad .gt. vturbmultiplier * vturb) then
-            velocity_split = velocity_split + 1
-            split = .true.
-         endif
-      endif
-
-
-      !Jeans mass condition
-!      if(.not. split .and. )then
-!         split = .true.
-!         mass_split2 = mass_split2 + 1
-!      endif
-      
-! Additional refinement at the grid centre used for SPH-Torus discs. 
-      if ( refineCentre ) then 
-
-         cellSize   = thisOctal%subcellSize
-         cellCentre = subcellCentre(thisOctal,subCell)
-
-         if ( thisOctal%cylindrical ) then 
-            
-            if ( abs(thisOctal%r) < 1.0e4 .and.  abs(cellCentre%z) < 1.0e4 ) then 
-               if ( cellSize > 1.0e3 ) split = .true.
-            end if
-
-            if ( abs(thisOctal%r) < 4.0e3 .and.  abs(cellCentre%z) < 4.0e3 ) then 
-               if ( cellSize > 4.0e2 ) split = .true.
-            end if
-
-         else
-
-            if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
-                 < 40.0*grid%rCore ) then 
-               if ( cellSize > grid%rCore ) split = .true. 
-            end if
-
-            if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
-                 abs(cellCentre%z) < 20.0*grid%rCore ) then 
-               if ( cellSize > 0.5*grid%rCore ) split = .true. 
-            end if
-
-         end if
-
-      end if
-
-    if ( grid%geometry == "theGalaxy" .and. internalView ) then 
-
-! Find this point on the unmodified grid
-       cellCentre  = subcellCentre(thisOctal,subCell)
-       cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
-       cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
-
-! Limit refinement outside the region of interest and either output number of 
-! SPH particles per grid cell or split if >1 particle per cell
-       if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
+       if(thisOctal%hasChild(subcell)) then
           split = .false.
-       elseif (nparticle > 1 .and. SphOnePerCell) then
-          split = .true. 
-       elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero )then
-          write(113,*) nparticle
+          goto 101
        end if
 
-    end if
+!       print *, "wvars", wvars
+       r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
+       centre = subcellCentre(thisOctal, subcell)
+       if (thisOctal%threed) then
+          nDir = 6
+          dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+          dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+          dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+          dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+          dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+          dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+       else if (thisOctal%twod) then
+          nDir = 4
+          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+          dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+          dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+          dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+       else
+          nDir = 2
+          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+          dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       endif
 
-! The stellar disc code is retained in case this functionality needs to be used in future 
+       do i = 1, nDir
+          maxGradient = 1.d-30
+          locator = subcellCentre(thisOctal, subcell) + &
+               (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
+          if (inOctal(grid%octreeRoot, locator)) then
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!             split = .false.
+
+!Initially just checking rho             
+             grad = abs((thisOctal%rho(subcell)-neighbourOctal%rho(neighbourSubcell)) / &
+                  thisOctal%rho(subcell))
+             maxGradient = max(grad, maxGradient)
+             if (grad > amrtolerance) then
+                split = .true.
+                exit
+             endif
+
+             if((neighbourOctal%nDepth - thisOctal%ndepth) > 1) then
+                split = .true.
+                exit
+             end if
+
+          end if
+       end do
+
+    else
+       
+       select case(grid%geometry)
+          
+       case("melvin")
+          
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          if (thisOctal%nDepth < 4) split = .true.
+          if ((abs(cellCentre%z) < 2.e6) .and. &
+               (cellCentre%x  < 1.e6).and.(cellSize > 1.e4)) split = .true.
+          if ((density(cellCentre, grid) > 1.d29).and.(thisOctal%nDepth < 9)) split = .true.
+          if ((cellCentre%x < 7.e6).and.(thisOctal%nDepth < 7)) split = .true.
+          
+          
+          
+       case("hii_test")
+          rInner = 0.2d0*pctocm/1.d10
+          rVec = subcellCentre(thisOctal, subcell)
+          if (modulus(rVec) < rInner) then
+             split = .true.
+          endif
+          if ((modulus(rVec)-thisOctal%subcellSize/2.d0*sqrt(3.d0)) < rInner) then
+             split = .true.
+          endif
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+       case("whitney")
+          
+          cellSize = thisOctal%subcellSize * 1.d10
+          cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
+          nr1 = 50
+          nr2 = 10
+          nr = nr1 + nr2
+          
+          do i = 1, nr1
+             rgrid(i) = log10(0.5*drInner)+dble(i)*(log10(drOuter)-log10(0.5*drInner))/dble(nr1)
+          end do
+          do i = 1, nr2
+             rgrid(nr1+i) = log10(drOuter)+dble(i)*(log10(erOuter)-log10(drInner))/dble(nr2)
+          end do
+          rgrid(1:nr) = 10.d0**rgrid(1:nr)
+          r = modulus(cellcentre)
+          if (thisOctal%nDepth < 5) split = .true.
+          if ((r < rGrid(nr)).and.(r > rGrid(1))) then
+             call locate(rGrid, nr, r, i)      
+             if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
+          endif
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          if ((r > drInner*0.9).and.(r < drOuter)) then
+             hr = 0.01 * rStellar * (r / rStellar)**1.25
+             if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 1.)) split = .true.
+             if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 1.)) split = .true.
+          endif
+          dr = tan(cavAngle/2.) * abs(cellCentre%z)
+          if ( ((abs(cellCentre%x) - cellsize/2.) < dr).and.(cellSize > dr/4.) .and.(abs(cellCentre%z)>erInner)) then
+             split = .true.
+          endif
+          
+          
+       case("jets","spiralwind","romanova")
+          nsample = 100
+          ! the density is only sampled at the centre of the grid
+          ! we will search in each subcell to see if any point exceeds the 
+          ! threshold density
+          
+          ! get the size and centre of the current cell
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          
+          ! check the density of random points in the current cell - 
+          !   if any of them exceed the critical density, set the flag
+          !   indicating the cell is to be split, and return from the function
+          
+          ave_density = 0.0_db
+          minDensity = 1.e30
+          maxDensity = -1.e30
+          DO i = 1, nsample
+             searchPoint = cellCentre
+             call randomNumberGenerator(getreal=x)
+             call randomNumberGenerator(getreal=z)
+             if (thisOctal%threed) then
+                
+                call randomNumberGenerator(getreal=y)
+                
+                searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct)
+                searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
+                searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
+             else
+                searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
+                searchPoint%y = 0.d0
+                searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
+             endif
+             if (grid%geometry=="romanova") then
+                rho = romanova_density(romData, searchPoint)
+             else
+                ! using a generic density function in density_mod.f90
+                !           if (grid%geometry == "ttauri") then
+                !              searchPoint = rotateY(searchPoint,  dble(dipoleOffset))
+                !           endif
+                
+                rho = density(searchPoint,grid)
+             end if
+             ave_density  =  rho + ave_density
+             minDensity = min(minDensity, rho)
+             maxDensity = max(maxDensity, rho)
+          END DO
+          
+          ave_density = ave_density / REAL(nsample,KIND=double)
+          
+          
+          if (thisOctal%threed) then
+             total_mass = maxDensity * (cellSize*1.e10_db)**3
+          else
+             total_mass = maxDensity * pi * ((searchPoint%x+cellsize/2.)**2-(searchPoint%x-cellsize/2.)**2)*cellsize*1.d30
+          endif
+          
+          
+          ! weigting toward the smaller radial positions
+          if (grid%geometry=="romanova") then
+             thisScale = grid%rstar1/modulus(cellCentre)
+             total_mass = total_mass * thisScale**3
+          elseif (grid%geometry=="ttauri") then
+             thisScale = grid%rstar1/modulus(cellCentre)
+             total_mass = total_mass * thisScale**4
+          end if
+          
+          
+          IF (total_mass > amrLimitScalar) then
+             split = .TRUE.
+          END IF
+          
+          
+          
+          ! If 2D and uses large root cell special care must be taken
+          if (grid%geometry == "ttauri" .and. .not. thisOctal%threeD) then         
+             !         if (cellSize > 40.d0  .and.  &
+             !              (subcell == 1 .or. subcell == 3) )  split=.true.
+             close_to_star = .false.
+             r = modulus(cellcentre)
+             if (r < 300.d0) close_to_star =.true.
+             if (close_to_star) then
+                if (cellSize > 20.d0) split=.true.
+             else
+                ! Splits the two cells closer to the origin.
+                if (r < cellSize*2.0d0)  split = .true.
+             end if
+             
+             !
+             ! We use a slightly higher resolution near the edge of the accretion flow
+             !         if (ttau_fuzzy_edge) then
+             if (in_fuzzy_edge(cellCentre) ) then
+                if (total_mass*4.0d0 > amrLimitScalar) then
+                   !               if (total_mass*20.0d0 > amrLimitScalar) then  ! for Halpha106
+                   !               if (total_mass*40.0d0 > amrLimitScalar) then  ! for Halpha107
+                   !           ^^^^^ Note the extra factor here
+                   split = .TRUE.
+                end if
+             end if
+             !         end if
+             
+             
+             
+          end if
+          
+          
+          if (grid%geometry == "romanova") then         
+             if (cellSize > 100.d0) split=.true.
+          end if
+          
+          r = sqrt(cellcentre%x**2 + cellCentre%y**2)
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+             split = .true.
+             splitInAzimuth = .true.
+          endif
+          
+          r = sqrt(cellcentre%x**2 + cellCentre%y**2)
+          phi = atan2(cellCentre%y,cellCentre%x)
+          height = real(discHeightFunc( phi,hOverR) * r)
+          if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
+             if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
+                if (abs(cellCentre%z-height) < 2.d0*cellSize) then
+                   split = .true.
+                   splitInAzimuth = .true.
+                endif
+             endif
+          endif
+          
+       case("ttauri")
+          
+          cellCentre = subcellCentre(thisOctal,subcell)
+          cellSize = thisOctal%subcellSize
+          r0 = modulus(cellCentre)
+          
+          if (inflowMahdavi(cellcentre*1.d10).and.&
+               cellVolume(thisOctal,subcell)*1.d30*thisOctal%rho(subcell) > maxCellMass) &
+               split=.true.
+          
+          !     if (thisOctal%threed) then
+          !        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
+          !     endif
+          
+          if (firstTimeTTauri) then
+             astar = accretingAreaMahdavi()
+             firstTimeTTauri = .false.
+          endif
+     
+          lAccretion = ((astar * ((r0*1.d10)/ttauriRstar)**3) / (twoPi*r0*1.d10))/1.d10
+          
+          inflow=.false.
+          insideStar = .false.
+          outsideStar = .false.
+          do i = 1, 400
+             rVec = randomPositionInCell(thisOctal,subcell)
+             if (inFLowMahdavi(1.d10*rVec)) then
+                inFlow = .true.
+             endif
+             r = modulus(rVec)
+             if (r < (1.05*ttauriRstar/1.d10)) insideStar = .true.
+          enddo
+          r = sqrt(cellcentre%x**2 + cellCentre%y**2)
+          
+          fac = (r*1.d10-TTauriRInner)/(TTauriRouter-TTauriRinner)
+          
+          
+          fac = 5d0
+          
+          if (inFlow) then
+             !        write(*,*) "c/l ",cellsize/laccretion
+
+             !        if (cellsize > lAccretion/fac) split = .true.
+             if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
+                  split = .true.
+
+             !        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
+             if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 0.5d0)) then
+                split = .true.
+                splitinazimuth = .true.
+             endif
+          endif
+          
+          if (insidestar) then
+             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 5.)) then
+                split = .true.
+                splitInAzimuth = .true.
+             endif
+          endif
+          
+          if (inflow) then
+             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 7.5d0)) then
+                split = .true.
+                splitInAzimuth = .true.
+             endif
+          endif
+          
+          
+          if (ttauriwind) then
+             inflow = .false.
+             do i = 1, 1000
+                rVec = randomPositionInCell(thisOctal,subcell)
+                if (inFLowBlandfordPayne(rVec)) then
+                   inFlow = .true.
+                   exit
+                endif
+             enddo
+        
+             if (inflow) then
+                if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
+                if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.d0)) then
+                   split = .true.
+                   splitInAzimuth = .true.
+                endif
+                !           if (abs(cellCentre%z) < 0.5*DW_rMax) then
+                !              if ((cellSize/(DW_rMax-DW_rMin)) > 0.02) split = .true.
+                !           endif
+             endif
+          endif
+          
+          if (ttauriwarp) then
+             phi = atan2(cellCentre%y,cellCentre%x)
+             height = real(discHeightFunc(phi,hOverR) * r)
+             if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
+                if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
+                   if (abs(cellCentre%z-height) < 2.d0*cellSize) then
+                      split = .true.
+                      splitInAzimuth = .true.
+                   endif
+                endif
+             endif
+          endif
+          
+          if (ttauridisc) then
+             cellSize = thisOctal%subcellSize 
+             cellCentre = subcellCentre(thisOctal,subCell)
+             r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+             hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+             
+             if ((r+cellsize/2.d0) > (ttauririnner/1.d10)) then
+                if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+                if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+                if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
+                     (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+             endif
+          endif
+       case("lexington")
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          else
+             split = .false.
+          endif
+          !      if (modulus(subcellCentre(thisoctal,subcell)) < 60.*grid%rinner) then
+          !         if (thisOctal%nDepth < 7) split = .true.
+          !      endif
+          !      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
+          !         if (thisOctal%nDepth < 7) split = .true.
+          !      endif
+          
+          
+       case("point")
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          else
+             split = .false.
+          endif
+          
+          
+          
+       case("imgTest")
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          else
+             split = .false.
+          endif
+          
+          
+          
+       case("runaway")
+          
+          call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
+          
+          ! Split on mass per cell 
+          total_mass = cellVolume(thisOctal, subcell)  * 1.d30 * ave_density
+          if ( total_mass > amrlimitscalar .and. amrlimitscalar > 0.0 ) split = .true.
+          
+          ! Split on density contrast
+          fac = ( maxDensity - minDensity ) / ( maxDensity + minDensity )
+          if ( npt_subcell >= 2 .and. fac > amrlimitscalar2 .and. amrlimitscalar2 > 0.0 ) split = .true. 
+          
+          
+       case("starburst")
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          else
+             split = .false.
+          endif
+          
+       case("symbiotic")
+          if (thisOctal%nDepth < 5) then
+             split = .true.
+          else
+             split = .false.
+          endif
+          
+       case("gammavel")
+          
+          if (thisOctal%nDepth < 6) then
+             split = .true.
+          else
+             split = .false.
+          endif
+          massRatio = mass1/mass2
+          
+          d1 = binarySep * (1./(massRatio+1.))
+          d2 = binarySep - d1
+          
+          rVec = subcellCentre(thisOctal,subcell)
+          
+          do i = 1, 100
+             rgrid(i) = log10(0.9d0) + (log10(100.d0) - log10(0.9d0))*dble(i-1)/99.d0
+          enddo
+          rgrid(1:100) = 10.d0**rgrid(1:100)
+          
+          r = modulus(rVec - VECTOR(0.d0,0.d0,-d1))/rstar1
+          if ((r > rgrid(1)).and.(r<rgrid(99))) then
+             call locate(rgrid,100,r,i)
+             if (thisOctal%subcellsize/rstar1 > (rgrid(i+1)-rgrid(i))) split = .true.
+          endif
+          
+          r = modulus(rVec - VECTOR(0.d0,0.d0,d2))/rstar2
+          if ((r > rgrid(1)).and.(r<rgrid(99))) then
+             call locate(rgrid,100,r,i)
+             if (thisOctal%subcellsize/rstar2 > (rgrid(i+1)-rgrid(i))) split = .true.
+          endif
+          
+          
+          
+       case ("testamr","proto")
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          
+          nr1 = 8
+          nr2 = 100
+          rgrid(1) = 0.8
+          rgrid(2) = 0.9
+          rgrid(3) = 0.999
+          rGrid(4) = 1.
+          rGrid(5) = 1.001
+          rGrid(6) = 1.002
+          rGrid(7) = 1.004
+          rGrid(8) = 1.008
+          rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
+          nr = nr1 + nr2
+          !      do i = 1, nr1
+          !         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(4.*grid%rInner)-log10(grid%rInner))/dble(nr1-1)
+          !      end do
+          do i = 1, nr2
+             rgrid(nr1+i) = log10(1.01*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.01*grid%rInner))/dble(nr2)
+          end do
+          rgrid(1:nr) = 10.d0**rgrid(1:nr)
+          r = modulus(cellcentre)
+          if (thisOctal%nDepth < 4) split = .true.
+          if ((r-cellsize/2.) < grid%rOuter) then
+             call locate(rGrid, nr, r, i)      
+             if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
+          endif
+          
+          !      if (thisOctal%nDepth > 3) split = .false.
+       case ("wrshell")
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          
+          nr1 = 8
+          nr2 = 100
+          rgrid(1) = 0.8
+          rgrid(2) = 0.9
+          rgrid(3) = 0.999
+          rGrid(4) = 1.
+          rGrid(5) = 1.001
+          rGrid(6) = 1.002
+          rGrid(7) = 1.004
+          rGrid(8) = 1.008
+          rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
+          nr = nr1 + nr2
+          do i = 1, nr2
+             rgrid(nr1+i) = log10(1.01*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.01*grid%rInner))/dble(nr2)
+          end do
+          rgrid(1:nr) = 10.d0**rgrid(1:nr)
+          r = modulus(cellcentre)-cellsize/2.
+          if (thisOctal%nDepth < 4) split = .true.
+          call locate(rGrid, nr, r, i)      
+          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
+          if ( (r+cellsize) < rgrid(1)) split = .false.
+      
+          
+       case("fluxTest")
+          rVec = subcellCentre(thisOctal, subcell)
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if(rVec%x > 0.5 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+          !  if(rVec%x > 0.6 .and. rVec%x < 0.7 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+          
+       case("hydro1d")
+          if(ghostCell(grid, thisOCtal, subcell) .and. thisOctal%nDepth < maxDepthAMR) split = .true.
+          
+          if(dorefine .or. dounrefine) then
+             rVec = subcellCentre(thisOctal, subcell)
+             
+             if (thisOctal%nDepth < maxDepthAMR) split = .true.
+             !         if (thisOctal%nDepth < minDepthAMR) split = .true.
+             
+             if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+             if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+             
+          else
+             rVec = subcellCentre(thisOctal, subcell)
+             if (thisOctal%nDepth < minDepthAMR) split = .true.
+             !Coarse to fine
+             if(rVec%x > 0.6 .and. rvec%x < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+          end if
+          
+          
+          
+       case("diagSod")
+!      rVec = subcellCentre(thisOctal, subcell)
+          !      if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+          
+          if(dorefine .or. dounrefine) then
+             rVec = subcellCentre(thisOctal, subcell)
+             
+             
+             
+             if (thisOctal%nDepth < minDepthAMR) split = .true.
+             if(thisOctal%twoD) then
+                if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
+                     (thisOctal%nDepth < maxDepthAMR)) split = .true.
+             else if(thisoctal%threeD) then
+           ! if ( ((rVec%x) < 0.21).and. &
+                !      thisOctal%nDepth < maxDepthAMR) split = .true.
+                
+             else
+                print *, "1D diag sod doesn't work"
+                stop
+             end if
+             
+             if(cornerCell(grid, thisOctal, subcell) .and. &
+                  thisOctal%nDepth < maxDepthAMR) split = .true.
+             
+             !if ( ((rVec%x+rvec%z) < 0.06).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          else
+             rVec = subcellCentre(thisOctal, subcell)
+             if (thisOctal%nDepth < minDepthAMR) split = .true.
+             !Coarse to fine
+             
+             !         if((rvec%x < 0.6d0) .and. (rvec%x > 0.4d0) .and. (rvec%z < 0.4d0) .and.  &
+             !         if((rvec%z < 0.1d0) .and.  &
+             !           (rvec%z > 0.2d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+             
+             if(thisOctal%twoD) then
+                if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+                
+             else if (thisOctal%threeD) then
+                if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+             end if
+          end if
+          !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+       case("bonnor", "empty")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+       case("unisphere")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          !      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
+          
+          
+       case("turbulence")
+          if (thisOctal%nDepth < 7) split = .true.
+!      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !     if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+       case("gravtest")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+          rVec = subcellCentre(thisOctal, subcell)
+          
+          if(modulus(rVec) > (sphereRadius+(sphereRadius*0.15d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
+               .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+       case("brunt")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+          if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+          
+       case("radcloud")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+       case("blobtest")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+       case("kelvin")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          !      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !      if ( (abs(thisOctal%zMin-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !      if ( (abs(thisOctal%zMax+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !      if ( (abs(thisOctal%zMin+0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+          if ( (abs(thisOctal%zMax-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if ( (abs(thisOctal%zMin-0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if ( (abs(thisOctal%zMax+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+          
+          !      if((abs(thisOctal%zMax) < 0.33).and.(abs(thisOctal%zMin) > 0.17) &
+          !          .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !      if((abs(thisOctal%zMin) < 0.245).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+      
+          if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          !      if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+      
+          
+          !      if(abs(thisOctal%zmax) < 0.28 .and. abs(thisOctal%zmin) > 0.22) split = .true.
+          
+          !      if ((thisOctal%xMax < 0.75d0).and.(thisOctal%xMin > 0.25d0).and.&
+          !          (thisOctal%zMax < 0.1d0).and.(thisOctal%zMin > -0.1d0)) split = .true.
+          
+       case("rtaylor")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          
+       case("gaussian")
+          if (thisOctal%nDepth < maxDepthAMR) split = .true.
+          
+       case("sedov")
+          rInner = 0.02d0
+          rVec = subcellCentre(thisOctal, subcell)
+          if (sqrt((rVec%x-0.5d0)**2 + rVec%z**2) < rInner) then
+             split = .true.
+          endif
+          if ((sqrt((rVec%x-0.5d0)**2 + rVec%z**2)-thisOctal%subcellSize/2.d0*sqrt(2.d0)) < rInner) then
+             split = .true.
+          endif
+          
+          ! Split is decided using mindepthAMR defined globally
+          
+       case("protobin")
+          
+          ! Split is decided using mindepthAMR defined globally
+          
+          !      if ((rVec%z > 0).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
+          !      if ( (modulus(rVec)< 0.5d5).and.(thisOctal%nDepth < 10) ) split = .true.
+          
+       case("benchmark")
+          
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          !      if (thisOctal%nDepth < 6) split = .true.
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          rd = grid%rOuter / 2. 
+          hr = height * (r/rd)**1.125
+          
+          !      if (.not.thisOctal%cylindrical) then
+          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
+          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
+          !      else
+          !         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
+          !      endif
+          
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 91.)) then
+             splitInAzimuth = .true.
+          endif
+          if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+          if ((r-cellsize/2.d0) > rOuter) split = .false.
+          
+       case("molebench")
+          cellCentre = subcellCentre(thisOctal, subcell)
+          
+          nr = 50
+          if (firsttime) then
+             open(31, file="model_1.dat", status="old", form="formatted")
+             do i = nr,1,-1
+                read(31,*) rgrid(i)
+             enddo
+             rgrid = rgrid * 1.e-10
+             close(31)
+             firsttime = .false.
+          endif
+          rd = modulus(cellCentre)
+          call locate(rgrid, nr, rd, i)
+          
+          if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+          if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
+          if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
+          
+       case("molefil")
+          
+          rhoc = 5.d-19
+          r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
+
+          cellCentre = subcellCentre(thisOctal, subcell)
+          rd = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
+          ! change the parameter
+          rd = rd+thisOctal%subcellSize/2.d0
+          OstrikerRho(1) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
+          rd = rd-thisOctal%subcellSize
+          OstrikerRho(2) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
+          if(abs((OstrikerRho(1) - OstrikerRho(2))/rhoc) .ge. 0.02) split = .true.
+          
+       case("h2obench1")
+          cellCentre = subcellCentre(thisOctal, subcell)
+          ! mindepthamr replaces value of 8 in line below
+          if (thisOctal%nDepth < mindepthamr) split = .true.
+          nr = 200
+          if (firsttime) then
+             open(31, file="grid.dat", status="old", form="formatted")
+             do i = 1,nr
+                read(31,*) rgrid(i)
+             enddo
+             rgrid = rgrid * 3.08568025e8
+             close(31)
+             firsttime = .false.
+          endif
+          rd = modulus(cellCentre)
+          call locate(rgrid, nr, rd, i)
+          !      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+          if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
+          if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
+          
+       case("h2obench2")
+          cellCentre = subcellCentre(thisOctal, subcell)
+          ! mindepthamr replaces value of 8 in line below
+          if (thisOctal%nDepth < mindepthamr) split = .true.
+          nr = 200
+          if (firsttime) then
+             open(31, file="grid.dat", status="old", form="formatted")
+             do i = 1,nr
+                read(31,*) rgrid(i)
+             enddo
+             rgrid = rgrid * 3.08568025e8
+             close(31)
+             firsttime = .false.
+          endif
+          rd = modulus(cellCentre)
+          call locate(rgrid, nr, rd, i)
+          !      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+          if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
+          if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
+          
+       case("agbstar")
+          cellCentre = subcellCentre(thisOctal, subcell)
+          ! mindepthamr replaces 4
+          if (thisOctal%nDepth < mindepthamr) split = .true.
+          nr = 100
+          if (firsttime) then
+             open(31, file="mc_100.dat", status="old", form="formatted")
+             do i = nr,1,-1
+                read(31,*) rgrid(i)
+             enddo
+             close(31)
+             rgrid = rgrid * 1e-10
+             firsttime = .false.
+          endif
+          
+          rd = modulus(cellCentre)
+          call locate(rgrid, nr, rd, i)
+          if (2. * thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+          if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
+          if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
+          
+       case("luc_cir3d") 
+          if (first_time) then
+             open(unit=77, file ="zeus_rgrid.dat", status="old")
+             do i = 1, 204
+                read(77,*) R_tmp(i)
+             end do
+             close(77)
+             R_tmp(:) = R_tmp(:) * get_dble_param(cir3d_data,"Rs") ! [10^10cm]
+             first_time=.false.         
+          end if
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = modulus(cellcentre)
+          nr=204
+          call locate(R_tmp, nr, r, i)      
+          if (i == 0) i = nr-1
+          if (i == nr) i = nr-1
+          if (cellsize*amrlimitscalar > (R_tmp(i+1)-R_tmp(i))) then
+             split = .true.
+          else
+             split = .false.
+          end if
+          
+          if (cellSize > 100.0d0)  split=.true.
+          
+       case("wind") 
+          if (first_time) then
+             nr = 50
+             do i = 1, nr
+                r_tmp(i) = log10(grid%rcore) + real(i-1)/real(nr-1) * (log10(2.d0*grid%rcore) - log10(grid%rcore))
+             enddo
+             nr = 50
+             do i = 1, nr
+                r_tmp(i+50) = log10(2.*grid%rcore) + &
+                     real(i)/real(nr) * (log10(2.*grid%octreeRoot%subcellSize)-log10(2.*grid%rcore))
+             enddo
+             nr = 100
+             r_tmp(1:nr) = 10.d0**r_tmp(1:nr)
+             write(*,*) r_tmp(1:nr)/rcore
+             first_time=.false.         
+          end if
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal,subCell)
+          nr = 100
+          r = modulus(cellcentre)+sqrt(2.)*cellSize/2.
+          if (r > grid%rCore) then
+             call locate(R_tmp, nr, r, i)      
+             if (cellsize > (R_tmp(i+1)-R_tmp(i))) then
+                split = .true.
+             else
+                split = .false.
+             end if
+          endif
+          
+       case("cmfgen") 
+          nr = get_cmfgen_nd()
+          if (first_time) then
+             ! retriving the r grid in CMFGEN data.
+             ALLOCATE(R_cmfgen(nr))
+             call get_cmfgen_data_array("R", R_cmfgen) ! [10^10cm]
+             Rmin_cmfgen = get_cmfgen_Rmin()
+             first_time=.false.         
+          end if
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = modulus(cellcentre)
+          
+          if (r > R_cmfgen(nr) .or. r < Rmin_cmfgen ) then
+             split = .false.
+          else
+             call locate(R_cmfgen, nr, r, i)      
+             if (i == 0) i = nr-1
+             if (i == nr) i = nr-1
+             
+             dR = ABS(R_cmfgen(i+1)-R_cmfgen(i))
+             thisScale = cellsize
+             
+             if ( thisScale > dR) then
+                split = .true.
+             else
+                split = .false.
+             end if
+          end if
+          if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen))  split=.true.
+          if ((r < Rmin_cmfgen).and.((r+sqrt(2.d0)*cellsize/2.d0)>rMin_cmfgen).and.&
+               (cellSize > (r_cmfgen(2)-r_cmfgen(1))) ) split = .true.
+          
+       case ("cluster","molcluster","theGalaxy")
+          
+          ! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine )) then
+             split = .true.
+             splitInAzimuth = .true.
+          endif
+          
+          ! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
+          if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
+          
+          if ( doVelocitySplit ) then 
+             call find_n_particle_in_subcell(nparticle, ave_density, &
+                  thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell, v_min=minV, v_max=maxV)
+          else
+             call find_n_particle_in_subcell(nparticle, ave_density, &
+                  thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
+          end if
+          
+          total_mass = cellVolume(thisOctal, subcell)  * 1.d30
+
+          if ( thisOctal%cylindrical ) then
+             n_bin_az = nint(twoPi / thisOctal%dPhi)
+             massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
+          else if ( amr2d ) then
+             cellCentre = subcellCentre(thisOctal,subCell)
+             massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
+          else
+             massPerCell = amrlimitscalar
+          end if
+          
+          ! placeholder for maximum expected smoothing length
+          thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0)
+          
+          total_mass = ave_density * total_mass
+          
+          if (total_mass > massPerCell) then
+             split = .true.
+             mass_split = mass_split + 1
+          endif
+          
+          ! Split in order to capture density gradients. 
+          
+          ! Use sign of amrlimitscalar2 to determine which condition to use.
+          ! This allows testing of the grid generation method without recompiling the code
+          
+          if ( amrlimitscalar2 > 0.0 ) then 
+             if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) then 
+                if(split) then
+                   both_split = both_split + 1
+                else
+                   density_split = density_split + 1
+                   split = .true.
+                endif
+             end if
+          elseif (amrlimitscalar2 < 0.0 ) then
+             if (  (maxDensity / minDensity) > abs(amrlimitscalar2) ) then 
+                if(split) then
+                   both_split = both_split + 1
+                else
+                   density_split = density_split + 1
+                   split = .true.
+                endif
+             end if
+          endif
+          
+          !      if(maxdensity .gt. 1d-13 .and. nparticle .gt. 1) then
+          !         split = .true.
+          !         maxdensity_split = maxdensity_split + 1
+          !      endif
+          
+          
+          if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
+             if(ave_density .gt. 1d-13) then
+                T = 10.d0 * (ave_density * 1d13)**(0.4d0)
+                ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO
+                Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5)
+                Vturb = sqrt(5.938e-4 * T + 0.09) / (cspeed * 1d-5)
+             else
+                Vturb = 1.03246E-06 ! above calculation with T = 10
+             endif
+             
+             vgradx = maxV%x - minV%x
+             vgrady = maxV%y - minV%y
+             vgradz = maxV%z - minV%z
+             
+             vgrad = max(vgradx,max(vgrady,vgradz))
+             
+             if(vgrad .gt. vturbmultiplier * vturb) then
+                velocity_split = velocity_split + 1
+                split = .true.
+             endif
+          endif
+          
+          
+          !Jeans mass condition
+          !      if(.not. split .and. )then
+          !         split = .true.
+          !         mass_split2 = mass_split2 + 1
+          !      endif
+      
+          ! Additional refinement at the grid centre used for SPH-Torus discs. 
+          if ( refineCentre ) then 
+             
+             cellSize   = thisOctal%subcellSize
+             cellCentre = subcellCentre(thisOctal,subCell)
+             
+             if ( thisOctal%cylindrical ) then 
+                
+                if ( abs(thisOctal%r) < 1.0e4 .and.  abs(cellCentre%z) < 1.0e4 ) then 
+                   if ( cellSize > 1.0e3 ) split = .true.
+                end if
+                
+                if ( abs(thisOctal%r) < 4.0e3 .and.  abs(cellCentre%z) < 4.0e3 ) then 
+                   if ( cellSize > 4.0e2 ) split = .true.
+                end if
+                
+             else
+                
+                if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
+                     < 40.0*grid%rCore ) then 
+                   if ( cellSize > grid%rCore ) split = .true. 
+                end if
+                
+                if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
+                     abs(cellCentre%z) < 20.0*grid%rCore ) then 
+                   if ( cellSize > 0.5*grid%rCore ) split = .true. 
+                end if
+
+             end if
+             
+          end if
+          
+          if ( grid%geometry == "theGalaxy" .and. internalView ) then 
+             
+! Find this point on the unmodified grid
+             cellCentre  = subcellCentre(thisOctal,subCell)
+             cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
+             cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
+             
+             ! Limit refinement outside the region of interest and either output number of 
+             ! SPH particles per grid cell or split if >1 particle per cell
+             if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
+                split = .false.
+             elseif (nparticle > 1 .and. SphOnePerCell) then
+                split = .true. 
+             elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero )then
+                write(113,*) nparticle
+             end if
+             
+          end if
+          
+          ! The stellar disc code is retained in case this functionality needs to be used in future 
 !!$
 !!$      if (include_disc(stellar_cluster)) then
 !!$      
@@ -4363,359 +4415,359 @@ CONTAINS
 !!$
 !!$      end if
 
-   case ("wr104")
-      ! Splits if the number of particle is more than a critical value (~3).
-      limit = nint(amrLimitScalar)
+       case ("wr104")
+          ! Splits if the number of particle is more than a critical value (~3).
+          limit = nint(amrLimitScalar)
+          
+          call find_n_particle_in_subcell(nparticle, dummyDouble, thisOctal, subcell)
+          
+          rVec = subcellCentre(thisOctal,subcell)
+          r = sqrt(rVec%x**2 + rVec%y**2)
+          
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.)) then
+             splitInAzimuth = .true.
+             limit = nint(amrLimitScalar)*1000
+          endif
+          
+          if ((r < 2.e6).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
+             limit = nint(amrLimitScalar)*100
+             splitInAzimuth = .true.
+          endif
+          
+          if ((r < 2.e5).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15)) then
+             splitInAzimuth = .true.
+             limit = nint(amrLimitScalar)*1
+             
+          endif
+          
+          
+          
+          !
+          if (nparticle > limit ) then 
+             split = .TRUE.
+          else
+             split = .FALSE.
+          end if
+          cellCentre = subcellCentre(thisOctal,subCell)
+          
+          
+          
+          !      write(*,*) nparticle,thisOctal%nDepth,subcell
+          
+       case("ggtau")
+          ! used to be 5
+          if (thisOctal%ndepth < mindepthamr) split = .true.
+          
+          cellCentre = subcellCentre(thisOctal,subCell)
+          
+          r = sqrt(cellcentre%x**2+cellcentre%y**2)
+          r = r * 6.68458134e-06! (torus units to 100's of AUs)
+          
+          cellcentre%z = cellcentre%z * 6.68458134e-04
+          cellSize = thisOctal%subcellSize * 6.68458134e-4
+          
+          H0 = 14.55
+          hr = H0 * (r ** (1.25))
+          
+          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) then
+             split = .true.
+             scaleheighta_count = scaleheighta_count + 1
+             goto 1001
+          endif
+          
+          if ((abs(cellcentre%z)/hr > 5.) .and. (abs(cellcentre%z/cellsize) < 5.)) then
+             split = .true.
+             scaleheightb_count =  scaleheightb_count + 1
+             goto 1001
+          endif
       
-      call find_n_particle_in_subcell(nparticle, dummyDouble, thisOctal, subcell)
-
-      rVec = subcellCentre(thisOctal,subcell)
-      r = sqrt(rVec%x**2 + rVec%y**2)
-
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.)) then
-         splitInAzimuth = .true.
-         limit = nint(amrLimitScalar)*1000
-      endif
-
-      if ((r < 2.e6).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
-         limit = nint(amrLimitScalar)*100
-         splitInAzimuth = .true.
-      endif
-
-      if ((r < 2.e5).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15)) then
-         splitInAzimuth = .true.
-         limit = nint(amrLimitScalar)*1
-
-      endif
-
-
-
-      !
-      if (nparticle > limit ) then 
-         split = .TRUE.
-      else
-         split = .FALSE.
-      end if
-      cellCentre = subcellCentre(thisOctal,subCell)
-
-
-
-!      write(*,*) nparticle,thisOctal%nDepth,subcell
-
-   case("ggtau")
-! used to be 5
-      if (thisOctal%ndepth < mindepthamr) split = .true.
-
-      cellCentre = subcellCentre(thisOctal,subCell)
-
-      r = sqrt(cellcentre%x**2+cellcentre%y**2)
-      r = r * 6.68458134e-06! (torus units to 100's of AUs)
-
-      cellcentre%z = cellcentre%z * 6.68458134e-04
-      cellSize = thisOctal%subcellSize * 6.68458134e-4
-
-      H0 = 14.55
-      hr = H0 * (r ** (1.25))
-
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) then
-         split = .true.
-         scaleheighta_count = scaleheighta_count + 1
-         goto 1001
-      endif
-
-      if ((abs(cellcentre%z)/hr > 5.) .and. (abs(cellcentre%z/cellsize) < 5.)) then
-         split = .true.
-          scaleheightb_count =  scaleheightb_count + 1
-         goto 1001
-      endif
-
-      if ((r .gt. 1.8*0.99).and.(r .lt. 1.01*1.8)) then
-         if ((abs(cellcentre%z)/hr < 1.)) then
-            if (cellsize > 0.1*1.8) then
-               split = .true.
-               scaleheightc_count = scaleheightc_count + 1
-               goto 1001
-            endif
-         endif
-      endif
-
-1001  if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
-      if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
-
-   case("shakara","aksco")
- ! used to be 5
-      if (thisOctal%ndepth  < mindepthamr) split = .true.
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-
-!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
-
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
-
-      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-
-      if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
-           (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
-           (.not.thisOctal%cylindrical)) split=.true.
-
-      if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
-         if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
-            if (.not.thisOctal%cylindrical) split = .true.
-         endif
-      endif
-
-      if ((r+cellsize/2.d0) < rInner) split = .false.
-      if ((r-cellsize/2.d0) > Router) split = .false.
-
-!      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
-!         if ((abs(cellcentre%z)/hr < 1.)) then
-!            if (cellsize > 5.d-1*grid%rinner) split = .true.
-!         endif
-!      endif
-
-      if (thisOctal%cylindrical) then
-         dphi = returndPhi(thisOctal)
-         if ((r > 0.5*rGapInner).and.(r < 2.*rGapOuter)) then
-            if (dphi > minPhiResolution) then
-               split = .true.
-               splitinAzimuth = .true.
-            endif
-         endif
-      endif
-
-
-!
-
-      if (thisOctal%cylindrical) then
-         if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 5.d0*hr)) then
-            phi = atan2(cellcentre%y, cellcentre%x)
-            if (thisOctal%subcellSize > 0.2d0*(rGapOuter-rGapInner)) split = .true.
-            if (phi < 0.d0) phi = phi + twopi
-            dphi = returndPhi(thisOctal)
-            phi1 = phi - dphi
-            if (phi1 < 0.d0) phi1 = phi1 + twoPi
-            phi2 = phi + dphi
-            if (abs(cellCentre%z) < hr) then
-               if (dPhi*radtodeg > dPhiRefine) then
-                  if (((phi1*radtodeg > 180.d0-phiRefine/2.d0).and. &
-                       (phi1*radtodeg < 180.d0+phiRefine/2.d0)).or. &
-                       ((phi2*radtodeg > 180.d0-phiRefine/2.d0).and. &
-                       (phi2*radtodeg < 180.d0+phiRefine/2.d0)).or. &
-                       ((phi1*radtodeg < 180.d0-phiRefine/2.d0).and. &
-                       (phi2*radtodeg > 180.d0+phiRefine/2.d0))) then
-                     splitInAzimuth = .true.
-                     split = .true.
-                  endif
-               endif
-            endif
-         endif
-      endif
-!
-      if (((r-cellsize/2.d0) > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
-         split = .false.
-         splitInAzimuth = .false.
-      endif
-
-      if (hydrodynamics) then
-         split = .false.
-         if (thisOctal%nDepth < minDepthAMR) split = .true.
-      endif
-
-!      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
-!         if ((abs(cellcentre%z)/hr < 2.)) then
-!            split = .true.
-!         endif
-!      endif
-
-   case("circumbin")
-
-      if (thisOctal%ndepth  < 5) split = .true.
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-
-!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
-
-      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-
-      if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
-      if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
-
-      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-
-!      splitInAzimuth = .false.
-!      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
-!         splitInAzimuth = .true.
-!         split = .true.
-!      endif
-
-!      if (abs(cellCentre%z) < rinner/2.) then
-!         if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
-!            splitInAzimuth = .true.
-!            split = .true.
-!         endif
-!      endif
-!      if (abs(cellCentre%z) < rinner/5.) then
-!         if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
-!      endif
-
-      if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
-         split = .false.
-         splitInAzimuth = .false.
-      endif
-
-   case("turbbox")
-     if (thisOctal%nDepth < maxDepthAMR) split = .true.
-     if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-   case("iras04158")
-
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * (r / (50.d0*autocm*1.d-10))**betadisc
-
-!! This splitting law replaces the commented out code below. It does the same stuff but further out
-!! and more gradually. I hope the splitting in r has become redundant because it should be linked to
-!! the increased resolution in z.
-
-      if(abs(cellcentre%z) .lt. 6.d0 * hr) then ! 6 is a reasonable number for this law
-!         if(cellsize .gt. 2.d0**(abs(cellcentre%z)/hr - 3.d0) * hr) split = .true.
-         if(8.d0 * cellsize .gt. 2.d0**(abs(cellcentre%z)/hr) * hr) split = .true.
-      endif
-
-      if((abs(cellcentre%z) .gt. 3.d0 * hr).and.(abs(cellcentre%z) < 4.d0 * cellsize)) then
-         split = .true.
-      endif
-
-!      if ((abs(cellcentre%z) < 1.d0 * hr) .and. (cellsize > 0.25d0 * hr)) then
-!         split = .true.
-!      elseif ((abs(cellcentre%z) < 2.d0 * hr) .and. (cellsize > 0.5d0 * hr)) then
-!         split = .true.
-!      elseif((r > grid%rInner).and.(r < grid%rInner * 1.02)) then
-!         if ((abs(cellcentre%z) < 3. * hr)) then        
-!            if (cellsize > 0.1d0 * grid%rInner) split = .true.
-!         endif
-!      endif
-
-!      if((r > grid%rInner).and.(r < grid%rInner * 1.1)) then
-!         if ((abs(cellcentre%z) < 1.d0 * hr)) then        
-!            if (cellsize > grid%rInner) split = .true.
-!         endif
-!      endif
-
-      if ((r-cellsize*0.5d0) > grid%router*1.005) then
-         split = .false.
-         goto 555
-      elseif ((r+cellsize*0.5d0) < grid%rinner*0.995) then
-         split = .false.
-         goto 555
-      endif
-
-      555 continue
-
-   case("oldshakara")
-
-!      if (thisOctal%ndepth  < 6) split = .true.
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
-
-!      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
-
-      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-
-!      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
-!         if ((abs(cellcentre%z)/hr < 5.)) then
-!            if (cellsize > 1.e-3 * grid%rInner) split = .true.
-!         endif
-!      endif
-
-
-
-      if ((r+cellsize/2.d0) < grid%rinner*0.9) split = .false.
-
-!      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
-!         if ((abs(cellcentre%z)/hr < 2.)) then
-!            if (cellsize > 1.d-3*grid%rinner) split = .true.
-!         endif
-!      endif
-
-!      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
-!         if ((abs(cellcentre%z)/hr < 2.)) then
-!            split = .true.
-!         endif
-!      endif
-
-
-   case("ppdisk")
-
-      cellSize = thisOctal%subcellSize
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-! The 100 is because Tim's code uses the scale height at 100AU.
-!      hr = height * (r / (100.d0*autocm/1.d10))**1.25
-      hr = (auTocm * height * rHeight * (r / (rHeight*autocm/1.e10))**flaringPower)/1.e10
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
-      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-      if ((r+cellsize/2.d0) < rsmooth*autocm/1.e10) split = .false.
-
-   case("planetgap")
-
-      cellSize = thisOctal%subcellSize
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * rCore * (r/rCore)**betaDisc
-      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-      if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
-      ! The next few lines are used in the Varniere models instead of the line
-      ! above. The final line tries to prevent splitting in the denser
-      ! midplane of the disc.
-!      if (r > 6000.) then
-!        if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
-!      else
-!        if ((abs(cellcentre%z)/hr < 12.) .and. (cellsize/hr > 0.5)) split = .true.
-!      end if
-!      if (abs(cellcentre%z)/hr < 0.9) split = .false.
-      ! Added in to get an extra level of refinement at the outer edge of the
-      ! gap. Cells at radii between that of the gap and (gap+gapWidth) must
-      ! have a resolution of a quarter of a scale height instead of a half...
-      if (planetgap) then
-         if ((r > rGap*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
-             (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.25)) split = .true.
-        ! The alternative version below was used for the models where we want a
-        ! high resolution gap (hi-res-gap models).
-!        if ((r > (rGap-gapWidth)*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
-!            (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.1)) split = .true.
-      end if
-      if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
-
-   case("clumpyagb")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-
-
-   case("clumpydisc")
-
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-!      if (thisOctal%nDepth < 4) split = .true.
-!      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-!      phi = atan2(cellcentre%y,cellcentre%x)
-!      warpHeight = 0. !cos(phi) * grid%rInner * sin(30.*degtorad) * sqrt(grid%rinner / r)
-      do i = 1, grid%ng
-         if (inOctal(thisOctal,grid%gArray(i)%centre).and.(cellSize > grid%gArray(i)%sigma)) then
-            split = .true.
-         endif
-      enddo
+          if ((r .gt. 1.8*0.99).and.(r .lt. 1.01*1.8)) then
+             if ((abs(cellcentre%z)/hr < 1.)) then
+                if (cellsize > 0.1*1.8) then
+                   split = .true.
+                   scaleheightc_count = scaleheightc_count + 1
+                   goto 1001
+                endif
+             endif
+          endif
       
+1001      if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
+          if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
+          
+       case("shakara","aksco")
+          ! used to be 5
+          if (thisOctal%ndepth  < mindepthamr) split = .true.
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          
+          !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          
+          if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
+               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
+               (.not.thisOctal%cylindrical)) split=.true.
+          
+          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
+             if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
+                if (.not.thisOctal%cylindrical) split = .true.
+             endif
+          endif
+          
+          if ((r+cellsize/2.d0) < rInner) split = .false.
+          if ((r-cellsize/2.d0) > Router) split = .false.
+          
+          !      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
+          !         if ((abs(cellcentre%z)/hr < 1.)) then
+          !            if (cellsize > 5.d-1*grid%rinner) split = .true.
+          !         endif
+          !      endif
+          
+          if (thisOctal%cylindrical) then
+             dphi = returndPhi(thisOctal)
+             if ((r > 0.5*rGapInner).and.(r < 2.*rGapOuter)) then
+                if (dphi > minPhiResolution) then
+                   split = .true.
+                   splitinAzimuth = .true.
+                endif
+             endif
+          endif
+          
+          
+          !
+          
+          if (thisOctal%cylindrical) then
+             if ((r > rGapInner*0.95).and.(r < rGapOuter*1.05).and.(abs(cellCentre%z)< 5.d0*hr)) then
+                phi = atan2(cellcentre%y, cellcentre%x)
+                if (thisOctal%subcellSize > 0.2d0*(rGapOuter-rGapInner)) split = .true.
+                if (phi < 0.d0) phi = phi + twopi
+                dphi = returndPhi(thisOctal)
+                phi1 = phi - dphi
+                if (phi1 < 0.d0) phi1 = phi1 + twoPi
+                phi2 = phi + dphi
+                if (abs(cellCentre%z) < hr) then
+                   if (dPhi*radtodeg > dPhiRefine) then
+                      if (((phi1*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                           (phi1*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                           ((phi2*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                           (phi2*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                           ((phi1*radtodeg < 180.d0-phiRefine/2.d0).and. &
+                           (phi2*radtodeg > 180.d0+phiRefine/2.d0))) then
+                         splitInAzimuth = .true.
+                         split = .true.
+                      endif
+                   endif
+                endif
+             endif
+          endif
+          !
+          if (((r-cellsize/2.d0) > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
+             split = .false.
+             splitInAzimuth = .false.
+          endif
+          
+          if (hydrodynamics) then
+             split = .false.
+             if (thisOctal%nDepth < minDepthAMR) split = .true.
+          endif
+          
+          !      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
+          !         if ((abs(cellcentre%z)/hr < 2.)) then
+          !            split = .true.
+!         endif
+          !      endif
+          
+       case("circumbin")
+          
+          if (thisOctal%ndepth  < 5) split = .true.
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          
+          !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          
+          if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+          if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+
+          if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+               (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+          
+          !      splitInAzimuth = .false.
+          !      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
+          !         splitInAzimuth = .true.
+          !         split = .true.
+          !      endif
+          
+          !      if (abs(cellCentre%z) < rinner/2.) then
+          !         if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
+          !            splitInAzimuth = .true.
+          !            split = .true.
+          !         endif
+          !      endif
+          !      if (abs(cellCentre%z) < rinner/5.) then
+          !         if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
+          !      endif
+          
+          if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
+             split = .false.
+             splitInAzimuth = .false.
+          endif
+          
+       case("turbbox")
+          if (thisOctal%nDepth < maxDepthAMR) split = .true.
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+       case("iras04158")
+          
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (50.d0*autocm*1.d-10))**betadisc
+          
+          !! This splitting law replaces the commented out code below. It does the same stuff but further out
+          !! and more gradually. I hope the splitting in r has become redundant because it should be linked to
+          !! the increased resolution in z.
+          
+          if(abs(cellcentre%z) .lt. 6.d0 * hr) then ! 6 is a reasonable number for this law
+             !         if(cellsize .gt. 2.d0**(abs(cellcentre%z)/hr - 3.d0) * hr) split = .true.
+             if(8.d0 * cellsize .gt. 2.d0**(abs(cellcentre%z)/hr) * hr) split = .true.
+          endif
+          
+          if((abs(cellcentre%z) .gt. 3.d0 * hr).and.(abs(cellcentre%z) < 4.d0 * cellsize)) then
+             split = .true.
+          endif
+          
+          !      if ((abs(cellcentre%z) < 1.d0 * hr) .and. (cellsize > 0.25d0 * hr)) then
+          !         split = .true.
+          !      elseif ((abs(cellcentre%z) < 2.d0 * hr) .and. (cellsize > 0.5d0 * hr)) then
+          !         split = .true.
+          !      elseif((r > grid%rInner).and.(r < grid%rInner * 1.02)) then
+          !         if ((abs(cellcentre%z) < 3. * hr)) then        
+          !            if (cellsize > 0.1d0 * grid%rInner) split = .true.
+          !         endif
+          !      endif
+          
+          !      if((r > grid%rInner).and.(r < grid%rInner * 1.1)) then
+          !         if ((abs(cellcentre%z) < 1.d0 * hr)) then        
+          !            if (cellsize > grid%rInner) split = .true.
+          !         endif
+          !      endif
+          
+          if ((r-cellsize*0.5d0) > grid%router*1.005) then
+             split = .false.
+             goto 555
+          elseif ((r+cellsize*0.5d0) < grid%rinner*0.995) then
+             split = .false.
+             goto 555
+          endif
+          
+555       continue
+          
+       case("oldshakara")
+          
+          !      if (thisOctal%ndepth  < 6) split = .true.
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+          
+          !      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          
+          !      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
+          !         if ((abs(cellcentre%z)/hr < 5.)) then
+          !            if (cellsize > 1.e-3 * grid%rInner) split = .true.
+          !         endif
+          !      endif
+          
+          
+
+          if ((r+cellsize/2.d0) < grid%rinner*0.9) split = .false.
+          
+          !      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
+          !         if ((abs(cellcentre%z)/hr < 2.)) then
+          !            if (cellsize > 1.d-3*grid%rinner) split = .true.
+          !         endif
+          !      endif
+          
+          !      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
+          !         if ((abs(cellcentre%z)/hr < 2.)) then
+          !            split = .true.
+          !         endif
+          !      endif
+          
+
+       case("ppdisk")
+          
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          ! The 100 is because Tim's code uses the scale height at 100AU.
+          !      hr = height * (r / (100.d0*autocm/1.d10))**1.25
+          hr = (auTocm * height * rHeight * (r / (rHeight*autocm/1.e10))**flaringPower)/1.e10
+          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
+          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          if ((r+cellsize/2.d0) < rsmooth*autocm/1.e10) split = .false.
+          
+       case("planetgap")
+          
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          hr = height * rCore * (r/rCore)**betaDisc
+          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
+          ! The next few lines are used in the Varniere models instead of the line
+          ! above. The final line tries to prevent splitting in the denser
+          ! midplane of the disc.
+          !      if (r > 6000.) then
+          !        if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
+          !      else
+          !        if ((abs(cellcentre%z)/hr < 12.) .and. (cellsize/hr > 0.5)) split = .true.
+          !      end if
+          !      if (abs(cellcentre%z)/hr < 0.9) split = .false.
+          ! Added in to get an extra level of refinement at the outer edge of the
+          ! gap. Cells at radii between that of the gap and (gap+gapWidth) must
+          ! have a resolution of a quarter of a scale height instead of a half...
+          if (planetgap) then
+             if ((r > rGap*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
+                  (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.25)) split = .true.
+             ! The alternative version below was used for the models where we want a
+             ! high resolution gap (hi-res-gap models).
+             !        if ((r > (rGap-gapWidth)*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
+             !            (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.1)) split = .true.
+          end if
+          if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
+          
+       case("clumpyagb")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+
+       case("clumpydisc")
+          
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          !      if (thisOctal%nDepth < 4) split = .true.
+          !      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          !      phi = atan2(cellcentre%y,cellcentre%x)
+          !      warpHeight = 0. !cos(phi) * grid%rInner * sin(30.*degtorad) * sqrt(grid%rinner / r)
+          do i = 1, grid%ng
+             if (inOctal(thisOctal,grid%gArray(i)%centre).and.(cellSize > grid%gArray(i)%sigma)) then
+                split = .true.
+             endif
+          enddo
+          
 !      if (r > grid%rInner*0.8) then
 !         hr = height * (r / (100.*autocm/1.e10))**1.25
 !         fac = cellsize/hr
@@ -4724,109 +4776,109 @@ CONTAINS
 !         endif
 !      endif
 
-   case("pathtest")
-      if (thisOctal%nDepth < minDepthAMR) split = .true.
-      if ((modulus(subcellCentre(thisOctal, subcell)) < 0.2).and. &
-           (thisOctal%nDepth<maxDepthAMR)) split = .true.
-   case("toruslogo")
-!used to be 6
-      if (thisOctal%nDepth  < 8) split = .true.
-
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 10.)) then
-         split = .true.
-         splitInAzimuth = .true.
-      endif
-      cellCentre = subcellCentre(thisOctal, subcell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2 + cellcentre%z**2)
-      if ((r + thisOctal%subcellSize/2.d0)  .lt. 1.5*rsol/1.e10) then
-         split = .false.
-         splitinAzimuth = .false.
-      endif
-      if ((r - thisOctal%subcellSize/2.d0)  .gt. 2.*rsol/1.e10) then
-         split = .false.
-         splitinAzimuth = .false.
-      endif
-
-!      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 90.)) then
-!         split = .true.
-!         splitInAzimuth = .true.
-!      endif
-
-
-   case("warpeddisc")
-
-      cellSize = thisOctal%subcellSize 
-      cellCentre = subcellCentre(thisOctal,subCell)
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      phi1 = atan2(cellcentre%y,cellcentre%x)
-      phi2 = phi1 - pi
-      if (phi1 < 0.d0) phi1 = phi1 + twoPi
-      if (phi2 < 0.d0) phi2 = phi2 + twoPi
-      b = (1.d0/twoPi)*log(20.d0)
-      warpRadius1 = rInner * exp(b * phi1)
-      warpRadius2 = rInner * exp(b * phi2)
-
-      warpheight1  = sin(0.5d0*phi1+warpAngle) * warpFracHeight * warpradius1 * exp(-0.5d0*((r - warpRadius1)/warpSigma)**2)
-      warpheight2  = -sin(0.5d0*phi2+warpAngle) * warpFracHeight * warpradius2 * exp(-0.5d0*((r - warpRadius2)/warpSigma)**2)
-      warpheight = warpheight1 + warpheight2
-
-      hr = height * (r / rOuter)**betaDisc
-
-
-      if ((r+cellsize/2.d0) > rInner*0.8) then
-         hr = height * (r / rOuter)**betaDisc
-         fac = cellsize/hr
-         if (solveVerticalHydro) then
-           ! split the grid in a way more similar to planetgap, to give hydro the best chance possible
-           if ((abs((cellCentre%z-warpHeight)/hr) < 10.).and.(fac .gt. 0.5)) split = .true.
-           if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
-         else
-           if (hydroWarp) then
-             fac=hr
-             hr = getHydroWarpScaleHeight(r, grid)
-!print *, fac, hr
-             if (.not. (hr > 0.)) then
-               hr = fac
-!               if (r < rOuter*1.1d0) then
-!                 print *, "Error: scaleheight returned by getHydroWarpScaleHeight = 0."
-!                 print *, r, hr
-!                 stop
-!               end if
-             end if
+       case("pathtest")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if ((modulus(subcellCentre(thisOctal, subcell)) < 0.2).and. &
+               (thisOctal%nDepth<maxDepthAMR)) split = .true.
+       case("toruslogo")
+          !used to be 6
+          if (thisOctal%nDepth  < 8) split = .true.
+          
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 10.)) then
+             split = .true.
+             splitInAzimuth = .true.
+          endif
+          cellCentre = subcellCentre(thisOctal, subcell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2 + cellcentre%z**2)
+          if ((r + thisOctal%subcellSize/2.d0)  .lt. 1.5*rsol/1.e10) then
+             split = .false.
+             splitinAzimuth = .false.
+          endif
+          if ((r - thisOctal%subcellSize/2.d0)  .gt. 2.*rsol/1.e10) then
+             split = .false.
+             splitinAzimuth = .false.
+          endif
+          
+          !      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 90.)) then
+          !         split = .true.
+          !         splitInAzimuth = .true.
+          !      endif
+          
+          
+       case("warpeddisc")
+          
+          cellSize = thisOctal%subcellSize 
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          phi1 = atan2(cellcentre%y,cellcentre%x)
+          phi2 = phi1 - pi
+          if (phi1 < 0.d0) phi1 = phi1 + twoPi
+          if (phi2 < 0.d0) phi2 = phi2 + twoPi
+          b = (1.d0/twoPi)*log(20.d0)
+          warpRadius1 = rInner * exp(b * phi1)
+          warpRadius2 = rInner * exp(b * phi2)
+          
+          warpheight1  = sin(0.5d0*phi1+warpAngle) * warpFracHeight * warpradius1 * exp(-0.5d0*((r - warpRadius1)/warpSigma)**2)
+          warpheight2  = -sin(0.5d0*phi2+warpAngle) * warpFracHeight * warpradius2 * exp(-0.5d0*((r - warpRadius2)/warpSigma)**2)
+          warpheight = warpheight1 + warpheight2
+          
+          hr = height * (r / rOuter)**betaDisc
+          
+          
+          if ((r+cellsize/2.d0) > rInner*0.8) then
+             hr = height * (r / rOuter)**betaDisc
              fac = cellsize/hr
-             ! o The first criterion of this if (cell is less than 5 scaleheights from midplane) is fine because
-             !   it overestimates the height above the midplane that needs to be split.
-             ! o The second criterion will not split some cells that should be split (the new scaleheight is smaller,
-             !   so fac will be smaller than it should be and may not be > 1). To compensate, we change 1. to 0.75.
-             ! If we were to do this properly, we would find out what the new scale height of the disc is...
-           end if
-           if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 1.)) split = .true.
-           if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
-           if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) split = .true.
-         end if
-      endif
+             if (solveVerticalHydro) then
+                ! split the grid in a way more similar to planetgap, to give hydro the best chance possible
+                if ((abs((cellCentre%z-warpHeight)/hr) < 10.).and.(fac .gt. 0.5)) split = .true.
+                if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
+             else
+                if (hydroWarp) then
+                   fac=hr
+                   hr = getHydroWarpScaleHeight(r, grid)
+                   !print *, fac, hr
+                   if (.not. (hr > 0.)) then
+                      hr = fac
+                      !               if (r < rOuter*1.1d0) then
+                      !                 print *, "Error: scaleheight returned by getHydroWarpScaleHeight = 0."
+                      !                 print *, r, hr
+                      !                 stop
+                      !               end if
+                   end if
+                   fac = cellsize/hr
+                   ! o The first criterion of this if (cell is less than 5 scaleheights from midplane) is fine because
+                   !   it overestimates the height above the midplane that needs to be split.
+                   ! o The second criterion will not split some cells that should be split (the new scaleheight is smaller,
+                   !   so fac will be smaller than it should be and may not be > 1). To compensate, we change 1. to 0.75.
+                   ! If we were to do this properly, we would find out what the new scale height of the disc is...
+                end if
+                if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 1.)) split = .true.
+                if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
+                if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) split = .true.
+             end if
+          endif
+          
+          
+          if ((abs(r-rinner) < 0.9*rinner).and.(cellSize > 0.02*rInner).and.(abs(cellCentre%z) < 2.*hr)) then
+             split = .true.
+          endif
 
-
-      if ((abs(r-rinner) < 0.9*rinner).and.(cellSize > 0.02*rInner).and.(abs(cellCentre%z) < 2.*hr)) then
-         split = .true.
-      endif
-
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
-         split = .true.
-         splitInAzimuth = .true.
-      endif
-      
-      if (r > rOuter*1.1d0) then
-         split = .false.
-         splitInAzimuth = .false.
-      endif
-
-   case("magstream")
-
-      
-      IF (thisOctal%nDepth < 5) THEN 
-        split = .TRUE.
-     endif
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+             split = .true.
+             splitInAzimuth = .true.
+          endif
+          
+          if (r > rOuter*1.1d0) then
+             split = .false.
+             splitInAzimuth = .false.
+          endif
+          
+       case("magstream")
+          
+          
+          IF (thisOctal%nDepth < 5) THEN 
+             split = .TRUE.
+          endif
 !      ELSE
 !
 !        nsample = 1
@@ -4863,7 +4915,8 @@ CONTAINS
 !      END IF
 
 
-  end select
+       end select
+    end if
 
    if (thisOctal%nDepth == maxDepthAmr) then
       split = .false.
@@ -4874,6 +4927,7 @@ CONTAINS
    endif
 
    if (thisOctal%nDepth < minDepthAmr) then
+
       split = .true.
    endif
 
@@ -4948,9 +5002,9 @@ CONTAINS
             endif
          endif
       endif
-
-
    endif
+
+101 continue
 
   END FUNCTION decideSplit
 
@@ -10967,7 +11021,7 @@ end function readparameterfrom2dmap
           IF (thisOctal%indexChild(iSubcell) == iChild) EXIT
         END DO 
         
-        IF (.NOT. decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,splitInAzimuth)) THEN
+        IF (.NOT. decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,.false.,splitInAzimuth)) THEN
           PRINT *, 'Deleting unneeded children'
           CALL deleteChild(parent=thisOctal, childToDelete=iSubcell, &
                            adjustParent=.FALSE., grid=grid,          &
@@ -11003,7 +11057,7 @@ end function readparameterfrom2dmap
             END IF
           END DO
         ELSE 
-          IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,splitinAzimuth)) THEN
+          IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,.false.,splitinAzimuth)) THEN
             PRINT *, 'Adding new child'
             CALL addNewChild(thisOctal,iSubcell,grid,adjustGridInfo=.TRUE.,splitAzimuthally=splitinAzimuth)
             thisOctal%child(iSubcell)%changed = .TRUE.

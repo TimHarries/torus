@@ -106,6 +106,9 @@ contains
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
 
+    call getLogical("gridshuffle", gridshuffle, cLine, fLine, nLines, &
+         "Initial grid takes account of quantities: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("splitovermpi", splitOverMPI, cLine, fLine, nLines, &
          "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .false.)
 

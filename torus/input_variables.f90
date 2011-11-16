@@ -671,6 +671,7 @@
   logical :: gridUsesAMR    ! true if grid is adaptive
   logical :: splitOverMPI   ! true if grid is domain decomposed 
   logical :: amr1d, amr2d, amr3d
+  logical :: gridshuffle    !repeatedly reset the starting grid to achieve better refinement
   integer :: minDepthAMR, maxDepthAMR
   real(double) :: limitScalar  ! value for controlling grid subdivision 
   real(double) :: limitScalar2 ! value for controlling grid subdivision 
