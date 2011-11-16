@@ -5774,7 +5774,7 @@ end subroutine sumFluxes
     real(double) :: tol
     real(double) :: index = 1.d0
     integer :: evenuparray(nThreadsGlobal-1)
-    integer :: endloop
+    integer :: endloop, nworking
     integer, allocatable ::  safe(:, :)
 
     globalConverged = .false.
@@ -5783,10 +5783,13 @@ end subroutine sumFluxes
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
+       nworking = 4
     else if(grid%octreeroot%threed) then
        endloop = 8
+       nworking = 8
     else
        endloop = 2
+       nworking = 1
     end if
 
     allocate(safe(endloop, nThreadsGlobal-1))
@@ -5808,7 +5811,7 @@ end subroutine sumFluxes
           if(evenuparray(myRankGlobal) /= k) then
               !         if (myrankGlobal /= iThread) then 
              !call hydroValuesServer(grid, iThread)
-             call hydroValuesServer(grid, endloop)
+             call hydroValuesServer(grid, nworking)
           else
              call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, index, inheritval=.false.)
              call shutdownServers2(safe, k, endloop)
@@ -6657,7 +6660,7 @@ end subroutine refineGridGeneric2
     real(double) :: temp(20000,4),tempsent(4)
     integer :: nTemp(1), nSent(1), eDepth(200000)
     integer :: iThread, nExternalLocs
-    integer :: iter, k, endloop, j
+    integer :: iter, k, endloop, j, nworking
     integer, parameter :: tag = 1
     logical :: globalChanged(512)
     integer :: status(MPI_STATUS_SIZE)
@@ -6691,10 +6694,13 @@ end subroutine refineGridGeneric2
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
+       nworking = 4
     else if(grid%octreeroot%threed) then
        endloop = 8
+       nworking = 8
     else
        endloop = 2
+       nworking = 1
     end if
 
     allocate(safe(endloop, nThreadsGlobal-1))
@@ -6719,7 +6725,7 @@ end subroutine refineGridGeneric2
 !             if (myrankGlobal /= iThread) then
              if(evenUpArray(myRankGlobal) /= k) then
 !                call hydroValuesServer(grid, iThread)
-                call hydroValuesServer(grid, endloop)
+                call hydroValuesServer(grid, nworking)
              else
                 call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
 
@@ -6800,7 +6806,7 @@ end subroutine refineGridGeneric2
 !                if (myrankGlobal /= iThread) then
              do k = 1, endloop
                 if(evenUpArray(myRankGlobal) /= k) then
-                   call hydroValuesServer(grid, endloop)
+                   call hydroValuesServer(grid, nworking)
                 else
 !                   if(myRank == 2) then
 !                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
@@ -6830,7 +6836,7 @@ end subroutine refineGridGeneric2
 !                if (myrankGlobal /= iThread) then
                 if(evenUpArray(myRankGlobal) /= k) then
 !                   call hydroValuesServer(grid, iThread)
-                   call hydroValuesServer(grid, endloop)
+                   call hydroValuesServer(grid, nworking)
                 else
                    call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
 
