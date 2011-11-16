@@ -4829,6 +4829,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: npixels
     character(len=80) :: imageFilename 
     character(len=80) :: outputImageType
+    real :: imageSize
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
@@ -4866,6 +4867,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
     npixels         = getImagenPixels(imageNum)
+    imageSize       = getImageSize(imageNum)/1.0e10
 
 !    integer :: i
 
@@ -4895,8 +4897,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     
     call torus_mpi_barrier
 
-    thisImage = initImage(npixels, npixels, real(2.*grid%octreeRoot%subcellSize), &
-         real(2.*grid%octreeRoot%subcellSize), 0., 0.)
+    thisImage = initImage(npixels, npixels, imageSize, imageSize, 0., 0.)
 
     allocate(threadProbArray(1:nThreadsGlobal-1))
 

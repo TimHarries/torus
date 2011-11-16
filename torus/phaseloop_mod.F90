@@ -1092,7 +1092,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      if (formalSol) then
         if (myrankglobal == 0) then
            write(*,*) "calling create lucy image"
-           call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda, source, nSource)
+           call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda, source, nSource, setimagesize)
         endif
         call torus_mpi_barrier
         stop

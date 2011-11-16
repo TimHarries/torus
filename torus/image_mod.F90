@@ -825,7 +825,7 @@ module image_mod
        endif
      end subroutine pixelLocate
             
-  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource)
+  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource, imageSize)
     use image_utils_mod
     use inputs_mod, only : npixels, vmin, vmax
     use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
@@ -860,7 +860,7 @@ module image_mod
     real(double) :: thisTheta, thisPhi
     real(double) :: scale, dlam, lamCen, lamStart, lamEnd
     real(double) :: objectDistance
-    real :: imageSize
+    real, intent(in) :: imageSize
 
     lamStart = 1.d4
     lamEnd = 1.01e4
@@ -876,9 +876,6 @@ module image_mod
 
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    ! Hardwired to 1. If multiple images are used this needs to be the 
-    ! size of the ith image (DMA). 
-    imageSize = getImageSize(1)/1.0d10
     image = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax) 
 
     xVec = zHat .cross. viewVec
