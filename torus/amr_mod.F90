@@ -4256,10 +4256,12 @@ CONTAINS
 
           if ( thisOctal%cylindrical ) then
              n_bin_az = nint(twoPi / thisOctal%dPhi)
-             massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
+             massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * &
+                  ( amrlimitscalar**(2.0/3.0) )
           else if ( amr2d ) then
              cellCentre = subcellCentre(thisOctal,subCell)
-             massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * ( amrlimitscalar**(2.0/3.0) )
+             massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * &
+                  ( amrlimitscalar**(2.0/3.0) )
           else
              massPerCell = amrlimitscalar
           end if
@@ -4854,7 +4856,8 @@ CONTAINS
                 end if
                 if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 1.)) split = .true.
                 if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
-                if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) split = .true.
+                if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) &
+                     split = .true.
              end if
           endif
           
