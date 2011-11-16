@@ -11,7 +11,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
      starsurface, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
      infallParticleMass, maxBlobs, flatspec, maxTau, &
-     miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename, overrideInclinations)
+     miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename, overrideInclinations, imNum)
 
   use kind_mod
   use inputs_mod 
@@ -92,6 +92,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(BLOBTYPE) :: blobs(:)
   integer, intent(in) :: nmumie
   real :: dtime
+  integer, optional :: imNum
 
 ! local parameters
   integer, parameter :: maxscat = 1000000  ! Maximum number of scatterings for individual photon
@@ -257,6 +258,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double) :: bandwidth   ! Band width of a filter[A]
   real(double) :: weightsource
   real :: probContPhoton
+  real :: setImageSize
+  logical :: stokesImage 
+  integer :: imageNum ! which image is this (for multiple images)? 
 
   ! intrinsic profile variables
 
@@ -271,7 +275,6 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   type(VECTOR) :: ramanSourceVelocity
 
   real :: probDust
-  real :: setImageSize
 
 ! Variables formerly in inputs_mod but not set in Torus V2 ----------------
   real :: ramVel=0.0
@@ -326,9 +329,24 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   biasPhiDirection = -1.d0
 
   objectDistance = griddistance * pctocm
-  ! Hardwired to 1. If multiple images are used this needs to be the 
-  ! size of the ith image (DMA).
-  setimagesize = getImageSize(1)
+
+  !
+  ! Get parameters for the image to be generated. 
+  !
+  ! Which image number is it? 
+  if (present(imNum) ) then 
+     imageNum = imNum
+  else
+     imageNum=1
+  end if
+  ! Get the physical size of the image
+  setimagesize = getImageSize(imageNum)
+  ! Is it a Stokes image?
+  if (trim(getImageType(imageNum)) == "stokes") then 
+     stokesImage=.true.
+  else
+     stokesImage=.false.
+  endif
 
   if ( grid%geometry == "cmfgen" ) then 
      probContPhoton = 0.2

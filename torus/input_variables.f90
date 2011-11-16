@@ -331,7 +331,6 @@
   integer :: nv ! number of velocity channels
   integer :: npixels ! number of pixels 
   integer :: nImage ! Number of images to generate
-  logical :: stokesImage ! use in phaselooop_mod
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 
   integer :: observerpos ! position of observer in molecular_mod image generation

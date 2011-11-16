@@ -11,7 +11,6 @@ contains
     use modelatom_mod, only : globalAtomArray
     use source_mod, only : globalNSource, globalSourceArray
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry
-    use inputs_mod, only : stokesimage
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
@@ -276,7 +275,6 @@ contains
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
-             stokesImage = .true.
              outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
              lamStart = getImageWavelength(i)
@@ -291,7 +289,7 @@ contains
                   tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0., &
-                  overrideInclinations=inclinationArray(i:i) )
+                  overrideInclinations=inclinationArray(i:i), imNum=i)
           enddo
        endif
 
@@ -316,7 +314,6 @@ contains
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
-             stokesImage = .true.
              outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
              lamStart = getImageWavelength(i)
@@ -329,7 +326,7 @@ contains
                   tsurface, 0., 0., tdisc, tvec, 1,       &
                   0., 0, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0., &
-                  overrideInclinations=inclinationArray(i:i))
+                  overrideInclinations=inclinationArray(i:i), imNum=i)
           enddo
        endif
 

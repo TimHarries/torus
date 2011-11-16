@@ -1862,10 +1862,18 @@ contains
 
        call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+
        if (photoionPhysics) then
           call getString("imagetype", outputimageType, cLine, fLine, nLines, &
                "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+       elseif(dustPhysics) then
+          outputimageType(1:10) = "stokes    "
+             call writeInfo("Type of output image: Stokes image (default for dust physics)")
+       elseif (atomicPhysics) then
+          outputimageType(1:10) = "stokes    "
+          call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
+
        call getInteger("npixels", thisnpixels, cLine, fLine, nLines, &
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
        
@@ -1908,11 +1916,19 @@ contains
           write(keyword,'(a,i1.1)') "lambdaimage",i
           call getReal(keyword, lambdaImage, 1., cLine, fLine, nLines, &
                "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+
           if (photoionPhysics) then
              write(keyword,'(a,i1.1)') "imagetype",i
              call getString(keyword, outputimageType, cLine, fLine, nLines, &
                   "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          elseif(dustPhysics) then
+             outputimageType(1:10) = "stokes    "
+             call writeInfo("Type of output image: Stokes image (default for dust physics)")
+          elseif (atomicPhysics) then
+             outputimageType(1:10) = "stokes    "
+             call writeInfo("Type of output image: Stokes image (default for atomic physics)")
           endif
+
           write(keyword,'(a,i1.1)') "npixels",i
           call getInteger(keyword, thisnpixels, cLine, fLine, nLines, &
                "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
