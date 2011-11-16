@@ -272,7 +272,7 @@ ifeq ($(SYSTEM), zen)
 
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
-    FASTFLAG= -O2 # -ipo
+    FASTFLAG= -O3 # -ipo
 #    FASTFLAG= -O3 -xS
 #    DEBUGFLAG=-g -O0 -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
 
