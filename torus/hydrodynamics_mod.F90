@@ -5783,10 +5783,18 @@ end subroutine sumFluxes
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
-       nworking = 4
+       if(nThreadsGlobal == 16) then
+          nworking = 4
+       else
+          nworking = 1
+       end if
     else if(grid%octreeroot%threed) then
        endloop = 8
-       nworking = 8
+       if(nThreadsGlobal == 65) then
+          nworking = 8
+       else
+          nworking = 1
+       end if
     else
        endloop = 2
        nworking = 1
