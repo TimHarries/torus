@@ -3361,7 +3361,6 @@ CONTAINS
           goto 101
        end if
 
-!       print *, "wvars", wvars
        r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
        centre = subcellCentre(thisOctal, subcell)
        if (thisOctal%threed) then
@@ -3397,12 +3396,12 @@ CONTAINS
              grad = abs((thisOctal%rho(subcell)-neighbourOctal%rho(neighbourSubcell)) / &
                   thisOctal%rho(subcell))
              maxGradient = max(grad, maxGradient)
-             if (grad > amrtolerance) then
+             if (grad > amrtolerance .and. thisOctal%nDepth < maxDepthAMR) then
                 split = .true.
                 exit
              endif
 
-             if((neighbourOctal%nDepth - thisOctal%ndepth) > 1) then
+             if((neighbourOctal%nDepth - thisOctal%ndepth) > 1 .and. thisOctal%nDepth < maxDepthAMR) then
                 split = .true.
                 exit
              end if
