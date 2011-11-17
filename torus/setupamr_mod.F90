@@ -342,9 +342,8 @@ contains
            do counter = 1, nTimes
               call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true., romData=romData)     
               call fixParentPointers(grid%octreeRoot)
-              call finishGrid(grid%octreeRoot, grid, romData=romData)
            end do
-
+           
            if (doSmoothGrid) then
               call writeInfo("Smoothing adaptive grid structure 2...", TRIVIAL)
               do
@@ -362,8 +361,8 @@ contains
            grid%nOctals = nOctals
            call howmanysplits()
            call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
+           call finishGrid(grid%octreeRoot, grid, romData=romData)
         end if
-
 
 
        select case (geometry)

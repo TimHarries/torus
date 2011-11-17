@@ -3360,6 +3360,10 @@ CONTAINS
           split = .false.
           goto 101
        end if
+       if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+          split = .false.
+          goto 101
+       endif
 
        r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
        centre = subcellCentre(thisOctal, subcell)
@@ -3973,7 +3977,7 @@ CONTAINS
        case("blobtest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
- !         if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
 !          
        case("kelvin")
           if (thisOctal%nDepth < minDepthAMR) split = .true.

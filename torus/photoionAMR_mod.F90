@@ -198,12 +198,6 @@ contains
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
 
-       call writeInfo("Calling exchange across boundary", TRIVIAL)
-       if (myRank == 1) call tune(6,"Exchange across boundary")
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       if (myRank == 1) call tune(6,"Exchange across boundary")
-       call writeInfo("Done", TRIVIAL)
-
        if(grid%currentTime == 0.d0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
@@ -231,7 +225,13 @@ contains
              call evenUpGridMPI(grid, .false., .true., evenuparray)
           endif
           
+          call writeInfo("Calling exchange across boundary", TRIVIAL)
+          if (myRank == 1) call tune(6,"Exchange across boundary")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          if (myRank == 1) call tune(6,"Exchange across boundary")
+          call writeInfo("Done", TRIVIAL)
+          
+!          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
           call evenUpGridMPI(grid,.false.,.true., evenuparray)      
           call refineGridGeneric(grid, amrtolerance, evenuparray)
