@@ -6847,7 +6847,7 @@ end subroutine refineGridGeneric2
 
                endif
              enddo
-
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 !             do iThread = 1, nThreadsGlobal-1
 !                if (myrankGlobal /= iThread) then
              do k = 1, endloop
@@ -6874,6 +6874,7 @@ end subroutine refineGridGeneric2
              call writeVtkFile(grid, vtkFilename)
           endif
 
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           globalConverged = .false.
           do
              globalConverged(myRankGlobal) = .true.

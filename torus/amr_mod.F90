@@ -3872,21 +3872,21 @@ CONTAINS
        case("hydro1d")
           if(ghostCell(grid, thisOCtal, subcell) .and. thisOctal%nDepth < maxDepthAMR) split = .true.
           
-          if(dorefine .or. dounrefine) then
-             rVec = subcellCentre(thisOctal, subcell)
+!          if(dorefine .or. dounrefine) then
+ !            rVec = subcellCentre(thisOctal, subcell)
              
-             if (thisOctal%nDepth < maxDepthAMR) split = .true.
-             !         if (thisOctal%nDepth < minDepthAMR) split = .true.
-             
-             if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-             if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
-             
-          else
-             rVec = subcellCentre(thisOctal, subcell)
-             if (thisOctal%nDepth < minDepthAMR) split = .true.
-             !Coarse to fine
-             if(rVec%x > 0.6 .and. rvec%x < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-          end if
+  !           if (thisOctal%nDepth < maxDepthAMR) split = .true.
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+  !           
+  !           if ( (abs(thisOctal%xMax-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+  !           if ( (abs(thisOctal%xMin-0.5d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+  !           
+  !        else
+  !           rVec = subcellCentre(thisOctal, subcell)
+  !           if (thisOctal%nDepth < minDepthAMR) split = .true.
+  !           !Coarse to fine
+  !           if(rVec%x > 0.6 .and. rvec%x < 0.8 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+  !        end if
           
           
           

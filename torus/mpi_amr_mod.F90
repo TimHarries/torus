@@ -2394,7 +2394,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     integer :: ierr
     integer, parameter :: nStorage = 5
     real(double) :: tempSTorage(nStorage), tval
-    integer, parameter :: tag = 50
+    integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillLooping, done
     integer :: sendThread
@@ -2514,7 +2514,7 @@ end subroutine dumpStromgrenRadius
     integer :: ierr
     integer, parameter :: nStorage = 10
     real(double) :: tempSTorage(nStorage), tval
-    integer, parameter :: tag = 50
+    integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillLooping
     integer :: sendThread

@@ -963,8 +963,7 @@ contains
          "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
-         "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-1, ok, .false.)
-
+         "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 5.d-2, ok, .false.) 
 
     if(refineontemperature) then
        call getDouble("amrtemperaturetol", amrTemperatureTol, 1.d0 , cLine, fLine, nLines, &
