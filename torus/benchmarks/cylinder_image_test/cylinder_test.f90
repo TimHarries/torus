@@ -47,7 +47,8 @@ do counter = 1, nPixels
       I_plus = 0.0
       I_minus = 0.0
    end if
-   write(1, *) r, I, I_plus, I_minus
+! Output distance in Torus length units
+   write(1, *) r/1.0e10, I, I_plus, I_minus
    r = r + dx
 end do
 
