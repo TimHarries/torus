@@ -3973,8 +3973,8 @@ CONTAINS
        case("blobtest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-          
+ !         if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!          
        case("kelvin")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           !      if ( (abs(thisOctal%zMax-0.25d0) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
