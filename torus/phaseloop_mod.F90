@@ -259,6 +259,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   real(double) :: weightsource
   real :: probContPhoton
   real :: setImageSize
+  character(len=80) :: thisImageType
   logical :: stokesImage 
   integer :: imageNum ! which image is this (for multiple images)? 
 
@@ -342,7 +343,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   ! Get the physical size of the image
   setimagesize = getImageSize(imageNum)
   ! Is it a Stokes image?
-  if (trim(getImageType(imageNum)) == "stokes") then 
+  thisImageType = getImageType(imageNum)
+  if (thisImageType(1:6) == "stokes") then 
      stokesImage=.true.
   else
      stokesImage=.false.
