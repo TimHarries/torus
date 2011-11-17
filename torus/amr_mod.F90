@@ -3356,14 +3356,24 @@ CONTAINS
 
     if(wvars) then
 
+       if(minDepthAMR==maxDepthAMR) then
+          split = .false.
+          goto 101
+       end if
+
        if(thisOctal%hasChild(subcell)) then
           split = .false.
           goto 101
        end if
-       if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
-          split = .false.
-          goto 101
-       endif
+
+
+       if (grid%splitOverMPI) then
+          if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+             split = .false.
+             goto 101
+          endif
+       end if
+
 
        r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
        centre = subcellCentre(thisOctal, subcell)
