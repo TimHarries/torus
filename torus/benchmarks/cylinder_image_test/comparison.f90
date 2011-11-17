@@ -17,7 +17,7 @@ real :: pixelValue, r, upperLimit, lowerLimit
 real :: dx
 integer :: i, nPhotons
 integer :: ierr
-integer :: nPassed
+integer :: nPassed, nZero
 
 
 character(len=*), parameter :: pixelFile = "pixelFile.dat"
@@ -87,16 +87,22 @@ do i = 1, nLines
 end do
 
 nPassed = 0
+nZero   = 0
 
 !Check pixels lie in acceptable range
 do i = 1, nLines
-   comparisonValue = abs(A_a(i-1) - A_p(i-1))/A_p(i-1)
-   if(comparisonValue <= sqrt(E_p(i-1)**2 + analytical_error(i-1)**2)) then
-      nPassed = nPassed + 1
+   if ( A_p(i-1) /= 0.0 ) then 
+      comparisonValue = abs(A_a(i-1) - A_p(i-1))/A_p(i-1)
+      if(comparisonValue <= sqrt(E_p(i-1)**2 + analytical_error(i-1)**2)) then
+         nPassed = nPassed + 1
+      end if
+   else
+      nZero = nZero + 1
    end if
 end do
 
 print *, "nPassed : ", nPassed
+print *, "nZero : ", nZero
 print *, "nFailed : ", nLines - nPassed
 print *, "Tolerance: ", tolerance
 if((nLines-nPassed) <= tolerance) then
