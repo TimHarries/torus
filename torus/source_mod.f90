@@ -34,6 +34,8 @@ module source_mod
      real(double) :: prob ! probability of packet from this source
      logical :: stellar
      logical :: diffuse ! isrf, cmb
+     type(VECTOR) :: angMomentum
+     real(double) :: accretionRadius
   end type SOURCETYPE
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
@@ -98,7 +100,8 @@ module source_mod
       write(lunit) source%distance
       write(lunit) source%stellar
       write(lunit) source%diffuse
-
+      write(lunit) source%angMomentum
+      write(lunit) source%accretionRadius
       call writeSpectrumToDump(source%spectrum,lunit)
       call writeSurface(source%surface, lunit)
     end subroutine writeSource
@@ -121,7 +124,8 @@ module source_mod
       read(lunit) source%distance
       read(lunit) source%stellar
       read(lunit) source%diffuse
-
+      read(lunit) source%angMomentum
+      read(lunit) source%accretionRadius
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)
     end subroutine readSource

@@ -238,6 +238,9 @@ CONTAINS
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
 
+    CASE("interptest")
+       call calcinterptest(thisOctal, subcell)
+
     CASE("gravtest")
        call calcGravtest(thisOctal, subcell)
 
@@ -3957,6 +3960,9 @@ CONTAINS
           !      if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           !          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
+
+       case("interptest")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
           
           
        case("turbulence")
@@ -7394,6 +7400,33 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   end subroutine calcUniformSphere
 
+  subroutine calcinterptest(thisOctal,subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec,vVec
+    real(double) :: eThermal, rMod,  rhoSphere
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rmod = modulus(rvec)
+    if (rMod < 3.1d6) then
+       thisOctal%rho(subcell) = 1.e-12 * (1.d0-(modulus(rVec)/3.1e6))**2
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = 1.d-16
+       thisOctal%temperature(subcell) = 100.d0
+    endif
+    vVec = rvec
+    call normalize(vVec)
+    vVec = ((1.d0/cspeed)*(rmod/3.1e6))*vVEc
+    thisOctal%velocity(subcell) = vVec
+    thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 2.d0
+
+  end subroutine calcinterptest
+
   subroutine calcGravtest(thisOctal,subcell)
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
@@ -7545,10 +7578,10 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
     mCloud = 1.d0 * msol
-    rCloud = 7.d15
+    rCloud = 7.d16
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
-    beta = 0.3d0
+    beta = 0.16d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
     omega = sqrt(2.d0 * beta * eGrav / inertia)
@@ -7572,15 +7605,16 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     endif
 
     if (modulus(rVec) < (rCloud/1.d10)) then
+        thisOctal%temperature(subcell) = 10.d0
        thisOctal%rho(subcell) = mCloud / (4.d0/3.d0*pi*rCloud**3)
-       thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.5d0 * cos(2.d0 * phi)) !m=2 dens perturbation
+       thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.1d0 * cos(2.d0 * phi)) !m=2 dens perturbation
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
+        thisOctal%temperature(subcell) = 1000.d0
        thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
-    thisOctal%temperature(subcell) = 10.d0
     eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
     thisOctal%pressure_i(subcell) = kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/(2.33d0*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
@@ -7711,7 +7745,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
   end subroutine calcKrumholzDiscDensity
 
   subroutine calcBondiDensity(thisOctal,subcell)
-    use inputs_mod, only : gridDistanceScale, bondiCentre
+    use inputs_mod, only : gridDistanceScale, bondiCentre, sourcemass
     use utils_mod, only : alpha
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7724,7 +7758,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     call normalize(vVec)
     r = modulus(rVec)*gridDistanceScale
     soundSpeed = sqrt(kerg*10.d0/(2.33d0 * mHydrogen))
-    rBondi = bigG*msol/ soundSpeed**2
+    rBondi = bigG*sourcemass(1)/ soundSpeed**2
     x = max(r / rBondi, 0.5d0)
     rhoInfty = 1.d-25
     z = alpha(x)

@@ -1255,8 +1255,7 @@ contains
        do i = 1, source(iSource)%surface%nElements
           cVec = source(iSource)%surface%element(i)%position
           call normalize(cVec)
-          cVec = cVec * grid%halfSmallestSubcell
-          cVec = cVec * source(isource)%radius/(rsol/1.d10)
+          cVec = cVec * source(isource)%accretionRadius/1.d10
           dphi = source(iSource)%surface%element(i)%dphi
           dtheta = source(iSource)%surface%element(i)%dtheta
           aVec = cVec.cross.zAxis

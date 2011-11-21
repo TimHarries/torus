@@ -3343,7 +3343,7 @@ end subroutine sumFluxes
     real(double) :: dt, tc(512), temptc(512),  mu
     real(double) :: currentTime !, smallTime
     real(double) :: initialmass
-    integer :: i, it, iUnrefine
+    integer :: i, j, it, iUnrefine
     integer :: myRank, ierr
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff,totalMass !, ang
@@ -3438,6 +3438,17 @@ end subroutine sumFluxes
              call writeInfo("Initial refine", TRIVIAL)    
              if (myrank == 1) call tune(6, "Initial refine")
              call refineGridGeneric(grid, amrTolerance, evenuparray)
+             call writeVtkFile(grid, "afterinitrefine.vtk", &
+                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+                  "u_i          ", &
+                  "hydrovelocity", &
+                  "rhou         ", &
+                  "rhov         ", &
+                  "rhow         ", &
+                  "phi          ", &
+                  "pressure     ", &
+                  "q_i          "/))
+
              call writeInfo("Evening up grid", TRIVIAL)    
           end if
        end if
@@ -3462,6 +3473,16 @@ end subroutine sumFluxes
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrank == 1) call tune(6, "Initial refine")
+             call writeVtkFile(grid, "afterinitevenup.vtk", &
+                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+                  "u_i          ", &
+                  "hydrovelocity", &
+                  "rhou         ", &
+                  "rhov         ", &
+                  "rhow         ", &
+                  "phi          ", &
+                  "pressure     ", &
+                  "q_i          "/))
           end if
        end if
 
@@ -3579,10 +3600,20 @@ end subroutine sumFluxes
 !perform a hydrodynamics step in the x, y and z directions
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
 !add/merge sink particles where necessary
           if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
 
-          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
+!          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
+
+
+          do j = 1, globalnSource
+             call emptySurface(globalsourceArray(j)%surface)
+             call buildSphereNbody(globalsourceArray(j)%position, globalsourceArray(j)%accretionRadius/1.d10, &
+                  globalsourceArray(j)%surface, 20)
+          enddo
+
 
           if (myrank == 1) call tune(6,"Hydrodynamics step")
 
@@ -3608,6 +3639,17 @@ end subroutine sumFluxes
              call writeInfo("Done the refine part", TRIVIAL)                 
              call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
              call writeInfo("Done the even up part", TRIVIAL)    
+
+             call writeVtkFile(grid, "afterrefine.vtk", &
+                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+                  "u_i          ", &
+                  "hydrovelocity", &
+                  "rhou         ", &
+                  "rhov         ", &
+                  "rhow         ", &
+                  "phi          ", &
+                  "pressure     ", &
+                  "q_i          "/))
 
              if (myrank == 1) call tune(6, "Loop refine")
              
@@ -5784,9 +5826,10 @@ end subroutine sumFluxes
     integer :: ierr, k, j
     real(double) :: tol
     real(double) :: index = 1.d0
-    integer :: evenuparray(nThreadsGlobal-1)
+    integer :: evenuparray(nThreadsGlobal-1), itemp
     integer :: endloop, nworking
     integer, allocatable ::  safe(:, :)
+    character(len=80) :: plotfile
 
     globalConverged = .false.
     if (myrankGlobal == 0) goto 666
@@ -5824,6 +5867,7 @@ end subroutine sumFluxes
        end do
     end do
 
+    itemp = 0
     call setAllUnchanged(grid%octreeRoot)
     do
        globalConverged(myRankGlobal) = .true.
@@ -5842,8 +5886,23 @@ end subroutine sumFluxes
        index = index + 1.d0
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+       itemp = itemp+1
+       write(plotfile,"(a,i5.5,a)") "afterefine",itemp,".vtk"
+!             call writeVtkFile(grid, plotfile, &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
+
        if (ALL(tConverged(1:nthreadsGlobal-1))) exit
     enddo
+
+
     deallocate(safe)
 
     666 continue
@@ -5853,7 +5912,7 @@ end subroutine sumFluxes
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
-    use inputs_mod, only : amrspeedtol, amrionfractol
+    use inputs_mod, only : amrspeedtol, amrionfractol, rhoThreshold
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -5871,10 +5930,10 @@ end subroutine sumFluxes
     integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
-    real(double) :: bigJ, cs, rhoJeans, speed1, speed2
+    real(double) :: bigJ, cs, speed1, speed2
     integer :: nd
     integer :: index1, index2, step
-    real(double) :: index
+    real(double) :: index, rhojeans
 
     converged = .true.
     converged_tmp=.true.
@@ -6027,13 +6086,7 @@ end subroutine sumFluxes
           
           r = modulus(centre - globalsourceArray(iSource)%position)/(grid%octreeRoot%subcellSize/dble(2**maxdepthamr))
           if ((r < 32.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
-             if (thisOctal%oneD) then
-                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                     inherit=.false., interp=.false., amrHydroInterp = .true.)
-             else
-                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                     inherit=.true., interp=.false.)
-             endif
+             call addNewChildWithInterp(thisOctal, subcell, grid)
              converged = .false.
              cycle
           endif
@@ -6045,13 +6098,7 @@ end subroutine sumFluxes
     if (converged.and.refineOnMass) then
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
-          if (thisOctal%oneD) then
-             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                  inherit=.false., interp=.false., amrHydroInterp = .true.)
-          else
-             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                  inherit=.true., interp=.false.)
-          endif
+          call addNewChildWithInterp(thisOctal, subcell, grid)
           converged = .false.
 !        print *, "split D ", thisOctal%nDepth
 !        write(*,*) masstol, (thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3)
@@ -6060,20 +6107,17 @@ end subroutine sumFluxes
     endif
 
     if (converged.and.refineOnJeans) then
-       bigJ = 0.25d0
-       cs = soundSpeed(thisOctal, subcell)
-       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
-       massTol = rhoJeans*1.d30*thisOctal%subcellSize**3
+!       bigJ = 0.25d0
+!       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
+!       cs = soundSpeed(thisOctal, subcell)
+       massTol = (1.d0/64.d0)*rhoThreshold*1.d30*thisOctal%subcellSize**3
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
-          if (thisOctal%oneD) then
-             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                  inherit=.false., interp=.false., amrHydroInterp = .true.)
-          else
-             write(*,*) "refining on jeans"
-             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                  inherit=.true., interp=.false.)
-          endif
+          write(*,*) "splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+          write(*,*) "mass tol ",masstol
+
+
+          call addNewChildWithInterp(thisOctal, subcell, grid)
           converged = .false.
 !        print *, "split E ", thisOctal%nDepth
 !        write(*,*) masstol, (thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3)
@@ -6759,8 +6803,8 @@ end subroutine refineGridGeneric2
        end do
     end do
 
+    call setAllUnchanged(grid%octreeRoot)
     do while(.not.allThreadsConverged)
-       call setAllUnchanged(grid%octreeRoot)
        localChanged = .false.
 
        globalConverged = .false.
@@ -8401,7 +8445,7 @@ end subroutine minMaxDepth
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
      type(SOURCETYPE), allocatable :: newSource(:)
-     type(VECTOR) :: newVelocity, newPosition
+     type(VECTOR) :: newVelocity, newPosition, newAngMom
      real(double) :: newMass, newAge
      integer :: nSource
      integer :: i, j
@@ -8492,6 +8536,7 @@ end subroutine minMaxDepth
         newVelocity = VECTOR(0.d0, 0.d0, 0.d0)
         newPosition = VECTOR(0.d0, 0.d0, 0.d0)
         newAge = 0.d0
+        newAngMom = VECTOR(0.d0, 0.d0, 0.d0)
         n = 0
 
         do j = 1, nSource
@@ -8500,17 +8545,20 @@ end subroutine minMaxDepth
               newVelocity = newVelocity + source(j)%mass * source(j)%velocity
               newPosition = newPosition + source(j)%position * source(j)%mass
               newAge = newAge + source(j)%age
+              newAngMom = newAngMom + source(j)%angMomentum
               n = n + 1
            endif
         enddo
         newNSource = newNSource + 1
         newSource(newNSource)%mass = newMass
+        newSource(newNSource)%angMomentum = newAngMom
         newSource(newnSource)%velocity = (1.d0/newMass) * newVelocity 
         newSource(newnSource)%position = (1.d0/newMass) * newPosition
         newSource(newnSource)%radius = rSol/1.d10
         newSource(newnSource)%age = newAge / dble(n)
         newSource(newnSource)%stellar = .true.
         newSource(newnSource)%diffuse = .false.
+        newSource(newnSource)%accretionRadius = source(1)%accretionRadius
      enddo
 
         
@@ -8545,7 +8593,7 @@ end subroutine minMaxDepth
      use mpi
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
-     real(double) :: temp(8),rhomax
+     real(double) :: temp(12),rhomax
      integer :: nSource
      integer :: iThread
      integer :: j, tag, ierr
@@ -8558,17 +8606,17 @@ end subroutine minMaxDepth
         if (myrankGlobal == iThread) then
            rhomax = 0.d0
            call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
-           write(*,*) "Maximum ratio of local density:Jeans density ",rhomax
+!           write(*,*) "Maximum ratio of local density:threshold density ",rhomax
            do j = 1, nHydroThreadsGlobal
               if (j /= myRankGlobal) then
                  temp(1) = 1.d30
-                 call mpi_send(temp, 8, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
+                 call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
               endif
            enddo
         else
            stillReceiving = .true.
            do while (stillReceiving)
-              call mpi_recv(temp, 8, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+              call mpi_recv(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
               if (temp(1) > 1.d29) then
                  stillReceiving = .false.
                  exit
@@ -8584,7 +8632,10 @@ end subroutine minMaxDepth
                  source(nsource)%radius = temp(8)   
                  source(nSource)%stellar = .true.
                  source(nSource)%diffuse = .false.
-
+                 source(nSource)%accretionRadius = temp(9)
+                 source(nSource)%angMomentum%x = temp(10)
+                 source(nSource)%angMomentum%y = temp(11)
+                 source(nSource)%angMomentum%z = temp(12)
                  call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
                       100.d0, 1.d7, 1000)
                  call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
@@ -8597,15 +8648,20 @@ end subroutine minMaxDepth
 
   recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
     use mpi
-    type(OCTAL), pointer :: thisOctal, child
+    use inputs_mod, only : rhoThreshold
+    type(OCTAL), pointer :: thisOctal, child, neighbourOctal
+    integer :: neighbourSubcell
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: vel, centre
-    real(double) :: rhoJeans, bigJ, cs, e, rhomax
-    real(double) :: temp(8)
-    integer :: nSource
-    integer :: i, subcell, ierr, ithread, tag
+    real(double) :: bigJ, cs, e, rhomax
+    real(double) :: eGrav, eKinetic, eThermal, cellMass
+    real(double) :: temp(12), racc
+    integer :: nSource, nd
+    integer :: i, subcell, ierr, ithread, tag, nProbes
     logical :: createSink
+    real(double) :: q, phi, phigas, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, xnext, px, py, pz
+    type(VECTOR) :: probe(6), locator
     tag = 77
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -8620,101 +8676,85 @@ end subroutine minMaxDepth
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%ghostCell(subcell)) cycle
           centre = subcellCEntre(thisOctal, subcell)
           vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
                thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
                thisOctal%rhow(subcell)/thisOctal%rho(subcell))
           bigJ = 0.25d0
           cs = soundSpeed(thisOctal, subcell)
-          rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
-          rhoMax = max(thisOctal%rho(subcell) / rhoJeans, rhoMax)
+          
+          createSink = .true.
 
-          createSink = .false.
+          if (thisOctal%rho(subcell) < rhoThreshold) createSink = .false.
 
-          if (thisOctal%rho(subcell) > rhoJeans) createSink = .true.
+!          if (createSink) write(*,*) "Source creating passed jeans test ",thisOctal%rho(subcell)/rhoThreshold
+          rhomax = max(rhomax, thisOctal%rho(subcell)/rhoThreshold)
 
-!          if (createSink) then
-!             call getControlVolumeCells()
-!
-!             do i = 1, nCells
-!                if  ( ((posx(i) - centre%x)*(vx(i)-vel%x) > 0.d0) .or. &
-!                      ((posy(i) - centre%y)*(vy(i)-vel%y) > 0.d0) .or. &
-!                      ((posz(i) - centre%z)*(vz(i)-vel%z) > 0.d0) ) createSink = .false. ! not converging flow
-!             enddo
-!             if (.not.createSink) then
-!                write(*,*) "Sink not created due to unconverging flow"
-!             endif
-!             minphi = 1.d30
-!             minDist = 1.d30
-!             do i = 1, nCells
-!                if (phi(i) < minPhi) then
-!                   minPhi = phi(i)
-!                   dist = modulus(VECTOR(xpos(i), ypos(i), zpos(i)) - centre)
-!                endif
-!             enddo
-!            
-!             if (dist > 0.01d0*grid%halfSmallestSubcell) then
-!                createSink = .false. ! not a potential minimum
-!                write(*,*) "Sink not created because not in potential min ",dist
-!             endif
-!
-!
-!             
-!             eGrav = 0.d0
-!             eThermal = 0.d0
-!             eKinetic = 0.d0
-!             vcomx = 0.d0
-!             vcomy = 0.d0
-!             vcomz = 0.d0
-!             do i = 1, nCells
-!                eGrav = eGrav * (vol(i)*rho(i))* phi(i)
-!                eThermal = eThermal + 0.5d0 * (vol(i)*rho(i)) * cs(i)**2
-!                vcomx = vcomx + (vol(i)*rho(i)) * vx(i)
-!                vcomy = vcomy + (vol(i)*rho(i)) * vy(i)
-!                vcomz = vcomz + (vol(i)*rho(i)) * vz(i)
-!                mass = mass + (vol(i)*rho(i))
-!             enddo
-!             vcomx = vcomx / mass
-!             vcomy = vcomy / mass
-!             vcomz = vcomz / mass
-!             do i = 1, ncells
-!                ekinetic = ekinetic + 0.5d0 * (vol(i)*rho(i)) * &
-!                     ((vx(i)-vcomx)**2+(vy(i)-vcomy)**2+(vz(i)-vcomz)**2)
-!             enddo
-!
-!             if (abs(eGrav) < (2.d0*eThermal)) then
-!                createSink = .false. ! not jeans unstable
-!                write(*,*) "Sink not created as not jeans unstable ",egrav,ethermal
-!             endif
-!
-!             if (eKinetic + eThermal + eGrav > 0.d0) then
-!                createSink = .false.  ! not bound
-!                write(*,*) "Sink not created as not bound ", eKinetic + eThermal + eGrav
-!             endif
+	  cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
 
+          eGrav = cellMass * thisOctal%phi_i(subcell)
+          eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
+          ekinetic = 0.5d0 * cellMass * modulus(vel)**2
+
+
+          if (eKinetic + eThermal + eGrav > 0.d0) createSink = .false.
+!          if (createSink) write(*,*) "Source creating passed bound test ",eGrav,eThermal,eKinetic
+          do i = 1, nSource
+             cs = soundSpeed(thisOctal, subcell)
+	     racc = source(i)%accretionRadius
+             if (modulus(centre - source(i)%position)*1.d10 < racc) then
+                createsink = .false.
+                exit
+             endif
+          enddo
+!          if (createSink) write(*,*) "Source creating passed accretion radius test "
+
+          if (createSink) then
+             nProbes = 6
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+             probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+             probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
+             
+             do i = 1, nProbes
+                locator = subcellcentre(thisoctal, subcell) + probe(i) * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                neighbouroctal => thisoctal
+                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, probe(i), q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                if (phi < thisOctal%phi_i(subcell)) then
+                   createSink = .false.
+!                   write(*,*) "Create sink failed not local phi min"
+                   exit
+                endif
+             enddo
+          endif
 
 
           if (createSink) then
-             write(*,*) "Source created"
-             write(*,*) "local density ",thisOctal%rho(subcell)
-             write(*,*) "local jeans density ", rhoJeans
              nSource = nSource + 1
+             write(*,*) "Source number ",nsource," created"
              source(nSource)%position = subcellCentre(thisOctal, subcell)
-             source(nsource)%mass = (thisOctal%rho(subcell) - rhoJeans*bigJ)*thisOctal%subcellSize**3*1.d30
              source(nsource)%velocity%x = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
              source(nsource)%velocity%y = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
              source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
+             source(nsource)%mass = (thisOctal%rho(subcell) - rhoThreshold)*thisOctal%subcellSize**3*1.d30
              source(nsource)%radius = rsol/1.d10
+             source(nSource)%accretionRadius = 2.5d0*thisOctal%subcellSize * 1.d10
+             source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
              vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
                   thisOctal%rhow(subcell)/thisOctal%rho(subcell))
              e = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-             thisOctal%rho(subcell) = bigJ * rhoJeans
-             thisOctal%rhou(subcell) = bigJ * rhoJeans * vel%x
-             thisOctal%rhov(subcell) = bigJ * rhoJeans * vel%x
-             thisOctal%rhow(subcell) = bigJ * rhoJeans * vel%x
-             thisOctal%rhoe(subcell) = bigJ * rhoJeans * e
+             thisOctal%rho(subcell) =  rhoThreshold
+             thisOctal%rhou(subcell) = rhoThreshold * vel%x
+             thisOctal%rhov(subcell) = rhoThreshold * vel%y
+             thisOctal%rhow(subcell) = rhoThreshold * vel%z
+             thisOctal%rhoe(subcell) = rhoThreshold * e
 
              temp(1) = source(nsource)%position%x
              temp(2) = source(nsource)%position%y
@@ -8724,10 +8764,14 @@ end subroutine minMaxDepth
              temp(6) = source(nsource)%velocity%y
              temp(7) = source(nsource)%velocity%z
              temp(8) = source(nsource)%radius
+             temp(9) = source(nsource)%accretionRadius
+             temp(10) = source(nsource)%angMomentum%x
+             temp(11) = source(nsource)%angMomentum%y
+             temp(12) = source(nsource)%angMomentum%z
              
              do iThread = 1, nHydroThreadsGlobal
                 if (iThread /= myRankGlobal) then
-                   call mpi_send(temp, 8, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                   call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
                 endif
              enddo
              
@@ -9227,99 +9271,234 @@ end subroutine minMaxDepth
     integer :: nSource
     real(double) :: timeStep
     integer :: iSource
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    real(double) :: rAcc, rK,  thisMdot
     integer :: ierr
-    real(double) ::  tempa(3)
-    real(double) :: accretedMass, cellMass
-    type(VECTOR) :: gasMom, sourceMom, accretedMom, cellVelocity
-    real(double) :: rhoCrit = 1.d-25, rhoLocal
-    real(double) :: eGrav, eThermal, eKinetic
-    logical :: accreting
+    real(double) :: tempa(3), suma(3)
+    type(VECTOR) :: sourceMom
+    real(double) :: temp
+    real(double), allocatable :: accretedMass(:)
+    type(VECTOR), allocatable :: accretedLinMomentum(:), accretedAngMomentum(:)
+
+    if (writeoutput) write(*,*) "Labelling accreting cells"
+    call labelAccretingCells(grid%octreeRoot, sourceArray, nSource)
+    if (writeoutput) write(*,*) "Done."
+
+    allocate(accretedMass(1:nSource), accretedLinMomentum(1:nSource), accretedAngMomentum(1:nSource))
+
+    accretedMass = 0.d0
+    accretedLinMomentum = VECTOR(0.d0, 0.d0, 0.d0)
+    accretedAngMomentum = VECTOR(0.d0, 0.d0, 0.d0)
+    
+
+    if (writeoutput) write(*,*) "Performing gas accretion"
+    call performGasAccretion(grid%octreeRoot, accretedMass, accretedLinMomentum, accretedAngMomentum, &
+         sourceArray, nSource)
+    if (writeoutput) write(*,*) "Done."
 
     do iSource = 1, nSource
-       
-       thisOctal => grid%octreeRoot
-       call findSubcellLocal(sourceArray(iSource)%position, thisOctal, subcell)
+       if (writeoutput) write(*,*) "Accreting gas onto source ",isource
 
-       if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-          rAcc = 4.d0 * thisOctal%subcellSize * gridDistanceScale
-          rhoLocal = thisOctal%rho(subcell)
+       call MPI_ALLREDUCE(accretedMass(iSource), temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       accretedMass(iSource) = temp
+
+       tempa(1) = accretedLinMomentum(iSource)%x
+       tempa(2) = accretedLinMomentum(iSource)%y
+       tempa(3) = accretedLinMomentum(iSource)%z
+    
+       call MPI_ALLREDUCE(tempa, suma, 3, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+
+       accretedLinMomentum(iSource)%x = suma(1)
+       accretedLinMomentum(iSource)%y = suma(2)
+       accretedLinMomentum(iSource)%z = suma(3)
+
+       tempa(1) = accretedAngMomentum(iSource)%x
+       tempa(2) = accretedAngMomentum(iSource)%y
+       tempa(3) = accretedAngMomentum(iSource)%z
+    
+       call MPI_ALLREDUCE(tempa, suma, 3, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+
+       accretedAngMomentum(iSource)%x = suma(1)
+       accretedAngMomentum(iSource)%y = suma(2)
+       accretedAngMomentum(iSource)%z = suma(3)
+
+
+       if (writeoutput) then
+
+          write(*,*) "source ",isource
+          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
+          write(*,*) "before mass ",sourceArray(isource)%mass/msol
+
+          write(*,*) "accreted mass ", accretedMass(isource)
+          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
+          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
        endif
-       call MPI_BCAST(rK, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
-       call MPI_BCAST(rAcc, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
-       call MPI_BCAST(rhoLocal, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
+
+       sourceMom = sourceArray(iSource)%mass * sourceArray(iSource)%velocity
+       sourceMom = sourceMom + accretedLinMomentum(iSource)
+
+       sourceArray(iSource)%mass = sourceArray(iSource)%mass + accretedMass(iSource)
+
+       sourceArray(isource)%velocity = sourceMom / sourceArray(iSource)%mass
+
+       sourceArray(iSource)%angMomentum = sourceArray(iSource)%angMomentum + accretedAngMomentum(iSource)
+
+       if (writeoutput) then
+          write(*,*) "Accretion rate for source ",isource, ": ", &
+            (accretedMass(isource)/timestep)/msol * 3d7
+          write(*,*)  "position ",sourceArray(isource)%position
+          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
+          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
+       endif
+    enddo
+    deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
+
+  end subroutine doMyAccretion
+
+
+
+  recursive subroutine labelAccretingCells(thisOctal, source, nsource)
+    use mpi
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: cellCentre
+    integer :: nSource
+    type(VECTOR) :: cellVelocity
+    real(double) :: cellMass, eGrav, Ekin, eMin
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    real(double) :: r 
+    integer :: subcell, i
+    integer :: nSourcesInAccretionRadius
+    integer, allocatable :: iSource(:)
+    integer :: thisSource
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call labelAccretingCells(child, source, nsource)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          if (.not.associated(thisOctal%chiline)) then
+             allocate(thisOctal%chiLine(1:thisOctal%maxChildren))
+             thisOctal%chiLine = 0.d0
+          endif
+
+          cellCentre = subcellCentre(thisOctal, subcell)
+          cellMass = cellVolume(thisOctal, subcell) * thisOctal%rho(subcell) * 1.d30
+          cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
+               thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
+               thisOctal%rhow(subcell) / thisOctal%rho(subcell))
+          nSourcesInAccretionRadius = 0
+          allocate(iSource(1:nSource))
+          do i = 1, nSource
+             if (modulus(source(i)%position - cellCentre)*1.d10 < source(i)%accretionRadius) then
+                nSourcesInAccretionRadius = nSourcesInAccretionRadius + 1
+                iSource(nSourcesInAccretionRadius) = i
+             endif
+          enddo
+          thisOctal%chiLine(subcell) = 0.d0
+          if (nSourcesInAccretionRadius >= 1) then
+
+             if (nSourcesInAccretionRadius == 1) then
+                thisSource = iSource(1)
+             else
+                eMin = 1.d30
+                thisSource = 0
+                do i = 1, nSourcesInAccretionRadius
+                   r = modulus(source(iSource(i))%position-cellCentre)*1.d10
+                   eGrav = -bigG*cellMass*source(isource(i))%mass / r
+                   eKin = 0.5d0 * cellMass * modulus(cellVelocity)**2
+                   if ((eGrav + eKin) < eMin) then
+                      thisSource = isource(i)
+                      eMin = eGrav + eKin
+                   endif
+                enddo
+             endif
+             
+             thisOctal%chiLine(subcell) = thisSource
+          endif
+          deallocate(iSource)
+       endif
+    enddo
+  end subroutine labelAccretingCells
+
+  recursive subroutine performGasAccretion(thisOctal, accretedMass, accretedLinMomentum, accretedAngMomentum, &
+       source, nSource)
+    use mpi
+    use inputs_mod, only : rhoThreshold
+    type(SOURCETYPE) :: source(:)
+    real(double) :: accretedMass(:)
+    type(VECTOR) :: accretedLinMomentum(:), accretedAngMomentum(:), cellCentre, cellVelocity
+    real(double) :: eGrav, eThermal, eKinetic, cellMass, rhoLocal, localAccretedMass
+    type(VECTOR) :: gasMom, localAccretedMom, localAngMom
+    integer :: nSource
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iSource
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call performGasAccretion(child, accretedMass, accretedLinMomentum, accretedAngMomentum, source, nSource)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          iSource = nint(thisOctal%chiLine(subcell))
           
-       if (myrankGlobal == 1) then
-          write(*,*) "racc ",  racc
-          write(*,*) "rho local ",rhoLocal
-       endif
+          if (iSource > 0) then
+             rhoLocal = thisOctal%rho(subcell)
+             cellCentre = subcellCentre(thisOctal, subcell)
+             
+             cellMass = cellVolume(thisOctal, subcell) * thisOctal%rho(subcell) * 1.d30
+             cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
+                  thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
+                  thisOctal%rhow(subcell) / thisOctal%rho(subcell))
+             eGrav = cellMass * thisOctal%phi_i(subcell)
+             eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
+             ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
+             if (eKinetic + eThermal + eGrav < 0.d0) then
+                if (rhoLocal > rhoThreshold) then
+                   
+                   localaccretedMass = (rhoLocal - rhoThreshold) * cellVolume(thisOctal,Subcell)*1.d30
+                   
+                   accretedMass(isource) = accretedMass(isource) + localAccretedMass
 
-       accreting = .false.
-       if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-          thisMdot = 0.
+                   gasMom = (cellVolume(thisOctal, subcell) * 1.d30)  * &
+                        VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))
 
-          cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
-          cellVelocity = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                  thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-
-          eGrav = cellMass * thisOctal%phi_i(subcell)
-          eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
-          ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-sourceArray(isource)%velocity)**2
-          if (eKinetic + eThermal + eGrav < 0.d0) then
-             if (rhoLocal > rhoCrit) then
-                accreting = .true.
-                accretedMass = (rhoLocal - rhoCrit) * cellVolume(thisOctal,Subcell)*1.d30
-                thisMdot = accretedMass/timeStep
-                gasMom = (thisOctal%rho(subcell) *cellVolume(thisOctal,Subcell)*1.d30) * &
-                  VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                  thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-                accretedMom = accretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                     thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-                sourceMom = sourceArray(iSource)%velocity*sourceArray(isource)%mass
-                gasMom = gasMom - accretedMom
-                sourceMom = sourceMom + accretedMom
-                thisOctal%rho(subcell) = rhoCrit
-                
-                cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
-                cellVelocity = gasMom / cellMass
-                thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
-                thisOctal%rhov(subcell) =  thisOctal%rho(subcell) * cellVelocity%y
-                thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
+                   localAccretedMom = localaccretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                   localAngMom =  ((cellCentre - source(isource)%position)*1.d10) .cross. localAccretedMom
+                   accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
+                   accretedAngMomentum(isource) = accretedAngMomentum(isource) + localAngMom
+                   
+                   gasMom = gasMom - localaccretedMom
+                   thisOctal%rho(subcell) = rhoThreshold
+                   
+                   cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
+                   cellVelocity = gasMom / cellMass
+                   thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
+                   thisOctal%rhov(subcell) =  thisOctal%rho(subcell) * cellVelocity%y
+                   thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
+                endif
              endif
           endif
        endif
-
-       call MPI_BCAST(accreting, 1, MPI_LOGICAL, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
-
-       if (accreting) then
-          call MPI_BCAST(thisMdot, 1, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
-
-          tempa(1) = sourceMom%x
-          tempa(2) = sourceMom%y
-          tempa(3) = sourceMom%z
-          
-          call MPI_BCAST(tempa, 3, MPI_DOUBLE_PRECISION, thisOctal%mpiThread(subcell)-1, amrCOMMUNICATOR, ierr)
-          
-          sourceMom%x = tempa(1)
-          sourceMom%y = tempa(2)
-          sourceMom%z = tempa(3)
-
-          if (myrankGlobal == 1) then
-             write(*,*) "mdot initial ", thisMdot/msol*365.25d0*24.d0*3600.d0
-          endif
-
-
-          sourceArray(isource)%mdot = thisMdot
-          sourceArray(isource)%mass = sourceArray(isource)%mass + thisMdot * timestep
-          
-          sourceArray(isource)%velocity = sourceMom / sourceArray(isource)%mass
-          if (myrankGlobal == 1) write(*,*) "source mass ", sourceArray(iSource)%mass/msol
-       endif
     enddo
+  end subroutine performGasAccretion
 
-  end subroutine doMyAccretion
 
   recursive subroutine correctMomenta(thisOctal, source, timestep,deltaMom)
     use mpi

@@ -174,7 +174,11 @@ contains
        call getDouble("eps", inputEps, 1.d0, cLine, fLine, nLines, &
             "Gravity softening length (cm): ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
+
     endif
+
+    call getDouble("rhothresh", rhoThreshold, 1.d0, cLine, fLine, nLines, &
+         "Threshold density for sink creation (g/cc): ","(a,e12.3,1x,a)", 1.d-14, ok, .false.)
 
     call getLogical("blockhandout", blockHandout, cLine, fLine, nLines, &
          "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .false., ok, .false.)

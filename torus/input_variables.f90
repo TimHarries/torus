@@ -93,6 +93,7 @@
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   real(double) :: etaViscosity        !Artificial viscosity parameter
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
+  real(double) :: rhoThreshold        ! threshold density for sink creation
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
   logical :: useViscosity             !Use artificial viscosity
