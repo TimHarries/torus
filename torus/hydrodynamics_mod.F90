@@ -1406,7 +1406,7 @@ contains
                 if (inOctal(grid%octreeRoot, locator)) then
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)   
                    p(index) = pressure
                    if(i == 1) then
                       xArray(index) = x
@@ -1423,7 +1423,7 @@ contains
                 if (inOctal(grid%octreeRoot, locator)) then
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
                    
                    if(nd > thisOctal%nDepth) then
                       fac = 0.5d0
@@ -1436,7 +1436,7 @@ contains
                    if (inOctal(grid%octreeRoot, locator)) then
                       neighbourOctal => thisOctal
                       call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                      call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                      call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
                       p(index) = pressure                   
                       if(i == 1) then
                          xArray(index) = x
