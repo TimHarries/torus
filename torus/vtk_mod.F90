@@ -1216,10 +1216,9 @@ contains
 666 continue
   end subroutine writeVTKfileSource
 
-  subroutine writeVTKfileNbody(nSource, source, vtkFilename, grid)
+  subroutine writeVTKfileNbody(nSource, source, vtkFilename)
     use source_mod
     use mpi_global_mod
-    type(GRIDTYPE) :: grid
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     character(len=*) :: vtkFilename

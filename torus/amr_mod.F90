@@ -7405,7 +7405,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec,vVec
-    real(double) :: eThermal, rMod,  rhoSphere
+    real(double) :: eThermal, rMod
 
     rVec = subcellCentre(thisOctal, subcell)
     rmod = modulus(rvec)

@@ -92,7 +92,7 @@ contains
     if (Writeoutput) write(45,'(a)') "Step      Time (s)     position x y z..." 
     do while (currentTime  < tEnd)
        write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
-       call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile, grid)
+       call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
        call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin, grid)
        if (writeoutput) write(44,'(i6,1p,20e15.5,0p)') it, currentTime, ePot, eKin, totalEnergy
        allocate(tmp(1:globalnSource*3))
