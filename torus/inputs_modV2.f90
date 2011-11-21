@@ -966,6 +966,9 @@ contains
     call getLogical("refineonionization", refineonionization, cLine, fLine, nLines, &
          "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("captureshocks", captureShocks, cLine, fLine, nLines, &
+         "Captue shocks?: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
          "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 5.d-2, ok, .false.) 
 

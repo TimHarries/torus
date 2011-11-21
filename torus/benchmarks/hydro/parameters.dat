@@ -7,6 +7,7 @@ hydrodynamics T
 
 limitertype superbee
 rhieChow F
+captureshocks T
 
 mindepthamr 3
 maxdepthamr 10

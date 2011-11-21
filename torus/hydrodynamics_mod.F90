@@ -1,7 +1,7 @@
 #ifdef HYDRO
 ! Hydrodynamics module added by tjh on 18th june 2007
 
-module hydrodynamics_mod
+Module hydrodynamics_mod
 #ifdef MPI
 
   use inputs_mod
@@ -1326,6 +1326,160 @@ contains
           end if
        end do
   end subroutine normalFluxGradientSingle
+
+
+  logical function refineShock(thisOctal, subcell, grid)
+    type(octal), pointer :: thisOCtal
+    type(octal), pointer :: neighbourOctal
+    type(gridtype) :: grid
+    integer :: neighbourSubcell
+    integer :: subcell
+    type(vector) :: locator, dirVec(4), rVec
+    integer :: nd, i, j, index
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure
+    real(double), allocatable :: p(:), xArray(:)
+    integer :: nDimensions
+    real(double) :: m2, m4, Sp, fac
+    
+    if(.not. thisOctal%ghostcell(subcell)) then
+       refineShock = .false.
+       p = 0.d0
+       index = 1
+       if(thisOctal%threed) then
+          nDimensions = 3
+       else if (thisOctal%twoD) then
+          nDimensions = 2
+       else
+          nDimensions = 1
+       end if
+       allocate(p(nDimensions*4))
+       allocate(xArray(nDimensions*4))
+
+       do i = 1, nDimensions
+          if(i == 1) then
+             dirVec(1) = VECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(2) = VECTOR(1.d0, 0.d0, 0.d0)
+             dirVec(3) = VECTOR(1.d0, 0.d0, 0.d0)
+             dirVec(4) = VECTOR(1.d0, 0.d0, 0.d0)
+          else if(i ==2) then
+             dirVec(1) = VECTOR(0.d0, 0.d0, -1.d0)
+             dirVec(2) = VECTOR(0.d0, 0.d0, 1.d0)
+             dirVec(3) = VECTOR(0.d0, 0.d0, 1.d0)
+             dirVec(4) = VECTOR(0.d0, 0.d0, 1.d0)
+          else 
+             dirVec(1) = VECTOR(0.d0, -1.d0, 0.d0)
+             dirVec(2) = VECTOR(0.d0, 1.d0, 0.d0)
+             dirVec(3) = VECTOR(0.d0, 1.d0, 0.d0)
+             dirVec(4) = VECTOR(0.d0, 1.d0, 0.d0)
+          end if
+          
+          do j = 1, 4             
+             if(j==1) then
+                locator = subcellCentre(thisOctal, subcell) + &
+                     (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(j)
+                if (inOctal(grid%octreeRoot, locator)) then
+                   neighbourOctal => thisOctal
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                   p(index) = pressure                   
+                   if(i == 1) then
+                      xArray(index) = x
+                   else if(i == 2) then
+                      xArray(index) = z
+                   else
+                      xArray(index) = y
+                   end if
+                end if
+             else if(j==2) then
+                p(index)= thisOctal%pressure_i(subcell)
+                rVec = subcellCentre(thisOctal, subcell)
+                if(i == 1) then
+                   xArray(index) = rVec%x
+                else if(i == 2) then
+                   xArray(index) = rVec%z
+                else
+                   xArray(index) = rVec%y
+                end if
+             else if (j==3) then
+                locator = subcellCentre(thisOctal, subcell) + &
+                     (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(j)
+                if (inOctal(grid%octreeRoot, locator)) then
+                   neighbourOctal => thisOctal
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                   p(index) = pressure
+                   if(i == 1) then
+                      xArray(index) = x
+                   else if(i == 2) then
+                      xArray(index) = z
+                   else
+                      xArray(index) = y
+                   end if
+                end if
+             else
+                locator = subcellCentre(thisOctal, subcell) + &
+                     (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(j)
+                !need to advance a second cell
+                if (inOctal(grid%octreeRoot, locator)) then
+                   neighbourOctal => thisOctal
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                   
+                   if(nd > thisOctal%nDepth) then
+                      fac = 0.5d0
+                   else if(nd == thisOctal%nDepth) then
+                      fac = 1.d0
+                   else
+                      fac = 2.d0
+                   end if
+                   locator = locator + ((fac*thisOctal%subcellSize)/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(j)
+                   if (inOctal(grid%octreeRoot, locator)) then
+                      neighbourOctal => thisOctal
+                      call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                      call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                      p(index) = pressure                   
+                      if(i == 1) then
+                         xArray(index) = x
+                      else if(i == 2) then
+                         xArray(index) = z
+                      else
+                         xArray(index) = y
+                      end if
+                   end if
+                end if
+                index = index +1
+             end if
+          end do
+       end do
+    end if
+    
+    !Now we have pressures across 4 cells
+
+!Identify shock by comparing pressure gradient over 2 and 4 cells
+!see Fryxell et al 2000, ApJ, 131, 273 section 3.1.3
+!Note that this is still pretty different to the above 
+
+    do i = 1, ndimensions
+
+       m2= (p(i*4 - 1) - p(i*4 -2))/(xArray(i*4-1) - xArray(i*4 - 2))
+       m4= (p(i*4) - p(i*4 - 3))/(xArray(i*4) - xArray(i*4 - 3))
+       
+       if(m4 /= 0.d0) then
+          Sp = m2/m4
+       else
+          Sp = 0.d0
+       end if
+       
+       if(Sp > (1.d0/3.d0)) then
+          refineShock = .true.
+          exit
+       else
+          refineShock = .false.
+       end if
+    end do
+   
+
+  end function refineShock
 
 !set up neighbour pressures
   recursive subroutine setuppressure(thisoctal, grid, direction)
@@ -5912,7 +6066,7 @@ end subroutine sumFluxes
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
-    use inputs_mod, only : amrspeedtol, amrionfractol, rhoThreshold
+    use inputs_mod, only : amrspeedtol, amrionfractol, rhoThreshold, captureshocks
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -6047,7 +6201,15 @@ end subroutine sumFluxes
                       endif
                    endif
                 end if
+
+                if(captureshocks) then
+                   if(refineShock(thisOctal, subcell, grid)) then
+                      split = .true.
+                   end if
+                end if
+
                 if (split) then
+
  
                    if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
                       call addNewChildWithInterp(thisOctal, subcell, grid)
