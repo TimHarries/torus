@@ -561,7 +561,7 @@ contains
                "hydrovelocity","sourceCont   ","pressure     ","radmom       "/))
 
           write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
-          call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename, grid)
+          call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename)
 
           
 !Track the evolution of the ionization front with time

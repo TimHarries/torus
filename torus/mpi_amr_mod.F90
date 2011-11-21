@@ -3310,7 +3310,7 @@ end subroutine dumpStromgrenRadius
     real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     type(VECTOR) :: position, rVec
     real(double) :: loc(4)
-    type(OCTAL), pointer :: thisOctal, parent, topOctal
+    type(OCTAL), pointer :: thisOctal, topOctal
     integer :: iThread, topOctalSubcell
     integer, parameter :: nStorage = 12
     real(double) :: tempStorage(nStorage)
@@ -3384,7 +3384,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: loc(4)
     type(VECTOR) :: position, rVec
     type(OCTAL), pointer :: thisOctal
-    type(OCTAL), pointer :: parent, topOctal
+    type(OCTAL), pointer :: topOctal
     integer :: subcell, nworking, topOctalSubcell
     integer :: iThread, servingArray, workingTHreads(nworking)
     integer, parameter :: nStorage = 12

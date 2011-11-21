@@ -3713,7 +3713,7 @@ end subroutine sumFluxes
                "phi          "/))
 
           write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
-          call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile, grid)
+          call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
           if (myrank==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -5930,10 +5930,10 @@ end subroutine sumFluxes
     integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
-    real(double) :: bigJ, cs, speed1, speed2
+    real(double) :: speed1, speed2
     integer :: nd
     integer :: index1, index2, step
-    real(double) :: index, rhojeans
+    real(double) :: index
 
     converged = .true.
     converged_tmp=.true.
@@ -8580,7 +8580,7 @@ end subroutine minMaxDepth
      if (writeoutput) then
         write(*,*) "Number of sources after merges: ",newnSource
         call writesourcelist(source, nSource)
-        call writeVtkFilenBody(nsource, source, "nbody_temp.vtk", grid)
+        call writeVtkFilenBody(nsource, source, "nbody_temp.vtk")
      endif
      deallocate(newSource)
 666 continue
@@ -8691,7 +8691,7 @@ end subroutine minMaxDepth
 !          if (createSink) write(*,*) "Source creating passed jeans test ",thisOctal%rho(subcell)/rhoThreshold
           rhomax = max(rhomax, thisOctal%rho(subcell)/rhoThreshold)
 
-	  cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
+          cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
 
           eGrav = cellMass * thisOctal%phi_i(subcell)
           eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
@@ -8702,7 +8702,7 @@ end subroutine minMaxDepth
 !          if (createSink) write(*,*) "Source creating passed bound test ",eGrav,eThermal,eKinetic
           do i = 1, nSource
              cs = soundSpeed(thisOctal, subcell)
-	     racc = source(i)%accretionRadius
+             racc = source(i)%accretionRadius
              if (modulus(centre - source(i)%position)*1.d10 < racc) then
                 createsink = .false.
                 exit
@@ -8720,7 +8720,8 @@ end subroutine minMaxDepth
              probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
              
              do i = 1, nProbes
-                locator = subcellcentre(thisoctal, subcell) + probe(i) * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                locator = subcellcentre(thisoctal, subcell) + probe(i) * &
+                     (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
                 neighbouroctal => thisoctal
                 call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
                 call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, probe(i), q, rho, rhoe, &
