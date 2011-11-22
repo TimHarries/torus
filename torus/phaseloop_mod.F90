@@ -344,7 +344,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   setimagesize = getImageSize(imageNum)
   ! Is it a Stokes image?
   thisImageType = getImageType(imageNum)
-  if (thisImageType(1:6) == "stokes") then 
+! Only write a stokes image if imNum has been passed. 
+! For SEDs inNum is not present and phaseloop shouldn't try writing an image
+  if (thisImageType(1:6) == "stokes" .and. present(imNum) ) then 
      stokesImage=.true.
   else
      stokesImage=.false.

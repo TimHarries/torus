@@ -729,7 +729,7 @@ module image_mod
 
 ! Convert pixel units if a wavelength has been provided
        if (present(lambdaImage)) then 
-          write(message,"(a,f10.2,a)") "Converting axis units to MJy/sr using lambda= ", &
+          write(message,"(a,f14.2,a)") "Converting axis units to MJy/sr using lambda= ", &
                lambdaImage, " Angstrom"
           call writeInfo(message,FORINFO)
           if(present(pointTest)) then
