@@ -1451,7 +1451,7 @@ contains
              end if
           end do
        end do
-    end if
+
     
     !Now we have pressures across 4 cells
 
@@ -1477,7 +1477,7 @@ contains
           refineShock = .false.
        end if
     end do
-   
+ end if
 
   end function refineShock
 
