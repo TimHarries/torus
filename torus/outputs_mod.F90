@@ -15,11 +15,11 @@ contains
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-    use inputs_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use inputs_mod, only : mie, gridDistance, nLambda, nv
-    use inputs_mod, only : outfile, npixels, nImage, inclinationArray
+    use inputs_mod, only : npixels, nImage, inclinationArray
     use inputs_mod, only : lineEmission
     use inputs_mod, only : monteCarloRT
+    use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use image_utils_mod
 #ifdef MPI
     use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
@@ -269,7 +269,6 @@ contains
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
-             outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
              lambdaImage = getImageWavelength(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
@@ -300,7 +299,6 @@ contains
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
-             outfile = getImageFilename(i)
              npixels = getImagenPixels(i)
              lambdaImage = getImageWavelength(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &

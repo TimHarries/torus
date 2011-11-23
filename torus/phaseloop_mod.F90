@@ -56,7 +56,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
-  use sed_mod, only: getNumSedInc, getSedInc
+  use sed_mod, only: getNumSedInc, getSedInc, sedFilename
   use physics_mod, only : setupdust
   implicit none
 
@@ -222,7 +222,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   character(len=80) :: tempChar
   character(len=80) :: phasePopFilename
-  character(len=80) :: originalOutFile, filename
+  character(len=80) :: outFile, originalOutFile, filename
   character(len=80) :: specfile, obsfluxfile
 
   logical :: ok
@@ -260,7 +260,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real :: setImageSize
   character(len=80) :: thisImageType
   logical :: stokesImage 
-  integer :: imageNum ! which image is this (for multiple images)? 
 
   ! intrinsic profile variables
 
@@ -332,23 +331,18 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   !
   ! Get parameters for the image to be generated. 
+  ! If the imNum argument has been provided then we need to calculate an image
   !
-  ! Which image number is it? 
-  if (present(imNum) ) then 
-     imageNum = imNum
+  stokesImage=.false.
+  if ( present(imNum) ) then 
+     setimagesize  = getImageSize(imNum)
+     thisImageType = getImageType(imNum)
+     if (thisImageType(1:6) == "stokes") then 
+        stokesImage=.true.
+     endif
+     outfile = getImageFilename(imNum)
   else
-     imageNum=1
-  end if
-  ! Get the physical size of the image
-  setimagesize = getImageSize(imageNum)
-  ! Is it a Stokes image?
-  thisImageType = getImageType(imageNum)
-! Only write a stokes image if imNum has been passed. 
-! For SEDs inNum is not present and phaseloop shouldn't try writing an image
-  if (thisImageType(1:6) == "stokes" .and. present(imNum) ) then 
-     stokesImage=.true.
-  else
-     stokesImage=.false.
+     outfile = sedFileName
   endif
 
   if ( grid%geometry == "cmfgen" ) then 
@@ -2977,8 +2971,6 @@ CONTAINS
            deallocate(contWeightArray)
 #endif
            
-!           call plotspec(grid%lamArray, yArray, nLambda)
-
         enddo innerPhotonLoop
 
 

@@ -1991,7 +1991,7 @@ contains
   end subroutine readFitsParameters
 
   subroutine readSpectrumParameters(cLine, fLine, nLines)
-    use sed_mod, only:  setSedParameters
+    use sed_mod, only:  setSedParameters,  SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
 
     character(len=80) :: cLine(:)
     logical :: fLine(:)
@@ -2003,6 +2003,7 @@ contains
     real    :: firstInclination
     real    :: lastInclination=80.0
     real, allocatable :: inclinations(:)
+    character(len=80) :: outFile 
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
@@ -2104,10 +2105,10 @@ contains
     endif
 
     if (allocated(inclinations)) then 
-       call setSedParameters(jansky,SIsed,sed,incList=inclinations)
+       call setSedParameters(outFile,jansky,SIsed,sed,incList=inclinations)
        deallocate(inclinations)
     else
-       call setSedParameters(jansky,SIsed,sed,nInclination=nInclination,&
+       call setSedParameters(outFile,jansky,SIsed,sed,nInclination=nInclination,&
             firstInc=firstInclination,LastInc=LastInclination, cosSpacing=.true.)
     end if
 

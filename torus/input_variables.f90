@@ -300,15 +300,6 @@
   real :: a0(maxDustTypes)      !  scale length in the equation above.
   real :: pDist(maxDustTypes)   !  p exponent in the equation above.
 
-!----------------
-! SED parameters
-!----------------
-
-
-  real    :: SEDlamMin, SEDlamMax
-  logical :: SEDwavLin
-  integer :: SEDnumLam
-
 !------------------------------
 ! Inclinations for SEDs/images 
 ! Now held in sed_mod
@@ -338,7 +329,6 @@
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
 
   ! file names 
-  character(len=80) :: outFile           ! used in phaseloop_mod
   character(len=80) :: datacubeFilename
 
 

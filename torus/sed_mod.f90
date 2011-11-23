@@ -13,11 +13,19 @@ module sed_mod
   integer, private, save :: SedNInc 
   real, private, save, allocatable :: SedInclinations(:)
 
+! Root for name of SED files
+  character(len=80), save :: SedFileName
+
+! Parameters of wavelength array used for SEDs
+  real, save    :: SEDlamMin, SEDlamMax
+  logical, save :: SEDwavLin
+  integer, save :: SEDnumLam
+
   public :: setSedParameters, getSedInc, getNumSedInc
 
 contains
 
-  subroutine setSedParameters(jansky,SIsed,sed,nInclination,firstInc,LastInc,cosSpacing,incList)
+  subroutine setSedParameters(fileName,jansky,SIsed,sed,nInclination,firstInc,LastInc,cosSpacing,incList)
     use kind_mod
     use messages_mod
     use constants_mod
@@ -27,6 +35,7 @@ contains
     real, intent(in), optional    :: firstInc, LastInc
     logical, optional             :: cosSpacing
     real, intent(in), optional    :: incList(:)
+    character(len=80), intent(in) :: fileName
 
     real(double) :: cos_inc_first, cos_inc_last, d_cos_inc, cos_inc
     integer :: i
@@ -81,6 +90,8 @@ contains
           end do
        end if
     end if
+
+    sedFilename = filename
 
   end subroutine setSedParameters
 
