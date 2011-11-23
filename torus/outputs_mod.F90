@@ -49,9 +49,7 @@ contains
 #endif
 #endif
 
-    type(BLOBTYPE) :: tblob(1)
     real(double) :: totalFlux, rSub, ang, vFlux, bFlux
-    type(SURFACETYPE) :: tsurface
     type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
     type(VECTOR) :: viewVec
@@ -65,7 +63,6 @@ contains
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
 !    real(double) :: ang
-    type(VECTOR) :: tvec(1)
     character(len=80) :: message
     real(double), allocatable :: flux(:)
     real :: lambdaImage
@@ -266,11 +263,7 @@ contains
 
 
           fastIntegrate=.true.
-          call do_phaseloop(grid, .true., 0., 0., 0.,  &
-               VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-               tsurface, 0., 0., tdisc, tvec, 1,       &
-               0., 0, .false., 100000, &
-               miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+          call do_phaseloop(grid, .false., 100000, miePhase, globalnsource, globalsourcearray, nmumie)
        end if
 
        if (calcImage) then
@@ -284,11 +277,8 @@ contains
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              fastIntegrate=.true.
-             call do_phaseloop(grid, .true., 0., 0., 0.,  &
-                  VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-                  tsurface, 0., 0., tdisc, tvec, 1,       &
-                  0., 0, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0., &
+             call do_phaseloop(grid, .false., 100000, &
+                  miePhase, globalnsource, globalsourcearray, nmumie, &
                   overrideInclinations=inclinationArray(i:i), imNum=i)
           enddo
        endif
@@ -304,11 +294,7 @@ contains
           call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
           write(*,*) "nlambda after setupxarray",nlambda,nv
           nlambda = nv
-          call do_phaseloop(grid, .true., 0., 0., 0.,  &
-               VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-               tsurface, 0., 0., tdisc, tvec, 1,       &
-               0., 0, .true., 100000, &
-               miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0.)
+          call do_phaseloop(grid, .true., 100000, miePhase, globalnsource, globalsourcearray, nmumie) 
        end if
 
        if (calcImage) then
@@ -320,11 +306,8 @@ contains
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
-             call do_phaseloop(grid, .true., 0., 0., 0.,  &
-                  VECTOR(0., 0., 0.), 0.d0, 0. , 0., 0., 0.d0, &
-                  tsurface, 0., 0., tdisc, tvec, 1,       &
-                  0., 0, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, tblob, nmumie, 0., &
+             call do_phaseloop(grid, .false., 100000, &
+                  miePhase, globalnsource, globalsourcearray, nmumie, &
                   overrideInclinations=inclinationArray(i:i), imNum=i)
           enddo
        endif

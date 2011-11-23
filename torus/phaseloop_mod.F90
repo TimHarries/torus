@@ -7,11 +7,8 @@ module phaseloop_mod
 
 CONTAINS
 
-subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, vel,  &
-     coolstarposition, Laccretion, Taccretion, fAccretion, sAccretion, corecontinuumflux, &
-     starsurface, sigmaAbs0, sigmaSca0, ttauri_disc, distortionVec, nvec,       &
-     infallParticleMass, maxBlobs, flatspec, maxTau, &
-     miePhase, nsource, source, blobs, nmumie, dTime,overrideFilename, overrideInclinations, imNum)
+subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie, &
+  overrideInclinations, imNum)
 
   use kind_mod
   use inputs_mod 
@@ -65,34 +62,36 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
 ! Arguments
   type(GRIDTYPE) :: grid
-  character(len=*), optional :: overrideFilename
   real, optional, intent(in):: overrideInclinations(:)
-  logical :: alreadyDoneInfall
-  real :: meanDustParticleMass
-  real :: rstar
-  real :: vel
-  type(VECTOR) :: coolStarPosition
-  real(double) :: Laccretion, finalTau
-  real :: Taccretion, fAccretion, sAccretion
-  real(double) :: corecontinuumflux
-  type(SURFACETYPE) :: starSurface
+  real(double) :: finalTau
   type(romanova) :: romData ! parameters and data for romanova geometry
-  real  :: sigmaAbs0, sigmaSca0  ! cross section at the line centre
-  type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
-  integer :: nvec
-  type(VECTOR) :: distortionVec(nvec)
-  real :: infallParticleMass         ! for T Tauri infall models
-  integer, intent(in) :: maxBlobs
   logical, intent(in) :: flatSpec
   real :: inclination
   integer, intent(in) :: maxTau
   type(PHASEMATRIX),pointer :: miePhase(:,:, :)
   integer :: nsource
   type(SOURCETYPE) :: source(:)
-  type(BLOBTYPE) :: blobs(:)
   integer, intent(in) :: nmumie
-  real :: dtime
   integer, optional :: imNum
+
+! Former arguments which were hardwired to constant values
+  logical :: alreadyDoneInfall = .true.
+  real :: meanDustParticleMass = 0.0
+  real :: rstar = 0.0 
+  real :: vel = 0.0 
+  type(VECTOR) :: coolStarPosition = VECTOR(0., 0., 0.)
+  real :: Taccretion=0.0, fAccretion=0.0, sAccretion=0.0
+  real(double) :: Laccretion=0.d0
+  real(double) :: corecontinuumflux = 0.0
+  type(SURFACETYPE) :: starSurface
+  real  :: sigmaAbs0=0.0, sigmaSca0=0.0  ! cross section at the line centre
+  type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
+  integer, parameter :: nvec=1
+  type(VECTOR) :: distortionVec(nvec)
+  real :: infallParticleMass=0.0     ! for T Tauri infall models
+  integer :: maxBlobs=0
+  type(BLOBTYPE) :: blobs(1)
+  real :: dtime = 0.0
 
 ! local parameters
   integer, parameter :: maxscat = 1000000  ! Maximum number of scatterings for individual photon
@@ -1639,7 +1638,6 @@ endif ! (doPvimage)
 ! enddo
 !enddo
  if (myRankIsZero) then 
-    if (PRESENT(overrideFilename)) outfile = overrideFilename
     if (nLambda > 1) then
        if (nPhase == 1) then
           
