@@ -4028,42 +4028,6 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
     enddo
   end subroutine sumLineLuminosity
 
-recursive subroutine quickSublimate(thisOctal)
-  use inputs_mod, only : hOnly
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call quickSublimate(child)
-                exit
-             end if
-          end do
-       else
-
-          if(.not. hOnly) then
-             if ((thisOctal%ionFrac(subcell,1) < 0.1).or.(thisOctal%temperature(subcell) > 1500.)) then
-                thisOctal%dustTypeFraction(subcell,:) = 0.d0
-             else
-                thisOctal%dustTypeFraction(subcell,:) = 1.d0
-                thisOctal%ne(subcell) = tiny(thisOctal%ne(subcell))
-                thisOctal%ionFrac(subcell,1) = 1.d0
-                thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
-             endif
-
-          Else
-             thisOctal%dustTypeFraction(subcell,:) = 0.d0
-          end if
-       endif
-    enddo
-  end subroutine quickSublimate
-
-
 subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, temperature, total, debug)
   type(IONTYPE) :: ionArray(*)
   integer :: nIons, subcell

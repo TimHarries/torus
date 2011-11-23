@@ -34,7 +34,7 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
-    use inputs_mod, only : nlucy, taudiff, lambdaSmooth
+    use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -93,6 +93,8 @@ contains
     integer :: iOctal, iOctal_beg, iOctal_end, nOctal
     integer :: nVoxels, nOctals
 
+    real :: variableDustFraction
+
 ! For testing convergence
 ! Temperature
     real(double) :: sumDeltaT, globalSumDeltaT, meanDeltaT
@@ -105,7 +107,7 @@ contains
     real         :: percent_undersampled
     real, parameter :: max_undersampled = 1.0 ! Maximum percentage of cells which can be undersampled
     integer, parameter :: lun_convfile = 42 ! unit number for convergence file
-    integer, parameter :: maxIter=20
+    integer :: maxIter
 
 #ifdef MPI
     ! For MPI implementations
@@ -181,6 +183,11 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
+    if (variableDustSublimation) then 
+       maxIter = 400
+    else
+       maxIter = 20
+    end if
 
     nIter = 0
     
@@ -201,6 +208,18 @@ contains
 
     do while(.not.converged)
        nIter = nIter + 1
+
+
+! Set up the dust fraction
+       if (variableDustSublimation) then
+          if (nIter > 10) then 
+             variableDustFraction = min(real(nIter-10)/100.0,1.0)
+             write(message,*) "Setting dust type fraction to ", variableDustFraction
+             call writeInfo(message, TRIVIAL)
+             call quickSublimate(grid%OctreeRoot, fraction=variableDustFraction)
+          endif
+       end if
+
 
        nCellsInDiffusion = 0
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
@@ -641,8 +660,10 @@ contains
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
          "OII        ", "OIII       ", "tau        "/))
 
-
-    if (niter == maxIter) then 
+    if (variableDustSublimation .and. nIter < 20 ) then
+       converged = .false.
+       call writeInfo("Variable dust sublimation in use, not converging yet.",FORINFO)
+    else if (niter == maxIter) then 
        converged = .true. 
        call writeInfo("Maximum number of iterations reached",FORINFO)
     elseif ( abs(meanDeltaT) < 5.0_db .and. &
@@ -1750,7 +1771,8 @@ subroutine dumpLexington(grid, epsoverdt)
   dustHeating = 0.d0; heHeating = 0.d0; hHeating = 0.d0; totalHeating = 0.d0
 
        call writeVtkFile(grid, "lexington.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "HI         "/))
+            valueTypeString=(/"rho        ", "temperature", "HI         ", &
+            "dust1      "/))
 
   open(20,file="lexington.dat",form="formatted",status="unknown")
   open(21,file="orates.dat",form="formatted",status="unknown")
@@ -3248,7 +3270,7 @@ end subroutine readHeIIrecombination
     
     call writeVtkFile(grid, "before_sublimate.vtk", &
          valueTypeString=(/"rho        ", "temperature", "dust1      "/))
-    call quickSublimate(grid%OctreeRoot, 7500.0, -99.0 )
+    call quickSublimate(grid%OctreeRoot)
     call writeVtkFile(grid, "after_sublimate.vtk", &
          valueTypeString=(/"rho        ", "temperature", "dust1      "/))
 
@@ -3370,43 +3392,6 @@ end subroutine readHeIIrecombination
 #endif
     call freeImage(thisImage)
   end subroutine createImagePhotoion
-
-  recursive subroutine quickSublimate(thisOctal, temThres, ionThres)
-    use inputs_mod, only : hOnly
-    type(octal), pointer   :: thisOctal
-    real, intent(in) :: temThres, ionThres
-    type(octal), pointer  :: child 
-    integer :: subcell, i
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call quickSublimate(child, temThres, ionThres)
-                exit
-             end if
-          end do
-       else
-
-          if(.not. hOnly) then
-             if ((thisOctal%ionFrac(subcell,1) < ionThres).or.(thisOctal%temperature(subcell) > temThres)) then
-                thisOctal%dustTypeFraction(subcell,:) = 0.d0
-             else
-                thisOctal%dustTypeFraction(subcell,:) = 1.d0
-                thisOctal%ne(subcell) = tiny(thisOctal%ne(subcell))
-                thisOctal%ionFrac(subcell,1) = 1.d0
-                thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
-             endif
-
-          else
-             thisOctal%dustTypeFraction(subcell,:) = 0.d0
-          end if
-       endif
-    enddo
-  end subroutine quickSublimate
-
 
   subroutine scatterPhotonLocal(thisPhoton)
     type(PHOTON) :: thisPhoton

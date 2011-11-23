@@ -13,6 +13,8 @@
 ! 5. Line emission (??05)
 ! 6. Continuum emission (??06)
 ! 7. Imaging (??07)
+! 8. Wavelength array (??08)
+! 9. Dust (??09)
 ! X. Unused routines (pu0X)
 
 
@@ -905,6 +907,52 @@ end subroutine setupGridForImage
      
   end subroutine refineLambdaArray
 
+!   pu09 Dust
+
+recursive subroutine quickSublimate(thisOctal, fraction)
+  use inputs_mod, only : hOnly
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  ! Where dust is present set dustTypeFraction to this value. 
+  real, optional, intent(in) :: fraction
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                if (present(fraction)) then 
+                   call quickSublimate(child, fraction)
+                else
+                   call quickSublimate(child)
+                endif
+                exit
+             end if
+          end do
+       else
+
+          if(.not. hOnly) then
+             if ((thisOctal%ionFrac(subcell,1) < 0.1).or.(thisOctal%temperature(subcell) > 1500.)) then
+                thisOctal%dustTypeFraction(subcell,:) = 0.d0
+             else
+                if (present(fraction)) then 
+                   thisOctal%dustTypeFraction(subcell,:) = fraction
+                else
+                   thisOctal%dustTypeFraction(subcell,:) = 1.d0
+                endif
+                thisOctal%ne(subcell) = tiny(thisOctal%ne(subcell))
+                thisOctal%ionFrac(subcell,1) = 1.d0
+                thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
+             endif
+
+          Else
+             thisOctal%dustTypeFraction(subcell,:) = 0.d0
+          end if
+       endif
+    enddo
+  end subroutine quickSublimate
 
 !   pu0X Unused routines
       
