@@ -5749,7 +5749,7 @@ end subroutine sumFluxes
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
     integer :: myRank, ierr
-
+    logical :: trigger
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal ==0 ) goto 666
@@ -5761,7 +5761,7 @@ end subroutine sumFluxes
        else
        do subcell = 1, thisOctal%maxChildren
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-
+          trigger=.false.
           if (.not.thisOctal%edgeCell(subcell)) then
              if (thisOctal%oned) then
                 nProbes = 2
@@ -5803,6 +5803,7 @@ end subroutine sumFluxes
                       thisOctal%gravboundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                       thisOctal%boundaryCondition(subcell) = &
                            neighbourOctal%boundaryCondition(neighbourSubcell)
+                      trigger = .true.
                       exit
                    endif
                 endif
@@ -5840,12 +5841,13 @@ end subroutine sumFluxes
                    thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                    thisOctal%gravboundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                    currentDirection = (-1.d0)*probe(iProbe)
+                   trigger = .true.
                    exit
                 endif
              enddo
           endif
 
-          if (thisOctal%ghostCell(subcell)) then
+          if (thisOctal%ghostCell(subcell) .and. .not. thisOctal%corner(subcell) .and. trigger) then
              select case(thisOctal%boundaryCondition(subcell))
              case(1, 4, 5, 6)
                 
