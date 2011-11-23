@@ -2168,6 +2168,30 @@ contains
     enddo
   end subroutine copyIonfractoq
 
+!copy cell ionfrac to advecting quantity q
+  recursive subroutine copyDusttoq(thisoctal, dustType)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, dustType
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyDusttoq(child, dustType)
+                exit
+             end if
+          end do
+       else
+  
+          thisoctal%q_i(subcell) = thisoctal%dustTypeFraction(subcell, dustType)
+        
+       endif
+    enddo
+  end subroutine copyDusttoq
+
 !copy cell rhoe to advecting quantity q
   recursive subroutine copyrhoetoq(thisoctal)
     type(octal), pointer   :: thisoctal
@@ -2397,6 +2421,35 @@ contains
     enddo
   end subroutine copyqtoIonfrac
 
+!copy advecting quantity q back to cell ionfrac
+  recursive subroutine copyqtoDust(thisoctal, direction, dustType)
+    type(vector) :: direction
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, dustType
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyqtoDust(child, direction, dustType)
+                exit
+             end if
+          end do
+       else
+  
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
+          thisoctal%dustTypeFraction(subcell,dustType) = thisoctal%q_i(subcell)
+          if(thisoctal%dustTypeFraction(subcell,dustType) > 1.d0) then
+             thisoctal%dustTypeFraction(subcell,dustType) = 1.d0
+          end if
+       endif
+    enddo
+  end subroutine copyqtoDust
+
 !copy advecting quantity q back to cell rhoe
   recursive subroutine copyqtorhoe(thisoctal)
     type(octal), pointer   :: thisoctal
@@ -2482,6 +2535,26 @@ contains
     enddo
 
   end subroutine advectIonFrac
+
+!copy cell ionfrac to q, advect q, copy q back to cell ionfrac
+  subroutine advectDust(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    use inputs_mod, only : nDustType
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+    integer :: i
+
+    do i = 1, nDustType
+       call copyDusttoq(grid%octreeroot, i)
+       call advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       call copyqtoDust(grid%octreeroot, direction, i)
+    enddo
+
+  end subroutine advectDust
+
 
 !copy cell rhoe to q, advect q, copy q back to cell rhoe
   subroutine advectrhoe(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
@@ -2762,6 +2835,7 @@ end subroutine sumFluxes
 !if running a radiation hydrodynamics calculation, advect the ion fraction
     if(photoionPhysics .and. hydrodynamics) then
        call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+       call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
@@ -2823,6 +2897,7 @@ end subroutine sumFluxes
 !if running a radiation hydrodynamics calculation, advect the ionization fraction
     if(photoionPhysics .and. hydrodynamics) then
        call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
+       call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
 
@@ -2882,6 +2957,7 @@ end subroutine sumFluxes
 !if running a radiation hydrodynamics calculation, advect the ionization fraction
     if(photoionPhysics .and. hydrodynamics) then
        call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
+       call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
 
@@ -2935,6 +3011,7 @@ end subroutine sumFluxes
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     if(photoionPhysics .and. hydrodynamics) then
       call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+      call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
