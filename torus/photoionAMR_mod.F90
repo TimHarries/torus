@@ -589,7 +589,7 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
        evenuparray, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance
+         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly
    !      optimizeStack, stackLimit, dStack
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     use mpi
@@ -815,21 +815,23 @@ end subroutine radiationHydro
 
 
           !H I, He I ionization edge refinement
-          k = 1
-          do i = 3, 4
-!             if(i /= 2) then
+          if(.not. hOnly) then
+             k = 1
+             do i = 3, 4
+                !             if(i /= 2) then
                 nuThresh = (grid%ion(i)%ipot)*evtoerg/hCgs
                 freq(1000+k) = nuthresh*0.99d0
-!                print *, "A ", freq(1000+k), i
+                !                print *, "A ", freq(1000+k), i
                 k = k + 1
                 freq(1000+k) = nuthresh*1.01d0
-!                print *, "B ", freq(1000+k), i
+                !                print *, "B ", freq(1000+k), i
                 k = k + 1
                 nfreq = nfreq + 2
-!                end if
-          end do
+                !                end if
+             end do
+          end if
           call sort(nFreq, Freq)
-
+          
           do i = 2, nFreq-1
              dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
           enddo
