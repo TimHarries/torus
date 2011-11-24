@@ -2,6 +2,14 @@ module atom_mod
   use constants_mod, only: cSpeed, hConst, mElectron, eCharge, pi, kConst, hCgs, kErg
   use kind_mod, only: double
   implicit none
+
+  !
+  ! Voigt profile prameters
+  !
+  real, private :: C_rad    ! Damping constant (radiation)     in [A]
+  real, private :: C_vdw    ! Damping constant (van der Waals) in [A]
+  real, private :: C_stark  ! Damping constant (Stark)         in [A]
+
   public
 
 contains
@@ -414,4 +422,61 @@ contains
     dbLambdabydT = fac1 * fac2
   end function dbLambdabyDt
 
+! Set Voigt profile parameters using values read from parameter file
+! This subroutine is called from inputs_mod.
+  subroutine setVoigtParams(C_rad_in, C_vdw_in, C_stark_in)
+
+    real, intent(in) :: C_rad_in
+    real, intent(in) :: C_vdw_in
+    real, intent(in) :: C_stark_in
+
+    C_rad   = C_rad_in
+    C_vdw   = C_vdw_in
+    C_stark = C_stark_in
+
+  end subroutine setVoigtParams
+
+    !
+    ! Damping contant in a Voigt Profile in [1/s]
+    !
+  real function bigGamma(N_HI, temperature, Ne, nu)    
+
+    real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
+    real(double), intent(in) :: temperature  ! [Kelvins]
+    real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
+    real(double), intent(in) :: nu           ! [1/s]  line center frequency 
+
+    !------------------------------------------------------------
+    ! Quadratic Stark broadening (?): 
+    ! -- Good for most lines especially hot stars (Gray's comment)
+    !------------------------------------------------------------
+    !! see Muzerolle et al. 2001 ApJ 550 944
+    !bigGamma = &
+    !     &    C_rad  &
+    !     &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
+    !     &  + C_stark*(Ne/1.e12)**0.6666  ! [Angstrom]
+    
+    
+    !----------------------------------------------------------
+    ! Linear Stark broadening:
+    ! -- Good for Hydrogen lines
+    !---------------------------------------------------------
+    ! See Luttermoser & Johnson, 1992, ApJ, 388, 579
+    !  Note: smallGamma = bigGamma/(4*pi)
+    !        e.g. For H-alpha: C_rad   = 8.16e-3 [A], 
+    !                          C_vdw   = 5.53e-3 [A], 
+    !                          C_stark = 1.47e-2 [A], 
+    
+    bigGamma = real(&
+         &    C_rad  &
+         &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
+         &  + C_stark*(Ne/1.e12))  ! [Angstrom]
+    
+    
+    
+    ! convert units 
+    bigGamma = real((bigGamma*1.e-8) * nu**2   / cSpeed)  ! [1/s]
+    !                  [cm]       * [1/s^2] / [cm/s]
+  end function bigGamma
+  
 end module atom_mod

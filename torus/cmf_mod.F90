@@ -1011,7 +1011,8 @@ contains
   end function phiProfTurb
 
   real(double) function  phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
-    use utils_mod, only : bigGamma, voigtn
+    use utils_mod, only : voigtn
+    use atom_mod, only: bigGamma
     type(MODELATOM) :: thisAtom
     real(double) :: dv
     type(OCTAL), pointer :: thisOctal

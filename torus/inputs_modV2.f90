@@ -1102,12 +1102,14 @@ contains
   end subroutine readDustPhysicsParameters
 
   subroutine readAtomicPhysicsParameters(cLine, fLine, nLines)
+    use atom_mod, only: setVoigtParams
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     integer :: i 
     character(len=20) :: keyword
     logical :: ok
+    real :: C_rad, C_vdw, C_stark
 
     call writeBanner("Atomic physics data","#",TRIVIAL)
 
@@ -1150,8 +1152,7 @@ contains
          "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
     call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
          "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
-
-
+    call setVoigtParams(C_rad, C_vdw, C_stark)
 
   end subroutine readAtomicPhysicsParameters
 

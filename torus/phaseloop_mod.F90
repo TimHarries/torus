@@ -56,7 +56,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
-  use sed_mod, only: getNumSedInc, getSedInc, sedFilename
+  use sed_mod, only: getNumSedInc, getSedInc, sedFilename, writeSpectrum
   use physics_mod, only : setupdust
   implicit none
 

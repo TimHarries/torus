@@ -624,15 +624,6 @@
   real :: tauExtra   ! foreground optical depth
   real :: tauExtra2  ! foreground optical depth
 
-
-  !
-  ! Voigt profile prameters
-  !
-  real :: C_rad    ! Damping constant (radiation)     in [A]
-  real :: C_vdw    ! Damping constant (van der Waals) in [A]
-  real :: C_stark  ! Damping constant (Stark)         in [A]
-
-
   real :: warpRadius, warpSigma, warpFracHeight, warpAngle
   logical :: hydroWarp
 

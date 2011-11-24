@@ -995,7 +995,8 @@ contains
         continuum, grid, hitCore, thin_disc_on, opaqueCore,  sampleFreq, error, &
         do_alphadisc_check, alphadisc_par, thinLine, emissOff)      
     use amr_mod, only: amr_values_along_ray
-    use utils_mod, only: bigGamma, voigtn, linearresample, linearresample_dble
+    use utils_mod, only: voigtn, linearresample, linearresample_dble
+    use atom_mod, only: bigGamma
 
     implicit none   
     real(double), intent(in)  :: I0                     ! Initial intensity

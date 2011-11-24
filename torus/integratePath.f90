@@ -1671,7 +1671,8 @@ end subroutine integratePathAMR
        usePops,  &
       error)
     
-    use utils_mod, only: bigGamma, voigtn, resampleray_tau, linearresample, linearresample_dble
+    use utils_mod, only: voigtn, resampleray_tau, linearresample, linearresample_dble
+    use atom_mod, only: bigGamma
 
     ! should we add the 'interp' argument and implement it?
     

@@ -1896,63 +1896,6 @@ contains
       enddo
     end subroutine voigt
 
-    real function bigLambda(N_HII, temperature, Ne)
-      real :: N_HII
-      real :: temperature
-      real :: Ne
-
-      real, parameter :: C_rad  = 1.
-      real, parameter :: C_vdw = 0.
-      real, parameter :: C_stark =1.
-
-! see Muzerolle et al. 2001 ApJ 550 944
-
-      bigLambda = C_rad + C_vdw*(N_HII / 1.e16)*(temperature/5000.)*0.3 + C_stark*(Ne/1.e12)**0.6666
-    end function bigLambda
-
-    !
-    ! Damping contant in a Voigt Profile in [1/s]
-    !
-    real function bigGamma(N_HI, temperature, Ne, nu)      
-      use inputs_mod,  only:  C_rad, C_vdw, C_stark
-      real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
-      real(double), intent(in) :: temperature  ! [Kelvins]
-      real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
-      real(double), intent(in) :: nu           ! [1/s]  line center frequency 
-
-      !------------------------------------------------------------
-      ! Quadratic Stark broadening (?): 
-      ! -- Good for most lines especially hot stars (Gray's comment)
-      !------------------------------------------------------------
-      !! see Muzerolle et al. 2001 ApJ 550 944
-      !bigGamma = &
-      !     &    C_rad  &
-      !     &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
-      !     &  + C_stark*(Ne/1.e12)**0.6666  ! [Angstrom]
-
-
-      !----------------------------------------------------------
-      ! Linear Stark broadening:
-      ! -- Good for Hydrogen lines
-      !---------------------------------------------------------
-      ! See Luttermoser & Johnson, 1992, ApJ, 388, 579
-      !  Note: smallGamma = bigGamma/(4*pi)
-      !        e.g. For H-alpha: C_rad   = 8.16e-3 [A], 
-      !                          C_vdw   = 5.53e-3 [A], 
-      !                          C_stark = 1.47e-2 [A], 
-
-      bigGamma = real(&
-           &    C_rad  &
-           &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
-           &  + C_stark*(Ne/1.e12))  ! [Angstrom]
-
-
-
-      ! convert units 
-      bigGamma = real((bigGamma*1.e-8) * nu**2   / cSpeed)  ! [1/s]
-      !                  [cm]       * [1/s^2] / [cm/s]
-    end function bigGamma
-
 
     !
     ! Adding extra points near the resonace zone if any. 
@@ -3176,87 +3119,6 @@ END SUBROUTINE GAUSSJ
   end subroutine insertBin
     
 
-  !
-  ! Compares the Lorentz profile and Voigt Profile
-  !
-  subroutine test_profiles()
-    implicit none
-    
-    integer, parameter :: nbin = 100
-    real(double) :: Lorentz(nbin), lambda(nbin), freq(nbin), Voigt_prof(nbin)
-    integer :: i, j  
-    integer :: nsample = 10000000
-    real(double) :: nu0, nu_rand, lam0, lam_min, lam_max, Gamma
-    real(double) :: lam_rand
-    real(double) :: c=2.99792458e10  ! cm/s
-    real(double) :: tmp, dlam, a, doppler, dnu, dv, T, N_HI, Ne
-    
-    lam_min = 6550.0d-8  ! cm
-    lam0    = 6562.8d-8  ! cm
-    lam_max = 6580.0d-8  ! cm
-    
-    nu0 = c/lam0
-    
-    ! sets up wavelength array
-    tmp = (lam_max-lam_min)/dble(nbin-1)
-    do i = 1, nbin
-       lambda(i) = lam_min + tmp*dble(i-1)
-       freq(i) = c/lambda(i)
-    end do
-    
-     
-    
-    ! take random samples
-!    Gamma = 3.48d11
-    T = 6000.0; N_HI=1.e-19; Ne=1.e-9
-    Gamma = bigGamma(N_HI, T, Ne, nu0)
-    !Gamma = 0.0d0
-
-    
-    dlam = lambda(2) - lambda(1)
-    
-    Lorentz(1:nbin) = 0.0d0
-    do i = 1, nsample
-       
-       nu_rand = random_Lorentzian_frequency(nu0, Gamma)
-       
-       lam_rand = c/nu_rand + dlam/2.0
-       
-       call locate(lambda, nbin, lam_rand, j)
-       
-       Lorentz(j) = Lorentz(j) + 1.0d0
-       
-    end do
-    
-    
-    ! No computes the Voigt profile
-    doppler = nu0/cSpeed * sqrt(2.*kErg*T/mHydrogen)
-    a = Gamma/4.0d0/3.141593d0/doppler
-    do i = 1, nbin
-       dnu = nu0 - freq(i)
-       dv = dnu/doppler
-       voigt_prof(i) = voigtn(a, dv)
-    end do
-    
-  
-    ! Renomarlize the profiles so that the max is 1
-    tmp = MAXVAL(Lorentz(1:nbin)) 
-    if (tmp/=0) Lorentz(:) = Lorentz(:)/tmp
-
-    tmp = MAXVAL(voigt_prof(1:nbin)) 
-    if (tmp/=0) voigt_prof(:) = voigt_prof(:)/tmp
-  
-    
-    ! writing the results in a file
-    
-    open(unit=66, file="lorentz_voigt.dat", status="replace")
-    do i = 1, nbin
-       write(66,*) lambda(i)*1.0d8, lorentz(i), voigt_prof(i)
-       !             [a]              
-    end do
-    close(66)
-    
-  end subroutine test_profiles
 
   real(double) function median(y, n)
     real(double) :: y(:)
@@ -3275,7 +3137,6 @@ END SUBROUTINE GAUSSJ
     endif
     deallocate(t)
   end function median
-
 
       subroutine ludcmp(a,n,np,indx,d)
         integer :: nMax,n,np,indx(:)
@@ -3793,76 +3654,6 @@ END SUBROUTINE GAUSSJ
     endif
   end subroutine convertToFnu
 
-  subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
-    use inputs_mod, only : zetacutoff
-    use constants_mod
-    implicit none
-    real(double) :: t, rho0
-    integer :: nr
-    real(double) :: r(:), rho(:)
-    real(double), allocatable :: zeta(:), phi(:)
-    real(double) ::  r0
-    real(double) :: mu, soundSpeed, mass, zinner, eThermal, eGrav, dv
-    integer :: i
-    real(double) :: dr, drhodr, d2rhodr2
-    character(len=80) :: message
-
-    zinner = 0.001d0
-    allocate(zeta(1:nr), phi(1:nr))
-    zeta = 0.d0
-    phi = 0.d0
-
-    do i = 1, nr
-      zeta(i) = log10(zinner) + (log10(zetacutoff)-log10(zinner))*dble(i-1)/dble(nr-1)
-   enddo
-   zeta(1:nr) = 10.d0**zeta(1:nr)
-   zeta(1) = 0.d0
-   soundSpeed = sqrt((kErg*t) /(mu*mHydrogen))
-
-!Thaw - Gritschneder is @ 1.6pc
-!  r0 = 0.89d0 * soundSpeed / sqrt(bigG * rho0)
-   r0 = 1.6d0*pctocm
-
-
-   do i = 1, nr
-      r(i) = zeta(i) * r0
-   enddo
-   
-   drhodr  = 0.d0
-   rho(1) = rho0
-   d2rhodr2 = (-fourPi*bigG*rho(1)**2 * (mu*mHydrogen) / (kerg * t)) 
- 
-   do i = 2, nr
-!   do i = 1, nr
-      dr = r(i) - r(i-1)
-      rho(i) = rho(i-1) + drhodr * dr
-      d2rhodr2 = (-fourPi*bigG*rho(i)**2 * (mu*mHydrogen) / (kerg * t)) - (2.d0/r(i))*drhodr + (1.d0/rho(i))*drhodr**2
-      drhodr = drhodr + d2rhodr2 * dr
-   enddo
-      
-
-   mass = 0.d0
-   eThermal = 0.d0
-   eGrav = 0.d0
-   do i = 2, nr
-!   do i = 1, nr
-      dv = fourPi*r(i)**2*(r(i)-r(i-1))
-      mass = mass + rho(i)*dv
-      eGrav = eGrav + bigG*dv*rho(i)*mass/r(i)
-      eThermal = eThermal + (dv*rho(i)/(mu*mHydrogen))*kerg*t
-   enddo
-   write(message,'(a,f5.2)') "Outer radius of Bonnor-Ebert sphere is (in pc): ",r0/pctocm
-   call writeInfo(message, TRIVIAL)
-   write(message,'(a,f7.2)') "Mass contained in Bonnor-Ebert sphere is: ",mass/msol
-   call writeInfo(message, TRIVIAL)
-   write(message,'(a,1pe12.3)') "Gravitational p.e.  contained in Bonnor-Ebert sphere is: ",eGrav
-   call writeInfo(message, TRIVIAL)
-   write(message,'(a,1pe12.3)') "Thermal energy contained in Bonnor-Ebert sphere is: ",eThermal
-   call writeInfo(message, TRIVIAL)
-   write(message,'(a,f6.3)') "Ratio of thermal enery/grav energy: ",eThermal/eGrav
-   call writeInfo(message, TRIVIAL)
- end subroutine bonnorEbertRun
-      
   subroutine regular_tri_quadint(t1,t2,t3,weights)
 
     real(double) :: t1, t2, t3

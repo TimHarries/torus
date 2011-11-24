@@ -399,7 +399,7 @@ contains
        VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
     use inputs_mod, only : photoionization, pencilbeam, lineEmission, vRot, useBias, &
          narrowBandImage, nspot, thetaSpot, phiSpot
-    use atom_mod, only: bLambda
+    use atom_mod, only: bLambda, bigGamma
     use amr_mod
     use phasematrix_mod
     use filter_set_class
