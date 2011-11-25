@@ -7472,12 +7472,13 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   subroutine calcinterptest(thisOctal,subcell)
 
+    use inputs_mod,only : amrgridsize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    type(VECTOR) :: rVec,vVec
+    type(VECTOR) :: rVec,vVec,cen
     real(double) :: eThermal, rMod
-
-    rVec = subcellCentre(thisOctal, subcell)
+    cen = VECTOR(amrgridSize/4.d0,amrgridSize/4.d0,amrgridSize/4.d0)
+    rVec = subcellCentre(thisOctal, subcell)-cen
     rmod = modulus(rvec)
     if (rMod < 3.1d6) then
        thisOctal%rho(subcell) = 1.e-12 * (1.d0-(modulus(rVec)/3.1e6))**2
@@ -7488,7 +7489,9 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     endif
     vVec = rvec
     call normalize(vVec)
-    vVec = ((1.d0/cspeed)*(rmod/3.1e6))*vVEc
+    vVec = vVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
+    call normalize(vVec)
+    vVec = ((1.d0/cspeed)*(rMod/3.1d6))*vVec
     thisOctal%velocity(subcell) = vVec
     thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
     ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)

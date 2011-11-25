@@ -2673,8 +2673,8 @@ end subroutine dumpStromgrenRadius
     integer :: nChildren
     integer :: newChildIndex
     integer :: i, iCorner, iDir, nCorner, nDir
-    integer :: nd, iSubcell, parentSubcell, topOctalSubcell
-    type(VECTOR) :: dir(8), corner(8), position, rVec, testvec, centre
+    integer :: nd, iSubcell, parentSubcell, topOctalSubcell, j
+    type(VECTOR) :: dir(8), corner(8), position, rVec, centre
     real(double) :: newMom, oldMom
     real(double) :: rhoCorner(8)
     real(double) :: rhoeCorner(8)
@@ -2688,13 +2688,12 @@ end subroutine dumpStromgrenRadius
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi, pressure
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
     real(double) :: oldMass, newMass, factor, xh, yh, zh, massFactor
-    real(double) :: oldEnergy, newEnergy
+    real(double) :: oldEnergy, newEnergy, smallDist
     logical, save :: firstTime = .true.
     logical :: debug
 
     debug = .false.
 
-    testVec = VECTOR(0.290d0, 0.d0, 0.253d0)
 !    if (inSubcell(parent, ichild, testVec)) debug = .true.
     if (parent%ndepth == maxDepthAMR) then
        if (firstTime) then
@@ -2839,8 +2838,11 @@ end subroutine dumpStromgrenRadius
     call allocateOctalAttributes(grid, thisOctal)
 
     thisOctal%boundaryCondition = parent%boundaryCondition(parentSubcell)
-    thisOctal%gamma = parent%gamma(parentSubcell)
+    thisOctal%temperature = parent%temperature(parentSubcell)
     thisOctal%iEquationOfState = parent%iEquationofState(parentSubcell)
+    thisOctal%label = 666
+    thisOctal%changed = .true.
+
 
     if (associated(parent%ionFrac)) then
        do iSubcell = 1, thisOctal%maxChildren
@@ -2850,18 +2852,20 @@ end subroutine dumpStromgrenRadius
 
     if (thisOctal%threed) then
 
+       smallDist = 0.01d0*grid%octreeRoot%subcellSize / &
+                                2.0_oc**REAL(maxDepthAmr,kind=oct)
        topOctal => thisOctal%parent
        topOctalSubcell = thisOctal%parentsubcell
        do while(topOctal%changed(topOctalSubcell))
-          topOctal => topOctal%parent
           topOctalSubcell = topOctal%parentSubcell
+          topOctal => topOctal%parent
        enddo
 
-       centre = topOctal%centre
+       centre = subcellCentre(topOctal, topOctalSubcell)
 
 
        nDir = 8
-       r = 0.1d0*grid%halfSmallestSubcell
+       r = 0.1d0*smallDist
        dir(1) = VECTOR(-r, -r, -r)
        dir(2) = VECTOR(+r, -r, -r)
        dir(3) = VECTOR(-r, -r, +r)
@@ -2873,8 +2877,9 @@ end subroutine dumpStromgrenRadius
        
        nCorner = 8
 
-       r = topOctal%subcellSize  + 0.05d0*grid%halfSmallestSubcell
-!       r = thisOctal%subcellSize + 0.05d0*grid%halfSmallestSubcell
+
+       r = topOctal%subcellSize/2.d0
+
        corner(1) = centre + VECTOR(-r, -r, -r)
        corner(2) = centre + VECTOR(+r, -r, -r)
        corner(3) = centre + VECTOR(-r, -r, +r)
@@ -2928,12 +2933,13 @@ end subroutine dumpStromgrenRadius
     if (debug) then
        write(*,*) "addnewchild with interp debug"
     endif
+
     do iCorner = 1, nCorner
        totalWeight = 0.d0
+       j = 0
        do iDir = 1, nDir
           position = corner(iCorner) + dir(iDir)
-!       position = corner(iCorner) + dir(iCorner)
-!          if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(parent, parentSubcell, position))) then
+
           if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(topOctal, topOctalSubcell, position))) then
              call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure)
 
@@ -2941,54 +2947,64 @@ end subroutine dumpStromgrenRadius
 !            weight = abs(parent%ndepth - nd)+1.d0
              totalWeight = totalWeight + weight
              rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
+             if (debug) then
+                write(*,'(a,i4,i4,3f13.4,1pe13.5)') "outside ",icorner,idir,position,rho
+             endif
+
              rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe
              rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
-             if (debug) write(*,*) "from get hydro values corner ", icorner, " rhou ", rhou
              rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
              rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
              eCorner(iCorner) = eCorner(iCorner) + weight * energy
              phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
              pressureCorner(iCorner) = pressureCorner(iCorner) + weight * pressure
+          else
+             weight = 1.d0
+             totalWeight = totalWeight + weight
+             rhoCorner(iCorner) = rhoCorner(iCorner) + topOctal%rho(topOctalSubcell)
+             if (debug) then
+                write(*,'(a,i4,i4,3f13.4,1pe13.5)') "inside  ",icorner,idir,position,topOCtal%rho(topOctalSubcell)
+             endif
+             rhoeCorner(iCorner) = rhoeCorner(iCorner) + topOctal%rhoe(topOctalSubcell)
+             rhouCorner(iCorner) = rhouCorner(iCorner) + topOctal%rhou(topOCtalSubcell)
+             rhovCorner(iCorner) = rhovCorner(iCorner) + topOctal%rhov(topOctalSubcell)
+             rhowCorner(iCorner) = rhowCorner(iCorner) + topOctal%rhow(topOctalSubcell)
+             eCorner(iCorner) = eCorner(iCorner) + topOctal%energy(topOctalSubcell)
+             phiCorner(iCorner) = phiCorner(iCorner) + topOctal%phi_i(topOctalSubcell)
+             pressureCorner(iCorner) = pressureCorner(iCorner) + topOctal%pressure_i(topOctalSubcell)
+             j = j + 1
           endif
-!          else
-!             weight = 1.d0
-!             totalWeight = totalWeight + weight
-!             rhoCorner(iCorner) = rhoCorner(iCorner) + parent%rho(parentSubcell)
-!             rhoeCorner(iCorner) = rhoeCorner(iCorner) + parent%rhoe(parentSubcell)
-!             rhouCorner(iCorner) = rhouCorner(iCorner) + parent%rhou(parentSubcell)
-!             if (debug) write(*,*) "from parent values corner ", icorner, " rhou ", parent%rhou(parentsubcell)
-!             rhovCorner(iCorner) = rhovCorner(iCorner) + parent%rhov(parentSubcell)
-!             rhowCorner(iCorner) = rhowCorner(iCorner) + parent%rhow(parentSubcell)
-!             eCorner(iCorner) = eCorner(iCorner) + parent%energy(parentSubcell)
-!             phiCorner(iCorner) = phiCorner(iCorner) + parent%phi_i(parentSubcell)
-!             pressureCorner(iCorner) = pressureCorner(iCorner) + parent%pressure_i(parentSubcell)
-!          endif
        enddo
-       rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
-       rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
-       rhouCorner(iCorner) = rhouCorner(iCorner) / totalWeight
-       rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
-       rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
-       eCorner(iCorner) = eCorner(iCorner) / totalWeight
-       phiCorner(iCorner) = phiCorner(iCorner) / totalWeight
-       pressureCorner(iCorner) = pressureCorner(iCorner) / totalWeight
+       if (j /= 1) write(*,*) "bug in interp ",j
+       if (totalWeight > 0.d0) then
+          rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
+          rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
+          rhouCorner(iCorner) = rhouCorner(iCorner) / totalWeight
+          rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
+          rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
+          eCorner(iCorner) = eCorner(iCorner) / totalWeight
+          phiCorner(iCorner) = phiCorner(iCorner) / totalWeight
+          pressureCorner(iCorner) = pressureCorner(iCorner) / totalWeight
+       else
+          rhoCorner(iCorner) = topOctal%rho(topOctalSubcell)
+          rhoeCorner(iCorner) = topOctal%rhoe(topOctalSubcell)
+          rhouCorner(iCorner) = topOctal%rhou(topOCtalSubcell)
+          rhovCorner(iCorner) = topOctal%rhov(topOctalSubcell)
+          rhowCorner(iCorner) = topOctal%rhow(topOctalSubcell)
+          eCorner(iCorner) = topOctal%energy(topOctalSubcell)
+          phiCorner(iCorner) = topOctal%phi_i(topOctalSubcell)
+          pressureCorner(iCorner) = topOctal%pressure_i(topOctalSubcell)
+       endif
     enddo
-!    x1 = thisOctal%xMin
-!    x2 = thisOctal%xMax
-!    y1 = thisOctal%yMin
-!    y2 = thisOctal%yMax
-!    z1 = thisOctal%zMin
-!    z2 = thisOctal%zMax
 
-    x1 = topOctal%xMin
-    x2 = topOctal%xMax
-    y1 = topOctal%yMin
-    y2 = topOctal%yMax
-    z1 = topOctal%zMin
-    z2 = topOctal%zMax
+    x1 = centre%x - topOctal%subcellSize/2.d0
+    x2 = centre%x + topOctal%subcellSize/2.d0
+    y1 = centre%y - topOctal%subcellSize/2.d0
+    y2 = centre%y + topOctal%subcellSize/2.d0
+    z1 = centre%z - topOctal%subcellSize/2.d0
+    z2 = centre%z + topOctal%subcellSize/2.d0
 
 
-    thisOctal%changed = .true.
 
     do iSubcell = 1, thisOctal%maxChildren
 
@@ -3000,6 +3016,7 @@ end subroutine dumpStromgrenRadius
           u = (x - x1)/(x2 - x1)
           v = (y - y1)/(y2 - y1)
           w = (z - z1)/(z2 - z1)
+
           thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * rhoCorner(1) + &
                                     (       u) * (1.d0 - v) * (1.d0 - w) * rhoCorner(2) + &
                                     (1.d0 - u) * (1.d0 - v) * (       w) * rhoCorner(3) + &
@@ -3054,7 +3071,7 @@ end subroutine dumpStromgrenRadius
                                     (1.d0 - u) * (       v) * (       w) * eCorner(7) + &
                                     (       u) * (       v) * (       w) * eCorner(8) 
 
-          thisOctal%phi_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * phiCorner(1) + &
+          thisOctal%phi_gas(iSubcell) = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * phiCorner(1) + &
                                     (       u) * (1.d0 - v) * (1.d0 - w) * phiCorner(2) + &
                                     (1.d0 - u) * (1.d0 - v) * (       w) * phiCorner(3) + &
                                     (       u) * (1.d0 - v) * (       w) * phiCorner(4) + &
@@ -3095,8 +3112,6 @@ end subroutine dumpStromgrenRadius
                (       u) * (1.d0 - v) * rhouCorner(2) + &
                (1.d0 - u) * (       v) * rhouCorner(3) + &
                (       u) * (       v) * rhouCorner(4)
-          if (debug) write(*,*) "interped rhou ",thisOctal%rhou(iSubcell), " u ", u, " v ",v, &
-               " corners ",rhoucorner(1:4)
           
           thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
                (       u) * (1.d0 - v) * rhovCorner(2) + &
@@ -3114,7 +3129,7 @@ end subroutine dumpStromgrenRadius
                (       u) * (       v) * eCorner(4)
 
 
-          thisOctal%phi_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * phiCorner(1) + &
+          thisOctal%phi_gas(iSubcell) = (1.d0 - u) * (1.d0 - v) * phiCorner(1) + &
                (       u) * (1.d0 - v) * phiCorner(2) + &
                (1.d0 - u) * (       v) * phiCorner(3) + &
                (       u) * (       v) * phiCorner(4)
@@ -3186,7 +3201,6 @@ end subroutine dumpStromgrenRadius
        
        massfactor = oldMass / newMass
        thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * massfactor
-       write(*,*) "rescaled mass by factor ",massfactor
        
     if ( associated (thisOctal%nh) ) thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
 
@@ -3222,22 +3236,25 @@ end subroutine dumpStromgrenRadius
     factor = oldEnergy/newEnergy
     thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
 
+!    thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * massFactor
+!    thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * massFactor
+!    thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * massFactor
 
-!    ! momentum (u)
+
+!!    ! momentum (u)
 
     oldMom = parent%rhou(parentSubcell)
     newMom = SUM(thisOctal%rhou(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    if (newMom > TINY(newMom)) then
+    if (abs(newMom) > TINY(newMom)) then
        factor = oldMom / newMom
        thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
-       write(*,*) "Rescaled rhou by factor ",factor
     endif
 !
 !    ! momentum (v)
 !
     oldMom = parent%rhov(parentSubcell)
     newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    if (newMom > TINY(newMOM)) then
+    if (abs(newMom) > TINY(newMOM)) then
        factor = oldMom / newMom
        thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
     endif
@@ -3246,12 +3263,12 @@ end subroutine dumpStromgrenRadius
 
     oldMom = parent%rhow(parentSubcell)
     newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
-    if (newMom < TINY(newMom)) then
+    if (abs(newMom) > TINY(newMom)) then
        factor = oldMom / newMom
        thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
     endif
-
-
+!
+!
     if (PRESENT(constantGravity)) then
        if (constantGravity) then
           do i = 1, thisOctal%maxChildren
@@ -3328,10 +3345,9 @@ end subroutine dumpStromgrenRadius
        topOctal => thisOctal
        topOctalSubcell = subcell
        do while(topOctal%changed(topOctalSubcell))
-          topOctal => topOctal%parent
           topOctalSubcell = topOctal%parentSubcell
+          topOctal => topOctal%parent
        enddo
-
        rVec = subcellCentre(topOctal, topOctalsubcell)
        rho = topOctal%rho(topOctalsubcell)
        rhoe = topOctal%rhoe(topOctalsubcell)
@@ -3340,14 +3356,14 @@ end subroutine dumpStromgrenRadius
        rhow = topOctal%rhow(topOctalsubcell)
        nd = topOctal%nDepth
        energy = topOctal%energy(topOctalsubcell)
-       phi = topOctal%phi_i(topOctalsubcell)
+       phi = topOctal%phi_gas(topOctalsubcell)
        x = rVec%x
        y = rVec%y
        z = rVec%z
        pressure = topOctal%pressure_i(topOctalsubcell)
 
     else
-!       print *, "RANK ", myRankGlobal, "PREPARING TO SEND"
+
        iThread = thisOctal%mpiThread(subcell)
        loc(1) = position%x
        loc(2) = position%y
@@ -3424,8 +3440,8 @@ end subroutine dumpStromgrenRadius
           topOctal => thisOctal
           topOctalSubcell = subcell
           do while(topOctal%changed(topOctalSubcell))
-             topOctal => topOctal%parent
              topOctalSubcell = topOctal%parentSubcell
+             topOctal => topOctal%parent
           enddo
 
           rVec = subcellCentre(topOctal, topOctalsubcell)
@@ -3436,7 +3452,7 @@ end subroutine dumpStromgrenRadius
           tempStorage(5) = topOctal%rhov(topOctalsubcell)             
           tempStorage(6) = topOctal%rhow(topOctalsubcell)        
           tempStorage(7) = topOctal%energy(topOctalsubcell)
-          tempStorage(8) = topOctal%phi_i(topOctalsubcell)
+          tempStorage(8) = topOctal%phi_gas(topOctalsubcell)
           tempStorage(9) = rVec%x
           tempStorage(10) = rVec%y
           tempStorage(11) = rVec%z

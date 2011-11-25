@@ -3668,17 +3668,18 @@ end subroutine sumFluxes
           if(doRefine) then
              call writeInfo("Initial refine", TRIVIAL)    
              if (myrank == 1) call tune(6, "Initial refine")
+             call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrTolerance, evenuparray)
-             call writeVtkFile(grid, "afterinitrefine.vtk", &
-                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-                  "u_i          ", &
-                  "hydrovelocity", &
-                  "rhou         ", &
-                  "rhov         ", &
-                  "rhow         ", &
-                  "phi          ", &
-                  "pressure     ", &
-                  "q_i          "/))
+!             call writeVtkFile(grid, "afterinitrefine.vtk", &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
 
              call writeInfo("Evening up grid", TRIVIAL)    
           end if
@@ -3704,16 +3705,16 @@ end subroutine sumFluxes
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrank == 1) call tune(6, "Initial refine")
-             call writeVtkFile(grid, "afterinitevenup.vtk", &
-                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-                  "u_i          ", &
-                  "hydrovelocity", &
-                  "rhou         ", &
-                  "rhov         ", &
-                  "rhow         ", &
-                  "phi          ", &
-                  "pressure     ", &
-                  "q_i          "/))
+!             call writeVtkFile(grid, "afterinitevenup.vtk", &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
           end if
        end if
 
@@ -3737,9 +3738,9 @@ end subroutine sumFluxes
 !initial gravity 
              if (myrank == 1) call tune(6, "Self-Gravity")
              if (myrank == 1) write(*,*) "Doing multigrid self gravity"
-             call writeVtkFile(grid, "beforeselfgrav.vtk", &
-                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-                  ,"phi          " /))
+!             call writeVtkFile(grid, "beforeselfgrav.vtk", &
+!                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+!                  ,"phi          " /))
              
              call zeroPhiGas(grid%octreeRoot)
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
@@ -3757,9 +3758,9 @@ end subroutine sumFluxes
              endif
              call sumGasStarGravity(grid%octreeRoot)
 
-             call writeVtkFile(grid, "afterselfgrav.vtk", &
-                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
-                  "phigas       ","phi          "/))
+!             call writeVtkFile(grid, "afterselfgrav.vtk", &
+!                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
+!                  "phigas       ","phi          "/))
              if (myrank == 1) write(*,*) "Done"
              if (myrank == 1) call tune(6, "Self-Gravity")
           endif          
@@ -3854,6 +3855,7 @@ end subroutine sumFluxes
              if (iUnrefine == 5) then
                 if (myrank == 1)call tune(6, "Unrefine grid")
                ! nUnrefine = 0
+                call setAllUnchanged(grid%octreeRoot)
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
                 call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
@@ -3865,22 +3867,35 @@ end subroutine sumFluxes
 !refine the grid where necessary
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
+!             call writeVtkFile(grid, "beforerefine.vtk", &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
+
              call writeInfo("Refining grid part 2", TRIVIAL)    
+             call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrTolerance, evenuparray)
              call writeInfo("Done the refine part", TRIVIAL)                 
              call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
              call writeInfo("Done the even up part", TRIVIAL)    
 
-             call writeVtkFile(grid, "afterrefine.vtk", &
-                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-                  "u_i          ", &
-                  "hydrovelocity", &
-                  "rhou         ", &
-                  "rhov         ", &
-                  "rhow         ", &
-                  "phi          ", &
-                  "pressure     ", &
-                  "q_i          "/))
+!             call writeVtkFile(grid, "afterrefine.vtk", &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "phigas       ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
 
              if (myrank == 1) call tune(6, "Loop refine")
              
@@ -3890,7 +3905,15 @@ end subroutine sumFluxes
           end if
        endif
 
-       if(doSelfGrav .and. myRankGlobal /= 0 .and. grid%geometry == "gravtest") then
+       if (doSelfGrav) then
+          call zeroSourcepotential(grid%octreeRoot)
+          if (globalnSource > 0) then
+             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+          endif
+          call sumGasStarGravity(grid%octreeRoot)
+       endif
+
+       if (doSelfGrav .and. myRankGlobal /= 0 .and. grid%geometry == "gravtest") then
 
           call zeroPhiGas(grid%octreeRoot)
           call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
@@ -6062,7 +6085,7 @@ end subroutine sumFluxes
     integer :: evenuparray(nThreadsGlobal-1), itemp
     integer :: endloop, nworking
     integer, allocatable ::  safe(:, :)
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
     globalConverged = .false.
     if (myrankGlobal == 0) goto 666
@@ -6101,7 +6124,6 @@ end subroutine sumFluxes
     end do
 
     itemp = 0
-    call setAllUnchanged(grid%octreeRoot)
     do
        globalConverged(myRankGlobal) = .true.
 !       do iThread = 1, nThreadsGlobal-1
@@ -6120,7 +6142,7 @@ end subroutine sumFluxes
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        itemp = itemp+1
-       write(plotfile,"(a,i5.5,a)") "afterefine",itemp,".vtk"
+!       write(plotfile,"(a,i5.5,a)") "afterefine",itemp,".vtk"
 !             call writeVtkFile(grid, plotfile, &
 !                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
 !                  "u_i          ", &
@@ -6130,6 +6152,7 @@ end subroutine sumFluxes
 !                  "rhow         ", &
 !                  "phi          ", &
 !                  "pressure     ", &
+!                  "mpithread    ", &
 !                  "q_i          "/))
 
        if (ALL(tConverged(1:nthreadsGlobal-1))) exit
@@ -6177,6 +6200,9 @@ end subroutine sumFluxes
     if(photoionization .and. hydrodynamics) then 
        refineongradient = .true.
     end if
+
+
+    refineONGradient = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    if(refineonionization .and. .not. photoionization) then
       refineOnIonization = .false.
@@ -6354,10 +6380,10 @@ end subroutine sumFluxes
        massTol = (1.d0/64.d0)*rhoThreshold*1.d30*thisOctal%subcellSize**3
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR))  then
-          write(*,*) "splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
-          write(*,*) "mass tol ",masstol
+!          write(*,*) "splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+!          write(*,*) "mass tol ",masstol
 
-
+!          write(*,*) myrankglobal, " calling interp after split on jeans"
           call addNewChildWithInterp(thisOctal, subcell, grid)
           converged = .false.
 !        print *, "split E ", thisOctal%nDepth
@@ -7044,7 +7070,6 @@ end subroutine refineGridGeneric2
        end do
     end do
 
-    call setAllUnchanged(grid%octreeRoot)
     do while(.not.allThreadsConverged)
        localChanged = .false.
 
