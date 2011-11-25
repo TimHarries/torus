@@ -9,7 +9,7 @@ module image_mod
   implicit none
 
   public :: initImage, freeImage, addPhotonToPhotoionImage, addPhotonToImage, &
-       writeFitsImage, createLucyImage, collateImages, writeFalseColourPPM
+       writeFitsImage, createLucyImage, writeFalseColourPPM
 
   private :: pixelLocate, writePPMAimage, imagePercentile, &
        ConvertArrayToMJanskiesPerStr, dumpLine, dumpPointTestData
