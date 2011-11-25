@@ -14,8 +14,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use inputs_mod 
   use phasematrix_mod
   use disc_class
-  use image_mod, only: IMAGETYPE, PVIMAGETYPE, initImage, initPVImage, addPhotonToImage, addphotontopvimage, &
-       createlucyimage, freeimage, freepvimage, smoothpvimage, writefalsecolourppm
+  use image_mod, only: IMAGETYPE, initImage, addPhotonToImage, &
+       createlucyimage, freeimage, writefalsecolourppm
   use image_utils_mod
 #ifdef USECFITSIO
   use image_mod, only : writeFitsImage
@@ -114,7 +114,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(oct) :: t1, t2, t3
   integer(kind=bigint) :: nContPhotons
   type(VECTOR) :: rHat
-  type(VECTOR) :: slitPosition
   real(double) :: tau_bnd
   real :: dlambda, thisTau
   real(double) ::thisTauDble
@@ -161,7 +160,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   type(IMAGETYPE) :: o6image(1)
   type(IMAGETYPE), allocatable :: obsImageSet(:)
-  type(PVIMAGETYPE), allocatable :: pvimage(:)
 
   real :: r, r1, r2
   real(oct) :: t
@@ -212,7 +210,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer(kind=bigInt) :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
   integer(kind=bigint) :: i
-  integer :: iSlit, istep, ispline 
+  integer :: istep, ispline 
   type(VECTOR) :: viewVec, outVec, thisVec
   type(VECTOR) :: amrGridCentre
 
@@ -291,10 +289,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer :: nLower, nUpper
   logical :: starOff=.false. 
   real :: logMassLossRate
-  real :: slitPA, slitWidth, slitLength
-  real :: vfwhm=1.0, pfwhm=1.0
-  type(VECTOR) :: slitPosition1=VECTOR(1.0,1.0,1.0), slitPosition2=VECTOR(1.0,1.0,1.0)
-  integer :: nSlit=1, np
   real :: usePhotonWavelength
   logical :: forcedWavelength=.false.
   character(len=80) :: opacityDataFile
@@ -311,7 +305,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   logical :: writeFileFormatted ! whether 'grid' output file is formatted
   logical :: sphericityTest=.false.        ! sphericity test
   logical :: fillRayleighOpacity =.false.  ! previously: 'fillRayleigh'
-  logical :: doPVimage=.false.             ! previously: 'pvimage'
   logical :: noPhaseUpdate=.false.  ! disable updating AMR grid at each phase
 !-------------------------------------------------------------------------------
 
@@ -386,10 +379,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   sourceSpectrum = 1.
   sourceSpectrum2 = 1.
-
-  if (dopvimage) then
-     allocate(pvimage(1:nSlit))
-  endif
 
   amrGridCentre = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
@@ -1263,28 +1252,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         end do
         
      endif
-
-
-
-
-
-     if (dopvImage) then
-
-        if (nSlit  > 1) then
-           rHat = slitPosition2 - slitPosition1
-           do iSlit = 1, nSlit
-              slitPosition = slitPosition1 + (dble(iSlit-1)/dble(nSlit-1))*(slitPosition2 - slitPosition1)
-              pvImage(iSlit) = initPVimage(nv, vMin, vMax, np, -slitLength/2., slitLength/2., &
-                   slitPosition, slitPA, slitWidth, slitLength)
-           enddo
-        else
-           slitPosition = slitPosition1
-           pvImage(1) = initPVimage(200, vMin, vMax, 200, -slitLength/2., slitLength/2., &
-                slitPosition, slitPA, slitWidth, slitLength)
-        endif
-           
-     endif
-
      
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
@@ -1554,36 +1521,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
   endif ! (stokesimage)
 
- if (doPvimage) then
-   do iSlit = 1, nSlit
-     allocate(tempDoubleArray(SIZE(pvImage(i)%pixel)))
-     allocate(tempDoubleArray2(SIZE(pvImage(i)%pixel)))
-
-     tempDoubleArray = reshape(pvImage(i)%pixel,(/SIZE(tempDoubleArray)/))
-     tempDoubleArray2 = 0.0_db
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     pvImage(i)%pixel = reshape(tempDoubleArray2,SHAPE(pvImage(i)%pixel))
-
-     deallocate(tempDoubleArray)
-     deallocate(tempDoubleArray2)
-
-     allocate(tempRealArray(SIZE(pvImage(i)%vAxis)))
-     tempRealArray = 0.0
-     call MPI_REDUCE(pvImage(i)%vAxis,tempRealArray,SIZE(pvImage(i)%vAxis),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     pvImage(i)%vAxis = tempRealArray
-     deallocate(tempRealArray)
-
-     allocate(tempRealArray(SIZE(pvImage(i)%pAxis)))
-     tempRealArray = 0.0
-     call MPI_REDUCE(pvImage(i)%pAxis,tempRealArray,SIZE(pvImage(i)%pAxis),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     pvImage(i)%pAxis = tempRealArray
-     deallocate(tempRealArray)
-
-   end do ! iSlit 
-endif ! (doPvimage)
 #endif
 
  if (myRankIsZero) then 
@@ -1727,14 +1664,6 @@ endif ! (doPvimage)
 
      endif
 
-     if (doPvimage) then
-        do iSlit = 1, nSlit
-           write(specFile,'(a,a,i3.3,a,i2.2)') trim(outfile),"_pvimage",iPhase,"_slit_",iSlit
-
-           call smoothPVimage(pvImage(iSlit), vfwhm/2.35, pfwhm/2.35)
-
-        enddo
-     endif
   end if ! (myRankIsZero)
 
      if (stokesImage) then
@@ -1742,12 +1671,6 @@ endif ! (doPvimage)
            call freeImage(obsImageSet(i))
         end do
      end if
-
-     if (doPVimage) then
-        do iSlit = 1, nSlit
-           call freePVimage(pvImage(iSlit))
-        enddo
-     endif
 
 777  continue
      end do incLoop ! end of multiple inclination loop
@@ -1844,7 +1767,7 @@ CONTAINS
 !$OMP PRIVATE(ilambda, ok) &
 !$OMP PRIVATE(hitCore, junk, thisLam, j, obs_weight, thisVel) &
 !$OMP PRIVATE(i1, i2, i3, t1, t2, t3, vray, vovercsqr, fac, observedLambda) &
-!$OMP PRIVATE(t, rHat, islit, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
+!$OMP PRIVATE(t, rHat, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
 !$OMP PRIVATE(escaped, currentScat, absorbed, dlambda, thisChi, thisSca) &
 !$OMP PRIVATE(albedo, tempPhoton, redRegion, thrustar, ramanWeight) &
 !$OMP PRIVATE(outPhoton,intPathError, nTau, escProb, spotPhoton) &
@@ -1860,8 +1783,8 @@ CONTAINS
 !$OMP SHARED(weightContPhoton, outVec)&
 !$OMP SHARED(opaqueCore, thinLine, coolStarPosition) &
 !$OMP SHARED(viewVec, o6xArray, rotationAxis, o6image, screened) &
-!$OMP SHARED(stokesImage, obsImageSet, doPvimage) &
-!$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
+!$OMP SHARED(stokesImage, obsImageSet) &
+!$OMP SHARED(gridDistance, meanr0_line, wtot0_line) &
 !$OMP SHARED(sourceSpectrum, sourceSpectrum2, meanr0_cont,wtot0_cont, mie, noScattering) &
 !$OMP SHARED(miePhase, nSpot, chanceSpot, fSpot, gridUsesAMR) &
 !$OMP SHARED(useInterp, photLine ) &
@@ -2182,12 +2105,6 @@ CONTAINS
                          thisVel, obs_weight, filters, grid%octreeRoot%centre)
 
                  endif
-                 if (doPVimage) then
-                    do iSlit = 1, nSlit
-                       call addPhotontoPVimage(pvImage(iSlit), thisPhoton, viewVec, rotationAxis, thisVel, &
-                                 obs_weight, gridDistance)
-                    enddo
-                 endif
               endif
               
               if (flatSpec.and.(.not.hitCore)) then
@@ -2213,12 +2130,6 @@ CONTAINS
                     if (stokesImage) then
                        call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, &
                             thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
-                    endif
-                    if (dopvImage) then
-                       do iSlit = 1, nSlit
-                          call addPhotontoPVimage(pvImage(iSlit), thisPhoton, viewVec,  rotationAxis,thisVel, &
-                            obs_weight, gridDistance)
-                       enddo
                     endif
 
                  else  ! contunuum photon
@@ -2288,12 +2199,6 @@ CONTAINS
                           call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImageLocal, &
                                thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
                                grid%lamArray(iLambda))
-                       endif
-                       if (dopvImage) then
-                          do iSlit = 1, nSlit
-                             call addPhotontoPVimage(pvImage(islit), obsPhoton, viewVec,  rotationAxis, thisVel, &
-                               obs_weight, gridDistance)
-                          enddo
                        endif
 
                     enddo
@@ -2458,12 +2363,6 @@ CONTAINS
                        thisVel = 0. ! no velocity for dust continuum emission
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
                             obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
-                    endif
-                    if (dopvImage) then
-                       do iSlit = 1, nSlit
-                          call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis,thisVel, &
-                               obs_weight, gridDistance)
-                       enddo
                     endif
                  enddo
               endif
@@ -2727,12 +2626,6 @@ CONTAINS
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
                             obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif
-                    if (dopvImage) then
-                       do iSlit = 1, nSlit
-                          call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis,thisVel, &
-                            obs_weight, gridDistance)
-                       enddo
-                    endif
 
                     if (doRaman) then
                        thisPhoton%stokes = thisPhoton%stokes*(1.-ramanWeight)
@@ -2764,13 +2657,6 @@ CONTAINS
                           call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
                                obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                        endif
-                       if (dopvImage) then
-                          do iSlit = 1 , nSlit
-                             call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis, thisVel, &
-                               obs_weight, gridDistance)
-                          enddo
-                       endif
-
 
                     else
 
@@ -2862,13 +2748,6 @@ CONTAINS
                                   obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
                                   grid%lamArray(iLambda))
                           endif
-                          if (dopvImage) then
-                             do iSlit = 1, nSlit
-                                call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis, thisVel, &
-                                  obs_weight, gridDistance)
-                             enddo
-                          endif
-
 
                        enddo
                     endif
