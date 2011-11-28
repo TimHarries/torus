@@ -7832,7 +7832,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     r = modulus(rVec)*gridDistanceScale
     soundSpeed = sqrt(kerg*10.d0/(2.33d0 * mHydrogen))
     rBondi = bigG*sourcemass(1)/ soundSpeed**2
-    x = max(r / rBondi, 0.5d0)
+    x = (r / rBondi)
     rhoInfty = 1.d-25
     z = alpha(x)
     y = lambda / (x**2 * z)
