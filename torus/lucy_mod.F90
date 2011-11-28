@@ -456,7 +456,6 @@ contains
                    call randomSource(source, nSource, iSource, packetWeight)
                    call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
                    packetWeight = packetWeight * weight
-                   write(*,*) "pos ",rvec,packetweight
                    thermalphoton = .true.
                    directPhoton = .true.
                    call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
