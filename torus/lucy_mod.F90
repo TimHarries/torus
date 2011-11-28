@@ -438,6 +438,12 @@ contains
 
                  call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
+                 if (nSource > 0) then
+                    call randomSource(source, nSource, &
+                         i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
+                 endif
+
+
                 !$OMP DO SCHEDULE(DYNAMIC,10)
                 photonloop: do iMonte = imonte_beg, imonte_end
 !                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
@@ -450,6 +456,7 @@ contains
                    call randomSource(source, nSource, iSource, packetWeight)
                    call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
                    packetWeight = packetWeight * weight
+                   write(*,*) "pos ",rvec,packetweight
                    thermalphoton = .true.
                    directPhoton = .true.
                    call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &

@@ -221,6 +221,8 @@ module source_mod
 ! Wavelength used when initialize is present and nLambda=1
       real, optional    :: lambdaMono
 
+!$OMP THREADPRIVATE (prob, weightArray)
+
       if (nSource == 1) then
          iSource = 1
          weight = 1.d0
@@ -268,9 +270,9 @@ module source_mod
                prob(1:nSource) = prob(1:nSource) - prob(1)
                prob(1:nSource) = prob(1:nSource) / prob(nSource)
             endif
-            if (writeoutput) write(*,*) "prob ",prob(1:nSource)
-            if (writeoutput) write(*,*) "source%prob ",source(1:nSource)%prob
-            if (writeoutput) write(*,*) "weight ",weightArray(1:nSource)
+!            if (writeoutput) write(*,*) "prob ",prob(1:nSource)
+!            if (writeoutput) write(*,*) "source%prob ",source(1:nSource)%prob
+!            if (writeoutput) write(*,*) "weight ",weightArray(1:nSource)
          end if
 	 
          if (nSource > 2) then
