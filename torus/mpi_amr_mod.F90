@@ -2840,6 +2840,7 @@ end subroutine dumpStromgrenRadius
     thisOctal%boundaryCondition = parent%boundaryCondition(parentSubcell)
     thisOctal%temperature = parent%temperature(parentSubcell)
     thisOctal%iEquationOfState = parent%iEquationofState(parentSubcell)
+    thisOctal%gamma = parent%gamma(parentSubcell)
     thisOctal%label = 666
     thisOctal%changed = .true.
 
@@ -2850,16 +2851,17 @@ end subroutine dumpStromgrenRadius
        enddo
     endif
 
+    topOctal => thisOctal%parent
+    topOctalSubcell = thisOctal%parentsubcell
+    do while(topOctal%changed(topOctalSubcell))
+       topOctalSubcell = topOctal%parentSubcell
+       topOctal => topOctal%parent
+    enddo
+
     if (thisOctal%threed) then
 
        smallDist = 0.01d0*grid%octreeRoot%subcellSize / &
                                 2.0_oc**REAL(maxDepthAmr,kind=oct)
-       topOctal => thisOctal%parent
-       topOctalSubcell = thisOctal%parentsubcell
-       do while(topOctal%changed(topOctalSubcell))
-          topOctalSubcell = topOctal%parentSubcell
-          topOctal => topOctal%parent
-       enddo
 
        centre = subcellCentre(topOctal, topOctalSubcell)
 
@@ -2911,11 +2913,12 @@ end subroutine dumpStromgrenRadius
        r = 0.1d0*grid%halfSmallestSubcell
        dir(1) = VECTOR(-r, 0.d0, 0.d0)
        dir(2) = VECTOR(+r, 0.d0, 0.d0)
+       centre = subcellCentre(topOctal, topOctalSubcell)
        
        nCorner = 2
-       r = thisOctal%subcellSize
-       corner(1) = thisOctal%centre + VECTOR(-r, 0.d0, 0.d0)
-       corner(2) = thisOCtal%centre + VECTOR(+r, 0.d0, 0.d0)
+       r = topOctal%subcellSize/2.d0
+       corner(1) = centre + VECTOR(-r, 0.d0, 0.d0)
+       corner(2) = centre + VECTOR(+r, 0.d0, 0.d0)
     endif
 
 
@@ -2975,7 +2978,6 @@ end subroutine dumpStromgrenRadius
              j = j + 1
           endif
        enddo
-       if (j /= 1) write(*,*) "bug in interp ",j
        if (totalWeight > 0.d0) then
           rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
           rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
@@ -3216,7 +3218,7 @@ end subroutine dumpStromgrenRadius
     endif
 
     oldEnergy = parent%rhoe(parentSubcell) * dv !cellVolume(parent, parentSubcell)
-!    oldEnergy = parent%rhoe(parentSubcell) * cellVolume(parent, parentSubcell)
+!!    oldEnergy = parent%rhoe(parentSubcell) * cellVolume(parent, parentSubcell)
 
     newEnergy = 0.d0
 
@@ -3236,12 +3238,13 @@ end subroutine dumpStromgrenRadius
     factor = oldEnergy/newEnergy
     thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
 
+!
 !    thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * massFactor
 !    thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * massFactor
 !    thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * massFactor
-
-
-!!    ! momentum (u)
+!
+!
+!!!    ! momentum (u)
 
     oldMom = parent%rhou(parentSubcell)
     newMom = SUM(thisOctal%rhou(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
@@ -3267,7 +3270,7 @@ end subroutine dumpStromgrenRadius
        factor = oldMom / newMom
        thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
     endif
-!
+
 !
     if (PRESENT(constantGravity)) then
        if (constantGravity) then

@@ -1341,19 +1341,20 @@ contains
     integer :: nDimensions
     real(double) :: m2, m4, Sp, fac
     
+    if(thisOctal%threed) then
+       nDimensions = 3
+    else if (thisOctal%twoD) then
+       nDimensions = 2
+    else
+       nDimensions = 1
+    end if
+    allocate(p(nDimensions*4))
+    allocate(xArray(nDimensions*4))
+    refineShock = .false.
     if(.not. thisOctal%ghostcell(subcell)) then
        refineShock = .false.
        p = 0.d0
        index = 1
-       if(thisOctal%threed) then
-          nDimensions = 3
-       else if (thisOctal%twoD) then
-          nDimensions = 2
-       else
-          nDimensions = 1
-       end if
-       allocate(p(nDimensions*4))
-       allocate(xArray(nDimensions*4))
 
        do i = 1, nDimensions
           if(i == 1) then
@@ -1478,6 +1479,7 @@ contains
        end if
     end do
  end if
+ deallocate(p, xArray)
 
   end function refineShock
 
@@ -3432,6 +3434,7 @@ end subroutine sumFluxes
 
 !refine the grid if necessary       
        if(dorefine) then
+          call setAllUnchanged(grid%octreeRoot)
           call refineGridGeneric(grid, amrTolerance, evenuparray)
        call writeInfo("Evening up grid", TRIVIAL)    
        end if
@@ -3513,6 +3516,7 @@ end subroutine sumFluxes
           end if
  
 !ensure all celss are within one level of refinement of one another
+          call setAllUnchanged(grid%octreeRoot)
           call evenUpGridMPI(grid, .true., dorefine, evenuparray)
           if (myrank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3520,6 +3524,7 @@ end subroutine sumFluxes
 
 !refine the grid where necessary and ensure that all cells are within one level of refinement of one another
           if(dorefine) then
+             call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrTolerance, evenuparray)
           end if
           call evenUpGridMPI(grid, .true., dorefine, evenuparray)
@@ -3532,7 +3537,7 @@ end subroutine sumFluxes
 
 !dump simulation data if dump time is reached
        if (currentTime .gt. nextDumpTime) then
-          write(plotfile,'(a,i4.4,a)') "sod.dat"
+          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
@@ -6202,8 +6207,6 @@ end subroutine sumFluxes
     end if
 
 
-    refineONGradient = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
    if(refineonionization .and. .not. photoionization) then
       refineOnIonization = .false.
    end if
@@ -6307,16 +6310,16 @@ end subroutine sumFluxes
                    endif
                 end if
 
-                if(captureshocks) then
-                   if(refineShock(thisOctal, subcell, grid)) then
-                      split = .true.
-                   end if
-                end if
+!                if(captureshocks) then
+!                   if(refineShock(thisOctal, subcell, grid)) then
+!                      split = .true.
+!                   end if
+!                end if
 
                 if (split) then
 
  
-                   if ((thisOctal%nDepth < maxDepthAMR).and.(thisOctal%nDepth <= nd)) then
+                   if ((thisOctal%nDepth < maxDepthAMR)) then!.and.(thisOctal%nDepth <= nd)) then
                       call addNewChildWithInterp(thisOctal, subcell, grid)
                       converged = .false.
 !                      print *, "split A ", thisOctal%nDepth
@@ -9735,6 +9738,13 @@ end subroutine minMaxDepth
              eGrav = cellMass * thisOctal%phi_i(subcell)
              eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
+
+             if (eKinetic + eThermal + eGrav > 0.d0) then
+                write(*,*) "Cell in accretion radius but not bound"
+                write(*,*) "eGrav ",eGrav
+                write(*,*) "ethermal ",eThermal
+                write(*,*) "eKinetic ",eKinetic
+             endif
              if (eKinetic + eThermal + eGrav < 0.d0) then
                 if (rhoLocal > rhoThreshold) then
                    
