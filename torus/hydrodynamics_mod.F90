@@ -3537,7 +3537,7 @@ end subroutine sumFluxes
 
 !dump simulation data if dump time is reached
        if (currentTime .gt. nextDumpTime) then
-          write(plotfile,'(a,i4.4,a)') "sod",it,".dat"
+          write(plotfile,'(a,i4.4,a)') "sod.dat"
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           nextDumpTime = nextDumpTime + tDump
