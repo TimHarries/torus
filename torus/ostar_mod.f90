@@ -9,7 +9,7 @@ module ostar_mod
 contains
 
   function spiralWindDensity(rVec, grid) result (rhoOut)
-    use inputs_mod
+    use inputs_mod, only: vTerm, v0, beta, mdot
     real :: v, r, rhoOut
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec

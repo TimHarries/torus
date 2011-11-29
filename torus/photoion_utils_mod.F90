@@ -161,6 +161,7 @@ end function rateFit
 
 !-- Awaiting comments                               (P)
 subroutine createSahaMilneTables(hTable, heTable)
+  use phfit_mod, only : phfit2
   type(SAHAMILNETABLE), intent(out) :: hTable, heTable
   real(double) :: nu0_h, nu0_he, nufinal_h, nufinal_he
   integer :: nFreq, nTemp

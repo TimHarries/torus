@@ -59,9 +59,6 @@
   logical :: monochromatic     !Use a monochromatic radiation field
   logical :: quickThermal      !Use a simplified thermal balance calculation
 
-! Abundances used in ion_mod
-  real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
-
   ! Parameters  specific to domain decomposed photoionisation 
 
   !Stack optimization

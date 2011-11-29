@@ -24,7 +24,7 @@ contains
 #endif
 #ifdef PHOTOION
     use ion_mod, only: addIons, globalIonArray, nGlobalIon
-    use inputs_mod, only : photoionization, photoionPhysics
+    use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly
 #endif
 
     type(GRIDTYPE) :: grid
@@ -44,8 +44,8 @@ contains
 
 #ifdef PHOTOION
   if (photoionPhysics) then
-     call addIons(grid%ion, grid%nion)
-     call addIons(globalIonArray, nGlobalIon)
+     call addIons(grid%ion, grid%nion, usemetals, hOnly)
+     call addIons(globalIonArray, nGlobalIon, usemetals, hOnly)
      photoionization = .true.
   endif
 #endif

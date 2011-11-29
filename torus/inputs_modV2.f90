@@ -1307,10 +1307,12 @@ contains
 
 
   subroutine readPhotoionPhysicsParameters(cLine, fLine, nLines)
+    use ion_mod, only: setAbundances
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
+    real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
 
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
@@ -1357,8 +1359,9 @@ contains
             "Number of photon stacks allowed in the buffer ","(a,i8,a)", 5000, ok, .false.)
     end if
 
-
-
+!
+! Abundances
+!
     call getReal("h_abund", h_abund, 1., cLine, fLine, nLines, &
          "Hydrogen abdunance: ","(a,1PF8.3,a)", &
          1., ok, .false.)
@@ -1386,6 +1389,8 @@ contains
     call getReal("s_abund", s_abund, 1., cLine, fLine, nLines, &
          "Sulphur abdunance: ","(a,1PF8.3,a)", &
          0.9e-5, ok, .false.)
+
+    call setAbundances(h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund)
 
   end subroutine readPhotoionPhysicsParameters
 

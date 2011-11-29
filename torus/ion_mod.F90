@@ -11,7 +11,6 @@ module ion_mod
   use constants_mod
   use utils_mod
   use messages_mod
-  use phfit_mod, only : phfit2
 
   implicit none
 
@@ -51,10 +50,26 @@ module ion_mod
      type(TRANSITIONTYPE) :: transition(40) 
   end type IONTYPE
 
+! Abundances 
+  real, private, save :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund 
+
   type(IONTYPE), save :: globalIonArray(50)
   integer :: nGlobalIon
 
 contains
+
+  subroutine setAbundances(h_in, he_in, c_in, n_in, o_in, ne_in, s_in)
+    real, intent(in) :: h_in, he_in, c_in, n_in, o_in, ne_in, s_in
+
+    h_abund  = h_in
+    he_abund = he_in
+    c_abund  = c_in
+    n_abund  = n_in 
+    o_abund  = o_in
+    ne_abund = ne_in
+    s_abund  = s_in
+
+  end subroutine setAbundances
 
   subroutine createIon(thisIon, z, n, nucleons, ipot)
     type(IONTYPE) :: thisIon
@@ -86,6 +101,7 @@ contains
   end subroutine createIon
 
   subroutine addxSectionArray(thisIon, nfreq, freq)
+    use phfit_mod, only : phfit2
     type(IONTYPE) :: thisIon
     integer :: nFreq
     real(double) :: freq(:)
@@ -128,8 +144,8 @@ contains
        endif
   end function returnXsec
 
-  subroutine addIons(ionArray, nIon)
-    use inputs_mod, only : usemetals, hOnly
+  subroutine addIons(ionArray, nIon, usemetals, hOnly)
+    logical, intent(in) :: usemetals, hOnly
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
 
@@ -1133,8 +1149,6 @@ end function returnLevel
 
 function returnAbundance(z) result(a)
 
-  use inputs_mod, only : h_abund, he_abund, c_abund, n_abund, &
-       o_abund, ne_abund, s_abund
   integer :: z
   real:: a
 
