@@ -1855,15 +1855,15 @@ contains
     ! This is used as the default image size
     select case (axisunits)
     case ("au","AU")
-       wholeGrid = (amrGridSize*1.0d10) / real(autocm)
+       wholeGrid = (amrGridSize*1.0e10) / real(autocm)
     case ("pc","PC")
-       wholeGrid = (amrGridSize*1.0d10) / real(pctocm)
+       wholeGrid = (amrGridSize*1.0e10) / real(pctocm)
     case ("cm")
-       wholeGrid = amrGridSize*1.0d10
+       wholeGrid = amrGridSize*1.0e10
     case ("arcsec")
-       wholeGrid = (amrGridSize*1.0d10) / real(pctocm) ! pc
+       wholeGrid = (amrGridSize*1.0e10) / real(pctocm) ! pc
        wholeGrid = wholeGrid / gridDistance            ! radians
-       wholeGrid = wholeGrid * (180.0/pi) * 3600.0     ! arcsec
+       wholeGrid = wholeGrid * (180.0/real(pi)) * 3600.0     ! arcsec
     case default
        wholeGrid = amrGridSize
        write(message,*) "Unrecognised units in  readImageParameters: ", trim(axisunits)

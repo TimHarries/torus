@@ -480,7 +480,7 @@ contains
     nFromMatter = nMonte
     nFromMatterThisThread = nFromMatter
 #ifdef MPI
-    nFromMatterThisThread = dble(nFromMatter) / dble(nThreadsGlobal)
+    nFromMatterThisThread = int(dble(nFromMatter) / dble(nThreadsGlobal))
 #endif
 
 

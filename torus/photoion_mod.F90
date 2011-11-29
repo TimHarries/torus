@@ -114,7 +114,8 @@ contains
   ! For MPI implementations =====================================================
     integer ::   ierr           ! error flag
     integer :: np
-    integer(bigInt) :: n_rmdr, m
+    integer(bigInt) :: n_rmdr, mPhoton
+    integer :: mOctal
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:)
 #endif
@@ -241,14 +242,14 @@ contains
 #ifdef MPI
        np = nThreadsGlobal
        n_rmdr = MOD(nMonte,int(np,kind=bigInt))
-       m = nMonte/np
+       mPhoton = nMonte/np
           
        if (myRankGlobal .lt. n_rmdr ) then
-          imonte_beg = (m+1)*myRankGlobal + 1
-          imonte_end = imonte_beg + m
+          imonte_beg = (mPhoton+1)*myRankGlobal + 1
+          imonte_end = imonte_beg + mPhoton
        else
-          imonte_beg = m*myRankGlobal + 1 + n_rmdr
-          imonte_end = imonte_beg + m -1
+          imonte_beg = mPhoton*myRankGlobal + 1 + n_rmdr
+          imonte_end = imonte_beg + mPhoton -1
        end if   
 #endif
 
@@ -427,14 +428,14 @@ contains
 #ifdef MPI
     np = nThreadsGlobal
     n_rmdr = MOD(nOctal,np)
-    m = nOctal/np
+    mOctal = nOctal/np
     
     if (myRankGlobal .lt. n_rmdr ) then
-       ioctal_beg = (m+1)*myRankGlobal + 1
-       ioctal_end = ioctal_beg + m
+       ioctal_beg = (mOctal+1)*myRankGlobal + 1
+       ioctal_end = ioctal_beg + mOctal
     else
-       ioctal_beg = m*myRankGlobal + 1 + n_rmdr
-       ioctal_end = ioctal_beg + m -1
+       ioctal_beg = mOctal*myRankGlobal + 1 + int(n_rmdr)
+       ioctal_end = ioctal_beg + mOctal -1
     end if
     
 #endif
@@ -3254,7 +3255,7 @@ end subroutine readHeIIrecombination
     real :: imageSize
 #ifdef MPI
     real(double) :: tempTotalFlux
-    integer :: i
+    integer(kind=bigint) :: i
     integer :: ierr
 #endif
 

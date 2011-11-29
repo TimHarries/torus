@@ -192,7 +192,7 @@ module angularImage
      ! For MPI implementations
      integer :: ierr, n           ! error flag
      integer :: itemp ! loop counter for MPI communication
-     real(double), allocatable :: tempArray(:), tempArray2(:)
+     real, allocatable :: tempArray(:), tempArray2(:)
 #endif
 
 
@@ -229,32 +229,32 @@ module angularImage
            call writeinfo("Done filling Octal parameters for first time",TRIVIAL)
         endif
 
-        temp(:,:,:) = 0.d0
+        temp(:,:,:) = 0.0
         call makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, temp, ix1, ix2)
 
 #ifdef MPI
         do itemp = 1, temp_dim
            tempArray = reshape(temp(:,:,itemp), (/ n /))
-           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+           call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
            temp(:,:,itemp) = reshape(tempArray2, (/ npixels, npixels /))
         end do
 #endif        
 
 ! Intensity as brightness temperature
         thisLambda = cSpeed / thisMolecule%transfreq(itrans)
-        cube%intensity(:,:,iv) = real((temp(:,:,1)) * (thisLambda**2) / (2.0 * kErg))
-        if (wantTau ) cube%tau(:,:,iv)       = real(temp(:,:,2))
-        cube%nCol(:,:)         = real(temp(:,:,3)) 
+        cube%intensity(:,:,iv) = real(temp(:,:,1) * (thisLambda**2) / 2.0 * kErg)
+        if (wantTau ) cube%tau(:,:,iv)       = temp(:,:,2)
+        cube%nCol(:,:)         = temp(:,:,3) 
         if ( splitCubes ) then 
-           cube%i0_pos(:,:,iv) = real(temp(:,:,4))
-           cube%i0_neg(:,:,iv) = real(temp(:,:,5))
+           cube%i0_pos(:,:,iv) = temp(:,:,4)
+           cube%i0_neg(:,:,iv) = temp(:,:,5)
         end if
 
         if(writeoutput) then
            call tune(6, message)  ! stop a stopwatch
         endif
 
-        intensitysum = sum(temp(:,:,1)) / dble(npixels**2)
+        intensitysum = sum(temp(:,:,1)) / real(npixels**2)
 
         if(iv .eq. 1) then
            background = Bnu(thisMolecule%transfreq(itrans), Tcbr)

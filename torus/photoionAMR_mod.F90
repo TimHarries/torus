@@ -764,7 +764,7 @@ end subroutine radiationHydro
     call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
 
     !Add some extra bytes for safety
-    bufferSize = real(bufferCap)*(bufferSize + MPI_BSEND_OVERHEAD)
+    bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
 
     allocate(buffer(bufferSize))
 
@@ -889,7 +889,7 @@ end subroutine radiationHydro
        if(.not. monteCheck .or. readGrid) then
           !waymaker photoionization loop
           if(grid%octreeRoot%twoD) then
-                nMonte = (4.d0**(maxDepthAMR))
+                nMonte = int(4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
                 !nMonte = (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
@@ -904,15 +904,15 @@ end subroutine radiationHydro
        else 
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
-                nMonte = 10.d0 * (4.d0**(maxDepthAMR))
+                nMonte = int(10.d0 * (4.d0**(maxDepthAMR)))
              else if(grid%octreeRoot%threeD) then
 !                nMonte = 1000.d0
-                nMonte = 100.d0 * (8.d0**(maxDepthAMR))
+                nMonte = int(100.d0 * (8.d0**(maxDepthAMR)))
 !                nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
-                nMonte = 500.d0 * 2**(maxDepthAMR)
+                nMonte = int(500.d0 * 2**(maxDepthAMR))
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
@@ -1397,7 +1397,7 @@ end subroutine radiationHydro
                          end if
 
                          if (.not. escaped) then
-                            thisLam = (cSpeed / thisFreq) * 1.e8
+                            thisLam = real(cSpeed / thisFreq) * 1.e8
                             call locate(lamArray, nLambda, real(thisLam), iLam)
                             octVec = rVec 
                             call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
@@ -1468,7 +1468,7 @@ end subroutine radiationHydro
                             write(*,*) 1.e8*cspeed/thisFreq
                             write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
                             
-                            thisLam = (cSpeed / thisFreq) * 1.e8
+                            thisLam = real(cSpeed / thisFreq) * 1.e8
                             call locate(lamArray, nLambda, real(thisLam), iLam)
                             
                             call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
@@ -1596,7 +1596,7 @@ end subroutine radiationHydro
                    v = cellVolume(thisOctal, subcell)
                    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                    dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
-                   thisOctal%temperature(subcell) = ((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25d0
+                   thisOctal%temperature(subcell) = real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0
                 endif
              enddo
 
@@ -1780,7 +1780,7 @@ end subroutine radiationHydro
         if(myRank == 0) then
            write(*,*) "Undersampled cell, increasing nMonte"
         end if
-        nMonte = nMonte *2.d0
+        nMonte = nMonte *2
      end if
      
 
@@ -2664,7 +2664,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
        if (.not.thisOctal%hasChild(subcell)) then
           if(octalOnThread(thisOCtal, subcell, myRank)) then
-             thisOctal%temperature(subcell) = 10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2)
+             thisOctal%temperature(subcell) = real(10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2))
           end if
        endif
        
@@ -2896,7 +2896,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                 thermalTime = (energy / abs(totalCooling))
 
                 if (deltaTime > thermalTime) then
-                   thisOctal%temperature(subcell) = Teq
+                   thisOctal%temperature(subcell) = real(Teq)
                 else
 
                    nTimes = 10
@@ -2905,7 +2905,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    
                    do i = 1, nTimes
                       energy = energy + (totalHeating - totalcooling)*smallDeltaT
-                      thisOctal%temperature(subcell) = (2.d0/3.d0)*energy*(mu*mhydrogen)/(thisOctal%rho(subcell)*kerg)
+                      thisOctal%temperature(subcell) = real((2.d0/3.d0)*energy*(mu*mhydrogen)/(thisOctal%rho(subcell)*kerg))
                       totalCooling = HHecooling(grid, thisOctal, subcell, thisOctal%temperature(subcell)) 
                    enddo
                 endif
@@ -3005,9 +3005,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        coolColl = 0.
        
        if (TeUsed > 5000.) then 
-          coolColl = (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
+          coolColl = real( &
+               (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
                & ch13*exp(-th13/TeUsed)*Te4**ex13) * &
-               & hcRyd*(nh-nhii)*Ne
+               & hcRyd*(nh-nhii)*Ne )
        else
           coolColl = 0.
        end if
@@ -3736,13 +3737,13 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   integer :: subcell
   integer :: i, j
   real(double) :: r, theta, phi
-  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+  real(double) :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   real(double) :: oirate, oiirate, oiiirate, oivrate
   real(double) :: v, epsoverdt
   real :: fac
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
   real(double) :: cooling, dustHeating
-  real :: netot
+  real(double) :: netot
   character(len=80) :: datFilename, mpiFilename
   integer :: nIter
 
@@ -3914,20 +3915,20 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
         write(*,*) "hei", hei
         
      end if
-     hi = log10(max(hi, 1e-10))
-     hei = log10(max(hei, 1e-10))
-     oii = log10(max(oii, 1e-10))
-     oiii = log10(max(oiii, 1e-10))
-     cii = log10(max(cii, 1e-10))
-     ciii = log10(max(ciii, 1e-10))
-     civ = log10(max(civ, 1e-10))
-     nii = log10(max(nii, 1e-10))
-     niii = log10(max(niii, 1e-10))
-     niv= log10(max(niv, 1e-10))
-     nei = log10(max(nei, 1e-10))
-     neii = log10(max(neii, 1e-10))
-     neiii = log10(max(neiii, 1e-10))
-     neiv = log10(max(neiv, 1e-10))
+     hi = log10(max(hi, 1d-10))
+     hei = log10(max(hei, 1d-10))
+     oii = log10(max(oii, 1d-10))
+     oiii = log10(max(oiii, 1d-10))
+     cii = log10(max(cii, 1d-10))
+     ciii = log10(max(ciii, 1d-10))
+     civ = log10(max(civ, 1d-10))
+     nii = log10(max(nii, 1d-10))
+     niii = log10(max(niii, 1d-10))
+     niv= log10(max(niv, 1d-10))
+     nei = log10(max(nei, 1d-10))
+     neii = log10(max(neii, 1d-10))
+     neiii = log10(max(neiii, 1d-10))
+     neiv = log10(max(neiv, 1d-10))
      ne = log10(max(ne,1.d-10))
 
      !Store quantities to send to rank 0
@@ -4167,7 +4168,8 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   integer :: i, k, iIon, n1, n2
   real(double) :: freq(:), spectrum(:), dfreq(:)
   real(double) :: jnu
-  real :: e, hxsec
+!  real :: e
+  real(double) :: hxsec
   real(double), parameter :: statisticalWeight(3) = (/ 2.d0, 0.5d0, 2.d0 /)
 
 
@@ -4186,7 +4188,7 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
      endif
      do i = n1, n2
 
-        e = freq(i) * hcgs* ergtoev
+!        e = freq(i) * hcgs* ergtoev
 
        hxSec = returnxSec(grid%ion(iIon), freq(i), iFreq=i)
 
@@ -4198,7 +4200,7 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
            if (thisOctal%temperature(subcell) > 100.) then
               jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
                    ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
-                   dble(hxsec/1.d10) *  &
+                   (hxsec/1.d10) *  &
                    exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
               jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * &
                    thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
@@ -4436,7 +4438,7 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
   integer :: i, j, k
   real :: fac, t, aj ,bj, cj
   real(double) :: lineFreq !, lambda
-  real :: emissivity
+  real(double) :: emissivity
 !  real :: heII4686
 !  integer :: ilow, iup
   integer,parameter :: nHeIILyman = 4
@@ -4446,7 +4448,8 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
   ! HeI lines 
 
   call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
-  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
+  fac = real ( &
+       (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i)) )
 
   do j = 1, 32
      aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
@@ -4484,7 +4487,7 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
 
   do i = 1, nFreq
-     thisLam = (cSpeed / freq(i)) * 1.e8
+     thisLam = real(cSpeed / freq(i)) * 1.e8
      if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
         call hunt(lamArray, nLambda, real(thisLam), iLam)
         spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
@@ -4748,7 +4751,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        call randomNumberGenerator(getDouble=r)
        call locate(tSpec, nFreq, r, i)
        fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
-       thisLambda = lamspec(i) + fac * (lamspec(i+1)-lamspec(i))
+       thisLambda = real(lamspec(i) + fac * (lamspec(i+1)-lamspec(i)))
     else
        thisLambda = 1000.e4
   endif
@@ -4804,7 +4807,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     real(double), allocatable :: totalFluxArray(:), tempTotalFlux(:)
     logical :: directFromSource
     integer :: subcell
-    integer :: iPhoton
+    integer(kind=bigInt) :: iPhoton
     integer :: iSource
     integer :: iThread
     type(VECTOR) ::  rHat, observerDirection
@@ -4826,7 +4829,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     real(double) :: powerPerPhoton
     logical :: freefreeImage
     !THAW - dev
-    real(double) :: weightSource,  sourceFac, theoretical
+    real(double) :: weightSource,  sourceFac
+#ifdef USECFITSIO
+    real(double) :: theoretical
+#endif
     integer :: nLams
 
     lambdaImage     = getImageWavelength(imageNum)
@@ -5175,9 +5181,9 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     thisPhoton%direction%y =     temp(9)  
     thisPhoton%direction%z =     temp(10) 
 
-    thisPhoton%lambda =     temp(11) 
+    thisPhoton%lambda =     real(temp(11)) 
 
-    thisPhoton%tau =     temp(13) 
+    thisPhoton%tau =     real(temp(13)) 
     thisPhoton%iLam =     nint(temp(14) )
 
     if (temp(15) > 0.d0) then
@@ -5230,7 +5236,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 !          write(*,*) "kappaExt",kappaExt
 !       end if
 
-       thisPhoton%tau = thisPhoton%tau + tval * kappaExt
+       thisPhoton%tau = thisPhoton%tau + real(tval * kappaExt)
        thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
        if (.not.inOctal(grid%octreeRoot, thisPhoton%position)) then
           addToImage = .true.

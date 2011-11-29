@@ -7827,6 +7827,7 @@ end subroutine refineGridGeneric2
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
+    real(double) :: x1, x2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
@@ -9344,7 +9345,8 @@ end subroutine minMaxDepth
              if (esp > 0.d0) then
                 rMin = 1.d30
              else
-                rMin = -((bigG*source%mass)/(2.d0 * esp)) * (1.d0 - sqrt(1.d0 + (2.d0 * jsp * esp)/(bigG*source%mass)**2))
+                rMin = real(-((bigG*source%mass)/(2.d0 * esp)) * &
+                     (1.d0 - sqrt(1.d0 + (2.d0 * jsp * esp)/(bigG*source%mass)**2)))
              endif
              if (rMin > deltaX/4.d0) n = n + 1
           enddo
@@ -9921,7 +9923,7 @@ end subroutine minMaxDepth
              vterm = 2000.d0 * 1.d5
              thisOctal%ghostCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = 8
-             rho = mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm)
+             rho = real(mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
              v = vterm
              thisOctal%rho(subcell) = rho
              thisOctal%velocity(subcell) = (v/cspeed)*rVec

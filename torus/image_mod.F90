@@ -8,8 +8,13 @@ module image_mod
 
   implicit none
 
-  public :: initImage, freeImage, addPhotonToPhotoionImage, addPhotonToImage, &
-       writeFitsImage, createLucyImage, writeFalseColourPPM
+  public :: initImage, freeImage, addPhotonToImage, createLucyImage, writeFalseColourPPM
+#ifdef PHOTOION
+  public :: addPhotonToPhotoionImage
+#endif
+#ifdef USECFITSIO
+  public writeFitsImage
+#endif
 
   private :: pixelLocate, writePPMAimage, imagePercentile, &
        ConvertArrayToMJanskiesPerStr, dumpLine, dumpPointTestData
@@ -794,23 +799,28 @@ module image_mod
     integer :: thisDest ! destination of the reduce operation
     real, allocatable :: tempRealArray(:), tempRealArray2(:)
     real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:)
+    integer, allocatable :: tempIntArray(:), tempIntArray2(:)
     integer :: ierr
 
 ! By default reduce to rank zero process but allow other destinations
     if ( present(dest) ) then 
        thisDest = dest
     else
-       thisDest = 0.0
+       thisDest = 0
     end if
 
      allocate(tempRealArray(SIZE(thisImage%pixel)))
      allocate(tempRealArray2(SIZE(thisImage%pixel)))
      allocate(tempDoubleArray(SIZE(thisImage%pixel)))
      allocate(tempDoubleArray2(SIZE(thisImage%pixel)))
+     allocate(tempIntArray(SIZE(thisImage%pixel)))
+     allocate(tempIntArray2(SIZE(thisImage%pixel)))
      tempRealArray = 0.0
      tempRealArray2 = 0.0
      tempDoubleArray = 0.0_db
      tempDoubleArray2 = 0.0_db
+     tempIntArray = 0
+     tempIntArray = 2
 
      call writeInfo ("Collating images...", FORINFO)
      tempDoubleArray = reshape(thisImage%pixel%i,(/SIZE(tempDoubleArray)/))
@@ -839,10 +849,10 @@ module image_mod
                      MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%vel = reshape(tempRealArray2,SHAPE(thisImage%vel))
 
-     tempDoubleArray = reshape(thisImage%nSamples,(/SIZE(tempDoubleArray)/))
-     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+     tempIntArray = reshape(thisImage%nSamples,(/SIZE(tempIntArray)/))
+     call MPI_REDUCE(tempIntArray,tempIntArray2,SIZE(tempIntArray),MPI_INTEGER,&
                      MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
-     thisImage%nSamples = reshape(tempDoubleArray2,SHAPE(thisImage%nSamples))
+     thisImage%nSamples = reshape(tempIntArray2,SHAPE(thisImage%nSamples))
 
 
      tempRealArray = reshape(thisImage%totWeight,(/SIZE(tempRealArray)/))
@@ -855,6 +865,8 @@ module image_mod
      deallocate(tempRealArray2)
      deallocate(tempDoubleArray)
      deallocate(tempDoubleArray2)
+     deallocate(tempIntArray)
+     deallocate(tempIntArray2)
 
   end subroutine collateImages
 

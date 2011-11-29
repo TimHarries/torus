@@ -2745,7 +2745,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 #ifdef MPI
      ! For MPI implementations
      integer :: ierr, n           ! error flag
-     real(double), allocatable :: tempArray(:), tempArray2(:)
+     real, allocatable :: tempArray(:), tempArray2(:)
 #endif
 
 !$OMP THREADPRIVATE( background )
@@ -2858,24 +2858,24 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            if (.not.grid%splitOverMPI) then
               ! Communicate intensity
               tempArray = reshape(temp(:,:,1), (/ n /))
-              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
               temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
               
               ! Communicate tau
               tempArray = reshape(temp(:,:,2), (/ n /))
-              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
               temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
               
               ! Communicate column density
               tempArray = reshape(temp(:,:,3), (/ n /))
-              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr) 
+              call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
               temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
            endif
 #endif           
 
-           cube%intensity(:,:,iv) = real(temp(:,:,1))
-           if(wanttau) cube%tau(:,:,iv) = real(temp(:,:,2))
-           cube%nCol(:,:)   = real(temp(:,:,3)) 
+           cube%intensity(:,:,iv) = temp(:,:,1)
+           if(wanttau) cube%tau(:,:,iv) = temp(:,:,2)
+           cube%nCol(:,:)   = temp(:,:,3)
 
            if(writeoutput .and. dotune) then
               write(message,*) "Done ",iv," velocity"
@@ -4025,7 +4025,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !                    thisOctal%tau(ilevel, isubcell) = tArray(2,ntemp)
 !                 endif
                  if(iLevel .eq. maxlevel) then
-                    thisOctal%convergence(isubcell) = tArray(3,ntemp)
+                    thisOctal%convergence(isubcell) = real(tArray(3,ntemp))
                  endif
               endif
            end do

@@ -192,192 +192,194 @@ contains
   end subroutine findTotalEnergyMPI
 
 
-  
+! Causes warnings about precision loss with gfortran 4.6.x so these routines are commented 
+! out as they are not used. 
+! D. Acreman November 2011  
 
-  subroutine getSquares(grid, plane, valueName, nSquares, corners, value, speed, ang)
-    use mpi
-    type(GRIDTYPE) :: grid
-    character(len=*) :: plane, valueName
-    real, pointer :: corners(:,:), value(:), speed(:), ang(:)
-    integer :: myRank, ierr, nThreads, iThread
-    integer :: nSquares, n, tag=97,i
-    integer :: status(MPI_STATUS_SIZE)
-    integer :: j
-
-    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
-
-    if (myRank == 1) then
-       nSquares = 0
-       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value, speed, ang)
-       do iThread = 2, nThreads - 1
-          call MPI_RECV(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          do i = 1, 4
-             call MPI_RECV(corners(nSquares+1:nSquares+n, i), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          enddo
-          call MPI_RECV(value(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          call MPI_RECV(speed(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          call MPI_RECV(ang(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          nSquares = nSquares+n
-       end do
-    else
-       nSquares = 0
-       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value, speed, ang)
-       call MPI_SEND(nSquares, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
-       do j = 1, 4
-          call MPI_SEND(corners(1:nSquares,j), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
-       enddo
-       call MPI_SEND(value(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(speed(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(ang(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
-    endif
-    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-  end subroutine getSquares
-
-
-  recursive subroutine recursGetSquares(thisOctal, grid, plane, valueName, nSquares, corners, value, speed, ang)
-
-    use mpi
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    !
-    integer :: subcell, i
-    character(len=*) :: valueName, plane
-    integer :: nSquares
-    real, pointer :: corners(:,:)
-    real, pointer :: value(:)
-    real, pointer :: speed(:)
-    real, pointer :: ang(:)
-    real ::tmp
-    real(double) :: eps, x
-    integer :: myRank, ierr
-    type(VECTOR) :: rVec
-
-    eps = 0.01d0 * grid%halfSmallestSubcell
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-
-    do subcell = 1, thisOctal%maxChildren
-
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call recursGetSquares(child, grid, plane, valueName, nSquares, corners, value, speed, ang)
-                exit
-             end if
-          end do
-       else
-
-!          if ((grid%splitOverMpi).and.(thisOctal%mpiThread(subcell) /= myRank)) then
-!             cycle
-!          endif
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
-
-          rVec = subcellCentre(thisOctal, subcell)
-          select case(valuename)
-             case("rho")
-                tmp = thisOctal%rho(subcell)
-             case("cs")
-                tmp = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
-             case("mass")
-                tmp = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30 / msol
-             case("pressure")
-                tmp = thisOctal%pressure_i(subcell)
-             case("u")
-                tmp = thisOctal%rhou(subcell)/thisOctal%rho(subcell)/1.d5
-             case("v")
-                tmp = thisOctal%rhov(subcell)/thisOctal%rho(subcell)/1.d5
-             case("w")
-                tmp = thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
-             case("rhou")
-                tmp = thisOctal%rhou(subcell)
-             case("rhov")
-                tmp = thisOctal%rhov(subcell)
-             case("rhow")
-                tmp = thisOctal%rhow(subcell)
-             case("rhoe")
-                tmp = thisOctal%rhoe(subcell)
-             case("ionization")
-                tmp = max(1.d-20,thisOctal%ionFrac(subcell,1))
-             case("coeff")
-                tmp = max(1.d-20,thisOctal%photoionCoeff(subcell,1))
-             case("crossings")
-                tmp = thisOctal%nCrossings(subcell)
-             case("temperature")
-                tmp = thisOctal%temperature(subcell)
-             case("mpi")
-                tmp = real(thisOctal%mpiThread(subcell))
-             case("phi")
-                tmp = real(thisOctal%phi_i(subcell))
-             case("chi")
-                tmp = real(thisOctal%chiline(subcell))
-             case("u_i")
-                tmp = real(thisOctal%u_interface(subcell))
-             case("q_i")
-                tmp = real(thisOctal%q_i(subcell))
-             case("q_i_minus_1")
-                tmp = real(thisOctal%q_i_minus_1(subcell))
-             case("flux_i")
-                tmp = real(thisOctal%flux_i(subcell))
-             case("philim")
-                tmp = real(thisOctal%phiLimit(subcell))
-             case DEFAULT
-           end select
-           if (thisOctal%oneD) then
-              nSquares = nSquares + 1
-              corners(nsquares, 1) = rVec%x
-              value(nSquares) = tmp
-           else
-
-              select case(plane)
-              case("x-z")
-                 x = min(abs(rVec%y + thisOctal%subcellSize/2.d0), abs(rVec%y - thisOctal%subcellSize/2.d0))
-                 if ((x < eps).or.(thisOctal%twoD)) then
-                    nSquares = nSquares + 1
-                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
-                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
-                    corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
-                    corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
-                    value(nSquares) = tmp
-                    speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)
-                    ang(nSquares) = atan2(thisOctal%rhow(subcell), thisOctal%rhou(subcell))
-                 endif
-              case("y-z")
-                 x = min(abs(rVec%x + thisOctal%subcellSize/2.d0), abs(rVec%x - thisOctal%subcellSize/2.d0))
-                 if (x < eps) then
-                    nSquares = nSquares + 1
-                    corners(nSquares, 1) = rVec%y - thisOctal%subcellSize/2.d0
-                    corners(nSquares, 2) = rVec%y + thisOctal%subcellSize/2.d0
-                    corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
-                    corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
-                    value(nSquares) = tmp
-                    speed(nSquares) = sqrt(thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)
-                    ang(nSquares) = atan2(thisOctal%rhow(subcell), thisOctal%rhov(subcell))
-                 endif
-              case("x-y")
-                 x = min(abs(rVec%z + thisOctal%subcellSize/2.d0), abs(rVec%z - thisOctal%subcellSize/2.d0))
-                 if (x < eps) then
-                    nSquares = nSquares + 1
-                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
-                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
-                    corners(nSquares, 3) = rVec%y - thisOctal%subcellSize/2.d0
-                    corners(nSquares, 4) = rVec%y + thisOctal%subcellSize/2.d0
-                    value(nSquares) = tmp
-                    speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2) / thisOctal%rho(subcell)
-                    ang(nSquares) = atan2(thisOctal%rhov(subcell), thisOctal%rhou(subcell))
-                    if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
-                 endif
-              case DEFAULT
-              end select
-           endif
-
-       endif
-    enddo
-  end subroutine recursGetSquares
+!!$  subroutine getSquares(grid, plane, valueName, nSquares, corners, value, speed, ang)
+!!$    use mpi
+!!$    type(GRIDTYPE) :: grid
+!!$    character(len=*) :: plane, valueName
+!!$    real, pointer :: corners(:,:), value(:), speed(:), ang(:)
+!!$    integer :: myRank, ierr, nThreads, iThread
+!!$    integer :: nSquares, n, tag=97,i
+!!$    integer :: status(MPI_STATUS_SIZE)
+!!$    integer :: j
+!!$
+!!$    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!!$    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+!!$    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+!!$
+!!$    if (myRank == 1) then
+!!$       nSquares = 0
+!!$       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value, speed, ang)
+!!$       do iThread = 2, nThreads - 1
+!!$          call MPI_RECV(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!!$          do i = 1, 4
+!!$             call MPI_RECV(corners(nSquares+1:nSquares+n, i), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!!$          enddo
+!!$          call MPI_RECV(value(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!!$          call MPI_RECV(speed(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!!$          call MPI_RECV(ang(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!!$          nSquares = nSquares+n
+!!$       end do
+!!$    else
+!!$       nSquares = 0
+!!$       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value, speed, ang)
+!!$       call MPI_SEND(nSquares, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
+!!$       do j = 1, 4
+!!$          call MPI_SEND(corners(1:nSquares,j), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+!!$       enddo
+!!$       call MPI_SEND(value(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+!!$       call MPI_SEND(speed(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+!!$       call MPI_SEND(ang(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+!!$    endif
+!!$    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!!$  end subroutine getSquares
+!!$
+!!$
+!!$  recursive subroutine recursGetSquares(thisOctal, grid, plane, valueName, nSquares, corners, value, speed, ang)
+!!$
+!!$    use mpi
+!!$    type(gridtype) :: grid
+!!$    type(octal), pointer   :: thisOctal
+!!$    type(octal), pointer  :: child
+!!$    !
+!!$    integer :: subcell, i
+!!$    character(len=*) :: valueName, plane
+!!$    integer :: nSquares
+!!$    real, pointer :: corners(:,:)
+!!$    real, pointer :: value(:)
+!!$    real, pointer :: speed(:)
+!!$    real, pointer :: ang(:)
+!!$    real(double) ::tmp
+!!$    real(double) :: eps, x
+!!$    integer :: myRank, ierr
+!!$    type(VECTOR) :: rVec
+!!$
+!!$    eps = 0.01d0 * grid%halfSmallestSubcell
+!!$
+!!$    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+!!$
+!!$    do subcell = 1, thisOctal%maxChildren
+!!$
+!!$       if (thisOctal%hasChild(subcell)) then
+!!$          ! find the child
+!!$          do i = 1, thisOctal%nChildren, 1
+!!$             if (thisOctal%indexChild(i) == subcell) then
+!!$                child => thisOctal%child(i)
+!!$                call recursGetSquares(child, grid, plane, valueName, nSquares, corners, value, speed, ang)
+!!$                exit
+!!$             end if
+!!$          end do
+!!$       else
+!!$
+!!$!          if ((grid%splitOverMpi).and.(thisOctal%mpiThread(subcell) /= myRank)) then
+!!$!             cycle
+!!$!          endif
+!!$          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+!!$
+!!$          rVec = subcellCentre(thisOctal, subcell)
+!!$          select case(valuename)
+!!$             case("rho")
+!!$                tmp = thisOctal%rho(subcell)
+!!$             case("cs")
+!!$                tmp = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+!!$             case("mass")
+!!$                tmp = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30 / msol
+!!$             case("pressure")
+!!$                tmp = thisOctal%pressure_i(subcell)
+!!$             case("u")
+!!$                tmp = thisOctal%rhou(subcell)/thisOctal%rho(subcell)/1.d5
+!!$             case("v")
+!!$                tmp = thisOctal%rhov(subcell)/thisOctal%rho(subcell)/1.d5
+!!$             case("w")
+!!$                tmp = thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!!$             case("rhou")
+!!$                tmp = thisOctal%rhou(subcell)
+!!$             case("rhov")
+!!$                tmp = thisOctal%rhov(subcell)
+!!$             case("rhow")
+!!$                tmp = thisOctal%rhow(subcell)
+!!$             case("rhoe")
+!!$                tmp = thisOctal%rhoe(subcell)
+!!$             case("ionization")
+!!$                tmp = max(1.d-20,thisOctal%ionFrac(subcell,1))
+!!$             case("coeff")
+!!$                tmp = max(1.d-20,thisOctal%photoionCoeff(subcell,1))
+!!$             case("crossings")
+!!$                tmp = thisOctal%nCrossings(subcell)
+!!$             case("temperature")
+!!$                tmp = thisOctal%temperature(subcell)
+!!$             case("mpi")
+!!$                tmp = real(thisOctal%mpiThread(subcell))
+!!$             case("phi")
+!!$                tmp = real(thisOctal%phi_i(subcell))
+!!$             case("chi")
+!!$                tmp = real(thisOctal%chiline(subcell))
+!!$             case("u_i")
+!!$                tmp = real(thisOctal%u_interface(subcell))
+!!$             case("q_i")
+!!$                tmp = real(thisOctal%q_i(subcell))
+!!$             case("q_i_minus_1")
+!!$                tmp = real(thisOctal%q_i_minus_1(subcell))
+!!$             case("flux_i")
+!!$                tmp = real(thisOctal%flux_i(subcell))
+!!$             case("philim")
+!!$                tmp = real(thisOctal%phiLimit(subcell))
+!!$             case DEFAULT
+!!$           end select
+!!$           if (thisOctal%oneD) then
+!!$              nSquares = nSquares + 1
+!!$              corners(nsquares, 1) = rVec%x
+!!$              value(nSquares) = tmp
+!!$           else
+!!$
+!!$              select case(plane)
+!!$              case("x-z")
+!!$                 x = min(abs(rVec%y + thisOctal%subcellSize/2.d0), abs(rVec%y - thisOctal%subcellSize/2.d0))
+!!$                 if ((x < eps).or.(thisOctal%twoD)) then
+!!$                    nSquares = nSquares + 1
+!!$                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
+!!$                    value(nSquares) = tmp
+!!$                    speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)
+!!$                    ang(nSquares) = atan2(thisOctal%rhow(subcell), thisOctal%rhou(subcell))
+!!$                 endif
+!!$              case("y-z")
+!!$                 x = min(abs(rVec%x + thisOctal%subcellSize/2.d0), abs(rVec%x - thisOctal%subcellSize/2.d0))
+!!$                 if (x < eps) then
+!!$                    nSquares = nSquares + 1
+!!$                    corners(nSquares, 1) = rVec%y - thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 2) = rVec%y + thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
+!!$                    value(nSquares) = tmp
+!!$                    speed(nSquares) = sqrt(thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)
+!!$                    ang(nSquares) = atan2(thisOctal%rhow(subcell), thisOctal%rhov(subcell))
+!!$                 endif
+!!$              case("x-y")
+!!$                 x = min(abs(rVec%z + thisOctal%subcellSize/2.d0), abs(rVec%z - thisOctal%subcellSize/2.d0))
+!!$                 if (x < eps) then
+!!$                    nSquares = nSquares + 1
+!!$                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 3) = rVec%y - thisOctal%subcellSize/2.d0
+!!$                    corners(nSquares, 4) = rVec%y + thisOctal%subcellSize/2.d0
+!!$                    value(nSquares) = tmp
+!!$                    speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2) / thisOctal%rho(subcell)
+!!$                    ang(nSquares) = atan2(thisOctal%rhov(subcell), thisOctal%rhou(subcell))
+!!$                    if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
+!!$                 endif
+!!$              case DEFAULT
+!!$              end select
+!!$           endif
+!!$
+!!$       endif
+!!$    enddo
+!!$  end subroutine recursGetSquares
 
 
   subroutine receiveAcrossMpiBoundary(grid, boundaryType, receiveThread, sendThread)

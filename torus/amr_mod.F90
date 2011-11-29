@@ -7067,10 +7067,10 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 !    if((rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm)) then
     if(sqrt(rVec%x**2.d0 + rVec%y**2.d0 + (rVec%z**2.d0)) < (197.d3*pctocm/1.d10)) then
        thisOctal%rho(subcell) = 3.13e-7*(mUnit/(lUnit**3.d0))
-       thisOctal%temperature(subcell) = tInt
+       thisOctal%temperature(subcell) = real(tInt)
     else
        thisOctal%rho(subcell) = 3.13e-8*(mUnit/(lUnit**3.d0))
-       thisOctal%temperature(subcell) = tExt
+       thisOctal%temperature(subcell) = real(tExt)
     end if
 
     thisOctal%gamma(subcell) = gamma

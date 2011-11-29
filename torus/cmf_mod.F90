@@ -3821,7 +3821,7 @@ contains
              allocate(tempArray(1:n))
              tempArray = reshape(cube%intensity(:,:,iv-iv1+1), (/  n /))
              call MPI_RECV(tempArray, n, MPI_DOUBLE_PRECISION, iThread, tag3, MPI_COMM_WORLD, status, ierr)
-             cube%intensity(:, :, iv) = reshape(tempArray, (/ cube%nx, cube%ny /))
+             cube%intensity(:, :, iv) = real(reshape(tempArray, (/ cube%nx, cube%ny /)))
              deallocate(tempArray)
           enddo
        endif
@@ -3832,8 +3832,6 @@ contains
 
     write(*,*) "Process ",my_rank, " reduce done."
 #endif
-
-!    cube%flux = cube%intensity
 
   end subroutine createDataCube
 

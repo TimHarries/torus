@@ -139,8 +139,6 @@
   integer :: xminusbound, yminusbound, zminusbound 
   integer :: xplusbound, yplusbound, zplusbound 
 
-  real :: x1, x2
-
 !---------------------------------------
 ! Atomic physics (co-moving frame, CMF)
 !---------------------------------------

@@ -23,7 +23,9 @@ contains
     use image_utils_mod
 #ifdef MPI
     use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
+#ifdef HYDRO
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
+#endif
 #endif
 !    use inputs_mod, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use inputs_mod, only : cmf, lamline, ttauriRouter,amrgridsize
@@ -92,8 +94,10 @@ contains
     if (calcBenchmark) then
        select case (grid%geometry)
 #ifdef MPI
+#ifdef HYDRO
           case("maclaurin")
              call checkMaclaurinBenchmark(grid)
+#endif
 #endif
           case DEFAULT
              write(message,'(a)') "No benchmark calculation for: "//trim(grid%geometry)
