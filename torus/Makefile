@@ -112,7 +112,7 @@ ifeq ($(SYSTEM), gfortran)
         F95COMP = gfortran
     endif
      ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
 #    F2CLIB   = -L/usr/local/lib -lg2c
@@ -187,9 +187,10 @@ ifeq ($(SYSTEM), lamosx-intel)
     KNOWN_SYSTEM = yes
 endif
 
+# MPI build with the gfortran compiler
 ifeq ($(SYSTEM), ompiosx)
     F95COMP  = mpif90 
-    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
