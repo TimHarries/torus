@@ -7826,7 +7826,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     real(double) :: ethermal, soundSpeed
     real(double) :: x, y, z, r, rBondi, rhoInfty, v
     real(double), parameter :: lambda = 1.12d0
-    integer :: i
     rVec = subcellCentre(thisOctal, subcell)-bondiCentre
     vVec = (-1.d0)*rVec
     call normalize(vVec)
