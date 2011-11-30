@@ -7819,13 +7819,14 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   subroutine calcBondiDensity(thisOctal,subcell)
     use inputs_mod, only : gridDistanceScale, bondiCentre, sourcemass
-    use utils_mod, only : alpha
+    use utils_mod, only : bondi
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
     real(double) :: ethermal, soundSpeed
     real(double) :: x, y, z, r, rBondi, rhoInfty, v
     real(double), parameter :: lambda = 1.12d0
+    integer :: i
     rVec = subcellCentre(thisOctal, subcell)-bondiCentre
     vVec = (-1.d0)*rVec
     call normalize(vVec)
@@ -7834,8 +7835,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     rBondi = bigG*sourcemass(1)/ soundSpeed**2
     x = (r / rBondi)
     rhoInfty = 1.d-25
-    z = alpha(x)
-    y = lambda / (x**2 * z)
+    call bondi(x, y, z)
     v = y * soundSpeed
 
 !    write(*,*) "theoretical ",fourPi*1.d-25*rBondi**2 * 1.12d0*soundSpeed/msol*(365.25*24.*3600.)
@@ -7847,7 +7847,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%iEquationOfState(subcell) = 1
-
 
   end subroutine calcBondiDensity
 
