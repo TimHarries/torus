@@ -23,6 +23,8 @@ module density_mod
        print_geometry_list, &
        TTauriDensity
   
+  real, private, save :: flowPointRm
+
 contains
 
   !
@@ -198,7 +200,6 @@ contains
     ! when the material left the disc. 
 
     use magnetic_mod, only: inFlowMahdavi
-    use flowSpeedVariables
     
     type(GRIDTYPE), intent(in)    :: grid
     type(VECTOR), intent(in) :: point
@@ -246,7 +247,6 @@ contains
   pure function TTauriFlowSpeedFunc(bigR)
     ! returns the component of the T Tauri flow speed that is in the disc plane
 
-    use flowSpeedVariables
     use inputs_mod, only: TTauriMstar, TTauriRstar
     
     real, intent(in), dimension(:) :: bigR 
@@ -267,7 +267,6 @@ contains
   real function TTauriTimeInFlow(rM,rStart)
     ! lookup table
       
-    use flowSpeedVariables
     use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, mDotType
     use utils_mod, only: qsimp, locate
 
@@ -343,7 +342,6 @@ contains
     !   across the entire flow base. see hartmann, hewett and calvet 1994.
     ! each different type of accretion uses values from the input file.
    
-    use flowSpeedVariables
     use utils_mod
     use clump_mod
     use inputs_mod, only: MdotParameter1, MdotParameter2, &

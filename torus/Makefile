@@ -559,10 +559,9 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             timing.f90  isochrone_class.f90 \
             filter_set_class.f90 ostar_mod.f90  \
             surface_mod.f90  math_mod2.f90 disc_class.f90 \
-            hyd_col_coeff.f90 flow_speed_variables.f90 clump_mod.f90 \
+            hyd_col_coeff.f90 clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
-            cmfgen_class.f90  \
-            modelatom_mod.f90  magField.f90 \
+            cmfgen_class.f90 modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             nrtype.f90 nrutil.f90 magnetic_mod.f90 units_mod.f90 interferometry_mod.f90 $(VERSIONSOURCE)
             
