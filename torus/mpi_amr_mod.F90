@@ -3248,8 +3248,8 @@ end subroutine dumpStromgrenRadius
 !
 !!!    ! momentum (u)
 
-    oldMom = parent%rhou(parentSubcell)
-    newMom = SUM(thisOctal%rhou(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    oldMom = abs(parent%rhou(parentSubcell))
+    newMom = SUM(abs(thisOctal%rhou(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
     if (abs(newMom) > TINY(newMom)) then
        factor = oldMom / newMom
        thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
@@ -3257,8 +3257,8 @@ end subroutine dumpStromgrenRadius
 !
 !    ! momentum (v)
 !
-    oldMom = parent%rhov(parentSubcell)
-    newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    oldMom = abs(parent%rhov(parentSubcell))
+    newMom = SUM(abs(thisOctal%rhov(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
     if (abs(newMom) > TINY(newMOM)) then
        factor = oldMom / newMom
        thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
@@ -3266,8 +3266,8 @@ end subroutine dumpStromgrenRadius
 !
     ! momentum (w)
 
-    oldMom = parent%rhow(parentSubcell)
-    newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    oldMom = abs(parent%rhow(parentSubcell))
+    newMom = SUM(abs(thisOctal%rhow(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
     if (abs(newMom) > TINY(newMom)) then
        factor = oldMom / newMom
        thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
