@@ -2988,7 +2988,7 @@ CONTAINS
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    TYPE(octal),  POINTER         :: thisOctal !, currentOctal
+    TYPE(octal),  POINTER         :: thisOctal, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
 
     TYPE(vector)              :: octalDirection
@@ -3008,12 +3008,17 @@ CONTAINS
     
     octalDirection = direction
 
-    call amrGridValues(grid%octreeRoot,position,foundOctal=thisOctal,&
-                           foundSubcell=subcell)
-    
-!    currentOctal => grid%octreeRoot
-!    thisOctal => grid%octreeRoot
-!    CALL findSubcellTD(position, currentOctal, thisOctal, subcell)
+!! This call to amrGridValues
+!    call amrGridValues(grid%octreeRoot,position,foundOctal=thisOctal,&
+!                           foundSubcell=subcell)
+!! is replaced by
+    currentOctal => grid%octreeRoot
+    thisOctal => grid%octreeRoot
+    CALL findSubcellTD(position, currentOctal, thisOctal, subcell)
+!! to avoid a recursive call to the non-recursive amrGridValues.
+!! This subroutine is unused hence this change is untested. 
+!! DMA 1/12/11
+
     ! dr is a small increment of distance
     dr = thisOctal%subcellSize * 1.d-1
 
