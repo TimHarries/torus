@@ -4076,6 +4076,7 @@ end subroutine sumFluxes
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           if(doRefine) then
+             call setAllUnchanged(grid%octreeRoot)
              call writeInfo("Refining", TRIVIAL)
              call refinegridGeneric(grid, amrTolerance, evenuparray)          
              call writeInfo("Done", TRIVIAL)
@@ -4190,6 +4191,7 @@ end subroutine sumFluxes
 
 !refine the grid where necessary
        if(doRefine) then
+          call setAllUnchanged(grid%octreeRoot)
           call refinegridGeneric(grid, amrTolerance, evenuparray)
        end if
 
