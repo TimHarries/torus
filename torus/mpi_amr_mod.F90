@@ -2901,9 +2901,11 @@ end subroutine dumpStromgrenRadius
        dir(2) = VECTOR(+r, 0.d0, -r)
        dir(3) = VECTOR(+r, 0.d0, +r)
        dir(4) = VECTOR(-r, 0.d0, +r)
-       
+       centre = subcellCentre(topOctal, topOctalSubcell)
+
+
        nCorner = 4
-       r = thisOctal%subcellSize
+       r = topOctal%subcellSize/2.d0
        corner(1) = thisOctal%centre + VECTOR(-r, 0.d0, -r)
        corner(2) = thisOctal%centre + VECTOR(+r, 0.d0, -r)
        corner(3) = thisOctal%centre + VECTOR(-r, 0.d0, +r)
