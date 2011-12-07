@@ -7252,7 +7252,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer :: bOctal
     integer :: subcell, i, bSubcell
     logical :: converged, converged_tmp
-    type(VECTOR) :: dirVec(6), centre, octVec, rVec, locator, bVec, direction!, nVec
+    type(VECTOR) :: dirVec(14), centre, octVec, rVec, locator, bVec, direction!, nVec
 !    type(vector) :: vecStore(3)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
@@ -7423,19 +7423,31 @@ end subroutine refineGridGeneric2
           end if
                        
           if (thisOctal%threed) then
-             nDir = 6
+             nDir = 14
              dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
              dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
              dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
              dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
              dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
              dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+             !corners
+             dirVec(7) = VECTOR(-1.d0, 0.d0, 1.d0)
+             dirVec(8) = VECTOR(1.d0, 0.d0, -1.d0)
+             dirVec(9) = VECTOR(1.d0, 0.d0, 1.d0)
+             dirVec(10) = VECTOR(-1.d0, 0.d0, -1.d0)
+             dirVec(11) = VECTOR(1.d0, 1.d0, 1.d0)
+             dirVec(12) = VECTOR(-1.d0, -1.d0, -1.d0)
+             dirVec(13) = VECTOR(1.d0, -1.d0, 1.d0)
+             dirVec(14) = VECTOR(-1.d0, 1.d0, -1.d0)
+
           else if (thisOctal%twod) then
              nDir = 4
              dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)  
              dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
              dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
              dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+             !corners
+
           else
              nDir = 2
              dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
