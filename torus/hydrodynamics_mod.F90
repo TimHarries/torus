@@ -4048,16 +4048,16 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Done", TRIVIAL)
 
-!Corner stuff is no longer necessary
-!       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
-!       do i = 1, nCornerPairs
-!!          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
-!       end do
+
+       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
+       do i = 1, nCornerPairs
+          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
+       end do
 !
-!
-!       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
-!       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
-!       call writeInfo("Done", TRIVIAL)
+
+       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
+       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+       call writeInfo("Done", TRIVIAL)
 
 !set up initial values
        if (it == 0) then
