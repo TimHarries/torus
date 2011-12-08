@@ -3328,6 +3328,7 @@ end subroutine dumpStromgrenRadius
   end subroutine shutdownServers2
 
   subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
+!       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
@@ -3345,9 +3346,8 @@ end subroutine dumpStromgrenRadius
 
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
-    
-    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
-       
+   
+    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
 
        topOctal => thisOctal
        topOctalSubcell = subcell
@@ -3399,6 +3399,73 @@ end subroutine dumpStromgrenRadius
 
     endif
   end subroutine getHydroValues
+
+  recursive subroutine fetchValues(thisOctal, radially, searchRadius, position, transferArray, cellIndex)
+    type(GRIDTYPE) :: grid
+    integer :: nd
+    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
+    type(VECTOR) :: position, rVec
+    real(double) :: xh, yh, zh
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: subcell
+    integer ::  i
+    integer :: cellIndex
+    logical, intent(in) :: radially
+    real(double), intent(in) :: searchRadius
+    real(double), intent(out) :: transferArray(30,12)
+
+    if(radially) then
+       do subcell = 1, thisOctal%maxChildren
+          if (thisOctal%hasChild(subcell)) then
+             ! find the child
+             do i = 1, thisOctal%nChildren, 1
+                if (thisOctal%indexChild(i) == subcell) then
+                   child => thisOctal%child(i)
+                   call fetchValues(child, radially, searchRadius, position, transferArray, cellIndex)
+                   exit
+                end if
+             end do
+          else
+             rVec = subcellCentre(thisOctal, subcell) 
+             if(modulus(rVec-position) > searchRadius) then
+                !Cell is one we want data from
+                position = rVec
+                call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, &
+                     energy, phi, xh, yh, zh, pressure)
+                transferArray(cellIndex,1) = nd
+                transferArray(cellIndex,2) = rho
+                transferArray(cellIndex,3) = rhoe
+                transferArray(cellIndex,4) = rhou
+                transferArray(cellIndex,5) = rhov
+                transferArray(cellIndex,6) = rhow
+                transferArray(cellIndex,7) = energy
+                transferArray(cellIndex,8) = phi
+                transferArray(cellIndex,9) = x
+                transferArray(cellIndex,10) = y
+                transferArray(cellIndex,11) = z
+                transferArray(cellIndex,12) = pressure
+                cellIndex = cellIndex + 1
+             end if
+          end if          
+       end do       
+    else
+       call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, &
+            energy, phi, xh, yh, zh, pressure)
+       transferArray(1,1) = nd
+       transferArray(1,2) = rho
+       transferArray(1,3) = rhoe
+       transferArray(1,4) = rhou
+       transferArray(1,5) = rhov
+       transferArray(1,6) = rhow
+       transferArray(1,7) = energy
+       transferArray(1,8) = phi
+       transferArray(1,9) = x
+       transferArray(1,10) = y
+       transferArray(1,11) = z
+       transferArray(1,12) = pressure
+    end if
+
+  end subroutine fetchValues
 
   subroutine hydroValuesServer(grid, nworking)
     use mpi
