@@ -6100,7 +6100,7 @@ end subroutine sumFluxes
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
-       if(nThreadsGlobal == 16) then
+       if(nThreadsGlobal == 17) then
           nworking = 4
        else
           nworking = 1
@@ -7046,7 +7046,7 @@ end subroutine refineGridGeneric2
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
-       if(nThreadsGlobal == 16) then
+       if(nThreadsGlobal == 17) then
           nworking = 4
        else
           nworking = 1
