@@ -3400,73 +3400,6 @@ end subroutine dumpStromgrenRadius
     endif
   end subroutine getHydroValues
 
-  recursive subroutine fetchValues(thisOctal, radially, searchRadius, position, transferArray, cellIndex)
-    type(GRIDTYPE) :: grid
-    integer :: nd
-    real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
-    type(VECTOR) :: position, rVec
-    real(double) :: xh, yh, zh
-    type(OCTAL), pointer :: thisOctal, child
-    integer :: subcell
-    integer ::  i
-    integer :: cellIndex
-    logical, intent(in) :: radially
-    real(double), intent(in) :: searchRadius
-    real(double), intent(out) :: transferArray(30,12)
-
-    if(radially) then
-       do subcell = 1, thisOctal%maxChildren
-          if (thisOctal%hasChild(subcell)) then
-             ! find the child
-             do i = 1, thisOctal%nChildren, 1
-                if (thisOctal%indexChild(i) == subcell) then
-                   child => thisOctal%child(i)
-                   call fetchValues(child, radially, searchRadius, position, transferArray, cellIndex)
-                   exit
-                end if
-             end do
-          else
-             rVec = subcellCentre(thisOctal, subcell) 
-             if(modulus(rVec-position) > searchRadius) then
-                !Cell is one we want data from
-                position = rVec
-                call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, &
-                     energy, phi, xh, yh, zh, pressure)
-                transferArray(cellIndex,1) = nd
-                transferArray(cellIndex,2) = rho
-                transferArray(cellIndex,3) = rhoe
-                transferArray(cellIndex,4) = rhou
-                transferArray(cellIndex,5) = rhov
-                transferArray(cellIndex,6) = rhow
-                transferArray(cellIndex,7) = energy
-                transferArray(cellIndex,8) = phi
-                transferArray(cellIndex,9) = x
-                transferArray(cellIndex,10) = y
-                transferArray(cellIndex,11) = z
-                transferArray(cellIndex,12) = pressure
-                cellIndex = cellIndex + 1
-             end if
-          end if          
-       end do       
-    else
-       call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, &
-            energy, phi, xh, yh, zh, pressure)
-       transferArray(1,1) = nd
-       transferArray(1,2) = rho
-       transferArray(1,3) = rhoe
-       transferArray(1,4) = rhou
-       transferArray(1,5) = rhov
-       transferArray(1,6) = rhow
-       transferArray(1,7) = energy
-       transferArray(1,8) = phi
-       transferArray(1,9) = x
-       transferArray(1,10) = y
-       transferArray(1,11) = z
-       transferArray(1,12) = pressure
-    end if
-
-  end subroutine fetchValues
-
   subroutine hydroValuesServer(grid, nworking)
     use mpi
     type(GRIDTYPE) :: grid
@@ -3537,6 +3470,172 @@ end subroutine dumpStromgrenRadius
     enddo
   end subroutine hydroValuesServer
 
+  subroutine hydroValuesServer2(grid, nworking, k, endloop, check)
+    use mpi
+    type(GRIDTYPE) :: grid
+    logical :: stillServing
+    real(double) :: loc(6)
+    type(VECTOR) :: position, rVec
+    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: topOctal
+    integer :: subcell, nworking, topOctalSubcell
+    integer :: iThread, servingArray, workingTHreads(nworking)
+    integer, parameter :: nStorage = 12
+    real(double) :: tempStorage(nStorage)
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr, j, k, m, counter, counter2
+    integer :: functionality
+    integer :: endloop
+    real(double) :: storageArray(30,12), searchRadius
+    real(double) :: tempStorageArray(30,12)
+    integer :: check(endloop, nTHreadsGlobal-1)
+    integer :: nVals
+    integer :: cellRef
+
+    stillServing = .true.
+    servingArray = 0
+    workingTHreads = 0
+    thisOctal => grid%octreeroot
+    storageArray = 0.d0
+    tempStorageArray = 0.d0
+    do while (stillServing)
+       
+       call MPI_RECV(loc, 6, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+       position%x = loc(1)
+       position%y = loc(2)
+       position%z = loc(3)
+       iThread = int(loc(4))
+       functionality = int(loc(5))
+       searchRadius = loc(6)
+
+       if (position%x > 1.d29) then          
+          do j=1, nworking
+             if(workingThreads(j) == 0) then
+                workingThreads(j) = 1
+                exit
+             end if
+          end do
+          if(SUM(workingTHreads) == nworking) then
+             workingThreads = 0
+             stillServing= .false.
+          end if
+          
+       else if (functionality == 1) then
+          !- this thread is going to host a gathering of values in the search radius
+          loc(4) = myRankGlobal
+          loc(6) = 2.d0
+          do m = 1, nThreadsGlobal-1
+             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
+                call MPI_SEND(loc, 6, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, ierr)
+             end if
+          end do
+          cellRef=0
+          call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
+
+          do m = 1, nThreadsGlobal-1
+             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
+                call MPI_RECV(tempStorageArray, 360, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
+                !If there are more than 30 cells I would be surprised, though this hard wiring is not ideal
+                do counter = 1, 30
+                   if(tempstorageArray(counter,1) /= 0.d0) then
+                      do counter2 = 1, 31
+                         if(storageArray(counter2, 1) /= 0.d0) then
+                            nVals = counter2
+                            storageArray(counter2,:) = tempStorageArray(counter,:)
+                            exit
+                         end if
+                         if(counter2 == 31) then
+                            call torus_abort("Fetched too many variables, Toms hard coding is naff")
+                         end if
+                      end do
+                    end if
+                end do
+                tempStorageArray = 0.d0
+             end if
+          end do
+
+          !we should now have an array of values to send
+          do counter = 1, nvals
+             call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)             
+          end do
+
+       else if(functionality == 2)then
+          !- responding to a request for values within the search radius
+          cellRef = 0
+          call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
+          call MPI_SEND(storageArray, 360, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       else
+          call findSubcellLocal(position, thisOctal, subcell)
+          topOctal => thisOctal
+          topOctalSubcell = subcell
+          do while(topOctal%changed(topOctalSubcell))
+             topOctalSubcell = topOctal%parentSubcell
+             topOctal => topOctal%parent
+          enddo
+
+          rVec = subcellCentre(topOctal, topOctalsubcell)
+          tempStorage(1) = topOctal%nDepth
+          tempStorage(2) = topOctal%rho(topOctalsubcell)
+          tempStorage(3) = topOctal%rhoe(topOctalsubcell)             
+          tempStorage(4) = topOctal%rhou(topOctalsubcell)             
+          tempStorage(5) = topOctal%rhov(topOctalsubcell)             
+          tempStorage(6) = topOctal%rhow(topOctalsubcell)        
+          tempStorage(7) = topOctal%energy(topOctalsubcell)
+          tempStorage(8) = topOctal%phi_gas(topOctalsubcell)
+          tempStorage(9) = rVec%x
+          tempStorage(10) = rVec%y
+          tempStorage(11) = rVec%z
+          tempstorage(12) = topOctal%pressure_i(topOctalsubcell)
+
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+  end subroutine hydroValuesServer2
+
+
+  recursive  subroutine getAllInRadius(thisOctal, position, searchRadius, storageArray, cellRef)
+    type(octal), pointer :: thisOctal, child
+    integer :: subcell
+    integer :: i
+    type(VECTOR) :: position, rVec
+    real(double) :: searchRadius
+    real(double) :: storageArray(30,12)
+    integer :: cellRef
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getAllInRadius(child, position, searchRadius, storageArray, cellRef)
+                exit
+             end if
+          end do
+       else 
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             if(modulus(rVec - position) < searchRadius) then
+                storageArray(cellRef, 1)  = thisOctal%nDepth
+                storageArray(cellRef, 2)  = thisOctal%rho(subcell)
+                storageArray(cellRef, 3)  = thisOctal%rhoe(subcell)             
+                storageArray(cellRef, 4)  = thisOctal%rhou(subcell)             
+                storageArray(cellRef, 5)  = thisOctal%rhov(subcell)             
+                storageArray(cellRef, 6)  = thisOctal%rhow(subcell)        
+                storageArray(cellRef, 7)  = thisOctal%energy(subcell)
+                storageArray(cellRef, 8)  = thisOctal%phi_gas(subcell)
+                storageArray(cellRef, 9)  = rVec%x
+                storageArray(cellRef, 10)  = rVec%y
+                storageArray(cellRef, 11)  = rVec%z
+                storageArray(cellRef, 12)  = thisOctal%pressure_i(subcell)
+                cellRef = cellRef + 1
+             end if
+          end if
+       endif
+    end do
+end subroutine getAllInRadius
+              
 !  subroutine fillVelocityCornersFromHydro(grid)
 !    use mpi
 !    type(GRIDTYPE) :: grid
