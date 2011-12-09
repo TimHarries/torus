@@ -185,7 +185,7 @@ contains
     call writeInfo(message, TRIVIAL)
 
     if (variableDustSublimation) then 
-       maxIter = 400
+       maxIter = 40
     else
        maxIter = 20
     end if
@@ -214,7 +214,7 @@ contains
 ! Set up the dust fraction
        if (variableDustSublimation) then
           if (nIter > 10) then 
-             variableDustFraction = min(real(nIter-10)/100.0,1.0)
+             variableDustFraction = min(real(nIter-10)/10.0,1.0)
              write(message,*) "Setting dust type fraction to ", variableDustFraction
              call writeInfo(message, TRIVIAL)
              call quickSublimate(grid%OctreeRoot, fraction=variableDustFraction)
