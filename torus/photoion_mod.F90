@@ -3247,9 +3247,16 @@ end subroutine readHeIIrecombination
     logical :: escaped, absorbed
     real(double) :: totalEmission
     integer :: iLambdaPhoton
-    real(double) :: lCore, probsource, r
+    real(double) :: lCore, r
     real(double) :: powerPerPhoton
-    real(double) :: totalLineEmission, chanceSource, weightSource, weightEnv
+    real(double) :: totalLineEmission
+    real(double) :: chanceSource, probsource
+! Weight of all sources relative to envelope
+    real(double) :: weightSource
+! Weight of envelope relative to sources
+    real(double) :: weightEnv    
+! weight of this particular source (for multiple sources)
+    real(double) :: thisSourceWeight 
     integer(kind=bigint) :: iBeg, iEnd
     character(len=80) :: message
     real :: imageSize
@@ -3263,19 +3270,15 @@ end subroutine readHeIIrecombination
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
     npix            = getImagenPixels(imageNum)
+    imageSize       = getImageSize(imageNum)/1.0e10
 
     call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0
 
     call zeroEtaCont(grid%octreeRoot)
     
-    call writeVtkFile(grid, "before_sublimate.vtk", &
-         valueTypeString=(/"rho        ", "temperature", "dust1      "/))
     call quickSublimate(grid%OctreeRoot)
-    call writeVtkFile(grid, "after_sublimate.vtk", &
-         valueTypeString=(/"rho        ", "temperature", "dust1      "/))
 
-    imageSize = getImageSize(imageNum)/1.0e10
     if (amr2d) then 
        imageXsize=2.0*imagesize
        imageYsize=imagesize
@@ -3295,27 +3298,36 @@ end subroutine readHeIIrecombination
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
     totalEmission = totalEmission * 1.d30
 
+    ! Probability that a photon comes from a source rather than the envelope
+    chanceSource = lCore / (lCore + totalEmission)
+    ! Fraction of photons actually used to sample the sources
+    probSource   = 0.1d0
+    ! Weight the source and envelope photons accordingly
+    weightSource = chanceSource / probSource
+    weightEnv    = (1.d0 - chanceSource) / (1.d0 - probSource)
+
     write(message,*) "Total continuum emission ",totalEmission
     call writeInfo (message, FORINFO)
     write(message,*) "Total source emission ",lCore
     call writeInfo (message, FORINFO)
     write(message,*) "Total  emission ",totalEmission+lCore
     call writeInfo (message, FORINFO)
-
-    chanceSource = lCore / (lCore + totalEmission)
-    probSource = 0.1d0
-    weightSource = chanceSource / probSource
-    weightEnv = (1.d0 - chanceSource) / (1.d0 - probSource)
-
     write(message,*) "Probability of photon from sources: ", probSource
     call writeInfo (message, FORINFO)
-    write(message,*) "Source weight: ", weightSource
+    write(message,*) "Weight of sources: ", weightSource
     call writeInfo (message, FORINFO)
     write(message,*) "Envelope weight: ", weightEnv
     call writeInfo (message, FORINFO)
+    if(chanceSource == 0.d0) then
+       write(message,*) "Zero probability from source" 
+       call writeWarning(message)
+       write(message,*) "lCore :", lcore, " totalEmission : ", totalEmission
+       call writeInfo(message)
+    endif
 
     powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
-    
+    write(message,*) "power per photon ",powerperphoton
+    call writeInfo (message, FORINFO)
 
 #ifdef MPI
     i = nPhotons/nThreadsGlobal
@@ -3338,10 +3350,10 @@ end subroutine readHeIIrecombination
 
 
        if (r < probSource) then
-          call randomSource(source, nSource, iSource, weightSource)
+          call randomSource(source, nSource, iSource, thisSourceWeight)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
-          thisPhoton%weight = weightSource
+          thisPhoton%weight = weightSource * thisSourceWeight
        else
           call randomNumberGenerator(getDouble=r)
           thisPhoton%lambda = grid%lamArray(iLambdaPhoton)

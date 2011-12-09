@@ -2688,7 +2688,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: pressureCorner(8)
     real(double) :: weight, totalWeight
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi, pressure
-    real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
+    real(double) :: x1, x2, y1, y2, z1, z2, u, v, x, y, z, dv
     real(double) :: oldMass, newMass, factor, xh, yh, zh, massFactor
     real(double) :: oldEnergy, newEnergy, smallDist
     integer :: npoints
@@ -3368,7 +3368,6 @@ end subroutine dumpStromgrenRadius
     real(double) :: radius
     integer :: nPoints
     type(OCTAL), pointer :: thisOctal
-    integer :: subcell
     integer, parameter :: nStorage = 12
     real(double) :: storageArray(nStorage)
     integer :: status(MPI_STATUS_SIZE)

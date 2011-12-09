@@ -4795,7 +4795,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer, intent(in) :: imageNum
     real :: lambdaImage
     type(GRIDTYPE) :: grid
-    integer :: npixels
+    integer :: npix
     character(len=80) :: imageFilename 
     character(len=80) :: outputImageType
     real :: imageSize
@@ -4816,8 +4816,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     type(IMAGETYPE) :: thisImage
     logical :: escaped, absorbed, crossedBoundary, photonsStillProcessing, stillSCattering
     real(double) :: totalEmission
-    integer :: iLambdaPhoton, nInf
-    real(double) :: lCore, probsource, r
+    integer :: iLambdaPhoton
+    real(double) :: lCore, r
     real(double), allocatable :: threadProbArray(:)
     integer :: np(10)
     integer :: nDone
@@ -4828,86 +4828,91 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: isignal
     real(double) :: powerPerPhoton
     logical :: freefreeImage
-    !THAW - dev
-    real(double) :: weightSource,  sourceFac
+    real(double) :: chanceSource, probsource
+! Weight of all sources relative to envelope
+    real(double) :: weightSource
+! Weight of envelope relative to sources
+    real(double) :: weightEnv    
+! weight of this particular source (for multiple sources)
+    real(double) :: thisSourceWeight 
 #ifdef USECFITSIO
     real(double) :: theoretical
 #endif
     integer :: nLams
+    character(len=80) :: message
+
+    allocate(nDoneArray(1:nThreadsGlobal-1))
+    allocate(totalFluxArray(1:nThreadsGlobal-1))
+    allocate(tempTotalFlux(1:nThreadsGlobal-1))
+    allocate(threadProbArray(1:nThreadsGlobal-1))
 
     lambdaImage     = getImageWavelength(imageNum)
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
-    npixels         = getImagenPixels(imageNum)
+    npix            = getImagenPixels(imageNum)
     imageSize       = getImageSize(imageNum)/1.0e10
 
-!    integer :: i
-
     call randomNumberGenerator(randomSeed=.true.)
+    totalFluxArray = 0.d0
+
+    call zeroEtaCont(grid%octreeRoot)
+    
+    call quickSublimate(grid%octreeRoot) ! do dust sublimation
+    
+    call torus_mpi_barrier ! Why is there a barrier here?
+
+    thisImage = initImage(npix, npix, imageSize, imageSize, 0., 0.)
+
+    call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
+
+    call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
+    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
+    totalEmission = totalEmission * 1.d30
+
+    ! Probability that a photon comes from a source rather than the envelope
+    chanceSource = lCore / (lCore + totalEmission)
+    ! Fraction of photons actually used to sample the sources
+    probSource   = 0.1d0
+    ! Weight the source and envelope photons accordingly
+    weightSource = chanceSource / probSource
+    weightEnv    = (1.d0 - chanceSource) / (1.d0 - probSource) 
+
+    write(message,*) "Total continuum emission ",totalEmission
+    call writeInfo (message, FORINFO)
+    write(message,*) "Total source emission ",lCore
+    call writeInfo (message, FORINFO)
+    write(message,*) "Total  emission ",totalEmission+lCore
+    call writeInfo (message, FORINFO)
+    write(message,*) "Ratio of source to total luminosity: ", chanceSource
+    call writeInfo (message, FORINFO)
+    write(message,*) "Probability of photon from sources: ", probSource
+    call writeInfo (message, FORINFO)
+    write(message,*) "Weight of sources: ", weightSource
+    call writeInfo (message, FORINFO)
+    write(message,*) "Envelope weight: ", weightEnv
+    call writeInfo (message, FORINFO)
+    if(chanceSource == 0.d0) then
+       write(message,*) "Zero probability from source" 
+       call writeWarning(message)
+       write(message,*) "lCore :", lcore, " totalEmission : ", totalEmission
+       call writeInfo(message)
+    endif
+
+    powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
+    write(message,*) "power per photon ",powerperphoton
+    call writeInfo (message, FORINFO)
 
     absorbed = .false.
     escaped = .false.
 
     if (outputimageType == "freefree") then
        freefreeImage = .true.
+       nLams = 1
     else
        freefreeImage = .false.
     end if
 
-    allocate(nDoneArray(1:nThreadsGlobal-1))
-    allocate(totalFluxArray(1:nThreadsGlobal-1))
-    allocate(tempTotalFlux(1:nThreadsGlobal-1))
-
-
-
-    totalFluxArray = 0.d0
-
-
-    call zeroEtaCont(grid%octreeRoot)
-    
-    call quickSublimate(grid%octreeRoot) ! do dust sublimation
-    
-    call torus_mpi_barrier
-
-    thisImage = initImage(npixels, npixels, imageSize, imageSize, 0., 0.)
-
-    allocate(threadProbArray(1:nThreadsGlobal-1))
-
-    call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
-
-    call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
-
-    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
-    totalEmission = totalEmission * 1.d30
-
-    probSource = lCore / (lCore + totalEmission) 
-    sourceFac = 0.1d0
-    
-    if(myRankGlobal == 1) then
-       print *, "lCore = ", lCore    
-    end if
-
-    if(outputImageType /= "freefree") then
-       nLams = 1
-    end if
-
-
-    if (myRankGlobal == 0) then
-       write(*,*) "Probability of photon from sources: ", probSource
-       if(probSource == 0.d0) then
-          print *, "Zero probability from source with: "
-          print *, "lCore : ", lCore
-          print *, "totalEmission : ", totalEmission
-       end if
-    endif
-
-    Ninf = 0
-
-
-    powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
-    if (Writeoutput) write(*,*) "power per photon ",powerperphoton
-
-    Call randomSource(source, nSource, iSource, weightSource, nLambda=nLams, initialize=.true., &
+    Call randomSource(source, nSource, iSource, thisSourceWeight, nLambda=nLams, initialize=.true., &
          lambdaMono=LambdaImage)
 
     if (myRankGlobal == 0) then
@@ -4923,13 +4928,14 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           call randomNumberGenerator(getDouble=r)
 
           if (r < probSource) then
-             call randomSource(source, nSource, iSource, weightSource)
+             call randomSource(source, nSource, iSource, thisSourceWeight)
              thisSource = source(iSource)
              call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)
              call findSubcellTD(thisPhoton%position, grid%octreeRoot,thisOctal, subcell)
              iThread = thisOctal%mpiThread(subcell)
              call sendPhoton(thisPhoton, iThread, endloop = .false.) 
              directFromSource = .true.
+             thisPhoton%weight = weightSource * thisSourceWeight
           else
              call randomNumberGenerator(getDouble=r)
              if (r < threadProbArray(1)) then
@@ -4944,6 +4950,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
              call sendPhoton(thisPhoton, iThread, endloop = .false., getPosition=.true.) 
              call receivePhoton(thisPhoton, iSignal)
              directFromSource = .false.
+             thisPhoton%weight = weightEnv
           endif
 
           if ((directFromSource.and.(.not.thisSource%outsideGrid)).or.(.not.directFromSource)) then
@@ -5004,7 +5011,6 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
 
           stillScattering = .true.
-          ninf = ninf + 1
           do while ((.not.endLoop).and.stillScattering)
 
              if (thisPhoton%observerPhoton) then
