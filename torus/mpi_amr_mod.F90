@@ -2691,8 +2691,20 @@ end subroutine dumpStromgrenRadius
     real(double) :: x1, x2, y1, y2, z1, z2, u, v, w, x, y, z, dv
     real(double) :: oldMass, newMass, factor, xh, yh, zh, massFactor
     real(double) :: oldEnergy, newEnergy, smallDist
+    integer :: npoints
+    real(double) :: xPoint(100)
+    real(double) :: yPoint(100)
+    real(double) :: zPoint(100)
+    real(double) :: rhoPoint(100)
+    real(double) :: rhoePoint(100)
+    real(double) :: rhouPoint(100)
+    real(double) :: rhovPoint(100)
+    real(double) :: rhowPoint(100)
+    real(double) :: phiPoint(100)
+    real(double) :: energyPoint(100)
+    real(double) :: pressurePoint(100)
     logical, save :: firstTime = .true.
-    logical :: debug
+    logical :: debug, addLocal
 
     debug = .false.
 
@@ -2941,10 +2953,14 @@ end subroutine dumpStromgrenRadius
        write(*,*) "addnewchild with interp debug"
     endif
 
+    nPoints = 0
+    addLocal = .true.
     do iCorner = 1, nCorner
        totalWeight = 0.d0
        j = 0
        do iDir = 1, nDir
+
+          if (iDir == iCorner) cycle
           position = corner(iCorner) + dir(iDir)
 
           if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(topOctal, topOctalSubcell, position))) then
@@ -2965,6 +2981,19 @@ end subroutine dumpStromgrenRadius
              eCorner(iCorner) = eCorner(iCorner) + weight * energy
              phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
              pressureCorner(iCorner) = pressureCorner(iCorner) + weight * pressure
+
+             nPoints = nPoints + 1
+             xPoint(nPoints) = xh
+             yPoint(nPoints) = yh
+             zPoint(nPoints) = zh
+             rhoPoint(nPoints) = rho
+             rhoePoint(nPoints) = rhoe
+             rhouPoint(nPoints) = rhou
+             rhovPoint(nPoints) = rhov
+             rhowPoint(nPoints) = rhow
+             energyPoint(nPoints) = energy
+             phiPoint(nPoints) = phi
+             pressurePoint(nPoints) = pressure
           else
              weight = 1.d0
              totalWeight = totalWeight + weight
@@ -2979,6 +3008,24 @@ end subroutine dumpStromgrenRadius
              eCorner(iCorner) = eCorner(iCorner) + topOctal%energy(topOctalSubcell)
              phiCorner(iCorner) = phiCorner(iCorner) + topOctal%phi_i(topOctalSubcell)
              pressureCorner(iCorner) = pressureCorner(iCorner) + topOctal%pressure_i(topOctalSubcell)
+             rVec = subcellCentre(topOctal, topOctalSubcell)
+
+             if (addlocal) then
+                nPoints = nPoints + 1
+                xPoint(nPoints) = rVec%x
+                yPoint(nPoints) = rVec%y
+                zPoint(nPoints) = rVec%z
+
+                rhoPoint(nPoints) = topOctal%rho(topOctalSubcell)
+                rhoePoint(nPoints) = topOctal%rhoe(topOctalSubcell)
+                rhouPoint(nPoints) = topOctal%rhou(topOctalSubcell)
+                rhovPoint(nPoints) = topOctal%rhov(topOctalSubcell)
+                rhowPoint(nPoints) = topOctal%rhow(topOctalSubcell)
+                energyPoint(nPoints) = topOctal%energy(topOctalSubcell)
+                phiPoint(nPoints) = topOctal%phi_i(topOctalSubcell)
+                pressurePoint(nPoints) = topOctal%pressure_i(topOctalSubcell)
+                addlocal = .false.
+             endif
              j = j + 1
           endif
        enddo
@@ -3019,6 +3066,17 @@ end subroutine dumpStromgrenRadius
           x = rVec%x
           y = rVec%y
           z = rVec%z
+
+!          thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
+!          thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)
+!          thisOctal%rhou(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhouPoint, nPoints, x, y, z)
+!          thisOctal%rhov(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhovPoint, nPoints, x, y, z)
+!          thisOctal%rhow(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhowPoint, nPoints, x, y, z)
+!          thisOctal%energy(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, energyPoint, nPoints, x, y, z)
+!          thisOctal%phi_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, phiPoint, nPoints, x, y, z)
+!          thisOctal%pressure_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, pressurePoint, nPoints, x, y, z)
+
+
           u = (x - x1)/(x2 - x1)
           v = (y - y1)/(y2 - y1)
           w = (z - z1)/(z2 - z1)
@@ -3361,7 +3419,7 @@ end subroutine dumpStromgrenRadius
        rhou = topOctal%rhou(topOctalsubcell)
        rhov = topOctal%rhov(topOctalsubcell)
        rhow = topOctal%rhow(topOctalsubcell)
-       nd = topOctal%nDepth
+       nd = thisOctal%nDepth ! this is needed for refinement
        energy = topOctal%energy(topOctalsubcell)
        phi = topOctal%phi_gas(topOctalsubcell)
        x = rVec%x
@@ -3399,6 +3457,9 @@ end subroutine dumpStromgrenRadius
 
     endif
   end subroutine getHydroValues
+
+
+
 
   subroutine hydroValuesServer(grid, nworking)
     use mpi
@@ -3452,7 +3513,7 @@ end subroutine dumpStromgrenRadius
           enddo
 
           rVec = subcellCentre(topOctal, topOctalsubcell)
-          tempStorage(1) = topOctal%nDepth
+          tempStorage(1) = thisOctal%nDepth
           tempStorage(2) = topOctal%rho(topOctalsubcell)
           tempStorage(3) = topOctal%rhoe(topOctalsubcell)             
           tempStorage(4) = topOctal%rhou(topOctalsubcell)             
@@ -3912,4 +3973,31 @@ end subroutine labelSingleSubcellMPI
     end function octalOnThread
 
 #endif
+    function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
+
+      real(double) :: xi(:), yi(:), zi(:), fi(:)
+      real(double) :: x, y, z, out
+      integer :: n, i
+      real(double), allocatable :: w(:), h(:)
+      real(double) :: R
+
+
+      allocate(w(1:n), h(1:n))
+      
+      do i = 1, n
+         h(i) = max(1.d-3,sqrt( (x-xi(i))**2 + (y-yi(i))**2 + (z-zi(i))**2))
+      enddo
+      R = maxval(h(1:n))
+      do i = 1, n
+         w(i) = ((R-h(i))/(R*h(i))) ! franke & nielson 1980
+      enddo
+      w = w / SUM(w)
+      out = 0.d0
+      do i = 1, n
+         out = out + w(i) * fi(i)
+      enddo
+      deallocate(w, h)
+
+    end function shepardsMethod
+
   end module mpi_amr_mod

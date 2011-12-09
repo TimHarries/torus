@@ -3579,7 +3579,7 @@ end subroutine sumFluxes
     real(double) :: dt, tc(512), temptc(512),  mu
     real(double) :: currentTime !, smallTime
     real(double) :: initialmass
-    integer :: i, j, it, iUnrefine
+    integer :: i, j, it, iUnrefine, iRefine
     integer :: myRank, ierr
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff,totalMass !, ang
@@ -3798,6 +3798,7 @@ end subroutine sumFluxes
     if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
     if (it ==0) nextDumpTime = 0.
     iUnrefine = 0
+    irefine = 0
 
     call findMassoverAllThreads(grid, initialMass)
 
@@ -3883,12 +3884,16 @@ end subroutine sumFluxes
 !                  "pressure     ", &
 !                  "q_i          "/))
 
-             call writeInfo("Refining grid part 2", TRIVIAL)    
-             call setAllUnchanged(grid%octreeRoot)
-             call refineGridGeneric(grid, amrTolerance, evenuparray)
-             call writeInfo("Done the refine part", TRIVIAL)                 
-             call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
-             call writeInfo("Done the even up part", TRIVIAL)    
+!             iRefine = iRefine + 1 
+!             if (irefine == 3) then
+                call writeInfo("Refining grid part 2", TRIVIAL)    
+                call setAllUnchanged(grid%octreeRoot)
+                call refineGridGeneric(grid, amrTolerance, evenuparray)
+                call writeInfo("Done the refine part", TRIVIAL)                 
+                call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
+                call writeInfo("Done the even up part", TRIVIAL)    
+!                iRefine = 0
+!             endif
 
 !             call writeVtkFile(grid, "afterrefine.vtk", &
 !                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
@@ -3955,8 +3960,8 @@ end subroutine sumFluxes
              call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
           endif
-          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
-          call writeAMRgrid(plotfile,.false. ,grid)
+!          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+!          call writeAMRgrid(plotfile,.false. ,grid)
 
           if (writeoutput) then
              write(plotfile,'(a,i4.4,a)') "source",it,".dat"
@@ -6369,7 +6374,7 @@ end subroutine sumFluxes
 
     if (converged.and.refineOnMass) then
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
-            .and.(thisOctal%nDepth < maxDepthAMR))  then
+            .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
           call addNewChildWithInterp(thisOctal, subcell, grid)
           converged = .false.
 !        print *, "split D ", thisOctal%nDepth
@@ -6384,7 +6389,7 @@ end subroutine sumFluxes
 !       cs = soundSpeed(thisOctal, subcell)
        massTol = (1.d0/64.d0)*rhoThreshold*1.d30*thisOctal%subcellSize**3
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
-            .and.(thisOctal%nDepth < maxDepthAMR))  then
+            .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
 !          write(*,*) "splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
 !          write(*,*) "mass tol ",masstol
 

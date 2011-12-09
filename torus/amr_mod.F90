@@ -7482,7 +7482,8 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec,vVec,cen
     real(double) :: eThermal, rMod
-    cen = VECTOR(amrgridSize/4.d0,amrgridSize/4.d0,amrgridSize/4.d0)
+!    cen = VECTOR(amrgridSize/4.d0,amrgridSize/4.d0,amrgridSize/4.d0)
+    cen = VECTOR(0.d0, 0.d0, 0.d0)
     rVec = subcellCentre(thisOctal, subcell)-cen
     rmod = modulus(rvec)
     if (rMod < 3.1d6) then
