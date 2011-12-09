@@ -2692,17 +2692,17 @@ end subroutine dumpStromgrenRadius
     real(double) :: oldMass, newMass, factor, xh, yh, zh, massFactor
     real(double) :: oldEnergy, newEnergy, smallDist
     integer :: npoints
-    real(double) :: xPoint(100)
-    real(double) :: yPoint(100)
-    real(double) :: zPoint(100)
-    real(double) :: rhoPoint(100)
-    real(double) :: rhoePoint(100)
-    real(double) :: rhouPoint(100)
-    real(double) :: rhovPoint(100)
-    real(double) :: rhowPoint(100)
-    real(double) :: phiPoint(100)
-    real(double) :: energyPoint(100)
-    real(double) :: pressurePoint(100)
+    real(double) :: xPoint(1000)
+    real(double) :: yPoint(1000)
+    real(double) :: zPoint(1000)
+    real(double) :: rhoPoint(1000)
+    real(double) :: rhoePoint(1000)
+    real(double) :: rhouPoint(1000)
+    real(double) :: rhovPoint(1000)
+    real(double) :: rhowPoint(1000)
+    real(double) :: phiPoint(1000)
+    real(double) :: energyPoint(1000)
+    real(double) :: pressurePoint(1000)
     real(double) :: radius
     logical, save :: firstTime = .true.
     logical :: debug, addLocal
@@ -3074,6 +3074,9 @@ end subroutine dumpStromgrenRadius
           call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
 
+
+!          print *, "DOING SHEPHARDS METHOD WITH ", npoints
+          
           thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
           thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)
           thisOctal%rhou(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhouPoint, nPoints, x, y, z)
@@ -3406,7 +3409,6 @@ end subroutine dumpStromgrenRadius
     if (nVals > 0) then
        do counter = 1, nvals
           call MPI_RECV(storageArray, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          
           nPoints = nPoints + 1
           rho(npoints) = storageArray(2)
           rhoe(npoints) = storageArray(3)
@@ -3422,6 +3424,20 @@ end subroutine dumpStromgrenRadius
           
        end do
     endif
+
+    
+    !THAW - a check
+
+!    do counter = 1, nVals
+!       do i = 1, nVals
+!          if(x(counter) == x(i) .and. y(counter) == y(i) .and. z(counter) == z(i)) then
+!             print *, "x, y, z = ", x(i), y(i), z(i)
+!             print *, "x, y, z = ", x(counter), y(counter), z(counter)
+!             call torus_abort("duplication error")
+!          end if
+!       end do
+!    end do
+
 
 
   end subroutine getPointsInRadius
@@ -3719,20 +3735,23 @@ end subroutine dumpStromgrenRadius
     integer :: ierr, j, k, m, counter, counter2
     integer :: functionality
     integer :: endloop
-    real(double) :: storageArray(100,12), searchRadius
-    real(double) :: tempStorageArray(100,12)
+    real(double) :: storageArray(1000,12), searchRadius
+    real(double) :: tempStorageArray(1000,12) 
+    real(double) :: tempdoublearray(12000)
     integer :: check(endloop, nTHreadsGlobal-1)
     integer :: nVals
     integer :: cellRef
+!    integer :: foundID
 
     stillServing = .true.
     servingArray = 0
     workingTHreads = 0
     thisOctal => grid%octreeroot
-    storageArray = 0.d0
-    tempStorageArray = 0.d0
+
     do while (stillServing)
-       
+       storageArray = 0.d0
+       tempStorageArray = 0.d0
+       tempDoubleArray = 0.d0
        call MPI_RECV(loc, 6, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
@@ -3756,53 +3775,65 @@ end subroutine dumpStromgrenRadius
        else if (functionality == 1) then
           !- this thread is going to host a gathering of values in the search radius
           loc(4) = myRankGlobal
-          loc(6) = 2.d0
+          loc(5) = 2.d0
           do m = 1, nThreadsGlobal-1
              if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
                 call MPI_SEND(loc, 6, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, ierr)
              end if
           end do
-          cellRef=0
+          cellRef=1
           !Get the main serving thread's values within the request radius
           call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
 
           !send the order to the other serving threads to return values
+          nvals = 0
           do m = 1, nThreadsGlobal-1
-             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
-                call MPI_RECV(tempStorageArray, 1200, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
-                !If there are more than 30 cells I would be surprised, though this hard wiring is not ideal
-                do counter = 1, 100
-                   write(*,*) myrankGlobal, " ",tempStorageArray(counter,1)
-                   if(tempstorageArray(counter,1) /= 0.d0) then
-                      do counter2 = 1, 101
-                         if(storageArray(counter2, 1) /= 0.d0) then
+             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then 
+                !Will recv a 1D array and translate it into 2D later
+!                call MPI_RECV(tempStorageArray, 1200, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
+
+                !Now convert it back to 2D
+                tempStorageArray = reshape(tempDoubleArray, shape(tempStorageArray))
+
+                do counter = 1, 1000
+                   if(tempstorageArray(counter,1) > 1.d0) then
+                      do counter2 = 1, 1001
+                         if(counter2 == 1001) then
+                            call torus_abort("Fetched too many variables")
+                         end if
+                         if(storageArray(counter2, 1) == 0.d0) then
                             nVals = counter2
                             storageArray(counter2,:) = tempStorageArray(counter,:)
                             exit
-                         end if
-                         if(counter2 == 101) then
-                            call torus_abort("Fetched too many variables, Toms hard coding is naff")
-                         end if
+
+                         end if                         
                       end do
                     end if
                 end do
                 tempStorageArray = 0.d0
+                tempDoubleArray = 0.d0
              end if
           end do
 
           !we should now have an array of values to send
           !first send the number of cells worth of data to expect
           call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr) 
-          do counter = 1, nvals
+          do counter = 1, nvals             
              call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)             
           end do
-
+          storageArray = 0.d0
        else if(functionality == 2)then
           !- responding to a request for values within the search radius
-          cellRef = 0
+          cellRef = 1
           storageArray = 0.d0
           call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
-          call MPI_SEND(storageArray, 1200, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+ 
+          !Don't want to send a 2D array
+          tempDoubleArray = reshape(storageArray,(/SIZE(tempDoubleArray)/))
+          call MPI_SEND(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+!          call MPI_SEND(storageArray, 1200, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+
        else
           call findSubcellLocal(position, thisOctal, subcell)
           topOctal => thisOctal
@@ -3838,7 +3869,7 @@ end subroutine dumpStromgrenRadius
     integer :: i
     type(VECTOR) :: position, rVec
     real(double) :: searchRadius
-    real(double) :: storageArray(30,12)
+    real(double) :: storageArray(1000,12)
     integer :: cellRef
 
     do subcell = 1, thisOctal%maxChildren
@@ -3855,6 +3886,10 @@ end subroutine dumpStromgrenRadius
           if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
              rVec = subcellCentre(thisOctal, subcell)
              if(modulus(rVec - position) < searchRadius) then
+!                print *, "position ", position
+!                print *, "rVec ", rVec
+!                print *, "radius ", searchRadius
+!                print *, "modulus(rVec - position)", modulus(rVec - position)
                 storageArray(cellRef, 1)  = thisOctal%nDepth
                 storageArray(cellRef, 2)  = thisOctal%rho(subcell)
                 storageArray(cellRef, 3)  = thisOctal%rhoe(subcell)             

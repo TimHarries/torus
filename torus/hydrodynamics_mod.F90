@@ -4988,39 +4988,39 @@ end subroutine sumFluxes
                    end if
 
 
-                   Thisoctal%tempstorage(subcell,1) = inflowRho*rhograd*posFactor
-                   thisOctal%tempStorage(subcell,2) = inflowRhoE*rhoEgrad*posFactor
+                   Thisoctal%tempstorage(subcell,1) = inflowRho+rhograd*posFactor
+                   thisOctal%tempStorage(subcell,2) = inflowRhoE+rhoEgrad*posFactor
 
-                   thisOctal%tempStorage(subcell,6) = inflowEnergy*Egrad*posFactor
-                   thisOctal%tempStorage(subcell,7) = inflowPressure*Pgrad*posFactor
+                   thisOctal%tempStorage(subcell,6) = inflowEnergy+Egrad*posFactor
+                   thisOctal%tempStorage(subcell,7) = inflowPressure+Pgrad*posFactor
 
 
                    if (thisOctal%twod.or.thisOctal%oneD) then
                       if (abs(dir%x) > 0.9d0) then
-                         thisOctal%tempStorage(subcell,3) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,3) = inflowMomentum+momgrad*posFactor
                          thisOctal%tempStorage(subcell,4) = 0.d0
                          thisOctal%tempStorage(subcell,5) = 0.d0
                       endif
                       if (abs(dir%z) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = 0.d0
                          thisOctal%tempStorage(subcell,4) = 0.d0
-                         thisOctal%tempStorage(subcell,5) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,5) = inflowMomentum+momgrad*posFactor
                       endif
                    else if (thisOctal%threed) then
                       if (abs(dir%x) > 0.9d0) then
-                         thisOctal%tempStorage(subcell,3) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,3) = inflowMomentum+momgrad*posFactor
                          thisOctal%tempStorage(subcell,4) = 0.d0
                          thisOctal%tempStorage(subcell,5) = 0.d0
                       endif
                       if (abs(dir%y) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = 0.d0
-                         thisOctal%tempStorage(subcell,4) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,4) = inflowMomentum+momgrad*posFactor
                          thisOctal%tempStorage(subcell,5) = 0.d0
                       endif
                       if (abs(dir%z) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = 0.d0
                          thisOctal%tempStorage(subcell,4) = 0.d0
-                         thisOctal%tempStorage(subcell,5) = inflowMomentum*momgrad*posFactor
+                         thisOctal%tempStorage(subcell,5) = inflowMomentum+momgrad*posFactor
                       endif
                    endif
 
