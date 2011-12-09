@@ -3371,7 +3371,7 @@ end subroutine dumpStromgrenRadius
   subroutine shutdownServers2(check, k, endloop)
     use mpi
     integer :: iThread
-    real(double) :: loc(4)
+    real(double) :: loc(6)
     integer, parameter :: tag = 50
     integer :: ierr, endloop, k
     integer :: check(endloop, nTHreadsGlobal-1)
@@ -3380,6 +3380,8 @@ end subroutine dumpStromgrenRadius
        if (iThread /= myrankGlobal .and. .not. ANY(iThread == check(k,1:nThreadsGlobal-1))) then
           loc = 1.d30
           loc(4) = dble(myRankGlobal)
+          loc(5) = 0.d0
+          loc(6) = 0.d0
           call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
     enddo
