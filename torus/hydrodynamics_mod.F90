@@ -6143,7 +6143,8 @@ end subroutine sumFluxes
           if(evenuparray(myRankGlobal) /= k) then
               !         if (myrankGlobal /= iThread) then 
              !call hydroValuesServer(grid, iThread)
-             call hydroValuesServer(grid, nworking)
+!             call hydroValuesServer(grid, nworking)
+             call hydroValuesServer2(grid, nworking, k, endloop, safe)
           else
              call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, index, inheritval=.false.)
              call shutdownServers2(safe, k, endloop)
@@ -7091,7 +7092,8 @@ end subroutine refineGridGeneric2
 !             if (myrankGlobal /= iThread) then
              if(evenUpArray(myRankGlobal) /= k) then
 !                call hydroValuesServer(grid, iThread)
-                call hydroValuesServer(grid, nworking)
+!                call hydroValuesServer(grid, nworking)
+                call hydroValuesServer2(grid, nworking, k, endloop, safe)
              else
                 call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
 
@@ -7172,7 +7174,8 @@ end subroutine refineGridGeneric2
 !                if (myrankGlobal /= iThread) then
              do k = 1, endloop
                 if(evenUpArray(myRankGlobal) /= k) then
-                   call hydroValuesServer(grid, nworking)
+!                   call hydroValuesServer(grid, nworking)
+                   call hydroValuesServer2(grid, nworking, k, endloop, safe)
                 else
 !                   if(myRank == 2) then
 !                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
@@ -7203,7 +7206,8 @@ end subroutine refineGridGeneric2
 !                if (myrankGlobal /= iThread) then
                 if(evenUpArray(myRankGlobal) /= k) then
 !                   call hydroValuesServer(grid, iThread)
-                   call hydroValuesServer(grid, nworking)
+!                   call hydroValuesServer(grid, nworking)
+                   call hydroValuesServer2(grid, nworking, k, endloop, safe)
                 else
                    call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)
 

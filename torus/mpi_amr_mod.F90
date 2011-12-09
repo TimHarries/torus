@@ -3392,7 +3392,7 @@ end subroutine dumpStromgrenRadius
     integer, intent(out) :: nd
     real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     type(VECTOR) :: position, rVec
-    real(double) :: loc(4)
+    real(double) :: loc(6)
     type(OCTAL), pointer :: thisOctal, topOctal
     integer :: iThread, topOctalSubcell
     integer, parameter :: nStorage = 12
@@ -3434,8 +3434,10 @@ end subroutine dumpStromgrenRadius
        loc(2) = position%y
        loc(3) = position%z
        loc(4) = dble(myRankGlobal)
+       loc(5) = 0.d0
+       loc(6) = 0.d0
 !       print *, "RANK ", myRankGlobal, "SENDING TO ", iThread
-       call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(loc, 6, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
  !      print *, "RANK ", myRankGlobal, "SENT"
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
   !     print *, "RANK ", myRankGlobal, "RECVING"
@@ -3592,8 +3594,10 @@ end subroutine dumpStromgrenRadius
              end if
           end do
           cellRef=0
+          !Get the main serving thread's values within the request radius
           call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
 
+          !send the order to the other serving threads to return values
           do m = 1, nThreadsGlobal-1
              if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
                 call MPI_RECV(tempStorageArray, 360, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
@@ -3617,6 +3621,8 @@ end subroutine dumpStromgrenRadius
           end do
 
           !we should now have an array of values to send
+          !first send the number of cells worth of data to expect
+          call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr) 
           do counter = 1, nvals
              call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)             
           end do
