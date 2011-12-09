@@ -6937,54 +6937,6 @@ end subroutine refineGridGeneric2
     sigma = maxval(abs(x(1:n)))-minval(abs(x(1:n)))
   end function sigma
 
-!Set up an array of identifiers to speed up the even up grid process
-  subroutine setupEvenUpArray(grid, evenUpArray)
-    type(gridtype) :: grid
-    integer :: evenUpArray(nThreadsGlobal-1)
-
-
-    if(grid%octreeRoot%twoD) then
-       if((nthreadsGlobal-1) == 4) then
-          evenUpArray = (/1, 2, 3, 4/)
-       else if((nthreadsGlobal-1) == 16) then
-          evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
-       end if
-    else if(grid%octreeRoot%threeD) then
-       if((nthreadsGlobal-1) == 8) then
-!          evenUpArray = (/1, 0, 0, 1, 0, 1, 1, 0/)
-          evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8/)
-       else if((nthreadsGlobal-1) == 64) then
-          evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/)!pane 4
-
-       else if(nTHreadsGlobal-1==512) then
-          evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 4
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 5
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 6
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 7
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/) !pane 8
-
-       else
-          call torus_abort("unknown no. of hydro threads in setupEvenUpArray")
-       end if
-    else
-       evenUpArray = (/1, 2/)
-    end if
-
-  end subroutine setupEvenUpArray
 
    subroutine evenUpGridMPI(grid, inheritFlag, evenAcrossThreads, evenUpArray, dumpfiles)
     use mpi  
