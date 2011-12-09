@@ -3427,7 +3427,8 @@ end subroutine dumpStromgrenRadius
   end subroutine getPointsInRadius
 
 
-  recursive subroutine getPointsInRadiusLocal(position, radius, thisOctal, npoints, rho, rhoe, rhou, rhov, rhow, energy, pressure, phi, x, y, z)
+  recursive subroutine getPointsInRadiusLocal(position, radius, thisOctal, npoints, rho, rhoe, rhou, rhov, rhow, &
+       energy, pressure, phi, x, y, z)
     real(double) :: rho(:), rhoe(:), rhou(:), rhov(:), rhow(:), energy(:), pressure(:), phi(:), x(:), y(:), z(:)
     type(VECTOR) :: position
     real(double) :: radius, r
@@ -3442,7 +3443,8 @@ end subroutine dumpStromgrenRadius
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call  getPointsInRadiusLocal(position, radius, child, npoints, rho, rhoe, rhou, rhov, rhow, energy, pressure, phi, x, y, z)
+                call  getPointsInRadiusLocal(position, radius, child, npoints, rho, rhoe, rhou, rhov, rhow, energy, &
+                     pressure, phi, x, y, z)
                 exit
              end if
           end do
