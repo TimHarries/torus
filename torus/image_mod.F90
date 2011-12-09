@@ -118,8 +118,7 @@ module image_mod
 
      type(VECTOR), intent(in) :: observerDirection
      type(IMAGETYPE), intent(inout) :: thisImage
-!     type(PHOTON), intent(in) :: thisPhoton
-     type(PHOTON) :: thisPhoton
+     type(PHOTON), intent(in) :: thisPhoton
      real(double), intent(inout) :: totalFlux
      type(VECTOR) :: xProj, yProj
      real :: xDist, yDist
@@ -142,13 +141,8 @@ module image_mod
      if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
           (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
 
-!        if(thisPhoton%weight == 0.d0) thisPhoton%weight = 1.d0
-
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
-
-
-!        print *, "dI = ", thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
 
         thisImage%nSamples(xPix, yPix) = thisImage%nSamples(xPix, yPix) + 1
 
