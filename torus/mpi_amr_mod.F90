@@ -2688,7 +2688,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: pressureCorner(8)
     real(double) :: weight, totalWeight
     real(double) :: rho, rhoe, rhou, rhov, rhow, r, energy, phi, pressure
-    real(double) :: x1, x2, y1, y2, z1, z2, u, v, x, y, z, dv
+    real(double) :: x1, x2, y1, y2, z1, z2, u, x, y, z, dv
     real(double) :: oldMass, newMass, factor, xh, yh, zh, massFactor
     real(double) :: oldEnergy, newEnergy, smallDist
     integer :: npoints
@@ -2710,13 +2710,6 @@ end subroutine dumpStromgrenRadius
     logical :: debug, addLocal
 
     debug = .false.
-
-    if(debug)then
-       u = 1.d0
-       v = 1.d0
-       w = 1.d0
-    end if
-
 
 
 !    if (inSubcell(parent, ichild, testVec)) debug = .true.
@@ -3179,7 +3172,7 @@ end subroutine dumpStromgrenRadius
 
           rVec%y = 0.d0
 
-          radius = 2.d0*grid%octreeRoot%subcellSize / &
+          radius = 4.d0*grid%octreeRoot%subcellSize / &
                                 2.0_oc**REAL(minDepthAmr,kind=oct)
 
           call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
