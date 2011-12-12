@@ -2692,17 +2692,19 @@ end subroutine dumpStromgrenRadius
     real(double) :: oldMass, newMass, factor, xh, yh, zh, massFactor
     real(double) :: oldEnergy, newEnergy, smallDist
     integer :: npoints
-    real(double) :: xPoint(1000)
-    real(double) :: yPoint(1000)
-    real(double) :: zPoint(1000)
-    real(double) :: rhoPoint(1000)
-    real(double) :: rhoePoint(1000)
-    real(double) :: rhouPoint(1000)
-    real(double) :: rhovPoint(1000)
-    real(double) :: rhowPoint(1000)
-    real(double) :: phiPoint(1000)
-    real(double) :: energyPoint(1000)
-    real(double) :: pressurePoint(1000)
+    integer, parameter :: maxpts = 1000
+    real(double) :: xPoint(maxpts)
+    real(double) :: yPoint(maxpts)
+    real(double) :: zPoint(maxpts)
+    real(double) :: rhoPoint(maxpts)
+    real(double) :: rhoePoint(maxpts)
+    real(double) :: rhouPoint(maxpts)
+    real(double) :: rhovPoint(maxpts)
+    real(double) :: rhowPoint(maxpts)
+    real(double) :: phiPoint(maxpts)
+    real(double) :: energyPoint(maxpts)
+    real(double) :: pressurePoint(maxpts)
+
     real(double) :: radius
     logical, save :: firstTime = .true.
     logical :: debug, addLocal
@@ -3068,12 +3070,11 @@ end subroutine dumpStromgrenRadius
           y = rVec%y
           z = rVec%z
 
-          radius = 2.d0*grid%octreeRoot%subcellSize / &
+          radius = 4.d0*grid%octreeRoot%subcellSize / &
                                 2.0_oc**REAL(minDepthAmr,kind=oct)
 
           call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
-
 
 !          print *, "DOING SHEPHARDS METHOD WITH ", npoints
           
@@ -3083,7 +3084,7 @@ end subroutine dumpStromgrenRadius
           thisOctal%rhov(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhovPoint, nPoints, x, y, z)
           thisOctal%rhow(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhowPoint, nPoints, x, y, z)
           thisOctal%energy(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, energyPoint, nPoints, x, y, z)
-          thisOctal%phi_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, phiPoint, nPoints, x, y, z)
+          thisOctal%phi_gas(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, phiPoint, nPoints, x, y, z)
           thisOctal%pressure_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, pressurePoint, nPoints, x, y, z)
 
 
@@ -3162,7 +3163,7 @@ end subroutine dumpStromgrenRadius
 !                                    (       u) * (       v) * (1.d0 - w) * pressureCorner(6) + &
 !                                    (1.d0 - u) * (       v) * (       w) * pressureCorner(7) + &
 !                                    (       u) * (       v) * (       w) * pressureCorner(8) 
-!
+
        endif
        if (thisOctal%twod) then
           rVec = subcellcentre(thisOctal, iSubcell)
@@ -3395,8 +3396,6 @@ end subroutine dumpStromgrenRadius
        end if
    end do
 
-!    iThread = 1!TOMSTHREAD
-
     loc(1) = position%x
     loc(2) = position%y
     loc(3) = position%z
@@ -3426,17 +3425,6 @@ end subroutine dumpStromgrenRadius
     endif
 
     
-    !THAW - a check
-
-!    do counter = 1, nVals
-!       do i = 1, nVals
-!          if(x(counter) == x(i) .and. y(counter) == y(i) .and. z(counter) == z(i)) then
-!             print *, "x, y, z = ", x(i), y(i), z(i)
-!             print *, "x, y, z = ", x(counter), y(counter), z(counter)
-!             call torus_abort("duplication error")
-!          end if
-!       end do
-!    end do
 
 
 
@@ -3449,9 +3437,10 @@ end subroutine dumpStromgrenRadius
     type(VECTOR) :: position
     real(double) :: radius, r
     integer :: nPoints
-    type(OCTAL), pointer :: thisOctal, child
-    integer :: subcell, i
+    type(OCTAL), pointer :: thisOctal, child, topOctal
+    integer :: subcell, i, topOctalSubcell
     type(VECTOR) :: cen
+    logical :: changed
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3466,22 +3455,34 @@ end subroutine dumpStromgrenRadius
           end do
        else 
           if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-             cen = subcellCentre(thisOctal, subcell)
+
+
+             changed = .false.
+             topOctal => thisOctal
+             topOctalSubcell = subcell
+             do while(topOctal%changed(topOctalSubcell))
+                topOctalSubcell = topOctal%parentSubcell
+                topOctal => topOctal%parent
+                changed = .true.
+             enddo
+
+             cen = subcellCentre(topOctal, topOctalsubcell)
              r = modulus(cen - position)
              if (r < radius) then
                 nPoints = nPoints + 1
-                rho(nPoints) = thisOctal%rho(subcell)
-                rhoe(nPoints) = thisOctal%rho(subcell)
-                rhou(nPoints) = thisOctal%rho(subcell)
-                rhov(nPoints) = thisOctal%rho(subcell)
-                rhow(nPoints) = thisOctal%rho(subcell)
-                energy(nPoints) = thisOctal%rho(subcell)
-                pressure(nPoints) = thisOctal%rho(subcell)
-                phi(nPoints) = thisOctal%rho(subcell)
+                rho(nPoints) = topOctal%rho(topOctalsubcell)
+                rhoe(nPoints) = topOctal%rhoe(topOctalsubcell)
+                rhou(nPoints) = topOctal%rhou(topOctalsubcell)
+                rhov(nPoints) = topOctal%rhov(topOctalsubcell)
+                rhow(nPoints) = topOctal%rhow(topOctalsubcell)
+                energy(nPoints) = topOctal%energy(topOctalsubcell)
+                pressure(nPoints) = topOctal%pressure_i(topOctalsubcell)
+                phi(nPoints) = topOctal%phi_gas(topOctalsubcell)
                 x(nPoints) = cen%x
                 y(nPoints) = cen%y
                 z(nPoints) = cen%z
              endif
+             if (changed) exit
           endif
        endif
     enddo
@@ -3864,13 +3865,15 @@ end subroutine dumpStromgrenRadius
 
 
   recursive  subroutine getAllInRadius(thisOctal, position, searchRadius, storageArray, cellRef)
-    type(octal), pointer :: thisOctal, child
-    integer :: subcell
+
+    type(octal), pointer :: thisOctal, child, topOctal
+    integer :: subcell, topOctalSubcell
     integer :: i
     type(VECTOR) :: position, rVec
     real(double) :: searchRadius
     real(double) :: storageArray(1000,12)
     integer :: cellRef
+    logical :: changed
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3884,26 +3887,38 @@ end subroutine dumpStromgrenRadius
           end do
        else 
           if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-             rVec = subcellCentre(thisOctal, subcell)
+
+             changed = .false.
+             topOctal => thisOctal
+             topOctalSubcell = subcell
+             do while(topOctal%changed(topOctalSubcell))
+                topOctalSubcell = topOctal%parentSubcell
+                topOctal => topOctal%parent
+                changed = .true.
+             enddo
+
+
+             rVec = subcellCentre(topOctal, topOctalsubcell)
              if(modulus(rVec - position) < searchRadius) then
 !                print *, "position ", position
 !                print *, "rVec ", rVec
 !                print *, "radius ", searchRadius
 !                print *, "modulus(rVec - position)", modulus(rVec - position)
-                storageArray(cellRef, 1)  = thisOctal%nDepth
-                storageArray(cellRef, 2)  = thisOctal%rho(subcell)
-                storageArray(cellRef, 3)  = thisOctal%rhoe(subcell)             
-                storageArray(cellRef, 4)  = thisOctal%rhou(subcell)             
-                storageArray(cellRef, 5)  = thisOctal%rhov(subcell)             
-                storageArray(cellRef, 6)  = thisOctal%rhow(subcell)        
-                storageArray(cellRef, 7)  = thisOctal%energy(subcell)
-                storageArray(cellRef, 8)  = thisOctal%phi_gas(subcell)
+                storageArray(cellRef, 1)  = topOctal%nDepth
+                storageArray(cellRef, 2)  = topOctal%rho(topOctalsubcell)
+                storageArray(cellRef, 3)  = topOctal%rhoe(topOctalsubcell)             
+                storageArray(cellRef, 4)  = topOctal%rhou(topOctalsubcell)             
+                storageArray(cellRef, 5)  = topOctal%rhov(topOctalsubcell)             
+                storageArray(cellRef, 6)  = topOctal%rhow(topOctalsubcell)        
+                storageArray(cellRef, 7)  = topOctal%energy(topOctalsubcell)
+                storageArray(cellRef, 8)  = topOctal%phi_gas(topOctalsubcell)
                 storageArray(cellRef, 9)  = rVec%x
                 storageArray(cellRef, 10)  = rVec%y
                 storageArray(cellRef, 11)  = rVec%z
-                storageArray(cellRef, 12)  = thisOctal%pressure_i(subcell)
+                storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
                 cellRef = cellRef + 1
              end if
+             if (changed) exit
           end if
        endif
     end do
@@ -4201,7 +4216,7 @@ end subroutine labelSingleSubcellMPI
       enddo
       R = maxval(h(1:n))
       do i = 1, n
-         w(i) = ((R-h(i))/(R*h(i))) ! franke & nielson 1980
+         w(i) = ((R-h(i))/(R*h(i))**2) ! franke & nielson 1980
       enddo
       w = w / SUM(w)
       out = 0.d0

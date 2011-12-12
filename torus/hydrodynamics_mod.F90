@@ -3663,9 +3663,9 @@ end subroutine sumFluxes
        end if
        
 !       call writeVTKfile(grid, "start.vtk")
-       call writeVtkFile(grid, "start.vtk", &
-            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-            ,"mpithread    " /))
+!       call writeVtkFile(grid, "start.vtk", &
+!            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+!            ,"mpithread    " /))
 
        if (myrankGlobal /= 0) then
 
@@ -3710,16 +3710,16 @@ end subroutine sumFluxes
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrank == 1) call tune(6, "Initial refine")
-!             call writeVtkFile(grid, "afterinitevenup.vtk", &
-!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-!                  "u_i          ", &
-!                  "hydrovelocity", &
-!                  "rhou         ", &
-!                  "rhov         ", &
-!                  "rhow         ", &
-!                  "phi          ", &
-!                  "pressure     ", &
-!                  "q_i          "/))
+             call writeVtkFile(grid, "afterinitevenup.vtk", &
+                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+                  "u_i          ", &
+                  "hydrovelocity", &
+                  "rhou         ", &
+                  "rhov         ", &
+                  "rhow         ", &
+                  "phi          ", &
+                  "pressure     ", &
+                  "q_i          "/))
           end if
        end if
 
