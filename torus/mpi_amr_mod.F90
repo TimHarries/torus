@@ -2711,6 +2711,14 @@ end subroutine dumpStromgrenRadius
 
     debug = .false.
 
+    if(debug)then
+       u = 1.d0
+       v = 1.d0
+       w = 1.d0
+    end if
+
+
+
 !    if (inSubcell(parent, ichild, testVec)) debug = .true.
     if (parent%ndepth == maxDepthAMR) then
        if (firstTime) then
