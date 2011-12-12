@@ -3075,8 +3075,6 @@ end subroutine dumpStromgrenRadius
 
           call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
-
-!          print *, "DOING SHEPHARDS METHOD WITH ", npoints
           
           thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
           thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)
@@ -3168,51 +3166,77 @@ end subroutine dumpStromgrenRadius
        if (thisOctal%twod) then
           rVec = subcellcentre(thisOctal, iSubcell)
           x = rVec%x
+          y = 0.d0
           z = rVec%z
-          u = (x - x1)/(x2 - x1)
-          v = (z - z1)/(z2 - z1)
-          thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoCorner(1) + &
-                                 (       u) * (1.d0 - v) * rhoCorner(2) + &
-                                 (1.d0 - u) * (       v) * rhoCorner(3) + &
-                                 (       u) * (       v) * rhoCorner(4)
-          
-          
-          thisOctal%rhoe(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoeCorner(1) + &
-               (       u) * (1.d0 - v) * rhoeCorner(2) + &
-               (1.d0 - u) * (       v) * rhoeCorner(3) + &
-               (       u) * (       v) * rhoeCorner(4)
-          
-          
-          thisOctal%rhou(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhouCorner(1) + &
-               (       u) * (1.d0 - v) * rhouCorner(2) + &
-               (1.d0 - u) * (       v) * rhouCorner(3) + &
-               (       u) * (       v) * rhouCorner(4)
-          
-          thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
-               (       u) * (1.d0 - v) * rhovCorner(2) + &
-               (1.d0 - u) * (       v) * rhovCorner(3) + &
-               (       u) * (       v) * rhovCorner(4)
-          
-          thisOctal%rhow(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhowCorner(1) + &
-               (       u) * (1.d0 - v) * rhowCorner(2) + &
-               (1.d0 - u) * (       v) * rhowCorner(3) + &
-               (       u) * (       v) * rhowCorner(4)
-          
-          thisOctal%energy(iSubcell) = (1.d0 - u) * (1.d0 - v) * eCorner(1) + &
-               (       u) * (1.d0 - v) * eCorner(2) + &
-               (1.d0 - u) * (       v) * eCorner(3) + &
-               (       u) * (       v) * eCorner(4)
 
+          rVec%y = 0.d0
 
-          thisOctal%phi_gas(iSubcell) = (1.d0 - u) * (1.d0 - v) * phiCorner(1) + &
-               (       u) * (1.d0 - v) * phiCorner(2) + &
-               (1.d0 - u) * (       v) * phiCorner(3) + &
-               (       u) * (       v) * phiCorner(4)
+          radius = 2.d0*grid%octreeRoot%subcellSize / &
+                                2.0_oc**REAL(minDepthAmr,kind=oct)
 
-          thisOctal%pressure_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * pressureCorner(1) + &
-               (       u) * (1.d0 - v) * pressureCorner(2) + &
-               (1.d0 - u) * (       v) * pressureCorner(3) + &
-               (       u) * (       v) * pressureCorner(4)
+          call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
+               rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+
+          ypoint = 0.d0
+          y = 0.d0
+          rhovPoint = 0.d0
+
+          thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
+          thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)
+          thisOctal%rhou(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhouPoint, nPoints, x, y, z)
+          thisOctal%rhov(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhovPoint, nPoints, x, y, z)
+          thisOctal%rhow(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhowPoint, nPoints, x, y, z)
+          thisOctal%energy(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, energyPoint, nPoints, x, y, z)
+          thisOctal%phi_gas(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, phiPoint, nPoints, x, y, z)
+          thisOctal%pressure_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, pressurePoint, nPoints, x, y, z)
+
+!          rVec = subcellcentre(thisOctal, iSubcell)
+!          x = rVec%x
+!          z = rVec%z
+!          u = (x - x1)/(x2 - x1)
+!          v = (z - z1)/(z2 - z1)
+!          thisOctal%rho(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoCorner(1) + &
+!                                 (       u) * (1.d0 - v) * rhoCorner(2) + &
+!                                 (1.d0 - u) * (       v) * rhoCorner(3) + &
+!                                 (       u) * (       v) * rhoCorner(4)
+!          
+!          
+!          thisOctal%rhoe(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhoeCorner(1) + &
+!               (       u) * (1.d0 - v) * rhoeCorner(2) + &
+!               (1.d0 - u) * (       v) * rhoeCorner(3) + &
+!               (       u) * (       v) * rhoeCorner(4)
+!          
+!          
+!          thisOctal%rhou(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhouCorner(1) + &
+!               (       u) * (1.d0 - v) * rhouCorner(2) + &
+!               (1.d0 - u) * (       v) * rhouCorner(3) + &
+!               (       u) * (       v) * rhouCorner(4)
+!          
+!          thisOctal%rhov(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhovCorner(1) + &
+!               (       u) * (1.d0 - v) * rhovCorner(2) + &
+!               (1.d0 - u) * (       v) * rhovCorner(3) + &
+!               (       u) * (       v) * rhovCorner(4)
+!          
+!          thisOctal%rhow(iSubcell) = (1.d0 - u) * (1.d0 - v) * rhowCorner(1) + &
+!               (       u) * (1.d0 - v) * rhowCorner(2) + &
+!               (1.d0 - u) * (       v) * rhowCorner(3) + &
+!               (       u) * (       v) * rhowCorner(4)
+!          
+!          thisOctal%energy(iSubcell) = (1.d0 - u) * (1.d0 - v) * eCorner(1) + &
+!               (       u) * (1.d0 - v) * eCorner(2) + &
+!               (1.d0 - u) * (       v) * eCorner(3) + &
+!               (       u) * (       v) * eCorner(4)
+!
+!
+!          thisOctal%phi_gas(iSubcell) = (1.d0 - u) * (1.d0 - v) * phiCorner(1) + &
+!               (       u) * (1.d0 - v) * phiCorner(2) + &
+!               (1.d0 - u) * (       v) * phiCorner(3) + &
+!               (       u) * (       v) * phiCorner(4)!
+!
+!          thisOctal%pressure_i(iSubcell) = (1.d0 - u) * (1.d0 - v) * pressureCorner(1) + &
+!               (       u) * (1.d0 - v) * pressureCorner(2) + &
+!               (1.d0 - u) * (       v) * pressureCorner(3) + &
+!               (       u) * (       v) * pressureCorner(4)
        endif
 
        if (thisOctal%oned) then
@@ -3237,9 +3261,9 @@ end subroutine dumpStromgrenRadius
 
           thisOctal%energy(iSubcell) = (1.d0 - u) * eCorner(1) + &
                                     (       u) *  eCorner(2)
-       endif
-
-    enddo
+       Endif
+       
+    Enddo
     
     ! conservation normalizations
 
@@ -3397,7 +3421,11 @@ end subroutine dumpStromgrenRadius
    end do
 
     loc(1) = position%x
-    loc(2) = position%y
+    if(grid%octreeroot%twoD) then
+       loc(2) = 0.d0
+    else
+       loc(2) = position%y
+    end if
     loc(3) = position%z
     loc(4) = dble(myRankGlobal)
     loc(5) = 1.d0

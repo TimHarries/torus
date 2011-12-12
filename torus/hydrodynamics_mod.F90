@@ -1,6 +1,7 @@
 #ifdef HYDRO
 ! Hydrodynamics module added by tjh on 18th june 2007
 
+
 Module hydrodynamics_mod
 #ifdef MPI
 
@@ -1340,7 +1341,7 @@ contains
     real(double), allocatable :: p(:), xArray(:)
     integer :: nDimensions
     real(double) :: m2, m4, Sp, fac
-    
+
     if(thisOctal%threed) then
        nDimensions = 3
     else if (thisOctal%twoD) then
@@ -1351,11 +1352,13 @@ contains
     allocate(p(nDimensions*4))
     allocate(xArray(nDimensions*4))
     refineShock = .false.
+
     if(.not. thisOctal%ghostcell(subcell)) then
        refineShock = .false.
        p = 0.d0
        index = 1
-
+       xArray = 0.d0
+       p = 0.d0
        do i = 1, nDimensions
           if(i == 1) then
              dirVec(1) = VECTOR(-1.d0, 0.d0, 0.d0)
@@ -1377,11 +1380,11 @@ contains
           do j = 1, 4             
              if(j==1) then
                 locator = subcellCentre(thisOctal, subcell) + &
-                     (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(j)
+                     ((thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(j))
                 if (inOctal(grid%octreeRoot, locator)) then
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)                
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
                    p(index) = pressure                   
                    if(i == 1) then
                       xArray(index) = x
@@ -1390,6 +1393,8 @@ contains
                    else
                       xArray(index) = y
                    end if
+                else
+                   call torus_abort("point outside the grid")
                 end if
              else if(j==2) then
                 p(index)= thisOctal%pressure_i(subcell)
@@ -1407,6 +1412,7 @@ contains
                 if (inOctal(grid%octreeRoot, locator)) then
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!                   locator = subcellCentre(neighbourOctal, neighbourSubcell)
                    call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)   
                    p(index) = pressure
                    if(i == 1) then
@@ -1416,6 +1422,8 @@ contains
                    else
                       xArray(index) = y
                    end if
+                else
+                   call torus_abort("point outside the grid")                   
                 end if
              else
                 locator = subcellCentre(thisOctal, subcell) + &
@@ -1446,10 +1454,12 @@ contains
                       else
                          xArray(index) = y
                       end if
+                   else
+                      call torus_abort("point outside the grid")                   
                    end if
                 end if
-                index = index +1
              end if
+             index = index +1
           end do
        end do
 
@@ -1464,7 +1474,8 @@ contains
 
        m2= (p(i*4 - 1) - p(i*4 -2))/(xArray(i*4-1) - xArray(i*4 - 2))
        m4= (p(i*4) - p(i*4 - 3))/(xArray(i*4) - xArray(i*4 - 3))
-       
+
+
        if(m4 /= 0.d0) then
           Sp = m2/m4
        else
@@ -4080,12 +4091,12 @@ end subroutine sumFluxes
 !          call writeInfo("Done", TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          if(doRefine) then
-             call setAllUnchanged(grid%octreeRoot)
-             call writeInfo("Refining", TRIVIAL)
-             call refinegridGeneric(grid, amrTolerance, evenuparray)          
-             call writeInfo("Done", TRIVIAL)
-          end if
+    !      if(doRefine) then
+    !         call setAllUnchanged(grid%octreeRoot)
+    !         call writeInfo("Refining", TRIVIAL)
+    !         call refinegridGeneric(grid, amrTolerance, evenuparray)          
+    !         call writeInfo("Done", TRIVIAL)
+    !      end if    
           call writeInfo("Evening up", TRIVIAL)
           call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
           call writeInfo("Done", TRIVIAL)
@@ -4101,6 +4112,11 @@ end subroutine sumFluxes
           call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
        endif
     endif
+
+       call writeVTKfile(grid, "start.vtk")
+       call writeVtkFile(grid, "start.vtk", &
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+            ,"mpithread    ", "ghosts       " /))
 
 !calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
 !nearest neighbour
@@ -6223,8 +6239,6 @@ end subroutine sumFluxes
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-
-
     if(mod(index, 2.d0) /= 0.d0) then
        index1 = 1
        index2 = thisOctal%maxChildren
@@ -6318,11 +6332,11 @@ end subroutine sumFluxes
                    endif
                 end if
 
-!                if(captureshocks) then
-!                   if(refineShock(thisOctal, subcell, grid)) then
-!                      split = .true.
-!                   end if
-!                end if
+                if(captureshocks .and. .not. thisOctal%changed(subcell)) then
+                   if(refineShock(thisOctal, subcell, grid)) then
+                      split = .true.
+                   end if
+                end if
 
                 if (split) then
 
