@@ -7,8 +7,7 @@ module phaseloop_mod
 
 CONTAINS
 
-subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie, &
-  overrideInclinations, imNum)
+subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie, imNum)
 
   use kind_mod
   use inputs_mod 
@@ -56,23 +55,19 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
-  use sed_mod, only: getNumSedInc, getSedInc, sedFilename, writeSpectrum
+  use sed_mod
   use physics_mod, only : setupdust
   implicit none
 
 ! Arguments
   type(GRIDTYPE) :: grid
-  real, optional, intent(in):: overrideInclinations(:)
-  real(double) :: finalTau
-  type(romanova) :: romData ! parameters and data for romanova geometry
   logical, intent(in) :: flatSpec
-  real :: inclination
   integer, intent(in) :: maxTau
   type(PHASEMATRIX),pointer :: miePhase(:,:, :)
-  integer :: nsource
+  integer, intent(in) :: nsource
   type(SOURCETYPE) :: source(:)
   integer, intent(in) :: nmumie
-  integer, optional :: imNum
+  integer, optional, intent(in) :: imNum
 
 ! Former arguments which were hardwired to constant values
   logical :: alreadyDoneInfall = .true.
@@ -92,6 +87,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer :: maxBlobs=0
   type(BLOBTYPE) :: blobs(1)
   real :: dtime = 0.0
+
+  type(romanova) :: romData ! parameters and data for romanova geometry
+  real(double) :: finalTau
 
 ! local parameters
   integer, parameter :: maxscat = 1000000  ! Maximum number of scatterings for individual photon
@@ -212,6 +210,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer(kind=bigint) :: i
   integer :: istep, ispline 
   type(VECTOR) :: viewVec, outVec, thisVec
+  real :: inclination, imagePA
   type(VECTOR) :: amrGridCentre
 
   integer :: toofewsamples   ! number of errors from integratePathAMR
@@ -333,8 +332,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (thisImageType(1:6) == "stokes") then 
         stokesImage=.true.
      endif
+     ! Images call phaseloop once per image and looping is done by doOutputs
+     nInclination = 1 
      outfile = getImageFilename(imNum)
   else
+     ! Multiple SED inclinations can be generated on each call to this subroutine
+     nInclination = getNumSedInc()
      outfile = sedFileName
   endif
 
@@ -1089,29 +1092,28 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      ! here we may loop over different inclinations
      !
 
-! Use the override inclination values if supplied, otherwise use values from sed_mod
-     if ( present(overrideInclinations) ) then
-        nInclination = size(overrideInclinations)
-     else
-        nInclination = getNumSedInc()
-     endif
-
   incLoop: do iInclination = 1, nInclination, 1 
        ! NB This loop is not indented in the code!
      
      if (nInclination >= 1) then  
 
-        if ( present(overrideInclinations) ) then
-           inclination = overrideInclinations(iInclination)
+        ! Set image/SED inclination and viewing vector
+        if (present(imNum)) then
+           inclination = getImageInc(imNum)
+           imagePA     = getImagePA(imNum)
+           viewVec     = getImageViewVec(imNum)
         else
            inclination = getSedInc(iInclination)
+           imagePA     = 0.0
+           viewVec     = getSedViewVec(iInclination)
         end if
-        inclination = max(inclination,1.e-4)
 
         if (writeoutput) then
            write(message,*) " "
            call writeInfo(message, TRIVIAL)
            write(message,*) "Inclination = ",inclination*radToDeg,' degrees'
+           call writeInfo(message, TRIVIAL)
+           write(message,*) "Postion Angle = ",imagePA*radToDeg,' degrees'
            call writeInfo(message, TRIVIAL)
            write(message,*) " "
            call writeInfo(message, TRIVIAL)
@@ -1122,9 +1124,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
        write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
        outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
        
-       viewVec%x = 0.
-       viewVec%y = -sin(inclination)
-       viewVec%z = -cos(inclination)
        outVec = (-1.d0)*viewVec
        thisVec = viewVec
 
@@ -3007,8 +3006,6 @@ CONTAINS
     normToRotation = rotationAxis .cross. yHat
     call normalize(normToRotation)
 
-! Second argument was inclination parameter in version 1. Removed in version 2 as 
-! I don't think it is required. DMA, June 2010. 
     tempVec  = arbitraryRotate(rotationAxis, 0.0_db, normToRotation)
     originalViewVec =  (-1.d0)*tempVec
 

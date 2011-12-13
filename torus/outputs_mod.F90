@@ -16,13 +16,12 @@ contains
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, nv
-    use inputs_mod, only : npixels, nImage, inclinationArray
+    use inputs_mod, only : npixels, nImage
     use inputs_mod, only : lineEmission
     use inputs_mod, only : monteCarloRT
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use image_utils_mod
+    use image_utils_mod, only: getImagenPixels, getImageWavelength
 #ifdef MPI
-    use inputs_mod, only : inclineX, inclineY, inclineZ, singleInclination
 #ifdef HYDRO
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
 #endif
@@ -55,9 +54,6 @@ contains
     type(ALPHA_DISC) :: tdisc
     type(GRIDTYPE) :: grid
     type(VECTOR) :: viewVec
-#ifdef PHOTOION
-    type(VECTOR) :: observerDirection
-#endif
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
@@ -191,23 +187,15 @@ contains
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        if ( splitoverMPI ) then 
 #ifdef MPI
-!          observerDirection = VECTOR(0.d0, -1.d0, 0.d0)
-!More flexible inclinations
-          observerDirection = VECTOR(0.d0, 0.d0, 0.d0)
-          if(inclineX) observerDirection%x = sin(singleInclination)
-          if(inclineY) observerDirection%y = sin(singleInclination)
-          if(inclineZ) observerDirection%z = sin(singleInclination)
-
           do i = 1, nImage
-             call createImageSplitGrid(grid, globalnSource, globalsourcearray, observerDirection, i)
+             call createImageSplitGrid(grid, globalnSource, globalsourcearray, i)
           enddo
 #else
           call writeFatal("Cannot calculate an image from a domain decomposed grid without MPI")
 #endif
        else
           do i = 1, nImage
-             observerDirection = VECTOR(-1.0d0, 0.d0, 0.d0)
-             call createImagePhotoion(grid, globalnSource, globalsourcearray, observerDirection, i)
+             call createImagePhotoion(grid, globalnSource, globalsourcearray, i)
           end do
        end if
     endif
@@ -281,8 +269,7 @@ contains
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              fastIntegrate=.true.
              call do_phaseloop(grid, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, nmumie, &
-                  overrideInclinations=inclinationArray(i:i), imNum=i)
+                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
           enddo
        endif
 
@@ -309,8 +296,7 @@ contains
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call do_phaseloop(grid, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, nmumie, &
-                  overrideInclinations=inclinationArray(i:i), imNum=i)
+                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
           enddo
        endif
 

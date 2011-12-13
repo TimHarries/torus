@@ -44,6 +44,8 @@ module datacube_mod
 
   end type DATACUBE
 
+  real, save :: cubePositionAngle
+
 contains
 
 #ifdef USECFITSIO

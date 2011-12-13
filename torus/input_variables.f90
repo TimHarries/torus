@@ -306,7 +306,6 @@
 ! Image and data cube parameters 
 !--------------------------------
 
-  real :: positionAngle(10), inclinationArray(10)
   logical :: monteCarloRT
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
@@ -319,13 +318,10 @@
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 
   integer :: observerpos ! position of observer in molecular_mod image generation
-  logical :: inclineX, inclineY, inclineZ ! which inclination to use for photoionisation images
-  real :: singleInclination ! Inclination angle to use for for inclineX, inclineY, inclineZ
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
 
-  ! file names 
+  ! data cube file name
   character(len=80) :: datacubeFilename
-
 
 !----------------------------------------------------------
 ! Geometry specific parameters (this is a large section !)

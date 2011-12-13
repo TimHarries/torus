@@ -1651,6 +1651,7 @@ contains
   end subroutine readPhotometryParameters
 
   subroutine readDataCubeParameters(cLine, fLine, nLines)
+    use datacube_mod, only: cubePositionAngle
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
@@ -1660,7 +1661,7 @@ contains
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-    call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
+    call getReal("positionangle", cubePositionAngle, real(degtorad), cLine, fLine, nLines, &
          "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getString("datacubefile", datacubeFilename, cLine, fLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
@@ -1842,6 +1843,7 @@ contains
     character(len=80) :: outputImageType, imageFilename
     integer :: thisnpixels
     real :: lambdaImage, thisimagesize, defaultImageSize, wholeGrid
+    real :: inclination, positionAngle, thisPA, thisInc
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
@@ -1886,6 +1888,12 @@ contains
             trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
     end if
 
+! Inclination and position angle for single image, also used as default value for multiple images
+    call getReal("inclination", inclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+       call getReal("positionangle", positionAngle, real(degtorad), cLine, fLine, nLines, &
+            "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
     call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
          "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1910,29 +1918,9 @@ contains
 
        call getInteger("npixels", thisnpixels, cLine, fLine, nLines, &
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
-       
-
-       call getReal("inclination", inclinationArray(1), real(degtorad), cLine, fLine, nLines, &
-            "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-
-!THaw - temporary stuff for simple, easy custom image (single)
-       call getReal("singleInclination", singleInclination, real(degtorad), cLine, fLine, nLines, &
-            "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-
-       call getLogical("inclineX", inclineX, cLine, fLine, nLines, &
-         "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
-       
-       call getLogical("inclineY", inclineY, cLine, fLine, nLines, &
-            "Incline in the x direction: ","(a,1l,a)", .false., ok, .false.)
-
-       call getLogical("inclineZ", inclineZ, cLine, fLine, nLines, &
-            "Incline in the z direction: ","(a,1l,a)", .false., ok, .false.)
-       
-       call getReal("positionangle", positionAngle(1), real(degtorad), cLine, fLine, nLines, &
-            "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-       
+              
        call setImageParams(1, lambdaImage, outputimageType, imageFilename, thisnpixels, axisUnits, &
-            thisimagesize)
+            thisimagesize, inclination, positionAngle)
     else
        do i = 1, nImage
 
@@ -1971,14 +1959,15 @@ contains
             trim(message), "(a,1pe10.2,1x,a)", defaultImageSize, ok, .false.)
 
           write(keyword,'(a,i1.1)') "inclination",i
-          call getReal(keyword, inclinationArray(i), real(degtorad), cLine, fLine, nLines, &
-               "Inclination of image: ","(a,f4.1,1x,a)",0., ok, .true.)
+          call getReal(keyword, thisInc, real(degtorad), cLine, fLine, nLines, &
+               "Inclination of image: ","(a,f4.1,1x,a)",inclination*real(radtodeg), ok, .false.)
           write(keyword,'(a,i1.1)') "positionangle",i
-          call getReal(keyword, positionAngle(i), real(degtorad), cLine, fLine, nLines, &
-               "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+          call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
+               "Position angle (deg): ","(a,f4.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
+
           call setImageParams(i, lambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
-               thisImageSize)
-    enddo
+               thisImageSize, thisInc, thisPA)
+       enddo
 
  end if
    

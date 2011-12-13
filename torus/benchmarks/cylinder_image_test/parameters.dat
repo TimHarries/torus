@@ -35,10 +35,8 @@ imagetype "freefree"
 lambdaimage 60000.
 npixels 201
 
-inclineX F
-inclineY T
-inclineZ F
-singleInclination 270.
+inclination 90.0
+positionangle 90.0
 
 ! Source parameters 
 

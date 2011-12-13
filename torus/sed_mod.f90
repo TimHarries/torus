@@ -21,7 +21,7 @@ module sed_mod
   logical, save :: SEDwavLin
   integer, save :: SEDnumLam
 
-  public :: setSedParameters, getSedInc, getNumSedInc, writeSpectrum
+  public :: setSedParameters, getSedInc, getNumSedInc, getSedViewVec, writeSpectrum
 
 contains
 
@@ -105,6 +105,18 @@ contains
     integer, intent(in) :: i
     getSedInc = SedInclinations(i)
   end function getSedInc
+
+! Return the viewing vector for the ith SED
+  function getSedViewVec(i)
+    use vector_mod, only: vector
+    integer, intent(in) :: i
+    TYPE(vector) :: getSedViewVec
+
+    getSedViewVec%x = 0.
+    getSedViewVec%y = -sin(SedInclinations(i))
+    getSedViewVec%z = -cos(SedInclinations(i))
+    
+  end function getSedViewVec
 
   subroutine writeSpectrum(outFile,  nLambda, xArray, yArray, varianceArray,&
        normalizeSpectrum, objectDistance, velocitySpace, lamLine)

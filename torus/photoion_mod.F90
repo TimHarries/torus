@@ -3209,7 +3209,7 @@ end subroutine readHeIIrecombination
      end subroutine unpackIonFrac
 #endif
 
-  subroutine createImagePhotoion(grid, nSource, source, observerDirection,imageNum)
+  subroutine createImagePhotoion(grid, nSource, source,imageNum)
     use inputs_mod, only : nPhotons, amr2d
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use image_utils_mod
@@ -3271,6 +3271,7 @@ end subroutine readHeIIrecombination
     imageFilename   = getImageFilename(imageNum)
     npix            = getImagenPixels(imageNum)
     imageSize       = getImageSize(imageNum)/1.0e10
+    observerDirection = getImageViewVec(imageNum)
 
     call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0

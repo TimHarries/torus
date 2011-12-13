@@ -3623,9 +3623,8 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec,nSource, source, thisAtom, itrans)
     use mpi_global_mod
-    use inputs_mod, only : npixels, nv, imageSide, maxVel, &
-         positionAngle, griddistance
-    use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis
+    use inputs_mod, only : npixels, nv, imageSide, maxVel, griddistance
+    use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis, cubePositionAngle
 #ifdef MPI
     use mpi
 #endif
@@ -3730,7 +3729,7 @@ contains
     endif
 
     northVec = VECTOR(0.d0, 0.d0, 1.d0)
-    northVec = rotateY(northVec, dble(positionAngle(1)))
+    northVec = rotateY(northVec, dble(cubePositionAngle))
 
     xProj =   viewVec .cross. northVec
     call normalize(xProj)

@@ -4788,7 +4788,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine createImageSplitGrid(grid, nSource, source, observerDirection, imageNum)
+  subroutine createImageSplitGrid(grid, nSource, source, imageNum)
     use inputs_mod, only: nPhotons, gridDistance
     use image_utils_mod
     use mpi
@@ -4851,6 +4851,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     imageFilename   = getImageFilename(imageNum)
     npix            = getImagenPixels(imageNum)
     imageSize       = getImageSize(imageNum)/1.0e10
+    observerDirection = getImageViewVec(imageNum)
 
     call randomNumberGenerator(randomSeed=.true.)
     totalFluxArray = 0.d0
