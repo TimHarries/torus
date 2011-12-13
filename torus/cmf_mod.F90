@@ -3644,7 +3644,7 @@ contains
     real(double), allocatable :: vArray(:)
     integer ::  i
     integer :: nMonte
-    integer :: iv1, iv2, nx, ny
+    integer :: iv1, iv2
     integer :: nPoints
     real(double), pointer :: xPoints(:), yPoints(:)
     real(double) :: dx, dy
