@@ -2,7 +2,7 @@
 ! Hydrodynamics module added by tjh on 18th june 2007
 
 
-Module hydrodynamics_mod
+module hydrodynamics_mod
 #ifdef MPI
 
   use inputs_mod
@@ -6317,7 +6317,7 @@ end subroutine sumFluxes
                    endif
                 end if
 
-                if(captureshocks .and. .not. thisOctal%changed(subcell)) then
+                if(captureshocks) then ! .and. .not. thisOctal%changed(subcell)) then
                    if(refineShock(thisOctal, subcell, grid)) then
                       split = .true.
                    end if
