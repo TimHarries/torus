@@ -7,7 +7,7 @@ module angularImage
   use messages_mod
   use gridtype_mod, only: GRIDTYPE
   use molecular_mod, only:  moleculetype
-  use datacube_mod, only: datacube
+  use datacube_mod, only: datacube, npixels
 
   use timing, only: tune
   
@@ -37,7 +37,7 @@ module angularImage
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube, convertVelocityAxis
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda
-      use inputs_mod, only: intPosX, intPosY, intPosZ, npixels, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
+      use inputs_mod, only: intPosX, intPosY, intPosZ, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
            galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid, h21cm, wanttau
       use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
@@ -104,7 +104,7 @@ module angularImage
 
 
       call writeinfo("Initialising datacube",TRIVIAL)
-      call initCube(cube, npixels, npixels, nv, splitCubes=splitCubes, wantTau=wantTau, galacticPlaneSurvey=.true.)
+      call initCube(cube, nv, splitCubes=splitCubes, wantTau=wantTau, galacticPlaneSurvey=.true.)
       ! Reverse velocity axis 
       call addvelocityAxis(cube, maxVel, minVel) 
 
@@ -165,7 +165,7 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use inputs_mod, only : npixels, nv, nsubpixels, splitCubes, wantTau, itrans
+      use inputs_mod, only : nv, nsubpixels, splitCubes, wantTau, itrans
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
@@ -282,8 +282,7 @@ module angularImage
 
     subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid, ix1, ix2)
 
-      use inputs_mod, only: npixels, imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination 
-      use inputs_mod, only: nv
+      use inputs_mod, only: imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination, nv
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid

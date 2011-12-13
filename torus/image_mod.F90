@@ -378,7 +378,7 @@ module image_mod
 
 
      subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
-!       use inputs_mod, only: nPixels
+
        real, intent(inout)      :: array(:,:)       
        integer, intent(inout)      :: samplings(:,:)       
        real(double) :: inImage, strad, perAngstromToPerHz, scale
@@ -407,7 +407,7 @@ module image_mod
      end subroutine dumpLine
 
      subroutine dumpPointTestData(array, strad, perAngstromToPerHz)
- !      use inputs_mod, only: nPixels
+
        real, intent(in)      :: array(:,:)
        real(double) :: inImage, strad, perAngstromToPerHz
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
@@ -650,9 +650,9 @@ module image_mod
        endif
      end subroutine pixelLocate
             
-  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource, imageSize)
+  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource, imageSize, npix)
     use image_utils_mod
-    use inputs_mod, only : npixels, vmin, vmax
+    use inputs_mod, only : vmin, vmax
     use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
 #ifdef USECFITSIO
     use inputs_mod, only : griddistance
@@ -686,6 +686,7 @@ module image_mod
     real(double) :: scale, dlam, lamCen, lamStart, lamEnd
     real(double) :: objectDistance
     real, intent(in) :: imageSize
+    integer, intent(in) :: npix
 
     lamStart = 1.d4
     lamEnd = 1.01e4
@@ -701,7 +702,7 @@ module image_mod
 
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    image = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax) 
+    image = initImage(npix, npix, imageSize, imageSize, vmin, vmax) 
 
     xVec = zHat .cross. viewVec
     call normalize(xVec)

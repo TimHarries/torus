@@ -313,8 +313,6 @@
   real :: vMin, vMax             ! for createLucyImage
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
   integer :: nv ! number of velocity channels
-  integer :: npixels ! number of pixels 
-  integer :: nImage ! Number of images to generate
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 
   integer :: observerpos ! position of observer in molecular_mod image generation

@@ -45,6 +45,7 @@ module datacube_mod
   end type DATACUBE
 
   real, save :: cubePositionAngle
+  integer, save :: npixels ! number of spatial pixels, currently the same for x and y
 
 contains
 
@@ -403,12 +404,15 @@ contains
   !***********************************************************
 
 ! Initialises cube - sets intensity for cube to 0 
-  subroutine initCube(thisCube, nx, ny, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey)
+  subroutine initCube(thisCube, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey)
 
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
     logical, optional, intent(in) :: splitCubes, wantTau, galacticPlaneSurvey
+
+    nx = npixels
+    ny = npixels
 
     if(present(mytelescope)) then
        

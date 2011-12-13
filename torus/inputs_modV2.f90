@@ -1651,7 +1651,7 @@ contains
   end subroutine readPhotometryParameters
 
   subroutine readDataCubeParameters(cLine, fLine, nLines)
-    use datacube_mod, only: cubePositionAngle
+    use datacube_mod, only: cubePositionAngle, npixels
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
@@ -1841,7 +1841,7 @@ contains
     character(len=20) :: keyword
     character(len=10) :: axisUnits
     character(len=80) :: outputImageType, imageFilename
-    integer :: thisnpixels
+    integer :: thisnpixels, nimage
     real :: lambdaImage, thisimagesize, defaultImageSize, wholeGrid
     real :: inclination, positionAngle, thisPA, thisInc
 

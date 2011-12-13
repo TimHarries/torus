@@ -2308,7 +2308,7 @@ endif
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
-        gridDistance, imageside, npixels
+        gridDistance, imageside
 #ifdef USECFITSIO
    use fits_utils_mod
 #endif
@@ -2498,8 +2498,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
     subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, &
                              ObserverVec, viewvec, imagebasis, imagegrid, ix1, ix2)
 
-      use inputs_mod, only : npixels
-      
       type(GRIDTYPE), intent(IN) :: grid
       type(MOLECULETYPE), intent(IN) :: thisMolecule
       integer, intent(IN) :: itrans
@@ -2710,7 +2708,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
-     use inputs_mod, only : gridDistance, beamsize, npixels, nv, imageside, &
+     use inputs_mod, only : gridDistance, beamsize, nv, imageside, &
           maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, h21cm
 #ifdef USECFITSIO
     use inputs_mod, only : writetempfits
@@ -2771,9 +2769,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      call writeinfo("Initialising datacube",TRIVIAL)
 
      if(nv .eq. 0) then
-        call initCube(cube, npixels, npixels, 200, mytelescope, wantTau=wantTau) ! Make cube
+        call initCube(cube, 200, mytelescope, wantTau=wantTau) ! Make cube
      else
-        call initCube(cube, npixels, npixels, nv, mytelescope, wantTau=wantTau) ! Make cube
+        call initCube(cube, nv, mytelescope, wantTau=wantTau) ! Make cube
      endif
 
      cube%obsDistance = gridDistance * 1d10!(in cm) Additional information that will be useful
@@ -4061,7 +4059,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       subroutine setObserverVectors(viewvec, observerVec, imagebasis)
 
-        use inputs_mod, only : npixels, imageside
+        use inputs_mod, only : imageside
         use inputs_mod, only : griddistance 
         use inputs_mod, only : observerpos ! line number of observer position in observerfile 
         use inputs_mod, only : centrevecX, centrevecY, centrevecZ
@@ -5376,7 +5374,7 @@ endif
 
  subroutine cubeIntensityToFlux(cube,thisMolecule,itrans,doreverse)
 
-   use inputs_mod, only : gridDistance, npixels, nv
+   use inputs_mod, only : gridDistance, nv
    type(moleculetype) :: thismolecule
    type(datacube) :: cube
    integer :: ipixel,jpixel,iv, itrans
@@ -5410,11 +5408,11 @@ endif
 
  end subroutine cubeIntensityToFlux
 
- subroutine GaussianWeighting(cube,npixels,FWHM,NormalizeArea)
+ subroutine GaussianWeighting(cube,npix,FWHM,NormalizeArea)
 
    use inputs_mod, only : gridDistance
    type(datacube) :: cube
-   integer :: npixels, i, j
+   integer :: npix, i, j
    real :: FWHM
    real(double) :: beamsize,beamsizeInRadians,sigma2,Int,rr
    logical,optional :: NormalizeArea
@@ -5432,18 +5430,18 @@ endif
    Int = 0.d0
    cube%Weight = 0.d0
 
-   do i=1,npixels ! Where are all the pixels (top left corners) - what are all their weights
-      do j=1,npixels
+   do i=1,npix ! Where are all the pixels (top left corners) - what are all their weights
+      do j=1,npix
          rr = (cube%xAxis(i)/(gridDistance*1d-10))**2 + & 
               (cube%yAxis(j)/(gridDistance*1d-10))**2
 
          cube%Weight(i,j) = exp(-0.5d0*(rr/sigma2))
 
-         Int = Int + cube%Weight(i,j)/dble(npixels)**2
+         Int = Int + cube%Weight(i,j)/dble(npix)**2
 
       enddo
    enddo
-! Normalize to npixels**2 (because implicit uniform instrument function is 1 in each pixel not 1/npixels**2 
+! Normalize to npix**2 (because implicit uniform instrument function is 1 in each pixel not 1/npix**2 
    if(present(NormalizeArea) .and. NormalizeArea) then
       cube%Weight = cube%Weight / Int 
    else
@@ -5451,10 +5449,10 @@ endif
    endif
  end subroutine GaussianWeighting
 
- subroutine fineGaussianWeighting(cube,npixels,FWHM,weight,NormalizeArea)
+ subroutine fineGaussianWeighting(cube,npix,FWHM,weight,NormalizeArea)
    use inputs_mod, only : gridDistance
    type(datacube) :: cube
-   integer :: npixels, i, j,k,l
+   integer :: npix, i, j,k,l
    real :: FWHM
    real(double) :: beamsize,beamsizeInRadians,sigma2,Int,rr,deltax, deltay,x,y,f,weight(:,:)
    character(len=80) :: message
@@ -5476,8 +5474,8 @@ endif
    deltax = cube%xAxis(3) - cube%xAxis(2)
    deltay = cube%yAxis(3) - cube%yAxis(2)
 
-   do i=1,npixels ! Where are all the pixels (top left corners) - what are all their weights
-      do j=1,npixels
+   do i=1,npix ! Where are all the pixels (top left corners) - what are all their weights
+      do j=1,npix
 
          do k = 1,19,2
             do l = 1,19,2
@@ -5491,11 +5489,11 @@ endif
             enddo
          enddo
 
-         Int = Int + Weight(i,j)/(dble(npixels)**2)
+         Int = Int + Weight(i,j)/(dble(npix)**2)
 
       enddo
    enddo
-! Normalize to npixels**2 (because implicit uniform instrument function is 1 in each pixel not 1/npixels**2 
+! Normalize to npix**2 (because implicit uniform instrument function is 1 in each pixel not 1/npix**2 
    if(present(NormalizeArea) .and. NormalizeArea) then
       Weight = Weight / Int 
    else

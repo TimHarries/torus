@@ -16,11 +16,10 @@ contains
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, nv
-    use inputs_mod, only : npixels, nImage
     use inputs_mod, only : lineEmission
     use inputs_mod, only : monteCarloRT
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use image_utils_mod, only: getImagenPixels, getImageWavelength
+    use image_utils_mod, only: getImageWavelength, getnImage
 #ifdef MPI
 #ifdef HYDRO
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
@@ -63,6 +62,7 @@ contains
 !    real(double) :: ang
     character(len=80) :: message
     real(double), allocatable :: flux(:)
+    integer :: nimage
     real :: lambdaImage
 
     call writeBanner("Creating outputs","-",TRIVIAL)
@@ -86,6 +86,8 @@ contains
          (.not.calcBenchmark) ) then
        goto 666
     endif
+
+    nimage = getnImage()
 
     if (calcBenchmark) then
        select case (grid%geometry)
@@ -261,7 +263,6 @@ contains
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
-             npixels = getImagenPixels(i)
              lambdaImage = getImageWavelength(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
@@ -290,7 +291,6 @@ contains
        if (calcImage) then
           do i = 1, nImage
              nlambda = 1
-             npixels = getImagenPixels(i)
              lambdaImage = getImageWavelength(i)
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)

@@ -3623,7 +3623,7 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec,nSource, source, thisAtom, itrans)
     use mpi_global_mod
-    use inputs_mod, only : npixels, nv, imageSide, maxVel, griddistance
+    use inputs_mod, only : nv, imageSide, maxVel, griddistance
     use datacube_mod, only: DATACUBE, initCube, addspatialaxes, addvelocityAxis, cubePositionAngle
 #ifdef MPI
     use mpi
@@ -3688,10 +3688,6 @@ contains
 
     vStart = -maxVel
     vEnd = maxVel
-    nx = npixels
-    ny = npixels
-
-
 
     iv1 = 1
     iv2 = nv
@@ -3704,9 +3700,9 @@ contains
 #endif
 
     if (myRankGlobal == 0) then
-       call initCube(cube, nx, ny, nv)
+       call initCube(cube, nv)
     else
-       call initCube(cube, nx, ny, iv2-iv1+1)
+       call initCube(cube, iv2-iv1+1)
     endif
     allocate(vArray(1:nv))
     if (nv > 1) then

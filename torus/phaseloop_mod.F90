@@ -106,6 +106,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real :: dTau
   integer :: nTot  
   real :: imageSize
+  integer :: npixels
   real(double) :: fac
   real :: escProb
   real :: nuStart, nuEnd
@@ -328,6 +329,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   stokesImage=.false.
   if ( present(imNum) ) then 
      setimagesize  = getImageSize(imNum)
+     npixels       = getImagenPixels(imNum)
      thisImageType = getImageType(imNum)
      if (thisImageType(1:6) == "stokes") then 
         stokesImage=.true.
@@ -1081,7 +1083,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (formalSol) then
         if (myrankglobal == 0) then
            write(*,*) "calling create lucy image"
-           call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda, source, nSource, setimagesize)
+           call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda, source, nSource, setimagesize,npixels)
         endif
         call torus_mpi_barrier
         stop

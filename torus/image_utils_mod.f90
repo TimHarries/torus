@@ -10,7 +10,8 @@ module image_utils_mod
   implicit none
 
   public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixels, &
-       getImageFilename, getAxisUnits, getImageSize, getImageInc, getImagePA, getImageViewVec
+       getImageFilename, getAxisUnits, getImageSize, getImageInc, getImagePA, getImageViewVec,&
+       getnImage
 
   private
 
@@ -250,5 +251,11 @@ contains
     getImageViewVec = rotateZ(tempVec,dble(myImages(i)%positionAngle))
 
   end function getImageViewVec
+
+! Return the number of images
+  function getnImage()
+    integer ::  getnImage
+    getnImage = numImages
+  end function getnImage
 
 end module image_utils_mod
