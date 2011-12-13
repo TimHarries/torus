@@ -1384,7 +1384,7 @@ contains
                 if (inOctal(grid%octreeRoot, locator)) then
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure, .false.)
                    p(index) = pressure                   
                    if(i == 1) then
                       xArray(index) = x
@@ -1413,7 +1413,7 @@ contains
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 !                   locator = subcellCentre(neighbourOctal, neighbourSubcell)
-                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)   
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure,.false.)   
                    p(index) = pressure
                    if(i == 1) then
                       xArray(index) = x
@@ -1432,7 +1432,7 @@ contains
                 if (inOctal(grid%octreeRoot, locator)) then
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
+                   call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure, .false.)
                    
                    if(nd > thisOctal%nDepth) then
                       fac = 0.5d0
@@ -1445,7 +1445,7 @@ contains
                    if (inOctal(grid%octreeRoot, locator)) then
                       neighbourOctal => thisOctal
                       call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                      call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
+                      call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure, .false.)
                       p(index) = pressure                   
                       if(i == 1) then
                          xArray(index) = x
@@ -6284,7 +6284,7 @@ end subroutine sumFluxes
              if (inOctal(grid%octreeRoot, locator)) then
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure, .true.)
 
                 split = .false.
 
@@ -7371,7 +7371,7 @@ end subroutine refineGridGeneric2
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
-                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure, .true.)
                 if(nd > thisOctal%nDepth) then
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
@@ -7420,7 +7420,7 @@ end subroutine refineGridGeneric2
                 neighbourOctal => thisOctal
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
-                call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
+                call getHydroValues(grid, octVec, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure, .false.)
                 
                 !                   if (((neighbourOctal%nDepth-thisOctal%nDepth) > 1).and. (thisOCtal%ndepth < maxDepthAMR)) then
                 if (((nd-thisOctal%nDepth) > 1).and. (thisOctal%nDepth < maxDepthAMR)) then

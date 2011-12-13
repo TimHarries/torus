@@ -2968,7 +2968,7 @@ end subroutine dumpStromgrenRadius
           position = corner(iCorner) + dir(iDir)
 
           if (inOctal(grid%octreeRoot, position).and.(.not.inSubcell(topOctal, topOctalSubcell, position))) then
-             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure)
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure, .true.)
 
              weight = 1.d0
 !            weight = abs(parent%ndepth - nd)+1.d0
@@ -3403,7 +3403,7 @@ end subroutine dumpStromgrenRadius
     integer, parameter :: tag = 50
     integer :: ierr, ithread
     integer :: counter, nvals
-    real(double) :: loc(6)
+    real(double) :: loc(7)
     integer :: evenUpArray(nThreadsGlobal-1)
     integer :: i
 
@@ -3431,7 +3431,9 @@ end subroutine dumpStromgrenRadius
     loc(4) = dble(myRankGlobal)
     loc(5) = 1.d0
     loc(6) = radius
-    call MPI_SEND(loc, 6, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    !7 is the identifier for whether or not to use topOctal. In this routine this will always be the case
+    loc(7) = 1.d0
+    call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
 
     call MPI_RECV(nvals, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr) 
     if (nVals > 0) then
@@ -3453,10 +3455,7 @@ end subroutine dumpStromgrenRadius
        end do
     endif
 
-    
-
-
-
+   
   end subroutine getPointsInRadius
 
 
@@ -3536,7 +3535,7 @@ end subroutine dumpStromgrenRadius
   subroutine shutdownServers2(check, k, endloop)
     use mpi
     integer :: iThread
-    real(double) :: loc(6)
+    real(double) :: loc(7)
     integer, parameter :: tag = 50
     integer :: ierr, endloop, k
     integer :: check(endloop, nTHreadsGlobal-1)
@@ -3547,7 +3546,8 @@ end subroutine dumpStromgrenRadius
           loc(4) = dble(myRankGlobal)
           loc(5) = 0.d0
           loc(6) = 0.d0
-          call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+          loc(7) = 1.d0
+          call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
     enddo
   end subroutine shutdownServers2
@@ -3600,14 +3600,14 @@ end subroutine dumpStromgrenRadius
   end subroutine setupEvenUpArray
 
 
-  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure)
+  subroutine getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure, useTop)
 !       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nd
     real(double), intent(out) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     type(VECTOR) :: position, rVec
-    real(double) :: loc(6)
+    real(double) :: loc(7)
     type(OCTAL), pointer :: thisOctal, topOctal
     integer :: iThread, topOctalSubcell
     integer, parameter :: nStorage = 12
@@ -3616,43 +3616,65 @@ end subroutine dumpStromgrenRadius
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
     integer :: ierr
+    logical :: useTop
 
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
    
     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
 
-       topOctal => thisOctal
-       topOctalSubcell = subcell
-       do while(topOctal%changed(topOctalSubcell))
-          topOctalSubcell = topOctal%parentSubcell
-          topOctal => topOctal%parent
-       enddo
-       rVec = subcellCentre(topOctal, topOctalsubcell)
-       rho = topOctal%rho(topOctalsubcell)
-       rhoe = topOctal%rhoe(topOctalsubcell)
-       rhou = topOctal%rhou(topOctalsubcell)
-       rhov = topOctal%rhov(topOctalsubcell)
-       rhow = topOctal%rhow(topOctalsubcell)
-       nd = thisOctal%nDepth ! this is needed for refinement
-       energy = topOctal%energy(topOctalsubcell)
-       phi = topOctal%phi_gas(topOctalsubcell)
-       x = rVec%x
-       y = rVec%y
-       z = rVec%z
-       pressure = topOctal%pressure_i(topOctalsubcell)
+       if(useTop) then
+          topOctal => thisOctal
+          topOctalSubcell = subcell
+          do while(topOctal%changed(topOctalSubcell))
+             topOctalSubcell = topOctal%parentSubcell
+             topOctal => topOctal%parent
+          enddo
+          rVec = subcellCentre(topOctal, topOctalsubcell)
+          rho = topOctal%rho(topOctalsubcell)
+          rhoe = topOctal%rhoe(topOctalsubcell)
+          rhou = topOctal%rhou(topOctalsubcell)
+          rhov = topOctal%rhov(topOctalsubcell)
+          rhow = topOctal%rhow(topOctalsubcell)
+          nd = thisOctal%nDepth ! this is needed for refinement
+          energy = topOctal%energy(topOctalsubcell)
+          phi = topOctal%phi_gas(topOctalsubcell)
+          x = rVec%x
+          y = rVec%y
+          z = rVec%z
+          pressure = topOctal%pressure_i(topOctalsubcell)
+       else
+          rVec = subcellCentre(thisOctal, subcell)
+          rho = thisOctal%rho(subcell)
+          rhoe = thisOctal%rhoe(subcell)
+          rhou = thisOctal%rhou(subcell)
+          rhov = thisOctal%rhov(subcell)
+          rhow = thisOctal%rhow(subcell)
+          nd = thisOctal%nDepth ! this is needed for refinement
+          energy = thisOctal%energy(subcell)
+          phi = thisOctal%phi_gas(subcell)
+          x = rVec%x
+          y = rVec%y
+          z = rVec%z
+          pressure = thisOctal%pressure_i(subcell)
+       end if
 
     else
 
-       iThread = thisOctal%mpiThread(subcell)
+      iThread = thisOctal%mpiThread(subcell)
        loc(1) = position%x
        loc(2) = position%y
        loc(3) = position%z
        loc(4) = dble(myRankGlobal)
        loc(5) = 0.d0
        loc(6) = 0.d0
+       if(useTop) then
+          loc(7) = 1.d0
+       else
+          loc(7) = 0.d0
+       end if
 !       print *, "RANK ", myRankGlobal, "SENDING TO ", iThread
-       call MPI_SEND(loc, 6, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
  !      print *, "RANK ", myRankGlobal, "SENT"
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
   !     print *, "RANK ", myRankGlobal, "RECVING"
@@ -3752,7 +3774,7 @@ end subroutine dumpStromgrenRadius
     use mpi
     type(GRIDTYPE) :: grid
     logical :: stillServing
-    real(double) :: loc(6)
+    real(double) :: loc(7)
     type(VECTOR) :: position, rVec
     type(OCTAL), pointer :: thisOctal
     type(OCTAL), pointer :: topOctal
@@ -3772,6 +3794,8 @@ end subroutine dumpStromgrenRadius
     integer :: nVals
     integer :: cellRef
 !    integer :: foundID
+    logical :: useTop
+    real(double) :: topID
 
     stillServing = .true.
     servingArray = 0
@@ -3782,13 +3806,21 @@ end subroutine dumpStromgrenRadius
        storageArray = 0.d0
        tempStorageArray = 0.d0
        tempDoubleArray = 0.d0
-       call MPI_RECV(loc, 6, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
        iThread = int(loc(4))
        functionality = int(loc(5))
        searchRadius = loc(6)
+       topID = loc(7)
+
+       if(loc(7) == 1.d0) then
+          useTop = .true.
+       else
+          useTop = .false.
+       end if
+
 
        if (position%x > 1.d29) then          
           do j=1, nworking
@@ -3808,12 +3840,12 @@ end subroutine dumpStromgrenRadius
           loc(5) = 2.d0
           do m = 1, nThreadsGlobal-1
              if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
-                call MPI_SEND(loc, 6, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, ierr)
              end if
           end do
           cellRef=1
           !Get the main serving thread's values within the request radius
-          call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
+          call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef, useTop)
 
           !send the order to the other serving threads to return values
           nvals = 0
@@ -3857,7 +3889,7 @@ end subroutine dumpStromgrenRadius
           !- responding to a request for values within the search radius
           cellRef = 1
           storageArray = 0.d0
-          call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef)
+          call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef, useTop)
  
           !Don't want to send a 2D array
           tempDoubleArray = reshape(storageArray,(/SIZE(tempDoubleArray)/))
@@ -3866,26 +3898,43 @@ end subroutine dumpStromgrenRadius
 
        else
           call findSubcellLocal(position, thisOctal, subcell)
-          topOctal => thisOctal
-          topOctalSubcell = subcell
-          do while(topOctal%changed(topOctalSubcell))
-             topOctalSubcell = topOctal%parentSubcell
-             topOctal => topOctal%parent
-          enddo
+          if(useTop) then
+             topOctal => thisOctal
+             topOctalSubcell = subcell
+             do while(topOctal%changed(topOctalSubcell))
+                topOctalSubcell = topOctal%parentSubcell
+                topOctal => topOctal%parent
+             enddo
+             rVec = subcellCentre(topOctal, topOctalsubcell)
+             tempStorage(1) = topOctal%nDepth
+             tempStorage(2) = topOctal%rho(topOctalsubcell)
+             tempStorage(3) = topOctal%rhoe(topOctalsubcell)             
+             tempStorage(4) = topOctal%rhou(topOctalsubcell)             
+             tempStorage(5) = topOctal%rhov(topOctalsubcell)             
+             tempStorage(6) = topOctal%rhow(topOctalsubcell)        
+             tempStorage(7) = topOctal%energy(topOctalsubcell)
+             tempStorage(8) = topOctal%phi_gas(topOctalsubcell)
+             tempStorage(9) = rVec%x
+             tempStorage(10) = rVec%y
+             tempStorage(11) = rVec%z
+             tempstorage(12) = topOctal%pressure_i(topOctalsubcell)
+          else
+             rVec = subcellCentre(thisOctal, subcell)
+             tempStorage(1) = thisOctal%nDepth
+             tempStorage(2) = thisOctal%rho(subcell)
+             tempStorage(3) = thisOctal%rhoe(subcell)             
+             tempStorage(4) = thisOctal%rhou(subcell)             
+             tempStorage(5) = thisOctal%rhov(subcell)             
+             tempStorage(6) = thisOctal%rhow(subcell)        
+             tempStorage(7) = thisOctal%energy(subcell)
+             tempStorage(8) = thisOctal%phi_gas(subcell)
+             tempStorage(9) = rVec%x
+             tempStorage(10) = rVec%y
+             tempStorage(11) = rVec%z
+             tempstorage(12) = thisOctal%pressure_i(subcell)
+          end if
+             
 
-          rVec = subcellCentre(topOctal, topOctalsubcell)
-          tempStorage(1) = topOctal%nDepth
-          tempStorage(2) = topOctal%rho(topOctalsubcell)
-          tempStorage(3) = topOctal%rhoe(topOctalsubcell)             
-          tempStorage(4) = topOctal%rhou(topOctalsubcell)             
-          tempStorage(5) = topOctal%rhov(topOctalsubcell)             
-          tempStorage(6) = topOctal%rhow(topOctalsubcell)        
-          tempStorage(7) = topOctal%energy(topOctalsubcell)
-          tempStorage(8) = topOctal%phi_gas(topOctalsubcell)
-          tempStorage(9) = rVec%x
-          tempStorage(10) = rVec%y
-          tempStorage(11) = rVec%z
-          tempstorage(12) = topOctal%pressure_i(topOctalsubcell)
 
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
        endif
@@ -3893,7 +3942,7 @@ end subroutine dumpStromgrenRadius
   end subroutine hydroValuesServer2
 
 
-  recursive  subroutine getAllInRadius(thisOctal, position, searchRadius, storageArray, cellRef)
+  recursive  subroutine getAllInRadius(thisOctal, position, searchRadius, storageArray, cellRef, useTop)
 
     type(octal), pointer :: thisOctal, child, topOctal
     integer :: subcell, topOctalSubcell
@@ -3902,7 +3951,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: searchRadius
     real(double) :: storageArray(1000,12)
     integer :: cellRef
-    logical :: changed
+    logical :: changed, useTop
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3910,7 +3959,7 @@ end subroutine dumpStromgrenRadius
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call getAllInRadius(child, position, searchRadius, storageArray, cellRef)
+                call getAllInRadius(child, position, searchRadius, storageArray, cellRef, useTop)
                 exit
              end if
           end do
@@ -3933,19 +3982,34 @@ end subroutine dumpStromgrenRadius
 !                print *, "rVec ", rVec
 !                print *, "radius ", searchRadius
 !                print *, "modulus(rVec - position)", modulus(rVec - position)
-                storageArray(cellRef, 1)  = topOctal%nDepth
-                storageArray(cellRef, 2)  = topOctal%rho(topOctalsubcell)
-                storageArray(cellRef, 3)  = topOctal%rhoe(topOctalsubcell)             
-                storageArray(cellRef, 4)  = topOctal%rhou(topOctalsubcell)             
-                storageArray(cellRef, 5)  = topOctal%rhov(topOctalsubcell)             
-                storageArray(cellRef, 6)  = topOctal%rhow(topOctalsubcell)        
-                storageArray(cellRef, 7)  = topOctal%energy(topOctalsubcell)
-                storageArray(cellRef, 8)  = topOctal%phi_gas(topOctalsubcell)
-                storageArray(cellRef, 9)  = rVec%x
-                storageArray(cellRef, 10)  = rVec%y
-                storageArray(cellRef, 11)  = rVec%z
-                storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
-                cellRef = cellRef + 1
+                if(useTop) then
+                   storageArray(cellRef, 1)  = topOctal%nDepth
+                   storageArray(cellRef, 2)  = topOctal%rho(topOctalsubcell)
+                   storageArray(cellRef, 3)  = topOctal%rhoe(topOctalsubcell)             
+                   storageArray(cellRef, 4)  = topOctal%rhou(topOctalsubcell)             
+                   storageArray(cellRef, 5)  = topOctal%rhov(topOctalsubcell)             
+                   storageArray(cellRef, 6)  = topOctal%rhow(topOctalsubcell)        
+                   storageArray(cellRef, 7)  = topOctal%energy(topOctalsubcell)
+                   storageArray(cellRef, 8)  = topOctal%phi_gas(topOctalsubcell)
+                   storageArray(cellRef, 9)  = rVec%x
+                   storageArray(cellRef, 10)  = rVec%y
+                   storageArray(cellRef, 11)  = rVec%z
+                   storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
+                else
+                   storageArray(cellRef, 1)  = thisOctal%nDepth
+                   storageArray(cellRef, 2)  = thisOctal%rho(subcell)
+                   storageArray(cellRef, 3)  = thisOctal%rhoe(subcell)             
+                   storageArray(cellRef, 4)  = thisOctal%rhou(subcell)             
+                   storageArray(cellRef, 5)  = thisOctal%rhov(subcell)             
+                   storageArray(cellRef, 6)  = thisOctal%rhow(subcell)        
+                   storageArray(cellRef, 7)  = thisOctal%energy(subcell)
+                   storageArray(cellRef, 8)  = thisOctal%phi_gas(subcell)
+                   storageArray(cellRef, 9)  = rVec%x
+                   storageArray(cellRef, 10)  = rVec%y
+                   storageArray(cellRef, 11)  = rVec%z
+                   storageArray(cellRef, 12)  = thisOctal%pressure_i(subcell)
+                end if
+                   cellRef = cellRef + 1
              end if
              if (changed) exit
           end if
