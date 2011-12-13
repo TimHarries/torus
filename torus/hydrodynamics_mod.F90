@@ -1736,9 +1736,11 @@ contains
        !      dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
 
 !The interface velocity is modified to account for the pressure gradient due to its nearest neighbours
+!             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
+!                  ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
+!                  (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
              thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
-                  ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
-                  (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+                  (thisoctal%pressure_i(subcell) - thisoctal%pressure_i_minus_1(subcell))/dx
              ! write(*,*), "ui", thisoctal%u_interface(subcell)
           endif
        endif
@@ -1852,14 +1854,8 @@ contains
              dv = cellVolume(thisOctal, subcell) * 1.d30
   
 !modify the cell velocity due to the pressure gradient
-             if(rhieChow) then
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &
-                     ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  & 
-                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx!
-             else 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-             end if
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
@@ -1941,14 +1937,9 @@ contains
              dv = cellVolume(thisOctal,subcell)*1.d30
 
 !modify the cell velocity due to the pressure gradient
-            if(rhieChow) then
-               thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
-                    ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
-                    (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-            else
                     thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
                     (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-            end if
+
              thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
@@ -2031,14 +2022,8 @@ contains
              dv = cellVolume(thisOctal, subcell) * 1.d30
 
 !modify the cell velocity due to the pressure gradient
-            if(rhieChow) then
-               thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
-               ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
-               (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-            else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
                   (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
-            end if
 
              thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
