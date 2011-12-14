@@ -1,3 +1,10 @@
+module qshep3d_mod
+
+use kind_mod
+implicit none
+
+contains
+
 subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
   xyzdel, rmax, rsq, a, ier )
 !
@@ -81,8 +88,7 @@ subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
 !    Input, integer NR, the number of rows, columns, and planes in the cell
 !    grid defined in subroutine store3.  a box containing the nodes is
 !    partitioned into cells in order to increase search efficiency.  
-!    nr = (n/3)**(1/3) is recommended.  nr >= 1.
-!
+!    nr = (n/3)**(1/3) is recommended.  nr >= 1.!
 !    Output, integer LCELL(NR,NR,NR), nodal indices asso-
 !    ciated with cells.  refer to store3.
 !
@@ -185,15 +191,15 @@ subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
   integer n
   integer nr
 !
-  real a(9,n)
-  real av
-  real avsq
-  real b(10,10)
-  real c
-  real dmin
-  real, parameter :: dtol = 0.01E+00
-  real f(n)
-  real fk
+  real(double) a(9,n)
+  real(double) av
+  real(double) avsq
+  real(double) b(10,10)
+  real(double) c
+  real(double) dmin
+  real(double), parameter :: dtol = 0.01E+00
+  real(double) f(n)
+  real(double) fk
   integer i
   integer ib
   integer ier
@@ -218,28 +224,28 @@ subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
   integer nq
   integer nqwmax
   integer nw
-  real rmax
-  real rq
-  real rs
-  real rsmx
-  real rsold
-  real rsq(n)
-  real, parameter :: rtol = 1.0E-05
-  real rws
-  real s
-  real, parameter :: sf = 1.0E+00
-  real sum2
-  real t
-  real x(n)
-  real xk
-  real xyzdel(3)
-  real xyzdl(3)
-  real xyzmin(3)
-  real xyzmn(3)
-  real y(n)
-  real yk
-  real z(n)
-  real zk
+  real(double) rmax
+  real(double) rq
+  real(double) rs
+  real(double) rsmx
+  real(double) rsold
+  real(double) rsq(n)
+  real(double), parameter :: rtol = 1.0E-05
+  real(double) rws
+  real(double) s
+  real(double), parameter :: sf = 1.0E+00
+  real(double) sum2
+  real(double) t
+  real(double) x(n)
+  real(double) xk
+  real(double) xyzdel(3)
+  real(double) xyzdl(3)
+  real(double) xyzmin(3)
+  real(double) xyzmn(3)
+  real(double) y(n)
+  real(double) yk
+  real(double) z(n)
+  real(double) zk
 !
   nn = n
   nnq = nq
@@ -310,7 +316,7 @@ subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
 !
     neq = lnp - 1
     rq = sqrt(rs)
-    avsq = sum2 / real ( neq )
+    avsq = sum2 / dble( neq )
 !
 !  Bottom of loop -- test for termination.
 !
@@ -330,7 +336,7 @@ subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
     if ( rq == 0.0E+00 ) then
       neq = lmax
       rq = sqrt ( 1.1 * rs )
-      avsq = sum2 / real ( neq )
+      avsq = sum2 / dble( neq )
     end if
 !
 !  Store RSQ(K), update RSMX if necessary, and compute av.
@@ -502,8 +508,7 @@ subroutine qshep3 ( n, x, y, z, f, nq, nw, nr, lcell, lnext, xyzmin, &
   xyzdel(1:3) = xyzdl(1:3)
 
   ier = 3
-  return
-end
+end subroutine qshep3
 function qs3val ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
   xyzdel, rmax, rsq, a )
 !
@@ -530,12 +535,12 @@ function qs3val ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
 !
 !  Parameters:
 !
-!    Input, real PX, PY, PZ, the point P at which Q is to be evaluated.
+!    Input, real(double) PX, PY, PZ, the point P at which Q is to be evaluated.
 !
 !    Input, integer N, the number of nodes and data values defining Q.
 !    N >= 10.
 !
-!    Input, real X(N), Y(N), Z(N), F(N), the node coordinates
+!    Input, real(double) X(N), Y(N), Z(N), F(N), the node coordinates
 !    and data values interpolated by Q.
 !
 !    Input, integer NR, the number of rows, columns and planes in the cell
@@ -546,19 +551,19 @@ function qs3val ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
 !
 !    Input, integer LNEXT(N), the next-node indices.  Refer to STORE3.
 !
-!    Input, real XYZMIN(3), XYZDEL(3), the minimum nodal coordinates and 
+!    Input, real(double) XYZMIN(3), XYZDEL(3), the minimum nodal coordinates and 
 !    cell dimensions, respectively.  XYZDEL elements must be positive.  
 !    Refer to STORE3.
 !
-!    Input, real RMAX, the square root of the largest element in RSQ,
+!    Input, real(double) RMAX, the square root of the largest element in RSQ,
 !    the maximum radius.
 !
-!    Input, real RSQ(N), the squared radii which enter into the weights 
+!    Input, real(double) RSQ(N), the squared radii which enter into the weights 
 !    defining Q.
 !
-!    Input, real A(9,N), the coefficients for the nodal functions defining Q.
+!    Input, real(double) A(9,N), the coefficients for the nodal functions defining Q.
 !
-!    Output, real QS3VAL, the function value Q(PX,PY,PZ) unless N, NR,
+!    Output, real(double) QS3VAL, the function value Q(PX,PY,PZ) unless N, NR,
 !    XYZDEL, or RMAX is invalid, in which case the value 0 is returned.
 !
   implicit none
@@ -566,18 +571,18 @@ function qs3val ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
   integer n
   integer nr
 !
-  real a(9,n)
-  real delx
-  real dely
-  real delz
-  real dxsq
-  real dysq
-  real dzsq
-  real ds
-  real dx
-  real dy
-  real dz
-  real f(n)
+  real(double) a(9,n)
+  real(double) delx
+  real(double) dely
+  real(double) delz
+  real(double) dxsq
+  real(double) dysq
+  real(double) dzsq
+  real(double) ds
+  real(double) dx
+  real(double) dy
+  real(double) dz
+  real(double) f(n)
   integer i
   integer imax
   integer imin
@@ -591,32 +596,32 @@ function qs3val ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
   integer lcell(nr,nr,nr)
   integer lnext(n)
   integer lp
-  real px
-  real py
-  real pz
-  real qs3val
-  real rd
-  real rds
-  real rmax
-  real rs
-  real rsq(n)
-  real sw
-  real swq
-  real w
-  real x(n)
-!  real xmax
-  real xmin
-  real xp
-  real xyzdel(3)
-  real xyzmin(3)
-  real y(n)
-!  real ymax
-  real ymin
-  real yp
-  real z(n)
-!  real zmax
-  real zmin
-  real zp
+  real(double) px
+  real(double) py
+  real(double) pz
+  real(double) qs3val
+  real(double) rd
+  real(double) rds
+  real(double) rmax
+  real(double) rs
+  real(double) rsq(n)
+  real(double) sw
+  real(double) swq
+  real(double) w
+  real(double) x(n)
+!  real(double) xmax
+  real(double) xmin
+  real(double) xp
+  real(double) xyzdel(3)
+  real(double) xyzmin(3)
+  real(double) y(n)
+!  real(double) ymax
+  real(double) ymin
+  real(double) yp
+  real(double) z(n)
+!  real(double) zmax
+  real(double) zmin
+  real(double) zp
 !
   xp = px
   yp = py
@@ -741,8 +746,7 @@ function qs3val ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
     qs3val = swq / sw
   end if
 
-  return
-end
+end function qs3val
 subroutine qs3grd ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
   xyzdel, rmax, rsq, a, q, qx, qy, qz, ier )
 !
@@ -766,13 +770,13 @@ subroutine qs3grd ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
 !
 !  Parameters:
 !
-!    Input, real PX, PY, PZ, the point P at which Q and its partials are 
+!    Input, real(double) PX, PY, PZ, the point P at which Q and its partials are 
 !    to be evaluated.
 !
 !    Input, integer N, the number of nodes and data values defining Q.
 !    N >= 10.
 !
-!    Input, real X(N), Y(N), Z(N), F(N), the node coordinates and
+!    Input, real(double) X(N), Y(N), Z(N), F(N), the node coordinates and
 !    data values interpolated by Q.
 !
 !    Input, integer NR, the number of rows, columns and planes in the cell
@@ -783,22 +787,22 @@ subroutine qs3grd ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
 !
 !    Input, integer LNEXT(N), the next-node indices.  Refer to STORE3.
 !
-!    Input, real XYZMIN(3), XYZDEL(3), the minimum nodal coordinates and 
+!    Input, real(double) XYZMIN(3), XYZDEL(3), the minimum nodal coordinates and 
 !    cell dimensions, respectively.  XYZDEL elements must be positive.  
 !    Refer to STORE3.
 !
-!    Input, real RMAX, the square root of the largest element in RSQ,
+!    Input, real(double) RMAX, the square root of the largest element in RSQ,
 !    the maximum radius.
 !
-!    Input, real RSQ(N), the squared radii which enter into the weights 
+!    Input, real(double) RSQ(N), the squared radii which enter into the weights 
 !    defining Q.
 !
-!    Input, real A(9,N), the coefficients for the nodal functions defining Q.
+!    Input, real(double) A(9,N), the coefficients for the nodal functions defining Q.
 !
-!    Output, real Q, the value of Q at (PX,PY,PZ) unless IER == 1, in
+!    Output, real(double) Q, the value of Q at (PX,PY,PZ) unless IER == 1, in
 !    which case no values are returned.
 !
-!    Output, real QX, QY, QZ, the first partial derivatives of Q at
+!    Output, real(double) QX, QY, QZ, the first partial derivatives of Q at
 !    (PX,PY,PZ) unless IER == 1.
 !
 !    Output, integer IER, error indicator
@@ -812,18 +816,18 @@ subroutine qs3grd ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
   integer n
   integer nr
 !
-  real a(9,n)
-  real delx
-  real dely
-  real delz
-  real ds
-  real dx
-  real dxsq
-  real dy
-  real dysq
-  real dz
-  real dzsq
-  real f(n)
+  real(double) a(9,n)
+  real(double) delx
+  real(double) dely
+  real(double) delz
+  real(double) ds
+  real(double) dx
+  real(double) dxsq
+  real(double) dy
+  real(double) dysq
+  real(double) dz
+  real(double) dzsq
+  real(double) f(n)
   integer i
   integer ier
   integer imax
@@ -838,50 +842,50 @@ subroutine qs3grd ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
   integer lcell(nr,nr,nr)
   integer lnext(n)
   integer lp
-  real px
-  real py
-  real pz
-  real q
-  real ql
-  real qlx
-  real qly
-  real qlz
-  real qx
-  real qy
-  real qz
-  real rd
-  real rds
-  real rmax
-  real rs
-  real rsq(n)
-  real sw
-  real swq
-  real swqx
-  real swqy
-  real swqz
-  real sws
-  real swx
-  real swy
-  real swz
-  real t
-  real w
-  real wx
-  real wy
-  real wz
-  real x(n)
-!  real xmax
-  real xmin
-  real xp
-  real xyzdel(3)
-  real xyzmin(3)
-  real y(n)
-!  real ymax
-  real ymin
-  real yp
-  real z(n)
-!  real zmax
-  real zmin
-  real zp
+  real(double) px
+  real(double) py
+  real(double) pz
+  real(double) q
+  real(double) ql
+  real(double) qlx
+  real(double) qly
+  real(double) qlz
+  real(double) qx
+  real(double) qy
+  real(double) qz
+  real(double) rd
+  real(double) rds
+  real(double) rmax
+  real(double) rs
+  real(double) rsq(n)
+  real(double) sw
+  real(double) swq
+  real(double) swqx
+  real(double) swqy
+  real(double) swqz
+  real(double) sws
+  real(double) swx
+  real(double) swy
+  real(double) swz
+  real(double) t
+  real(double) w
+  real(double) wx
+  real(double) wy
+  real(double) wz
+  real(double) x(n)
+!  real(double) xmax
+  real(double) xmin
+  real(double) xp
+  real(double) xyzdel(3)
+  real(double) xyzmin(3)
+  real(double) y(n)
+!  real(double) ymax
+  real(double) ymin
+  real(double) yp
+  real(double) z(n)
+!  real(double) zmax
+  real(double) zmin
+  real(double) zp
 !
   xp = px
   yp = py
@@ -1057,8 +1061,8 @@ subroutine qs3grd ( px, py, pz, n, x, y, z, f, nr, lcell, lnext, xyzmin, &
 
   end if
 
-  return
-end
+end subroutine qs3grd
+
 subroutine getnp3 ( px, py, pz, x, y, z, nr, lcell, lnext, xyzmin, &
   xyzdel, np, dsq )
 !
@@ -1097,10 +1101,10 @@ subroutine getnp3 ( px, py, pz, x, y, z, nr, lcell, lnext, xyzmin, &
 !
 !  Parameters:
 !
-!    Input, real PX, PY, PZ, the coordinates of the point P whose nearest
+!    Input, real(double) PX, PY, PZ, the coordinates of the point P whose nearest
 !    unmarked neighbor is to be found.
 !
-!    Input, real X(N), Y(N), Z(N), the coordinates of the nodes.
+!    Input, real(double) X(N), Y(N), Z(N), the coordinates of the nodes.
 !
 !    Input, integer NR, the number of rows, columns, and planes in the cell
 !    grid.  NR >= 1.
@@ -1109,27 +1113,27 @@ subroutine getnp3 ( px, py, pz, x, y, z, nr, lcell, lnext, xyzmin, &
 !
 !    Input/output, integer LNEXT(N), next-node indices (or their negatives).
 !
-!    Input, real XYZMIN(3), XYZDEL(3), minimum nodal coordinates and cell 
+!    Input, real(double) XYZMIN(3), XYZDEL(3), minimum nodal coordinates and cell 
 !    dimensions, respectively.  XYZEL elements must be positive.
 !
 !    Output, integer NP, index of the nearest unmarked node to P, or 0 
 !    if all nodes are marked or NR < 1 or an element of XYZDEL is not 
 !    positive.  LNEXT(NP) < 0 if NP /= 0.
 !
-!    Output, real DSQ, squared euclidean distance between P and node
+!    Output, real(double) DSQ, squared euclidean distance between P and node
 !    NP, or 0 if NP = 0.
 !
   implicit none
 !
   integer nr
 !
-  real delx
-  real dely
-  real delz
-  real dsq
-  real dx
-  real dy
-  real dz
+  real(double) delx
+  real(double) dely
+  real(double) delz
+  real(double) dsq
+  real(double) dx
+  real(double) dy
+  real(double) dz
   logical first
   integer i
   integer i0
@@ -1155,20 +1159,20 @@ subroutine getnp3 ( px, py, pz, x, y, z, nr, lcell, lnext, xyzmin, &
   integer ln
   integer lnext(*)
   integer np
-  real px
-  real py
-  real pz
-  real r
-  real rsmin
-  real rsq
-  real x(*)
-  real xp
-  real xyzdel(3)
-  real xyzmin(3)
-  real y(*)
-  real yp
-  real z(*)
-  real zp
+  real(double) px
+  real(double) py
+  real(double) pz
+  real(double) r
+  real(double) rsmin
+  real(double) rsq
+  real(double) x(*)
+  real(double) xp
+  real(double) xyzdel(3)
+  real(double) xyzmin(3)
+  real(double) y(*)
+  real(double) yp
+  real(double) z(*)
+  real(double) zp
 !
   xp = px
   yp = py
@@ -1341,8 +1345,8 @@ subroutine getnp3 ( px, py, pz, x, y, z, nr, lcell, lnext, xyzmin, &
     dsq = 0.0E+00
   end if
 
-  return
-end
+end subroutine getnp3
+
 subroutine givens ( a, b, c, s )
 !
 !***********************************************************************
@@ -1396,15 +1400,15 @@ subroutine givens ( a, b, c, s )
 !
   implicit none
 !
-  real a
-  real aa
-  real b
-  real bb
-  real c
-  real r
-  real s
-  real u
-  real v
+  real(double) a
+  real(double) aa
+  real(double) b
+  real(double) bb
+  real(double) c
+  real(double) r
+  real(double) s
+  real(double) u
+  real(double) v
 !
   aa = a
   bb = b
@@ -1451,8 +1455,7 @@ subroutine givens ( a, b, c, s )
   c = 1.0E+00
   s = 0.0E+00
 
-  return
-end
+end subroutine givens
 subroutine rotate ( n, c, s, x, y )
 !
 !***********************************************************************
@@ -1500,13 +1503,13 @@ subroutine rotate ( n, c, s, x, y )
 !
   integer n
 !
-  real c
+  real(double) c
   integer i
-  real s
-  real x(n)
-  real xi
-  real y(n)
-  real yi
+  real(double) s
+  real(double) x(n)
+  real(double) xi
+  real(double) y(n)
+  real(double) yi
 !
   if ( c == 1.0E+00 .and. s == 0.0E+00 ) then
     return
@@ -1519,8 +1522,7 @@ subroutine rotate ( n, c, s, x, y )
     y(i) = -s*xi + c*yi
   end do
 
-  return
-end
+end subroutine rotate
 subroutine setup3 ( xk, yk, zk, fk, xi, yi, zi, fi, s1, s2, r, row )
 !
 !***********************************************************************
@@ -1547,17 +1549,17 @@ subroutine setup3 ( xk, yk, zk, fk, xi, yi, zi, fi, s1, s2, r, row )
 !
 !  Parameters:
 !
-!    Input, real XK, YK, ZK, FK = coordinates and data value at node K
+!    Input, real(double) XK, YK, ZK, FK = coordinates and data value at node K
 !    (interpolated by q).
 !
-!    Input, real XI, YI, ZI, FI = coordinates and data value at node I.
+!    Input, real(double) XI, YI, ZI, FI = coordinates and data value at node I.
 !
-!    Input, real S1, S2 = reciprocals of the scale factors.
+!    Input, real(double) S1, S2 = reciprocals of the scale factors.
 !
-!    Input, real R = radius of influence about node K defining the
+!    Input, real(double) R = radius of influence about node K defining the
 !    weight.
 !
-!    Output, real ROW(10), a row of the augmented
+!    Output, real(double) ROW(10), a row of the augmented
 !    regression matrix.
 !
 !  Local parameters:
@@ -1569,29 +1571,29 @@ subroutine setup3 ( xk, yk, zk, fk, xi, yi, zi, fi, s1, s2, r, row )
 !
   implicit none
 !
-  real d
-  real dx
-  real dxsq
-  real dy
-  real dysq
-  real dz
-  real dzsq
-  real fi
-  real fk
+  real(double) d
+  real(double) dx
+  real(double) dxsq
+  real(double) dy
+  real(double) dysq
+  real(double) dz
+  real(double) dzsq
+  real(double) fi
+  real(double) fk
 !  integer i
-  real r
-  real row(10)
-  real s1
-  real s2
-  real w
-  real w1
-  real w2
-  real xi
-  real xk
-  real yi
-  real yk
-  real zi
-  real zk
+  real(double) r
+  real(double) row(10)
+  real(double) s1
+  real(double) s2
+  real(double) w
+  real(double) w1
+  real(double) w2
+  real(double) xi
+  real(double) xk
+  real(double) yi
+  real(double) yk
+  real(double) zi
+  real(double) zk
 !
   dx = xi - xk
   dy = yi - yk
@@ -1621,8 +1623,7 @@ subroutine setup3 ( xk, yk, zk, fk, xi, yi, zi, fi, s1, s2, r, row )
   row(9) = dz*w1
   row(10) = (fi - fk)*w
 
-  return
-end
+end subroutine setup3
 subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
 !
 !***********************************************************************
@@ -1651,7 +1652,7 @@ subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
 !
 !    Input, integer N, the number of nodes.  N >= 2.
 !
-!    Input, real X(N), Y(N), Z(N), the coordinates of the nodes.
+!    Input, real(double) X(N), Y(N), Z(N), the coordinates of the nodes.
 !
 !    Input, integer NR, the number of rows, columns, and planes in the
 !    grid.  The cell density (average number of nodes per cell) is 
@@ -1681,13 +1682,13 @@ subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
 !    5, and lnext(5) = 5.  lnext is not defined
 !    if ier /= 0.
 !
-!    Output, real XYZMIN(3), the minimum
+!    Output, real(double) XYZMIN(3), the minimum
 !    nodal coordinates xmin, ymin, and zmin (in
 !    that order) unless ier = 1.  the opposite
 !    corner of the box defined by the nodes is
 !    (xmin+nr*dx,ymin+nr*dy,zmin+nr*dz).
 !
-!    Output, real XYZDEL(3), the dimensions
+!    Output, real(double) XYZDEL(3), the dimensions
 !    of the cells unless ier = 1.  xyzdel(1) =
 !    (xmax-xmin)/nr, xyzdel(2) = (ymax-ymin)/nr,
 !    and xyzdel(3) = (zmax-zmin)/nr, where xmin,
@@ -1704,9 +1705,9 @@ subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
   integer n
   integer nr
 !
-  real delx
-  real dely
-  real delz
+  real(double) delx
+  real(double) dely
+  real(double) delz
   integer i
   integer ier
   integer j
@@ -1719,17 +1720,17 @@ subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
   integer nn
   integer nnr
   integer np1
-  real x(n)
-  real xmn
-  real xmx
-  real xyzdel(3)
-  real xyzmin(3)
-  real y(n)
-  real ymx
-  real ymn
-  real z(n)
-  real zmx
-  real zmn
+  real(double) x(n)
+  real(double) xmn
+  real(double) xmx
+  real(double) xyzdel(3)
+  real(double) xyzmin(3)
+  real(double) y(n)
+  real(double) ymx
+  real(double) ymn
+  real(double) z(n)
+  real(double) zmx
+  real(double) zmn
 !
   ier = 0
   nn = n
@@ -1755,9 +1756,9 @@ subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
 !
 !  Compute cell dimensions and test for zero area.
 !
-  delx = (xmx-xmn)/real(nnr)
-  dely = (ymx-ymn)/real(nnr)
-  delz = (zmx-zmn)/real(nnr)
+  delx = (xmx-xmn)/dble(nnr)
+  dely = (ymx-ymn)/dble(nnr)
+  delz = (zmx-zmn)/dble(nnr)
 
   xyzdel(1) = delx
   xyzdel(2) = dely
@@ -1790,8 +1791,7 @@ subroutine store3 ( n, x, y, z, nr, lcell, lnext, xyzmin, xyzdel, ier )
     lcell(i,j,k) = lb
   end do
 
-  return
-end
+end subroutine store3
 subroutine timestamp ( )
 !
 !*******************************************************************************
@@ -1868,5 +1868,6 @@ subroutine timestamp ( )
   write ( *, '(a,1x,i2,1x,i4,2x,i2,a1,i2.2,a1,i2.2,a1,i3.3,1x,a)' ) &
     trim ( month(m) ), d, y, h, ':', n, ':', s, '.', mm, trim ( ampm )
 
-  return
-end
+end subroutine timestamp
+
+end module qshep3d_mod

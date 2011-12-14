@@ -6293,6 +6293,7 @@ end subroutine sumFluxes
                 maxGradient = max(grad, maxGradient)
                 if (grad > limit) then
                    split = .true.
+!                   write(*,*) "refined on density gradient ",grad,limit
                 endif
 
                 if(thisOctal%corner(subcell) .and. thisOCtal%nDepth < maxDepthAMR) split = .true.
@@ -6326,7 +6327,7 @@ end subroutine sumFluxes
                 if (split) then
 
  
-                   if ((thisOctal%nDepth < maxDepthAMR)) then!.and.(thisOctal%nDepth <= nd)) then
+                   if ((thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell))) then
                       call addNewChildWithInterp(thisOctal, subcell, grid)
                       converged = .false.
 !                      print *, "split A ", thisOctal%nDepth
@@ -6344,7 +6345,7 @@ end subroutine sumFluxes
 !                      exit
 !                   endif
    
-                   if(thisOctal%corner(subcell) .and. thisOctal%nDepth < maxDepthAMR) then
+                   if(thisOctal%corner(subcell) .and. (thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell))) then
 !                     print *, "split C ", thisOctal%nDepth
                       call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
                       converged = .false.
@@ -6387,7 +6388,7 @@ end subroutine sumFluxes
 !       bigJ = 0.25d0
 !       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
 !       cs = soundSpeed(thisOctal, subcell)
-       massTol = (1.d0/64.d0)*rhoThreshold*1.d30*thisOctal%subcellSize**3
+       massTol = (1.d0/128.d0)*rhoThreshold*1.d30*thisOctal%subcellSize**3
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
 !          write(*,*) "splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
