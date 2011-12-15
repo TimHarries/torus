@@ -11,7 +11,7 @@ module image_utils_mod
 
   public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixels, &
        getImageFilename, getAxisUnits, getImageSize, getImageInc, getImagePA, getImageViewVec,&
-       getnImage
+       getnImage, getImageOffsets
 
   private
 
@@ -26,6 +26,7 @@ module image_utils_mod
      real    :: ImageSize
      real    :: inclination
      real    :: positionAngle
+     real    :: offsetX, offsetY
   END TYPE imageParameters
 
 !
@@ -57,7 +58,7 @@ contains
 ! values it has been given. 
 !
   subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, &
-       imageSize, inclination, positionAngle)
+       imageSize, inclination, positionAngle, offsetX, offsetY)
     use messages_mod
     use constants_mod, only: autocm, pctocm, radToDeg
     implicit none 
@@ -71,6 +72,7 @@ contains
     character(len=10), intent(in) :: axisUnits
     real, intent(in) :: imageSize
     real, intent(in) :: inclination, positionAngle
+    real, intent(in) :: offsetX, offsetY
 
 ! Local variables
     character(len=80) :: message
@@ -130,6 +132,10 @@ contains
 ! Set image inclination and postion angle
     myImages(i)%inclination   = inclination
     myImages(i)%positionAngle = positionAngle
+
+! Set the position of the image centre
+    myImages(i)%offsetX = offsetX
+    myImages(i)%offsetY = offsetY
 
   end subroutine setImageParams
 
@@ -257,5 +263,15 @@ contains
     integer ::  getnImage
     getnImage = numImages
   end function getnImage
+
+! Return x,y position of the image centre
+  subroutine getImageOffsets(i, offsetX, offsetY)
+    integer, intent(in) :: i
+    real, intent(out) :: offsetX, offsetY
+
+    offsetX = myImages(i)%offsetX
+    offsetY = myImages(i)%offsetY
+
+  end subroutine getImageOffsets
 
 end module image_utils_mod

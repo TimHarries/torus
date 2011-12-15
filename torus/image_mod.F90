@@ -37,13 +37,14 @@ module image_mod
 
   contains
 
-   function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax, xOffset, yOffset)
+   function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax, imNum)
+     use image_utils_mod, only: getImageOffsets
 
      type(IMAGETYPE) :: initImage
      integer :: nx, ny
      real :: imagesizeX, imageSizeY
      real :: vmax, vmin
-     real, optional :: xOffset, yOffset
+     integer, intent(in) :: imNum
 
      integer :: i
      real :: thisxOffset, thisyOffset
@@ -68,18 +69,8 @@ module image_mod
         call writeWarning ("initImage: imageSizeY = 0")
      end if
 
-! Set offsets if required
-     if ( present(xOffset) ) then 
-        thisxOffset=xOffset
-     else
-        thisxOffset = 0.0
-     end if
-
-     if ( present(yOffset) ) then 
-        thisyOffset=yOffset
-     else
-        thisyOffset = 0.0
-     end if
+     ! Get position of image centre
+     call getImageOffsets(imNum, thisxOffset, thisyOffset)
 
      allocate(initImage%pixel(1:nx,1:ny))
      allocate(initImage%vel(1:nx,1:ny))
@@ -469,6 +460,7 @@ module image_mod
        logical :: simple,extend
        logical :: oldFilePresent
        character(len=80) :: message
+       real(double) :: refValX, refValY ! co-ordinate values in reference pixel
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
@@ -574,48 +566,52 @@ module image_mod
        !
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
 
-
+       ! write keywords and set values which depend on the axis units
        select case (getAxisUnits())
        case ("arcsec")
           dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec
           dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec
-          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
           call ftpkys(unit,'CUNIT1', "arcsec", "x axis unit", status)
-          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
-          call ftpkyd(unit,'PIXEL', dx*1000.d0, 10, " ", status)
+          call ftpkys(unit,'CUNIT2', "arcsec", "y axis unit", status)
        case ("au", "AU")
           dx = (dx * 1.d10)/autocm
           dy = (dy * 1.d10)/autocm
-          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          refValX = image%xAxisCentre(1) * 1.d10 / autocm
+          refValY = image%yAxisCentre(1) * 1.d10 / autocm
           call ftpkys(unit,'CUNIT1', "AU", "x axis unit", status)
-          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
           call ftpkys(unit,'CUNIT2', "AU", "y axis unit", status)
        case ("pc","PC")
           dx = (dx * 1.d10)/pctocm
           dy = (dy * 1.d10)/pctocm
-          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          refValX = image%xAxisCentre(1) * 1.d10 / pctocm
+          refValY = image%yAxisCentre(1) * 1.d10 / pctocm
           call ftpkys(unit,'CUNIT1', "PC", "x axis unit", status)
-          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
           call ftpkys(unit,'CUNIT2', "PC", "y axis unit", status)
        case ("cm")
           dx = dx * 1.d10
           dy = dy * 1.d10
-          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          refValX = image%xAxisCentre(1) * 1.d10
+          refValY = image%yAxisCentre(1) * 1.d10
           call ftpkys(unit,'CUNIT1', "cm", "x axis unit", status)
-          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
           call ftpkys(unit,'CUNIT2', "cm", "y axis unit", status)
        case default
           call writeFatal("Unrecognised units for image axis")
        end select
 
-
-
+       ! write x-axis keywords
+       call ftpkys(unit,'CTYPE1'," X","x axis", status)
+       call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
        call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+       call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
+
+       ! write y-axis keywords
+       call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+       call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
        call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
-       call ftpkyd(unit,'CRVAL1',0.d0,10,' ',status)
-       call ftpkyd(unit,'CRVAL2',0.d0,10,' ',status)
-       call ftpkyj(unit,'CRPIX1',image%nx/2,' ',status)
-       call ftpkyj(unit,'CRPIX2',image%ny/2,' ',status)
+       call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
+
        !
        !  Close the file and free the unit number.
        !
@@ -702,7 +698,7 @@ module image_mod
 
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    image = initImage(npix, npix, imageSize, imageSize, vmin, vmax) 
+    image = initImage(npix, npix, imageSize, imageSize, vmin, vmax, 1) 
 
     xVec = zHat .cross. viewVec
     call normalize(xVec)

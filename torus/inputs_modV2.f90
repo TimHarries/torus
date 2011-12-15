@@ -1844,6 +1844,7 @@ contains
     integer :: thisnpixels, nimage
     real :: lambdaImage, thisimagesize, defaultImageSize, wholeGrid
     real :: inclination, positionAngle, thisPA, thisInc
+    real :: offsetX, offsetY, thisOffsetX, thisOffsetY
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
@@ -1891,8 +1892,14 @@ contains
 ! Inclination and position angle for single image, also used as default value for multiple images
     call getReal("inclination", inclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-       call getReal("positionangle", positionAngle, real(degtorad), cLine, fLine, nLines, &
-            "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+    call getReal("positionangle", positionAngle, real(degtorad), cLine, fLine, nLines, &
+         "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+! Position of image centre
+    call getReal("imagecentrex", offsetx, 1.0, cLine, fLine, nLines, &
+         "Image centre x position (10^10 cm): ", "(a,e10.1,1x,a)", 0.0, ok, .false.)
+    call getReal("imagecentrey", offsety, 1.0, cLine, fLine, nLines, &
+         "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", 0.0, ok, .false.)
 
     call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
          "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1920,7 +1927,7 @@ contains
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
               
        call setImageParams(1, lambdaImage, outputimageType, imageFilename, thisnpixels, axisUnits, &
-            thisimagesize, inclination, positionAngle)
+            thisimagesize, inclination, positionAngle, offsetx, offsety)
     else
        do i = 1, nImage
 
@@ -1965,8 +1972,16 @@ contains
           call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
                "Position angle (deg): ","(a,f4.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
 
+          ! Position of image centre
+          write(keyword,'(a,i1.1)') "imagecentrex",i
+          call getReal(keyword, thisOffsetx, 1.0, cLine, fLine, nLines, &
+               "Image centre x position (10^10 cm): ", "(a,e10.1,1x,a)", offsetx, ok, .false.)
+          write(keyword,'(a,i1.1)') "imagecentrey",i
+          call getReal(keyword, thisOffsety, 1.0, cLine, fLine, nLines, &
+               "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
+
           call setImageParams(i, lambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
-               thisImageSize, thisInc, thisPA)
+               thisImageSize, thisInc, thisPA, thisOffsetx, thisOffsety)
        enddo
 
  end if

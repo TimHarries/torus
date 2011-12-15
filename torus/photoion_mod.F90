@@ -3285,14 +3285,13 @@ end subroutine readHeIIrecombination
        imageYsize=imagesize
        nXpix = 2*npix
        nYpix = npix
-       thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0., yOffset= 0.5*imageYsize)
     else
        imageXsize=imagesize
        imageYsize=imagesize
        nXpix = npix
        nYpix = npix
-       thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0.)
     end if
+    thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0.,imageNum)
 
     call setupGridForImage(grid, outputimageType, lambdaLine, iLambdaPhoton, nsource, source, lcore)
 

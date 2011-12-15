@@ -1233,21 +1233,22 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         ! Initializing the images ...
         do i = 1, nImageLocal           
            if (grid%cartesian) then
-              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax)
+              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax,imNum)
               if (doRaman) then
-                 o6image(1) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax)
+                 o6image(1) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax,imNum)
               endif
            else if (grid%adaptive) then
-              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax)
+              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax,imNum)
            else   
               select case (grid%geometry)
               case("disk")
-                 obsImageSet(i) = initImage(npixels, npixels, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),vMin, vMax)
+                 obsImageSet(i) = initImage(npixels, npixels, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),&
+                      vMin, vMax,imNum)
               case("flared")
-                 obsImageSet(i) = initImage(npixels, npixels, 8.*grid%rAxis(1),8.*grid%rAxis(1), vMin, vMax)
+                 obsImageSet(i) = initImage(npixels, npixels, 8.*grid%rAxis(1),8.*grid%rAxis(1), vMin, vMax,imNum)
               case DEFAULT
                  obsImageSet(i) = initImage(npixels,npixels,  min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), &
-                      min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
+                      min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax,imNum)
               end select
            endif
         end do

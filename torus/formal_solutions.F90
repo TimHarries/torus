@@ -1303,7 +1303,7 @@ contains
 
     offset = real(1.0e-4*R_star)
     ! initializes the map
-    F_map = initImage(npix, npix, 2.*REAL(R_max), 2.*REAL(R_max),-1.0, 1.0)
+    F_map = initImage(npix, npix, 2.*REAL(R_max), 2.*REAL(R_max),-1.0, 1.0,1)
 
     ! now add flux values to this map
     nsize = 2*npix+1

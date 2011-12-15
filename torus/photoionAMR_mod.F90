@@ -4862,7 +4862,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     
     call torus_mpi_barrier ! Why is there a barrier here?
 
-    thisImage = initImage(npix, npix, imageSize, imageSize, 0., 0.)
+    thisImage = initImage(npix, npix, imageSize, imageSize, 0., 0.,imageNum)
 
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
