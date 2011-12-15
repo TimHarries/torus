@@ -1736,12 +1736,12 @@ contains
        !      dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))
 
 !The interface velocity is modified to account for the pressure gradient due to its nearest neighbours
-             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
-                  ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
-                  (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
-
 !             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
-!                  (thisoctal%pressure_i(subcell) - thisoctal%pressure_i_minus_1(subcell))/dx
+!                  ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
+!                  (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx
+
+             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
+                  (thisoctal%pressure_i(subcell) - thisoctal%pressure_i_minus_1(subcell))/dx
              ! write(*,*), "ui", thisoctal%u_interface(subcell)
           endif
        endif
