@@ -2669,6 +2669,7 @@ end subroutine dumpStromgrenRadius
     use octal_mod, only: subcellRadius
     use mpi
     use qshep3d_mod
+    use qshep2d_mod
     type(OCTAL), pointer :: parent, thisOctal, topOctal
     integer :: iChild
     logical, optional :: constantGravity
@@ -2696,6 +2697,7 @@ end subroutine dumpStromgrenRadius
     integer :: ier
     integer :: nr, nw, nq
     integer, allocatable :: lnext(:), lcell(:,:,:)
+    integer, allocatable :: lcell2d(:,:)
     real(double) :: xyzmin(3), xyzdel(3)
     real(double) :: rMax
     real(double), allocatable :: a(:,:), rsq(:)
@@ -2711,7 +2713,8 @@ end subroutine dumpStromgrenRadius
     real(double) :: phiPoint(maxpts)
     real(double) :: energyPoint(maxpts)
     real(double) :: pressurePoint(maxpts)
-
+    real(double) :: dx, dz, xmin, zmin
+    integer :: counter
     real(double) :: radius
     logical, save :: firstTime = .true.
     logical :: debug, addLocal
@@ -3246,15 +3249,100 @@ end subroutine dumpStromgrenRadius
           ypoint = 0.d0
           y = 0.d0
           rhovPoint = 0.d0
+                    
 
-          thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
-          thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)
-          thisOctal%rhou(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhouPoint, nPoints, x, y, z)
-          thisOctal%rhov(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhovPoint, nPoints, x, y, z)
-          thisOctal%rhow(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhowPoint, nPoints, x, y, z)
-          thisOctal%energy(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, energyPoint, nPoints, x, y, z)
-          thisOctal%phi_gas(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, phiPoint, nPoints, x, y, z)
-          thisOctal%pressure_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, pressurePoint, nPoints, x, y, z)
+          
+
+          nq = min(40, nPoints - 1)
+          nw = min(40, nPoints - 1)
+          nr = max(1,nint((dble(nPoints)/3.d0)**0.5d0))
+          allocate(lCell2d(1:nr,1:nr))
+          allocate(lnext(1:nPoints))
+          allocate(rsq(1:nPoints))
+          allocate(a(5,1:nPoints))
+
+          print *, "nPoints ", nPoints
+          print *, "nq ", nq
+          print *, "nw ", nw
+          print *, "nr ", nr
+          print *, "rVEc ", rVec
+          print *, "ghost ", thisOctal%ghostCell(isubcell)
+          print *, "smallest ", grid%halfSmallestSubcell
+          print *, "DEPTH ", nd
+          do counter = 1, maxpts
+             if(rhopoint(counter) /= 0.0) then
+                print *, "rhoPoint", rhopoint(counter)
+             end if
+          end do
+          call qshep2 (nPoints, xPoint, zPoint, rhoPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for rho")
+          thisOctal%rho(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+          call qshep2 (nPoints, xPoint, zPoint, rhoePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhoe")
+          thisOctal%rhoe(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoePoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+          call qshep2 (nPoints, xPoint, zPoint, rhouPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
+          thisOctal%rhou(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+          call qshep2 (nPoints, xPoint, zPoint, rhovPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhov")
+          thisOctal%rhov(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhovPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+          call qshep2 (nPoints, xPoint, zPoint, rhowPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhow")
+          thisOctal%rhow(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhowPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+          call qshep2 (nPoints, xPoint, zPoint, energyPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for energy")
+          thisOctal%energy(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, energyPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+          call qshep2 (nPoints, xPoint, zPoint, phiPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for phi")
+          thisOctal%phi_gas(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, phiPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+
+          call qshep2 (nPoints, xPoint, zPoint, pressurePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for pressure")
+          thisOctal%pressure_i(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, pressurePoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
+
+          if(ier == 0) then
+             print *, "RANK ", myRankGlobal, "DID A SUCCESSFUL QSHEP2D"
+          end if
+
+!          thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
+!          thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)
+!          thisOctal%rhou(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhouPoint, nPoints, x, y, z)
+!          thisOctal%rhov(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhovPoint, nPoints, x, y, z)
+!          thisOctal%rhow(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhowPoint, nPoints, x, y, z)
+!          thisOctal%energy(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, energyPoint, nPoints, x, y, z)
+!          thisOctal%phi_gas(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, phiPoint, nPoints, x, y, z)
+!          thisOctal%pressure_i(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, pressurePoint, nPoints, x, y, z)
 
 !          rVec = subcellcentre(thisOctal, iSubcell)
 !          x = rVec%x
@@ -3303,6 +3391,10 @@ end subroutine dumpStromgrenRadius
 !               (       u) * (1.d0 - v) * pressureCorner(2) + &
 !               (1.d0 - u) * (       v) * pressureCorner(3) + &
 !               (       u) * (       v) * pressureCorner(4)
+
+
+          deallocate(lCell2d, lnext, rsq, a)
+
        endif
 
        if (thisOctal%oned) then
