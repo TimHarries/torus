@@ -112,8 +112,8 @@ contains
     integer, intent(in) :: i
     TYPE(vector) :: getSedViewVec
 
-    getSedViewVec%x = 0.
-    getSedViewVec%y = -sin(SedInclinations(i))
+    getSedViewVec%x = -sin(SedInclinations(i))
+    getSedViewVec%y = 0.0
     getSedViewVec%z = -cos(SedInclinations(i))
     
   end function getSedViewVec
