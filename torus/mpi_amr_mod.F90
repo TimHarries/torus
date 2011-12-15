@@ -3240,8 +3240,10 @@ end subroutine dumpStromgrenRadius
 
           rVec%y = 0.d0
 
-          radius = 4.d0*grid%octreeRoot%subcellSize / &
-                                2.0_oc**REAL(minDepthAmr,kind=oct)
+!          radius = 4.d0*grid%octreeRoot%subcellSize / &
+!                                2.0_oc**REAL(minDepthAmr,kind=oct)
+
+          radius = thisOctal%subcellSize*4.d0
 
           call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
@@ -3261,19 +3263,19 @@ end subroutine dumpStromgrenRadius
           allocate(rsq(1:nPoints))
           allocate(a(5,1:nPoints))
 
-          print *, "nPoints ", nPoints
-          print *, "nq ", nq
-          print *, "nw ", nw
-          print *, "nr ", nr
-          print *, "rVEc ", rVec
-          print *, "ghost ", thisOctal%ghostCell(isubcell)
-          print *, "smallest ", grid%halfSmallestSubcell
-          print *, "DEPTH ", nd
-          do counter = 1, maxpts
-             if(rhopoint(counter) /= 0.0) then
-                print *, "rhoPoint", rhopoint(counter)
-             end if
-          end do
+!          print *, "nPoints ", nPoints
+!          print *, "nq ", nq
+!          print *, "nw ", nw
+!          print *, "nr ", nr
+!          print *, "rVEc ", rVec
+!          print *, "ghost ", thisOctal%ghostCell(isubcell)
+!          print *, "smallest ", grid%halfSmallestSubcell
+!          print *, "DEPTH ", nd
+!          do counter = 1, maxpts
+!             if(rhopoint(counter) /= 0.0) then
+!                print *, "rhoPoint", rhopoint(counter)
+!             end if
+!          end do
           call qshep2 (nPoints, xPoint, zPoint, rhoPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
                dx, dz, rmax, rsq, a, ier )
           if (ier /= 0) call writeWarning("Qshep2 returned an error for rho")
