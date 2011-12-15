@@ -2714,7 +2714,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: energyPoint(maxpts)
     real(double) :: pressurePoint(maxpts)
     real(double) :: dx, dz, xmin, zmin
-    integer :: counter
+!    integer :: counter
     real(double) :: radius
     logical, save :: firstTime = .true.
     logical :: debug, addLocal
