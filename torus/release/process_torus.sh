@@ -16,7 +16,7 @@ cp ../*.f90 .
 # Get rid of files we don't need
 rm hydrodynamics_mod.f90 photoionAMR_mod.f90 photoion_mod.f90
 rm photoion_utils_mod.f90 angularImage_mod.f90 molecular_mod.f90 
-rm torusMod.f90 ion_mod.f90 nbody_mod.f90
+rm torusMod.f90 ion_mod.f90 nbody_mod.f90 qShep*90 timedep_mod.f90
 
 ln -s ../makedepend
 
