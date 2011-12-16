@@ -310,7 +310,6 @@
   real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
   logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
-  real :: vMin, vMax             ! for createLucyImage
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
   integer :: nv ! number of velocity channels
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option

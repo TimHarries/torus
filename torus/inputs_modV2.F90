@@ -1847,6 +1847,7 @@ contains
     real :: lambdaImage, thisimagesize, defaultImageSize, wholeGrid
     real :: inclination, positionAngle, thisPA, thisInc
     real :: offsetX, offsetY, thisOffsetX, thisOffsetY
+    real :: aspectRatio, thisAspectRatio
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
@@ -1891,6 +1892,9 @@ contains
             trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
     end if
 
+    call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, & 
+         "Image aspect ratio: ", "(a,f4.1,1x,a)", 1.0, ok, .false.)
+
 ! Inclination and position angle for single image, also used as default value for multiple images
     call getReal("inclination", inclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
@@ -1929,7 +1933,7 @@ contains
             "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
               
        call setImageParams(1, lambdaImage, outputimageType, imageFilename, thisnpixels, axisUnits, &
-            thisimagesize, inclination, positionAngle, offsetx, offsety)
+            thisimagesize, aspectRatio, inclination, positionAngle, offsetx, offsety)
     else
        do i = 1, nImage
 
@@ -1961,12 +1965,18 @@ contains
           call getInteger(keyword, thisnpixels, cLine, fLine, nLines, &
                "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
-          ! Read size of this image or use default value if not specified.
+          ! Size of this image
           write(keyword,'(a,i1.1)') "imagesize",i  
           write(message,*) "Image size ("//trim(axisUnits)//"): "        
           call getReal(keyword, thisImageSize, 1.0, cLine, fLine, nLines, &
             trim(message), "(a,1pe10.2,1x,a)", defaultImageSize, ok, .false.)
 
+          ! Aspect ratio
+          write(keyword,'(a,i1.1)') "imageaspect",i
+          call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, & 
+               "Image aspect ratio: ", "(a,f4.1,1x,a)", aspectRatio, ok, .false.)
+
+          ! Inclination and position angle
           write(keyword,'(a,i1.1)') "inclination",i
           call getReal(keyword, thisInc, real(degtorad), cLine, fLine, nLines, &
                "Inclination of image: ","(a,f4.1,1x,a)",inclination*real(radtodeg), ok, .false.)
@@ -1983,7 +1993,7 @@ contains
                "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
 
           call setImageParams(i, lambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
-               thisImageSize, thisInc, thisPA, thisOffsetx, thisOffsety)
+               thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety)
        enddo
 
  end if

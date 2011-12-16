@@ -105,8 +105,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   !                        !   of line by line resonance zones.
   real :: dTau
   integer :: nTot  
-  real :: imageSize
-  integer :: npixels
   real(double) :: fac
   real :: escProb
   real :: nuStart, nuEnd
@@ -255,7 +253,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: bandwidth   ! Band width of a filter[A]
   real(double) :: weightsource
   real :: probContPhoton
-  real :: setImageSize
   character(len=80) :: thisImageType
   logical :: stokesImage 
 
@@ -328,8 +325,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   !
   stokesImage=.false.
   if ( present(imNum) ) then 
-     setimagesize  = getImageSize(imNum)
-     npixels       = getImagenPixels(imNum)
      thisImageType = getImageType(imNum)
      if (thisImageType(1:6) == "stokes") then 
         stokesImage=.true.
@@ -1083,7 +1078,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (formalSol) then
         if (myrankglobal == 0) then
            write(*,*) "calling create lucy image"
-           call createLucyImage(grid, viewVec, 1.e4, grid%lamArray, nLambda, source, nSource, setimagesize,npixels)
+           call createLucyImage(grid, 1.e4, grid%lamArray, nLambda, source, nSource, imNum)
         endif
         call torus_mpi_barrier
         stop
@@ -1097,7 +1092,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   incLoop: do iInclination = 1, nInclination, 1 
        ! NB This loop is not indented in the code!
      
-     if (nInclination >= 1) then  
+     if (nInclination >= 1) then
 
         ! Set image/SED inclination and viewing vector
         if (present(imNum)) then
@@ -1198,58 +1193,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         if (allocated(obsImageSet)) deallocate(obsImageSet)
         allocate(obsImageSet(nImageLocal))
         
-
-        ! Initializing the images ...
-
-        if (setImageSize == 0.) then
-           if (grid%adaptive) then
-              if (amr2d) then
-                 imageSize = real(4.*grid%octreeRoot%subcellSize)
-              else
-                 imageSize = real(2.*grid%octreeRoot%subcellSize          )
-              endif
-           else if (grid%cartesian) then
-              imageSize = grid%xAxis(grid%nx)-grid%xAxis(1)
-           else
-              imagesize = 2.*grid%rAxis(grid%nr)
-           endif
-        else
-           imageSize = setImageSize / 1.e10
-        endif
-
-        if (trim(getAxisUnits())=="arcsec".and.(setImageSize /= 0.)) then
-           imagesize = real(objectdistance * (setImageSize / 3600.) * degtorad / 1.e10)
-        endif
-
-!     if (molecular) then
-!        if (writemol) call  molecularLoop(grid, co)
-!        call calculateMoleculeSpectrum(grid, co)
-!        call createDataCube(cube, grid, VECTOR(0.d0, 1.d0, 0.d0), co, 1)
-!        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
-!        stop
-!     endif
-
-
         ! Initializing the images ...
         do i = 1, nImageLocal           
-           if (grid%cartesian) then
-              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax,imNum)
-              if (doRaman) then
-                 o6image(1) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax,imNum)
-              endif
-           else if (grid%adaptive) then
-              obsImageSet(i) = initImage(npixels, npixels, imageSize, imageSize, vmin, vmax,imNum)
-           else   
-              select case (grid%geometry)
-              case("disk")
-                 obsImageSet(i) = initImage(npixels, npixels, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),&
-                      vMin, vMax,imNum)
-              case("flared")
-                 obsImageSet(i) = initImage(npixels, npixels, 8.*grid%rAxis(1),8.*grid%rAxis(1), vMin, vMax,imNum)
-              case DEFAULT
-                 obsImageSet(i) = initImage(npixels,npixels,  min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), &
-                      min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax,imNum)
-              end select
+           obsImageSet(i) = initImage(imNum)
+           if (doRaman) then
+              o6image(1) = initImage(imNum)
            endif
         end do
         
@@ -1301,7 +1249,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
              outVec, objectDistance, grid, sampleFreq, opaqueCore,  &
              flux, grid%lamArray, grid%nlambda, obsfluxfile, &
              thin_disc_on, (ttau_disc_on .and. .not. ttau_turn_off_disc), &
-             (ttau_jet_on .and. .not. ttau_turn_off_jet), ttau_discwind_on, npixels, &
+             (ttau_jet_on .and. .not. ttau_turn_off_jet), ttau_discwind_on, imNum, &
              (ttau_disc_on .and. .not. ttau_turn_off_disc), ttauri_disc, thinLine, lineOff, &
              do_pos_disp) 
         write(*,*) "...Finished  formal integration of flux...."
@@ -1500,12 +1448,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      obsImageSet(i)%pixel%v = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%v))
-
-
-     tempRealArray = reshape(obsImageSet(i)%vel,(/SIZE(tempRealArray)/))
-     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-     obsImageSet(i)%vel = reshape(tempRealArray2,SHAPE(obsImageSet(i)%vel))
 
      tempRealArray = reshape(obsImageSet(i)%totWeight,(/SIZE(tempRealArray)/))
      call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
@@ -1953,7 +1895,7 @@ CONTAINS
                  thisVel = (thisLam-lamLine)/lamLine
 
                  call addPhotonToImage(viewVec, rotationAxis,o6Image(1), 1, &
-                      thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                      thisPhoton, thisVel, obs_weight, filters)
               endif
            endif
 
@@ -2104,7 +2046,7 @@ CONTAINS
                  if (stokesImage) then
                     thisVel = 0. ! no velocity for dust continuum
                     call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, thisPhoton,&
-                         thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                         thisVel, obs_weight, filters)
 
                  endif
               endif
@@ -2131,7 +2073,7 @@ CONTAINS
                     thisVel = (observedLambda-lamLine)/lamLine
                     if (stokesImage) then
                        call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, &
-                            thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                            thisPhoton, thisVel, obs_weight, filters)
                     endif
 
                  else  ! contunuum photon
@@ -2199,8 +2141,7 @@ CONTAINS
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImageLocal, &
-                               thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
-                               grid%lamArray(iLambda))
+                               thisPhoton, thisVel, obs_weight, filters, grid%lamArray(iLambda))
                        endif
 
                     enddo
@@ -2364,7 +2305,7 @@ CONTAINS
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
-                            obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                            obsPhoton, thisVel, obs_weight, filters)
                     endif
                  enddo
               endif
@@ -2626,7 +2567,7 @@ CONTAINS
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
-                            obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                            obsPhoton, thisVel, obs_weight, filters)
                     endif
 
                     if (doRaman) then
@@ -2657,7 +2598,7 @@ CONTAINS
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
-                               obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                               obsPhoton, thisVel, obs_weight, filters)
                        endif
 
                     else
@@ -2747,8 +2688,7 @@ CONTAINS
                           thisVel = (observedlambda-lamLine)/lamLine
                           if (stokesImage) then
                              call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
-                                  obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
-                                  grid%lamArray(iLambda))
+                                  obsPhoton, thisVel, obs_weight, filters, grid%lamArray(iLambda))
                           endif
 
                        enddo

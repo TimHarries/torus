@@ -3210,7 +3210,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source,imageNum)
-    use inputs_mod, only : nPhotons, amr2d
+    use inputs_mod, only : nPhotons
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use image_utils_mod
 #ifdef USECFITSIO
@@ -3232,9 +3232,6 @@ end subroutine readHeIIrecombination
     integer, intent(in) :: nSource
     real :: lambdaLine
     character(len=80) :: outputimageType
-    integer :: npix
-    integer :: nXpix, nYpix
-    real :: imageXsize, imageYsize
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
@@ -3259,7 +3256,6 @@ end subroutine readHeIIrecombination
     real(double) :: thisSourceWeight 
     integer(kind=bigint) :: iBeg, iEnd
     character(len=80) :: message
-    real :: imageSize
 #ifdef MPI
     real(double) :: tempTotalFlux
     integer(kind=bigint) :: i
@@ -3269,8 +3265,6 @@ end subroutine readHeIIrecombination
     lambdaline      = getImageWavelength(imageNum)
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
-    npix            = getImagenPixels(imageNum)
-    imageSize       = getImageSize(imageNum)/1.0e10
     observerDirection = getImageViewVec(imageNum)
 
     call randomNumberGenerator(randomSeed = .true.)
@@ -3280,18 +3274,7 @@ end subroutine readHeIIrecombination
     
     call quickSublimate(grid%OctreeRoot)
 
-    if (amr2d) then 
-       imageXsize=2.0*imagesize
-       imageYsize=imagesize
-       nXpix = 2*npix
-       nYpix = npix
-    else
-       imageXsize=imagesize
-       imageYsize=imagesize
-       nXpix = npix
-       nYpix = npix
-    end if
-    thisImage = initImage(nXpix, nYpix, imageXsize, imageYsize, 0., 0.,imageNum)
+    thisImage = initImage(imageNum)
 
     call setupGridForImage(grid, outputimageType, lambdaLine, iLambdaPhoton, nsource, source, lcore)
 

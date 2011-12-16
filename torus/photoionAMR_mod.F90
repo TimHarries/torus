@@ -4795,10 +4795,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer, intent(in) :: imageNum
     real :: lambdaImage
     type(GRIDTYPE) :: grid
-    integer :: npix
     character(len=80) :: imageFilename 
     character(len=80) :: outputImageType
-    real :: imageSize
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
@@ -4849,8 +4847,6 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     lambdaImage     = getImageWavelength(imageNum)
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
-    npix            = getImagenPixels(imageNum)
-    imageSize       = getImageSize(imageNum)/1.0e10
     observerDirection = getImageViewVec(imageNum)
 
     call randomNumberGenerator(randomSeed=.true.)
@@ -4862,7 +4858,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     
     call torus_mpi_barrier ! Why is there a barrier here?
 
-    thisImage = initImage(npix, npix, imageSize, imageSize, 0., 0.,imageNum)
+    thisImage = initImage(imageNum)
 
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 

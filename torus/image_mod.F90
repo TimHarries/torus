@@ -21,7 +21,6 @@ module image_mod
   
   type IMAGETYPE
     type(STOKESVECTOR), pointer :: pixel(:,:) => null()
-    real, pointer :: vel(:,:) => null()
     real, pointer :: totWeight(:,:) => null()
     real, pointer :: xAxisCentre(:) => null()
     real, pointer :: yAxisCentre(:) => null()
@@ -31,49 +30,33 @@ module image_mod
     integer :: nx
     integer :: ny
     real :: dx, dy
-    real :: vMin
-    real :: vMax
   end type IMAGETYPE
 
   contains
 
-   function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax, imNum)
-     use image_utils_mod, only: getImageOffsets
+   function initImage(imNum)
+     use image_utils_mod
 
      type(IMAGETYPE) :: initImage
-     integer :: nx, ny
-     real :: imagesizeX, imageSizeY
-     real :: vmax, vmin
      integer, intent(in) :: imNum
 
      integer :: i
-     real :: thisxOffset, thisyOffset
+     integer :: nx, ny
+     real    :: imagesizeX, imageSizeY
+     real    :: thisxOffset, thisyOffset
 
-! Check the requested image size is sensible
-! If not then set size to 1 to prevent problems with unallocated arrays
-     if ( nx < 1 ) then 
-        call writewarning("initImage: nx < 1")
-        nx = 1
-     end if
+     ! Number of pixels
+     nx = getImagenPixelsX(imNum)
+     ny = getImagenPixelsY(imNum)
 
-     if ( ny < 1 ) then 
-        call writewarning("initImage: ny < 1")
-        ny = 1
-     end if
+     ! Size of image
+     imagesizeX = getImageSizeX(imNum)/1.0e10
+     imageSizeY = getImageSizeY(imNum)/1.0e10
 
-! Check that the image has a non-zero size otherwise axes will all be zero. 
-     if (imageSizeX == 0.0 ) then 
-        call writeWarning ("initImage: imageSizeX = 0")
-     end if
-     if (imageSizeY == 0.0 ) then 
-        call writeWarning ("initImage: imageSizeY = 0")
-     end if
-
-     ! Get position of image centre
+     ! Position of image centre
      call getImageOffsets(imNum, thisxOffset, thisyOffset)
 
      allocate(initImage%pixel(1:nx,1:ny))
-     allocate(initImage%vel(1:nx,1:ny))
      allocate(initImage%totWeight(1:nx,1:ny))
      allocate(initImage%nSamples(1:nx,1:ny))
      allocate(initImage%xAxisCentre(1:nx))
@@ -97,9 +80,6 @@ module image_mod
      initImage%nx = nx
      initImage%ny = ny
      initImage%nSamples = 0
-     initImage%vMin = vMin
-     initImage%vMax = vMax
-     initImage%vel = 0.
      initImage%totWeight = 0.
 
    end function initImage
@@ -145,7 +125,7 @@ module image_mod
 #endif
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
-                               thisVel, weight, filters, center, lambda0_cont)
+                               thisVel, weight, filters, lambda0_cont)
      use filter_set_class
      use phasematrix_mod
 
@@ -155,21 +135,16 @@ module image_mod
      type(VECTOR) :: viewVec,  xProj, yProj, rotationAxis
      real :: xDist, yDist
      integer :: xPix, yPix
-     real :: thisVel, velincgs
+     real :: thisVel
      real :: weight
      type(filter_set), intent(in) :: filters     
-     type(VECTOR), intent(in) :: center  ! the center of the model space. [10^10cm]
      real, intent(in), optional :: lambda0_cont  ! rest wavelength of contiuum photon
      !
      integer :: i
      real :: filter_response
      real(double) :: lambda_obs
-     type(vector) :: test
-     test = center
 
-     velIncgs = thisVel! * cSpeed/1.e5 
      xPix = 0; yPix = 0
-
 
      ! observed wavelength should be Doppler shifted by local gas velocity
      if (thisPhoton%contPhoton) then
@@ -182,41 +157,33 @@ module image_mod
         lambda_obs = dble( thisPhoton%lambda*(1.0d0+thisVel) )  
      end if
 
-!     write(*,*) thisvel,thisimage%vMax,thisimage%vMin
-
 
      do i = 1, nImage
-!        if ((velincgs < thisImageSet(i)%vMax) .and. (velincgs > thisImageSet(i)%vMin)) then
-           xProj =  rotationAxis .cross. viewVec
-           call normalize(xProj)
-           yProj = viewVec .cross. xProj
-           call normalize(yProj)
+
+        xProj =  rotationAxis .cross. viewVec
+        call normalize(xProj)
+        yProj = viewVec .cross. xProj
+        call normalize(yProj)
            
-!           xDist = (thisPhoton%position - center) .dot. xProj
-!           yDist = (thisPhoton%position - center) .dot. yProj
-           xDist = real((thisPhoton%position) .dot. xProj)
-           yDist = real((thisPhoton%position) .dot. yProj)
+        xDist = real((thisPhoton%position) .dot. xProj)
+        yDist = real((thisPhoton%position) .dot. yProj)
            
+        call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 
-           call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
+        if ((xPix >= 1) .and. &
+             (yPix >= 1) .and. &
+             (xPix <= thisImageSet(i)%nx) .and. &
+             (yPix <= thisImageSet(i)%ny)) then
+           ! using a filter response function in filter_set_class here
+           filter_response = real( pass_a_filter(filters, i, lambda_obs ))
+                 
+           thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
+                + thisPhoton%stokes * weight * filter_response
+           thisImageSet(i)%totWeight(xPix,yPix) = real(thisImageSet(i)%totWeight(xPix,yPix) &
+                + (thisPhoton%stokes%i*weight*filter_response))
 
-           if ((xPix >= 1) .and. &
-                (yPix >= 1) .and. &
-                (xPix <= thisImageSet(i)%nx) .and. &
-                (yPix <= thisImageSet(i)%ny)) then
-              ! using a filter response function in filter_set_class here
-              filter_response = real( pass_a_filter(filters, i, lambda_obs ))
-              
-              
-              thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
-                   + thisPhoton%stokes * weight * filter_response
-              thisImageSet(i)%vel(xPix,yPix) = real(thisImageSet(i)%vel(xPix, yPix)  &
-                   + velincgs * (thisPhoton%stokes%i*weight*filter_response))
-              thisImageSet(i)%totWeight(xPix,yPix) = real(thisImageSet(i)%totWeight(xPix,yPix) &
-                   + (thisPhoton%stokes%i*weight*filter_response))
+        endif
 
-           endif
-!        endif
      end do
 
      end subroutine addPhotonToImage
@@ -225,11 +192,9 @@ module image_mod
        type(IMAGETYPE) :: thisImage
 
        deallocate(thisImage%pixel)
-       deallocate(thisImage%vel)
        deallocate(thisImage%totWeight)
        deallocate(thisImage%nSamples)
        NULLIFY(thisImage%pixel)
-       NULLIFY(thisImage%vel)
        NULLIFY(thisImage%totWeight)
        NULLIFY(thisImage%nSamples)
      end subroutine freeImage
@@ -646,9 +611,8 @@ module image_mod
        endif
      end subroutine pixelLocate
             
-  subroutine createLucyImage(grid, viewVec, lambda, xArray, nLambda, source, nSource, imageSize, npix)
+  subroutine createLucyImage(grid, lambda, xArray, nLambda, source, nSource, imNum)
     use image_utils_mod
-    use inputs_mod, only : vmin, vmax
     use source_mod, only: SOURCETYPE, getElement, I_nu, distanceToSource
 #ifdef USECFITSIO
     use inputs_mod, only : griddistance
@@ -679,26 +643,20 @@ module image_mod
     integer, parameter :: nTheta = 11, nPhi = 10
     integer :: iTheta, iPhi
     real(double) :: thisTheta, thisPhi
-    real(double) :: scale, dlam, lamCen, lamStart, lamEnd
+    real(double) :: scale
     real(double) :: objectDistance
-    real, intent(in) :: imageSize
-    integer, intent(in) :: npix
+    integer, intent(in) :: imNum
 
-    lamStart = 1.d4
-    lamEnd = 1.01e4
     objectDistance = 2.25558e-8 * pctocm
-
     scale = 1.d20
     scale = scale / (objectDistance**2) 
     scale = scale * 1.d4
     scale = scale * 1.d-7
-    dlam = (lamEnd - lamStart) * 2.d0 * angstoMicrons
-    lamCen = (lamStart + lamEnd) / 2.d0 * angstoMicrons
-
 
     ilambda = findIlambda(lambda, xArray, nLambda, ok)
 
-    image = initImage(npix, npix, imageSize, imageSize, vmin, vmax, 1) 
+    image   = initImage(imNum) 
+    viewVec = getImageViewVec(imNum)
 
     xVec = zHat .cross. viewVec
     call normalize(xVec)
@@ -833,12 +791,6 @@ module image_mod
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
      thisImage%pixel%v = reshape(tempDoubleArray2,SHAPE(thisImage%pixel%v))
-
-
-     tempRealArray = reshape(thisImage%vel,(/SIZE(tempRealArray)/))
-     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-                     MPI_SUM,thisDest,MPI_COMM_WORLD,ierr)
-     thisImage%vel = reshape(tempRealArray2,SHAPE(thisImage%vel))
 
      tempIntArray = reshape(thisImage%nSamples,(/SIZE(tempIntArray)/))
      call MPI_REDUCE(tempIntArray,tempIntArray2,SIZE(tempIntArray),MPI_INTEGER,&

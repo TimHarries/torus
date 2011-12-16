@@ -1,7 +1,7 @@
 module formal_solutions
 
   ! ----------------------------------------------------------------------------------
-  ! This is not a class difenition, but a collection of formal
+  ! This is not a class definition, but a collection of formal
   ! solution solvers.
   ! 
   !----------------------------------------------------------------------------------
@@ -32,6 +32,9 @@ module formal_solutions
        refine_ray_constant_vel !,&
 !       create_obs_flux_map
   
+
+  integer, private :: npix
+
 contains
 
   !
@@ -41,7 +44,7 @@ contains
 
   subroutine compute_obs_line_flux(lambda0, mass_ion, R_star, R_max_acc, R_max_wind, surface, &
        nr_wind, nr_acc, nr_core, nphi, dir_obs, dist_obs, grid, sampleFreq, opaqueCore,  &
-       flux, lambda, nlam, filename, thin_disc_on, ttau_disc_on, ttau_jet_on, ttau_discwind_on, npix, &
+       flux, lambda, nlam, filename, thin_disc_on, ttau_disc_on, ttau_jet_on, ttau_discwind_on, imNum, &
        do_alphadisc_check, alphadisc_par, thinLine, emissOff, pos_disp) 
 
     use surface_mod, only: SURFACETYPE, whichElement, isHot
@@ -49,6 +52,7 @@ contains
     use messages_mod, only : myRankIsZero
     use timing, only: tune
     use parallel_mod
+    use image_utils_mod, only: getImagenPixelsY
 #ifdef MPI
     use mpi
 #endif
@@ -78,7 +82,7 @@ contains
     logical, intent(in)                :: ttau_disc_on  !
     logical, intent(in)                :: ttau_jet_on   !
     logical, intent(in)                :: ttau_discwind_on   !
-    integer, intent(in)                :: npix          ! image size = 2*npix +1 should be an even number
+    integer, intent(in)                :: imNum
     ! The followings are needed for resampling integration rays
     logical, intent(in)                :: do_alphadisc_check  ! if T the disc check will be done
     type(alpha_disc), intent(in)       :: alphadisc_par       ! parameters for alpha disc
@@ -154,6 +158,8 @@ contains
     ALLOCATE(p_acc(na), p_acc_orig(na), dA_acc(na), dr_acc(na))
     nray=nc+na   ! total number of rays
 
+    ! Fetch the number of image pixels. Use y pixels to avoid aspect ratio scaling.
+    npix = getImagenPixelsY(imNum)
 
     ! continuum frequency (take the first element of the lamda array)
     freqc = cSpeed_dbl/(lambda(1)*1.d-8)  ! Hz
@@ -577,10 +583,10 @@ contains
     write(*,*) "Creating and writing flux map (and spectro-astrometry) data... "
     filename_map = "image_"//TRIM(ADJUSTL(filename))
     call create_obs_flux_map(integrated_flux, p_orig,  dr, dphi, &
-       nray, R_star, R_max, TRIM(filename_map), npix)
+       nray, R_star, R_max, TRIM(filename_map), imNum)
     if (pos_disp) &
          call find_position_displacement(flux_map, p_orig, dA, dr, dphi, &
-         nray, nphi, R_star, R_max,  TRIM(filename_map), npix, &
+         nray, nphi, R_star, R_max,  TRIM(filename_map), &
          dist_obs, lambda, lambda0)
 
     if (ttau_disc_on .or. ttau_jet_on .or. ttau_discwind_on) then
@@ -588,11 +594,11 @@ contains
        filename_map = "image_"//TRIM(ADJUSTL(filename))
        call create_obs_flux_map(integrated_flux, p_orig,  dr, dphi, &
             nray,  R_star, MAX(0.5d-2*R_max, 10.d0*R_star), &
-            TRIM(filename_map), npix)    
+            TRIM(filename_map), imNum)   
        if (pos_disp) &
             call find_position_displacement(flux_map, p_orig, dA, dr, dphi, &
             nray, nphi, R_star, MAX(1.0d-2*R_max, 10.d0*R_star), &
-            TRIM(filename_map), npix, &
+            TRIM(filename_map), &
             dist_obs, lambda, lambda0)
 !       ! save one for zppmed  in image (1/10) of Rmax
 !       filename_map = TRIM(ADJUSTL(filename))//"_natural_zoom2_image001"
@@ -1277,7 +1283,7 @@ contains
   !
   ! Creates NDF image of flux map
   subroutine create_obs_flux_map(flux_ray, ray, dr, dphi, &
-        nray, R_star, R_max, filename, npix)
+        nray, R_star, R_max, filename, imNum)
     use image_mod, only: IMAGETYPE, freeImage, initImage
 #ifdef USECFITSIO
     use image_mod, only : writeFitsImage
@@ -1292,7 +1298,7 @@ contains
     real(double), intent(in)   ::  R_star    ! [10^10 cm]  radius of sta
     real(double), intent(in)   ::  R_max     ! [10^10 cm]  max radius for plot
     character(LEN=*),intent(in)   :: filename  ! output filename
-    integer, intent(in)           :: npix ! image size = 2*npix +1 should be an even number
+    integer, intent(in)           :: imNum
     !
     !
     type(imagetype) ::  F_map  ! flux map   []
@@ -1303,7 +1309,7 @@ contains
 
     offset = real(1.0e-4*R_star)
     ! initializes the map
-    F_map = initImage(npix, npix, 2.*REAL(R_max), 2.*REAL(R_max),-1.0, 1.0,1)
+    F_map = initImage(imNum)
 
     ! now add flux values to this map
     nsize = 2*npix+1
@@ -1363,7 +1369,7 @@ contains
   !  3. Combine this with create_obs_flux_map for speed up! (a naive search use
   !     here is very slow!
   subroutine find_position_displacement(flux_map, ray, dA, dr, dphi, &
-       nlam, nray,  R_star, R_max, filename, npix, &
+       nlam, nray,  R_star, R_max, filename, &
        dist_obj, lam, lam0)
     implicit none
     integer, intent(in) :: nlam  ! number of wavelength points
@@ -1377,7 +1383,6 @@ contains
     real(double), intent(in)   ::  R_star    ! [10^10 cm]  radius of sta
     real(double), intent(in)   ::  R_max     ! [10^10 cm]  max radius for plot
     character(LEN=*),intent(in)   :: filename  ! output filename
-    integer, intent(in)           :: npix    ! image size = 2*npix +1 should be an even number
     real(double), intent(in)   :: dist_obj   ! physical distance to the object in [cm]
     real(single), intent(in)   :: lam(:)  ! wavelength array [A]
     real(single), intent(in)   :: lam0       ! line wavelength [A]

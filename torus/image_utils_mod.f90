@@ -9,9 +9,9 @@ module image_utils_mod
 
   implicit none
 
-  public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixels, &
-       getImageFilename, getAxisUnits, getImageSize, getImageInc, getImagePA, getImageViewVec,&
-       getnImage, getImageOffsets
+  public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixelsX, &
+       getImagenPixelsY, getImageFilename, getAxisUnits, getImageInc, getImagePA, &
+       getImageViewVec, getnImage, getImageOffsets, getImageSizeX, getImageSizeY
 
   private
 
@@ -22,8 +22,8 @@ module image_utils_mod
      real :: lambda
      character(len=80) :: type
      character(len=80) :: filename
-     integer :: nPixels
-     real    :: ImageSize
+     integer :: nPixelsX,   nPixelsY
+     real    :: ImageSizeX, ImageSizeY
      real    :: inclination
      real    :: positionAngle
      real    :: offsetX, offsetY
@@ -58,7 +58,7 @@ contains
 ! values it has been given. 
 !
   subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, &
-       imageSize, inclination, positionAngle, offsetX, offsetY)
+       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY)
     use messages_mod
     use constants_mod, only: autocm, pctocm, radToDeg
     implicit none 
@@ -71,6 +71,7 @@ contains
     integer, intent(in) :: nPixels
     character(len=10), intent(in) :: axisUnits
     real, intent(in) :: imageSize
+    real, intent(in) :: aspectRatio
     real, intent(in) :: inclination, positionAngle
     real, intent(in) :: offsetX, offsetY
 
@@ -96,12 +97,20 @@ contains
 ! Filename for FITS file
     myImages(i)%filename = filename
 
+! Aspect ratio of the image
+    if (aspectRatio <= 0.0 ) then 
+       write(message,*) "Aspect ratio must be positive ", aspectRatio
+       call writeFatal(message)
+    end if
+
 ! Number of pixels 
     if ( nPixels < 1) then 
        write(message,*) "Number of pixels should be > 0. It is ", nPixels
-       call writeWarning(message)
+       call writeFatal(message)
     end if
-    myImages(i)%nPixels = nPixels
+
+    myImages(i)%nPixelsY = nPixels
+    myImages(i)%nPixelsX = int(nPixels*aspectRatio)
 
 ! Axis units (e.g. au, pc, arcsec)
     myAxisUnits = axisUnits
@@ -113,21 +122,32 @@ contains
        call writeWarning(message)
     end if
 !
-! Set image size in cm or arcsec
+! Set size of image y axis in cm or arcsec
     select case (myAxisunits)
     case ("au","AU")
-       myImages(i)%ImageSize = imageSize * real(autocm)
+       myImages(i)%ImageSizeY = imageSize * real(autocm)
     case ("pc","PC")
-       myImages(i)%ImageSize = imageSize * real(pctocm)
+       myImages(i)%ImageSizeY = imageSize * real(pctocm)
     case ("cm")
-       myImages(i)%ImageSize = imageSize
+       myImages(i)%ImageSizeY = imageSize
     case ("arcsec")
-       myImages(i)%ImageSize = imageSize
+       myImages(i)%ImageSizeY = imageSize
     case default
-       myImages(i)%ImageSize = imageSize
+       myImages(i)%ImageSizeY = imageSize
        write(message,*) "Unrecognised units for image axis: ", trim(axisunits)
        call writeWarning(message)
     end select
+
+! Set size of image x axis, taking the aspect ratio into account. If the number of 
+! pixels is the same for both axes don't scale to avoid rounding errors. 
+    if (myImages(i)%nPixelsX == myImages(i)%nPixelsY) then 
+       myImages(i)%ImageSizeX = myImages(i)%ImageSizeY
+    else
+! Otherwise scale by the ratio of the number of pixels (not aspect ratio as 
+! this could be different due to rounding to a whole number of pixels). 
+        myImages(i)%ImageSizeX = myImages(i)%ImageSizeY &
+             * real(myImages(i)%nPixelsX / myImages(i)%nPixelsY)
+     endif
 
 ! Set image inclination and postion angle
     myImages(i)%inclination   = inclination
@@ -168,14 +188,24 @@ contains
   end function getImageType
 
 !
-! Return the number of pixels in the ith image
+! Return the number of x-axis pixels in the ith image
 !
-  integer function getImagenPixels(i)
+  integer function getImagenPixelsX(i)
 
      integer, intent(in) :: i 
-     getImagenPixels=myImages(i)%nPixels
+     getImagenPixelsX=myImages(i)%nPixelsX
 
-  end function getImagenPixels
+  end function getImagenPixelsX
+
+!
+! Return the number of y-axis pixels in the ith image
+!
+  integer function getImagenPixelsY(i)
+
+     integer, intent(in) :: i 
+     getImagenPixelsY=myImages(i)%nPixelsY
+
+  end function getImagenPixelsY
 
 !
 ! Return the filename of the ith image
@@ -200,17 +230,29 @@ contains
 
 ! Return size (length or angular) of ith image
 ! If an invalid image number is requested then -1 is returned. 
-  function getImageSize(i)
+  function getImageSizeX(i)
     integer, intent(in) :: i 
-    real :: getImageSize
+    real :: getImageSizeX
 
     if (i <= numImages) then 
-       getImageSize = myImages(i)%ImageSize
+       getImageSizeX = myImages(i)%ImageSizeX
     else
-       getImageSize = -1
+       getImageSizeX = -1
     end if
 
-  end function getImageSize
+  end function getImageSizeX
+
+  function getImageSizeY(i)
+    integer, intent(in) :: i 
+    real :: getImageSizeY
+
+    if (i <= numImages) then 
+       getImageSizeY = myImages(i)%ImageSizeY
+    else
+       getImageSizeY = -1
+    end if
+
+  end function getImageSizeY
 
 ! Return inclination of ith image in radians
 ! If an invalid image number is requested then -1 is returned. 
