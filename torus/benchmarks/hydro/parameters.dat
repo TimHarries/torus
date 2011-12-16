@@ -9,7 +9,7 @@ limitertype superbee
 rhieChow F
 captureshocks F
 
-mindepthamr 3
+mindepthamr 4
 maxdepthamr 10
 cfl 0.3
 
