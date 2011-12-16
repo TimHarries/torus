@@ -207,7 +207,9 @@ contains
     if (dustPhysics) call readDustPhysicsParameters(cLine, fLine, nLines)
     if (atomicPhysics) call readAtomicPhysicsParameters(cLine, fLine, nLines)
     if (molecularPhysics) call readMolecularPhysicsParameters(cLine, fLine, nLines)
+#ifdef PHOTOION
     if (photoionPhysics) call readPhotoionPhysicsParameters(cLine, fLine, nLines)
+#endif
 
     call getLogical("readsources", readsources, cLine, fLine, nLines, &
          "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1305,7 +1307,7 @@ contains
 
   end subroutine readMolecularPhysicsParameters
 
-
+#ifdef PHOTOION
   subroutine readPhotoionPhysicsParameters(cLine, fLine, nLines)
     use ion_mod, only: setAbundances
     character(len=80) :: cLine(:)
@@ -1393,7 +1395,7 @@ contains
     call setAbundances(h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund)
 
   end subroutine readPhotoionPhysicsParameters
-
+#endif
 
   subroutine readMolecularLoopParameters(cLine, fLine, nLines)
     character(len=80) :: cLine(:)

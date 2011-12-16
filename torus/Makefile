@@ -530,10 +530,10 @@ endif
 
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90
-   INPUTSMODSOURCE= inputs_modV2.f90
+   INPUTSMODSOURCE= inputs_modV2.F90
 else	
    TORUSMAINSOURCE= torusMain.F90
-   INPUTSMODSOURCE= inputs_mod.f90
+   INPUTSMODSOURCE= inputs_mod.F90
 endif
 
 #
