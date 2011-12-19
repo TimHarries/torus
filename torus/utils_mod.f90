@@ -7,7 +7,6 @@ module utils_mod
   use vector_mod          ! vector maths
   use constants_mod, only: angstromToCm, cSpeed, kErg, hCgs, ergtoEv, mHydrogen, twoPi, pi, mElectron
   use messages_mod
-  use nrtype
   use octal_mod
 
   implicit none
@@ -63,6 +62,15 @@ module utils_mod
      module procedure indexx_double
   end interface
 
+  INTERFACE arth
+     MODULE PROCEDURE arth_r, arth_d, arth_i
+  END INTERFACE
+
+  INTEGER, PARAMETER :: I4B = SELECTED_INT_KIND(9)
+  INTEGER, PARAMETER :: SP = KIND(1.0)
+  INTEGER, PARAMETER :: DP = KIND(1.0D0)
+  INTEGER, PARAMETER :: LGT = KIND(.true.)
+  INTEGER(I4B), PARAMETER, private :: NPAR_ARTH=16,NPAR2_ARTH=8
 
 contains
 
@@ -321,7 +329,6 @@ contains
   ! sort an array
 
   SUBROUTINE dquicksort(arr)
-    USE nrtype; USE nrutil, ONLY : nrerror
     IMPLICIT NONE
     REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr
     INTEGER(I4B), PARAMETER :: NN=15, NSTACK=50
@@ -370,7 +377,7 @@ contains
           arr(l+1)=arr(j)
           arr(j)=a
           jstack=jstack+2
-          if (jstack > NSTACK) call nrerror('sort: NSTACK too small')
+          if (jstack > NSTACK) call writeFatal('sort: NSTACK too small')
           if (r-i+1 >= j-l) then
              istack(jstack)=r
              istack(jstack-1)=i
@@ -383,18 +390,6 @@ contains
        end if
     end do
   END SUBROUTINE dquicksort
-
-  SUBROUTINE dquicksort2(arr,slave)
-    USE nrtype; USE nrutil, ONLY : assert_eq
-    IMPLICIT NONE
-    REAL(DP), DIMENSION(:), INTENT(INOUT) :: arr,slave
-    INTEGER :: ndum
-    INTEGER, DIMENSION(size(arr)) :: index
-    ndum=assert_eq(size(arr),size(slave),'sort2')
-    call indexx(size(arr), arr,index)
-    arr=arr(index)
-    slave=slave(index)
-  END SUBROUTINE dquicksort2
 
   SUBROUTINE SORTsingle(N,RA)
     INTEGER N, L, IR, I, J
@@ -1799,7 +1794,6 @@ contains
 
   
   SUBROUTINE trapzd(func,a,b,s,n) 
-    use nrutil, only: arth
     IMPLICIT NONE 
     REAL, INTENT(IN) :: a,b 
     REAL, INTENT(INOUT) :: s 
@@ -1831,6 +1825,85 @@ contains
   END SUBROUTINE trapzd
 
   
+  FUNCTION arth_r(first,increment,n)
+    REAL(SP), INTENT(IN) :: first,increment
+    INTEGER(I4B), INTENT(IN) :: n
+    REAL(SP), DIMENSION(n) :: arth_r
+    INTEGER(I4B) :: k,k2
+    REAL(SP) :: temp
+    if (n > 0) arth_r(1)=first
+    if (n <= NPAR_ARTH) then
+       do k=2,n
+          arth_r(k)=arth_r(k-1)+increment
+       end do
+    else
+       do k=2,NPAR2_ARTH
+          arth_r(k)=arth_r(k-1)+increment
+       end do
+       temp=increment*NPAR2_ARTH
+       k=NPAR2_ARTH
+       do
+          if (k >= n) exit
+          k2=k+k
+          arth_r(k+1:min(k2,n))=temp+arth_r(1:min(k,n-k))
+          temp=temp+temp
+          k=k2
+       end do
+    end if
+  END FUNCTION arth_r
+  !BL
+  FUNCTION arth_d(first,increment,n)
+    REAL(DP), INTENT(IN) :: first,increment
+    INTEGER(I4B), INTENT(IN) :: n
+    REAL(DP), DIMENSION(n) :: arth_d
+    INTEGER(I4B) :: k,k2
+    REAL(DP) :: temp
+    if (n > 0) arth_d(1)=first
+    if (n <= NPAR_ARTH) then
+       do k=2,n
+          arth_d(k)=arth_d(k-1)+increment
+       end do
+    else
+       do k=2,NPAR2_ARTH
+          arth_d(k)=arth_d(k-1)+increment
+       end do
+       temp=increment*NPAR2_ARTH
+       k=NPAR2_ARTH
+       do
+          if (k >= n) exit
+          k2=k+k
+          arth_d(k+1:min(k2,n))=temp+arth_d(1:min(k,n-k))
+          temp=temp+temp
+          k=k2
+       end do
+    end if
+  END FUNCTION arth_d
+  !BL
+  FUNCTION arth_i(first,increment,n)
+    INTEGER(I4B), INTENT(IN) :: first,increment,n
+    INTEGER(I4B), DIMENSION(n) :: arth_i
+    INTEGER(I4B) :: k,k2,temp
+    if (n > 0) arth_i(1)=first
+    if (n <= NPAR_ARTH) then
+       do k=2,n
+          arth_i(k)=arth_i(k-1)+increment
+       end do
+    else
+       do k=2,NPAR2_ARTH
+          arth_i(k)=arth_i(k-1)+increment
+       end do
+       temp=increment*NPAR2_ARTH
+       k=NPAR2_ARTH
+       do
+          if (k >= n) exit
+          k2=k+k
+          arth_i(k+1:min(k2,n))=temp+arth_i(1:min(k,n-k))
+          temp=temp+temp
+          k=k2
+       end do
+    end if
+  END FUNCTION arth_i
+
   FUNCTION qsimp(func,a,b)
    
    IMPLICIT NONE 
