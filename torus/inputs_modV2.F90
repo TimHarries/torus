@@ -1843,8 +1843,10 @@ contains
     character(len=20) :: keyword
     character(len=10) :: axisUnits
     character(len=80) :: outputImageType, imageFilename
-    integer :: thisnpixels, nimage
-    real :: lambdaImage, thisimagesize, defaultImageSize, wholeGrid
+    character(len=4)  :: iChar
+    integer :: thisnpixels, npixels, nimage
+    real :: lambdaImage, thisLambdaImage
+    real :: imagesize, thisImageSize, wholeGrid
     real :: inclination, positionAngle, thisPA, thisInc
     real :: offsetX, offsetY, thisOffsetX, thisOffsetY
     real :: aspectRatio, thisAspectRatio
@@ -1856,7 +1858,8 @@ contains
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
-         "Number of images to calculate: ","(a,i8,a)", 1, ok, .false.)
+         "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
+    if (nimage > 9999) call writeWarning("Too many images. Need nimage <= 9999.")
     call setNumImages(nimage)
 
     call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
@@ -1877,20 +1880,16 @@ contains
        wholeGrid = wholeGrid * (180.0/real(pi)) * 3600.0     ! arcsec
     case default
        wholeGrid = amrGridSize
-       write(message,*) "Unrecognised units in  readImageParameters: ", trim(axisunits)
+       write(message,*) "Unrecognised units in readImageParameters: ", trim(axisunits)
        call writeWarning(message)
     end select
 
     write(message,*) "Image size ("//trim(axisUnits)//"): "
-    if ( nimage == 1 ) then 
-       call getReal("imagesize", thisImageSize, 1.0, cLine, fLine, nLines, &
-            trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
-    else
-       ! If there are multiple images we can specify a different size for 
-       ! each one, but read in imagesize to use as a default. 
-       call getReal("imagesize", defaultImageSize, 1.0, cLine, fLine, nLines, &
-            trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
-    end if
+    call getReal("imagesize", imageSize, 1.0, cLine, fLine, nLines, &
+         trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
+
+    call getInteger("npixels", npixels, cLine, fLine, nLines, &
+         "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
     call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, & 
          "Image aspect ratio: ", "(a,f4.1,1x,a)", 1.0, ok, .false.)
@@ -1910,13 +1909,13 @@ contains
     call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
          "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
+         "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+
     if (nimage == 1) then
 
        call getString("imagefile", imageFilename, cLine, fLine, nLines, &
             "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
-
-       call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
-         "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
 
        if (photoionPhysics) then
           call getString("imagetype", outputimageType, cLine, fLine, nLines, &
@@ -1928,29 +1927,31 @@ contains
           outputimageType(1:10) = "stokes    "
           call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
-
-       call getInteger("npixels", thisnpixels, cLine, fLine, nLines, &
-            "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
               
-       call setImageParams(1, lambdaImage, outputimageType, imageFilename, thisnpixels, axisUnits, &
-            thisimagesize, aspectRatio, inclination, positionAngle, offsetx, offsety)
+       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, &
+            imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety)
     else
        do i = 1, nImage
 
+          ! Set up a left adjusted string containing the image number and trailing spaces
+          iChar="    "
+          write(iChar,'(i4)') i
+          iChar = adjustl(iChar)
+
           call writeInfo(" ")
-          write(message,'(a,i1.1)') "Details for image: ",i
+          write(message,'(a)') "Details for image: "//iChar
           call writeInfo(message)
           call writeInfo(" ")
 
-          write(keyword,'(a,i1.1)') "imagefile",i
+          write(keyword,'(a)') "imagefile"//iChar
           call getString(keyword, imageFilename, cLine, fLine, nLines, &
                "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
-          write(keyword,'(a,i1.1)') "lambdaimage",i
-          call getReal(keyword, lambdaImage, 1., cLine, fLine, nLines, &
-               "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+          write(keyword,'(a)') "lambdaimage"//iChar
+          call getReal(keyword, thisLambdaImage, 1., cLine, fLine, nLines, &
+               "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", lambdaImage, ok, .false.)
 
           if (photoionPhysics) then
-             write(keyword,'(a,i1.1)') "imagetype",i
+             write(keyword,'(a)') "imagetype"//iChar
              call getString(keyword, outputimageType, cLine, fLine, nLines, &
                   "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
           elseif(dustPhysics) then
@@ -1961,42 +1962,42 @@ contains
              call writeInfo("Type of output image: Stokes image (default for atomic physics)")
           endif
 
-          write(keyword,'(a,i1.1)') "npixels",i
+          write(keyword,'(a)') "npixels"//iChar
           call getInteger(keyword, thisnpixels, cLine, fLine, nLines, &
-               "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+               "Number of pixels per side in image","(a,i8,a)", npixels, ok, .false.)
 
           ! Size of this image
-          write(keyword,'(a,i1.1)') "imagesize",i  
+          write(keyword,'(a)') "imagesize"//iChar 
           write(message,*) "Image size ("//trim(axisUnits)//"): "        
           call getReal(keyword, thisImageSize, 1.0, cLine, fLine, nLines, &
-            trim(message), "(a,1pe10.2,1x,a)", defaultImageSize, ok, .false.)
+            trim(message), "(a,1pe10.2,1x,a)", imageSize, ok, .false.)
 
           ! Aspect ratio
-          write(keyword,'(a,i1.1)') "imageaspect",i
+          write(keyword,'(a)') "imageaspect"//iChar
           call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, & 
                "Image aspect ratio: ", "(a,f4.1,1x,a)", aspectRatio, ok, .false.)
 
           ! Inclination and position angle
-          write(keyword,'(a,i1.1)') "inclination",i
+          write(keyword,'(a)') "inclination"//iChar
           call getReal(keyword, thisInc, real(degtorad), cLine, fLine, nLines, &
                "Inclination of image: ","(a,f4.1,1x,a)",inclination*real(radtodeg), ok, .false.)
-          write(keyword,'(a,i1.1)') "positionangle",i
+          write(keyword,'(a)') "positionangle"//iChar
           call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
                "Position angle (deg): ","(a,f4.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
 
           ! Position of image centre
-          write(keyword,'(a,i1.1)') "imagecentrex",i
+          write(keyword,'(a)') "imagecentrex"//iChar
           call getReal(keyword, thisOffsetx, 1.0, cLine, fLine, nLines, &
                "Image centre x position (10^10 cm): ", "(a,e10.1,1x,a)", offsetx, ok, .false.)
-          write(keyword,'(a,i1.1)') "imagecentrey",i
+          write(keyword,'(a)') "imagecentrey"//iChar
           call getReal(keyword, thisOffsety, 1.0, cLine, fLine, nLines, &
                "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
 
-          call setImageParams(i, lambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
+          call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
                thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety)
        enddo
 
- end if
+    end if
    
   end subroutine readImageParameters
 
