@@ -11256,9 +11256,9 @@ end function readparameterfrom2dmap
     use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
-    use phfit_mod, only : phfit2
 #ifdef PHOTOION
     use inputs_mod, only: photoionization, hOnly
+    use phfit_mod, only : phfit2
 #endif
     implicit none
     type(GRIDTYPE) :: grid
