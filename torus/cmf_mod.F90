@@ -1,3 +1,4 @@
+#ifdef ATOMIC
 module cmf_mod
 
   ! written by tjh
@@ -4537,3 +4538,4 @@ contains
 
 
 end module cmf_mod
+#endif

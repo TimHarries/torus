@@ -16,8 +16,10 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
+#ifdef ATOMIC
     use inputs_mod, only : atomicPhysics, nAtom
     use modelatom_mod
+#endif
 #ifdef MOLECULAR
     use inputs_mod, only : molecularPhysics, moleculeFile, molecular
     use molecular_mod, only: readMolecule, globalMolecule
@@ -36,11 +38,13 @@ contains
     endif
 #endif
 
+#ifdef ATOMIC
     if (atomicPhysics) then
        if (associated(globalAtomArray)) deallocate(globalAtomArray)
        allocate(globalAtomArray(1:nAtom))
        call setupAtoms(nAtom, globalAtomArray)
     endif
+#endif
 
 #ifdef PHOTOION
   if (photoionPhysics) then
@@ -53,6 +57,7 @@ contains
 
   end subroutine setupMicrophysics
 
+#ifdef ATOMIC
   subroutine setupAtoms(nAtom, atomarray)
     use modelatom_mod
     use inputs_mod, only : atomFilename
@@ -65,6 +70,7 @@ contains
     end do
 
   end subroutine setupAtoms
+#endif
 
   subroutine setupSources(nSource, source, grid)
     use spectrum_mod
@@ -287,7 +293,6 @@ contains
   subroutine doPhysics(grid)
     use phasematrix_mod
     use dust_mod
-    use modelatom_mod, only : globalAtomArray
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
@@ -295,7 +300,10 @@ contains
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
+#ifdef ATOMIC
+    use modelatom_mod, only : globalAtomArray
     use cmf_mod, only : atomloop
+#endif
 #ifdef HYDRO
     use nbody_mod, only : donBodyonly
 #endif
@@ -417,9 +425,11 @@ contains
      endif
 #endif
 
+#ifdef ATOMIC
      if (atomicPhysics.and.statisticalEquilibrium.and.cmf) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
+#endif
 
      if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
         call amrStateqnew(grid, .false., nLower, nUpper, globalSourceArray(1)%surface,&

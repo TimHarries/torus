@@ -106,7 +106,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             surface_mod.f90  math_mod2.f90 disc_class.f90 \
             hyd_col_coeff.f90  clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
-            cmfgen_class.f90 modelatom_mod.f90  magField.f90 \
+            cmfgen_class.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 sed_mod.f90 fits_utils_mod.f90 \
             image_utils_mod.f90 interferometry_mod.f90 units_mod.f90
@@ -114,7 +114,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
 
 
 CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90  \
-	         mpi_amr_mod.F90  cmf_mod.F90 \
+	         mpi_amr_mod.F90  \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90  \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90  \

@@ -1,3 +1,4 @@
+#ifdef ATOMIC
 module modelatom_mod
 
   ! module for model atoms created by tjh 23/10/06
@@ -1722,6 +1723,5 @@ contains
   end function giia
 
 
-
-
 end module modelatom_mod
+#endif

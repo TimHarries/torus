@@ -28,6 +28,7 @@ hydro = yes
 molecular = yes
 photoion = yes
 sph = yes
+atomic = yes
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -531,6 +532,10 @@ endif
 
 ifeq ($(sph), yes)
   ETCFLAG += -DSPH
+endif
+
+ifeq ($(atomic), yes)
+  ETCFLAG += -DATOMIC
 endif
 
 ifeq ($(v2), yes)

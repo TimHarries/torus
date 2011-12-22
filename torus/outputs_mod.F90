@@ -7,8 +7,10 @@ module outputs_mod
 contains
 
   subroutine doOutputs(grid)
+#ifdef ATOMIC
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
+#endif
     use source_mod, only : globalNSource, globalSourceArray
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom
@@ -49,21 +51,26 @@ contains
 #endif
 #endif
 
-    real(double) :: totalFlux, rSub, ang, vFlux, bFlux
-    type(ALPHA_DISC) :: tdisc
+    real(double) :: rSub
     type(GRIDTYPE) :: grid
-    type(VECTOR) :: viewVec
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
     integer :: i
+    character(len=80) :: message
+    integer :: nimage
+    real :: lambdaImage
+#ifdef MOLECULAR
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
 !    real(double) :: ang
-    character(len=80) :: message
-    real(double), allocatable :: flux(:)
-    integer :: nimage
-    real :: lambdaImage
+#endif
+#ifdef ATOMIC
+    real(double) :: totalFlux, ang, vFlux, bFlux
+    type(ALPHA_DISC) :: tdisc
+    type(VECTOR) :: viewVec
+    real(double), allocatable :: flux(:)    
+#endif
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
@@ -102,7 +109,7 @@ contains
        end select
     endif
           
-
+#ifdef ATOMIC
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -178,9 +185,9 @@ contains
                .false.) 
        endif
 
-
        goto 666
     endif
+#endif
 
 
 #ifdef PHOTOION
@@ -278,6 +285,7 @@ contains
 
     endif
 
+#ifdef ATOMIC
     if (atomicPhysics.and.(calcspectrum.or.calcimage)) then
        mie = .false.
        lineEmission = .true.
@@ -303,6 +311,8 @@ contains
        endif
 
     endif
+#endif
+
 666 continue
   end subroutine doOutputs
 
