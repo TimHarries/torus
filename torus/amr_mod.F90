@@ -11,7 +11,9 @@ module amr_mod
   use utils_mod, only: blackbody, logint, loginterp, locate, solvequaddble, spline, splint, regular_tri_quadint
   use romanova_class, only: romanova
   use gridtype_mod, only:   gridtype, hydrospline
+#ifdef SPH
   USE cluster_class, only:  cluster
+#endif
   use mpi_global_mod, only: myRankGlobal
 
   IMPLICIT NONE
@@ -439,7 +441,9 @@ CONTAINS
     INTEGER :: subcell ! loop counter 
     integer :: i
 
+#ifdef SPH
     character(len=100) :: message
+#endif
 
     ALLOCATE(grid%octreeRoot)
 
@@ -512,6 +516,7 @@ CONTAINS
     globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
 
     select case (grid%geometry)
+#ifdef SPH
        case("cluster","molcluster","theGalaxy")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
@@ -548,6 +553,7 @@ CONTAINS
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
+#endif
        case("romanova")
           ! just checking..
           if (.not. PRESENT(romData)) then
@@ -604,11 +610,13 @@ CONTAINS
     ! adds one new child to an octal
 
     USE inputs_mod, ONLY : cylindrical, maxMemoryAvailable
-    USE cluster_class, only: update_particle_list
-    USE sph_data_class, only: isAlive
     use mpi_global_mod, only: nThreadsGlobal
     use octal_mod, only: subcellRadius
     use memory_mod, only : octalMemory, globalMemoryFootprint, humanReadableMemory, globalMemoryChecking
+#ifdef SPH
+    USE cluster_class, only: update_particle_list
+    USE sph_data_class, only: isAlive
+#endif
 
     IMPLICIT NONE
     
@@ -863,11 +871,13 @@ CONTAINS
 
     globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
 
+#ifdef SPH
     if (isAlive()) then
        ! updates the sph particle list.           
        CALL update_particle_list(parent, iChild, newChildIndex)
     endif
-    
+#endif
+
     ! put some data in the four/eight subcells of the new child
 
     if (.not.doAMRhydroInterp) then
@@ -1293,12 +1303,14 @@ CONTAINS
     ! this should be called once the structure of the grid is complete.
     
     USE inputs_mod, ONLY : cylindrical, amr3d !, useHartmannTemp
-    USE cluster_class, ONLY:    assign_grid_values 
-    use wr104_mod, only :       assign_grid_values_wr104
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
     USE romanova_class, ONLY:   calc_romanova_temperature
+#ifdef SPH
+    USE cluster_class, ONLY:    assign_grid_values 
+    use wr104_mod, only :       assign_grid_values_wr104
+#endif
 
     IMPLICIT NONE
 
@@ -1330,7 +1342,8 @@ CONTAINS
 
        CASE ("romanova")
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
-        
+
+#ifdef SPH
        CASE ("cluster")
           call assign_grid_values(thisOctal,subcell)
 
@@ -1349,6 +1362,7 @@ CONTAINS
              end if
              call assign_grid_values(thisOctal,subcell)
           end if
+#endif
 
 !          CASE("molebench")
 !             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
@@ -3299,12 +3313,14 @@ CONTAINS
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
     use romanova_class, only:  romanova_density
-    USE cluster_class, only:   find_n_particle_in_subcell
-    use sph_data_class, only:  sphVelocityPresent
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1
     use density_mod, only: density
+#ifdef SPH
+    USE cluster_class, only:   find_n_particle_in_subcell
+    use sph_data_class, only:  sphVelocityPresent
+#endif
 
     IMPLICIT NONE
 
@@ -3328,15 +3344,14 @@ CONTAINS
     real(double) :: warpheight1, warpheight2
     real(double) :: warpradius1, warpradius2
     INTEGER               :: i
-    real(double)      :: total_mass, massPerCell, n_bin_az
+    real(double)      :: total_mass
     real(double), save :: rgrid(1000)
     real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
     real(double)          :: minDensity, maxDensity
     INTEGER               :: nsample = 400
-    INTEGER               :: nparticle, limit, npt_subcell
+    INTEGER               :: npt_subcell
 !    real(double) :: timenow
-    real(double) :: dummyDouble
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double),allocatable, save  :: R_cmfgen(:)  ! [10^10cm]
     real(double),save  :: Rmin_cmfgen  ! [10^10cm]
@@ -3352,12 +3367,18 @@ CONTAINS
     logical, intent(in) :: wvars
     real(double) :: lAccretion
     real(double), save :: astar
-    type(VECTOR) :: minV, maxV
-    real(double) :: vgradx, vgrady, vgradz, vgrad
-    real(double) :: T, vturb, b, dphi, rhoc
+    real(double) :: b, dphi, rhoc
     type(VECTOR) :: centre, dirVec(6), locator
     integer :: nDir
     real(double) :: maxGradient, grad
+#ifdef SPH
+    real(double) :: massPerCell, n_bin_az
+    real(double) :: vgradx, vgrady, vgradz, vgrad
+    INTEGER      :: nparticle, limit
+    real(double) :: dummyDouble
+    type(VECTOR) :: minV, maxV
+    real(double) :: T, vturb
+#endif
 
     splitInAzimuth = .false.
     split = .false.
@@ -4258,6 +4279,7 @@ CONTAINS
           if ((r < Rmin_cmfgen).and.((r+sqrt(2.d0)*cellsize/2.d0)>rMin_cmfgen).and.&
                (cellSize > (r_cmfgen(2)-r_cmfgen(1))) ) split = .true.
           
+#ifdef SPH
        case ("cluster","molcluster","theGalaxy")
           
           ! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
@@ -4476,11 +4498,10 @@ CONTAINS
              split = .FALSE.
           end if
           cellCentre = subcellCentre(thisOctal,subCell)
-          
-          
-          
+                    
           !      write(*,*) nparticle,thisOctal%nDepth,subcell
-          
+#endif
+
        case("ggtau")
           ! used to be 5
           if (thisOctal%ndepth < mindepthamr) split = .true.
@@ -8796,6 +8817,7 @@ end function readparameterfrom2dmap
 
   end function ggtauVelocity
  
+#ifdef SPH
  TYPE(vector) FUNCTION ClusterVelocity(point)
 
    use sph_data_class, only : clusterparameter
@@ -8821,6 +8843,7 @@ end function readparameterfrom2dmap
     out = Clusterparameter(point, recentoctal, subcell, theparam = 2) ! use switch for storing velocity
     clusterdensity = out%x
   end FUNCTION ClusterDensity
+#endif
 
   subroutine assign_melvin(thisOctal,subcell,grid)
 
@@ -9274,8 +9297,7 @@ end function readparameterfrom2dmap
   end subroutine delete_particle_lists
   
   
-
-
+#ifdef SPH
   !
   ! Assign the indecies to root node in the grid
   !
@@ -9300,7 +9322,7 @@ end function readparameterfrom2dmap
     end do
        
   end subroutine copy_sph_index_to_root
-
+#endif
     
   recursive subroutine scaleDensityAMR(thisOctal, scaleFac)
   type(octal), pointer   :: thisOctal

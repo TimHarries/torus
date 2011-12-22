@@ -4243,6 +4243,7 @@ end subroutine getAllInRadius
 !    meanVel  = meanVel / 8.d0
 !  end function velocityCornerFixedGrid
 !
+#ifdef SPH
     subroutine distributeSphDataOverMPI()
       use sph_data_class, only : sphData, npart, init_sph_data
       use mpi
@@ -4297,6 +4298,7 @@ end subroutine getAllInRadius
       call MPI_BCAST(sphData%ptmass, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
          
     end subroutine distributeSphDataOverMPI
+#endif
 
 !Check that appropriate number of threads have been used
     subroutine checkThreadNumber(grid)

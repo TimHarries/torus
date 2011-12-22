@@ -1,3 +1,4 @@
+#ifdef SPH
 module wr104_mod
 
   use kind_mod
@@ -98,3 +99,4 @@ contains
   end subroutine assign_grid_values_wr104
 
 end module wr104_mod
+#endif

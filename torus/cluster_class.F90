@@ -1,5 +1,5 @@
+#ifdef SPH  
 module cluster_class
-  
 
   !
   ! Class definition and method for stellar cluster (multiple sources).
@@ -1497,7 +1497,6 @@ contains
 
   end subroutine reassign_10K_temperature
 
-
-
 end module cluster_class
 
+#endif

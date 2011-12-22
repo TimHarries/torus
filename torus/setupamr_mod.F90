@@ -19,7 +19,7 @@ module setupamr_mod
 contains
     
   subroutine setupamrgrid(grid)
-    use cluster_class
+
     use gridio_mod
     use amr_mod
     use lucy_mod
@@ -33,15 +33,15 @@ contains
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR
-    use sph_data_class, only: sphdata
-    use wr104_mod, only : readwr104particles
-  
     use disc_class, only:  new
     use discwind_class, only:  new
-    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data
     use inputs_mod, only : xplusbound, yplusbound, zplusbound
     use inputs_mod, only : xminusbound, yminusbound, zminusbound
-
+#ifdef SPH
+    use cluster_class
+    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data, sphdata
+    use wr104_mod, only : readwr104particles  
+#endif
 #ifdef MPI 
     use mpi_amr_mod
     use inputs_mod, only : photoionPhysics, rho0, sphereMass
@@ -56,17 +56,21 @@ contains
 
     ! For romanova geometry case
     type(romanova) :: romData ! parameters and data for romanova geometry
-    type(cluster)   :: young_cluster
     type(VECTOR) :: amrGridCentre
     type(GRIDTYPE) :: grid
     logical :: gridConverged
-    real(double) :: astar, mass_accretion_old, totalMass, removedMass
-    real(double) :: objectDistance, minRho, minR
-    real :: scalefac
+    real(double) :: astar, mass_accretion_old, totalMass
+    real(double) :: minRho, minR
     character(len=80) :: message
     integer :: nVoxels, nOctals
     integer :: counter, nTimes
 !    integer :: nUnrefine
+#ifdef SPH
+    type(cluster) :: young_cluster
+    real(double)  ::  removedMass
+    real :: scalefac
+    real(double) :: objectDistance
+#endif
 #ifdef MPI 
     integer :: i
 #endif
@@ -144,6 +148,7 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 #endif
 
+#ifdef SPH
        case("cluster")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
@@ -199,6 +204,7 @@ contains
              if (gridConverged) exit
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
+#endif
 
        case("clumpyagb")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
@@ -400,6 +406,7 @@ contains
              grid%rOuter = rOuter
              grid%rCore = rCore
 
+#ifdef SPH
           case("cluster")
              removedMass = 0.0
              call new(young_cluster, .false.)
@@ -417,6 +424,7 @@ contains
              scaleFac = real(massEnvelope / totalMass)
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
+#endif
 
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
@@ -1385,13 +1393,17 @@ contains
 
 
   subroutine postSetupChecks(grid)
+#ifdef SPH
     use sph_data_class, only: sph_mass_within_grid
+#endif
     use inputs_mod, only : mDisc, geometry
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
+#ifdef SPH
     character(len=80) :: message
     real(double) :: minRho, maxRho, totalmasstrap, totalmass
+#endif
 
     call findTotalMemory(grid, i)
     call reportMemory(i)
@@ -1401,8 +1413,7 @@ contains
     case ("shakara")
        call testAMRmass(grid, dble(mdisc))
 
-
-
+#ifdef SPH
     case("molcluster", "theGalaxy", "cluster")
        totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0
        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
@@ -1416,6 +1427,8 @@ contains
        call writeInfo(message, TRIVIAL)
        write(message,*) "Minimum Density: ",minrho, " g/cm^3"
        call writeInfo(message, TRIVIAL)
+#endif
+
     case DEFAULT
     end select
   end subroutine postSetupChecks

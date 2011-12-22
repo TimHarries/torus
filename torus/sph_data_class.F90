@@ -1,3 +1,4 @@
+#ifdef SPH
 module sph_data_class
 
   use vector_mod
@@ -2061,4 +2062,5 @@ contains
  end function sph_mass_within_grid
 
 end module sph_data_class
-    
+
+#endif

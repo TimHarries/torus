@@ -13,7 +13,10 @@ module angularImage
   
   implicit none 
 
-  public :: make_angular_image, map_dI_to_particles
+  public :: make_angular_image
+#ifdef SPH
+  public :: map_dI_to_particles
+#endif
 
   private 
 
@@ -797,6 +800,7 @@ module angularImage
 
    end subroutine intensityAlongRayRev
 
+#ifdef SPH
 !-----------------------------------------------------------------------------------------
 
    subroutine map_dI_to_particles(grid)
@@ -905,9 +909,8 @@ module angularImage
      write(LUIN,'(a)') "index"
      close (LUIN)
 
-
    end subroutine map_dI_to_particles
-
+#endif
 !-----------------------------------------------------------------------------------------
 
 end module angularImage

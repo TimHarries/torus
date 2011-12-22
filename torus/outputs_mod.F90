@@ -30,7 +30,7 @@ contains
     use physics_mod, only : setupXarray, setupDust
 #ifdef MOLECULAR
     use molecular_mod
-    use angularImage, only: make_angular_image, map_dI_to_particles
+    use angularImage
     use inputs_mod, only : molecularPhysics, useDust, realdust, h21cm, internalView, dataCubeFilename
 #endif 
     use phasematrix_mod
@@ -236,7 +236,9 @@ contains
     if (h21cm .and. calcDataCube) then
        if ( internalView ) then 
           call make_angular_image(grid)
+#ifdef SPH
           call map_dI_to_particles(grid)
+#endif
        else
           call make_h21cm_image(grid)
        end if

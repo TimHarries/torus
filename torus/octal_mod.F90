@@ -172,13 +172,12 @@ MODULE octal_mod
     real, dimension(8)        :: TLastLastIter !Temperature at -2 iterations
 #endif
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
+#ifdef SPH
     real(double) :: h(8) ! used for cluster geometries where the smoothing length of a cell can be stored
+#endif
 
     LOGICAL, DIMENSION(8)              :: inFlow
 
-! Not used in Torus V2. Comment out to save memory (DMA, March 2011)
-!    INTEGER(KIND=BIGINT) :: iXbitstring(8), iYbitstring(8), iZbitstring(8)
-    
     TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) => null() ! pointer to neighbour
     integer, pointer :: neighbourSubcell(:,:,:)  => null()
 
