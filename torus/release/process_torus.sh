@@ -5,9 +5,9 @@ rm -f *90
 ln -s ../*.F90 . 
 for srcFile in *.F90; do
     outfile=`echo $srcFile | sed s/F90/f90/`
-    fpp -P $srcFile $outfile
+#    fpp -P $srcFile $outfile
 # Add OpenMP key if you want to build with OpenMP. 
-#    fpp -P -D_OPENMP $srcFile $outfile
+    fpp -P -D_OPENMP $srcFile $outfile
 done
 
 rm *.F90
@@ -17,6 +17,7 @@ cp ../*.f90 .
 rm hydrodynamics_mod.f90 photoionAMR_mod.f90 photoion_mod.f90
 rm photoion_utils_mod.f90 angularImage_mod.f90 molecular_mod.f90 
 rm torusMod.f90 ion_mod.f90 nbody_mod.f90 qShep*90 timedep_mod.f90
+rm cluster_class.f90 sph_data_class.f90 wr104_mod.f90
 
 ln -s ../makedepend
 
