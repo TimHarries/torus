@@ -16,7 +16,7 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-#ifdef ATOMIC
+#ifdef CMFATOM
     use inputs_mod, only : atomicPhysics, nAtom
     use modelatom_mod
 #endif
@@ -38,7 +38,7 @@ contains
     endif
 #endif
 
-#ifdef ATOMIC
+#ifdef CMFATOM
     if (atomicPhysics) then
        if (associated(globalAtomArray)) deallocate(globalAtomArray)
        allocate(globalAtomArray(1:nAtom))
@@ -57,7 +57,7 @@ contains
 
   end subroutine setupMicrophysics
 
-#ifdef ATOMIC
+#ifdef CMFATOM
   subroutine setupAtoms(nAtom, atomarray)
     use modelatom_mod
     use inputs_mod, only : atomFilename
@@ -300,7 +300,7 @@ contains
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
-#ifdef ATOMIC
+#ifdef CMFATOM
     use modelatom_mod, only : globalAtomArray
     use cmf_mod, only : atomloop
 #endif
@@ -425,7 +425,7 @@ contains
      endif
 #endif
 
-#ifdef ATOMIC
+#ifdef CMFATOM
      if (atomicPhysics.and.statisticalEquilibrium.and.cmf) then
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif

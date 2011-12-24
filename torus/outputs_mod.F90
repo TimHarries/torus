@@ -7,7 +7,7 @@ module outputs_mod
 contains
 
   subroutine doOutputs(grid)
-#ifdef ATOMIC
+#ifdef CMFATOM
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
 #endif
@@ -65,7 +65,7 @@ contains
 !    type(VECTOR) :: thisVec,  axis
 !    real(double) :: ang
 #endif
-#ifdef ATOMIC
+#ifdef CMFATOM
     real(double) :: totalFlux, ang, vFlux, bFlux
     type(ALPHA_DISC) :: tdisc
     type(VECTOR) :: viewVec
@@ -109,7 +109,7 @@ contains
        end select
     endif
           
-#ifdef ATOMIC
+#ifdef CMFATOM
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -285,7 +285,7 @@ contains
 
     endif
 
-#ifdef ATOMIC
+#ifdef CMFATOM
     if (atomicPhysics.and.(calcspectrum.or.calcimage)) then
        mie = .false.
        lineEmission = .true.

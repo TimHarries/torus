@@ -535,7 +535,7 @@ ifeq ($(sph), yes)
 endif
 
 ifeq ($(atomic), yes)
-  ETCFLAG += -DATOMIC
+  ETCFLAG += -DCMFATOM
 endif
 
 ifeq ($(v2), yes)

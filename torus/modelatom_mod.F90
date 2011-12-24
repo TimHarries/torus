@@ -1,4 +1,4 @@
-#ifdef ATOMIC
+#ifdef CMFATOM
 module modelatom_mod
 
   ! module for model atoms created by tjh 23/10/06

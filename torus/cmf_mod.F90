@@ -1,4 +1,4 @@
-#ifdef ATOMIC
+#ifdef CMFATOM
 module cmf_mod
 
   ! written by tjh
