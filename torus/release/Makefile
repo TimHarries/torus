@@ -92,16 +92,14 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90  TTauri_mod.f90 \
             disc_hydro_mod.f90 gas_opacity_mod.f90 \
-            integratePath.f90 readIntPro.f90 mieDistPhaseMatrix.f90 \
+            integratePath.f90 mieDistPhaseMatrix.f90 \
             gridtype_mod.f90 \
-            readTioCrossSection.f90  \
             fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90  \
             amr_mod.f90 amr_utils_mod.f90  \
-            jets_mod.f90 h21cm_mod.f90 \
-            dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
+            jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
             density_mod.f90 vh1_mod.f90 \
-            timing.f90  isochrone_class.f90 \
+            timing.f90 \
             filter_set_class.f90 ostar_mod.f90  \
             surface_mod.f90  math_mod2.f90 disc_class.f90 \
             hyd_col_coeff.f90  clump_mod.f90 \
@@ -110,7 +108,6 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 sed_mod.f90 fits_utils_mod.f90 \
             image_utils_mod.f90 interferometry_mod.f90 units_mod.f90
-            
 
 
 CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90  \
