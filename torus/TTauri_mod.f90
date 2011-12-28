@@ -9,7 +9,7 @@ module ttauri_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
   use gridtype_mod, only: GRIDTYPE
-  use stateq_mod, only: beta_mn, initgridstateq
+  use stateq_mod, only: initgridstateq
   use grid_mod, only: integratedDensity, getIndices, writeAxes
 
   implicit none
@@ -292,10 +292,8 @@ contains
 
 
 
-
     call initgridstateq(grid, newContfile, contfile2, popFileName, &
          readPops, writePops, lte, nLower, nUpper)
-
 
     grid%etaLine = grid%etaLine * 0.2
     
@@ -450,99 +448,100 @@ contains
   end subroutine initInfallEnhancement
        
 
-  subroutine fillGridTTauriWind(grid,contfile1, popFileName, &
-         readPops, writePops, lte, nLower, nUpper)
-
-    type(GRIDTYPE) :: grid
-    character(len=*) :: contFile1, popFileName
-    character(len=80) :: contfile2
-    logical :: readPops, writePops, lte
-    integer :: i, j, k
-    real :: rStar, vTerm, v0, v, r, mdot
-    type(VECTOR) :: rVec, rHat
-    integer :: nLower, nUpper
-    grid%geometry = "ttwind"
-
-
-    grid%lineEmission = .true.
-
-    
-
-
-    rStar = sqrt((20.*lSol)/(fourPi * stefanBoltz * 4500.**4))
-
-    write(*,*) "rStar: ",rStar/rSol
-
-    grid%rCore = rStar / 1.e10
-
-    v0 = 20. * 1.e5
-    vTerm = 320. * 1.e5
-    
-
-    mdot = 1.e-7 * mSol / (365.25 * 24. * 3600.)
-
-    do i = 1, grid%nx
-       grid%xAxis(i) = 2.*(real(i-1)/real(grid%nx-1)) - 1.
-    enddo
-    do i = 1, grid%ny
-       grid%yAxis(i) = 2.*(real(i-1)/real(grid%ny-1)) - 1.
-    enddo
-    do i = 1, grid%nz
-       grid%zAxis(i) = 2.*(real(i-1)/real(grid%nz-1)) - 1.
-    enddo
-
-    grid%xAxis = grid%xAxis * 10.*grid%rCore
-    grid%yAxis = grid%yAxis * 10.*grid%rCore
-    grid%zAxis = grid%zAxis * 10.*grid%rCore
-
-    grid%inStar = .false.
-    grid%inUse = .false.
-
-    do i = 1, grid%nx
-       do j = 1, grid%ny
-          do k = 1, grid%nz
-             rVec = VECTOR(grid%xAxis(i), grid%yAxis(j), grid%zAxis(k))
-             r = real(modulus(rVec))
-             if (r > grid%rCore) then
-                rHat = rVec
-                call normalize(rHat)
-                
-                v = v0 + (vTerm-v0) * (1. - (grid%rCore/r)**2)
-                
-                grid%velocity(i, j, k) = (v / cSpeed) * rHat
-                grid%rho(i, j, k) = real(mDot / (fourPi * (r*1.e10)**2 * v))
-                grid%inUse(i,j,k) = .true.
-             else
-                grid%inStar(i,j,k) = .true.
-             endif
-          enddo
-       enddo
-    enddo
-    
-    grid%temperature = 8000.
-
-    call initgridstateq(grid, contfile1, contfile2, popFileName, &
-         readPops, writePops, lte, nLower, nUpper)
-
-
-    write(*,'(a)') "Computing 3D bias distribution..."
-    do i = 1, grid%nx
-       do j = 1, grid%ny
-          do k = 1, grid%nz
-             if (grid%inUse(i,j,k)) then
-                rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))
-                grid%biasLine3D(i,j,k) = max(1.e-6, sqrt(beta_mn(nLower, nUpper, rVec, i, j, k, grid)))
-                grid%biasCont3D(i,j,k) = max(1.e-6, sqrt(beta_mn(nLower, nUpper, rVec, i, j, k, grid)))
-             endif
-          enddo
-       enddo
-    enddo
-    write(*,'(a)') "done."
-
-
-
-
-  end subroutine fillGridTTauriWind
+!!$  subroutine fillGridTTauriWind(grid,contfile1, popFileName, &
+!!$         readPops, writePops, lte, nLower, nUpper)
+!!$  use stateq_mod, only: beta_mn
+!!$
+!!$    type(GRIDTYPE) :: grid
+!!$    character(len=*) :: contFile1, popFileName
+!!$    character(len=80) :: contfile2
+!!$    logical :: readPops, writePops, lte
+!!$    integer :: i, j, k
+!!$    real :: rStar, vTerm, v0, v, r, mdot
+!!$    type(VECTOR) :: rVec, rHat
+!!$    integer :: nLower, nUpper
+!!$    grid%geometry = "ttwind"
+!!$
+!!$
+!!$    grid%lineEmission = .true.
+!!$
+!!$    
+!!$
+!!$
+!!$    rStar = sqrt((20.*lSol)/(fourPi * stefanBoltz * 4500.**4))
+!!$
+!!$    write(*,*) "rStar: ",rStar/rSol
+!!$
+!!$    grid%rCore = rStar / 1.e10
+!!$
+!!$    v0 = 20. * 1.e5
+!!$    vTerm = 320. * 1.e5
+!!$    
+!!$
+!!$    mdot = 1.e-7 * mSol / (365.25 * 24. * 3600.)
+!!$
+!!$    do i = 1, grid%nx
+!!$       grid%xAxis(i) = 2.*(real(i-1)/real(grid%nx-1)) - 1.
+!!$    enddo
+!!$    do i = 1, grid%ny
+!!$       grid%yAxis(i) = 2.*(real(i-1)/real(grid%ny-1)) - 1.
+!!$    enddo
+!!$    do i = 1, grid%nz
+!!$       grid%zAxis(i) = 2.*(real(i-1)/real(grid%nz-1)) - 1.
+!!$    enddo
+!!$
+!!$    grid%xAxis = grid%xAxis * 10.*grid%rCore
+!!$    grid%yAxis = grid%yAxis * 10.*grid%rCore
+!!$    grid%zAxis = grid%zAxis * 10.*grid%rCore
+!!$
+!!$    grid%inStar = .false.
+!!$    grid%inUse = .false.
+!!$
+!!$    do i = 1, grid%nx
+!!$       do j = 1, grid%ny
+!!$          do k = 1, grid%nz
+!!$             rVec = VECTOR(grid%xAxis(i), grid%yAxis(j), grid%zAxis(k))
+!!$             r = real(modulus(rVec))
+!!$             if (r > grid%rCore) then
+!!$                rHat = rVec
+!!$                call normalize(rHat)
+!!$                
+!!$                v = v0 + (vTerm-v0) * (1. - (grid%rCore/r)**2)
+!!$                
+!!$                grid%velocity(i, j, k) = (v / cSpeed) * rHat
+!!$                grid%rho(i, j, k) = real(mDot / (fourPi * (r*1.e10)**2 * v))
+!!$                grid%inUse(i,j,k) = .true.
+!!$             else
+!!$                grid%inStar(i,j,k) = .true.
+!!$             endif
+!!$          enddo
+!!$       enddo
+!!$    enddo
+!!$    
+!!$    grid%temperature = 8000.
+!!$
+!!$    call initgridstateq(grid, contfile1, contfile2, popFileName, &
+!!$         readPops, writePops, lte, nLower, nUpper)
+!!$
+!!$
+!!$    write(*,'(a)') "Computing 3D bias distribution..."
+!!$    do i = 1, grid%nx
+!!$       do j = 1, grid%ny
+!!$          do k = 1, grid%nz
+!!$             if (grid%inUse(i,j,k)) then
+!!$                rVec = VECTOR(grid%xAxis(i),grid%yAxis(j),grid%zAxis(k))
+!!$                grid%biasLine3D(i,j,k) = max(1.e-6, sqrt(beta_mn(nLower, nUpper, rVec, i, j, k, grid)))
+!!$                grid%biasCont3D(i,j,k) = max(1.e-6, sqrt(beta_mn(nLower, nUpper, rVec, i, j, k, grid)))
+!!$             endif
+!!$          enddo
+!!$       enddo
+!!$    enddo
+!!$    write(*,'(a)') "done."
+!!$
+!!$
+!!$
+!!$
+!!$  end subroutine fillGridTTauriWind
 
 
   subroutine fillGridFlaredDisk(grid,meanParticleMass)
