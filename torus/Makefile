@@ -303,7 +303,7 @@ endif
 
 ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort
-    FASTFLAG= -O3 -xT
+    FASTFLAG= -O3 
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
@@ -558,9 +558,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90  TTauri_mod.f90 \
             disc_hydro_mod.f90 gas_opacity_mod.f90 \
-            integratePath.f90 readIntPro.f90 \
-            readTioCrossSection.f90  \
-            fillGridTio.f90 fillGridRayleigh.f90 \
+            integratePath.f90 fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 amr_utils_mod.f90  \
             jets_mod.f90 h21cm_mod.f90 \
             source_mod.f90 spectrum_mod.f90 \

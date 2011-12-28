@@ -3,7 +3,7 @@ module phaseloop_mod
 
   public :: do_phaseloop
 
-  private :: choose_view, contread
+  private :: choose_view, contread, rdintpro
 
 CONTAINS
 
@@ -57,6 +57,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use random_mod
   use sed_mod
   use physics_mod, only : setupdust
+  use fillGridTio_mod
+  use fillGridRayleigh_mod
+  use fillGridThomson_mod
   implicit none
 
 ! Arguments
@@ -3106,6 +3109,42 @@ subroutine contread(filename,line_freq,hnu)
   !
 999 continue
 end subroutine contread
+
+subroutine rdintpro(int_pro_file,int_pro,x_int_pro,n_int_pro)
+  !
+  ! reads in an ascii format intrinsic profile tjh
+  !
+  implicit none
+  character(80) int_pro_file
+  real int_pro(*),x_int_pro(*)
+  real xstart,xend
+  integer n_int_pro,i
+
+  if (int_pro_file(1:4).ne.'none') then
+
+     open(20,file=int_pro_file,status='old',form='formatted')
+
+     i=1
+10   continue 
+     read(20,*,end=30) x_int_pro(i),int_pro(i)
+     i=i+1
+     goto 10
+30   continue
+     write(*,*) "closed"
+     n_int_pro=i-1
+     close(20)
+
+  else
+
+     n_int_pro=100
+     xstart=100.
+     xend=100000.
+     do i=1,n_int_pro
+        x_int_pro(i)=xstart+(xend-xstart)*real(i-1)/real(n_int_pro-1)
+        int_pro(i)=1.
+     enddo
+  end if
+end subroutine rdintpro
 
 end module phaseloop_mod
 

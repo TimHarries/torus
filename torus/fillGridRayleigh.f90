@@ -1,3 +1,10 @@
+module fillGridRayleigh_mod
+
+public :: fillGridRayleigh
+private :: sigmaRayleigh
+
+contains 
+
 subroutine fillGridRayleigh(grid,  scale)
 
 use gridtype_mod
@@ -6,7 +13,6 @@ implicit none
 type(GRIDTYPE) :: grid
 real :: scale
 real :: abundance
-real :: sigmaRayleigh
 integer :: i, j, k, m
 
 abundance = 1.
@@ -49,4 +55,5 @@ sigmaRayleigh = 0.66520e-24*(1026./lambda)**4
 
 end function sigmaRayleigh
 
+end module fillGridRayleigh_mod
 
