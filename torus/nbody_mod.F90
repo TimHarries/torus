@@ -125,7 +125,7 @@ contains
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(sourcetype) :: source(:)
-    integer :: nSource, i, ia, nvar, j
+    integer :: nSource, i, ia, nvar
     real(double), allocatable :: yStart(:), dydx(:)
     integer :: nok, nbad
     integer :: kmax, kount
