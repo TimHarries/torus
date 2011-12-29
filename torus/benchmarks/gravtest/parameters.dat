@@ -6,6 +6,7 @@ dumpradial T
 geometry gravtest
 readgrid F
 writegrid F
+amrtolerance 1.d30
 
 hydrodynamics T
 nbodyphysics T

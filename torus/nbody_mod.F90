@@ -117,19 +117,23 @@ contains
     
 
   subroutine updateSourcePositions(source, nSource, dt, grid)
+    use inputs_mod, only : maxDepthAMR
+    use mpi
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(sourcetype) :: source(:)
-    integer :: nSource, i, ia, nvar
+    integer :: nSource, i, ia, nvar, j
     real(double), allocatable :: yStart(:), dydx(:)
     integer :: nok, nbad
     integer :: kmax, kount
+    integer :: ierr
     real(double) :: acc, eps, minDt, thisDt, thisTime
-    real(double) :: dxsav, xp(2000), yp(2000,2000)
+    real(double) :: dxsav, xp(2000), yp(2000,2000), halfSmallest
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    call calculateEps(grid%halfSmallestSubcell,source, nsource,eps)
+    halfSmallest = grid%octreeRoot%subcellSize/dble(2**maxdepthamr)
+    call calculateEps(halfSmallest,source, nsource,eps)
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))
@@ -163,8 +167,10 @@ contains
        if ((thisTime + thisDt) > dt) then
           thisDt = dt - thisTime
        endif
-       if (myrankglobal == 1) write(*,*) "calling integrator with ",thisDt, thisTime, dt
+       if (writeoutput) write(*,*) "Ccalling integrator with ",thisDt, thisTime, dt,eps
        call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
+       if (myrankglobal == 1) write(*,*) "integrator done"
+       
        thisTime = thisTime + thisDt
        do i = 1, nSource
           ia = (i-1)*6 + 1
@@ -192,6 +198,8 @@ contains
     deallocate(yStart,dydx)
 !    call sumEnergy(source, nSource, energy)
 !    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
+    call mpi_barrier(amrCommunicator, ierr)
+
   end subroutine updateSourcePositions
 
   subroutine calculateEps(halfSmallestSubcell, source, nsource, eps)

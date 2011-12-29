@@ -3999,8 +3999,8 @@ CONTAINS
 
        case("gravtest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
-          if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
-          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!          if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!          if(edgecell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           
           rVec = subcellCentre(thisOctal, subcell)
           
@@ -7544,7 +7544,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        thisOctal%temperature(subcell) = 10.d0
     else
 !       thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
-       thisOctal%rho(subcell) = 1.d-50
+       thisOctal%rho(subcell) = 1.d-30
        thisOctal%temperature(subcell) = 100.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
@@ -7637,53 +7637,17 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: gamma, ethermal
-    real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
+    real(double) :: omega,r, v, phi, ethermal
     real(double) :: inertia, beta, rCloud, mCloud, eGrav
-
-    gamma = 7.d0/4.d0
-    rho0 = 1.0d0
-    r0 = 0.4d0
-    soundSpeed = 0.01d0
-    omega = 0.8d0
-    a = 0.1d0
-    n = 2.d0
-    ethermal = 0.1d0
-
-    rVec = subcellCentre(thisOctal, subcell)
-    r = modulus(rVec)
-    thisOctal%rho(subcell) = rho0 / (1.d0 + (r/r0)**n)**(4.d0/n)
-    if (thisOctal%twoD) then
-       phi = atan2(rVec%z, rVec%x)
-    else
-       phi = atan2(rVec%y, rVec%x)
-    endif
-
-    soundSpeed = sqrt(gamma*(gamma-1.d0)*eThermal)
-
-    thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + a*cos(2.d0*phi))
-    if (thisOctal%twoD) then
-       r = modulus(rVec)
-       v = (4.d0*omega*r / (r0 + sqrt(r0**2 + r**2))) * soundSpeed
-       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi+pi/2.d0), 0., v*sin(phi+pi/2.d0))
-    else
-       r = sqrt(rVec%x**2 + rVec%y**2)
-       v = (4.d0*omega*r / (r0 + sqrt(r0**2 + r**2))) * soundSpeed
-       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi),  v*sin(phi), 0.)
-    endif
-
-    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%boundaryCondition(subcell) = 4
 
 
     mCloud = 1.d0 * msol
-    rCloud = 7.d16
+    rCloud = 5.d16
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
     beta = 0.16d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-
+    rVec = subcellCentre(thisOctal,subcell)
     omega = sqrt(2.d0 * beta * eGrav / inertia)
     thisOctal%phi_i(subcell) = -bigG * mCloud / (modulus(rVec)*1.d10)
     thisOctal%velocity(subcell) = vector(0., 0., 0.)
@@ -7710,7 +7674,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.1d0 * cos(2.d0 * phi)) !m=2 dens perturbation
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
-        thisOctal%temperature(subcell) = 1000.d0
+        thisOctal%temperature(subcell) = 10.d0
        thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif

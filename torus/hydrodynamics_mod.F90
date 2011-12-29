@@ -2761,6 +2761,7 @@ end subroutine sumFluxes
 !Perform a single hydrodynamics step, in x, y and z directions, for the 3D case.     
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
+    use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -3056,8 +3057,9 @@ end subroutine sumFluxes
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
          call domyAccretion(grid, globalsourceArray, globalnSource, dt)
 
-    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
-         call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
+       call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+    endif
 
     if (myrankglobal == 1) call tune(6,"Boundary conditions")
 
@@ -3769,6 +3771,19 @@ end subroutine sumFluxes
        endif
     endif
     
+
+       if (doSelfGrav .and. grid%geometry == "gravtest") then
+
+          write(plotfile,'(a,i4.4,a)') "radial",1,".dat"
+          call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
+               VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+          goto 666
+
+       end if
+
+
+
+
     tc = 0.d0
 
 !calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
@@ -3920,24 +3935,6 @@ end subroutine sumFluxes
           call sumGasStarGravity(grid%octreeRoot)
        endif
 
-       if (doSelfGrav .and. myRankGlobal /= 0 .and. grid%geometry == "gravtest") then
-
-          call zeroPhiGas(grid%octreeRoot)
-          call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-          
-          !for periodic self-gravity
-          if(.not. dirichlet) then
-             call periodBoundary(grid, justGrav = .true.)
-             call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-             !             if (myrankglobal == 1) call tune(6,"Periodic boundary")
-          end if
-         
-          if (globalnSource > 0) then
-             call zeroSourcepotential(grid%octreeRoot)
-             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
-          endif
-          call sumGasStarGravity(grid%octreeRoot)
-       end if
 
 !update the simulation time
        currentTime = currentTime + dt
@@ -3957,8 +3954,8 @@ end subroutine sumFluxes
              call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
           endif
-!          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
-!          call writeAMRgrid(plotfile,.false. ,grid)
+          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+          call writeAMRgrid(plotfile,.false. ,grid)
 
           if (writeoutput) then
              write(plotfile,'(a,i4.4,a)') "source",it,".dat"
@@ -3980,10 +3977,8 @@ end subroutine sumFluxes
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
        if (currentTime  == tEnd) exit
-       if(grid%geometry == "gravtest") then
-          call torus_abort("ENDING GRAV TEST")
-       end if
     enddo
+666 continue
   end subroutine doHydrodynamics3d
 
 !The main routine for 2D hydrodynamics
@@ -6364,10 +6359,10 @@ end subroutine sumFluxes
        do iSource = 1, globalNSource
           
           r = modulus(centre - globalsourceArray(iSource)%position)/(grid%octreeRoot%subcellSize/dble(2**maxdepthamr))
-          if ((r < 32.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
+          if ((r < 3.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
              call addNewChildWithInterp(thisOctal, subcell, grid)
              converged = .false.
-             cycle
+             exit
           endif
        enddo
        if (.not.converged) exit

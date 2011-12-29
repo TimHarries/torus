@@ -2715,6 +2715,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: pressurePoint(maxpts)
     real(double) :: dx, dz, xmin, zmin
 !    integer :: counter
+    character(len=80) :: message
     real(double) :: radius
     logical, save :: firstTime = .true.
     logical :: debug, addLocal
@@ -3082,10 +3083,13 @@ end subroutine dumpStromgrenRadius
           z = rVec%z
 
           radius = thisOctal%subcellSize*4.d0
+          nPoints = 0
 
-
-          call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
-               rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+          do while (nPoints < 10)
+             call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
+                  rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+             radius = radius * 2.d0
+          enddo
 
           nq = min(40, nPoints - 1)
           nw = min(40, nPoints - 1)
@@ -3096,50 +3100,82 @@ end subroutine dumpStromgrenRadius
           allocate(a(9,1:nPoints))
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+               xyzdel, rmax, rsq, a, ier ) 
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%rho(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoePoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%rhoe(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoePoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhouPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%rhou(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhouPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhovPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%rhov(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhovPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhowPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%rhow(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhowPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, energyPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%energy(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, energyPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, phiPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%phi_gas(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, phiPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, pressurePoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep3 returned an error")
+          if (ier /= 0) then
+             write(message,*) "Qshep3 returned an error ",ier
+             call writeWarning(message)
+          endif
+
           thisOctal%pressure_i(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, pressurePoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
