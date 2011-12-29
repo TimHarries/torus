@@ -118,7 +118,10 @@ contains
 
   subroutine updateSourcePositions(source, nSource, dt, grid)
     use inputs_mod, only : maxDepthAMR
+#ifdef MPI
     use mpi
+    integer :: ierr
+#endif
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(sourcetype) :: source(:)
@@ -126,7 +129,6 @@ contains
     real(double), allocatable :: yStart(:), dydx(:)
     integer :: nok, nbad
     integer :: kmax, kount
-    integer :: ierr
     real(double) :: acc, eps, minDt, thisDt, thisTime
     real(double) :: dxsav, xp(2000), yp(2000,2000), halfSmallest
     common /path/ kmax,kount,dxsav,xp ,yp
@@ -198,8 +200,9 @@ contains
     deallocate(yStart,dydx)
 !    call sumEnergy(source, nSource, energy)
 !    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
+#ifdef MPI
     call mpi_barrier(amrCommunicator, ierr)
-
+#endif
   end subroutine updateSourcePositions
 
   subroutine calculateEps(halfSmallestSubcell, source, nsource, eps)
