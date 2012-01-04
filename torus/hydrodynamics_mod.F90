@@ -1472,8 +1472,8 @@ contains
 
     do i = 1, ndimensions
 
-       m2= (p(i*4 - 1) - p(i*4 -2))/(xArray(i*4-1) - xArray(i*4 - 2))
-       m4= (p(i*4) - p(i*4 - 3))/(xArray(i*4) - xArray(i*4 - 3))
+       m2= (p(i*4 - 1) - p(i*4 -2))!/(xArray(i*4-1) - xArray(i*4 - 2))
+       m4= (p(i*4) - p(i*4 - 3))!/(xArray(i*4) - xArray(i*4 - 3))
 
 
        if(m4 /= 0.d0) then
@@ -1482,7 +1482,7 @@ contains
           Sp = 0.d0
        end if
        
-       if(Sp > (1.d0/3.d0)) then
+       if(Sp > (4.d0/3.d0)) then
           refineShock = .true.
           exit
        else
