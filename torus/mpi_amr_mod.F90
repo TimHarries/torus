@@ -2723,6 +2723,11 @@ end subroutine dumpStromgrenRadius
     debug = .false.
 
 
+    if(parent%edgecell(iChild)) then
+       call addnewchild(parent,iChild, grid, adjustGridInfo=.true.)
+    else
+
+
 !    if (inSubcell(parent, ichild, testVec)) debug = .true.
     if (parent%ndepth == maxDepthAMR) then
        if (firstTime) then
@@ -3581,6 +3586,9 @@ end subroutine dumpStromgrenRadius
        grid%maxDepth = parent%child(newChildIndex)%nDepth
        CALL setSmallestSubcell(grid)
     END IF
+
+ end if
+
 666 continue
   end subroutine addNewChildWithInterp
 
