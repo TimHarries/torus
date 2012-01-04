@@ -3999,7 +3999,7 @@ end subroutine sumFluxes
     integer :: cornerthread1(100), cornerthread2(100), ncornerBound(100), ncornerPairs
     integer :: nCornerGroup, cornergroup(100)
     integer :: nHydroThreads 
-    logical :: converged
+!    logical :: converged
     integer :: nUnrefine, jt, count
     integer :: evenUpArray(nThreadsGlobal-1)
 
@@ -4018,7 +4018,7 @@ end subroutine sumFluxes
     if (myrankGlobal /= 0) then
 
        !famr
-       call refineEdges(grid%octreeRoot, grid,  converged)
+!       call refineEdges(grid%octreeRoot, grid,  converged)
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        mu = 2.d0
@@ -6314,7 +6314,7 @@ end subroutine sumFluxes
                    endif
                 end if
 
-                if(captureshocks) then ! .and. .not. thisOctal%changed(subcell)) then
+                if(captureshocks .and. .not. thisOctal%changed(subcell)) then
                    if(refineShock(thisOctal, subcell, grid)) then
                       split = .true.
                    end if
