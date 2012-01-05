@@ -3286,16 +3286,16 @@ end subroutine dumpStromgrenRadius
 
           radius = thisOctal%subcellSize*4.d0
 
-          call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
-               rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+!          do while (nPoints < 10)
+             call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
+                  rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+ !            radius = radius * 2.d0
+ !         end do
 
           ypoint = 0.d0
           y = 0.d0
           rhovPoint = 0.d0
                     
-
-          
-
           nq = min(40, nPoints - 1)
           nw = min(40, nPoints - 1)
           nr = max(1,nint((dble(nPoints)/3.d0)**0.5d0))
@@ -3612,7 +3612,32 @@ end subroutine dumpStromgrenRadius
 
     nPoints = 0
     thisOctal => grid%octreeRoot
+    rho = 0.d0
+    rhoe = 0.d0
+    rhou = 0.d0
+    rhov = 0.d0
+    rhow = 0.d0
+    energy = 0.d0
+    pressure = 0.d0
+    phi = 0.d0
+    x = 0.d0
+    y = 0.d0
+    z = 0.d0
     call getPointsInRadiusLocal(position, radius, thisOctal, npoints, rho, rhoe, rhou, rhov, rhow, energy, pressure, phi, x, y, z)
+
+!    do i = 1, nPoints
+!       do counter = 1, nPoints
+!          if( i /= counter) then
+!             if(x(i) == x(counter) .and. y(i) == y(counter) .and. z(i) == z(counter)) then
+!                print *, "x", x(i), x(counter)
+!                print *, "y", y(i), y(counter)
+!                print *, "z", z(i), z(counter)
+!                call torus_abort("DUPLICATE ENTRY A")
+!             end if
+!          end if
+!       end do
+!    end do
+
    
     call setupEvenUpArray(grid, evenUpArray)
 
@@ -3657,6 +3682,20 @@ end subroutine dumpStromgrenRadius
           
        end do
     endif
+
+!    do i = 1, nPoints
+!       do counter = 1, nPoints
+!          if( i /= counter) then
+!             if(x(i) == x(counter) .and. y(i) == y(counter) .and. z(i) == z(counter)) then
+!                print *, "x", x(i), x(counter)
+!                print *, "y", y(i), y(counter)
+!                print *, "z", z(i), z(counter)
+!                call torus_abort("DUPLICATE ENTRY B")
+!             end if
+!          end if
+!       end do
+!    end do
+
 
    
   end subroutine getPointsInRadius
@@ -4219,6 +4258,7 @@ end subroutine dumpStromgrenRadius
                       storageArray(cellRef, 10)  = rVec%y
                       storageArray(cellRef, 11)  = rVec%z
                       storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
+                      cellRef = cellRef + 1
                    end if
                 else
                    storageArray(cellRef, 1)  = thisOctal%nDepth
@@ -4233,8 +4273,8 @@ end subroutine dumpStromgrenRadius
                    storageArray(cellRef, 10)  = rVec%y
                    storageArray(cellRef, 11)  = rVec%z
                    storageArray(cellRef, 12)  = thisOctal%pressure_i(subcell)
-                end if
                    cellRef = cellRef + 1
+                end if
              end if
              if (changed) exit
           end if
