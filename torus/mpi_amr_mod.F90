@@ -3284,7 +3284,7 @@ end subroutine dumpStromgrenRadius
 !          radius = 4.d0*grid%octreeRoot%subcellSize / &
 !                                2.0_oc**REAL(minDepthAmr,kind=oct)
 
-          radius = thisOctal%subcellSize*4.d0
+          radius = thisOctal%subcellSize*6.d0
 
 !          do while (nPoints < 10)
              call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
