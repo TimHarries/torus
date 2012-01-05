@@ -3669,9 +3669,9 @@ end subroutine dumpStromgrenRadius
     real(double) :: radius, r
     integer :: nPoints
     type(OCTAL), pointer :: thisOctal, child, topOctal
-    integer :: subcell, i, topOctalSubcell
+    integer :: subcell, i, topOctalSubcell, k
     type(VECTOR) :: cen
-    logical :: changed
+    logical :: changed, check
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3700,18 +3700,26 @@ end subroutine dumpStromgrenRadius
              cen = subcellCentre(topOctal, topOctalsubcell)
              r = modulus(cen - position)
              if (r < radius) then
-                nPoints = nPoints + 1
-                rho(nPoints) = topOctal%rho(topOctalsubcell)
-                rhoe(nPoints) = topOctal%rhoe(topOctalsubcell)
-                rhou(nPoints) = topOctal%rhou(topOctalsubcell)
-                rhov(nPoints) = topOctal%rhov(topOctalsubcell)
-                rhow(nPoints) = topOctal%rhow(topOctalsubcell)
-                energy(nPoints) = topOctal%energy(topOctalsubcell)
-                pressure(nPoints) = topOctal%pressure_i(topOctalsubcell)
-                phi(nPoints) = topOctal%phi_gas(topOctalsubcell)
-                x(nPoints) = cen%x
-                y(nPoints) = cen%y
-                z(nPoints) = cen%z
+                check = .true.
+                do k = 1, nPoints
+                   if(cen%x == x(k) .and. cen%y == y(k) .and. cen%z == z(k)) then
+                      check = .false.
+                   end if
+                end do
+                if(check) then
+                   nPoints = nPoints + 1
+                   rho(nPoints) = topOctal%rho(topOctalsubcell)
+                   rhoe(nPoints) = topOctal%rhoe(topOctalsubcell)
+                   rhou(nPoints) = topOctal%rhou(topOctalsubcell)
+                   rhov(nPoints) = topOctal%rhov(topOctalsubcell)
+                   rhow(nPoints) = topOctal%rhow(topOctalsubcell)
+                   energy(nPoints) = topOctal%energy(topOctalsubcell)
+                   pressure(nPoints) = topOctal%pressure_i(topOctalsubcell)
+                   phi(nPoints) = topOctal%phi_gas(topOctalsubcell)
+                   x(nPoints) = cen%x
+                   y(nPoints) = cen%y
+                   z(nPoints) = cen%z
+                end if
              endif
              if (changed) exit
           endif
@@ -4153,8 +4161,8 @@ end subroutine dumpStromgrenRadius
     type(VECTOR) :: position, rVec
     real(double) :: searchRadius
     real(double) :: storageArray(1000,12)
-    integer :: cellRef
-    logical :: changed, useTop
+    integer :: cellRef, k
+    logical :: changed, useTop, check
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -4178,26 +4186,40 @@ end subroutine dumpStromgrenRadius
                 changed = .true.
              enddo
 
+             if(useTop) then
+                rVec = subcellCentre(topOctal, topOctalsubcell)
+             else
+                rVec = subcellCentre(thisOCtal, subcell)
+             end if
 
-             rVec = subcellCentre(topOctal, topOctalsubcell)
              if(modulus(rVec - position) < searchRadius) then
 !                print *, "position ", position
 !                print *, "rVec ", rVec
 !                print *, "radius ", searchRadius
 !                print *, "modulus(rVec - position)", modulus(rVec - position)
                 if(useTop) then
-                   storageArray(cellRef, 1)  = topOctal%nDepth
-                   storageArray(cellRef, 2)  = topOctal%rho(topOctalsubcell)
-                   storageArray(cellRef, 3)  = topOctal%rhoe(topOctalsubcell)             
-                   storageArray(cellRef, 4)  = topOctal%rhou(topOctalsubcell)             
-                   storageArray(cellRef, 5)  = topOctal%rhov(topOctalsubcell)             
-                   storageArray(cellRef, 6)  = topOctal%rhow(topOctalsubcell)        
-                   storageArray(cellRef, 7)  = topOctal%energy(topOctalsubcell)
-                   storageArray(cellRef, 8)  = topOctal%phi_gas(topOctalsubcell)
-                   storageArray(cellRef, 9)  = rVec%x
-                   storageArray(cellRef, 10)  = rVec%y
-                   storageArray(cellRef, 11)  = rVec%z
-                   storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
+                   check = .true.
+                   do k = 1, cellRef
+                      if(rVec%x == storageArray(k, 9) .and. rVec%y == storageArray(k, 10) &
+                           .and. rVec%z == storageArray(k, 11)) then
+                         check = .false.
+                      end if
+                   end do
+
+                   if(check) then
+                      storageArray(cellRef, 1)  = topOctal%nDepth
+                      storageArray(cellRef, 2)  = topOctal%rho(topOctalsubcell)
+                      storageArray(cellRef, 3)  = topOctal%rhoe(topOctalsubcell)             
+                      storageArray(cellRef, 4)  = topOctal%rhou(topOctalsubcell)             
+                      storageArray(cellRef, 5)  = topOctal%rhov(topOctalsubcell)             
+                      storageArray(cellRef, 6)  = topOctal%rhow(topOctalsubcell)        
+                      storageArray(cellRef, 7)  = topOctal%energy(topOctalsubcell)
+                      storageArray(cellRef, 8)  = topOctal%phi_gas(topOctalsubcell)
+                      storageArray(cellRef, 9)  = rVec%x
+                      storageArray(cellRef, 10)  = rVec%y
+                      storageArray(cellRef, 11)  = rVec%z
+                      storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
+                   end if
                 else
                    storageArray(cellRef, 1)  = thisOctal%nDepth
                    storageArray(cellRef, 2)  = thisOctal%rho(subcell)
