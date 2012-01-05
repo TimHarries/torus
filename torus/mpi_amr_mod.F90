@@ -3374,9 +3374,9 @@ end subroutine dumpStromgrenRadius
                xmin, zmin, dx, dz, rmax, rsq, a)
 
 
-          if(ier == 0) then
-             print *, "RANK ", myRankGlobal, "DID A SUCCESSFUL QSHEP2D"
-          end if
+!          if(ier == 0) then
+!             print *, "RANK ", myRankGlobal, "DID A SUCCESSFUL QSHEP2D"
+!          end if
 
 !          thisOctal%rho(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoPoint, nPoints, x, y, z)
 !          thisOctal%rhoe(iSubcell) = shepardsMethod(xPoint, yPoint, zPoint, rhoePoint, nPoints, x, y, z)

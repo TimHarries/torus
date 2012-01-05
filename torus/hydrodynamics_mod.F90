@@ -1394,7 +1394,9 @@ contains
                       xArray(index) = y
                    end if
                 else
-                   call torus_abort("point outside the grid")
+                   refineShock = .false.
+                   goto 123
+!                   call torus_abort("point outside the grid")
                 end if
              else if(j==2) then
                 p(index)= thisOctal%pressure_i(subcell)
@@ -1423,7 +1425,9 @@ contains
                       xArray(index) = y
                    end if
                 else
-                   call torus_abort("point outside the grid")                   
+                   refineShock = .false.
+                   goto 123
+!                   call torus_abort("point outside the grid")                   
                 end if
              else
                 locator = subcellCentre(thisOctal, subcell) + &
@@ -1455,7 +1459,9 @@ contains
                          xArray(index) = y
                       end if
                    else
-                      call torus_abort("point outside the grid")                   
+                      refineShock = .false.
+                      goto 123
+!                      call torus_abort("point outside the grid")                   
                    end if
                 end if
              end if
@@ -1490,8 +1496,10 @@ contains
        end if
     end do
  end if
+
  deallocate(p, xArray)
 
+123 continue
   end function refineShock
 
 !set up neighbour pressures
@@ -6314,7 +6322,7 @@ end subroutine sumFluxes
                    endif
                 end if
 
-                if(captureshocks .and. .not. thisOctal%changed(subcell)) then
+                if(captureshocks) then !.and. .not. thisOctal%changed(subcell)) then
                    if(refineShock(thisOctal, subcell, grid)) then
                       split = .true.
                    end if
