@@ -3026,12 +3026,12 @@ end subroutine dumpStromgrenRadius
 
           radius = thisOctal%subcellSize*4.d0
 
-          do while (nPoints < 10)
+          do while (nPoints < 12)
  !            call returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell, rhoPoint, rhoePoint, rhouPoint, &
  !                 rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint)
              call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                   rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
-             radius = radius * 1.5d0
+             radius = radius * 2.d0
           end do
 
           ypoint = 0.d0
@@ -3051,6 +3051,7 @@ end subroutine dumpStromgrenRadius
           if (ier /= 0) call writeWarning("Qshep2 returned an error for rho")
           thisOctal%rho(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoPoint, nr, lcell2d, lnext, &
                xmin, zmin, dx, dz, rmax, rsq, a)
+
 
           call qshep2 (nPoints, xPoint, zPoint, rhoePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
                dx, dz, rmax, rsq, a, ier )
