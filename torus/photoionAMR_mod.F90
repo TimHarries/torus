@@ -59,7 +59,8 @@ contains
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
-         zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray
+         zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
+         perturbIfront
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
     use parallel_mod, only: torus_abort
@@ -336,16 +337,19 @@ contains
              endif
              
           endif
-!       enddo
+          !       enddo
        
        if (myrank /= 0) then
-          
+
           call calculateEnergyFromTemperature(grid%octreeRoot)
-          
           call calculateRhoE(grid%octreeRoot, direction)
           
        endif
-      end if
+    end if
+
+    if(grid%geometry == "planar") then
+       call perturbIfront(grid%octreeRoot, grid)
+    end if
       
       if(grid%geometry == "hii_test") then
          tEnd = 3.14d13         !1x10^6 year
@@ -2189,6 +2193,33 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
  end subroutine toNextEventPhoto
 
+! recursive subroutine perturbIfront(thisOctal, grid)
+!   type(octal) :: thisOctal
+!   type(octal) :: child
+!   type(gridtype) :: grid
+!   integer :: i, subcell!!
+!
+!    do subcell = 1, thisOctal%maxChildren
+!       if (thisOctal%hasChild(subcell)) then
+!          ! find the child
+!          do i = 1, thisOctal%nChildren, 1
+!             if (thisOctal%indexChild(i) == subcell) then
+!                child => thisOctal%child(i)
+!                call perturbIfront(child, grid)
+!                exit
+!             end if
+!          end do
+!       else
+!          locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+!          neighbouroctal => thisoctal
+!          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+!          call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
+!               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)!
+!!
+ !      end if
+ !   end do
+!
+! end subroutine perturbIfront
 
   !Clear the tracers for photon contributions between iterations 
   !Removes contamination from noisy, early iterations

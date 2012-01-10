@@ -228,6 +228,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+    CASE("planar")
+       call calcPlanarIfrontDensity(thisOctal, subcell)
+
     CASE("brunt")
        call calcBruntDensity(thisOctal, subcell) 
 
@@ -3979,7 +3982,7 @@ CONTAINS
           end if
           !      if (((rVec%x - 0.5)**2 + (rVec%z-0.5)**2 < 0.05) .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
           
-       case("bonnor", "empty")
+       case("bonnor", "empty", "planar")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           
        case("unisphere")
@@ -7310,6 +7313,101 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     yplusbound = 2
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
+
+  subroutine calcPlanarIfrontDensity(thisOctal,subcell)
+    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, fac, centre
+    logical, save :: firstTime = .true.
+    integer, parameter :: nr = 1000
+    real(double), save :: r(nr), rho(nr)
+    integer :: i
+
+
+!Parameters changed to agree with Gritschender et al. 2009 iVINE paper.
+
+    if (firstTime) then
+       firstTime = .false.
+       r = 0.d0; rho = 0.d0
+       !The first variable passed is mu
+!       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
+!PASSING (t, my, rho0, nr, r, rho)
+!       call bonnorEbertRun(10.d0, 2.d0, 1000.d0*2.d0*mhydrogen,  nr, r, rho)
+       centre = 0.d0
+       call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)
+
+       r = r / 1.d10
+       if (myrankGlobal==1) then
+          do i =1 , nr
+             write(55, *) r(i)*1.d10/autocm, rho(i)
+          enddo
+       endif
+    endif
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    if (rMod < r(nr)) then
+       call locate(r, nr, rMod, i)
+       fac = (rMod-r(i))/(r(i+1)-r(i))
+       thisOctal%rho(subcell) = rho(i) + fac*(rho(i+1)-rho(i))
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = rho(nr)
+       thisOctal%temperature(subcell) = 10.d0
+    endif
+!    thisOctal%rho(subcell) = rho(nr)
+
+
+!THAW - temporary uniform density to check propagation stability
+    thisOctal%rho(subcell) = rho(nr)
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    !Thaw - will probably want to change this to use returnMu
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
+    !thisOctal%gamma(subcell) = 1.d01
+!    thisOctal%gamma(subcell) = 5./3.
+    thisOctal%gamma(subcell) = 1.0
+!    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%iEquationOfState(subcell) = 1
+      
+
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+       endif
+       thisOctal%etaCont(subcell) = 0.
+
+!    zplusbound = 2
+!    zminusbound = 2
+!    xplusbound = 2
+!    xminusbound = 2
+!    yplusbound = 2
+!    yminusbound = 2
+
+    zplusbound = 2
+    zminusbound = 2
+    xplusbound = 4
+    xminusbound = 4
+    yplusbound = 2
+    yminusbound = 2
+  end subroutine calcPlanarIfrontDensity
 
   subroutine calcRadialClouds(thisOctal, subcell)
 

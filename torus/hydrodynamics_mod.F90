@@ -90,6 +90,44 @@ contains
   end subroutine checkDeviations
 
 
+ recursive subroutine perturbIfront(thisOctal, grid)
+   type(octal), pointer :: thisOctal
+   type(octal), pointer :: child
+   type(octal), pointer :: neighbourOCtal
+   type(gridtype) :: grid
+   integer :: i, subcell, neighbourSubcell
+   type(VECTOR) :: direction, rVec, locator
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child                 
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call perturbIfront(child, grid)
+                exit
+             end if
+          end do
+       else
+          !hard wired for benchmark geometry
+          rVec = subcellCentre(thisOctal, subcell)
+          direction = VECTOR(1.d0, 0.d0, 0.d0)
+          locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+          neighbouroctal => thisoctal
+          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+          !know that in this hardwired benchmark I do not have to seek across mpi boundary
+          !this is pretty rubbish but for a test it isn't worth overhauling loads of the rest of the code.
+         if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
+            thisOctal%rhou(subcell) = (1.d4*(sin(rVec%z/(grid%octreeRoot%subcellSize))/thisOctal%rho(subcell)))
+         end if
+         
+       end if
+    end do
+
+ end subroutine perturbIfront
+
+
 
   recursive subroutine fluxlimiter(thisoctal)
     use inputs_mod, only : limiterType
