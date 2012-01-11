@@ -91,6 +91,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     logical :: noPhoto=.false.
     integer :: evenUpArray(nThreadsGlobal-1)
+    real :: iterTime
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
 
@@ -254,18 +255,19 @@ contains
        if(.not. noPhoto) then
           looplimitTime = deltaTForDump
           looplimittime = 1.d30
+          iterTime = 1.e30
           do irefine = 1, 1
              if (irefine == 1) then
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                looplimittime, .false.,.true., evenuparray)
+                looplimittime, .false.,iterTime,.true., evenuparray)
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
-                loopLimitTime, looplimittime, .false., .true., evenuparray)
+                loopLimitTime, looplimittime, .false.,iterTime, .true., evenuparray)
                 call writeInfo("Done",TRIVIAL)
              endif
              
@@ -442,8 +444,8 @@ contains
           end if
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., .true. &
-               , evenuparray)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
+               .true., evenuparray)
 
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
@@ -590,11 +592,11 @@ contains
 end subroutine radiationHydro
 #endif
 
-  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, monteCheck, &
-       evenuparray, sublimate)
+  subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, iterTime, &
+       monteCheck, evenuparray, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly
-   !      optimizeStack, stackLimit, dStack
+         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
+         optimizeStack, stackLimit, dStack
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     use mpi
     implicit none
@@ -646,6 +648,7 @@ end subroutine radiationHydro
     integer :: nFreq
 
     logical, save :: firsttime = .true.
+    logical, save :: switch = .true.
     !$OMP THREADPRIVATE(firstTime)
 
     integer(bigint) :: iMonte_beg, iMonte_end, nSCat
@@ -676,13 +679,18 @@ end subroutine radiationHydro
     real(double) :: nuThresh
 
     !optimisation variables
-    integer, parameter :: stackLimit=200
-    integer,parameter :: ZerothstackLimit=200
-  !  real :: startTime, endTime, newTime
+!    integer, parameter :: stackLimit=200
+    real, intent(inout) :: iterTime
+    integer :: ZerothstackLimit, OldStackLimit
+    real :: startTime, endTime, newTime
+    integer :: stackLimitArray(1000)
+    integer :: optCounter, optCount
+    integer :: sign
+    logical, save :: optConverged=.false.
   !  real :: oldTime = 1.e10
   !  integer :: newStackLimit= 0, oldStackLimit= 0
 
-    integer :: optCounter, thisPacket, sendCounter
+    integer :: thisPacket, sendCounter
     integer, allocatable :: nSaved(:)
     integer :: stackSize, p
     integer :: mpi_vector, mpi_photon_stack
@@ -690,7 +698,8 @@ end subroutine radiationHydro
     real(double) :: nIonizingPhotons
     logical :: crossedPeriodic = .false.
 
-    type(PHOTONPACKET) :: photonPacketStack(stackLimit*nThreadsGlobal)
+!    type(PHOTONPACKET) :: photonPacketStack(stackLimit*nThreadsGlobal)
+    type(PHOTONPACKET), allocatable :: photonPacketStack(:)
     type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
 
    !Custom MPI type variables
@@ -729,7 +738,10 @@ end subroutine radiationHydro
     !   zerothStackLimit = 1
     !end if
 
+    zerothstacklimit = stacklimit
+    sign = 1
     nPeriodic = 0
+!    stackLimit = 0
 !    iUnrefine = 0
 
     !Custom MPI data types for easier send/receiving
@@ -778,6 +790,10 @@ end subroutine radiationHydro
     allocate(nSaved(nThreads))
     nescapedArray = 0    
     dprCounter = 0
+
+
+    allocate(photonPacketStack(stackLimit*nThreads))
+
 
 !    if(.not. optimizeStack) then
        photonPacketStack%Freq = 0.d0
@@ -938,13 +954,19 @@ end subroutine radiationHydro
     do while(.not.converged)
 
 
-    !setup the buffer                                                                                                 
-    call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
-
-
-!       if(optimizeStack) then
-!          allocate(photonPacketStack(stackLimit*nThreads))
-!       end if
+       if(optimizeStack .and. nIter > 0) then
+          allocate(photonPacketStack(stackLimit*nThreads))
+          call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
+          
+          !Add some extra bytes for safety
+          bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
+          
+          allocate(buffer(bufferSize))
+       end if
+       zerothstacklimit = stacklimit
+             
+       !setup the buffer                                                                                                 
+       call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
 
        photonPacketStack%Freq = 0.d0
        photonPacketStack%Destination = 0
@@ -976,9 +998,9 @@ end subroutine radiationHydro
        if (myrank == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        !Thaw - stack optimization
-      ! if(optimizeStack) then
-      !    call wallTime(startTime)
-      ! end if
+       if(optimizeStack) then
+          call wallTime(startTime)
+       end if
 
        iMonte_beg = 1
        iMonte_end = nMonte
@@ -994,6 +1016,13 @@ end subroutine radiationHydro
        toSendStack%crossedPeriodic = .false.
 
        countArray = 0.d0
+
+       if(optimizeStack .and. myRank == 0) then
+          write(*,*) "DOING OPTIMIZATION"
+          write(*,*) "StackLimit ", stacklimit
+          write(*,*) "dstack", dstack
+       end if
+
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
@@ -1131,7 +1160,7 @@ end subroutine radiationHydro
                    call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
                    
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
-                               
+                   
                 enddo
                 
                 nEscaped = SUM(nEscapedArray(1:nThreads-1))
@@ -1146,7 +1175,7 @@ end subroutine radiationHydro
                    end do
                    stop
                 end if
-
+!                print *, "nEscaped ", nEscaped
              end do
 
               write(*,*) "Finishing iteration..."
@@ -1509,30 +1538,73 @@ end subroutine radiationHydro
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        !Get the time for the iteration and see if it has improved with a new stack size
-      ! i!f(optimizeStack) then
+       if(optimizeStack .and. .not. optConverged .and. myRank /= 0) then  
+          if(switch) then             
+             call MPI_BARRIER(amrCommunicator, ierr)
+             call wallTime(endTime)
 
-     !     call wallTime(endTime)
-     !     newTime = endTime - startTime
-     !     if (newTime < oldTime) then
-     !        oldStackLimit = stackLimit
-     !        stackLimit = stackLimit + dStack
-     !        print *, "stackLimit ", stackLimit
-     !!     else
-      !       newStackLimit = int(oldStackLimit + (stackLimit - oldStackLimit)/2.)
-     !        oldStackLimit = stackLimit
-    !         stackLimit = newStackLimit
-     !        print *, "stackLimit B ", stackLimit
-     !        if(stackLimit == oldStackLimit) then
-     !!           converged = .true.
-   !             optimizeStack = .false.
-     !           write(message,*) "Optimal Stack Size Is: ", stackLimit
-     !           call writeInfo(message,IMPORTANT)
-     !!        end if
-  !        end if
-!
-!!          oldTime = newTime
- !      end if
-!
+             !Make sure we are working with the same time
+             if(myRank == 1) then
+                do optCount = 2, nThreadsGlobal-1
+                   call MPI_SEND(endTime, 1, MPI_INTEGER, optCount, tag, MPI_COMM_WORLD,  ierr)
+                end do
+             else 
+                call MPI_RECV(endTime, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, status, ierr)
+             end if
+
+             !get the time per photon packet
+             newTime = endTime - startTime
+             newTime = newTime/real(nmonte)
+             
+             oldStackLimit = stackLimit
+                
+             !keep track of what sizes we have used
+             !if one is reproduced we have some kind of convergence and can stop this
+             do optCount = 1, 1000
+                if(stackLimitArray(optCount) == 0) then
+                   stackLimitArray(optCount) = oldStackLimit
+                end if
+             end do
+             
+             if(abs(newTime - iterTime)< 1.d-15) then
+                call writeInfo("Found the optimal stack size, ceasing optimization.", TRIVIAL)
+                optConverged = .true.                
+             else
+                
+                if (newTime < iterTime) then
+                   !it was faster this time
+                   
+                   !lets keep going in this direction
+                   stackLimit = stackLimit + (sign*dStack)
+                   
+                   !lets get zealous!
+                   dStack = int(dStack * 2.0)                   
+
+                else
+                   !it was slower this time
+                   
+                   !reverse the scanning direction
+                   sign = -sign
+                   
+                   !start heading back the right way
+                   stackLimit = oldStackLimit + (sign*dStack)
+                   
+                   !we may have just overshot, lets be careful
+                   dStack = int(dStack/2.0)
+                end if
+             end if
+          else             
+             switch = .true. 
+          end if
+          iterTime = newTime/real(nmonte)
+          if(myRank == 1) then
+             call MPI_SEND(stackLimit, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+          end if
+       end if
+       
+       if(myRank == 0 .and. optimizeStack) then
+          call MPI_RECV(stackLimit, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, status, ierr)
+       end if
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !       epsOverDeltaT = (lCore) / dble(nMonte)
@@ -1835,9 +1907,12 @@ end subroutine radiationHydro
         end if
      end if
 !     
+    
+
      call torus_mpi_barrier
      call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
-
+     deallocate(photonPacketStack)     
+     deallocate(buffer)
   enddo
 
 
@@ -3775,7 +3850,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
   real(double) :: cooling, dustHeating
   real(double) :: netot
-  character(len=80) :: datFilename, mpiFilename
+  character(len=80) :: datFilename!, mpiFilename
   integer :: nIter
 
   !dumpLexingtonMPI specific variables
@@ -3795,8 +3870,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
      write(datFilename,'(a,i2.2,a)') "lexington.dat"
   end if
 
-  write(mpiFilename,'(a, i4.4, a)') "lexington",niter,".grid"
-  call writeAmrGrid(mpiFilename, .false., grid)
+!  write(mpiFilename,'(a, i4.4, a)') "lexington",niter,".grid"
+!  call writeAmrGrid(mpiFilename, .false., grid)
 
 
   startPoint = vector(0.d0, 0.d0, 0.d0)

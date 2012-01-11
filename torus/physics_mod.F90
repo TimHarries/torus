@@ -354,21 +354,23 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     integer :: evenuparray(nthreadsGlobal-1)
+    real :: iterTime
 #endif
 #endif
     nLower = 2
     nUpper = 3
 
-#ifdef MPI
-#ifdef PHOTOION
-    if(optimizeStack .and. photoionPhysics .and. photoionEquilibrium) then
-       call writeInfo("Optimizing photon stack size.", TRIVIAL)
-       call setupevenuparray(grid, evenuparray)
-       call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
-            .true., evenuparray, sublimate=.false.)
-    end if
-#endif
-#endif
+!#ifdef MPI
+!#ifdef PHOTOION
+!    if(optimizeStack .and. photoionPhysics .and. photoionEquilibrium) then
+!       call writeInfo("Optimizing photon stack size.", TRIVIAL)
+!       call setupevenuparray(grid, evenuparray)
+!       iterTime = 1.e20
+!       call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
+!            iterTime, .true., evenuparray, sublimate=.false.)
+!    end if
+!#endif
+!#endif
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
@@ -450,8 +452,10 @@ contains
         else
 #ifdef MPI 
            call setupevenuparray(grid, evenuparray)
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
-                .true., evenuparray, sublimate=.false.)
+!           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
+!                .true., evenuparray, sublimate=.false.)
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
+                iterTime, .true., evenuparray, sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
