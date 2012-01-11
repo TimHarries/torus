@@ -1017,11 +1017,11 @@ end subroutine radiationHydro
 
        countArray = 0.d0
 
-       if(optimizeStack .and. myRank == 0) then
-          write(*,*) "DOING OPTIMIZATION"
-          write(*,*) "StackLimit ", stacklimit
-          write(*,*) "dstack", dstack
-       end if
+!       if(optimizeStack .and. myRank == 0) then
+!          write(*,*) "DOING OPTIMIZATION"
+!          write(*,*) "StackLimit ", stacklimit
+!          write(*,*) "dstack", dstack
+!       end if
 
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRank == 0) then
@@ -1304,7 +1304,7 @@ end subroutine radiationHydro
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved) &
                !$OMP SHARED(stackSize, nFreq) &
-               !$OMP SHARED(nPhot, nEscaped)
+               !$OMP SHARED(nPhot, nEscaped, stackLimit)
                
                finished = .false.
                escaped = .false.
@@ -1911,8 +1911,10 @@ end subroutine radiationHydro
 
      call torus_mpi_barrier
      call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
-     deallocate(photonPacketStack)     
-     deallocate(buffer)
+     if(optimizeStack) then
+        deallocate(photonPacketStack)     
+        deallocate(buffer)
+     endif
   enddo
 
 
