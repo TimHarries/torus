@@ -687,6 +687,7 @@ end subroutine radiationHydro
     integer :: optCounter, optCount
     integer :: sign
     logical, save :: optConverged=.false.
+    logical, save :: iniIterTime=.false.
   !  real :: oldTime = 1.e10
   !  integer :: newStackLimit= 0, oldStackLimit= 0
 
@@ -744,6 +745,11 @@ end subroutine radiationHydro
     
     if(stacklimit == 0) then
        stacklimit = 200
+    end if
+
+    if(.not. iniIterTime) then
+       iterTime = 1.e30
+       iniIterTime = .true.
     end if
 
     zerothstacklimit = stacklimit
@@ -1568,6 +1574,12 @@ end subroutine radiationHydro
              !get the time per photon packet
              newTime = endTime - startTime
              newTime = newTime/real(nmonte)
+
+!             print *, "startTime ", startTime
+!             print *, "endTime ", endTime
+!             print *, "newTime ", newTime
+!             print *, "iterTime ", iterTime
+
              
              oldStackLimit = stackLimit
                 
@@ -1579,6 +1591,7 @@ end subroutine radiationHydro
                 end if
              end do
              
+
              if(abs(newTime - iterTime)< 1.d-15) then
                 call writeInfo("Found the optimal stack size, ceasing optimization.", TRIVIAL)
                 optConverged = .true.                
@@ -1592,7 +1605,6 @@ end subroutine radiationHydro
                    
                    !lets get zealous!
                    dStack = int(dStack * 2.0)                   
-
                 else
                    !it was slower this time
                    
@@ -1609,6 +1621,9 @@ end subroutine radiationHydro
                       dStack = int(dStack/2.0)
                    end if
                 end if
+             end if
+             if(dstack <= 1) then
+                dstack = 10
              end if
           else             
              switch = .true. 
