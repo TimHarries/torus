@@ -1613,7 +1613,7 @@ end subroutine radiationHydro
           else             
              switch = .true. 
           end if
-          iterTime = newTime/real(nmonte)
+          iterTime = newTime!/real(nmonte)
           if(myRank == 1) then
              call MPI_SEND(stackLimit, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
           end if
