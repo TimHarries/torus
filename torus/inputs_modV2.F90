@@ -1351,6 +1351,13 @@ contains
        call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
             "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getInteger("stacklimit", stacklimit, cLine, fLine, nLines, &
+            "Maximum number of photons in a stack","(a,i8,a)", 200, ok, .false.)
+       
+       call getInteger("dstack", dstack, cLine, fLine, nLines, &
+            "Optimization tweak level","(a,i8,a)", 100, ok, .false.)
+
+
        call getLogical("periodicX", periodicX, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in x direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("periodicY", periodicY, cLine, fLine, nLines, &
@@ -1504,11 +1511,6 @@ contains
     call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
          "Number of photons in image","(a,i8,a)", 0, ok, .false.)
 
-    call getInteger("stacklimit", stacklimit, cLine, fLine, nLines, &
-         "Maximum number of photons in a stack","(a,i8,a)", 200, ok, .false.)
-
-    call getInteger("dstack", dstack, cLine, fLine, nLines, &
-         "Optimization tweak level","(a,i8,a)", 100, ok, .false.)
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
