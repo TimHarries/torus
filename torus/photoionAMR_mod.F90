@@ -700,7 +700,8 @@ end subroutine radiationHydro
 
 !    type(PHOTONPACKET) :: photonPacketStack(stackLimit*nThreadsGlobal)
     type(PHOTONPACKET), allocatable :: photonPacketStack(:)
-    type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
+!    type(PHOTONPACKET) :: toSendStack(stackLimit), currentStack(stackLimit)
+    type(PHOTONPACKET), allocatable :: toSendStack(:), currentStack(:)
 
    !Custom MPI type variables
     integer(MPI_ADDRESS_KIND) :: displacement(8)
@@ -737,12 +738,23 @@ end subroutine radiationHydro
     !   stackLimit = 1
     !   zerothStackLimit = 1
     !end if
+    
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+    
+    if(stacklimit == 0) then
+       stacklimit = 200
+    end if
 
     zerothstacklimit = stacklimit
     sign = 1
     nPeriodic = 0
 !    stackLimit = 0
 !    iUnrefine = 0
+
+    allocate(photonPacketStack(stackLimit*nThreads))
+    allocate(toSendStack(stackLimit))
+    allocate(currentStack(stackLimit))
 
     !Custom MPI data types for easier send/receiving
     !MPI datatype for out TYPE(VECTOR) variables
@@ -772,8 +784,7 @@ end subroutine radiationHydro
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+
 
 !Allocate memory for send buffer - fixes deadlocks
     !First, determine the no. of bytes used in a photonpacketstack array
@@ -792,7 +803,7 @@ end subroutine radiationHydro
     dprCounter = 0
 
 
-    allocate(photonPacketStack(stackLimit*nThreads))
+
 
 
 !    if(.not. optimizeStack) then
@@ -956,6 +967,8 @@ end subroutine radiationHydro
 
        if(optimizeStack .and. nIter > 0) then
           allocate(photonPacketStack(stackLimit*nThreads))
+          allocate(toSendStack(stackLimit))
+          allocate(currentStack(stackLimit))
           call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
           
           !Add some extra bytes for safety
@@ -1917,6 +1930,8 @@ end subroutine radiationHydro
      call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
      if(optimizeStack) then
         deallocate(photonPacketStack)     
+        deallocate(currentStack)     
+        deallocate(toSendStack)     
         deallocate(buffer)
      endif
   enddo
