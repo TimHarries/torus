@@ -7267,7 +7267,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
 !THAW - temporary uniform density to check propagation stability
-!    thisOctal%rho(subcell) = rho(nr)
+    thisOctal%rho(subcell) = rho(nr)
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     !Thaw - will probably want to change this to use returnMu

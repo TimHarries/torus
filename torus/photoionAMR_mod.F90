@@ -685,7 +685,7 @@ end subroutine radiationHydro
     real :: startTime, endTime, newTime
     integer :: stackLimitArray(1000)
     integer :: optCounter, optCount
-    integer :: sign
+    integer :: sign, dstackNaught
     logical, save :: optConverged=.false.
     logical, save :: iniIterTime=.false.
   !  real :: oldTime = 1.e10
@@ -755,6 +755,9 @@ end subroutine radiationHydro
     zerothstacklimit = stacklimit
     sign = 1
     nPeriodic = 0
+
+    dStackNaught = dstack
+
 !    stackLimit = 0
 !    iUnrefine = 0
 
@@ -1599,27 +1602,29 @@ end subroutine radiationHydro
                 
                 if (newTime < iterTime) then
                    !it was faster this time
+
+                   !lets get zealous!
+                   dStack = int(dStack * 2.0)        
                    
                    !lets keep going in this direction
                    stackLimit = stackLimit + (sign*dStack)
                    
-                   !lets get zealous!
-                   dStack = int(dStack * 2.0)                   
                 else
                    !it was slower this time
+
+                   !we may have just overshot, lets be careful
+                   if(dstack <= 1) then
+                      dstack = dstacknaught
+                   else
+                      dStack = int(dStack/2.0)
+                   end if
                    
                    !reverse the scanning direction
                    sign = -sign
                    
                    !start heading back the right way
-                   stackLimit = oldStackLimit + (sign*dStack)
-                   
-                   !we may have just overshot, lets be careful
-                   if(dstack <= 1) then
-                      dstack = 10
-                   else
-                      dStack = int(dStack/2.0)
-                   end if
+                   stackLimit = oldStackLimit + (sign*dStack)                   
+
                 end if
              end if
              if(dstack <= 1) then
@@ -1629,6 +1634,9 @@ end subroutine radiationHydro
              switch = .true. 
           end if
           iterTime = newTime!/real(nmonte)
+          if(stacklimit <= 0) then
+             stacklimit = 1
+          end if
           if(myRank == 1) then
              call MPI_SEND(stackLimit, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
           end if
