@@ -684,6 +684,7 @@ end subroutine radiationHydro
     integer :: ZerothstackLimit, OldStackLimit
     real :: startTime, endTime, newTime
     integer :: stackLimitArray(1000)
+    real :: timeArray(1000)
     integer :: optCounter, optCount
     integer :: sign, dstackNaught
     logical, save :: optConverged=.false.
@@ -1591,6 +1592,7 @@ end subroutine radiationHydro
              do optCount = 1, 1000
                 if(stackLimitArray(optCount) == 0) then
                    stackLimitArray(optCount) = oldStackLimit
+                   timeArray(optCount) = newTime
                 end if
              end do
              
@@ -1971,7 +1973,9 @@ end subroutine radiationHydro
 
  deallocate(nSaved)
  deallocate(nEscapedArray)
- deallocate(buffer)
+ if(allocated(buffer)) then
+    deallocate(buffer)
+ end if
 end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
