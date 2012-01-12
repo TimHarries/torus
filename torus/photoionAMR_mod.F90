@@ -1017,11 +1017,11 @@ end subroutine radiationHydro
 
        countArray = 0.d0
 
-!       if(optimizeStack .and. myRank == 0) then
-!          write(*,*) "DOING OPTIMIZATION"
-!          write(*,*) "StackLimit ", stacklimit
-!          write(*,*) "dstack", dstack
-!       end if
+       if(optimizeStack .and. myRank == 0) then
+          write(*,*) "DOING OPTIMIZATION"
+          write(*,*) "StackLimit ", stacklimit
+          write(*,*) "dstack", dstack
+       end if
 
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRank == 0) then
@@ -1590,7 +1590,11 @@ end subroutine radiationHydro
                    stackLimit = oldStackLimit + (sign*dStack)
                    
                    !we may have just overshot, lets be careful
-                   dStack = int(dStack/2.0)
+                   if(dstack <= 1) then
+                      dstack = 10
+                   else
+                      dStack = int(dStack/2.0)
+                   end if
                 end if
              end if
           else             
