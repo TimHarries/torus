@@ -3277,6 +3277,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: xh, yh, zh, smallDist
     logical :: debug, addLocal
 
+    debug=.false.
 
     if (thisOctal%threed) then
 
