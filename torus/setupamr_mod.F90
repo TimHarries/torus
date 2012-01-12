@@ -1,7 +1,6 @@
 module setupamr_mod
 
   Use cmfgen_class
-  use stateq_mod
   use amr_mod
   use vtk_mod
   use vector_mod
@@ -37,6 +36,9 @@ contains
     use discwind_class, only:  new
     use inputs_mod, only : xplusbound, yplusbound, zplusbound
     use inputs_mod, only : xminusbound, yminusbound, zminusbound
+#ifdef STATEQ
+    use stateq_mod, only: map_cmfgen_opacities
+#endif
 #ifdef SPH
     use cluster_class
     use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data, sphdata
@@ -390,6 +392,7 @@ contains
                                                                      "inflow   ", &
                                                                      "cornervel", &
                                                                      "fixedtemp"/))
+#ifdef STATEQ
           case("cmfgen")
               call map_cmfgen_opacities(grid)
               call distort_cmfgen(grid%octreeRoot, grid)
@@ -398,6 +401,7 @@ contains
                                                                        "chiline ", &
                                                                        "ne      ", &
                                                                        "velocity"/))
+#endif
 
           case("wrshell")
              grid%geometry = "wrshell"

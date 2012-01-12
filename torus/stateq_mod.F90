@@ -1,3 +1,4 @@
+#ifdef STATEQ
 !
 ! a module to do 3d statistical equilibrium according to Klein & Castor (1978)
 ! - lots of it based on my "stateq" PhD code
@@ -5262,7 +5263,6 @@ contains
 
 
 end module stateq_mod
+#endif
 
-!!! vim:set filetype=fortran :                                !!!
-!!! otherwise vim won't recognize a file with the suffix .raw !!!
 

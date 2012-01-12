@@ -32,7 +32,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use amr_mod, only: tauAlongPath2, findsubcelllocal, findsubcelltd, amrupdategrid, countVoxels, amrGridValues, &
        tauAlongPathFast, returnKappa
   use path_integral, only: integratePath, test_optical_depth
-  use stateq_mod, only: amrStateq
+#ifdef STATEQ
+  use stateq_mod
+#endif
   use math_mod, only: interpGridKappaAbs, interpGridKappaSca, computecoreemissionprofile, computeprobdist 
   use mpi_global_mod, only: myRankGlobal
 #ifdef MPI
@@ -42,7 +44,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use grid_mod, only: freeGrid
   use gridio_mod, only: readamrgrid
 #endif
-  use TTauri_mod, only: fillGridMagneticAccretion, infallenhancment
+  use TTauri_mod
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
   use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau
   use timing, only: tune
@@ -500,11 +502,15 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         case("puls")
         !        call fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, xfac)
            case("wind")
-           
+
         case ("ttauri")
+#ifdef STATEQ
             call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
                      readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
                      curtains, dipoleOffset, nLower, nUpper)
+#else
+            call writeFatal("ttauri geometry requires STATEQ pre-processing key")
+#endif
                      
 !       call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
 !       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
@@ -579,10 +585,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
  call MPI_BARRIER(MPI_COMM_WORLD, ierr)    ! sync everybody here
 #endif
 
+#ifdef STATEQ
              if (writeoutput) write(*,*) "Recalculating statistical equilibrium after changing grid" 
              call amrStateq(grid, lte, nLower, nUpper,  &
                    starSurface, recalcPrevious=.true.)
              call torus_mpi_barrier('returned from amrStatEq. Waiting to sync...')
+#endif
 
              if (ttau_disc_on) then
                 ! amrStateq will have messed up the disc, so we reset those cells
@@ -601,8 +609,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
           end if ! (.not. noPhaseUpdate .and. iPhase /= nStartPhase) 
 
        else
+#ifdef STATEQ
          call infallEnhancment(grid, distortionVec, nVec, nPhi, dTime, .true., &
                              infallParticleMass, alreadyDoneInfall)
+#endif
       end if !(adaptive)
 
    end if

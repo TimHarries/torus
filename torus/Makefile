@@ -29,6 +29,8 @@ molecular = yes
 photoion = yes
 sph = yes
 atomic = yes
+# This is set later on, don't set it in the make command
+stateq = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -528,6 +530,7 @@ endif
 
 ifeq ($(photoion), yes)
   ETCFLAG += -DPHOTOION
+  stateq = yes
 endif
 
 ifeq ($(sph), yes)
@@ -536,7 +539,13 @@ endif
 
 ifeq ($(atomic), yes)
   ETCFLAG += -DCMFATOM
+  stateq = yes
 endif
+
+ifeq ($(stateq), yes)
+  ETCFLAG += -DSTATEQ
+endif
+
 
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90
@@ -556,7 +565,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             sed_mod.f90 utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
-            distortion_mod.f90  TTauri_mod.f90 \
+            distortion_mod.f90  \
             disc_hydro_mod.f90 gas_opacity_mod.f90 \
             integratePath.f90 fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 amr_utils_mod.f90  \
@@ -579,7 +588,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
 CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoion_utils_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
 	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 ion_mod.F90 gridtype_mod.F90 amr_mod.F90 \
 	         fits_utils_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
-	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 \
+	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 TTauri_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 $(TORUSMAINSOURCE)
 

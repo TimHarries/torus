@@ -304,6 +304,9 @@ contains
     use modelatom_mod, only : globalAtomArray
     use cmf_mod, only : atomloop
 #endif
+#ifdef STATEQ
+    use stateq_mod, only: amrstateqNew
+#endif
 #ifdef HYDRO
     use nbody_mod, only : donBodyonly
 #endif
@@ -432,14 +435,14 @@ contains
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
 #endif
-
+#ifdef STATEQ
      if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
         call amrStateqnew(grid, .false., nLower, nUpper, globalSourceArray(1)%surface,&
                        recalcPrevious=.false.)
         call writeVTKfile(grid, "eta.vtk", valueTypeString=(/"etaline   ",&
              "sourceline"/))
      endif
-
+#endif
 
 #ifdef PHOTOION
      if (photoionPhysics.and.photoionEquilibrium) then 

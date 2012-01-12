@@ -9,23 +9,26 @@ module ttauri_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
   use gridtype_mod, only: GRIDTYPE
-  use stateq_mod, only: initgridstateq
   use grid_mod, only: integratedDensity, getIndices, writeAxes
 
   implicit none
   
-  public :: fillGridMagneticAccretion, &
-       &    infallEnhancment, &
+  public :: infallEnhancment, &
        &    initInfallEnhancement, &
        &    fillGridFlaredDisk
 
+#ifdef STATEQ
+  public :: fillGridMagneticAccretion
+#endif
 
 contains
   
+#ifdef STATEQ
   subroutine fillGridMagneticAccretion(grid,contfile1, popFileName, &
          readPops, writePops, lte, lamLine, Laccretion, Taccretion, &
          sAccretion, curtains, dipoleOffset, nLower, nUpper)
     use utils_mod, only: blackBody
+    use stateq_mod, only: initgridstateq
 
     type(GRIDTYPE) :: grid
     character(len=*) :: contFile1, popFileName
@@ -337,7 +340,8 @@ contains
 
 
   end subroutine fillGridMagneticAccretion
-            
+#endif
+
   subroutine infallEnhancment(grid, distortionVec, nVec, nPhi, timeStep, doDistortion,&
                               particleMass, alreadyDoneInfall)
     use amr_mod, only: infallEnhancmentAMR
