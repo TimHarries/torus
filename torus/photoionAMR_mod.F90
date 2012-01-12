@@ -1603,11 +1603,15 @@ end subroutine radiationHydro
                 if (newTime < iterTime) then
                    !it was faster this time
 
+
                    !lets get zealous!
                    dStack = int(dStack * 2.0)        
+
+
                    
                    !lets keep going in this direction
                    stackLimit = stackLimit + (sign*dStack)
+
                    
                 else
                    !it was slower this time
@@ -1628,7 +1632,7 @@ end subroutine radiationHydro
                 end if
              end if
              if(dstack <= 1) then
-                dstack = 10
+                dstack = dstacknaught
              end if
           else             
              switch = .true. 
