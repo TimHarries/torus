@@ -2664,6 +2664,7 @@ end subroutine dumpStromgrenRadius
     
   end subroutine grid_info_mpi
   
+#ifdef HYDRO
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
     use inputs_mod, only : maxDepthAMR, minDepthAmr
     use octal_mod, only: subcellRadius
@@ -3253,7 +3254,7 @@ end subroutine dumpStromgrenRadius
 
 666 continue
   end subroutine addNewChildWithInterp
-
+#endif
 
   subroutine returnAddNewChildCornerArrays(thisOCtal, topOctal, topOctalSubcell, grid, rhoCorner, rhoeCorner, rhouCorner, &
        rhovCorner, rhowCorner, eCorner, phiCorner, pressureCorner)

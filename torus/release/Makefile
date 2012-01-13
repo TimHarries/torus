@@ -1,5 +1,7 @@
 memcheck = no
 openmp  = no 
+cfitsio = yes
+ETCFLAG  =
 
 ifeq ($(SYSTEM), nagfor)
     F95COMP  = nagfor
@@ -24,12 +26,13 @@ endif
 ifeq ($(SYSTEM), gfortran)
     ifeq ($(mpi), yes)
         F95COMP = mpif90
-        MPIFLAG = -DMPI
+        ETCFLAG += -DMPI
     else
         F95COMP = gfortran
     endif
     DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,precision,denormal
-    FASTFLAG = -O3
+#    FASTFLAG = -O3
+    FASTFLAG =  -fprofile-arcs -ftest-coverage
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
@@ -50,7 +53,12 @@ endif
 #
 # Deal with make options
 #
-ETCFLAG  =
+
+ifeq ($(cfitsio), no)
+   CFITSIOLIBS  =
+else
+   ETCFLAG += -DUSECFITSIO
+endif
 
 ifeq ($(memcheck), yes)
    ETCFLAG += -DMEMCHECK
@@ -101,8 +109,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             density_mod.f90 vh1_mod.f90 \
             timing.f90 \
             filter_set_class.f90 ostar_mod.f90  \
-            surface_mod.f90  math_mod2.f90 disc_class.f90 \
-            hyd_col_coeff.f90  clump_mod.f90 \
+            surface_mod.f90  disc_class.f90 clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
             cmfgen_class.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
@@ -113,7 +120,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
 CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90  \
 	         mpi_amr_mod.F90  \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90  \
-	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
+	         parallel_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 $(TORUSMAINSOURCE)
 
@@ -123,7 +130,7 @@ INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
-ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(INPUTSMODOBJ)
+ALLOBJ = $(F90OBJ)  $(INPUTSMODOBJ) $(CAPF90OBJ)
 
 #
 # Compilers and compiler flags
