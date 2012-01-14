@@ -8,7 +8,8 @@ module lucy_mod
   use utils_mod, only: hunt, locate, solvequaddble
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, octalWrapper, subcellCentre, cellVolume
-  use spectrum_mod, only: bnu, blambda, getwavelength
+  use spectrum_mod, only: getwavelength
+  use atom_mod, only: bnu, blambda
   use timing, only: tune
   use vtk_mod, only: writeVtkFile
   use mpi_global_mod, only: myRankGlobal

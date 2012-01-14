@@ -1,10 +1,9 @@
 module spectrum_mod
 
   use constants_mod
-  use atom_mod
-  use utils_mod
   use messages_mod
-  use unix_mod
+  use utils_mod, only: locate
+  use unix_mod, only: unixGetenv
   implicit none
   public
 
@@ -35,7 +34,7 @@ module spectrum_mod
     end subroutine freeSpectrum
 
     subroutine getWavelength(spectrum, wavelength, photonPacketWeight)
-
+      use random_mod, only: randomNumberGenerator
       type(SPECTRUMTYPE) :: spectrum
       real(double), intent(out) :: wavelength
       real(double) :: r, t
@@ -140,6 +139,7 @@ module spectrum_mod
     end function integrateSpectrumOverBand
 
     subroutine getWavelengthOverBand(spectrum, lam1 , lam2, wavelength)
+      use random_mod, only: randomNumberGenerator
       real(double) :: wavelength
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: lam1, lam2, tlam1, tlam2
@@ -187,6 +187,7 @@ module spectrum_mod
 
 
     subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, lamArray)
+      use atom_mod, only: bLambda
       type(SPECTRUMTYPE) :: spectrum
       integer :: nLambda
       real(double) :: lamStart, lamEnd, teff
@@ -233,6 +234,7 @@ module spectrum_mod
     end subroutine fillSpectrumBB
 
     subroutine addToSpectrumBB(spectrum, tBB, frac)
+      use atom_mod, only: bLambda
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: tBB, frac
       integer :: i
@@ -370,6 +372,7 @@ module spectrum_mod
     end subroutine writeSpectrumToDump
 
     subroutine insertWavelength(spectrum, lambda)
+      use utils_mod, only: loginterp_dble
       type(SPECTRUMTYPE) :: spectrum, tmpSpectrum
       logical :: ok
       integer :: i, newnLambda
@@ -633,6 +636,7 @@ module spectrum_mod
     end subroutine fillSpectrumKurucz
 
      subroutine createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+       use utils_mod, only: loginterp_dble
        type(SPECTRUMTYPE) :: spectrum, spec1, spec2
        real(double) :: t
        integer :: i 
