@@ -1007,7 +1007,7 @@ end subroutine radiationHydro
              
        !setup the buffer                
 !       print *, "buffer ", buffer
-       print *, "bufferSize ", bufferSize
+!       print *, "bufferSize ", bufferSize
        call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
 
        photonPacketStack%Freq = 0.d0
