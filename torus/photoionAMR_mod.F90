@@ -95,6 +95,8 @@ contains
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
 
+
+
     if (nbodyPhysics) then
        if (writeoutput) then
           open(57, file="pos.dat", status="unknown", form="formatted")
@@ -123,10 +125,12 @@ contains
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-!    print *, " RANK ", myRank, "JOINING THE FRAY"
+
 
 !    deltaTforDump = 3.14d10 !1kyr
 !    if (grid%geometry == "hii_test") deltaTforDump = 2.d10
+
+
 
     if(.not. readGrid) then
        grid%currentTime = 0.d0
@@ -171,7 +175,9 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("vtk dump completed. Aborting...")
        end if
+
     end if
+
 
 !    call writeVtkFile(grid, "ini.vtk", &
 !         valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont ", "mpithread  " /))
@@ -243,7 +249,7 @@ contains
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
-          !    call calculateEnergy(grid%octreeRoot, gamma, mu)    
+          !    call calculateEnergy(grid%octreeRoot, gam
 
        endif
     end if
@@ -253,6 +259,7 @@ contains
 
 
        if(.not. noPhoto) then
+
           looplimitTime = deltaTForDump
           looplimittime = 1.d30
           iterTime = 1.e30
@@ -285,7 +292,6 @@ contains
           endif
                     
           if (myrank/=0) then
-             
              call writeInfo("Refining individual subgrids", TRIVIAL)
              if (.not.grid%splitOverMpi) then
                 do
@@ -342,22 +348,21 @@ contains
           !       enddo
        
        if (myrank /= 0) then
-
           call calculateEnergyFromTemperature(grid%octreeRoot)
-          call calculateRhoE(grid%octreeRoot, direction)
-          
+          call calculateRhoE(grid%octreeRoot, direction)          
        endif
     end if
-
+    
     if(grid%geometry == "planar") then
+       print *, "PERTURBING I FRONT "
        call perturbIfront(grid%octreeRoot, grid)
     end if
       
       if(grid%geometry == "hii_test") then
          tEnd = 3.14d13         !1x10^6 year
- else if(grid%geometry == "bonnor" .or. grid%geometry=="radcloud") then
-    tEnd = 200.d0*3.14d10 !200kyr 
- end if
+      else if(grid%geometry == "bonnor" .or. grid%geometry=="radcloud") then
+         tEnd = 200.d0*3.14d10 !200kyr 
+      end if
 
     nPhase = 1
 
@@ -365,7 +370,6 @@ contains
     
 !    !Thaw - trace courant time history                                                                                                                              
 !    open (444, file="tcHistory.dat", status="unknown")
-
 
     do while(grid%currentTime < tEnd)
        nstep = nstep + 1
@@ -394,6 +398,13 @@ contains
           dt =  timeofNextDump - grid%currentTime
           dumpThisTime = .true.
        endif
+
+       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+       call writeVtkFile(grid, mpiFilename, &
+            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+            "hydrovelocity","sourceCont   ","pressure     ", "rhou         "/))
+
+
 
        if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", &
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt

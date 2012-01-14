@@ -115,13 +115,14 @@ contains
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
           neighbouroctal => thisoctal
-          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-          !know that in this hardwired benchmark I do not have to seek across mpi boundary
-          !this is pretty rubbish but for a test it isn't worth overhauling loads of the rest of the code.
-         if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
-            thisOctal%rhou(subcell) = (1.d4*(sin(rVec%z/(grid%octreeRoot%subcellSize))/thisOctal%rho(subcell)))
-         end if
-         
+          if(inOctal(grid%octreeRoot, locator)) then
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             !know that in this hardwired benchmark I do not have to seek across mpi boundary
+             !this is pretty rubbish but for a test it isn't worth overhauling loads of the rest of the code.
+             if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
+                thisOctal%rhou(subcell) = (1.d4*(sin(rVec%z/(grid%octreeRoot%subcellSize))/thisOctal%rho(subcell)))
+             end if
+          end if
        end if
     end do
 
