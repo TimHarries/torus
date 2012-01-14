@@ -98,7 +98,6 @@ contains
    integer :: i, subcell, neighbourSubcell
    type(VECTOR) :: direction, rVec, locator
 
-
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child                 
@@ -119,7 +118,8 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              !know that in this hardwired benchmark I do not have to seek across mpi boundary
              !this is pretty rubbish but for a test it isn't worth overhauling loads of the rest of the code.
-             if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
+!             if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
+             if(thisOctal%ionFrac(subcell, 1) /= neighbourOctal%ionFrac(subcell, 1)) then
                 thisOctal%rhou(subcell) = (1.d4*(sin(rVec%z/(grid%octreeRoot%subcellSize))/thisOctal%rho(subcell)))
              end if
           end if
