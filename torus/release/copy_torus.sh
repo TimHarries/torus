@@ -9,6 +9,7 @@ rm torusMod.?90 ion_mod.?90 nbody_mod.?90 qShep*90 timedep_mod.?90
 rm cluster_class.?90 sph_data_class.?90 wr104_mod.?90
 rm phfit2.?90 cmf_mod.?90 modelatom_mod.?90 h21cm_mod.?90
 rm isochrone_class.?90 stateq_mod.?90 math_mod2.?90 hyd_col_coeff.?90
+rm datacube_mod.?90 interferometry_mod.?90
 
 rm -f makedepend
 ln -s ../makedepend
