@@ -315,7 +315,9 @@ contains
     call getLogical("benchmark", calcBenchmark, cLine, fLine, nLines, &
          "Check a benchmark: ","(a,1l,1x,a)", .false., ok, .false.)
 
+#ifdef FITSCUBE
     if (calcDataCube) call readDataCubeParameters(cLine, fLine, nLines)
+#endif
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
     if (calcDataCube.or.calcImage) call readFitsParameters(cLine, fLine, nLines)
     if (calcSpectrum) call readSpectrumParameters(cLine, fLine, nLines)
@@ -1654,8 +1656,9 @@ contains
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
   end subroutine readPhotometryParameters
 
+#ifdef FITSCUBE
   subroutine readDataCubeParameters(cLine, fLine, nLines)
-    use datacube_mod, only: cubePositionAngle, npixels
+    use datacube_mod, only: cubePositionAngle, npixels, datacubeFilename
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
@@ -1787,8 +1790,6 @@ contains
           rotateViewAboutX = 90.0 - galaxyPositionAngle 
           rotateViewAboutY = 90.0 + galaxyPositionAngle
           rotateViewAboutZ = 0.0
-          call getDouble("dataCubeVelocityOffset", dataCubeVelocityOffset, 1.0_db, cLine, fLine, nLines, &
-               "Data cube velocity offset:", "(a,f8.1,1x,a)", 0.d0, ok, .true.)
        end if
        
     end if
@@ -1833,6 +1834,7 @@ contains
     endif
        
   end subroutine readDataCubeParameters
+#endif
 
   subroutine readImageParameters(cLine, fLine, nLines)
     use image_utils_mod

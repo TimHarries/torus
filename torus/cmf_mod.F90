@@ -3312,8 +3312,7 @@ contains
     use modelatom_mod, only : identifyTransitionCmf
     use datacube_mod, only : dumpCubeToSpectrum, dumpCubeToVisibilityCurves
 #ifdef USECFITSIO
-    use inputs_mod, only : dataCubeFilename
-    use datacube_mod, only : writedataCube
+    use datacube_mod, only : writedataCube, dataCubeFilename
 #endif
 #ifdef MPI
     use mpi

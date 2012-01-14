@@ -44,10 +44,8 @@ module angularImage
            galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid, h21cm, wanttau
       use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
-      use datacube_mod, only : writeDataCube
-      use inputs_mod, only : dataCubeFilename
+      use datacube_mod, only : writeDataCube, dataCubeFilename
 #endif
-
 
       implicit none
 

@@ -15,7 +15,8 @@ module molecular_mod
    use random_mod
    use octal_mod
    use math_mod
-   use datacube_mod
+   use datacube_mod, only: DATACUBE, TELESCOPE, initCube, npixels, writeDataCube, &
+        addspatialaxes, addvelocityaxis, convertspatialaxes
    use parallel_mod, only : torus_mpi_barrier
    use gridio_mod, only: readamrgrid, writeamrgrid
    use atom_mod, only: bnu
@@ -4686,12 +4687,12 @@ END SUBROUTINE sobseq
 
  subroutine make_h21cm_image(grid)
    
-   use inputs_mod, only : nsubpixels, itrans, dataCubeVelocityOffset, lineImage, maxRhoCalc
+   use inputs_mod, only : nsubpixels, itrans, lineImage, maxRhoCalc
    use inputs_mod, only : useDust, isInLte, lowmemory
    use h21cm_mod, only : h21cm_lambda
 
 #ifdef USECFITSIO
-   use inputs_mod, only : datacubeFilename
+   use datacube_mod, only : datacubeFilename
 #endif
 
    implicit none
@@ -4722,9 +4723,6 @@ END SUBROUTINE sobseq
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
    call convertSpatialAxes(cube,'kpc')
-
-! Add velocity offset 
-   cube%vAxis(:) = cube%vAxis(:) + dataCubeVelocityOffset
 
 ! Output as brightness temperature
    cube%intensity(:,:,:) = real(cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg))

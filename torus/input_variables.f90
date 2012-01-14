@@ -187,6 +187,7 @@
   logical ::  realdust ! molecular_mod includes continuum emission
   integer :: nsubpixels ! No. of sub-pixels for ray trace
   integer :: itrans
+  integer :: observerpos ! position of observer in molecular_mod image generation
 
 !------------------------------------------
 ! Galactic plane survey (angularImage_mod) 
@@ -200,6 +201,7 @@
   real(double) :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
   real(double) :: galaxyInclination, galaxyPositionAngle 
   integer :: dssMinSample ! Minimum number of samples per cell when density subsample is used
+  logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
 
 !----------------------------  
 ! Lucy radiative equilibrium
@@ -307,18 +309,12 @@
 !--------------------------------
 
   logical :: monteCarloRT
-  real(double) :: dataCubeVelocityOffset ! Velocity offset for data cube
-  logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
   integer :: nv ! number of velocity channels
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 
-  integer :: observerpos ! position of observer in molecular_mod image generation
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
-
-  ! data cube file name
-  character(len=80) :: datacubeFilename
 
 !----------------------------------------------------------
 ! Geometry specific parameters (this is a large section !)

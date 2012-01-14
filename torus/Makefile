@@ -29,8 +29,9 @@ molecular = yes
 photoion = yes
 sph = yes
 atomic = yes
-# This is set later on, don't set it in the make command
+# These are set later on, don't set in the make command
 stateq = no
+datacube = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -526,6 +527,7 @@ endif
 
 ifeq ($(molecular), yes)
   ETCFLAG += -DMOLECULAR
+  datacube = yes
 endif
 
 ifeq ($(photoion), yes)
@@ -540,12 +542,16 @@ endif
 ifeq ($(atomic), yes)
   ETCFLAG += -DCMFATOM
   stateq = yes
+  datacube = yes
 endif
 
 ifeq ($(stateq), yes)
   ETCFLAG += -DSTATEQ
 endif
 
+ifeq ($(stateq), yes)
+  ETCFLAG += -DFITSCUBE
+endif
 
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90

@@ -33,7 +33,8 @@ contains
 #ifdef MOLECULAR
     use molecular_mod
     use angularImage
-    use inputs_mod, only : molecularPhysics, useDust, realdust, h21cm, internalView, dataCubeFilename
+    use inputs_mod, only : molecularPhysics, useDust, realdust, h21cm, internalView
+    use datacube_mod, only: dataCubeFilename
 #endif 
     use phasematrix_mod
     use phaseloop_mod, only : do_phaseloop

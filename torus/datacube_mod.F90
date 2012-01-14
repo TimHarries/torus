@@ -1,3 +1,4 @@
+#ifdef FITSCUBE
 module datacube_mod
 
   use kind_mod
@@ -46,6 +47,7 @@ module datacube_mod
 
   real, save :: cubePositionAngle
   integer, save :: npixels ! number of spatial pixels, currently the same for x and y
+  character(len=80), save :: datacubeFilename
 
 contains
 
@@ -803,4 +805,4 @@ subroutine freeDataCube(thiscube)
        
 
 end module datacube_mod
-
+#endif
