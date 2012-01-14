@@ -756,7 +756,7 @@ end subroutine radiationHydro
     zerothstacklimit = stacklimit
     sign = 1
     nPeriodic = 0
-
+    bufferSize = 0 
     dStackNaught = dstack
 
 !    stackLimit = 0
@@ -802,6 +802,11 @@ end subroutine radiationHydro
 
     !Add some extra bytes for safety
     bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
+
+    if(bufferSize < 0) then
+       write(*,*) "warning negative buffer size", bufferSize
+       bufferSize = -bufferSize
+    end if
 
     allocate(buffer(bufferSize))
 
@@ -976,6 +981,7 @@ end subroutine radiationHydro
 
 
        if(optimizeStack .and. nIter > 0) then
+          bufferSize = 0
           allocate(photonPacketStack(stackLimit*nThreads))
           allocate(toSendStack(stackLimit))
           allocate(currentStack(stackLimit))
@@ -988,7 +994,9 @@ end subroutine radiationHydro
        end if
        zerothstacklimit = stacklimit
              
-       !setup the buffer                                                                                                 
+       !setup the buffer                
+!       print *, "buffer ", buffer
+       print *, "bufferSize ", bufferSize
        call MPI_BUFFER_ATTACH(buffer,bufferSize, ierr)
 
        photonPacketStack%Freq = 0.d0
