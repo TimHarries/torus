@@ -3323,5 +3323,275 @@
 !!$    call sumSurface(surface)
 !!$    
 !!$  end subroutine createTTauriSurfaceMahdavi
+!!$
+!!$   recursive subroutine verticalDump(thisOctal, xPos)
+!!$    real :: xPos
+!!$    type(VECTOR) :: rVec
+!!$   type(octal), pointer   :: thisOctal
+!!$    type(octal), pointer  :: child 
+!!$    integer :: subcell, i
+!!$    
+!!$    do subcell = 1, thisOctal%maxChildren
+!!$       if (thisOctal%hasChild(subcell)) then
+!!$          ! find the child
+!!$         do i = 1, thisOctal%nChildren, 1
+!!$             if (thisOctal%indexChild(i) == subcell) then
+!!$                child => thisOctal%child(i)
+!!$                call verticalDump(child, xPos)
+!!$                exit
+!!$             end if
+!!$          end do
+!!$       else
+!!$          rVec = subcellCentre(thisOctal, subcell)
+!!$          if ( (xPos >= rVec%x-thisOctal%subcellsize/2.).and. &
+!!$               (xPos <= rVec%x+thisOctal%subcellsize/2.)) then
+!!$             write(30,*) rVec%z/1496., thisOctal%temperature(subcell),thisOctal%rho(subcell)
+!!$          endif
+!!$       endif
+!!$         
+!!$    enddo
+!!$
+!!$  end subroutine verticalDump
+!!$  recursive subroutine getxValuesAMR(thisOctal, nx, xAxis)
+!!$
+!!$    type(octal), pointer   :: thisOctal
+!!$    type(octal), pointer  :: child
+!!$    type(vector) :: rVec
+!!$    integer :: nx, subcell, i
+!!$    real :: xAxis(:)
+!!$
+!!$    do subcell = 1, thisOctal%maxChildren
+!!$       if (thisOctal%hasChild(subcell)) then
+!!$          ! find the child
+!!$          do i = 1, thisOctal%nChildren, 1
+!!$             if (thisOctal%indexChild(i) == subcell) then
+!!$                child => thisOctal%child(i)
+!!$                call getxValuesamr(child, nx, xAxis)
+!!$                exit
+!!$             end if
+!!$          end do
+!!$       else
+!!$
+!!$          rVec = subcellCentre(thisOctal, subcell)
+!!$          nx = nx + 1
+!!$          xAxis(nx) = real(rVec%x)
+!!$       end if
+!!$    end do
+!!$
+!!$  end subroutine getxValuesAMR
+!!$
+!!$  subroutine setVerticalBias(grid, xPos, yPos, iLam, thisTau)
+!!$    type(GRIDTYPE) :: grid
+!!$    type(octal), pointer   :: thisOctal
+!!$    real, optional :: thisTau
+!!$    integer :: nz
+!!$    real :: zAxis(100000)
+!!$    real :: tau
+!!$    real :: xPos, yPos
+!!$    integer :: subcell
+!!$    real(double) :: rhotemp
+!!$    real :: temptemp
+!!$    integer :: iLam
+!!$    type(VECTOR) :: currentPos, temp
+!!$    real :: halfSmallestSubcell
+!!$    real(double) :: kappaSca, kappaAbs
+!!$    kappaSca = 0.d0; kappaAbs = 0.d0
+!!$    nz = 0
+!!$    tau = 0.
+!!$    halfSmallestSubcell = real(grid%halfSmallestSubcell)
+!!$
+!!$    ! bottom up
+!!$
+!!$    currentPos = VECTOR(xpos, yPos, -1.*grid%octreeRoot%subcellsize)
+!!$    do while(currentPos%z < 0.)
+!!$       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+!!$            foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
+!!$       nz = nz + 1
+!!$       temp = subCellCentre(thisOctal, subcell)
+!!$       zAxis(nz) = real(temp%z)
+!!$
+!!$       call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
+!!$            kappaSca=kappaSca, kappaAbs=kappaAbs)
+!!$
+!!$
+!!$       if (nz > 1) then
+!!$          tau = tau + real(thisOctal%subcellsize*(kappaSca+kappaAbs))
+!!$       endif
+!!$       if (.not.present(thisTau)) then
+!!$          thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
+!!$       else
+!!$          thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-thistau))
+!!$       endif
+!!$             
+!!$       currentPos = VECTOR(xpos, yPos, zAxis(nz)+0.5*thisOctal%subcellsize+halfSmallestSubcell)
+!!$   end do
+!!$    
+!!$    tau = 0.
+!!$    nz = 0
+!!$    currentPos = VECTOR(xpos, yPos, grid%octreeRoot%subcellsize)
+!!$    do while(currentPos%z > 0.)
+!!$       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+!!$            foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
+!!$       nz = nz + 1
+!!$       temp = subCellCentre(thisOctal, subcell)
+!!$       zAxis(nz) = real(temp%z)
+!!$       call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
+!!$            kappaSca=kappaSca, kappaAbs=kappaAbs)
+!!$
+!!$       if (nz > 1) then
+!!$          tau = tau + real(thisOctal%subcellsize*(kappaAbs+kappaSca))
+!!$       endif
+!!$       thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
+!!$       currentPos = VECTOR(xpos, yPos, zAxis(nz)-0.5*thisOctal%subcellsize-halfSmallestSubcell)
+!!$    end do
+!!$    
+!!$  end subroutine setVerticalBias
+!!$    
+!!$    
+!!$      subroutine getDensityRun(grid, zAxis, subcellsize, rho, xPos, yPos, nz, direction)
+!!$        type(GRIDTYPE) :: grid
+!!$        type(octal), pointer   :: thisOctal
+!!$        integer :: nz
+!!$        real(double) :: rho(:)
+!!$        real(double) :: zAxis(:), subcellsize(:)
+!!$        real :: xPos, yPos
+!!$        integer :: subcell
+!!$        real(double) :: rhotemp 
+!!$        real :: direction
+!!$        type(VECTOR) :: currentPos, temp
+!!$        real :: halfSmallestSubcell
+!!$    
+!!$        nz = 0
+!!$        halfSmallestSubcell = real(grid%halfSmallestSubcell)
+!!$    
+!!$        currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
+!!$    
+!!$        do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+!!$           call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+!!$                foundSubcell=subcell, rho=rhotemp)
+!!$    !       if (thisOctal%inFlow(subcell)) then
+!!$              nz = nz + 1
+!!$              rho(nz) = rhotemp
+!!$              temp = subCellCentre(thisOctal, subcell)
+!!$              zAxis(nz) = temp%z
+!!$              subcellsize(nz) = thisOctal%subcellsize
+!!$    !       endif
+!!$              currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+!!$        end do
+!!$        zAxis(1:nz) = abs(zAxis(1:nz)) !* 1.d10  ! convert to cm
+!!$      end subroutine getDensityRun
+!!$
+!!$  subroutine getNeighbourFromPointOnFace(rVec, uHat, thisOctal, subcell, neighbourOctal, neighbourSubcell)
+!!$    type(OCTAL), pointer :: thisOctal, neighbourOctal
+!!$    integer :: neighbourSubcell, subcell
+!!$    type(VECTOR) :: rVec, centre, normVec, uHat
+!!$    logical :: xPos, xNeg, yPos, yNeg, zPos, zNeg
+!!$
+!!$    centre = subcellCentre(thisOctal, subcell)
+!!$    normVec = 2.d0*((rVec - centre)/thisOctal%subcellSize)
+!!$
+!!$!    write(*,*) "normVec ",normvec
+!!$    xPos = normVec%x >= 0.d0
+!!$    xNeg = .not.xPos
+!!$
+!!$    yPos = normVec%y >= 0.d0
+!!$    yNeg = .not.yPos
+!!$
+!!$    zPos = normVec%z >= 0.d0
+!!$    zNeg = .not.zPos
+!!$
+!!$
+!!$!    write(*,*) "xpos,xneg ",xpos,xneg
+!!$!    write(*,*) "ypos,yneg ",ypos,yneg
+!!$!    write(*,*) "zpos,zneg ",zpos,zneg
+!!$
+!!$!   write(*,*) "current subcell", subcell
+!!$    if ((normVec%z > 0.9999999d0).and.(uHat%z > 0.d0)) then ! top face
+!!$       if ((xNeg.and.yNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 1)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 1)
+!!$       else if ((xPos.and.yNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 2)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 2)
+!!$       else if ((xNeg.and.yPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 3)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 3)
+!!$       else if ((xPos.and.yPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 1, 4)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 1, 4)
+!!$       endif
+!!$    else if ((normVec%z < -0.9999999d0).and.(uHat%z < 0.d0)) then ! bottom face
+!!$       if ((xNeg.and.yNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 1)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 1)
+!!$       else if ((xPos.and.yNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 2)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 2)
+!!$       else if ((xNeg.and.yPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 3)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 3)
+!!$       else if ((xPos.and.yPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 2, 4)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 2, 4)
+!!$       endif
+!!$     else if ((normVec%x < -0.9999999d0).and.(uHat%x < 0.d0)) then ! left face
+!!$       if ((yNeg.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 1)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 1)
+!!$       else if ((yPos.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 2)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 2)
+!!$       else if ((yNeg.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 3)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 3)
+!!$       else if ((yPos.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 3, 4)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 3, 4)
+!!$       endif
+!!$    else if ((normVec%x > 0.9999999d0).and.(uHat%x > 0.d0)) then ! right face
+!!$       if ((yNeg.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 1)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 1)
+!!$       else if ((yPos.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 2)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 2)
+!!$       else if ((yNeg.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 3)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 3)
+!!$       else if ((yPos.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 4, 4)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 4, 4)
+!!$       endif
+!!$    else if ((normVec%y > 0.9999999d0).and.(uHat%y > 0.d0)) then ! front face
+!!$       if ((xNeg.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 1)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 1)
+!!$       else if ((xPos.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 2)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 2)
+!!$       else if ((xNeg.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 3)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 3)
+!!$       else if ((xPos.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 5, 4)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 5, 4)
+!!$       endif
+!!$    else if ((normVec%y < -0.9999999d0).and.(uHat%y < 0.d0)) then ! back
+!!$       if ((xNeg.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 1)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 1)
+!!$       else if ((xPos.and.zNeg)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 2)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 2)
+!!$       else if ((xNeg.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 3)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 3)
+!!$       else if ((xPos.and.zPos)) then
+!!$          neighbourOctal => thisOctal%neighbourOctal(subcell, 6, 4)%pointer
+!!$          neighbourSubcell = thisOctal%neighbourSubcell(subcell, 6, 4)
+!!$       endif
+!!$    endif
+!!$  end subroutine getNeighbourFromPointOnFace
+
 
 
