@@ -15,7 +15,7 @@ module photon_mod
   use constants_mod         ! physical constants
   use gridtype_mod, only: GRIDTYPE  ! type definition for the 3-d grid
   use math_mod, only: thermalElectronVelocity, interpGridVelocity, interpGridScalar2, thermalHydrogenVelocity
-  use amr_mod, only: amrGridValues, amrGridVelocity, amrGridTemperature
+  use amr_mod, only: amrGridValues, amrGridVelocity, findsubcelllocal, findsubcelltd
   use disc_class, only: alpha_disc, in_alpha_disc, new
   use surface_mod, only: SURFACETYPE
   use phasematrix_mod, only: STOKESVECTOR
@@ -55,9 +55,142 @@ module photon_mod
      integer :: iLam
   end type PHOTON
 
-
-
 contains
+
+  RECURSIVE SUBROUTINE locateLineProbAMR(probability,thisOctal,subcell) 
+    ! finds the subcell that contains a given value of 'probability'.
+    ! each subcell of the tree's octals has a value for line emission 
+    !   probability which is an upper bound of the subcell's value in the cumulative probability
+    !   distribution for the 
+
+    IMPLICIT NONE
+
+    real(double), INTENT(IN) :: probability
+    TYPE(octal), POINTER              :: thisOctal
+    INTEGER, INTENT(OUT)              :: subcell
+
+    INTEGER              :: i, j 
+   
+   
+    ! we need to treat the first subcell as a special case
+    
+    IF (probability < thisOctal%probDistLine(1)) THEN
+
+      IF (thisOctal%hasChild(1)) THEN
+      
+        ! find the child
+        DO j = 1, thisOctal%nChildren, 1
+          IF (thisOctal%indexChild(j) == 1) THEN
+            thisOctal => thisOctal%child(j)
+            CALL locateLineProbAMR(probability,thisOctal,subcell)
+            RETURN
+          END IF
+        END DO
+        
+      ELSE 
+        subcell = 1
+        RETURN
+        
+      END IF
+    END IF   
+  
+   
+    DO i = 2, thisOctal%maxChildren, 1
+      
+      IF (probability > thisOctal%probDistLine(i-1) .AND. &
+          probability < thisOctal%probDistLine(i)) THEN
+      
+        IF (thisOctal%hasChild(i)) THEN
+          
+          ! find the child
+          DO j = 1, thisOctal%nChildren, 1
+            IF (thisOctal%indexChild(j) == i) THEN
+              thisOctal => thisOctal%child(j)
+              CALL locateLineProbAMR(probability,thisOctal,subcell)
+              RETURN
+            END IF
+          END DO
+          
+        ELSE 
+          subcell = i
+          RETURN
+        
+        END IF
+      END IF
+    END DO
+
+      
+  END SUBROUTINE locateLineProbAMR
+
+
+  FUNCTION amrGridTemperature(octalTree,point,startOctal,foundOctal,& 
+                                        foundSubcell,actualSubcell) 
+    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    !
+
+    ! returns the temperature at a given point in the grid.
+    ! this function can be called with just the first two arguments
+    !   and it will start at the root of the octal tree to locate
+    !   the correct octal.
+    ! if the foundOctal argument is supplied, it is made to point to 
+    !   the octal containing 'point'.
+    ! if the startOctal argument is supplied, the function uses a 
+    !   local search for the correct octal starting at that octal.
+    ! if actualSubcell and startSubcell are both supplied, these 
+    !   locations are assumed to be correct and no search is performed.
+
+    IMPLICIT NONE
+
+    REAL                           :: amrGridTemperature
+    TYPE(octal), POINTER           :: octalTree
+    TYPE(vector), INTENT(IN)  :: point
+    TYPE(octal), OPTIONAL, POINTER :: startOctal
+    TYPE(octal), OPTIONAL, POINTER :: foundOctal
+    INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
+    INTEGER, INTENT(IN),  OPTIONAL :: actualSubcell
+
+    TYPE(octal), POINTER           :: resultOctal
+    INTEGER                        :: subcell
+    TYPE(vector) :: point_local
+
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+    if (octalTree%oneD) then
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+    endif
+    
+    IF (PRESENT(startOctal)) THEN
+      IF (PRESENT(actualSubcell)) THEN
+        subcell = actualSubcell
+      ELSE 
+        CALL findSubcellLocal(point_local,startOctal,subcell)
+        IF (PRESENT(foundOctal))   foundOctal   => startOctal
+        IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+      END IF
+      
+      ! should add in some interpolation routine
+      amrGridTemperature = startOctal%temperature(subcell)
+      
+    ELSE
+       ! rotated point for 2d case
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
+      IF (PRESENT(foundOctal)) foundOctal => resultOctal
+      IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+
+      ! should add in some interpolation routine
+      amrGridTemperature = resultOctal%temperature(subcell)
+
+    END IF
+
+  END FUNCTION amrGridTemperature
+
 
   ! this subroutine rotates the stokes vectors of a photon - this
   ! subroutine should probably moved from here to just work
