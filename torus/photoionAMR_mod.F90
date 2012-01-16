@@ -86,7 +86,7 @@ contains
     integer :: iRefine, nUnrefine
     logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
-    integer :: i, status, tag=30
+    integer :: i, status, tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     logical :: noPhoto=.false.
@@ -110,6 +110,7 @@ contains
     
     mu = 1.d0
 
+    sign = 1
     viewVec = VECTOR(-1.d0,0.d0,0.d0)
     viewVec = rotateZ(viewVec, 40.d0*degtorad)
     viewVec = rotateY(viewVec, 30.d0*degtorad)
@@ -268,13 +269,13 @@ contains
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                looplimittime, .false.,iterTime,.true., evenuparray)
+                     looplimittime, .false.,iterTime,.true., evenuparray, sign)
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
-                loopLimitTime, looplimittime, .false.,iterTime, .true., evenuparray)
+                     loopLimitTime, looplimittime, .false.,iterTime, .true., evenuparray, sign)
                 call writeInfo("Done",TRIVIAL)
              endif
              
@@ -456,7 +457,7 @@ contains
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
-               .true., evenuparray)
+               .true., evenuparray, sign)
 
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
@@ -604,7 +605,7 @@ end subroutine radiationHydro
 #endif
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, iterTime, &
-       monteCheck, evenuparray, sublimate)
+       monteCheck, evenuparray, sign, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack
@@ -765,7 +766,7 @@ end subroutine radiationHydro
     end if
 
     zerothstacklimit = stacklimit
-    sign = 1
+!    Sign = 1
     nPeriodic = 0
     bufferSize = 0 
     dStackNaught = dstack
@@ -1000,7 +1001,15 @@ end subroutine radiationHydro
           
           !Add some extra bytes for safety
           bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
-          
+
+          if(bufferSize < 0) then
+             write(*,*) "warning negative buffer size", bufferSize
+             print *, "bufferCap: ", bufferCap
+             print *, "bufferSize: ", bufferSIze
+             print *, "MPI_BSEND_OVERHEAD", MPI_BSEND_OVERHEAD
+             bufferSize = -bufferSize
+          end if
+
           allocate(buffer(bufferSize))
        end if
        zerothstacklimit = stacklimit
@@ -1059,11 +1068,11 @@ end subroutine radiationHydro
 
        countArray = 0.d0
 
-!       if(optimizeStack .and. myRank == 0) then
-!          write(*,*) "DOING OPTIMIZATION"
-!          write(*,*) "StackLimit ", stacklimit
-!          write(*,*) "dstack", dstack
-!       end if
+       if(optimizeStack .and. myRank == 0) then
+          write(*,*) "DOING OPTIMIZATION"
+          write(*,*) "StackLimit ", stacklimit
+          write(*,*) "dstack", dstack
+       end if
 
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRank == 0) then

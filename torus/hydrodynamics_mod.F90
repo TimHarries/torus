@@ -119,10 +119,11 @@ contains
              !know that in this hardwired benchmark I do not have to seek across mpi boundary
              !this is pretty rubbish but for a test it isn't worth overhauling loads of the rest of the code.
 !             if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
-             if(thisOctal%ionFrac(subcell, 1) /= neighbourOctal%ionFrac(subcell, 1)) then
-                thisOctal%rhou(subcell) = (1.d4*(sin(rVec%z/(grid%octreeRoot%subcellSize))/thisOctal%rho(subcell)))
+             if((thisOctal%ionFrac(subcell, 1)- neighbourOctal%ionFrac(subcell, 1)) > 0.2 ) then
+                thisOctal%rhou(subcell) = abs(thisOctal%rho(subcell)*(3.d6*(sin(twopi*(rVec%z+(grid%octreeRoot%subcellSize/2.d0))* &
+                     (grid%octreeroot%subcellsize/2.d0)))))
              end if
-          end if
+         end if
        end if
     end do
 

@@ -352,7 +352,7 @@ contains
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
-    integer :: nlower, nupper
+    integer :: nlower, nupper, sign
     type(GRIDTYPE) :: grid
 #ifdef MPI
 #ifdef PHOTOION
@@ -446,7 +446,7 @@ contains
 
 #ifdef PHOTOION
      if (photoionPhysics.and.photoionEquilibrium) then 
-
+        sign = 1
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 
@@ -458,7 +458,7 @@ contains
 !           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
 !                .true., evenuparray, sublimate=.false.)
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
-                iterTime, .true., evenuparray, sublimate=.false.)
+                iterTime, .true., evenuparray, sign, sublimate=.false.)
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
