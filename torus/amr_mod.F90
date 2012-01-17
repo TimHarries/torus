@@ -5457,66 +5457,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   end function get_fuzzy_width
 
-  ! find the total mass in accretion flow
-  ! Before the initial call the total mass must be set to zero
-  ! The output should be in grams.
-  RECURSIVE SUBROUTINE TTauri_accretion_mass(thisOctal, grid, total_mass)
-    use density_mod, only: TTauriInFlow
-
-    IMPLICIT NONE
-    TYPE(OCTAL), POINTER :: thisOctal    
-    TYPE(gridtype), INTENT(INOUT)    :: grid
-    real(double), intent(inout) :: total_mass
-    !
-    TYPE(OCTAL), POINTER :: childPointer  
-    INTEGER              :: subcell, i    ! loop counters
-    TYPE(vector)     :: point
-    integer :: n
-    real(double) :: d, dV
-    !
-    
-    if (thisOctal%threeD) then
-       if (thisOctal%splitAzimuthally) then
-          n = 8
-       else
-          n  = 4
-       endif
-    else
-       n = 4
-    endif
-
-    do subcell = 1, n    
-       if (thisOctal%hasChild(subcell)) then
-          ! find the index of the new child and decend the tree
-          do i = 1, n
-             if (thisOctal%indexChild(i) == subcell) then
-                childPointer => thisOctal%child(i)
-                CALL TTauri_accretion_mass(childPointer, grid, total_mass)
-                exit
-             end if
-          end do
-       else 
-          point = subcellCentre(thisOctal,subcell)
-          ! This is a leaf, so modefiy the density value if required.
-          if (thisOctal%inFlow(subcell) .and. TTauriInFlow(point,grid)) then
-             d = thisOctal%subcellsize  ! [10^10cm]
-             if (thisOctal%threed) then
-                dV = d*d*d   ! [10^30cm]
-             else
-                dv = 2.0_db*pi*d*d*SQRT(point%x*point%x + point%y*point%y)  ! [10^30cm]
-             endif
-             total_mass = total_mass + thisOctal%rho(subcell) * dV*1.0d30  ! [g]
-
-             total_mass = total_mass + thisOctal%rho(subcell) * dV*1.0d30  ! [g]
-          end if  ! if inflow
-
-       end IF
-
-    end do
-
-  END SUBROUTINE TTauri_accretion_mass
-
-
   subroutine infallEnhancmentAMR(grid, distortionVector, nVec, timeStep, doDistortion, &
                                  particleMass, alreadyDoneInfall)
     ! creates an increase in the accretion rate for a T Tauri geometry.

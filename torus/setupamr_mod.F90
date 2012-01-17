@@ -12,6 +12,7 @@ module setupamr_mod
   use gridtype_mod, only:   gridtype
   USE parallel_mod, ONLY:   torus_abort
   use mpi_global_mod
+  use TTauri_mod, only: TTauri_accretion_mass
 
   implicit none
 
