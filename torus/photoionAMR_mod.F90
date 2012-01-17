@@ -91,7 +91,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     logical :: noPhoto=.false.
     integer :: evenUpArray(nThreadsGlobal-1)
-    real :: iterTime
+    real :: iterTime(3)
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
 
@@ -692,7 +692,7 @@ end subroutine radiationHydro
 
     !optimisation variables
 !    integer, parameter :: stackLimit=200
-    real, intent(inout) :: iterTime
+    real, intent(inout) :: iterTime(3)
     integer :: ZerothstackLimit, OldStackLimit
     real :: startTime, endTime, newTime
     integer :: stackLimitArray(1000)
@@ -1232,8 +1232,8 @@ end subroutine radiationHydro
 
              do iThread = 1, nThreads - 1
                 !tosendstack(1)%freq = 100.d0
-                toSendStack(1)%destination = 999
-                toSendStack(2)%destination = 999
+                toSendStack(1)%destination = 888
+!                toSendStack(2)%destination = 999
                 call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
              enddo
 
@@ -1272,12 +1272,9 @@ end subroutine radiationHydro
                       escapeCheck = .true.
                       stackSize = 0
                       !End photoionization loop
-
-                      if(currentStack(2)%destination == 999) then
-                         iSignal = 0                    
-                      end if
+                   else if (currentStack(1)%destination == 888) then
+                      iSignal = 0                    
                       currentStack%destination = 0                      
-                      !Start sending all photon packets rather than bundles
                    else if(currentStack(1)%destination == 500 .and. .not. sendAllPhotons) then
                       sendAllPhotons = .true.
                       stackSize = 0
@@ -1609,7 +1606,6 @@ end subroutine radiationHydro
 !             print *, "endTime ", endTime
 !             print *, "newTime ", newTime
 !             print *, "iterTime ", iterTime
-
              
              oldStackLimit = stackLimit
                 
@@ -1621,26 +1617,20 @@ end subroutine radiationHydro
                    timeArray(optCount) = newTime
                 end if
              end do
-             
-
-             if(abs(newTime - iterTime)< 1.d-15) then
+            
+             if(abs(newTime - iterTime(1))< 1.d-15) then
                 call writeInfo("Found the optimal stack size, ceasing optimization.", TRIVIAL)
                 optConverged = .true.                
              else
                 
-                if (newTime < iterTime) then
+                if (newTime < iterTime(1)) then
                    !it was faster this time
-
 
                    !lets get zealous!
                    dStack = int(dStack * 2.0)        
-
-
                    
                    !lets keep going in this direction
                    stackLimit = stackLimit + (sign*dStack)
-
-                   
                 else
                    !it was slower this time
 
@@ -1665,7 +1655,9 @@ end subroutine radiationHydro
           else             
              switch = .true. 
           end if
-          iterTime = newTime!/real(nmonte)
+          iterTime(3) = iterTime(2)
+          iterTime(2) = iterTime(1)
+          iterTime(1) = newTime!/real(nmonte)
           if(stacklimit <= 0) then
              stacklimit = 1
           end if

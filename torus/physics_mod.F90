@@ -357,7 +357,7 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     integer :: evenuparray(nthreadsGlobal-1)
-    real :: iterTime
+    real :: iterTime(3)
 #endif
 #endif
     nLower = 2
