@@ -343,65 +343,6 @@ contains
   end subroutine fillGridMagneticAccretion
 #endif
 
-  
-
-  TYPE(vector) FUNCTION TTauriVelocity(point)
-    ! calculates the velocity vector at a given point for a model
-    !   of a T Tauri star with magnetospheric accretion
-    ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
-
-    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar, TTauriDiskHeight, dipoleoffset
-                               
-    IMPLICIT NONE
-
-    TYPE(vector), INTENT(IN) :: point
-
-    TYPE(vector) :: pointVec
-    TYPE(vector)      :: vP
-    REAL(double)  :: modVp
-    REAL(double)  :: phi
-    REAL(double)  :: r, rM, theta, y
-
-    pointVec = point  * 1.e10_oc
-    r = modulus( pointVec ) 
-    if (r /= 0.d0) then
-       theta = ACOS( max(-1.d0,min(1.d0,pointVec%z / dble(r) )))
-    else
-       theta = pi/2.d0
-    endif
-    if (theta == 0.d0) theta=1.d-20
-    rM  = r / SIN(theta)**2
-    y = SIN(theta)**2 
-
-    ! test if the point lies within the star
-    IF ( r < TTauriRstar ) THEN
-      TTauriVelocity = vector(1.e-15,1.e-15,1.e-15)
-      
-    ! test if the point lies too close to the disk
-    ELSE IF ( ABS(pointVec%z) < TTauriDiskHeight) THEN
-      TTauriVelocity = vector(1.e-14,1.e-14,1.e-14)
-    ! test if the point lies outside the accretion stream
-    ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
-  
-      vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
-                  0.0, &
-                 (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
-      modVp = SQRT((2.0 * bigG * TTauriMstar / TTauriRstar) * &
-                     (TTauriRstar/r - TTauriRstar/rM))
-      vP = (-1.0 * (modVp/cSpeed)) * vP
-      phi = ATAN2(pointVec%y,pointVec%x)
-      vP = rotateZ(vP,-phi)
-      
-      IF (pointVec%z < 0.0) vP%z = -vP%z
-      TTauriVelocity = vP
-
-    ELSE
-      TTauriVelocity = vector(1.e-12,1.e-12,1.e-12)
-    END IF
-    TTauriVelocity = rotateY(TTauriVelocity,-dble(dipoleOffset))
-  END FUNCTION TTauriVelocity
-
   ! find the total mass in accretion flow
   ! Before the initial call the total mass must be set to zero
   ! The output should be in grams.
