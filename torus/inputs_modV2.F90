@@ -119,6 +119,10 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
+    
+    if(readgrid) call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &
+         "Do a long photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
     if(readgrid) call getLogical("justdump", justDump, cLine, fLine, nLines, &
          "Dump a vtk file and abort: ","(a,1l,1x,a)", .false., ok, .false.)
 

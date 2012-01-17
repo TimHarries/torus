@@ -40,6 +40,7 @@
  
   logical :: readGrid, writeGrid  ! Do we read/write the AMR grid from/to a file
   logical :: justDump             !Dump a vtk file for the read in grid and exit
+  logical :: singleMegaPhoto             !Do an extensive photoionization calculation
   character(len=80) :: gridInputFilename, gridOutputFilename ! File names for reading/writing AMR grid
 
 !----------------------------------

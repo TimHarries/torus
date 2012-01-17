@@ -63,6 +63,7 @@ contains
          perturbIfront
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
+    use inputs_mod, only: singleMegaPhoto
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -178,9 +179,12 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("vtk dump completed. Aborting...")
        end if
-
+       
+!turn everything on and run a long calculation
+       if(singleMegaPhoto) then
+          maxPhotoionIter = 200
+       end if
     end if
-
 
 !    call writeVtkFile(grid, "ini.vtk", &
 !         valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont ", "mpithread  " /))
@@ -257,9 +261,8 @@ contains
        endif
     end if
 
-    if(grid%currentTime == 0.d0 .and. .not. readGrid) then
+    if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
        call ionizeGrid(grid%octreeRoot)
-
 
        if(.not. noPhoto) then
 
@@ -285,6 +288,10 @@ contains
              call writeVtkFile(grid, "start.vtk", &
              valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
           end do
+       end if
+
+       if(singleMegaPhoto) then
+          call torus_abort("Finished single photo calculation, ending...")
        end if
 
 !       if (myrank /= 0) call addStellarWind(grid%octreeRoot, globalsourcearray(1))
@@ -611,7 +618,7 @@ end subroutine radiationHydro
        monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
-         optimizeStack, stackLimit, dStack
+         optimizeStack, stackLimit, dStack, singleMegaPhoto
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     use mpi
     implicit none
@@ -1812,6 +1819,8 @@ end subroutine radiationHydro
         minCrossings = 1000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
+     else if(singleMegaPhoto) then
+        minCrossings = 50000 
      else
         minCrossings = 5000
         minCrossings = 1000
@@ -1944,17 +1953,23 @@ end subroutine radiationHydro
      end if
      
 
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!
+     if(singleMegaPhoto) then
+
+        write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
+        call writeAmrGrid(mpiFilename, .false., grid)
+        write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+
 !     if(hydrodynamics) then
-!        call writeVtkFile(grid, mpiFilename, &
-!             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!             "hydrovelocity","sourceCont   ","pressure     "/))!
-!!
- !    else
- !       call writeVtkFile(grid, mpiFilename, &
- !            valueTypeString=(/"HI           " , "temperature  ", &
- !            "sourceCont   "/))
+        call writeVtkFile(grid, mpiFilename, &
+             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+             "OI           ","HeI          ","HeII         ", "OI           ", "OII          ", &
+             "OIII         ","dust1        ","dust2        " /))
+     end if
+!
+!    else
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"HI           " , "temperature  ", &
+!            "sourceCont   "/))
  !    end if
 
      if(myRank /= 0) then
