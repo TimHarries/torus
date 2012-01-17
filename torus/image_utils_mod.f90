@@ -58,9 +58,9 @@ contains
 ! values it has been given. 
 !
   subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, &
-       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY)
+       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance)
     use messages_mod
-    use constants_mod, only: autocm, pctocm, radToDeg
+    use constants_mod, only: autocm, pctocm, radToDeg, pi
     implicit none 
 
 ! Arguments
@@ -74,6 +74,7 @@ contains
     real, intent(in) :: aspectRatio
     real, intent(in) :: inclination, positionAngle
     real, intent(in) :: offsetX, offsetY
+    real, intent(in) :: gridDistance
 
 ! Local variables
     character(len=80) :: message
@@ -122,7 +123,7 @@ contains
        call writeWarning(message)
     end if
 !
-! Set size of image y axis in cm or arcsec
+! Set size of image y axis in cm
     select case (myAxisunits)
     case ("au","AU")
        myImages(i)%ImageSizeY = imageSize * real(autocm)
@@ -131,7 +132,8 @@ contains
     case ("cm")
        myImages(i)%ImageSizeY = imageSize
     case ("arcsec")
-       myImages(i)%ImageSizeY = imageSize
+       myImages(i)%ImageSizeY = & 
+            (imageSize / 3600.0) * (pi/180.0) * gridDistance * pcToCm
     case default
        myImages(i)%ImageSizeY = imageSize
        write(message,*) "Unrecognised units for image axis: ", trim(axisunits)

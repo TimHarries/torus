@@ -1933,7 +1933,7 @@ contains
        endif
               
        call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, &
-            imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety)
+            imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety, gridDistance)
     else
        do i = 1, nImage
 
@@ -1998,7 +1998,7 @@ contains
                "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
 
           call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
-               thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety)
+               thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance)
        enddo
 
     end if
