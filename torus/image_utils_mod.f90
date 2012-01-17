@@ -133,7 +133,7 @@ contains
        myImages(i)%ImageSizeY = imageSize
     case ("arcsec")
        myImages(i)%ImageSizeY = & 
-            (imageSize / 3600.0) * (pi/180.0) * gridDistance * pcToCm
+            real( (imageSize / 3600.0) * (pi/180.0) * gridDistance * pcToCm)
     case default
        myImages(i)%ImageSizeY = imageSize
        write(message,*) "Unrecognised units for image axis: ", trim(axisunits)
