@@ -879,10 +879,8 @@ end subroutine radiationHydro
                 !             if(i /= 2) then
                 nuThresh = (grid%ion(i)%ipot)*evtoerg/hCgs
                 freq(1000+k) = nuthresh*0.99d0
-                !                print *, "A ", freq(1000+k), i
                 k = k + 1
                 freq(1000+k) = nuthresh*1.01d0
-                !                print *, "B ", freq(1000+k), i
                 k = k + 1
                 nfreq = nfreq + 2
                 !                end if
