@@ -92,6 +92,8 @@ contains
     logical :: noPhoto=.false.
     integer :: evenUpArray(nThreadsGlobal-1)
     real :: iterTime(3)
+    integer :: iterStack(3)
+    integer :: optID
     nHydroThreads = nThreadsGlobal-1
     dumpThisTime = .false.
 
@@ -269,13 +271,13 @@ contains
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                     looplimittime, .false.,iterTime,.true., evenuparray, sign)
+                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
-                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, &
-                     loopLimitTime, looplimittime, .false.,iterTime, .true., evenuparray, sign)
+                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 call writeInfo("Done",TRIVIAL)
              endif
              
@@ -456,9 +458,10 @@ contains
           end if
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
-          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
-               .true., evenuparray, sign)
-
+!          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
+!               .true., evenuparray, sign)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
+               looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
           call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
        else
@@ -605,7 +608,7 @@ end subroutine radiationHydro
 #endif
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, iterTime, &
-       monteCheck, evenuparray, sign, sublimate)
+       monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack
@@ -660,7 +663,6 @@ end subroutine radiationHydro
     integer :: nFreq
 
     logical, save :: firsttime = .true.
-    logical, save :: switch = .true.
     !$OMP THREADPRIVATE(firstTime)
 
     integer(bigint) :: iMonte_beg, iMonte_end, nSCat
@@ -690,17 +692,18 @@ end subroutine radiationHydro
     integer :: k
     real(double) :: nuThresh
 
-    !optimisation variables
+    !optimization variables
 !    integer, parameter :: stackLimit=200
     real, intent(inout) :: iterTime(3)
+    integer, intent(inout) :: iterStack(3)
     integer :: ZerothstackLimit, OldStackLimit
     real :: startTime, endTime, newTime
-    integer :: stackLimitArray(1000)
-    real :: timeArray(1000)
+    integer, intent(inout) :: optID
     integer :: optCounter, optCount
-    integer :: sign, dstackNaught
+    integer :: dstackNaught
     logical, save :: optConverged=.false.
     logical, save :: iniIterTime=.false.
+    real(double) :: m1, m2
   !  real :: oldTime = 1.e10
   !  integer :: newStackLimit= 0, oldStackLimit= 0
 
@@ -762,11 +765,11 @@ end subroutine radiationHydro
 
     if(.not. iniIterTime) then
        iterTime = 1.e30
+       optID = 1
        iniIterTime = .true.
     end if
 
     zerothstacklimit = stacklimit
-!    Sign = 1
     nPeriodic = 0
     bufferSize = 0 
     dStackNaught = dstack
@@ -1585,7 +1588,6 @@ end subroutine radiationHydro
 
        !Get the time for the iteration and see if it has improved with a new stack size
        if(optimizeStack .and. .not. optConverged .and. myRank /= 0) then  
-          if(switch) then             
              call MPI_BARRIER(amrCommunicator, ierr)
              call wallTime(endTime)
 
@@ -1598,66 +1600,84 @@ end subroutine radiationHydro
                 call MPI_RECV(endTime, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, status, ierr)
              end if
 
+             oldStackLimit = stackLimit
+
              !get the time per photon packet
              newTime = endTime - startTime
              newTime = newTime/real(nmonte)
+
+             if(optID == 1) then
+                optID = 2 
+                iterTime(1) = newTime                
+                iterStack(1) = stackLimit
+                stackLimit = oldStackLimit + dStack
+                
+             else if(optID == 2) then
+                optID = 3
+                iterTime(2) = newTime
+                iterStack(2) = stackLimit
+                stackLimit = iterStack(1) - dStack
+
+             else if(optID == 3) then
+                optID = 1
+                iterTime(3) = newTime
+                iterStack(3) = stackLimit
+
+                !do stuff
+                !get the gradients
+                m1 = (dble(iterTime(2) - iterTime(1)))/(dble(iterStack(2) - iterStack(1)))
+                m2 = (dble(iterTime(3) - iterTime(1)))/(dble(iterStack(3) - iterStack(1)))
+
+                if(m1 > 0.d0) then
+                   !bigger stack took longer
+                   if(m2 > 0.d0) then
+                      !smaller stack was quicker
+                      stackLimit = iterStack(3)
+                   else
+                      !smaller stack took longer/the same
+                      stackLimit = iterStack(1)
+                   end if
+                else if(m1<0.d0) then
+                   !bigger stack was quicker
+                   if(m2 < 0.d0) then
+                      !smaller stack was slower
+                      stackLimit = iterStack(2)
+                   else 
+                      !smaller stack was also quicker
+                      if(abs(m1) > abs(m2)) then
+                         !but big stack is better
+                         stackLimit = iterStack(2)
+                      else
+                         !and smaller stack is the best
+                         stackLimit = iterStack(3)
+                      end if
+                   end if
+                else
+                   !bigger stack was the same
+                   if(m2 == 0.d0) then
+                      !smaller stack was the same
+                      stackLimit = iterStack(1)
+                   else if(m2 > 0.d0) then
+                      !smaller stack was faster
+                      stackLimit = iterStack(3)
+                   else
+                      !smaller stack was slower
+                      stackLimit = iterStack(1)
+                   end if
+                end if
+
+                !reset for next probing
+                iterTime = 0.0
+                iterStack = 0
+             else
+                call torus_abort("optID error")
+             end if
 
 !             print *, "startTime ", startTime
 !             print *, "endTime ", endTime
 !             print *, "newTime ", newTime
 !             print *, "iterTime ", iterTime
-             
-             oldStackLimit = stackLimit
-                
-             !keep track of what sizes we have used
-             !if one is reproduced we have some kind of convergence and can stop this
-             do optCount = 1, 1000
-                if(stackLimitArray(optCount) == 0) then
-                   stackLimitArray(optCount) = oldStackLimit
-                   timeArray(optCount) = newTime
-                end if
-             end do
-            
-             if(abs(newTime - iterTime(1))< 1.d-15) then
-                call writeInfo("Found the optimal stack size, ceasing optimization.", TRIVIAL)
-                optConverged = .true.                
-             else
-                
-                if (newTime < iterTime(1)) then
-                   !it was faster this time
-
-                   !lets get zealous!
-                   dStack = int(dStack * 2.0)        
-                   
-                   !lets keep going in this direction
-                   stackLimit = stackLimit + (sign*dStack)
-                else
-                   !it was slower this time
-
-                   !we may have just overshot, lets be careful
-                   if(dstack <= 1) then
-                      dstack = dstacknaught
-                   else
-                      dStack = int(dStack/2.0)
-                   end if
-                   
-                   !reverse the scanning direction
-                   sign = -sign
-                   
-                   !start heading back the right way
-                   stackLimit = oldStackLimit + (sign*dStack)                   
-
-                end if
-             end if
-             if(dstack <= 1) then
-                dstack = dstacknaught
-             end if
-          else             
-             switch = .true. 
-          end if
-          iterTime(3) = iterTime(2)
-          iterTime(2) = iterTime(1)
-          iterTime(1) = newTime!/real(nmonte)
+             !
           if(stacklimit <= 0) then
              stacklimit = 1
           end if

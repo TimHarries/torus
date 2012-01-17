@@ -358,6 +358,8 @@ contains
 #ifdef PHOTOION
     integer :: evenuparray(nthreadsGlobal-1)
     real :: iterTime(3)
+    integer :: iterStack(3)
+    integer :: optID
 #endif
 #endif
     nLower = 2
@@ -457,8 +459,11 @@ contains
            call setupevenuparray(grid, evenuparray)
 !           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
 !                .true., evenuparray, sublimate=.false.)
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
-                iterTime, .true., evenuparray, sign, sublimate=.false.)
+!           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
+!                iterTime, .true., evenuparray, sign, sublimate=.false.)
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, &
+                1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)
+
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
