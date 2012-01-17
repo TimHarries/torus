@@ -549,7 +549,7 @@ ifeq ($(stateq), yes)
   ETCFLAG += -DSTATEQ
 endif
 
-ifeq ($(stateq), yes)
+ifeq ($(datacube), yes)
   ETCFLAG += -DFITSCUBE
 endif
 
