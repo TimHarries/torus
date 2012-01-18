@@ -809,8 +809,10 @@ end subroutine radiationHydro
     if(customStacks) then
        optimizeStack = .false.
        maxStackLimit = maxval(stackLimitArray(1:nThreads))
+       sentStackLimit = stackLimitArray(myRankGlobal+1)
     else
        maxStackLimit = stackLimit
+       sentStackLimit = stackLimit
     end if
 
     zerothstacklimit = stacklimit
@@ -1058,8 +1060,12 @@ end subroutine radiationHydro
 
           allocate(buffer(bufferSize))
        end if
-       zerothstacklimit = stacklimitArray(1)
-             
+       if(customstacks) then
+          zerothstacklimit = stacklimitArray(1)
+       else
+          zerothstacklimit = stacklimit
+       end if
+
        !setup the buffer                
 !       print *, "buffer ", buffer
 !       print *, "bufferSize ", bufferSize
@@ -1334,7 +1340,7 @@ end subroutine radiationHydro
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nThreads-1
                          if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
-                            if(nSaved(optCounter) == (stackLimitArray(myRankGlobal+1)) .or. sendAllPhotons) then
+                            if(nSaved(optCounter) == sendStackLimit) .or. sendAllPhotons) then
                                thisPacket = 1
                                
                                toSendStack%freq = 0.d0
@@ -1393,7 +1399,7 @@ end subroutine radiationHydro
                !$OMP PARALLEL DEFAULT(NONE) &
                !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton) &
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
-               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell) &
+               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat ) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, myRank, currentStack, escapeCheck) &
@@ -1401,7 +1407,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nlambda, lamarray, tlimit, nThreads, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, gammaTableArray, freq) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
-               !$OMP SHARED(nSaved, maxStackLimit, stackLimitArray) &
+               !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit)
                
@@ -1473,7 +1479,7 @@ end subroutine radiationHydro
                          !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
                          do optCounter = 1, nThreads-1
                             if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
-                               if(nSaved(optCounter) == (stackLimitArray(myRankGlobal+1)) .or. sendAllPhotons) then
+                               if(nSaved(optCounter) == (sendStackLimit) .or. sendAllPhotons) then
                                   thisPacket = 1
                                   toSendStack%freq = 0.d0
                                   do sendCounter = 1, (maxStackLimit*nThreads)
