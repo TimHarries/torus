@@ -723,6 +723,7 @@ end subroutine radiationHydro
     integer :: dprCounter
 
     integer :: maxStackLimit
+    integer :: sendStackLimit
 
     integer :: evenuparray(nThreadsGlobal-1)
     integer :: k
@@ -809,10 +810,10 @@ end subroutine radiationHydro
     if(customStacks) then
        optimizeStack = .false.
        maxStackLimit = maxval(stackLimitArray(1:nThreads))
-       sentStackLimit = stackLimitArray(myRankGlobal+1)
+       sendStackLimit = stackLimitArray(myRankGlobal+1)
     else
        maxStackLimit = stackLimit
-       sentStackLimit = stackLimit
+       sendStackLimit = stackLimit
     end if
 
     zerothstacklimit = stacklimit
@@ -1340,7 +1341,7 @@ end subroutine radiationHydro
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nThreads-1
                          if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
-                            if(nSaved(optCounter) == sendStackLimit) .or. sendAllPhotons) then
+                            if(nSaved(optCounter) == sendStackLimit .or. sendAllPhotons) then
                                thisPacket = 1
                                
                                toSendStack%freq = 0.d0
