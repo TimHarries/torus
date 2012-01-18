@@ -375,7 +375,8 @@ contains
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=500) :: namestring, unitString
-    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT
+    logical :: haveUandUoverT
 
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
@@ -434,11 +435,24 @@ contains
     ! velocity unit is derived from distance and time unit (converted to seconds from years)
     sphdata%codeVelocitytoTORUS = uvel / cspeed 
 
+! Check whether this SPH dump has u and u/T  available (e.g. SPH with radiative transfer). 
+! If they are both present then set the temperature from these columns. 
+    if ( wordIsPresent("u",word,nWord) .and. wordIsPresent("u/T",word,nWord) ) then
+       call writeinfo("Found u and u/T in the SPH file",TRIVIAL)
+       iUoverT = indexWord("u/T",word,nWord)
+       haveUandUoverT = .true.
+    else
+       haveUandUoverT = .false.
+    end if
+
     if (convertRhoToHI) then
        write (message,'(a,i2)') "Converting density to HI density using H2 fraction from column ", ih2frac
        call writeInfo(message,FORINFO)
        ! This affects the conversion of internal energy to temperature via the mean molecular weight
        ! so needs to be handled differently to cases with fixed abundances. 
+       sphdata%codeEnergytoTemperature = 1.0
+    else if (haveUandUoverT) then
+       call writeInfo("Calculating temperature from u and u/T",FORINFO)
        sphdata%codeEnergytoTemperature = 1.0
     else
        sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
@@ -503,6 +517,8 @@ contains
           if (convertRhoToHI) then 
              gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
              sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
+          else if (haveUandUoverT) then 
+             sphdata%temperature(igas) = u / junkArray(iUoverT)
           else
              sphdata%temperature(igas) = u
           end if
@@ -2024,6 +2040,22 @@ contains
    end if
 
  end function indexWord
+
+! Check if the specified word is present in the list
+ logical function wordIsPresent(inputword, wordarray, nword)
+   character(len=*) :: inputWord
+   character(len=20) :: wordArray(:)
+   integer :: nWord, i
+   
+   wordIsPresent = .false.
+   do i = 1, nWord
+      if (inputWord == wordArray(i)) then
+         wordIsPresent = .true.
+         exit
+      endif
+   enddo
+
+ end function wordIsPresent
 
 ! Calculate the total mass of SPH particles found within the AMR grid. Use 
 ! sphdata%rhon to calculate the mass as this is used to populate  the grid 

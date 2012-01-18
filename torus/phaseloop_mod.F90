@@ -289,7 +289,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   logical :: doIntensivePeelOff=.false.
   logical :: forceFirstScat=.false.
   integer :: nLower, nUpper
-  logical :: starOff=.false. 
   real :: logMassLossRate
   real :: usePhotonWavelength
   logical :: forcedWavelength=.false.
@@ -1343,14 +1342,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
            totDustContinuumEmission = totdustContinuumEmission 
-           lcore = grid%lCore
+           lcore = tiny(lcore)
            if (nSource > 0) then              
-              if (.not.starOff) then
-                 lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
-                 if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
-              else
-                 lcore = tiny(lcore)
-              endif
+              lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+              if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
            endif
 
            totEnvelopeEmission = totDustContinuumEmission
@@ -1369,7 +1364,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            weightDust = 1.
            weightPhoto = 1.
 
-           if (chanceDust > 0.99) then
+           if ((chanceDust > 0.99).and.(nsource > 0))  then
               probDust = 0.9
               weightDust = chanceDust / probDust
               weightPhoto = (1. - chanceDust) / (1. - probDust)

@@ -1354,14 +1354,16 @@ CONTAINS
           
        CASE ("molcluster", "theGalaxy")
           if( .not. thisoctal%haschild(subcell)) then 
-             if ( amr3d .and. .not. cylindrical) then
-                 if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
-                   if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
-                   recentoctal => thisoctal
-                   CALL fillDensityCorners(thisOctal, clusterdensity, clustervelocity)
-                   thisOctal%velocity = thisoctal%cornervelocity(14)
-                endif
-             end if
+             if (.not. associated(thisoctal%cornervelocity)) then 
+                allocate(thisoctal%cornervelocity(27))
+                thisoctal%cornervelocity(:) = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+             endif
+             if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+                if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
+                recentoctal => thisoctal
+                CALL fillDensityCorners(thisOctal, clusterdensity, clustervelocity)
+                thisOctal%velocity = thisoctal%cornervelocity(14)
+             endif
              call assign_grid_values(thisOctal,subcell)
           end if
 #endif

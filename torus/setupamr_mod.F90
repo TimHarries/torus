@@ -1432,6 +1432,9 @@ contains
        call writeInfo(message, TRIVIAL)
        write(message,*) "Minimum Density: ",minrho, " g/cm^3"
        call writeInfo(message, TRIVIAL)
+
+! Write a VTK file so we can check the SPH to grid conversion 
+       call writeVTKfile(grid, "gridFromSph.vtk")
 #endif
 
     case DEFAULT
