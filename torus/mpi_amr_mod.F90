@@ -3004,7 +3004,7 @@ end subroutine dumpStromgrenRadius
           if (ier /= 0) then
              write(message,*) "Qshep3 returned an error ",ier
              call writeWarning(message)
-	     write(*,*) " npoints ",npoints
+             write(*,*) " npoints ",npoints
              do i = 1, nPoints
                 write(*,*) xPoint(i), ypoint(i),zpoint(i)
              enddo
