@@ -243,7 +243,8 @@ module angularImage
 
 ! Intensity as brightness temperature
         thisLambda = cSpeed / thisMolecule%transfreq(itrans)
-        cube%intensity(:,:,iv) = real(temp(:,:,1) * (thisLambda**2) / 2.0 * kErg)
+        cube%intensity(:,:,iv) = real(temp(:,:,1) * (thisLambda**2) / (2.0 * kErg) )
+
         if (wantTau ) cube%tau(:,:,iv)       = temp(:,:,2)
         cube%nCol(:,:)         = temp(:,:,3) 
         if ( splitCubes ) then 
