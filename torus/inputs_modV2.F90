@@ -1347,7 +1347,9 @@ contains
     use ion_mod, only: setAbundances
     character(len=80) :: cLine(:)
     logical :: fLine(:)
-    integer :: nLines
+    integer :: nLines, thisStackLim, numMPIthreads, i
+    character(len=4)  :: iChar
+    character(len=20) :: keyword
     logical :: ok
     real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
 
@@ -1392,6 +1394,28 @@ contains
        call getInteger("dstack", dstack, cLine, fLine, nLines, &
             "Optimization tweak level","(a,i8,a)", 100, ok, .false.)
 
+       call getLogical("customstacks", customStacks, cLine, fLine, nLines, &
+            "Specify stack limits on a thread by thread basis: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if(customStacks) then
+          call getInteger("numMPIthreads", numMPIthreads, cLine, fLine, nLines, &
+               "Number of MPI threads, for custom stack specification","(a,i8,a)", 100, ok, .false.)
+
+          allocate(stackLimitArray(numMPIthreads))
+
+          do i = 0, numMPIthreads-1
+             ! Set up a left adjusted string containing the image number and trailing spaces
+             iChar="    "
+             write(iChar,'(i4)') i
+             iChar = adjustl(iChar)
+
+             write(keyword,'(a)') "stacklimarray"//iChar
+             call getInteger(keyword, thisStackLim, cLine, fLine, nLines, &
+                  "Stack limit array element size","(a,i8,a)", stackLimit, ok, .false.)
+             
+             stackLimitArray(i+1) = thisStackLim
+          end do
+       end if
 
        call getLogical("periodicX", periodicX, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in x direction:", "(a,1l,1x,a)", .false., ok, .false.)

@@ -66,6 +66,8 @@
   logical :: optimizeStack     !Perform run-time photon stack size optimization
   integer :: dStack            !Stack increment for run-time photon stack size optimization 
   integer :: stackLimit        !Maximum stack size for run-time photon stack size optimization
+  integer, allocatable :: stackLimitArray(:)   !Maximum stack size for run-time photon stack size optimization
+  logical :: customStacks      !use custom stack sizes
 
   integer :: bufferCap         !Number of photon stacks to accomodate in buffer
 
