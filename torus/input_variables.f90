@@ -59,7 +59,7 @@
   logical :: checkForPhoto     !Check whether or not a photoionization loop is necessary
   logical :: monochromatic     !Use a monochromatic radiation field
   logical :: quickThermal      !Use a simplified thermal balance calculation
-
+  logical :: mergeBoundSinks   ! merge gravitationally bound sinks
   ! Parameters  specific to domain decomposed photoionisation 
 
   !Stack optimization
@@ -82,6 +82,7 @@
 ! Hydrodynamics
 !---------------
 
+  integer :: nHydroThreadsInput       !Number of hydrothreads for domain decomposition
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
   logical :: dirichlet                !Use dirichlet boundary conditions - otherwise periodic used by default
@@ -242,7 +243,7 @@
   logical :: readSources
   character(len=80) :: sourceFilename
   integer :: inputNsource
-  real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10)
+  real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10), sourceMdot(10)
   logical :: stellarSource(10)
   character(len=10) :: diffuseType(10)
   type(VECTOR) :: sourcePos(10), sourceVel(10)
@@ -328,6 +329,7 @@
   logical :: doSpiral ! For a Shakara Sunyaev Disc
   type(VECTOR) :: sphereVelocity, spherePosition ! unisphere geometry
   real(double) :: sphereMass, sphereRadius       ! unisphere geometry
+  real(double) :: omega
   real :: rpower ! radial density power  r^-rpower. For proto geometry
 
   ! whitney stuff
@@ -643,6 +645,7 @@
   real(double) :: limitScalar2 ! value for controlling grid subdivision 
   real(double) :: vturbmultiplier ! value for controlling grid subdivision  
   real :: amrGridSize          ! length of each side of the (cubic) grid 
+  real(double) :: smallestCellSize     ! size of smallest cell
   real(double) :: amrGridCentreX       ! x-coordinate of grid centre 
   real(double) :: amrGridCentreY       ! y-coordinate of grid centre 
   real(double) :: amrGridCentreZ       ! z-coordinate of grid centre 
@@ -663,6 +666,7 @@
   real(double) :: massTol !cell mass tolerance
   logical :: refineOnIonization !refine grid using ionization gradient
   real(double) :: amrTolerance !maximum gradient before AMR grid refines
+  real(double) :: amrUnrefineTolerance !minimum gradient before AMR grid unrefines
   real(double) :: amrTemperatureTol !maximum temperature gradient before AMR grid refines 
   real(double) :: amrSpeedTol !maximum speed grad before AMR grid refines
   real(double) :: amrIonFracTol !maximum ion frac grad before AMR grid refines

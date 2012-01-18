@@ -1,5 +1,6 @@
 module atom_mod
-  use constants_mod, only: cSpeed, hConst, mElectron, eCharge, pi, kConst, hCgs, kErg
+  use constants_mod, only: cSpeed, hConst, mElectron, eCharge, pi, kConst, hCgs, kErg, &
+       cSpeedSquared, twoTimesHcgs, hCgsOverKerg
   use kind_mod, only: double
   implicit none
 
@@ -343,8 +344,8 @@ contains
     
     real(double) :: fac1, fac2, fac3, nu, T
 
-    fac1 = (2.d0*dble(hCgs)*nu**3)/dble(cSpeed)**2
-    fac3 =  (dble(hCgs)*nu)/ (dble(kErg) * T) 
+    fac1 = (twoTimeshCgs*nu**3)/cSpeedSquared
+    fac3 =  hCgsOverKErg * nu / T 
     if (fac3 > 100.d0) then
        fac2 = 0.d0
     else
@@ -352,6 +353,7 @@ contains
     endif
     bNu = fac1 * fac2
   end function bNu
+
 
   real(double) function dbNubydT(nu,T)
     

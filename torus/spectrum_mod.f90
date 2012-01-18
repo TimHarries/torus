@@ -597,10 +597,10 @@ module spectrum_mod
       call createKuruczFilename(teffArray(i1), loggArray(j), thisFile1, label1)
       call createKuruczFilename(teffArray(i2), loggArray(j), thisFile2, label2)
 
-      write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
-      call writeInfo(message, TRIVIAL)
-      write(message, '(a,a)') "                                        : ",trim(label2)
-      call writeInfo(message, TRIVIAL)
+!      write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
+!      call writeInfo(message, TRIVIAL)
+!      write(message, '(a,a)') "                                        : ",trim(label2)
+!      call writeInfo(message, TRIVIAL)
 
       call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
       if (.not.ok1) then

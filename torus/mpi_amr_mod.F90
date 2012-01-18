@@ -132,6 +132,74 @@ contains
     enddo
   end subroutine findTotalMassMPI
 
+  subroutine findAngMomOverAllThreads(grid, angMom, centre)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(VECTOR), intent(out) :: angMom
+    type(VECTOR) :: centre
+    real(double), allocatable :: temp(:), temp2(:)
+    type(VECTOR), allocatable :: angMomOnThreads(:)
+    integer :: ierr
+
+    allocate(angMomOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal), temp2(1:nThreadsGlobal))
+    angMomOnThreads = VECTOR(0.d0,0.d0,0.d0)
+    temp = 0.d0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findAngMomOverAllThreads: grid not split over MPI")
+       angMom = VECTOR(0.d0,0.d0,0.d0)
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findAngMomMPI(grid%octreeRoot, angMomOnThreads(myRankGlobal), centre)
+       temp2 = angMomOnThreads%x
+       call MPI_ALLREDUCE(temp2, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       angMom%x = SUM(temp(1:nThreadsGlobal))
+       temp2 = angMomOnThreads%y
+       call MPI_ALLREDUCE(temp2, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       angMom %y= SUM(temp(1:nThreadsGlobal))
+       temp2 = angMomOnThreads%z
+       call MPI_ALLREDUCE(temp2, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       angMom%z = SUM(temp(1:nThreadsGlobal))
+    end if
+    deallocate(angMomOnThreads, temp, temp2)
+666 continue
+  end subroutine findAngMomOverAllThreads
+    
+  recursive subroutine findAngMomMPI(thisOctal, angMom, centre)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: centre, cellCentre, rVec, angMom, vel
+  real(double) :: dv, dm
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findangMomMPI(child, angMom, centre)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                cellCentre = subcellCentre(thisOctal, subcell)
+                vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                dv = cellVolume(thisOctal, subcell)*1.d30
+                dm = thisOctal%rho(subcell) * dv
+                rVec = 1.d10*(centre-cellCentre)
+                angMom = angMom + (rVec.cross.(dm*vel))
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findAngMomMPI
+
   subroutine findEnergyOverAllThreads(grid, energy)
     use mpi
     type(GRIDTYPE) :: grid
@@ -2915,7 +2983,7 @@ end subroutine dumpStromgrenRadius
           z = rVec%z
 
           radius = thisOctal%subcellSize*4.d0
-!          nPoints = 0
+          nPoints = 0
 
           do while (nPoints < 10)
              call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
@@ -2936,11 +3004,26 @@ end subroutine dumpStromgrenRadius
           if (ier /= 0) then
              write(message,*) "Qshep3 returned an error ",ier
              call writeWarning(message)
+	     write(*,*) " npoints ",npoints
+             do i = 1, nPoints
+                write(*,*) xPoint(i), ypoint(i),zpoint(i)
+             enddo
           endif
 
           thisOctal%rho(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
+          if (thisOctal%rho(iSubcell) < 0.d0) then
+             write(*,*) "Negative density after interp ",thisOctal%rho(iSubcell)
+             thisOctal%rho(iSubcell) = SUM(rhoPoint(1:nPoints))/dble(nPoints)
+             thisOctal%rhoe(iSubcell) = SUM(rhoePoint(1:nPoints))/dble(nPoints)
+             thisOctal%rhou(iSubcell) = SUM(rhouPoint(1:nPoints))/dble(nPoints)
+             thisOctal%rhov(iSubcell) = SUM(rhovPoint(1:nPoints))/dble(nPoints)
+             thisOctal%rhow(iSubcell) = SUM(rhowPoint(1:nPoints))/dble(nPoints)
+             thisOctal%energy(iSubcell) = SUM(energyPoint(1:nPoints))/dble(nPoints)
+             thisOctal%phi_gas(iSubcell) = SUM(phiPoint(1:nPoints))/dble(nPoints)
+             thisOctal%pressure_i(iSubcell) = SUM(pressurePoint(1:nPoints))/dble(nPoints)
 
+          else
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoePoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
@@ -3011,6 +3094,7 @@ end subroutine dumpStromgrenRadius
           thisOctal%pressure_i(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, pressurePoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
+       endif
           deallocate(lCell, lnext, rsq, a)
 
        endif
@@ -3603,7 +3687,6 @@ end subroutine dumpStromgrenRadius
     y = 0.d0
     z = 0.d0
     call getPointsInRadiusLocal(position, radius, thisOctal, npoints, rho, rhoe, rhou, rhov, rhow, energy, pressure, phi, x, y, z)
-
 !    do i = 1, nPoints
 !       do counter = 1, nPoints
 !          if( i /= counter) then
@@ -3658,7 +3741,6 @@ end subroutine dumpStromgrenRadius
           x(npoints) = storageArray(9)
           y(npoints) = storageArray(10)
           z(npoints) = storageArray(11)
-          
        end do
     endif
 

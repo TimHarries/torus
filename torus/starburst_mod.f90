@@ -176,7 +176,14 @@ contains
             call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10, freeUp=.true.)
          endif
       enddo
-      
+
+      do i = 1, nSource
+         if (source(i)%mass/msol > 15.d0) then
+            source(i)%mDot = 1.d-6 * msol / (365.25d0 * 24.d0 * 3600.d0)
+         else
+            source(i)%mdot = 0.d0
+         endif
+      enddo
       call dumpSources(source, nSource)
     end subroutine createSources
 
@@ -218,7 +225,7 @@ contains
     end function isSourceDead
 
     subroutine setSourceProperties(source, thisTable)
-      use inputs_mod, only : mStarburst, clusterRadius
+      use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize
       type(SOURCETYPE) :: source
       type(TRACKTABLE) :: thisTable
       integer :: i, j
@@ -255,12 +262,13 @@ contains
       r = r**2
       source%position = source%position * (clusterRadius / 1.d10) * r
       sigmaVel = sqrt(bigG * (Mstarburst*mSol)/(2.d0*clusterRadius))
-      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
+!      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
       vVec = randomUnitVector()
       r = gasdev()
       source%velocity = r * sigmaVel * vVec
+      source%accretionRadius = 2.5d0*smallestCellsize*1.d10
+      call buildSphereNBody(source%position, 2.5d0*smallestCellSize, source%surface, 20)
 
-      call buildSphereNBody(source%position, source%radius, source%surface, 20)
 
 
     end subroutine setSourceProperties

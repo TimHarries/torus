@@ -114,6 +114,7 @@ contains
           source(isource)%limbDark = 0.d0
           source(iSource)%teff = sourceTeff(iSource)
           source(iSource)%mass = sourceMass(iSource)
+          source(iSource)%mdot = sourceMdot(iSource)
           source(iSource)%radius = sourceRadius(iSource)
           source(iSource)%position = sourcePos(iSource)
           source(iSource)%velocity = sourceVel(iSource)

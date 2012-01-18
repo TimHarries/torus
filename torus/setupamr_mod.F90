@@ -226,8 +226,10 @@ contains
           grid%octreeRoot%temperature = 10.
           call randomNumberGenerator(randomSeed = .true.)
           do while(.not.gridconverged) 
+             gridConverged = .true.
              call splitGridFractal(grid%octreeRoot, rho0, 0.3, grid, gridconverged)
           enddo
+          write(*,*) myrankglobal, " conv ",gridConverged
           call randomNumberGenerator(syncIseed=.true.)
           do i = 1, 8
              grid%octreeRoot%mpiThread(i) = i
@@ -1267,7 +1269,7 @@ contains
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use inputs_mod, only : maxDepthAMR, photoionPhysics, hydrodynamics
+    use inputs_mod, only : minDepthAMR, photoionPhysics, hydrodynamics
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
@@ -1325,10 +1327,10 @@ contains
              endif
           endif
 
-          if (thisOctal%nDepth == maxDepthAMR) split = .false.
-          if (myrankGlobal==1) then
-             write(*,*) "depth ",thisOctal%nDepth, " subcell ",subcell, " mpithread ",thisOctal%mpithread(subcell), " split ",split
-          endif
+          if (thisOctal%nDepth == minDepthAMR) split = .false.
+!          if (myrankGlobal==1) then
+!             write(*,*) "depth ",thisOctal%nDepth, " subcell ",subcell, " mpithread ",thisOctal%mpithread(subcell), " split ",split
+!          endif
           if (split) then
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=.true., interp=.false.)

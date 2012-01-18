@@ -86,6 +86,8 @@ CONTAINS
 
        if (associated (thisOctal%boundaryCondition)) &
             thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       if (associated (thisOctal%boundaryCell)) &
+            thisOCtal%boundaryCell(subcell) = parentOctal%boundaryCell(parentSubcell)
        if (associated(thisOctal%gamma)) thisOctal%gamma(subcell)  = parentOctal%gamma(parentSubcell)
        if (associated(thisOctal%iEquationOfState)) &
             thisOctal%iEquationOfState(subcell)  = parentOctal%iEquationOfState(parentSubcell)
@@ -242,6 +244,9 @@ CONTAINS
 
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
+
+    CASE("sphere")
+       call calcSphere(thisOctal, subcell)
 
     CASE("interptest")
        call calcinterptest(thisOctal, subcell)
@@ -3799,6 +3804,9 @@ CONTAINS
           
        case("bonnor", "empty", "planar")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+       case("sphere")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
           
        case("unisphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -6143,8 +6151,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
     thisOctal%ionFrac(subcell,1) = 1.e-10
     thisOctal%ionFrac(subcell,2) = 1.
-    thisOctal%ionFrac(subcell,3) = 1.e-10
-    thisOctal%ionFrac(subcell,4) = 1.       
     thisOctal%etaCont(subcell) = 0.
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
@@ -7152,6 +7158,44 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   end subroutine calcUniformSphere
 
+  subroutine calcSphere(thisOctal,subcell)
+
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    use inputs_mod, only : beta, omega
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec, vVec
+    real(double) :: eThermal, rMod,  rhoSphere, rDash
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec-spherePosition)
+    rhoSphere = sphereMass / ((fourPi/3.d0) * sphereRadius**3 * 1.d30)
+
+    rVec = VECTOR(rVec%x, rVec%y, 0.d0)
+    rDash = modulus(rVec)
+    call normalize(rVec)
+
+    vVec = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
+    call normalize(vVec)
+    
+
+    rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
+    if (rMod < sphereRadius) then
+       thisOctal%rho(subcell) = rhoSphere * (rMod/sphereRadius)**beta
+       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
+    else
+       thisOctal%rho(subcell) = 1.d-3 * rhoSphere
+       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    endif
+    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 2.d0
+
+  end subroutine calcSphere
+
   subroutine calcinterptest(thisOctal,subcell)
 
     use inputs_mod,only : amrgridsize
@@ -7328,8 +7372,9 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.1d0 * cos(2.d0 * phi)) !m=2 dens perturbation
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
-        thisOctal%temperature(subcell) = 10.d0
-       thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%rho(subcell) = 1.d-3 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
@@ -7338,7 +7383,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
 
-    thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%iEquationOfState(subcell) = 4
 
   end subroutine calcProtoBinDensity
     
@@ -9471,6 +9516,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%NH,  source%NH)
     call copyAttribute(dest%NHI,  source%NHI)
     call copyAttribute(dest%boundaryCondition,  source%boundaryCondition)
+    call copyAttribute(dest%boundaryCell,  source%boundaryCell)
     call copyAttribute(dest%boundaryPartner,  source%boundaryPartner)
     call copyAttribute(dest%GravboundaryPartner,  source%GravboundaryPartner)
     call copyAttribute(dest%NHII,  source%NHII)
@@ -13369,6 +13415,8 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaAbs, thisOctal%maxChildren,1)
        call allocateAttribute(thisOctal%kappaSca, thisOctal%maxChildren,1)
+       call allocateAttribute(thisOctal%fixedTemperature, thisOctal%maxChildren)
+       thisOctal%fixedTemperature = .false.
 
 
        if (.not.cmf) then
@@ -13513,6 +13561,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%boundaryCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%gravboundaryPartner,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
@@ -13634,6 +13683,7 @@ end function readparameterfrom2dmap
        call deAllocateAttribute(thisOctal%rho_i_minus_1)
 
        call deAllocateAttribute(thisOctal%boundaryCondition)
+       call deAllocateAttribute(thisOctal%boundaryCell)
        call deAllocateAttribute(thisOctal%boundaryPartner)
 
        call deAllocateAttribute(thisOctal%radiationMomentum)
@@ -14798,6 +14848,7 @@ end function readparameterfrom2dmap
 
     thisOctal%refinedLastTime = .true.
     thisOctal%boundaryCondition = parentOctal%boundaryCondition(parentSubcell)
+    thisOctal%boundaryCell = parentOctal%boundaryCell(parentSubcell)
     thisOctal%gamma = parentOctal%gamma(parentSubcell)
     thisOctal%iEquationOfState = parentOctal%iEquationofState(parentSubcell)
     thisOctal%velocity = parentOctal%velocity(parentSubcell)

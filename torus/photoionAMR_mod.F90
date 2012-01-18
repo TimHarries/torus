@@ -55,11 +55,12 @@ contains
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
-    use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics
+    use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
+         pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
@@ -72,7 +73,7 @@ contains
     integer :: nLambda
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename
-    real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
+    real(double) :: dt, tc(513), temptc(513),cfl, gamma, mu
     integer :: iUnrefine
     integer :: myRank, ierr
     real(double) ::  nextDumpTime
@@ -126,6 +127,7 @@ contains
     call writeCodeUnits()
 
 !    tdump = returnCodeUnitTime(tdump)
+
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -227,6 +229,7 @@ contains
 
 
           call writeInfo("Refining individual subgrids", TRIVIAL)
+          call setAllUnchanged(grid%octreeRoot)
           if (.not.grid%splitOverMpi) then
              do
                 gridConverged = .true.
@@ -303,6 +306,7 @@ contains
                     
           if (myrank/=0) then
              call writeInfo("Refining individual subgrids", TRIVIAL)
+             call setAllUnchanged(grid%octreeRoot)
              if (.not.grid%splitOverMpi) then
                 do
                    gridConverged = .true.
@@ -320,7 +324,11 @@ contains
              call refineGridGeneric(grid, amrtolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
+             if (myrank /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+                call writeVtkFile(grid, "stellarwind.vtk", &
+                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+                ,"phi          " /))
 
 
              !THAW - self gravity
@@ -383,15 +391,21 @@ contains
 
     do while(grid%currentTime < tEnd)
        nstep = nstep + 1
-!       write(*,*) "rank ", myRankGlobal, "on next loop", myRank
+
+       
        tc = 0.d0
-       tc(myrank+1) = 1.d30
-       call computeCourantTime(grid, grid%octreeRoot, tc(myRank+1))
-              
-       call MPI_ALLREDUCE(tc, tempTc, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
-      ! stop
-       tc = tempTc
-       dt = MINVAL(tc(2:nThreadsGlobal)) * cfl
+       if (myrank /= 0) then
+          tc(myrank) = 1.d30
+          call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
+          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrank))
+          call pressureGradientTimeStep(grid, dt)
+          tc(myRank) = min(tc(myrank), dt)
+       endif
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+       dt = MINVAL(temptc(1:nHydroThreads))
+       dt = dt * dble(cfl)
+
+
 !       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
        
        if (nstep < 3) then
@@ -399,7 +413,7 @@ contains
        endif
   
        if (myrank == 1) then
-          write(*,*) tc(2:nThreadsGlobal)
+          write(*,*) temptc(1:nThreadsGlobal)
           write(*,*) "courantTime", dt
        endif
        dumpThisTime = .false.
@@ -409,10 +423,10 @@ contains
           dumpThisTime = .true.
        endif
 
-       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
-       call writeVtkFile(grid, mpiFilename, &
-            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-            "hydrovelocity","sourceCont   ","pressure     ", "rhou         "/))
+!       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!            "hydrovelocity","sourceCont   ","pressure     ", "rhou         "/))
 
 
 
@@ -489,14 +503,16 @@ contains
 
           if (myRank /= 0) then
              
+             call setAllUnchanged(grid%octreeRoot)
              call evenUpGridMPI(grid,.false.,.true., evenuparray)
 
              call refineGridGeneric(grid, amrtolerance, evenuparray)
 
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
+             if (myrank /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-      
+
           endif
 
           if (severeDamping) call cutVacuum(grid%octreeRoot)
@@ -515,6 +531,19 @@ contains
        if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
        if (severeDamping) call cutVacuum(grid%octreeRoot)
 
+!add/merge sink particles where necessary
+       if (myrank /= 0) then
+          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)       
+          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
+          do i = 1, globalnSource
+             call emptySurface(globalsourceArray(i)%surface)
+             call buildSphereNbody(globalsourceArray(i)%position, 2.5d0*smallestCellSize, &
+                  globalsourceArray(i)%surface, 20)
+          enddo
+
+       endif
+
+
 !       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
@@ -528,7 +557,7 @@ contains
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 3) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrtolerance)
+             call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
@@ -552,7 +581,6 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 !       nPhase = nPhase + 1
-
        if (dumpThisTime) then
 
           !Thaw to match time dumps of other codes
@@ -605,7 +633,6 @@ contains
  
     endif
     stageCounter = stageCounter + 1
-    
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
     close(444)
@@ -1715,10 +1742,10 @@ end subroutine radiationHydro
        end if
  
 
-       if (myrank == 1) then
-          if (nPhot > 0) then
-             write(*,*) "Thread 1 had ",real(nTotScat)/real(nPhot), " scatters per photon"
-          endif
+       if (myrank /= 0) then
+          call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+          nTotScat = i
+          if (writeoutput) write(*,*) "Iteration had ",real(nTotScat)/real(nMonte), " scatters per photon"
        endif
 
        call  identifyUndersampled(grid%octreeRoot)
@@ -1753,6 +1780,14 @@ end subroutine radiationHydro
     endif
 
     if (myRank /= 0) then
+
+       !$OMP PARALLEL DEFAULT(NONE) &
+       !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
+       !$OMP PRIVATE(dustHeating) &
+       !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
+       !$OMP SHARED(timedep, quickThermal, deltaTime)
+
+       !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end
           
           thisOctal => octalArray(iOctal)%content
@@ -1790,14 +1825,18 @@ end subroutine radiationHydro
              
           endif
        enddo
+       !$OMP END DO
+       !$OMP END PARALLEL
 
     endif
 
     !deallocate(octalArray)
 
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     if (writeoutput) &
          write(*,*) "Finished calculating ionization and thermal equilibria"
     if (myrank == 1) call tune(6, "Temperature/ion corrections")
+
 
 
     if(grid%geometry == "lexington") then
@@ -1822,8 +1861,8 @@ end subroutine radiationHydro
      else if(singleMegaPhoto) then
         minCrossings = 50000 
      else
-        minCrossings = 5000
-        minCrossings = 1000
+!        minCrossings = 5000
+!        minCrossings = 1000
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
@@ -1953,6 +1992,8 @@ end subroutine radiationHydro
      end if
      
 
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+
      if(singleMegaPhoto) then
 
         write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
@@ -1966,6 +2007,16 @@ end subroutine radiationHydro
              "OIII         ","dust1        ","dust2        " /))
      end if
 !
+!     if(hydrodynamics) then
+!        call writeVtkFile(grid, mpiFilename, &
+!             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!             "hydrovelocity","sourceCont   ","pressure     ", &
+!             "crossings    "/))!
+!!
+ !    else
+ !       call writeVtkFile(grid, mpiFilename, &
+ !            valueTypeString=(/"HI           " , "temperature  ", &
+ !            "sourceCont   "/))
 !    else
 !       call writeVtkFile(grid, mpiFilename, &
 !            valueTypeString=(/"HI           " , "temperature  ", &
@@ -2095,6 +2146,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     call randomNumberGenerator(getDouble=r)
     tau = -log(1.0-r)
 
+!    write(*,*) "calling distancetocellboundary with "
+!    write(*,*) "rVec ",rVec
+!    write(*,*) "uHat ",uHat
     call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
     
     octVec = rVec
@@ -2926,9 +2980,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       t2 = 30000.
 !
                       
-!                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
-!                      t1 = tlow
-!                      t2 = 2000.
+                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
+                      t1 = tlow
+                      t2 = 2000.
+                   endif
 !                   else
 !                      t1 = 100.
 !                      t2 = 30000.
@@ -3303,6 +3358,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq, sourcePhoton)
+    use inputs_mod,only : dustOnly
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: nFreq, iFreq
@@ -3326,50 +3382,52 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
 !    e = hCgs * nuHydrogen * ergtoEv
 
-    do i = 1, grid%nIon
+    if (.not.dustOnly) then
+       do i = 1, grid%nIon
           xSec = returnxSec(grid%ion(i), thisFreq, iFreq=iFreq)          
-
-       if (xSec > 0.d0 .and. thisFreq > nuHydrogen) then
-          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
-               + fac * xSec
-          if(i == 1) then
-             if(sourcePhoton) then
-                thisOctal%sourceContribution(subcell, i) = thisOctal%sourceContribution(subcell, i)  &
-                     + fac * xSec
-             else
-                thisOctal%diffuseContribution(subcell, i) = thisOctal%diffuseContribution(subcell, i)  &
-                     + fac * xSec
+          
+          if (xSec > 0.d0 .and. thisFreq > nuHydrogen) then
+             thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
+                  + fac * xSec
+             if(i == 1) then
+                if(sourcePhoton) then
+                   thisOctal%sourceContribution(subcell, i) = thisOctal%sourceContribution(subcell, i)  &
+                        + fac * xSec
+                else
+                   thisOctal%diffuseContribution(subcell, i) = thisOctal%diffuseContribution(subcell, i)  &
+                        + fac * xSec
+                end if
              end if
-          end if
-
-          if(thisOctal%SourceContribution(subcell,i) == 0.d0) then
-             thisOctal%normSourceContribution(subcell,i) = 0.d0
-          else
-             thisOctal%normSourceContribution(subcell, i) = thisOctal%sourceContribution(subcell, i) / &
-                  (thisOctal%sourceContribution(subcell, i) + thisOctal%diffuseContribution(subcell, i))
-          end if
-
-!          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
-!               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
-       endif
+             
+             if(thisOctal%SourceContribution(subcell,i) == 0.d0) then
+                thisOctal%normSourceContribution(subcell,i) = 0.d0
+             else
+                thisOctal%normSourceContribution(subcell, i) = thisOctal%sourceContribution(subcell, i) / &
+                     (thisOctal%sourceContribution(subcell, i) + thisOctal%diffuseContribution(subcell, i))
+             end if
+             
+             !          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
+             !               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
+          endif
 
        ! neutral h heating
 
-       if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
-          thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
-            + distance * xsec / (thisfreq * hcgs) &
-            * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
-       endif
+          if ((grid%ion(i)%z == 1).and.(grid%ion(i)%n == 1)) then
+             thisoctal%hheating(subcell) = thisoctal%hheating(subcell) &
+                  + distance * xsec / (thisfreq * hcgs) &
+                  * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
+          endif
 
        ! neutral he heating
 
-       if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
-          thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
-            + distance * xsec / (thisfreq * hcgs) &
-            * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
-       endif
+          if ((grid%ion(i)%z == 2).and.(grid%ion(i)%n == 2)) then
+             thisoctal%heheating(subcell) = thisoctal%heheating(subcell) &
+                  + distance * xsec / (thisfreq * hcgs) &
+                  * ((hcgs * thisfreq) - (hcgs * grid%ion(i)%nuthresh)) * photonpacketweight
+          endif
 
-    enddo
+       enddo
+    endif
 
     call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
 
@@ -4691,20 +4749,44 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   real :: lamArray(:)
   integer :: i, iLam
   real :: thisLam
-  real(double), allocatable :: kabsArray(:)
+  real(double), allocatable :: kAbsArray(:)
+  integer, allocatable, save :: indexLam(:)
+  logical, save :: firstTime = .true.
+
+  if (firstTime) then
+     firstTime = .false.
+     allocate(indexLam(1:nFreq))
+     indexLam = 0
+     do i = 1, nFreq
+        thisLam = real(cSpeed / freq(i)) * 1.e8
+        if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
+           call hunt(lamArray, nLambda, real(thisLam), iLam)
+           indexLam(i) = iLam
+        endif
+     enddo
+  endif
+
+
 
   allocate(kAbsArray(1:nlambda))
 
   call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
 
   do i = 1, nFreq
-     thisLam = real(cSpeed / freq(i)) * 1.e8
-     if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
-        call hunt(lamArray, nLambda, real(thisLam), iLam)
+     if (indexLam(i) /= 0) then
         spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
-             kAbsArray(iLam) *1.d-10* dFreq(i) * fourPi
+             kAbsArray(indexLam(i)) *1.d-10* dFreq(i) * fourPi
      endif
   enddo
+
+!  do i = 1, nFreq
+!     thisLam = real(cSpeed / freq(i)) * 1.e8
+!     if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
+!        call hunt(lamArray, nLambda, real(thisLam), iLam)
+!        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
+!             kAbsArray(iLam) *1.d-10* dFreq(i) * fourPi
+!     endif
+!  enddo
 
   deallocate(kAbsArray)
 
@@ -4821,7 +4903,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     type(octal), pointer  :: child 
     integer :: subcell, i
   
-    minCrossings = 100
+!    minCrossings = 100
 
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

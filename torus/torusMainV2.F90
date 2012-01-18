@@ -96,6 +96,8 @@ program torus
 !  call testSuiteRandom()  
   call inputs()
 
+  smallestCellSize = amrGridSize / dble(2**maxDepthAMR)
+
 #ifdef USEZLIB
 
 #else

@@ -650,6 +650,7 @@ contains
 !          print *, " write : ghostcell ", thisOctal%ghostCell
           call writeAttributePointerFlexi(20, "boundaryCondition", thisOctal%boundaryCondition, fileFormatted)
           call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
+          call writeAttributePointerFlexi(20, "boundaryCell", thisOctal%boundaryCell, fileFormatted)
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
 
           call writeAttributePointerFlexi(20, "gravboundaryPartner", thisOctal%GravboundaryPartner, fileFormatted)
@@ -3756,6 +3757,9 @@ contains
          case("boundaryCondition")
             call readPointerFlexi(20, thisOctal%boundaryCondition, fileFormatted)
 
+         case("boundaryCell")
+            call readPointerFlexi(20, thisOctal%boundaryCell, fileFormatted)
+
            
 
 !#ifdef MPI 
@@ -4079,6 +4083,9 @@ contains
          case("boundaryCondition")
             call receivePointerFlexi(thisOctal%boundaryCondition)
 
+         case("boundaryCell")
+            call receivePointerFlexi(thisOctal%boundaryCell)
+
          case("boundaryPartner")
             call receivePointerFlexi(thisOctal%boundaryPartner)
          case("gravboundaryPartner")
@@ -4272,6 +4279,9 @@ contains
 
 
       call sendAttributePointerFlexi(iThread, "boundaryPartner", thisOctal%boundaryPartner)
+
+      call sendAttributePointerFlexi(iThread, "boundaryCell", thisOctal%boundaryCell)
+
       call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
       call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
       call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)

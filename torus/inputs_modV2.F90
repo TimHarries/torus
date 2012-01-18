@@ -175,9 +175,12 @@ contains
 
        call getUnitDouble("tdump", tDump, "time", cLine, fLine, nLines, &
             "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+
        call getDouble("eps", inputEps, 1.d0, cLine, fLine, nLines, &
             "Gravity softening length (cm): ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
+    call getLogical("mergesinks", mergeBoundSinks, cLine, fLine, nLines, &
+         "Merge bound sinks ", "(a,1l,1x,a)", .true., ok, .false.)
 
     endif
 
@@ -191,8 +194,8 @@ contains
     if(photoionphysics) then
        call getLogical("checkForPhoto", checkforphoto, cLine, fLine, nLines, &
             "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)
-       
-
+       call getLogical("dustonly", dustOnly, cLine, fLine, nLines, &
+            "Use just dust opacities: ","(a,1l,1x,a)", .false., ok, .false.)
     end if
 
     if (molecularPhysics.and.atomicPhysics) then
@@ -459,6 +462,25 @@ contains
 
        call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
             "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+     case("sphere")
+       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+
+       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+
+       call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
+            "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
+            "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       call getReal("beta", beta, 1.0, cLine, fLine, nLines, &
+            "Density power law: ","(a,f7.2,a)",-2.0, ok, .true.)
+
+       call getDouble("omega", omega, 1.d0, cLine, fLine, nLines, &
+            "Angular frequency of rotation: ","(a,f7.2,a)",1.d-13, ok, .true.)
 
      case("ttauri")
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
@@ -980,6 +1002,9 @@ contains
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
          "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 5.d-2, ok, .false.) 
 
+    call getDouble("unreftol", amrUnrefinetolerance, 1.d0 , cLine, fLine, nLines, &
+         "Minimum gradient allowed before AMR grid unrefines: ","(a,es9.3,1x,a)", 5.d-2, ok, .false.) 
+
     if(refineontemperature) then
        call getDouble("amrtemperaturetol", amrTemperatureTol, 1.d0 , cLine, fLine, nLines, &
             "Maximum temperature gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-1, ok, .false.)
@@ -1203,6 +1228,10 @@ contains
           write(keyword, '(a,i1)') "mass",i
           call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
             "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
+
+          write(keyword, '(a,i1)') "mdot",i
+          call getDouble(keyword, sourceMdot(i), msol/(365.25d0 * 24.d0 * 3600.d0), cLine, fLine, nLines, &
+            "Source mass-loss rate (solar masses/year) : ","(a,f9.6,a)",0.d0, ok, .false.)
 
           write(keyword, '(a,i1)') "contflux",i
           call getString(keyword, inputcontFluxFile(i), cLine, fLine, nLines, &

@@ -395,7 +395,7 @@ contains
 
           if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
 
-          if (.not.thisoctal%ghostcell(subcell)) then
+          if ((.not.thisoctal%ghostcell(subcell)).and.(.not.thisOctal%boundaryCell(subcell))) then
           
 !             dx = 0.5*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
 !             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell))
@@ -712,7 +712,9 @@ contains
              rho_i_minus_1 = rho
              rhou_i_minus_1 = rhou
           
-
+             if ((rho_i_minus_1 == 0.d0).or.(thisOctal%rho(subcell) == 0.d0)) then
+                write(*,*) "bug in setupui ",rho_i_minus_1, thisOctal%rho(subcell)
+             endif
              !This is the velocity for the i'th cell at i-1/2
              thisoctal%u_interface(subcell) = &
                   weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
@@ -3290,8 +3292,45 @@ end subroutine sumFluxes
  
   end subroutine hydroStep2d
 
+  subroutine computeCourantTimeNbody(grid, nSource, source, tc)
+    use inputs_mod, only : maxDepthAMR
+    type(GRIDTYPE) :: grid
+    integer :: nSource, i, j
+    type(SOURCETYPE) :: source(:)
+    real(double) :: tc, tp, r, minr, acc
+    real(double) :: smallest
+
+    smallest = 1.d10*grid%octreeRoot%subcellSize/dble(2**maxdepthamr)
+    tp = 1.d30
+    do i = 1,nSource
+       tp = min(tp, 0.5d0*smallest / modulus(source(i)%velocity))
+    enddo
+    tc = min(tc, tp)
+    if (nSource > 1) then
+       tp = 1.d30
+       minr = 1.d30
+       do i = 1, nSource
+          do j = 1, nSource
+             if (i /= j) then
+                r = 1.d10*modulus(source(i)%position - source(j)%position)
+                minr = min(minr, r)
+             endif
+          enddo
+       enddo
+       minr = min(smallest, minr)
+       do i = 1, nSource
+          acc = modulus(source(i)%force)/source(i)%mass
+          acc = max(1.d-30, acc)
+          tp = min(tp, sqrt(minr/ acc))
+       enddo
+       tc = min(tc, tp)
+    endif
+  end subroutine computeCourantTimeNbody
+
+
 !calculate the courant time - the shortest time step that can be taken with no material being 
 !advect more than one grid cell. 
+
   recursive subroutine computeCourantTime(grid, thisOctal, tc)
     use mpi
     integer :: myRank, ierr
@@ -3331,6 +3370,62 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine computeCourantTime
+
+  subroutine pressureGradientTimeStep(grid, dt)
+    type(GRIDTYPE) :: grid
+    real(double) :: dt
+    type(VECTOR) :: direction
+    dt = 1.d30
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call pressureTimeStep(grid%octreeRoot, dt)
+
+    direction = VECTOR(0.d0, 1.d0, 0.d0)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call pressureTimeStep(grid%octreeRoot, dt)
+
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call pressureTimeStep(grid%octreeRoot, dt)
+
+  end subroutine pressureGradientTimeStep
+
+  recursive subroutine pressureTimeStep(thisoctal, dt)
+    use mpi
+    integer :: myrank, ierr
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt, dx, acc
+    
+
+
+    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call pressureTimestep(child, dt)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.thisoctal%ghostcell(subcell)) then
+
+             
+             dx = thisoctal%subcellsize * griddistancescale
+             acc =  (1.d0/thisOctal%rho(subcell)) * &
+                  (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / (2.d0*dx)
+             acc = max(1.d-30, acc)
+             dt = min(dt, sqrt(dx/acc))
+          endif
+       endif
+    enddo
+  end subroutine pressureTimeStep
 
 !sum gas and star contributions to total graviational potential
   recursive subroutine sumGasStarGravity(thisOctal)
@@ -3408,6 +3503,8 @@ end subroutine sumFluxes
           endif
        case(3) ! polytropic
           cs = sqrt(thisOctal%gamma(subcell)*thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+       case(4) ! federrath
+          cs = 0.166d0
        case DEFAULT
           write(*,*) "Unknown equation of state passed to sound speed ", thisOctal%iEquationofState(subcell)
           
@@ -3556,7 +3653,7 @@ end subroutine sumFluxes
              iUnrefine = iUnrefine + 1             
              if (iUnrefine == 100) then
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
-                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrUnrefinetolerance)
                 if (myrankglobal == 1) call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
@@ -3630,7 +3727,7 @@ end subroutine sumFluxes
     integer :: myRank, ierr
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff,totalMass !, ang
-    type(VECTOR) :: direction, viewVec
+    type(VECTOR) :: direction, viewVec, angMom
     integer :: nUnrefine
     integer :: thread1(5120), thread2(5120), nBound(5120), nPairs
     integer :: nHydroThreads
@@ -3692,6 +3789,7 @@ end subroutine sumFluxes
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
     endif
 
 !calculate initial values
@@ -3839,14 +3937,20 @@ end subroutine sumFluxes
     if (myrank /= 0) then
        tc(myrank) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
+       if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrank))
+       call pressureGradientTimeStep(grid, dt)
+       tc(myRank) = min(tc(myrank), dt)
     endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
     if (firstStep) then
        firstStep = .false.
        dt = MINVAL(temptc(1:nHydroThreads)) * 1.d-5
     else
-       dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
+       dt = MINVAL(temptc(1:nHydroThreads))
     endif
+
+    dt = dt * dble(cflNumber)
+
     if (writeoutput) write(*,*) "Courant time is ",dt
 
     if ((grid%geometry == "shakara").or.(grid%geometry=="rtaylor")) then
@@ -3871,10 +3975,14 @@ end subroutine sumFluxes
        if (myrank /= 0) then
           tc(myrank) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
+          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrank))
+          call pressureGradientTimeStep(grid, dt)
+          tc(myRank) = min(tc(myrank), dt)
        endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+       dt = MINVAL(temptc(1:nHydroThreads))
+       dt = dt * dble(cflNumber)
 
-       dt = MINVAL(temptc(1:nHydroThreads)) * dble(cflNumber)
        if (writeoutput) write(*,*) "Courant time is ",dt
        if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)
        call findMassoverAllThreads(grid, totalmass)
@@ -3882,6 +3990,14 @@ end subroutine sumFluxes
           totalmass = totalMass + SUM(globalSourceArray(1:globalnSource)%mass)
        endif
        if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass,initialMass/msol
+
+       call findAngMomoverAllThreads(grid, angMom, VECTOR(0.d0, 0.d0, 0.d0))
+       if (nBodyPhysics.and.(globalnSource > 0)) then
+          do i = 1, globalnSource
+             angMom = angMom + globalSourceArray(i)%angMomentum
+          enddo
+       endif
+       if (myrank==1)write(*,*) "Current ang mom: ",modulus(angMom), angmom
 
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
@@ -3903,7 +4019,7 @@ end subroutine sumFluxes
 !add/merge sink particles where necessary
           if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)
 
-!          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
+          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
 
 
           do j = 1, globalnSource
@@ -4669,6 +4785,7 @@ end subroutine sumFluxes
           end do
        else
           thisOctal%ghostCell(subcell) = .false.
+          thisOctal%boundaryCell(subcell) = .false.
           thisOctal%feederCell(subcell) = .false.
       endif
     enddo
@@ -6407,7 +6524,7 @@ end subroutine sumFluxes
        do iSource = 1, globalNSource
           
           r = modulus(centre - globalsourceArray(iSource)%position)/(grid%octreeRoot%subcellSize/dble(2**maxdepthamr))
-          if ((r < 3.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
+          if ((r < 6.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
              call addNewChildWithInterp(thisOctal, subcell, grid)
              converged = .false.
              exit
@@ -8252,7 +8369,7 @@ end subroutine refineGridGeneric2
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    real(double) :: mu, rhoPhys
+    real(double) :: mu, rhoPhys, gamma, cs
 
     mu = 0.d0
 
@@ -8319,6 +8436,18 @@ end subroutine refineGridGeneric2
 !          getpressure = getpressure * 1.d-5
        case(3) ! polytropic
           getPressure = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
+
+       case(4) ! federrath et al.
+          rho = thisOctal%rho(subcell)/1.d-15
+          cs = 0.166d5
+          if (rho <= 0.25d0) then
+             gamma = 1.d0
+          else if ((rho > 0.25d0).and.(rho <= 5.d0)) then
+             gamma = 1.1d0
+          else
+             gamma = 4.d0/3.d0
+          endif
+          getPressure = cs**2 * thisOctal%rho(subcell)**gamma
           
 
        case DEFAULT
@@ -8730,7 +8859,7 @@ end subroutine minMaxDepth
    end subroutine recursApplyDirichletLevel
 
 
-   subroutine mergeSinks(grid, source, nSource)
+   subroutine mergeSinksFF(grid, source, nSource)
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
      type(SOURCETYPE), allocatable :: newSource(:)
@@ -8877,7 +9006,110 @@ end subroutine minMaxDepth
 
 
      deallocate(group)
+   end subroutine mergeSinksFF
+
+   subroutine mergeSinks(grid, source, nSource)
+     use inputs_mod, only : mergeBoundSinks
+     type(GRIDTYPE) :: grid
+     type(SOURCETYPE) :: source(:)
+     type(SOURCETYPE), allocatable :: newSource(:)
+     type(VECTOR) :: newVelocity, newPosition, newAngMom
+     real(double) :: newMass, newAge
+     integer :: nSource
+     integer :: i, j
+     real(double) :: sep, eGrav, eKinetic, dotProd
+     integer :: n
+     integer :: newNSource
+     logical :: converged
+     logical :: merged(1000), bound
+
+     if (.not.mergeBoundSinks) goto 666
+
+     converged = .false.
+     do while (.not.converged)
+        converged = .true.
+        newNSource = 0
+        merged = .false.
+        allocate(newSource(1:1000))
+
+        do i = 1, nSource
+           do j = 1, nSource
+              if (i /= j) then
+                 sep = modulus(source(i)%position - source(j)%position)
+                 eGrav = -bigG * source(i)%mass * source(j)%mass / (sep*1.d10)
+                 eKinetic = 0.5d0*source(i)%mass*modulus(source(i)%velocity)**2 + &
+                      0.5d0 * source(j)%mass*modulus(source(j)%velocity)**2
+                 dotProd = source(i)%velocity .dot. source(j)%velocity
+                 bound = .false.
+!                 if (writeoutput) write(*,*) "attempting to merge ",i,j,eGrav+eKinetic,dotprod,bound
+                 if (((eGrav+eKinetic) < 0.d0).and.(dotProd < 0.d0)) bound = .true.
+
+                 if ((sep < source(i)%accretionRadius).and.bound.and.(.not.(merged(i).or.merged(j)))) then
+                    if (writeoutput) write(*,*) i,j," being merged ",eGrav,eKinetic
+                    newMass = source(i)%mass + source(j)%mass
+                    newVelocity = source(i)%mass * source(i)%velocity + source(j)%mass * source(j)%velocity
+                    newPosition = source(i)%mass * source(i)%position + source(j)%mass * source(j)%position
+                    newAge = source(i)%age + source(j)%age
+                    newAngMom = source(i)%angMomentum + source(j)%angMomentum
+                    n = 2
+                    newNSource = newNSource + 1
+                    newSource(newNSource)%mass = newMass
+                    newSource(newNSource)%angMomentum = newAngMom
+                    newSource(newnSource)%velocity = (1.d0/newMass) * newVelocity 
+                    newSource(newnSource)%position = (1.d0/newMass) * newPosition
+                    newSource(newnSource)%radius = rSol/1.d10
+                    newSource(newnSource)%age = newAge / dble(n)
+                    newSource(newnSource)%stellar = .true.
+                    newSource(newnSource)%diffuse = .false.
+                    newSource(newnSource)%accretionRadius = source(i)%accretionRadius
+                    merged(i) = .true.
+                    merged(j) = .true.
+                    converged = .false.
+                 endif
+              endif
+           enddo
+        enddo
+        do i = 1, nSource
+           if (.not.merged(i)) then
+              newNSource = newNSource + 1
+              newSource(newNSource)%mass = source(i)%mass
+              newSource(newNSource)%velocity = source(i)%velocity
+              newSource(newNSource)%position = source(i)%position
+              newSource(newNSource)%radius = source(i)%radius
+              newSource(newNSource)%age = source(i)%age
+              newSource(newnSource)%stellar = .true.
+              newSource(newnSource)%diffuse = .false.
+              newSource(newnSource)%accretionRadius = source(i)%accretionRadius
+           endif
+        enddo
+        
+        nSource = newnSource
+        source(1:nSource)%mass = newSource(1:nSource)%mass
+        source(1:nSource)%velocity = newSource(1:nSource)%velocity
+        source(1:nSource)%position = newSource(1:nSource)%position
+        source(1:nSource)%radius = newSource(1:nSource)%radius
+        source(1:nSource)%age = newSource(1:nSource)%age
+        source(1:nSource)%stellar = newSource(1:nSource)%stellar
+        source(1:nSource)%diffuse = newSource(1:nSource)%diffuse
+        source(1:nSource)%angMomentum = newSource(1:nSource)%angMomentum
+        
+        do j = 1, nSource
+           call emptySurface(source(j)%surface)
+           call buildSphereNbody(source(j)%position, grid%halfSmallestSubcell, source(j)%surface, 20)
+        enddo
+        
+        if (writeoutput) then
+           write(*,*) "Number of sources after merges: ",nSource
+        endif
+        deallocate(newSource)
+     end do
+     
+666  continue
+
+
+
    end subroutine mergeSinks
+
    subroutine addSinks(grid, source, nSource)
      use mpi
      type(GRIDTYPE) :: grid
@@ -8949,6 +9181,7 @@ end subroutine minMaxDepth
     integer :: nSource, nd
     integer :: i, subcell, ierr, ithread, tag, nProbes
     logical :: createSink
+    real(double) :: vLocal, vNeighbour, deltaV
     real(double) :: q, phi, phigas, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, xnext, px, py, pz
     type(VECTOR) :: probe(6), locator
     tag = 77
@@ -9020,6 +9253,57 @@ end subroutine minMaxDepth
 !                   write(*,*) "Create sink failed not local phi min"
                    exit
                 endif
+             enddo
+          endif
+
+          if (createSink) then
+             nProbes = 6
+             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
+             probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
+             probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
+             probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
+             
+             do i = 1, nProbes
+                locator = subcellcentre(thisoctal, subcell) + probe(i) * &
+                     (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                neighbouroctal => thisoctal
+                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, probe(i), q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+                select case (i)
+                   case(1)
+                      vLocal = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
+                      vNeighbour = rhou / rho
+                      deltaV = vNeighbour - vLocal
+                      if (deltaV > 0.d0) createSink = .false.
+                   case(2)
+                      vLocal = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
+                      vNeighbour = rhou / rho
+                      deltaV = vNeighbour - vLocal
+                      if (deltaV < 0.d0) createSink = .false.
+                   case(3)
+                      vLocal = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
+                      vNeighbour = rhov / rho
+                      deltaV = vNeighbour - vLocal
+                      if (deltaV > 0.d0) createSink = .false.
+                   case(4)
+                      vLocal = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
+                      vNeighbour = rhov / rho
+                      deltaV = vNeighbour - vLocal
+                      if (deltaV < 0.d0) createSink = .false.
+                   case(5)
+                      vLocal = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
+                      vNeighbour = rhow / rho
+                      deltaV = vNeighbour - vLocal
+                      if (deltaV > 0.d0) createSink = .false.
+                   case(6)
+                      vLocal = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
+                      vNeighbour = rhow / rho
+                      deltaV = vNeighbour - vLocal
+                      if (deltaV < 0.d0) createSink = .false.
+                   end select
              enddo
           endif
 
@@ -9776,14 +10060,26 @@ end subroutine minMaxDepth
     enddo
   end subroutine calculateRhobar
 
+  subroutine addStellarWind(grid, nSource, sourceArray)
+    type(GRIDTYPE) :: grid
+    integer :: nSource, i
+    type(SOURCETYPE) :: sourceArray(:)
 
-  recursive subroutine addStellarWind(thisOctal, source)
+    do i = 1, nSource
+       if (sourceArray(i)%mdot > 0.d0) then
+          call addStellarWindRecur(grid%octreeRoot, sourceArray(i))
+       endif
+    enddo
+  end subroutine addStellarWind
+
+  recursive subroutine addStellarWindRecur(thisOctal, source)
     use mpi
+    use inputs_mod, only : smallestCellSize
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm, mdot
+    real(double) :: r, v, vterm
     type(VECTOR) :: cellCentre, rVec
  
 
@@ -9793,7 +10089,7 @@ end subroutine minMaxDepth
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call addStellarWind(child, source)
+                call addStellarWindRecur(child, source)
                 exit
              end if
           end do
@@ -9802,16 +10098,16 @@ end subroutine minMaxDepth
           
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
+          thisOctal%boundaryCell(subcell) = .false.
           cellCentre = subcellCentre(thisOctal, subcell)
           rVec = cellCentre - source%position
           r = modulus(rVec)
           rVec = rVec / r
-          if (r < thisOctal%subcellsize*10.d0) then
-             mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
-             vterm = 2000.d0 * 1.d5
-             thisOctal%ghostCell(subcell) = .true.
-             thisOctal%boundaryCondition(subcell) = 8
-             rho = real(mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
+          if (r < smallestCellSize*5.d0) then
+!             mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
+             vterm = 2.d0 * 1.d5
+             thisOctal%boundaryCell(subcell) = .true.
+             rho = real(source%mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
              v = vterm
              thisOctal%rho(subcell) = rho
              thisOctal%velocity(subcell) = (v/cspeed)*rVec
@@ -9826,7 +10122,7 @@ end subroutine minMaxDepth
 
        endif
     enddo
-  end subroutine addStellarWind
+  end subroutine addStellarWindRecur
 
 
 

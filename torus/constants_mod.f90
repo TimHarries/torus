@@ -59,9 +59,11 @@ module constants_mod
 
   real(double), parameter :: hConst = 6.626176d-34   ! Js
   real(double), parameter :: hCgs = 6.626205d-27
+  real(double), parameter :: twoTimeshCgs = 2.d0 * hCgs  
   real(double), parameter :: hCgsOverfourPi = hCgs / fourPi
   real(double), parameter :: kConst = 1.380662d-23   ! J/k
   real(double), parameter :: kErg = 1.380626d-16     ! erg/k
+  real(double), parameter :: hCgsOverKerg = hCgs/kErg
   real(double), parameter :: kev = 8.6171d-5         ! erg/k
   real(double), parameter :: sigmaE = 6.6525d-25       ! cm^2
   real(double), parameter :: eCharge = 4.803242384d-10 ! 
@@ -79,6 +81,7 @@ module constants_mod
   ! speeds
 
   real(double), parameter :: cSpeed = 2.99792458d10  ! cm/s
+  real(double), parameter :: cSpeedSquared = cSpeed**2
   real(double), parameter :: OneOvercSpeed = 3.33564095d-11  ! s/cm
   real, parameter :: cSpeed_sgl = 2.99792458e10  ! cm/s
   real(double), parameter :: cSpeed_dbl = 2.99792458d10  ! cm/s
