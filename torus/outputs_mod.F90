@@ -196,6 +196,11 @@ contains
     if (photoionPhysics.and.calcImage) then
        call setupXarray(grid, xArray, nLambda, photoion=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       if(postsublimate) then
+          call writeInfo("Sublimating dust")
+          call quickSublimate(grid%octreeRoot)
+       end if
+       
        if ( splitoverMPI ) then 
 #ifdef MPI
           do i = 1, nImage
@@ -261,6 +266,7 @@ contains
                wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
           if(postsublimate) then
+             call writeInfo("Sublimating dust")
              call quickSublimate(grid%octreeRoot)
           end if
           call getSublimationRadius(grid, rSub)
@@ -283,6 +289,7 @@ contains
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              if(postsublimate) then
+                call writeInfo("Sublimating dust")
                 call quickSublimate(grid%octreeRoot)
              end if
              fastIntegrate=.true.
