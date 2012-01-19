@@ -169,16 +169,16 @@ contains
     !$OMP SHARED(nOmpThreads)
     !$OMP MASTER
     nOmpThreads = omp_get_num_threads()
-    print *, "THINK IM USING OPENMP "
+!    print *, "THINK IM USING OPENMP "
     !$OMP END MASTER
     !$OMP END PARALLEL
 #endif
 
 #ifdef MPI
     nTot = nThreadsGlobal * nOmpThreads
-    print *, "THINK IM USING MPI "
+!    print *, "THINK IM USING MPI "
 #else
-    print *, "DONT THINK IM USING MPI"
+!    print *, "DONT THINK IM USING MPI"
     nTot = nOmpThreads
 #endif
     allocate(itest(1:nTot))
