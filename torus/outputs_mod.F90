@@ -18,7 +18,7 @@ contains
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, nv
-    use inputs_mod, only : lineEmission
+    use inputs_mod, only : lineEmission, postsublimate
     use inputs_mod, only : monteCarloRT
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use image_utils_mod, only: getImageWavelength, getnImage
@@ -45,6 +45,7 @@ contains
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename
     use formal_solutions, only :compute_obs_line_flux
+    use photoion_utils_mod, only: quickSublimate
 #ifdef PHOTOION
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
@@ -259,6 +260,9 @@ contains
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
+          if(postsublimate) then
+             call quickSublimate(grid%octreeRoot)
+          end if
           call getSublimationRadius(grid, rSub)
           write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
           call writeInfo(message, FORINFO)

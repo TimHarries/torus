@@ -262,6 +262,8 @@
   ! Variance Reduction (spectrum_mod)
   logical :: biasToLyman
   real(double) :: biasMagnitude
+  logical :: screened
+  logical :: postsublimate
 
 !-----------------
 ! Dust parameters

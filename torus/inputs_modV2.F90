@@ -319,6 +319,12 @@ contains
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("screened", screened, cLine, fLine, nLines, &
+         "Screen stellar photons: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("postsublimate", postsublimate, cLine, fLine, nLines, &
+         "sublimate dust for sed/image: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("benchmark", calcBenchmark, cLine, fLine, nLines, &
          "Check a benchmark: ","(a,1l,1x,a)", .false., ok, .false.)
 

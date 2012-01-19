@@ -296,7 +296,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   logical :: fillTio=.false.
   logical :: plezModelOn=.false.
   logical :: fillThomson=.false.
-  logical :: screened=.false.
   logical :: VoigtProf=.false.
   logical :: photLine=.false.            ! photospheric line production
   logical :: useInterp=.false.
@@ -1646,7 +1645,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   subroutine do_one_outer_photon_loop
-
+    use inputs_mod, only: screened
     implicit none
 
     logical :: hitcore
@@ -1924,10 +1923,14 @@ CONTAINS
                       useInterp, grid%Rstar1, coolStarPosition, nSource, source, &
                       startOctal=sourceOctal, startSubcell=sourceSubcell)
               else
-                 
+
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
+!                 print *, "nTau", nTau
+!                 print *, "tauExt", tauExt(nTau)
+!                 print *, "pos ",thisphoton%position
+!                 print *, "outvec ",outvec
 
 
 !              if (thisPhoton%contPhoton.and.thisPhoton%stellar) &
