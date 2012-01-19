@@ -282,6 +282,9 @@ contains
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+             if(postsublimate) then
+                call quickSublimate(grid%octreeRoot)
+             end if
              fastIntegrate=.true.
              call do_phaseloop(grid, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
