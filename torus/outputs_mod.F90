@@ -45,8 +45,8 @@ contains
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename
     use formal_solutions, only :compute_obs_line_flux
-    use photoion_utils_mod, only: quickSublimate
 #ifdef PHOTOION
+    use photoion_utils_mod, only: quickSublimate
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
     use photoionAMR_mod, only : createImageSplitGrid
@@ -265,10 +265,12 @@ contains
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
+#ifdef PHOTOION
           if(postsublimate) then
              call writeInfo("Sublimating dust")
              call quickSublimate(grid%octreeRoot)
           end if
+#endif
           call getSublimationRadius(grid, rSub)
           write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
           call writeInfo(message, FORINFO)
@@ -288,10 +290,12 @@ contains
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+#ifdef PHOTOION
              if(postsublimate) then
                 call writeInfo("Sublimating dust")
                 call quickSublimate(grid%octreeRoot)
              end if
+#endif
              fastIntegrate=.true.
              call do_phaseloop(grid, .false., 100000, &
                   miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
