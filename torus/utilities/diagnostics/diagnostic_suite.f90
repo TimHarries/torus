@@ -37,18 +37,18 @@ do
 
       call setup_density_data(neArray, neRatioArray)
 
-      print *, "Enter the temperature sensitive line ratio value:"
+      print *, "!-Enter the temperature sensitive line ratio value:"
       read(*,*) TemplineRatio
-      print *, "Enter the electron density sensitive line ratio value:"
+      print *, "!-Enter the electron density sensitive line ratio value:"
       read(*,*) NelineRatio
       call calculate_temperature_and_ne(tempratioID, neratioID, tempLineRatio, &
            NeLineRatio, neArray, neRatioArray)
       
    else if(menuChoice == 2) then
       ratioID = submenu
-      print *, "Enter the electron density"
+      print *, "!- Enter the electron density"
       read(*,*) n_e
-      print *, "Enter the line ratio value:"
+      print *, "!- Enter the line ratio value:"
       read(*,*) lineRatio
       call temp_calc(n_e, lineRatio, ratioID, temperature) 
    end if
@@ -68,7 +68,9 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
   integer :: subsubmenu
 
   if(choice == 0 .and. submenu == 0 .and. subsubmenu == 0) then
-
+     print *, " "
+     print *, " "
+     print *, " "
      print *, "****************"
      print *, "Diagnostic Suite"
      print *, "****************"
@@ -93,6 +95,9 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
 
   else if(choice == 1 .or. choice == 2) then
      if(submenu == 0) then
+        print *, " "
+        print *, " "
+        print *, " "
         print *, "************************************************"
         print *, "Diagnostic Suite: Temperature Sensitive Ratios"
         print *, "************************************************"
@@ -124,6 +129,9 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
            print *, "Please enter a valid choice: ""1"",""2"", ""3"", ""4""or ""5"""
         end if
      else if(submenu > 0 .and. submenu < 5) then
+        print *, " "
+        print *, " "
+        print *, " "
         print *, "***************************************************"
         print *, "Diagnostic Suite: Electron Density Sensitive Ratios"
         print *, "***************************************************"
@@ -297,41 +305,16 @@ subroutine calculate_temperature_and_ne(tempratioID, neratioID, tempLineRatio, &
   real :: NeLineRatio
   real :: oldTemperature
   real :: oldNe
-  real :: check1
-  real :: check2
   real :: neArray(:)
   real :: neRatioArray(:)
 
-  globalConverged = .false.
 
-!  oldTemperature = 0.0
-!  oldNe = 0.0
-!  currentTemperature = 0.0
-!  currentNe = 0.0
+  call ne_calc(currentNe, neLineRatio, neratioID, neArray, neRatioArray)
 
-!  do while(.not. globalCOnverged) 
-     print *, "pre calc step electron density ", currentNe
-     call ne_calc(currentNe, neLineRatio, neratioID, neArray, neRatioArray)
-     print *, "post calc step electron density ", currentNe
 
-     print *, "pre calc step temperature ", currentTemperature
-     call temp_calc(currentNe, templineRatio, tempratioID, currentTemperature) 
-     print *, "post calc step temperature ", currentTemperature
-     
-  !   check1 = (currentTemperature - oldTemperature)/currentTemperature
-  !   check2 = (currentNe - oldNe)/currentNe     
+  call temp_calc(currentNe, templineRatio, tempratioID, currentTemperature) 
 
- !    oldTemperature = currentTemperature
- !    oldNe = currentNe
-
- !    if(abs(check1) < 0.001 .and. check2 < abs(0.001)) then
- !       globalConverged = .true.
- !    else
- !       print *, "check1 ", check1
- !       print *, "check2 ", check2
- !    end if
- ! End do
-
+  
   print *, " "
   print *, " "
   print *, " "
@@ -342,8 +325,6 @@ subroutine calculate_temperature_and_ne(tempratioID, neratioID, tempLineRatio, &
   print *, "---------------------------------------"
   print *, "Final Temperature: ", currentTemperature
   print *, "Final Electron Density: ", currentNe
-  print *, "check1 ", check1
-  print *, "check2 ", check2
   print *, "---------------------------------------"
   
 end subroutine calculate_temperature_and_ne
