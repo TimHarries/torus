@@ -1,7 +1,7 @@
 !Perform a range of nebular diagnostics
 !Author: Thomas Haworth
 !Created: 20/01/2012
-!Last Updated: 20/01/2012
+!Last Updated: 21/01/2012
 
 program diagnostic_suite
 
@@ -51,6 +51,17 @@ do
       print *, "!- Enter the line ratio value:"
       read(*,*) lineRatio
       call temp_calc(n_e, lineRatio, ratioID, temperature) 
+
+   else if(menuChoice == 3) then
+      neRatioID = subsubmenu
+
+      call setup_density_data(neArray, neRatioArray)
+
+      print *, "!-Enter the electron density sensitive line ratio value:"
+      read(*,*) NelineRatio
+
+      call ne_calc(n_e, neLineRatio, neratioID, neArray, neRatioArray)
+
    end if
 
    submenu = 0
@@ -68,52 +79,23 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
   integer :: subsubmenu
 
   if(choice == 0 .and. submenu == 0 .and. subsubmenu == 0) then
-     print *, " "
-     print *, " "
-     print *, " "
-     print *, "****************"
-     print *, "Diagnostic Suite"
-     print *, "****************"
-     print *, " "
-     print *, "Main Menu - enter a number from the options below"
-     print *, " "
-     print *, "1. Get Ne and Te from two line ratios "
-     print *, "2. Get temperature from a given electron density and ratio"
-     print *, "3. Exit "
-     print *, " "
-     print *, "choice: "
-     
+
+     call print_main_menu()
+
      read(*,*) choice
      
-     if(choice > 0 .and. choice < 3) then
+     if(choice > 0 .and. choice < 4) then
         call display_navigate_menu(choice, submenu, subsubmenu)
-     else if (choice == 3) then
+     else if (choice == 4) then
         call exit_program(0)
-    else if (choice /= 2) then
-        print *, "Please enter a valid choice: ""1"", ""2"" or ""3"""
+    else 
+        print *, "Please enter a valid choice: ""1"", ""2"", ""3"" or ""4"""
      end if
 
   else if(choice == 1 .or. choice == 2) then
      if(submenu == 0) then
-        print *, " "
-        print *, " "
-        print *, " "
-        print *, "************************************************"
-        print *, "Diagnostic Suite: Temperature Sensitive Ratios"
-        print *, "************************************************"
-        print *, " "
-        print *, "Here you can generate temperature vs electron number density plots "
-        print *, "for temperature sensitive line ratios."
-        print *, " "
-        print *, "Choose a ratio from the options below"
-        print *, " "
-        print *, "1. [OIII] (5007+4959)/4363 "
-        print *, "2. [NII] (6583+6548)/5755 "
-        print *, "3. [NeIII] (3968+3869)/3343 "
-        print *, "4. [SIII] (9532+9069)/6312 "
-        print *, "5. Exit "
-        print *, " "
-        print *, "choice: "
+
+        call print_temperature_menu()
         
         read(*,*) submenu
         
@@ -129,23 +111,9 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
            print *, "Please enter a valid choice: ""1"",""2"", ""3"", ""4""or ""5"""
         end if
      else if(submenu > 0 .and. submenu < 5) then
-        print *, " "
-        print *, " "
-        print *, " "
-        print *, "***************************************************"
-        print *, "Diagnostic Suite: Electron Density Sensitive Ratios"
-        print *, "***************************************************"
-        print *, " "
-        print *, "Here you can generate temperature vs electron number density plots "
-        print *, "for temperature sensitive line ratios."
-        print *, " "
-        print *, "Choose a ratio from the options below"
-        print *, " "
-        print *, "1. [O II] (3729/3726) "
-        print *, "2. Exit "
-        print *, " "
-        print *, "choice: "
         
+        call print_density_menu()
+
         read(*,*) subsubmenu
         
         if(subsubmenu == 1) then
@@ -158,6 +126,19 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
 
      end if
 
+  else if (choice == 3) then
+     call print_density_menu()
+        
+     read(*,*) subsubmenu
+     
+     if(subsubmenu == 1) then
+        
+     else if(submenu == 2) then
+        call exit_program(0)
+     else
+        print *, "Please enter a valid choice: ""1"" or ""2"""
+     end if
+     
   else
      print *, "Hard coded error in menu setup"
      call exit_program(0)
@@ -172,6 +153,73 @@ subroutine exit_program(code)
   stop
 end subroutine
 
+
+subroutine print_main_menu()
+
+  print *, " "
+  print *, " "
+  print *, " "
+  print *, "****************"
+  print *, "Diagnostic Suite"
+  print *, "****************"
+  print *, " "
+  print *, "Main Menu - enter a number from the options below"
+  print *, " "
+  print *, "1. Get Ne and Temperature from two line ratios "
+  print *, "2. Get Temperature from line ratio and given Ne "
+  print *, "3. Get Ne from a given line ratio"
+  print *, "4. Exit "
+  print *, " "
+  print *, "choice: "
+  
+end subroutine
+
+subroutine print_temperature_menu()
+
+  print *, " "
+  print *, " "
+  print *, " "
+  print *, "************************************************"
+  print *, "Diagnostic Suite: Temperature Sensitive Ratios"
+  print *, "************************************************"
+  print *, " "
+  print *, "Here you can generate temperature vs electron number density plots "
+  print *, "for temperature sensitive line ratios."
+  print *, " "
+  print *, "Choose a ratio from the options below"
+  print *, " "
+  print *, "1. [OIII] (5007+4959)/4363 "
+  print *, "2. [NII] (6583+6548)/5755 "
+  print *, "3. [NeIII] (3968+3869)/3343 "
+  print *, "4. [SIII] (9532+9069)/6312 "
+  print *, "5. Exit "
+  print *, " "
+  print *, "choice: "
+        
+        
+end subroutine print_temperature_menu
+
+subroutine print_density_menu()
+
+  print *, " "
+  print *, " "
+  print *, " "
+  print *, "***************************************************"
+  print *, "Diagnostic Suite: Electron Density Sensitive Ratios"
+  print *, "***************************************************"
+  print *, " "
+  print *, "Here you can generate temperature vs electron number density plots "
+  print *, "for temperature sensitive line ratios."
+  print *, " "
+  print *, "Choose a ratio from the options below"
+  print *, " "
+  print *, "1. [O II] (3729/3726) "
+  print *, "2. Exit "
+  print *, " "
+  print *, "choice: "
+
+
+end subroutine print_density_menu
 
 subroutine setup_density_data(neArray, neRatioArray)
   implicit none
