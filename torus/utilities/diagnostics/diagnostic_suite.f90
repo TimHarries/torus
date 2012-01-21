@@ -184,7 +184,10 @@ subroutine setup_density_data(neArray, neRatioArray)
   else
      print *, "!- Opened electron density data file successfully"
   end if
- 
+!  neArray(1) = 1.
+!  neRatioArray(1) = 1.5
+!  neArray(1) = 1.
+!  neRatioArray(1) = 4.
   do counter = 1, n_oii_lines
      read (1,*) neArray(counter), ne_err_plus(counter), ne_err_minus(counter), &
           neRatioArray(counter), neRatio_err_plus(counter), neRatio_err_minus(counter)
@@ -263,8 +266,11 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
               dNe = neArray(i) - neArray(i+1)
               dratio = neRatioArray(i) - neRatioArray(i+1)
               grad = dNe/dratio
-!              n_e = 10.**(neArray(i+1) +grad*(ratio-neArray(i+1)))
-              n_e = (neArray(i+1) +grad*(ratio-neArray(i+1)))
+              print *, "grad", grad
+              print *, "ratio ", ratio              
+              n_e = 10.**(neArray(i+1) + grad*(ratio-neRatioArray(i+1)))
+
+!              n_e = (neArray(i+1) +grad*(ratio-neArray(i+1)))
               goto 100
            end if
         end do
