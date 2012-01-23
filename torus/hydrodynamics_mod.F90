@@ -8366,7 +8366,7 @@ end subroutine refineGridGeneric2
           getPressure = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
 
        case(4) ! federrath et al.
-          rho = thisOctal%rho(subcell)/1.d-15
+          rho = dble(thisOctal%rho(subcell))/1.d-15
           cs = 0.166d5
           if (rho <= 0.25d0) then
              gamma = 1.d0
