@@ -1437,7 +1437,7 @@ end subroutine radiationHydro
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq) &
-               !$OMP SHARED(nPhot, nEscaped, stackLimit)
+               !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator)
                
                finished = .false.
                escaped = .false.
@@ -1857,7 +1857,7 @@ end subroutine radiationHydro
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
        !$OMP PRIVATE(dustHeating) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
-       !$OMP SHARED(timedep, quickThermal, deltaTime)
+       !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end
