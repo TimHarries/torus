@@ -5690,24 +5690,24 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
      totalEmission = 0.d0
 
-     allocate(totalEmissionArray(1:nThreadsGlobal), totalProbArray(1:nThreadsGlobal), &
-          tarray(1:nThreadsGlobal))
+     allocate(totalEmissionArray(1:nHydroThreadsGlobal), totalProbArray(1:nHydroThreadsGlobal), &
+          tarray(1:nHydroThreadsGlobal))
      totalEmissionArray = 0.d0
      totalProbArray = 0.d0
 
-     call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal+1), totalProbArray(myRankGlobal+1))
-     write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal+1)
+     call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal), totalProbArray(myRankGlobal))
+     write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal)
 
 
      tArray = 0.d0
-     call MPI_ALLREDUCE(totalEmissionArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalEmissionArray = tArray
 
      tArray = 0.d0
-     call MPI_ALLREDUCE(totalProbArray, tArray, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-     totalProb = SUM(tArray(2:nThreadsGlobal))
+     call MPI_ALLREDUCE(totalProbArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     totalProb = SUM(tArray(1:nHydroThreadsGlobal))
      
-     threadProbArray = tArray(2:nThreadsGlobal)
+     threadProbArray = tArray(1:nHydroThreadsGlobal)
      do i = 2, SIZE(threadProbArray)
         threadProbArray(i) = threadProbArray(i) + threadProbArray(i-1)
      enddo
@@ -5718,7 +5718,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
      endif
 
 
-     totalEmission = SUM(totalEmissionArray(2:nThreadsGlobal))
+     totalEmission = SUM(totalEmissionArray(1:nHydroThreadsGlobal))
 
      if (totalProb /= 0.0) then
         biasCorrection = totalEmission / totalProb
@@ -5726,7 +5726,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
         biasCorrection = 1.0
      end if
      
-     call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal+1))
+     call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal))
 
      deallocate(totalEmissionArray, totalProbArray, tArray)
    end subroutine computeProbDistAMRMpi

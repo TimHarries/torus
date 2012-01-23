@@ -139,7 +139,7 @@ contains
     type(GRIDTYPE) :: grid
     logical :: writeFile
 #ifdef MPI
-    integer :: iThread
+    integer :: iThread, ierr
 #endif
 
     writeFile = .true.

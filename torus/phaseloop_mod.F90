@@ -1485,7 +1485,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      write(message,*) " "
      call writeInfo(message, IMPORTANT)
-     write(message,*) "Total output luminosity: ",totalOutputLuminosity, " ergs"
+     write(message,*) "Total output luminosity: ",totalOutputLuminosity*1.d20, " ergs"
      call writeInfo(message, IMPORTANT)
      write(message,*) " "
      call writeInfo(message, IMPORTANT)
