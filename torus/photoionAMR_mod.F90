@@ -1312,7 +1312,7 @@ end subroutine radiationHydro
 !                print *, "nEscaped ", nEscaped
              end do
 
-	     if (myrankWorldGlobal == 1) write(*,*) "Finishing iteration..."
+             if (myrankWorldGlobal == 1) write(*,*) "Finishing iteration..."
 
 
              do iThread = 1, nHydroThreadsGlobal

@@ -2791,6 +2791,7 @@ end subroutine sumFluxes
     call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
+    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
     if (selfGravity) then
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -2805,7 +2806,8 @@ end subroutine sumFluxes
 
 
 !self gravity (periodic)
-   if (selfGravity .and. .not. dirichlet) then
+    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
+    if (selfGravity .and. .not. dirichlet) then
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
