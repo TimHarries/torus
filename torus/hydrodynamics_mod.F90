@@ -2787,20 +2787,20 @@ end subroutine sumFluxes
 
 
 !boundary conditions
-    if (myrankglobal == 1) call tune(6,"Boundary conditions")
+    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
     call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
     if (selfGravity) then
-       if (myrankglobal == 1) call tune(6,"Self-gravity")
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
           call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
        endif
        call sumGasStarGravity(grid%octreeRoot)
-       if (myrankglobal == 1) call tune(6,"Self-gravity")
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
 
@@ -2809,11 +2809,11 @@ end subroutine sumFluxes
        call periodBoundary(grid, justGrav = .true.)
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
-    if (myrankglobal == 1) call tune(6,"Boundary conditions")
+    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
 
 !Half a step (i.e. dt/2) in the x-direction
-    if (myrankglobal == 1) call tune(6,"X-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
@@ -2873,10 +2873,10 @@ end subroutine sumFluxes
 !modify rhou and rhoe due to pressure/graviational potential gradient
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
-    if (myrankglobal == 1) call tune(6,"X-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
 
 !Full step (i.e. dt) in the y-direction
-    if (myrankglobal == 1) call tune(6,"Y-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"Y-direction step")
     direction = VECTOR(0.d0, 1.d0, 0.d0)
 !set up grid values
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
@@ -2932,10 +2932,10 @@ end subroutine sumFluxes
 
 !modify velocities and rhoe due to pressure/graviational potential gradient
    call pressureForceV(grid%octreeRoot, dt)
-    if (myrankglobal == 1) call tune(6,"Y-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"Y-direction step")
 
 !Full step in the z-direction (dt)
-    if (myrankglobal == 1) call tune(6,"Z-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"Z-direction step")
     direction = VECTOR(0.d0, 0.d0, 1.d0)
 
 !set up grid values
@@ -2992,11 +2992,11 @@ end subroutine sumFluxes
 
 !modify rhow and rhoe due to pressure/gravitational potential gradient
     call pressureForceW(grid%octreeRoot, dt)
-    if (myrankglobal == 1) call tune(6,"Z-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"Z-direction step")
 
 !another half step in the x-direction (dt/2) - convention
 !see above comments
-    if (myrankglobal == 1) call tune(6,"X-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
@@ -3048,11 +3048,11 @@ end subroutine sumFluxes
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
    
     call pressureForceU(grid%octreeRoot, dt/2.d0)
-    if (myrankglobal == 1) call tune(6,"X-direction step")
+    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
 
     if (severeDamping) call damp(grid%octreeRoot)
 
-    if (myrankglobal == 1) call tune(6,"Boundary conditions")
+    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
     call periodBoundary(grid)
     call imposeBoundary(grid%octreeRoot, grid)
     call transferTempStorage(grid%octreeRoot)
@@ -3070,17 +3070,17 @@ end subroutine sumFluxes
        call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
     endif
 
-    if (myrankglobal == 1) call tune(6,"Boundary conditions")
+    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
     if (selfGravity) then
-       if (myrankglobal == 1) call tune(6,"Self-gravity")
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
           call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 0.1d0*grid%halfSmallestSubcell)
        endif
        call sumGasStarGravity(grid%octreeRoot)
-       if (myrankglobal == 1) call tune(6,"Self-gravity")
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
   end subroutine hydroStep3d
@@ -3497,7 +3497,7 @@ end subroutine sumFluxes
 
 
 
-    if (myRankGlobal == 1) write(*,*) "CFL set to ", cflNumber
+    if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankGlobal /= 0) then
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
@@ -3578,7 +3578,7 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-       if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
+       if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3589,7 +3589,7 @@ end subroutine sumFluxes
 !mass/energy conservation diagnostics
           call findEnergyOverAllThreads(grid, totalenergy)
           call findMassOverAllThreads(grid, totalmass)
-          if(myRankGlobal == 1) then
+          if(myRankWorldGlobal == 1) then
              endM = totalMass
              endE = totalEnergy
              print *, "dM (%) = ", (1.d0 - (endM/iniM))*100.d0
@@ -3604,9 +3604,9 @@ end subroutine sumFluxes
           if(dounrefine) then
              iUnrefine = iUnrefine + 1             
              if (iUnrefine == 100) then
-                if (myrankglobal == 1) call tune(6, "Unrefine grid")
+                if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrUnrefinetolerance)
-                if (myrankglobal == 1) call tune(6, "Unrefine grid")
+                if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
           end if
@@ -3614,7 +3614,7 @@ end subroutine sumFluxes
 !ensure all celss are within one level of refinement of one another
           call setAllUnchanged(grid%octreeRoot)
           call evenUpGridMPI(grid, .true., dorefine, evenuparray)
-          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
+          if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call zeroRefinedLastTime(grid%octreeRoot)
 
@@ -3651,7 +3651,7 @@ end subroutine sumFluxes
     endM = totalMass
     endE = totalEnergy
     
-    if(myRankGlobal == 1) then
+    if(myRankWorldGlobal == 1) then
        print *, "dM (%) = ", (1.d0 - (endM/iniM))*100.d0
        print *, "dE (%) = ", (1.d0 - (endE/iniE))*100.d0
        print *, "endM", endM
@@ -3768,7 +3768,7 @@ end subroutine sumFluxes
 !refine the grid where necessary
           if(doRefine) then
              call writeInfo("Initial refine", TRIVIAL)    
-             if (myrankGlobal == 1) call tune(6, "Initial refine")
+             if (myrankWorldGlobal == 1) call tune(6, "Initial refine")
              call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrTolerance, evenuparray)
 !             call writeVtkFile(grid, "afterinitrefine.vtk", &
@@ -3805,7 +3805,7 @@ end subroutine sumFluxes
           if(dorefine) then
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
-             if (myrankGlobal == 1) call tune(6, "Initial refine")
+             if (myrankWorldGlobal == 1) call tune(6, "Initial refine")
              call writeVtkFile(grid, "afterinitevenup.vtk", &
                   valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
                   "u_i          ", &
@@ -3837,14 +3837,13 @@ end subroutine sumFluxes
 
 
 !initial gravity 
-             if (myrankGlobal == 1) call tune(6, "Self-Gravity")
-             if (myrankGlobal == 1) write(*,*) "Doing multigrid self gravity"
+             if (myrankWorldGlobal == 1) call tune(6, "Self-Gravity")
+             if (myrankWorldGlobal == 1) write(*,*) "Doing multigrid self gravity"
 !             call writeVtkFile(grid, "beforeselfgrav.vtk", &
 !                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
 !                  ,"phi          " /))
              
              call zeroPhiGas(grid%octreeRoot)
-             write(*,*) myrankWorldGlobal, " calling selfgrav"
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
              
 !for periodic self-gravity
@@ -3863,8 +3862,8 @@ end subroutine sumFluxes
 !             call writeVtkFile(grid, "afterselfgrav.vtk", &
 !                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
 !                  "phigas       ","phi          "/))
-             if (myrankGlobal == 1) write(*,*) "Done"
-             if (myrankGlobal == 1) call tune(6, "Self-Gravity")
+             if (myrankWorldGlobal == 1) write(*,*) "Done"
+             if (myrankWorldGlobal == 1) call tune(6, "Self-Gravity")
           endif          
        endif
     endif
@@ -3909,7 +3908,7 @@ end subroutine sumFluxes
        tdump =  20.d0 * dt
     endif
 
-    if (myRankGlobal == 1) write(*,*) "CFL set to ", cflNumber
+    if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
     if (it ==0) nextDumpTime = 0.
@@ -3956,8 +3955,8 @@ end subroutine sumFluxes
        endif
 
        if (myrankGlobal /= 0) then
-          if (myrankGlobal == 1) write(*,*) "courantTime", dt,cflnumber
-          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
+          if (myrankWorldGlobal == 1) write(*,*) "courantTime", dt,cflnumber
+          if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
 
 
@@ -3981,19 +3980,19 @@ end subroutine sumFluxes
           enddo
 
 
-          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
+          if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
 !unrefine the grid where necessary
           iUnrefine = iUnrefine + 1
           if(doUnRefine) then
              if (iUnrefine == 5) then
-                if (myrankGlobal == 1)call tune(6, "Unrefine grid")
+                if (myrankWorldGlobal == 1)call tune(6, "Unrefine grid")
                ! nUnrefine = 0
                 call setAllUnchanged(grid%octreeRoot)
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
                 call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
-                if (myrankGlobal == 1)call tune(6, "Unrefine grid")
+                if (myrankWorldGlobal == 1)call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
           end if
@@ -4035,11 +4034,11 @@ end subroutine sumFluxes
 !                  "pressure     ", &
 !                  "q_i          "/))
 
-             if (myrankGlobal == 1) call tune(6, "Loop refine")
+             if (myrankWorldGlobal == 1) call tune(6, "Loop refine")
              
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
              
-             if (myrankGlobal == 1) call tune(6, "Loop refine")                  
+             if (myrankWorldGlobal == 1) call tune(6, "Loop refine")                  
           end if
        endif
 
@@ -4054,8 +4053,8 @@ end subroutine sumFluxes
 
 !update the simulation time
        currentTime = currentTime + dt
-       if (myRankGlobal == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
-       if (myRankGlobal == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
+       if (myRankWorldGlobal == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
+       if (myRankWorldGlobal == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
 
 !dump simulation data if simulation time is greater than next dump time
        if (currentTime .ge. nextDumpTime) then
@@ -4143,7 +4142,7 @@ end subroutine sumFluxes
        viewVec = rotateY(viewVec, 25.d0*degtorad)
 
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
-       if (myRankGlobal == 1) write(*,*) "CFL set to ", cflNumber
+       if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cflNumber
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        do i = 1, nPairs
@@ -4243,7 +4242,7 @@ end subroutine sumFluxes
 !loop until simulation end time
     do while(currentTime < tEnd)
 
-       if (myrankGlobal == 1) write(*,*) "current time " ,currentTime
+       if (myrankWorldGlobal == 1) write(*,*) "current time " ,currentTime
        jt = jt + 1
        tc = 0.d0
 
@@ -4267,8 +4266,8 @@ end subroutine sumFluxes
        endif
 
        if (myrankGlobal /= 0) then
-          if (myrankGlobal == 1) write(*,*) "courantTime", dt, it
-          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
+          if (myrankWorldGlobal == 1) write(*,*) "courantTime", dt, it
+          if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
           call writeInfo("calling hydro step",TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -4288,14 +4287,14 @@ end subroutine sumFluxes
        if(doUnrefine) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 5) then
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
        end if
     
-       if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
+       if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
        call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -4323,10 +4322,10 @@ end subroutine sumFluxes
        
 
        if(doUnrefine .and. grid%currentTime /= 0.d0) then
-          if (myrankglobal == 1) call tune(6, "Unrefine grid")
+          if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
           call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
           call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
-          if (myrankglobal == 1) call tune(6, "Unrefine grid")
+          if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
           iUnrefine = 0
        end if
 
@@ -6238,7 +6237,7 @@ end subroutine sumFluxes
     itemp = 0
     do
        globalConverged(myRankGlobal) = .true.
-!       do iThread = 1, nThreadsGlobal-1
+!       do iThread = 1, nHydroThreadsGlobal
        do k = 1, endloop
           if(evenuparray(myRankGlobal) /= k) then
               !         if (myrankGlobal /= iThread) then 
@@ -7142,7 +7141,7 @@ end subroutine refineGridGeneric2
        globalConverged = .false.
        do 
           globalConverged(myRankGlobal) = .true.
-!          do iThread = 1, nThreadsGlobal-1
+!          do iThread = 1, nHydroThreadsGlobal
           do k = 1, endloop
 !             if (myrankGlobal /= iThread) then
              if(evenUpArray(myRankGlobal) /= k) then
@@ -7164,7 +7163,7 @@ end subroutine refineGridGeneric2
           index = index + 1.d0
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-!          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nThreadsGlobal-1)
+!          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nHydroThreadsGlobal)
           if (ALL(tConverged(1:nHydrothreadsGlobal))) exit
        enddo
 
@@ -8156,7 +8155,6 @@ end subroutine refineGridGeneric2
 
 !    call saveGhostCellPhi(grid%octreeRoot)
 
-    write(*,*) myrankWorldGlobal, " calling update density tree"
 
     call updateDensityTree(grid%octreeRoot)
 
@@ -8166,18 +8164,14 @@ end subroutine refineGridGeneric2
 
        do iDepth = 4, maxDepthAmr-1
 
-          write(*,*) myrankWorldGlobal, " calling unsetghosts"
           call unsetGhosts(grid%octreeRoot)
-          write(*,*) myrankWorldGlobal, " calling setupedgeslevel"
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
-          write(*,*) myrankWorldGlobal, " calling setupghostslevel"
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
           if(dirichlet) then
-             if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
-             write(*,*) myrankWorldGlobal, " calling applydirichlet"
+             if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
              call applyDirichlet(grid, iDepth)
-             if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+             if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
           end if
 
           dx = returnCodeUnitLength(gridDistancescale*grid%octreeRoot%subcellSize/dble(2.d0**(iDepth-1)))
@@ -8190,7 +8184,6 @@ end subroutine refineGridGeneric2
           it = 0
           fracChange = 1.d30
           do while (ANY(fracChange(1:nHydrothreads) > tol)) 
-             write(*,*) myrankWorldGlobal," world global here"
              fracChange = 0.d0
              ghostFracChange = 0.d0
              it = it + 1
@@ -8221,9 +8214,9 @@ end subroutine refineGridGeneric2
                 call updatePhiTree(grid%octreeRoot, i)
              enddo
 
-             if (myrankGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+             if (myrankWorldGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
-          if (myRankGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
+          if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
           call updatePhiTree(grid%octreeRoot, iDepth)
        enddo
     endif
@@ -8233,9 +8226,9 @@ end subroutine refineGridGeneric2
     call setupGhosts(grid%octreeRoot, grid)
 
     if(dirichlet) then
-       if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+       if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
        call applyDirichlet(grid)
-       if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+       if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
     end if
 !    call reapplyGhostCellPhi(grid%octreeRoot)
 
@@ -8280,14 +8273,14 @@ end subroutine refineGridGeneric2
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
-       if (myrankGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
+       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
             MAXVAL(fracChange(1:nHydroThreads))
 
 
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
-    if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
+    if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")

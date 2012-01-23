@@ -2169,7 +2169,7 @@ contains
     if (PRESENT(justGrav)) doJustGrav = justGrav
 
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-    do iThread = 1, nThreadsGlobal - 1
+    do iThread = 1, nHydroThreadsGlobal
        if (iThread /= myRankGlobal) then
           call periodBoundaryReceiveRequests(grid, iThread, doJustGrav)
        else
@@ -2274,7 +2274,8 @@ contains
             ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, localWorldCommunicator, ierr)
             ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, localWorldCommunicator, status, ierr)
+             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), &
+                  tag2, localWorldCommunicator, status, ierr)
             ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
@@ -2342,7 +2343,8 @@ contains
 !             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, localWorldCommunicator, ierr)
 !             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, localWorldCommunicator, status, ierr)
+             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, &
+                  localWorldCommunicator, status, ierr)
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
@@ -2488,7 +2490,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     direction = endPoint - startPoint
     call normalize(direction)
 
-    if (myrankGlobal == 0) then
+    if (myrankWorldGlobal == 0) then
        if(firstTime) then
           !Overwrite any existing file
           open(20, file=thisFile, form="formatted", status="unknown")
@@ -2608,7 +2610,7 @@ end subroutine dumpStromgrenRadius
     call normalize(direction)
 
 
-    if (myrankGlobal == 0) then
+    if (myrankWorldGlobal == 0) then
 
        open(20, file=thisFile, form="formatted", status="unknown")
        do while(inOctal(grid%octreeRoot, position))
@@ -2695,7 +2697,7 @@ end subroutine dumpStromgrenRadius
     integer :: maxDepth
     integer :: ierr
     
-    if (myrankGlobal == 1) then
+    if (myrankWorldGlobal == 1) then
        if (filename(1:1) == '*') then
           UN = 6   ! prints on screen
        else
@@ -2715,7 +2717,7 @@ end subroutine dumpStromgrenRadius
        call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, localWorldCommunicator, ierr)
        halfSmallestSubcell = tempDouble(1)
     
-    if (myRankGlobal == 1) then
+    if (myRankWorldGlobal == 1) then
        write(UN,'(a)') ' '
        write(UN,'(a)') '######################################################'
        write(UN,'(a)') 'Grid info :'
@@ -2736,7 +2738,7 @@ end subroutine dumpStromgrenRadius
           write(UN,'(a)') "**** WARNING: Grid cell depth is so great numerical problems may occur****"
        endif
     endif
-    if (myrankGlobal == 1) then
+    if (myrankWorldGlobal == 1) then
        if (filename(1:1) /= '*')  close(UN)
     endif
     
@@ -2870,9 +2872,9 @@ end subroutine dumpStromgrenRadius
 
 ! setup mpiThread values
 
-    if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
-         ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
-         ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
+    if ( ((parent%twoD)  .and.((nHydroThreadsGlobal) == 4)) .or. &
+         ((parent%threed).and.((nHydroThreadsGlobal) == 8)).or. &
+         ((parent%oneD)  .and.((nHydroThreadsGlobal) == 2)) ) then
        parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
     else
 
@@ -2895,7 +2897,7 @@ end subroutine dumpStromgrenRadius
        endif
     endif
 
-    if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
+    if ((parent%threed).and.(nHydroThreadsGlobal) == 64) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -2905,7 +2907,7 @@ end subroutine dumpStromgrenRadius
        endif
     endif
 
-    if ((parent%threed).and.(nThreadsGlobal - 1) == 512) then
+    if ((parent%threed).and.(nHydroThreadsGlobal) == 512) then
        if (parent%child(newChildIndex)%nDepth > 3) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -4492,7 +4494,7 @@ end subroutine getAllInRadius
       else if(grid%octreeRoot%threeD) then
          nDimensions = 3
       else
-         if(myRankGlobal == 0) then
+         if(myRankWorldGlobal == 0) then
             write(*,*) "Can't comprehend more than 3, or zero, dimensions!"
          end if
          stop
@@ -4501,14 +4503,14 @@ end subroutine getAllInRadius
       if((2**(nDimensions)) /= nHydroThreadsGlobal .and. &
          (4**(nDimensions)) /= nHydroThreadsGlobal .and. &
          (8**(nDimensions)) /= nHydroThreadsGlobal) then
-         if(myRankGlobal == 0) then
+         if(myRankWorldGlobal == 0) then
             write(*,*) "An incorrect number of threads has been used:"
             write(*,*) "For this model try: ", (2**(nDimensions) + 1), &
                  "or ", (4**(nDimensions) + 1)," or ", (8**(nDimensions) + 1), "threads"
          end if
          stop
       else
-         if(myRankGlobal == 0) then
+         if(myRankWorldGlobal == 0) then
             write(*,*) "Thread Check Complete"
          end if
       end if

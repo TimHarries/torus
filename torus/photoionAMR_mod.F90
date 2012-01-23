@@ -439,7 +439,6 @@ contains
        if (myrankGlobal == 1) write(*,*) "Time step", dt
        if (myRankGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
 
-       write(*,*) myrankWorldGlobal, " waiting at barrier"
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
        if(checkForPhoto) then
@@ -1299,7 +1298,7 @@ end subroutine radiationHydro
 !                print *, "nEscaped ", nEscaped
              end do
 
-              write(*,*) "Finishing iteration..."
+	     if (myrankWorldGlobal == 1) write(*,*) "Finishing iteration..."
 
 
              do iThread = 1, nHydroThreadsGlobal
@@ -1802,7 +1801,7 @@ end subroutine radiationHydro
     if (nHydroSetsGlobal > 1) then
        do iThread = 1, nHydroThreadsGlobal
           if (myRankGlobal == iThread) then
-             write(*,*) myHydroSetGlobal, myrankGlobal, " calling updategridMpi"
+!             write(*,*) myHydroSetGlobal, myrankGlobal, " calling updategridMpi"
              call updateGridMPIphoto(grid, amrParallelCommunicator(iThread))
           endif
           call mpi_barrier(MPI_COMM_WORLD, ierr)
@@ -2037,11 +2036,11 @@ end subroutine radiationHydro
      if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
      if(converged) then
-        if(myRankGlobal == 0) then
+        if(myRankWorldGlobal == 0) then
            write(*,*) "photoionization loop converged at iteration ", niter
         end if
      else if(underSampledTOT .and. monteCheck) then
-        if(myRankGlobal == 0) then
+        if(myRankWorldGlobal == 0) then
            write(*,*) "Undersampled cell, increasing nMonte"
         end if
         nMonte = nMonte *2
