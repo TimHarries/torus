@@ -496,11 +496,11 @@ contains
     n_rmdr = MOD(grid%nLambda,np)
     m = grid%nLambda/np
           
-    if (myRankGlobal .lt. n_rmdr ) then
-       ilam_beg = (m+1)*myRankGlobal + 1
+    if (myRankWorldGlobal .lt. n_rmdr ) then
+       ilam_beg = (m+1)*myRankWorldGlobal + 1
        ilam_end = ilam_beg + m
     else
-       ilam_beg = m*myRankGlobal + 1 + n_rmdr
+       ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
        ilam_end = ilam_beg + m -1
     end if
 #endif
@@ -1373,17 +1373,16 @@ contains
     n_rmdr = MOD(grid%nLambda,np)
     m = grid%nLambda/np
           
-    if (myRankGlobal .lt. n_rmdr ) then
-       ilam_beg = (m+1)*myRankGlobal + 1
+    if (myRankWorldGlobal .lt. n_rmdr ) then
+       ilam_beg = (m+1)*myRankWorldGlobal + 1
        ilam_end = ilam_beg + m
     else
-       ilam_beg = m*myRankGlobal + 1 + n_rmdr
+       ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
        ilam_end = ilam_beg + m -1
     end if
 #endif
 
                 do j = ilam_beg, ilam_end
-                   write(*,*) myrankglobal, " rank doing ",j
                    do k = 1, nMumie
                       mu = 2.*real(k-1)/real(nMumie-1)-1.
                       call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &

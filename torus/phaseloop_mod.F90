@@ -1429,7 +1429,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      nTot = tempInt
 
      write(*,*) myrankGlobal, " lum ",totalOutputluminosity
-     call MPI_REDUCE(totalOutputLuminosity,tempDouble,1,MPI_DOUBLE,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     call MPI_REDUCE(totalOutputLuminosity,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, MPI_COMM_WORLD,ierr)
      totalOutputLuminosity = tempDouble
      if (myrankGlobal == 0) write(*,*) myrankGlobal, " total output luminosity ",totalOutputLuminosity*1.d20
  if (stokesimage) then

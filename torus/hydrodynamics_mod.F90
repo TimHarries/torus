@@ -3573,7 +3573,7 @@ end subroutine sumFluxes
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
        endif
 
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
 
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
@@ -3844,6 +3844,7 @@ end subroutine sumFluxes
 !                  ,"phi          " /))
              
              call zeroPhiGas(grid%octreeRoot)
+             write(*,*) myrankWorldGlobal, " calling selfgrav"
              call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
              
 !for periodic self-gravity
@@ -7188,11 +7189,11 @@ end subroutine refineGridGeneric2
                                temp(nTemp(1),4) = dble(depth(i))
                             endif
                          enddo
-                         call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+                         call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
                          if (nTemp(1) > 0) then
                             do i = 1, nTemp(1)
-                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
-!                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
+                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+!                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, ierr)
                             enddo
                          endif
                          
@@ -7200,12 +7201,12 @@ end subroutine refineGridGeneric2
                    enddo
                 else
 
-                   call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, MPI_COMM_WORLD, status, ierr)
+                   call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, localWorldCommunicator, status, ierr)
                          ! write(*,*) myRank, "received ",nSent, "from ", thisThread
                   
                    if (nSent(1) > 0) then
                       do i = 1, nSent(1)
-                         call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, MPI_COMM_WORLD, status, ierr)
+                         call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, localWorldCommunicator, status, ierr)
                          eLocs(nExternalLocs + i)%x = tempsent(1)
                          eLocs(nExternalLocs + i)%y = tempsent(2)
                          eLocs(nExternalLocs + i)%z = tempsent(3)
@@ -8155,6 +8156,7 @@ end subroutine refineGridGeneric2
 
 !    call saveGhostCellPhi(grid%octreeRoot)
 
+    write(*,*) myrankWorldGlobal, " calling update density tree"
 
     call updateDensityTree(grid%octreeRoot)
 
@@ -8164,12 +8166,16 @@ end subroutine refineGridGeneric2
 
        do iDepth = 4, maxDepthAmr-1
 
+          write(*,*) myrankWorldGlobal, " calling unsetghosts"
           call unsetGhosts(grid%octreeRoot)
+          write(*,*) myrankWorldGlobal, " calling setupedgeslevel"
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
+          write(*,*) myrankWorldGlobal, " calling setupghostslevel"
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
           if(dirichlet) then
              if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
+             write(*,*) myrankWorldGlobal, " calling applydirichlet"
              call applyDirichlet(grid, iDepth)
              if (myrankglobal == 1) call tune(6,"Dirichlet boundary conditions")
           end if
@@ -8184,6 +8190,7 @@ end subroutine refineGridGeneric2
           it = 0
           fracChange = 1.d30
           do while (ANY(fracChange(1:nHydrothreads) > tol)) 
+             write(*,*) myrankWorldGlobal," world global here"
              fracChange = 0.d0
              ghostFracChange = 0.d0
              it = it + 1
@@ -8653,13 +8660,13 @@ end subroutine minMaxDepth
            do j = 1, nHydroThreadsGlobal
               if (j /= iThread) then
                  temp(1) = 1.d30
-                 call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
+                 call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
               endif
            enddo
         else
            stillReceiving = .true.
            do while (stillReceiving)
-              call mpi_recv(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+              call mpi_recv(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
               if (temp(1) > 1.d29) then
                  stillReceiving = .false.
                  exit
@@ -8673,7 +8680,7 @@ end subroutine minMaxDepth
 !                 else
 !                    call multipoleExpansion(grid%octreeRoot, point, com, v)
 !                 endif
-                 call mpi_send(v, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                 call mpi_send(v, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
               endif
            enddo
         endif
@@ -8720,12 +8727,12 @@ end subroutine minMaxDepth
                  temp(2) = point%y
                  temp(3) = point%z
                  if (iThread /= myRankGlobal) then
-                    call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                    call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                  endif
               enddo
               do iThread = 1, nHydroThreadsGlobal
                  if (iThread /= myRankGlobal) then
-                    call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                    call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
                     v = v + vgrid
                  endif
               enddo
@@ -8771,12 +8778,12 @@ end subroutine minMaxDepth
                  temp(2) = point%y
                  temp(3) = point%z
                  if (iThread /= myRankGlobal) then
-                    call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                    call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                  endif
               enddo
               do iThread = 1, nHydroThreadsGlobal
                  if (iThread /= myRankGlobal) then
-                    call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                    call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
                     v = v + vgrid
                  endif
               enddo
@@ -9059,13 +9066,13 @@ end subroutine minMaxDepth
            do j = 1, nHydroThreadsGlobal
               if (j /= myRankGlobal) then
                  temp(1) = 1.d30
-                 call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, j, tag, MPI_COMM_WORLD, ierr)
+                 call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
               endif
            enddo
         else
            stillReceiving = .true.
            do while (stillReceiving)
-              call mpi_recv(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+              call mpi_recv(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
               if (temp(1) > 1.d29) then
                  stillReceiving = .false.
                  exit
@@ -9273,7 +9280,7 @@ end subroutine minMaxDepth
              
              do iThread = 1, nHydroThreadsGlobal
                 if (iThread /= myRankGlobal) then
-                   call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                   call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 endif
              enddo
              
@@ -9304,18 +9311,18 @@ end subroutine minMaxDepth
 !    if (myrankGlobal == sendToThisThread) then
 !       do i = 1, nHydroThreadsGlobal
 !          if (myrankGlobal /= i) then
-!             call mpi_recv(nCellsFromThread, 1, MPI_INTEGER, i, tag, MPI_COMM_WORLD, status, ierr)
+!             call mpi_recv(nCellsFromThread, 1, MPI_INTEGER, i, tag, localWorldCommunicator, status, ierr)
 !             if (nCellsFromThread > 0) then
-!                call mpi_recv(rhoFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(csFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(volFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(phiFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(xposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(yposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(zposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(vxFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(vyFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
-!                call mpi_recv(vzFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, status, ierr)
+!                call mpi_recv(rhoFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(csFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(volFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(phiFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(xposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(yposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(zposFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(vxFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(vyFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
+!                call mpi_recv(vzFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
 !
 !                do j = 1, nCellsFromThread
 !                   nCells = nCells + 1
@@ -9330,18 +9337,18 @@ end subroutine minMaxDepth
 !          endif
 !       enddo
 !    else
-!       call mpi_send(ncells, 1, MPI_INTEGER, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!       call mpi_send(ncells, 1, MPI_INTEGER, sendToThisThread, tag, localWorldCommunicator, ierr)
 !       if (ncells > 0) then
-!          call mpi_send(rho, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(cs, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(vol, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(phi, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(xpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(ypos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(zpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(vx, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(vy, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
-!          call mpi_send(vz, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, MPI_COMM_WORLD, ierr)
+!          call mpi_send(rho, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(cs, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(vol, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(phi, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(xpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(ypos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(zpos, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(vx, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(vy, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
+!          call mpi_send(vz, ncells, MPI_DOUBLE_PRECISION, sendToThisThread, tag, localWorldCommunicator, ierr)
 !       endif
 !    endif
 !  end subroutine returnControlVolumeCells

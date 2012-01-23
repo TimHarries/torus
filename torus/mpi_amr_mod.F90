@@ -11,13 +11,15 @@ contains
   subroutine setupAMRCOMMUNICATOR
     use mpi
     use inputs_mod, only : nHydroThreadsinput, hydrodynamics
-    integer :: ierr, i
+    integer :: ierr, i, j
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
+    integer :: amrParallelGroup
 
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
-    nHydroSetsGlobal = 0
+    nHydroSetsGlobal = 1
+    myHydroSetGlobal = 0
     nHydroThreadsGlobal = nHydroThreadsinput
     if (hydrodynamics) then
 
@@ -49,6 +51,22 @@ contains
        call MPI_COMM_CREATE(MPI_COMM_WORLD, amrGroup, amrCOMMUNICATOR, ierr)
        deallocate(ranks)
        call MPI_COMM_RANK(localWorldCommunicator, myRankGlobal, ierr)
+
+       allocate(amrParallelCommunicator(1:nHydroThreadsGlobal))
+       allocate(ranks(1:nHydroSetsGlobal))
+       do i = 1, nHydroThreadsGlobal
+          do j = 1, nHydroSetsGlobal
+             ranks(j) = (j-1) * (nHydroThreadsGlobal+1) + i
+          enddo
+          if (myrankWorldGlobal == 0) write(*,*) "Creating group ",i, " with ranks ",ranks
+          call MPI_GROUP_INCL(worldGroup, nHydroSetsGlobal, ranks, amrParallelGroup, ierr)
+          call MPI_COMM_CREATE(MPI_COMM_WORLD, amrParallelGroup, amrParallelCommunicator(i), ierr)
+       enddo
+       deallocate(ranks)
+
+          
+          
+
     endif
   end subroutine setupAMRCOMMUNICATOR
 
@@ -555,13 +573,13 @@ contains
                 loc(3) = octVec%z
 !                write(*,*) myRank, " has identified a boundary cell ", loc(1:3)
 
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrank, " received temp storage"
                 if (.not.associated(thisOctal%mpiBoundaryStorage)) then
                    allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
@@ -578,7 +596,7 @@ contains
        loc(2) = 0.d0
        loc(3) = 0.d0
 !       write(*,*) myrank, " sending a huge value to ", sendThread
-       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 
        ! now send a finish signal to the sendThread
     else
@@ -590,7 +608,7 @@ contains
        do while (sendLoop)
           ! receive a locator
 !          write(*,*) myrank, " waiting for a locator"
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
 !          write(*,*) myrank, " received a locator ", loc(1:3)
           if (loc(1) > 1.d20) then
              sendLoop = .false.
@@ -599,7 +617,7 @@ contains
 
              octVec = VECTOR(loc(1), loc(2), loc(3))
 
-             call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
 
              call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
 
@@ -676,7 +694,7 @@ contains
                 tempstorage(14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
              endif
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
 !                          write(*,*) myRank, " temp storage sent"
              
           endif
@@ -786,13 +804,13 @@ contains
                 loc(2) = octVec%y
                 loc(3) = octVec%z
 
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrank, " received temp storage"
                 if (.not.associated(thisOctal%mpiCornerStorage)) then
                    allocate(thisOctal%mpiCornerStorage(1:thisOctal%maxChildren, 8, nStorage))
@@ -809,7 +827,7 @@ contains
        loc(2) = 0.d0
        loc(3) = 0.d0
 !       write(*,*) myrank, " sending a huge value to ", sendThread
-       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 
        ! now send a finish signal to the sendThread
     else
@@ -821,7 +839,7 @@ contains
        do while (sendLoop)
           ! receive a locator
 !          write(*,*) myrank, " waiting for a locator"
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
 !          write(*,*) myrank, " received a locator ", loc(1:3)
           if (loc(1) > 1.d20) then
              sendLoop = .false.
@@ -830,7 +848,7 @@ contains
 
              octVec = VECTOR(loc(1), loc(2), loc(3))
 
-             call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
 
              call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
 
@@ -845,7 +863,7 @@ contains
                 write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
                 stop
              endif
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
             
           endif
        end do
@@ -1068,13 +1086,13 @@ contains
                 loc(3) = octVec%z
 !                write(*,*) myRank, " has identified a boundary cell ", loc(1:3)
 
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrank, " received temp storage"
                 if (.not.associated(thisOctal%mpiBoundaryStorage)) then
                    allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
@@ -1090,7 +1108,7 @@ contains
        loc(2) = 0.d0
        loc(3) = 0.d0
 !       write(*,*) myrank, " sending a huge value to ", sendThread
-       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 
        ! now send a finish signal to the sendThread
     else
@@ -1102,7 +1120,7 @@ contains
        do while (sendLoop)
           ! receive a locator
 !          write(*,*) myrank, " waiting for a locator"
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
 !          write(*,*) myrank, " received a locator ", loc(1:3)
           if (loc(1) > 1.d20) then
              sendLoop = .false.
@@ -1111,7 +1129,7 @@ contains
 
              octVec = VECTOR(loc(1), loc(2), loc(3))
 
-             call MPI_RECV(thisnDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(thisnDepth, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
 
              call findSubcellTDLevel(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell, nDepth)
 
@@ -1151,7 +1169,7 @@ contains
                 tempStorage(17) = pVec%z
 
 !                          write(*,*) myRank, " sending temp storage"
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
 !                          write(*,*) myRank, " temp storage sent"
 
              else ! need to average
@@ -1235,7 +1253,7 @@ contains
       logical :: alreadyInList
       logical, save :: firstTime=.true.
 
-!    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)                                                                      
+!    call MPI_COMM_RANK(localWorldCommunicator, myRank, ierr)                                                                      
 
       if(firstTime) then
          nCornerPairs = 0
@@ -1351,14 +1369,12 @@ contains
       integer :: list(1000), nList
       real, allocatable :: sort(:)
       type(GRIDTYPE) :: grid      
-      integer :: i, nThreads, iThread                            
+      integer :: i, iThread
       integer, intent(out) :: ncornerPairs, cornerthread1(:), cornerthread2(:) 
       integer, intent(out) :: ncornerBound(:), ncornerGroup, cornergroup(:)    
-      integer :: ierr
-         call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)     
  
          nCornerPairs = 0                                 
-         do iThread = 1, nThreads-1                       
+         do iThread = 1, nHydroThreadsGlobal                       
             call determineCornerPairs(grid%octreeRoot, grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, &        
             cornerGroup, nCornerGroup, iThread) 
          enddo                            
@@ -2159,9 +2175,9 @@ contains
        else
           call recursivePeriodSend(grid%octreeRoot, doJustGrav)
           loc(1) = 1.d30
-          do i = 1, nThreadsGlobal-1
+          do i = 1, nHydroThreadsGlobal
              if (i /= iThread) then
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, ierr)
              endif
           enddo
        endif
@@ -2185,7 +2201,7 @@ contains
     if (PRESENT(justGrav)) doJustGrav = justGrav
 
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-    do iThread = 1, nThreadsGlobal - 1
+    do iThread = 1, nhydroThreadsGlobal
        if (iThread /= myRankGlobal) then
 !          write(*,*) myRankGlobal, " calling boundaryreceiverequests"
           call periodBoundaryReceiveRequestsLevel(grid, iThread, nDepth, doJustGrav)
@@ -2193,10 +2209,10 @@ contains
 !          write(*,*) "now doing ", myRankGlobal
           call recursivePeriodSendLevel(grid%octreeRoot, nDepth, doJustGrav)
           loc(1) = 1.d30
-          do i = 1, nThreadsGlobal-1
+          do i = 1, nHydroThreadsGlobal
              if (i /= iThread) then
 !                write(*,*) myRankGlobal, " sending terminate to ", i
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, ierr)
              endif
           enddo
        endif
@@ -2256,9 +2272,9 @@ contains
              endif
             ! write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
             ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
-             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, localWorldCommunicator, ierr)
             ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, localWorldCommunicator, status, ierr)
             ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
@@ -2324,9 +2340,9 @@ contains
              endif
 !             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
 !             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
-             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, localWorldCommunicator, ierr)
 !             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, localWorldCommunicator, status, ierr)
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
@@ -2361,7 +2377,7 @@ contains
     do while (sendLoop)
        ! receive a locator
        
-       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, localWorldCommunicator, status, ierr)
        !write(*,*) myrankglobal, " received a locator from ", receiveThread 
        if (loc(1) > 1.d20) then
           sendLoop = .false.
@@ -2382,11 +2398,11 @@ contains
              tempStorage(5) = thisOctal%rhow(Subcell)
              tempStorage(6) = thisOctal%energy(Subcell)
              tempStorage(7) = thisOctal%pressure_i(Subcell)
-             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
           else
 !             tempStorage(1) = thisOctal%phi_i(Subcell)
              tempStorage(1) = thisOctal%phi_gas(Subcell)
-             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
           endif
        endif
     enddo
@@ -2412,7 +2428,7 @@ contains
     do while (sendLoop)
        ! receive a locator
        
-       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, localWorldCommunicator, status, ierr)
 !       write(*,*) myrankglobal, " received a locator from ", receiveThread 
        if (loc(1) > 1.d20) then
           sendLoop = .false.
@@ -2433,11 +2449,11 @@ contains
              tempStorage(5) = thisOctal%rhow(Subcell)
              tempStorage(6) = thisOctal%energy(Subcell)
              tempStorage(7) = thisOctal%pressure_i(Subcell)
-             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
           else
 !             tempStorage(1) = thisOctal%phi_i(Subcell)
              tempStorage(1) = thisOctal%phi_gas(Subcell)
-             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
           endif
        endif
     enddo
@@ -2494,8 +2510,8 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
           loc(1) = position%x
           loc(2) = position%y
           loc(3) = position%z
-          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
-          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 
           cen%x = tempStorage(1)
           cen%y = tempStorage(2)
@@ -2524,11 +2540,11 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
        enddo
 555    continue
        !Send escape trigger to other threads
-       do sendThread = 1, nThreadsGlobal-1
+       do sendThread = 1, nHydroThreadsGlobal
           loc(1) = 1.d30
           loc(2) = 1.d30
           loc(3) = 1.d30
-          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
        enddo
        close(20)
        goto 666
@@ -2538,7 +2554,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
        stillLooping = .true.
        !print *, "Starting to loop rank", myRankGlobal
        do while(stillLooping)
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
           position%x = loc(1)
           position%y = loc(2)
           position%z = loc(3)
@@ -2555,7 +2571,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
              tempStorage(4) = thisOctal%ionFrac(subcell,1)
              tempStorage(5) = tVal
              !tempStorage(6) = thisOctal%rhou(subcell)             
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
 	     
           endif
        enddo
@@ -2601,8 +2617,8 @@ end subroutine dumpStromgrenRadius
           loc(1) = position%x
           loc(2) = position%y
           loc(3) = position%z
-          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
-          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 
           cen%x = tempStorage(1)
           cen%y = tempStorage(2)
@@ -2623,11 +2639,11 @@ end subroutine dumpStromgrenRadius
 
        enddo
        !Send escape trigger to other threads
-       do sendThread = 1, nThreadsGlobal-1
+       do sendThread = 1, nHydroThreadsGlobal
           loc(1) = 1.d30
           loc(2) = 1.d30
           loc(3) = 1.d30
-          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
        enddo
        close(20)
        goto 666
@@ -2636,7 +2652,7 @@ end subroutine dumpStromgrenRadius
     else
        stillLooping = .true.
        do while(stillLooping)
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
           position%x = loc(1)
           position%y = loc(2)
           position%z = loc(3)
@@ -2657,7 +2673,7 @@ end subroutine dumpStromgrenRadius
              tempStorage(8) = thisOctal%pressure_i(subcell)             
              tempStorage(9) = thisOctal%phi_i(subcell)             
              tempStorage(10) = thisOctal%phi_gas(subcell)             
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
        enddo
     endif
@@ -2690,13 +2706,13 @@ end subroutine dumpStromgrenRadius
 
     nOctals=0; nVoxels=0
     if (myRankGlobal /= 0) call countSubcellsMPI(thisgrid, nVoxels)
-!    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+!    call MPI_BARRIER(localWorldCommunicator, ierr)
 !    print *, "myRankGlobal ", myRankGlobal, "is counting subcells "
 !    call countSubcellsMPI(thisgrid, nVoxels)
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       call MPI_REDUCE(thisgrid%maxDepth, tempInt, 1, MPI_INTEGER, MPI_MAX, 1, MPI_COMM_WORLD, ierr)
+    call MPI_BARRIER(localWorldCommunicator, ierr)
+       call MPI_REDUCE(thisgrid%maxDepth, tempInt, 1, MPI_INTEGER, MPI_MAX, 1, localWorldCommunicator, ierr)
        maxDepth = tempInt(1)
-       call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, MPI_COMM_WORLD, ierr)
+       call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, localWorldCommunicator, ierr)
        halfSmallestSubcell = tempDouble(1)
     
     if (myRankGlobal == 1) then
@@ -3667,7 +3683,7 @@ end subroutine dumpStromgrenRadius
     integer :: ierr, ithread
     integer :: counter, nvals
     real(double) :: loc(7)
-    integer :: evenUpArray(nThreadsGlobal-1)
+    integer :: evenUpArray(nHydroThreadsGlobal)
     integer :: i
 
     nPoints = 0
@@ -3700,7 +3716,7 @@ end subroutine dumpStromgrenRadius
    
     call setupEvenUpArray(grid, evenUpArray)
 
-    do i = 1, nThreadsGlobal-1
+    do i = 1, nHydroThreadsGlobal
        if(evenupArray(i) /= evenupArray(myRankGlobal)) then
           !Found a serving thread
           iThread = i
@@ -3720,12 +3736,12 @@ end subroutine dumpStromgrenRadius
     loc(6) = radius
     !7 is the identifier for whether or not to use topOctal. In this routine this will always be the case
     loc(7) = 1.d0
-    call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 
-    call MPI_RECV(nvals, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr) 
+    call MPI_RECV(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr) 
     if (nVals > 0) then
        do counter = 1, nvals
-          call MPI_RECV(storageArray, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(storageArray, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
           nPoints = nPoints + 1
           rho(npoints) = storageArray(2)
           rhoe(npoints) = storageArray(3)
@@ -3832,10 +3848,10 @@ end subroutine dumpStromgrenRadius
     integer, parameter :: tag = 50
     integer :: ierr
 
-    do iThread = 1, nThreadsGlobal-1
+    do iThread = 1, nHydroThreadsGlobal
        if (iThread /= myrankGlobal) then
           loc = 1.d30
-          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine shutdownServers
@@ -3846,16 +3862,16 @@ end subroutine dumpStromgrenRadius
     real(double) :: loc(7)
     integer, parameter :: tag = 50
     integer :: ierr, endloop, k
-    integer :: check(endloop, nTHreadsGlobal-1)
+    integer :: check(endloop, nHydroThreadsGlobal)
    
-    do iThread = 1, nThreadsGlobal-1
-       if (iThread /= myrankGlobal .and. .not. ANY(iThread == check(k,1:nThreadsGlobal-1))) then
+    do iThread = 1, nHydroThreadsGlobal
+       if (iThread /= myrankGlobal .and. .not. ANY(iThread == check(k,1:nHydroThreadsGlobal))) then
           loc = 1.d30
           loc(4) = dble(myRankGlobal)
           loc(5) = 0.d0
           loc(6) = 0.d0
           loc(7) = 1.d0
-          call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine shutdownServers2
@@ -3864,7 +3880,7 @@ end subroutine dumpStromgrenRadius
 !Set up an array of identifiers to speed up the even up grid process 
   subroutine setupEvenUpArray(grid, evenUpArray)
     type(gridtype) :: grid
-    integer :: evenUpArray(nThreadsGlobal-1)
+    integer :: evenUpArray(nHydroThreadsGlobal)
 
     if(grid%octreeRoot%twoD) then
        if((nHydrothreadsGlobal) == 4) then
@@ -3982,9 +3998,9 @@ end subroutine dumpStromgrenRadius
           loc(7) = 0.d0
        end if
 !       print *, "RANK ", myRankGlobal, "SENDING TO ", iThread
-       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
  !      print *, "RANK ", myRankGlobal, "SENT"
-       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
   !     print *, "RANK ", myRankGlobal, "RECVING"
        nd = nint(tempStorage(1))
        rho = tempStorage(2)
@@ -4031,9 +4047,9 @@ end subroutine dumpStromgrenRadius
     do while (stillServing)
 
 !       do iThread = 1, nThreadsGlobal-1
-!       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, status, ierr)
+!       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
        
-       call MPI_RECV(loc, 4, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(loc, 4, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
@@ -4073,7 +4089,7 @@ end subroutine dumpStromgrenRadius
           tempStorage(11) = rVec%z
           tempstorage(12) = topOctal%pressure_i(topOctalsubcell)
 
-          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine hydroValuesServer
@@ -4098,7 +4114,7 @@ end subroutine dumpStromgrenRadius
     real(double) :: storageArray(1000,12), searchRadius
     real(double) :: tempStorageArray(1000,12) 
     real(double) :: tempdoublearray(12000)
-    integer :: check(endloop, nTHreadsGlobal-1)
+    integer :: check(endloop, nHydroThreadsGlobal)
     integer :: nVals
     integer :: cellRef
 !    integer :: foundID
@@ -4114,7 +4130,7 @@ end subroutine dumpStromgrenRadius
        storageArray = 0.d0
        tempStorageArray = 0.d0
        tempDoubleArray = 0.d0
-       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
@@ -4146,9 +4162,9 @@ end subroutine dumpStromgrenRadius
           !- this thread is going to host a gathering of values in the search radius
           loc(4) = myRankGlobal
           loc(5) = 2.d0
-          do m = 1, nThreadsGlobal-1
-             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then
-                call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, ierr)
+          do m = 1, nHydroThreadsGlobal
+             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nHydroThreadsGlobal))) then
+                call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, ierr)
              end if
           end do
           cellRef=1
@@ -4157,11 +4173,11 @@ end subroutine dumpStromgrenRadius
 
           !send the order to the other serving threads to return values
           nvals = 0
-          do m = 1, nThreadsGlobal-1
-             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nThreadsGlobal-1))) then 
+          do m = 1, nHydroThreadsGlobal
+             if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nHydroThreadsGlobal))) then 
                 !Will recv a 1D array and translate it into 2D later
-!                call MPI_RECV(tempStorageArray, 1200, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
-                call MPI_RECV(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, m, tag, MPI_COMM_WORLD, status, ierr)
+!                call MPI_RECV(tempStorageArray, 1200, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
 
                 !Now convert it back to 2D
                 tempStorageArray = reshape(tempDoubleArray, shape(tempStorageArray))
@@ -4188,9 +4204,9 @@ end subroutine dumpStromgrenRadius
 
           !we should now have an array of values to send
           !first send the number of cells worth of data to expect
-          call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr) 
+          call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr) 
           do counter = 1, nvals             
-             call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)             
+             call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)             
           end do
           storageArray = 0.d0
        else if(functionality == 2)then
@@ -4201,8 +4217,8 @@ end subroutine dumpStromgrenRadius
  
           !Don't want to send a 2D array
           tempDoubleArray = reshape(storageArray,(/SIZE(tempDoubleArray)/))
-          call MPI_SEND(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
-!          call MPI_SEND(storageArray, 1200, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+!          call MPI_SEND(storageArray, 1200, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 
        else
           call findSubcellLocal(position, thisOctal, subcell)
@@ -4244,7 +4260,7 @@ end subroutine dumpStromgrenRadius
              
 
 
-          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine hydroValuesServer2
@@ -4414,52 +4430,52 @@ end subroutine getAllInRadius
       integer :: ierr
 
 
-      call MPI_BCAST(sphData%inUse, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%uDist, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%uMass, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%uTime, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%uVel , 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%uTemp, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%totalGasMass, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%codeVelocitytoTorus, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%codeEnergytoTemperature, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%npart, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%time, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%nptmass, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%inUse, 1, MPI_LOGICAL, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%uDist, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%uMass, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%uTime, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%uVel , 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%uTemp, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%totalGasMass, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%codeVelocitytoTorus, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%codeEnergytoTemperature, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%npart, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%time, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%nptmass, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
       if (myrankGlobal /= 0) then
          npart = sphData%nPart
          call init_sph_data(sphdata%udist, sphdata%umass, sphdata%utime, sphdata%time, &
               sphdata%nptmass, sphdata%uvel, sphdata%utemp)
       endif
 
-      call MPI_BCAST(sphData%gasMass, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%gasMass, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%xn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%yn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%zn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%xn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%yn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%zn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%vxn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%vyn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%vzn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%vxn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%vyn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%vzn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%hn, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%rhon, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%hn, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%rhon, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-!      call MPI_BCAST(sphData%rhoh2, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+!      call MPI_BCAST(sphData%rhoh2, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%temperature, npart, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%temperature, npart, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%hpt, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%hpt, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%x, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%y, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%z, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%x, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%y, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%z, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%vx, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%vy, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
-      call MPI_BCAST(sphData%vz, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%vx, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%vy, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+      call MPI_BCAST(sphData%vz, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-      call MPI_BCAST(sphData%ptmass, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+      call MPI_BCAST(sphData%ptmass, sphdata%nptmass, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
          
     end subroutine distributeSphDataOverMPI
 #endif

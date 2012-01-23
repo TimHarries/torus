@@ -404,7 +404,7 @@ contains
           call pressureGradientTimeStep(grid, dt)
           tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
        dt = MINVAL(temptc(1:nHydroThreadsGlobal))
        dt = dt * dble(cfl)
 
@@ -439,6 +439,7 @@ contains
        if (myrankGlobal == 1) write(*,*) "Time step", dt
        if (myRankGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
 
+       write(*,*) myrankWorldGlobal, " waiting at barrier"
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
        if(checkForPhoto) then
@@ -447,12 +448,12 @@ contains
           if(myRankGlobal /= 0) then
             ! call checkForPhotoLoop(grid, grid%octreeRoot, photoLoop, dt)
              call advancedCheckForPhotoLoop(grid, grid%octreeRoot, photoLoop, dt, timeSinceLastRecomb)
-             call MPI_SEND(photoLoop, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD,  ierr)
-             call MPI_RECV(photoLoopGlobal, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_SEND(photoLoop, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator,  ierr)
+             call MPI_RECV(photoLoopGlobal, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
           else
              do i = 1, nThreadsGlobal-1
                 photoLoop = .false.
-                call MPI_RECV(photoLoop, 1, MPI_LOGICAL, i, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(photoLoop, 1, MPI_LOGICAL, i, tag, localWorldCommunicator, status, ierr)
               
                 if (photoLoop) then
                    photoLoopGlobal = .true.
@@ -462,7 +463,7 @@ contains
              end do
             
              do i = 1, nThreadsGlobal -1
-                call MPI_SEND(photoLoopGlobal, 1, MPI_LOGICAL, i, tag, MPI_COMM_WORLD,  ierr)
+                call MPI_SEND(photoLoopGlobal, 1, MPI_LOGICAL, i, tag, localWorldCommunicator,  ierr)
              end do
           end if
        
@@ -872,7 +873,7 @@ end subroutine radiationHydro
 
 !Allocate memory for send buffer - fixes deadlocks
     !First, determine the no. of bytes used in a photonpacketstack array
-    call MPI_PACK_SIZE(maxStackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
+    call MPI_PACK_SIZE(maxStackLimit, MPI_PHOTON_STACK, localWorldCommunicator, bufferSize, ierr)
 
     !Add some extra bytes for safety
     bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
@@ -1057,7 +1058,7 @@ end subroutine radiationHydro
           allocate(photonPacketStack(stackLimit*nHydroThreadsGlobal))
           allocate(toSendStack(stackLimit))
           allocate(currentStack(stackLimit))
-          call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
+          call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, localWorldCommunicator, bufferSize, ierr)
           
           !Add some extra bytes for safety
           bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
@@ -1234,7 +1235,7 @@ end subroutine radiationHydro
                             end if
                          end do
 
-                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
+                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
 
                          !reset the counter for this thread's bundle recieve 
                          nSaved(optCounter) = 0
@@ -1263,8 +1264,8 @@ end subroutine radiationHydro
                 
                 do iThread = 1, nHydroThreadsGlobal
                    toSendStack(1)%destination = 500
-                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
-                   call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+                   call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)
                    
                 end do
 
@@ -1277,9 +1278,9 @@ end subroutine radiationHydro
                    toSendStack(1)%destination = 999
                    !toSendStack(1)%freq = 100.d0
                    
-                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
+                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
                    
-                   call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                   call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
                    
                 enddo
                 
@@ -1305,7 +1306,7 @@ end subroutine radiationHydro
                 !tosendstack(1)%freq = 100.d0
                 toSendStack(1)%destination = 888
 !                toSendStack(2)%destination = 999
-                call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
+                call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
              enddo
 
           else
@@ -1324,7 +1325,7 @@ end subroutine radiationHydro
                 iSignal = -1
                 if(stackSize == 0) then
                      
-                      call MPI_RECV(toSendStack, maxStackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+                      call MPI_RECV(toSendStack, maxStackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
                       currentStack = toSendStack
                       
 
@@ -1379,8 +1380,8 @@ end subroutine radiationHydro
                                     
                                  end if
                               end do
-                              call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD,  ierr)
-!                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+                              call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+!                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
 !                                   request, ierr)
                               !reset the counter for this thread's bundle recieve
                               nSaved(optCounter) = 0
@@ -1389,7 +1390,7 @@ end subroutine radiationHydro
                            end if
                         end if
                      end do
-                     call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+                     call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
                      
                      goto 777
                   end if
@@ -1404,7 +1405,7 @@ end subroutine radiationHydro
                   goto 777
                endif
                if (iSignal == 1) then
-                  call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+                  call MPI_SEND(nEscaped, 1, MPI_INTEGER, 0, tag, localWorldCommunicator,  ierr)
                   goto 777
                endif
 
@@ -1519,10 +1520,10 @@ end subroutine radiationHydro
                                   end do
 
                                   if(thisPacket /= 1 .and. nSaved(optCounter) /= 0) then
-!                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, MPI_COMM_WORLD, &
+!                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
 !                                          ierr)
                                      call MPI_BSEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
-                                          MPI_COMM_WORLD, request,ierr)
+                                          localWorldCommunicator, request,ierr)
 
                                      nSaved(optCounter) = 0
                                      toSendStack%freq = 0.d0
@@ -1662,10 +1663,10 @@ end subroutine radiationHydro
              !Make sure we are working with the same time
              if(myRankGlobal == 1) then
                 do optCount = 2, nHydroThreadsGlobal
-                   call MPI_SEND(endTime, 1, MPI_INTEGER, optCount, tag, MPI_COMM_WORLD,  ierr)
+                   call MPI_SEND(endTime, 1, MPI_INTEGER, optCount, tag, localWorldCommunicator,  ierr)
                 end do
              else 
-                call MPI_RECV(endTime, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(endTime, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
              end if
 
              oldStackLimit = stackLimit
@@ -1750,7 +1751,7 @@ end subroutine radiationHydro
              stacklimit = 1
           end if
           if(myRankGlobal == 1) then
-             call MPI_SEND(stackLimit, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+             call MPI_SEND(stackLimit, 1, MPI_INTEGER, 0, tag, localWorldCommunicator,  ierr)
           end if
        end if
        
@@ -1782,7 +1783,6 @@ end subroutine radiationHydro
           if (writeoutput) write(*,*) "Iteration had ",real(nTotScat)/real(nMonte), " scatters per photon"
        endif
 
-       call  identifyUndersampled(grid%octreeRoot)
 
     np = 1
     firstTime = .true.
@@ -1794,6 +1794,21 @@ end subroutine radiationHydro
        write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
        stop
     endif
+
+    call  identifyUndersampled(grid%octreeRoot)
+
+! now we need to reduce the estimators across all the hydro sets.
+
+    if (nHydroSetsGlobal > 1) then
+       do iThread = 1, nHydroThreadsGlobal
+          if (myRankGlobal == iThread) then
+             write(*,*) myHydroSetGlobal, myrankGlobal, " calling updategridMpi"
+             call updateGridMPIphoto(grid, amrParallelCommunicator(iThread))
+          endif
+          call mpi_barrier(MPI_COMM_WORLD, ierr)
+       enddo
+    endif
+
 
     ! default loop indices
     ioctal_beg = 1
@@ -1977,8 +1992,8 @@ end subroutine radiationHydro
              end do
              
              !Send converged information
-             call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
-             call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+             call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
 
           else
              failed = .false.
@@ -1988,8 +2003,8 @@ end subroutine radiationHydro
 !!!Rank 0, collate results and decide if converged 
              converged = .false.
              do iThread = 1 , nHydroThreadsGlobal
-                call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
-                call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+                call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr )
+                call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)
                 if(thisThreadConverged .and. .not. failed) then
                    converged = .true.
                 else
@@ -2002,14 +2017,14 @@ end subroutine radiationHydro
              end do
              
              do iThread = 1, nHydroThreadsGlobal
-                call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
-                call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
+                call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr) 
+                call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)   
              end do
           end if
           
           if(myRankGlobal /= 0) then
-             call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
-             call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
              
           end if
           
@@ -4102,8 +4117,8 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
            heating = 0.d0; cooling = 0.d0
            
 
-           call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
-           call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+           call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+           call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 
            hi = tempStorage(1)
            hei = tempStorage(2)
@@ -4139,7 +4154,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
      end do
      do sendThread = 1, nHydroThreadsGlobal
         r = 1.d30
-        call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
      enddo
      close(20)
      close(21)
@@ -4150,7 +4165,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
   else
        stillLooping = .true.
        do while(stillLooping)
-          call MPI_RECV(r, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(r, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
           if (r > 1.d29) then
              stillLooping = .false.
           else
@@ -4269,7 +4284,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
      tempStorage(23) = tVal
      tempStorage(24) = t
 
-     call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, ierr)
+     call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
   endif
 enddo
 
@@ -5304,7 +5319,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        do while (photonsStillProcessing)
           do iThread = 1, nHydroThreadsGlobal
              call sendPhoton(thisPhoton, iThread, endLoop = .false., report=.true.)
-             call MPI_RECV(nDoneArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(nDoneArray(iThread), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
           enddo
           nDone = SUM(nDoneArray(1:nHydroThreadsGlobal))
           write(*,*) myrankglobal, " thinks ", nDone, " photons have completed "
@@ -5342,7 +5357,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           end if
 
           if (iSignal == 2) then
-             call MPI_SEND(nDone, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
+             call MPI_SEND(nDone, 1, MPI_INTEGER, 0, tag, localWorldCommunicator,  ierr)
              goto 777
           end if
 
@@ -5401,7 +5416,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     endif
     call collateImages(thisImage)
 
-     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
      totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nHydroThreadsGlobal))
 
@@ -5483,7 +5498,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        stop
     endif
 
-    call MPI_SEND(temp, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+    call MPI_SEND(temp, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator,  ierr)
     
   end subroutine sendPhoton
 
@@ -5497,7 +5512,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: tag = 42
     integer, intent(out) :: iSignal
 
-    call MPI_RECV(temp, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+    call MPI_RECV(temp, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
     iSignal = -1
     if (temp(12) > 1.d0) then
        iSignal = 0 ! newPhoton
@@ -5700,11 +5715,11 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
 
      tArray = 0.d0
-     call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
      totalEmissionArray = tArray
 
      tArray = 0.d0
-     call MPI_ALLREDUCE(totalProbArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     call MPI_ALLREDUCE(totalProbArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
      totalProb = SUM(tArray(1:nHydroThreadsGlobal))
      
      threadProbArray = tArray(1:nHydroThreadsGlobal)
@@ -5819,6 +5834,85 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
 #endif    
 
+
+#ifdef MPI
+  subroutine updateGridMPIphoto(grid, amrParComm)
+    use gridtype_mod, only : gridtype
+    use amr_mod, only: countVoxels
+    use mpi
+    implicit none
+    integer :: amrParComm
+
+    type(gridtype) :: grid
+    integer :: nOctals, nVoxels, i
+    real, allocatable :: nCrossings(:)
+    real, allocatable :: tempRealArray(:)
+    real(double), allocatable :: hHeating(:), heHeating(:)
+    real(double), allocatable :: photoIonCoeff(:,:)
+    real(double), allocatable :: tempDoubleArray(:)
+    real(double), allocatable :: distanceGrid(:)
+    integer :: ierr, nIndex
+
+    ! FOR MPI IMPLEMENTATION=======================================================
+
+    nOctals = 0
+    nVoxels = 0
+    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+    allocate(nCrossings(1:nVoxels))
+    allocate(hHeating(1:nVoxels))
+    allocate(heHeating(1:nVoxels))
+    allocate(distanceGrid(1:nVoxels))
+    allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
+
+    nIndex = 0
+    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+
+
+    allocate(tempDoubleArray(nVoxels))
+    allocate(tempRealArray(nVoxels))
+
+    do i = 1, grid%nIon
+      tempDoubleArray = 0.d0
+      call MPI_ALLREDUCE(photoIonCoeff(1:nVoxels,i),tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+          MPI_SUM, amrParComm ,ierr)
+       photoIonCoeff(1:nVoxels, i) = tempDoubleArray 
+    enddo
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(hHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    hHeating = tempDoubleArray
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(heHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm,ierr)
+    heHeating = tempDoubleArray
+
+    tempRealArray = 0.0
+    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+         MPI_SUM, amrParComm,ierr)
+    nCrossings = tempRealArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    distanceGrid = tempDoubleArray 
+    
+    deallocate(tempRealArray, tempDoubleArray)
+     
+    call MPI_BARRIER(amrParComm, ierr) 
+    
+    nIndex = 0
+    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+
+    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid)
+
+  end subroutine updateGridMPIphoto
+#endif
+
+
 end module photoionAMR_mod
+
+
 
 #endif
