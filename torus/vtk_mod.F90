@@ -1126,7 +1126,7 @@ contains
     integer :: nCount
     
 
-    if (myrankGlobal /=0 ) goto 666
+    if (myrankWorldGlobal /=0 ) goto 666
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
 
     open(lunit,file=vtkFilename, form="formatted", status="unknown")
@@ -1231,7 +1231,7 @@ contains
     
 
 #ifdef MPI
-    if (myrankGlobal /=1 ) goto 666
+    if (myrankWorldGlobal /=1 ) goto 666
 #endif
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
 
@@ -1384,6 +1384,7 @@ contains
 #ifdef MPI
 ! just return if the grid is decomposed and MPI job and this is rank zero thread
     if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+    if (grid%splitOverMpi.and.(nHydroSetGlobal /=0)) goto 666
 #endif
 
 
@@ -2225,6 +2226,9 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef MPI
   ! just return if the grid is decomposed and MPI job and this is rank zero thread
   if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+
+  ! just return if not the first set of domain decomposed threads
+  if (grid%splitOverMpi.and.(nHydroSetGlobal /= 0)) goto 666 
 #endif
 
   lf = char(10)
@@ -3284,6 +3288,10 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 #ifdef MPI
   ! just return if the grid is decomposed and MPI job and this is rank zero thread
   if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+
+  ! just return if not the first set of domain decomposed threads
+  if (grid%splitOverMpi.and.(nHydroSetGlobal /= 0)) goto 666 
+
 #endif
 
   lf = char(10)

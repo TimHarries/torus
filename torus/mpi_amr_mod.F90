@@ -16,7 +16,8 @@ contains
     integer :: worldGroup, amrGroup, localWorldGroup
 
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
-       call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
+    nHydroSetGlobal = 0
     nHydroThreadsGlobal = nHydroThreadsinput
     if (hydrodynamics) then
 
@@ -1660,8 +1661,8 @@ contains
 
 
        if (.not.associated(thisOctal%mpiBoundaryStorage)) then
-          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, n&
-               eighbourOctal%mpiThread(neighboursubcell), &
+          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, &
+               neighbourOctal%mpiThread(neighboursubcell), &
                thisOctal%mpiThread(subcell)
           write(*,*) "direction",  direction,nBound
           write(*,*) "this centre",subcellCentre(thisOctal, subcell)
