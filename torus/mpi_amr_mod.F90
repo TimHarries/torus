@@ -1660,7 +1660,8 @@ contains
 
 
        if (.not.associated(thisOctal%mpiBoundaryStorage)) then
-          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, neighbourOctal%mpiThread(neighboursubcell), &
+          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, n&
+               eighbourOctal%mpiThread(neighboursubcell), &
                thisOctal%mpiThread(subcell)
           write(*,*) "direction",  direction,nBound
           write(*,*) "this centre",subcellCentre(thisOctal, subcell)
