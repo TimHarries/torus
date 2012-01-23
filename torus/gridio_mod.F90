@@ -162,7 +162,7 @@ contains
 #ifdef MPI
     if (grid%splitOverMPI) then
 
-       if (nHydroSetsGlobal /= 0) goto 666
+       if (myHydroSetGlobal /= 0) goto 666
 
        do iThread = 0, nHydroThreadsGlobal
           if (iThread == myRankGlobal) then
@@ -3005,56 +3005,61 @@ contains
          
          character(len=80) :: message
          logical :: fileFormatted
-         integer :: iThread, nOctal, nOctals, nVoxels
+         integer :: iThread, nOctal, nOctals, nVoxels, iSet, ierr
 
-         if (myrankGlobal == 0) then
-            writeoutput = .true.
-         else
-            writeoutput = .false.
-         endif
 
-         if (associated(grid%octreeRoot)) then
-            call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-            grid%octreeRoot => null()
-         endif
-
-         do iThread = 1, nThreadsGlobal - 1
-            if (myrankGlobal == iThread) then
-               call openGridFile(gridFilename, fileformatted)
-               call readStaticComponents(grid, fileFormatted)
+         do iSet = 0, nHydroSetsGlobal - 1
+            if (myHydroSetGlobal == iSet) then
+               if (myrankGlobal == 0) then
+                  writeoutput = .true.
+               else
+                  writeoutput = .false.
+               endif
+               
+               if (associated(grid%octreeRoot)) then
+                  call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+                  grid%octreeRoot => null()
+               endif
+               
+               do iThread = 1, nThreadsGlobal - 1
+                  if (myrankGlobal == iThread) then
+                     call openGridFile(gridFilename, fileformatted)
+                     call readStaticComponents(grid, fileFormatted)
+                     close(20)
+                  endif
+                  call mpi_barrier(localWorldCommunicator, ierr)
+               enddo
+               
+               if (myrankGlobal /= 0) then
+                  allocate(grid%octreeRoot)
+                  grid%octreeRoot%nDepth = 1
+                  nOctal = 0
+                  call getBranchOverMPI(grid%octreeRoot, null())
+                  write(message, '(a,i3.3)') "AMR grid read for thread: ",myrankGlobal
+                  write(*,*) trim(message)
+               else
+                  call openGridFile(gridFilename, fileformatted)
+                  call readStaticComponents(grid, fileFormatted)
+                  allocate(grid%octreeRoot)
+                  grid%octreeRoot%nDepth = 1
+                  nOctal = 0
+                  call readZerothThread(grid%octreeRoot, null(), fileFormatted)
+               endif
+               call updateMaxDepth(grid)
+               call setSmallestSubcell(grid)
+               call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+               grid%nOctals = nOctals
+               !         call checkAMRgrid(grid, .false.)
                close(20)
+               if (myrankGlobal == 1) then
+                  writeoutput = .true.
+               else
+                  writeoutput = .false.
+               endif
+
             endif
             call torus_mpi_barrier
          enddo
-
-         if (myrankGlobal /= 0) then
-            allocate(grid%octreeRoot)
-            grid%octreeRoot%nDepth = 1
-            nOctal = 0
-            call getBranchOverMPI(grid%octreeRoot, null())
-            write(message, '(a,i3.3)') "AMR grid read for thread: ",myrankGlobal
-            write(*,*) trim(message)
-         else
-            call openGridFile(gridFilename, fileformatted)
-            call readStaticComponents(grid, fileFormatted)
-            allocate(grid%octreeRoot)
-            grid%octreeRoot%nDepth = 1
-            nOctal = 0
-            call readZerothThread(grid%octreeRoot, null(), fileFormatted)
-         endif
-         call updateMaxDepth(grid)
-         call setSmallestSubcell(grid)
-         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-         grid%nOctals = nOctals
-!         call checkAMRgrid(grid, .false.)
-         close(20)
-         call torus_mpi_barrier
-         if (myrankGlobal == 1) then
-            writeoutput = .true.
-         else
-            writeoutput = .false.
-         endif
-
 
        end subroutine readGridSplitOverMPI
 

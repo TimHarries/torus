@@ -3503,7 +3503,8 @@ end subroutine sumFluxes
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        do i = 1, nPairs
-          if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
+          if (myrankWorldglobal==1) &
+               write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
        enddo
 
        call writeInfo("Setting up even up array", TRIVIAL)
@@ -8297,7 +8298,7 @@ end subroutine refineGridGeneric2
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    real(double) :: mu, rhoPhys, gamma, cs
+    real(double) :: mu, rhoPhys, gamma, cs, rhoNorm
 
     mu = 0.d0
 
@@ -8366,11 +8367,11 @@ end subroutine refineGridGeneric2
           getPressure = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
 
        case(4) ! federrath et al.
-          rho = dble(thisOctal%rho(subcell))/1.d-15
+          rhoNorm = dble(thisOctal%rho(subcell))/1.d-15
           cs = 0.166d5
-          if (rho <= 0.25d0) then
+          if (rhoNorm <= 0.25d0) then
              gamma = 1.d0
-          else if ((rho > 0.25d0).and.(rho <= 5.d0)) then
+          else if ((rhoNorm > 0.25d0).and.(rhoNorm <= 5.d0)) then
              gamma = 1.1d0
           else
              gamma = 4.d0/3.d0
