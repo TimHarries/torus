@@ -198,7 +198,7 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    if (myRankGlobal == 1) write(*,*) "CFL set to ", cfl
+    if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cfl
 
     if (myrankGlobal /= 0) then
 
@@ -244,9 +244,9 @@ contains
           call resetnh(grid%octreeRoot)
           
           call writeInfo("Calling exchange across boundary", TRIVIAL)
-          if (myRankGlobal == 1) call tune(6,"Exchange across boundary")
+          if (myRankWorldGlobal == 1) call tune(6,"Exchange across boundary")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          if (myRankGlobal == 1) call tune(6,"Exchange across boundary")
+          if (myRankWorldGlobal == 1) call tune(6,"Exchange across boundary")
           call writeInfo("Done", TRIVIAL)
           
 !          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -337,8 +337,8 @@ contains
              !THAW - self gravity
 
              if (doselfGrav) then
-                if (myrankGlobal == 1) call tune(6, "Self-Gravity")
-                if (myrankGlobal == 1) write(*,*) "Doing multigrid self gravity"
+                if (myrankWorldGlobal == 1) call tune(6, "Self-Gravity")
+                if (myrankWorldGlobal == 1) write(*,*) "Doing multigrid self gravity"
 !                call writeVtkFile(grid, "beforeselfgrav.vtk", &
 !                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
 !                ,"phi          " /))
@@ -360,8 +360,8 @@ contains
 !                call writeVtkFile(grid, "afterselfgrav.vtk", &
 !                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
 !                "phigas       ","phi          "/))
-                if (myrankGlobal == 1) write(*,*) "Done"
-                if (myrankGlobal == 1) call tune(6, "Self-Gravity")
+                if (myrankWorldGlobal == 1) write(*,*) "Done"
+                if (myrankWorldGlobal == 1) call tune(6, "Self-Gravity")
               
              endif
              
@@ -415,10 +415,14 @@ contains
           dt = dt * 0.01d0
        endif
   
+       call mpi_barrier(MPI_COMM_WORLD,ierr)
        if (myrankGlobal == 1) then
-          write(*,*) temptc(1:nHydroThreadsGlobal)
+          write(*,*) myHydroSetGlobal,temptc(1:nHydroThreadsGlobal)
           write(*,*) "courantTime", dt
        endif
+
+       if (myrankGlobal /= 0) call checkSetsAreTheSame(grid%octreeRoot)
+
        dumpThisTime = .false.
 
        if ((grid%currentTime + dt) >= timeOfNextDump) then
@@ -436,8 +440,8 @@ contains
        if (myrankGlobal == 1) write(*,*) "dump ",dumpThisTime, " current ", &
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
-       if (myrankGlobal == 1) write(*,*) "Time step", dt
-       if (myRankGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
+       if (myrankWorldGlobal == 1) write(*,*) "Time step", dt
+       if (myRankWorldGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -507,7 +511,7 @@ contains
           endif
 
 
-       if (myRankGlobal == 1) call tune(6,"Hydrodynamics step")
+       if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
        
        if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -562,16 +566,16 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 
-       if (myRankGlobal == 1) call tune(6,"Hydrodynamics step")
+       if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
        if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrankGlobal /= 0) call resetNh(grid%octreeRoot)
 
        if (myrankGlobal /= 0) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 3) then
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
-             if (myrankglobal == 1) call tune(6, "Unrefine grid")
+             if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              iUnrefine = 0
           endif
           call evenUpGridMPI(grid, .true., .true., evenuparray)
@@ -581,7 +585,7 @@ contains
 
        grid%currentTime = grid%currentTime + dt
        
-       if (myRankGlobal == 1) write(*,*) "Current time: ",grid%currentTime
+       if (myRankWorldGlobal == 1) write(*,*) "Current time: ",grid%currentTime
 
 !Track the evolution of the ionization front with time
 !          write(datFilename, '(a, i4.4, a)') "Ifront.dat"
@@ -662,7 +666,7 @@ end subroutine radiationHydro
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     use mpi
     implicit none
-    integer(bigint) :: nMonte
+    integer(bigint) :: nMonte, nThreadMonte
     logical, optional :: sublimate
     logical :: doSublimate, timeDep, monteCheck
     real(double) :: tLimit
@@ -792,6 +796,7 @@ end subroutine radiationHydro
     real(double) :: totalPower = 0.d0
     real(double) :: lams(1000) = 0.d0
     real(double) :: countArray(1000) = 0.d0
+    real(double) :: tempDouble
 
     character(len=80) :: mpiFilename
     integer :: ierr
@@ -993,7 +998,7 @@ end subroutine radiationHydro
        end if
     enddo
 
-    if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
+    if (myrankWorldglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
     if (writeoutput) then
        write(*,'(a,1pe12.1)') "Ionizing photons per second ", ionizingFlux(source(1))
@@ -1108,17 +1113,19 @@ end subroutine radiationHydro
        
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
-       if (myrankGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
+       if (myrankWorldGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
 
-       if (myrankGlobal == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
+       if (myrankWorldGlobal == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        !Thaw - stack optimization
        if(optimizeStack) then
           call wallTime(startTime)
        end if
 
+       nThreadMonte = nMonte / nHydroSetsGlobal
        iMonte_beg = 1
        iMonte_end = nMonte
+       iMonte_end = nThreadMonte
 
        totalPower = 0.d0
        nTotScat = 0
@@ -1209,7 +1216,7 @@ end subroutine radiationHydro
                 do optCounter = 1, nHydroThreadsGlobal
                    if(nSaved(optCounter) /= 0) then
                       if(nSaved(optCounter) == (zerothstackLimit) .or. &
-                           (nMonte - nInf) < (zerothstackLimit*nHydroThreadsGlobal)) then
+                           (nThreadMonte - nInf) < (zerothstackLimit*nHydroThreadsGlobal)) then
                          thisPacket = 1
                          do sendCounter = 1, (maxStackLimit*nHydroThreadsGlobal)
                             if(photonPacketStack(sendCounter)%destination == optCounter &
@@ -1246,12 +1253,18 @@ end subroutine radiationHydro
 
              end do mainloop
 
-             
-             write(*,*) "lcore = ", lcore
-             write(*,*) "totalPower = ", totalPower
-             write(*,*) "ratio = ", lcore/totalPower
-             write(*,*) "Rank 0 sent all initial bundles"
-             write(*,*) "Telling Ranks to pass stacks ASAP "
+             if (myrankGlobal == 0) then
+                call mpi_allreduce(totalpower, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroThreadCommunicator, ierr)
+                totalPower = tempDouble
+             endif
+
+             if (myrankWorldGlobal == 0) then
+                write(*,*) "lcore = ", lcore
+                write(*,*) "totalPower = ", totalPower
+                write(*,*) "ratio = ", lcore/totalPower
+                write(*,*) "Rank 0 sent all initial bundles"
+                write(*,*) "Telling Ranks to pass stacks ASAP "
+             endif
 
              if(binPhotons) then
                 open(333, file="bins.dat", status="unknown")
@@ -1286,9 +1299,9 @@ end subroutine radiationHydro
                 nEscaped = SUM(nEscapedArray(1:nHydroThreadsGlobal))
              
                 nEscapedGlobal = nEscaped
-                if (nEscaped == nMonte) then
+                if (nEscaped == nThreadMonte) then
                    photonsStillProcessing = .false.
-                else if(nEscaped > nMonte) then
+                else if(nEscaped > nThreadMonte) then
                    write(*,*) "nEscaped greater than nMonte, Exiting..."
                    do iThread = 1, nHydroThreadsGlobal
                       write(*,*) "nEscapedArray(iThread) ", iThread, nEscapedArray(iThread)
@@ -1454,7 +1467,7 @@ end subroutine radiationHydro
 
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                 thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHat * (epsOverDeltaT/cSpeed)
-!                if (myrankGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
+!                if (myrankWorldGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
 
                 if (.not.endLoop) then
                    nScat = 0
@@ -1652,7 +1665,7 @@ end subroutine radiationHydro
 
           endif
 
-       if (myrankGlobal == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
+       if (myrankWorldGlobal == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        !Get the time for the iteration and see if it has improved with a new stack size
        if(optimizeStack .and. .not. optConverged .and. myRankGlobal /= 0) then  
@@ -1672,7 +1685,7 @@ end subroutine radiationHydro
 
              !get the time per photon packet
              newTime = endTime - startTime
-             newTime = newTime/real(nmonte)
+             newTime = newTime/real(nthreadmonte)
 
              if(optID == 1) then
                 optID = 2 
@@ -1813,13 +1826,13 @@ end subroutine radiationHydro
     ioctal_beg = 1
     ioctal_end = nOctal
 
-    if (myRankGlobal == 0) write(*,*) "Ninf ",ninf
-    if (myrankGlobal == 1) call tune(6, "Temperature/ion corrections")
+    if (myRankWorldGlobal == 0) write(*,*) "Ninf ",ninf
+    if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
 
-    if (myrankGlobal == 1) then
+    if (myrankWorldGlobal == 1) then
        i = 0
        j = 0 
        call testforZero(grid%octreeRoot, i, j)
@@ -1890,7 +1903,7 @@ end subroutine radiationHydro
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     if (writeoutput) &
          write(*,*) "Finished calculating ionization and thermal equilibria"
-    if (myrankGlobal == 1) call tune(6, "Temperature/ion corrections")
+    if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
 
 
@@ -4885,7 +4898,7 @@ subroutine readHeIIrecombination()
   close(40)
 end subroutine readHeIIrecombination
 
-recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -4893,6 +4906,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
+  type(VECTOR) :: radMomVec(:)
   
   integer :: nIndex
   integer :: subcell, i
@@ -4903,22 +4917,24 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
               exit
            end if
         end do
      else
+        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
         nIndex = nIndex + 1
         nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
         photoIonCoeff(nIndex, :) = thisOctal%photoIonCoeff(subcell, :)
         hHeating(nIndex) = thisOctal%hHeating(subcell)
         heHeating(nIndex) = thisOctal%heHeating(subcell)
         distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
+        radMomVec(nIndex) = thisOctal%radiationMomentum(subcell)
      endif
   enddo
 end subroutine packvalues
 
-recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -4926,6 +4942,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
+  type(VECTOR) :: radMomVec(:)
 
   integer :: nIndex
   integer :: subcell, i
@@ -4936,20 +4953,79 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
                 exit
              end if
           end do
        else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
           nIndex = nIndex + 1
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
           thisOctal%photoIonCoeff(subcell, :) = photoIonCoeff(nIndex, :)
           thisOctal%hHeating(subcell) = hHeating(nIndex) 
           thisOctal%heHeating(subcell) = heHeating(nIndex) 
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex) 
+          thisOctal%radiationMomentum(subcell) = radMomVec(nIndex)
        endif
     enddo
   end subroutine unpackvalues
+
+recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: nVoxels
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call countVoxelsOnThread(child, nVoxels)
+                exit
+             end if
+          end do
+       else
+        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+        nVoxels = nVoxels + 1
+       endif
+    enddo
+  end subroutine countVoxelsOnThread
+
+recursive subroutine checkSetsAreTheSame(thisOctal)
+  use mpi
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i, ierr
+  real(double), allocatable :: temp(:), temp2(:)
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkSetsAreTheSame(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          allocate(temp(1:nHydroSetsGlobal),temp2(1:nHydroSetsGlobal))
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%temperature(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+!          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid temperatures differ"
+
+
+          deallocate(temp, temp2)
+             
+       endif
+    enddo
+  end subroutine checkSetsAreTheSame
 
   recursive subroutine  identifyUndersampled(thisOctal)
     use inputs_mod, only : minCrossings
@@ -5837,34 +5913,34 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 #ifdef MPI
   subroutine updateGridMPIphoto(grid, amrParComm)
     use gridtype_mod, only : gridtype
-    use amr_mod, only: countVoxels
     use mpi
     implicit none
     integer :: amrParComm
 
     type(gridtype) :: grid
-    integer :: nOctals, nVoxels, i
+    integer :: nVoxels, i
     real, allocatable :: nCrossings(:)
     real, allocatable :: tempRealArray(:)
     real(double), allocatable :: hHeating(:), heHeating(:)
     real(double), allocatable :: photoIonCoeff(:,:)
     real(double), allocatable :: tempDoubleArray(:)
     real(double), allocatable :: distanceGrid(:)
+    type(VECTOR), allocatable :: radMomVec(:)
     integer :: ierr, nIndex
 
     ! FOR MPI IMPLEMENTATION=======================================================
 
-    nOctals = 0
     nVoxels = 0
-    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+    call countVoxelsOnThread(grid%octreeRoot,nVoxels)
     allocate(nCrossings(1:nVoxels))
     allocate(hHeating(1:nVoxels))
     allocate(heHeating(1:nVoxels))
     allocate(distanceGrid(1:nVoxels))
     allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
+    allocate(radMomVec(1:nVoxels))
 
     nIndex = 0
-    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
 
 
     allocate(tempDoubleArray(nVoxels))
@@ -5896,15 +5972,34 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm, ierr)
     distanceGrid = tempDoubleArray 
-    
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(radMomVec(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    radMomVec(1:nVoxels)%x = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(radMomVec(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    radMomVec(1:nVoxels)%y = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(radMomVec(1:nVoxels)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    radMomVec(1:nVoxels)%z = tempDoubleArray 
+
+
+
+
+
     deallocate(tempRealArray, tempDoubleArray)
      
     call MPI_BARRIER(amrParComm, ierr) 
     
     nIndex = 0
-    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
+    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
 
-    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid)
+    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec)
 
   end subroutine updateGridMPIphoto
 #endif

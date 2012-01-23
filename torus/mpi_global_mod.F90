@@ -11,6 +11,7 @@ module mpi_global_mod
   integer :: nHydroSetsGlobal
   integer :: myHydroSetGlobal
   integer, allocatable :: amrParallelCommunicator(:)
+  integer :: zeroThreadCommunicator
 
 ! Set logical variables to say how Torus is parallelised
 ! For hybrid MPI/OpenMP configurations all three are set to true

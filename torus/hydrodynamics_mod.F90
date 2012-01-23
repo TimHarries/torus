@@ -3892,7 +3892,7 @@ end subroutine sumFluxes
        call pressureGradientTimeStep(grid, dt)
        tc(myRankGlobal) = min(tc(myrankGlobal), dt)
     endif
-    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
     if (firstStep) then
        firstStep = .false.
        dt = MINVAL(temptc(1:nHydroThreads)) * 1.d-5
@@ -3930,7 +3930,7 @@ end subroutine sumFluxes
           call pressureGradientTimeStep(grid, dt)
           tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
        dt = MINVAL(temptc(1:nHydroThreads))
        dt = dt * dble(cflNumber)
 
@@ -4220,7 +4220,7 @@ end subroutine sumFluxes
        tc(myrankGlobal) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
     endif
-    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
+    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
     tc = tempTc
     dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
@@ -4250,7 +4250,7 @@ end subroutine sumFluxes
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
        endif
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
 
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
@@ -7174,9 +7174,9 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(nLocs, tempnLocs, nHydroThreadsglobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
              
              nLocsGlobal = SUM(tempnLocs)
-             do thisThread = 1, nThreads - 1
+             do thisThread = 1, nHydroThreadsGlobal
                 if(thisThread == myRankGlobal) then
-                   do iThread = 1, nThreads-1
+                   do iThread = 1, nHydroThreadsGlobal
                       nTemp(1) = 0
                       if (iThread /= myRankGlobal) then
                          do i = 1 , nLocs(myRankGlobal)
@@ -8214,7 +8214,7 @@ end subroutine refineGridGeneric2
                 call updatePhiTree(grid%octreeRoot, i)
              enddo
 
-             if (myrankWorldGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!             if (myrankWorldGlobal == 1) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
           enddo
           if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
           call updatePhiTree(grid%octreeRoot, iDepth)
@@ -8273,8 +8273,8 @@ end subroutine refineGridGeneric2
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
-       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
-            MAXVAL(fracChange(1:nHydroThreads))
+!       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
+!            MAXVAL(fracChange(1:nHydroThreads))
 
 
 

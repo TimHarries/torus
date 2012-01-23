@@ -14,7 +14,7 @@ contains
     integer :: ierr, i, j
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
-    integer :: amrParallelGroup
+    integer :: amrParallelGroup, zeroThreadGroup
 
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
@@ -58,10 +58,17 @@ contains
           do j = 1, nHydroSetsGlobal
              ranks(j) = (j-1) * (nHydroThreadsGlobal+1) + i
           enddo
-          if (myrankWorldGlobal == 0) write(*,*) "Creating group ",i, " with ranks ",ranks
           call MPI_GROUP_INCL(worldGroup, nHydroSetsGlobal, ranks, amrParallelGroup, ierr)
           call MPI_COMM_CREATE(MPI_COMM_WORLD, amrParallelGroup, amrParallelCommunicator(i), ierr)
        enddo
+       deallocate(ranks)
+
+       allocate(ranks(1:nHydroSetsGlobal))
+       do j = 1, nHydroSetsGlobal
+          ranks(j) = (j-1) * (nHydroThreadsGlobal+1) 
+       enddo
+       call MPI_GROUP_INCL(worldGroup, nHydroSetsGlobal, ranks, zeroThreadGroup, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, zeroThreadGroup, zeroThreadCommunicator, ierr)
        deallocate(ranks)
 
           
