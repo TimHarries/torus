@@ -211,7 +211,7 @@ contains
 
 
        do i = 1, nPairs
-          if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
+          if (myrankWorldglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
 
        if(grid%currentTime == 0.d0) then
@@ -421,7 +421,7 @@ contains
           write(*,*) "courantTime", dt
        endif
 
-       if (myrankGlobal /= 0) call checkSetsAreTheSame(grid%octreeRoot)
+!       if (myrankGlobal /= 0) call checkSetsAreTheSame(grid%octreeRoot)
 
        dumpThisTime = .false.
 
@@ -527,7 +527,7 @@ contains
        call writeVtkFile(grid, mpiFilename, &
             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
             "hydrovelocity","sourceCont   ","pressure     ", &
-	     "mpithread    "/))
+            "mpithread    "/))
        if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
 
           if (myRankGlobal /= 0) then
@@ -1241,7 +1241,8 @@ end subroutine radiationHydro
                             end if
                          end do
 
-                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
+                              OptCounter, tag, localWorldCommunicator,  ierr)
 
                          !reset the counter for this thread's bundle recieve 
                          nSaved(optCounter) = 0
@@ -1392,7 +1393,8 @@ end subroutine radiationHydro
                                     
                                  end if
                               end do
-                              call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+                              call MPI_SEND(toSendStack, maxStackLimit, &
+                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
 !                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
 !                                   request, ierr)
                               !reset the counter for this thread's bundle recieve
@@ -5790,11 +5792,13 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
 
      tArray = 0.d0
-     call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
+     call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, &
+          localWorldCommunicator, ierr)
      totalEmissionArray = tArray
 
      tArray = 0.d0
-     call MPI_ALLREDUCE(totalProbArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
+     call MPI_ALLREDUCE(totalProbArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, &
+          localWorldCommunicator, ierr)
      totalProb = SUM(tArray(1:nHydroThreadsGlobal))
      
      threadProbArray = tArray(1:nHydroThreadsGlobal)
