@@ -1338,7 +1338,8 @@ end subroutine radiationHydro
                 iSignal = -1
                 if(stackSize == 0) then
                      
-                      call MPI_RECV(toSendStack, maxStackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+                   call MPI_RECV(toSendStack, maxStackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, &
+                        tag, localWorldCommunicator, status, ierr)
                       currentStack = toSendStack
                       
 
@@ -1824,9 +1825,6 @@ end subroutine radiationHydro
     endif
 
 
-    ! default loop indices
-    ioctal_beg = 1
-    ioctal_end = nOctal
 
     if (myRankWorldGlobal == 0) write(*,*) "Ninf ",ninf
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
@@ -1849,6 +1847,11 @@ end subroutine radiationHydro
 
 
     if (myRankGlobal /= 0) then
+
+       ! default loop indices
+       ioctal_beg = 1
+       ioctal_end = nOctal
+
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
@@ -5493,7 +5496,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     endif
     call collateImages(thisImage)
 
-     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
+    call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, &
+         MPI_SUM, localWorldCommunicator, ierr)
      totalFluxArray = tempTotalFlux
      totalFlux = SUM(totalFluxArray(1:nHydroThreadsGlobal))
 
