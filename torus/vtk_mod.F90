@@ -1384,7 +1384,7 @@ contains
 #ifdef MPI
 ! just return if the grid is decomposed and MPI job and this is rank zero thread
     if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
-    if (grid%splitOverMpi.and.(nHydroSetGlobal /=0)) goto 666
+    if (grid%splitOverMpi.and.(nHydroSetsGlobal /=0)) goto 666
 #endif
 
 
@@ -2228,7 +2228,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 
   ! just return if not the first set of domain decomposed threads
-  if (grid%splitOverMpi.and.(nHydroSetGlobal /= 0)) goto 666 
+  if (grid%splitOverMpi.and.(nHydroSetsGlobal /= 0)) goto 666 
 #endif
 
   lf = char(10)
@@ -3290,7 +3290,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 
   ! just return if not the first set of domain decomposed threads
-  if (grid%splitOverMpi.and.(nHydroSetGlobal /= 0)) goto 666 
+  if (grid%splitOverMpi.and.(nHydroSetsGlobal /= 0)) goto 666 
 
 #endif
 

@@ -17,7 +17,7 @@ contains
 
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
-    nHydroSetGlobal = 0
+    nHydroSetsGlobal = 0
     nHydroThreadsGlobal = nHydroThreadsinput
     if (hydrodynamics) then
 

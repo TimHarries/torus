@@ -161,18 +161,21 @@ contains
     
 #ifdef MPI
     if (grid%splitOverMPI) then
-       do iThread = 0, nThreadsGlobal-1
+
+       if (nHydroSetsGlobal /= 0) goto 666
+
+       do iThread = 0, nHydroThreadsGlobal
           if (iThread == myRankGlobal) then
              call writeAmrGridSingle(filename, fileFormatted, grid)
           endif
-          call torus_mpi_barrier
+          call MPI_BARRIER(localWorldCommunicator, ierr)
        enddo
     endif
 #endif
 
 
 #ifdef MPI
-    call torus_mpi_barrier
+    call MPI_BARRIER(localWorldCommunicator, ierr)
 #endif
 
 666 continue
