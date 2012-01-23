@@ -736,9 +736,9 @@ CONTAINS
 
 ! setup mpiThread values
 
-    if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
-         ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
-         ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
+    if ( ((parent%twoD)  .and.((nHydroThreadsGlobal) == 4)) .or. &
+         ((parent%threed).and.((nHydroThreadsGlobal) == 8)).or. &
+         ((parent%oneD)  .and.((nHydroThreadsGlobal) == 2)) ) then
        parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
     else
 
@@ -761,7 +761,7 @@ CONTAINS
        endif
     endif
 
-    if ((parent%twod).and.(nThreadsGlobal - 1) == 16) then
+    if ((parent%twod).and.nHydrothreadsGlobal == 16) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -771,7 +771,7 @@ CONTAINS
        endif
     endif
 
-    if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
+    if ((parent%threed).and.nHydroThreadsGlobal == 64) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -781,7 +781,7 @@ CONTAINS
        endif
     endif
 
-    if ((parent%threed).and.(nThreadsGlobal - 1) == 512) then
+    if ((parent%threed).and.nHydrothreadsGlobal == 512) then
        if (parent%child(newChildIndex)%nDepth > 3) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -4776,9 +4776,9 @@ CONTAINS
    endif
 
    if (grid%splitOverMPI) then
-      if ((thisOctal%twoD.and.(nThreadsGlobal-1)==4).or. &
-           (thisOctal%threed.and.(nThreadsGlobal-1)==8).or. &
-           (thisOctal%oned  .and.(nThreadsGlobal-1)==2) ) then
+      if ((thisOctal%twoD.and.nHydroThreadsGlobal==4).or. &
+           (thisOctal%threed.and.nHydroThreadsGlobal==8).or. &
+           (thisOctal%oned  .and.nHydroThreadsGlobal==2) ) then
          if ((thisOctal%nDepth == 1).and.(subcell /= myRankGlobal)) then
             split = .false.
          endif
@@ -4816,7 +4816,7 @@ CONTAINS
          endif
       endif
 
-      if (thisOctal%twod.and.((nThreadsGlobal-1)==16)) then
+      if (thisOctal%twod.and.(nHydroThreadsGlobal==16)) then
          if (thisOctal%nDepth <= 2) then
             split = .true.
          else
@@ -4827,7 +4827,7 @@ CONTAINS
       endif
 
 
-      if (thisOctal%threed.and.((nThreadsGlobal-1)==64)) then
+      if (thisOctal%threed.and.(nHydroThreadsGlobal==64)) then
          if (thisOctal%nDepth <= 2) then
             split = .true.
          else
@@ -4837,7 +4837,7 @@ CONTAINS
          endif
       endif
 
-      if (thisOctal%threed.and.((nThreadsGlobal-1)==512)) then
+      if (thisOctal%threed.and.(nHydroThreadsGlobal==512)) then
          if (thisOctal%nDepth <= 3) then
             split = .true.
          else
@@ -7185,7 +7185,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        thisOctal%temperature(subcell) = 10.d0
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
     else
-       thisOctal%rho(subcell) = 1.d-3 * rhoSphere
+       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
        thisOctal%temperature(subcell) = 10.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif

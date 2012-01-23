@@ -134,14 +134,12 @@ contains
   recursive subroutine fluxlimiter(thisoctal)
     use inputs_mod, only : limiterType
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: a, b, dq, dx
     character(len=80) :: message
  
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -155,8 +153,7 @@ contains
           end do
        else
 
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
       !    if (.not.thisoctal%ghostcell(subcell)) then
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
@@ -245,12 +242,10 @@ contains
 
   recursive subroutine updatedensitytree(thisoctal)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal, parentoctal, testoctal
     type(octal), pointer  :: child 
     integer :: i, n, m
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
 
     if (thisoctal%nchildren > 0) then
@@ -282,12 +277,10 @@ contains
 
   recursive subroutine updatephitree(thisoctal, ndepth)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i, n, ndepth
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     if (thisoctal%ndepth == (ndepth+1)) then
 
@@ -320,13 +313,11 @@ contains
 !Set up the i-1/2 flux for each cell on the grid
   recursive subroutine constructflux(thisoctal, dt)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, dx
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -340,7 +331,7 @@ contains
           end do
        else
 
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              if (thisoctal%u_interface(subcell).ge.0.d0) then
@@ -373,13 +364,11 @@ contains
 !Perform the actual advection
   recursive subroutine updatecellq(thisoctal, dt)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, dx, df
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -393,7 +382,7 @@ contains
           end do
        else
 
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if ((.not.thisoctal%ghostcell(subcell)).and.(.not.thisOctal%boundaryCell(subcell))) then
           
@@ -413,13 +402,11 @@ contains
 
   recursive subroutine synchronizefluxes(thisoctal, dt, idepth)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i, idepth
     real(double) :: dt !, dx
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
   
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -434,7 +421,7 @@ contains
        else
 
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (thisoctal%ndepth /= idepth) cycle
 
@@ -617,7 +604,6 @@ contains
 !set up neighbour densities and gravtiational potentials
   recursive subroutine setuprhophi(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -627,7 +613,6 @@ contains
     type(vector) :: direction, locator, reversedirection
     integer :: nd
     real(double) :: xnext, px, py, pz
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -641,7 +626,7 @@ contains
           end do
        else
 
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -671,7 +656,6 @@ contains
 !set up neighbour densities and cell interface advecting velocities - x direction
   recursive subroutine setupui(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -682,7 +666,6 @@ contains
     real(double) :: rhou_i_minus_1, rho_i_minus_1
     real(double) :: xnext, weight, px, py, pz
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     weight = 0.5d0
 !    nOdd = 0
@@ -698,8 +681,7 @@ contains
           end do
        else
           
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           !thaw - edgecell is correct.
           if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
@@ -729,7 +711,6 @@ contains
 !set up neighbour densities and cell interface advecting velocities - y direction
   recursive subroutine setupvi(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -740,7 +721,6 @@ contains
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
     real(double) :: xnext, px, py, pz
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -754,7 +734,7 @@ contains
           end do
        else
 
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -781,7 +761,6 @@ contains
 !set up neighbour densities and cell interface advecting velocities - z direction
   recursive subroutine setupwi(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -792,7 +771,6 @@ contains
     real(double) :: rhou_i_minus_1, rho_i_minus_1, weight
     integer :: nd
     real(double) :: xnext, px, py, pz
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -806,7 +784,7 @@ contains
           end do
        else
 
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -833,7 +811,6 @@ contains
 !note that thisOctal%flux_i is the flux at i-1/2
   recursive subroutine setupflux(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -844,7 +821,6 @@ contains
     integer :: nd
     real(double) :: xnext, fac, px, py, pz
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -858,7 +834,7 @@ contains
           end do
        else
 
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -912,7 +888,6 @@ contains
     type(vector), allocatable :: community(:), communitySubset(:)
     real(double), intent(out) :: fac
     real(double), allocatable ::  xpos(:), f(:)
-    integer :: myRank, ierr
     integer :: iTot
     real(double) :: m, dx, df
 !    logical, intent(in) :: fineToCoarse
@@ -920,7 +895,6 @@ contains
     real(double) :: fac_a, fac_b, m_a, m_b, df_a, df_b !3D parameters
 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
     fac = 0.d0
@@ -1091,7 +1065,7 @@ contains
     type(vector) :: locator, probe
     type(vector) :: nVec
     real(double) ::  xpos(:), f(:)
-    integer :: myRank, nCornerBound
+    integer :: nCornerBound
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas
     integer :: nd, i, ID(2)
     real(double) :: xnext, dx, px, py, pz
@@ -1112,14 +1086,14 @@ contains
             (thisOctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
        
        if(inOctal(grid%octreeRoot, locator)) then
-          if(octalOnThread(neighbouroctal, neighboursubcell, myRank) .or. (.not. fineToCoarse)) then
+          if(octalOnThread(neighbouroctal, neighboursubcell, myRankGlobal) .or. (.not. fineToCoarse)) then
              
              if(fineToCoarse) then
                 communityoctal => neighbouroctal
                 
                 call findsubcelllocal(locator, communityoctal, communitysubcell)
                 
-                if(octalOnTHread(communityOctal, communitySubcell, myRank)) then
+                if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
                         direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                 else
@@ -1135,7 +1109,7 @@ contains
                 call findsubcelllocal(locator, communityoctal, communitysubcell)
                 
                 !Get first try values
-                if(octalOnTHread(communityOctal, communitySubcell, myRank)) then
+                if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
                 else
@@ -1151,7 +1125,7 @@ contains
                    upper = .false.
                 end if
                 
-                if(octalOnthread(communityoctal, communitysubcell, myRank) .and. (nd-thisOctal%nDepth == 0)) then
+                if(octalOnthread(communityoctal, communitysubcell, myRankGlobal) .and. (nd-thisOctal%nDepth == 0)) then
                    probe = subcellCentre(communityoctal, communitysubcell) - direction*(thisOctal%subcellSize/2.d0 &
                         + 0.01d0*grid%halfsmallestsubcell)
                    
@@ -1159,7 +1133,7 @@ contains
                    call findsubcelllocal(probe,mirrorOctal, mirrorSubcell)
                    
                    
-                   if(octalOnTHread(mirrorOctal, mirrorSubcell, myRank)) then
+                   if(octalOnTHread(mirrorOctal, mirrorSubcell, myRankGlobal)) then
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                    else
@@ -1186,7 +1160,7 @@ contains
                       
                       call findsubcelllocal(locator, faceOctal, faceSubcell)
                       
-                      if(octalOnThread(faceOctal, faceSubcell, myRank)) then
+                      if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, direction, q, &
                               rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
                       else
@@ -1244,7 +1218,7 @@ contains
                 call findsubcelllocal(locator, mirrorOctal, mirrorSubcell)
 
 
-                if(octalOnThread(mirrorOctal,mirrorSubcell, myRank)) then
+                if(octalOnThread(mirrorOctal,mirrorSubcell, myRankGlobal)) then
 !Probe across the mpi boundary and check if the corresponding cell is the community subcell
                    locator = subcellcentre(mirrorOctal, mirrorSubcell) + direction * & 
                    (mirroroctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)  
@@ -1313,7 +1287,7 @@ contains
 
                    call findsubcelllocal(locator, faceOctal, faceSubcell) 
 
-!                   if(octalOnThread(faceOctal, faceSubcell, myRank)) then
+!                   if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                       call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, direction, q, rho, &
                       rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
 !                   else
@@ -1358,7 +1332,7 @@ contains
 
                    else
                       print *, "-----------------------"
-                      print *, "cvec", cvec, myrank
+                      print *, "cvec", cvec, myrankGlobal
                       print *, "nvec", nvec
                       print *, "subcellCentre(mirrorOctal, mirrorSubcell)", subcellCentre(mirrorOctal, mirrorSubcell)
                       print *, "-----------------------"
@@ -1547,7 +1521,6 @@ contains
 !set up neighbour pressures
   recursive subroutine setuppressure(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas
     type(octal), pointer   :: thisoctal
@@ -1558,7 +1531,6 @@ contains
     integer :: nd
     real(double) :: xnext, px, py, pz  
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1573,7 +1545,7 @@ contains
        else
 
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
 
           if (.not.thisoctal%edgecell(subcell)) then
@@ -1601,7 +1573,6 @@ contains
 !note these are not advecting velocities (u_i-1/2) 
   recursive subroutine setupupm(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -1612,7 +1583,6 @@ contains
     integer :: nd
     real(double) :: xnext, px, py, pz
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1626,7 +1596,7 @@ contains
           end do
        else
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -1652,7 +1622,6 @@ contains
 !note these are not advecting velocities (u_i-1/2) 
   recursive subroutine setupvpm(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -1663,7 +1632,6 @@ contains
     integer :: nd
     real(double) :: xnext, px, py, pz
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1677,7 +1645,7 @@ contains
           end do
        else
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -1703,7 +1671,6 @@ contains
 !note these are not advecting velocities (u_i-1/2) 
   recursive subroutine setupwpm(thisoctal, grid, direction)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -1714,7 +1681,6 @@ contains
     integer :: nd
     real(double) :: xnext, px, py, pz
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1728,7 +1694,7 @@ contains
           end do
        else
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
           if (.not.thisoctal%edgecell(subcell)) then
              locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
@@ -1755,7 +1721,6 @@ contains
 !Modifies cell interface velocities to avoid odd-even decoupling 
   recursive subroutine rhiechowui(thisoctal, grid, direction, dt)
     use mpi
-    integer :: myrank, ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child
@@ -1763,7 +1728,6 @@ contains
     type(vector) :: direction
     real(double) :: dt, dx
     
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1779,7 +1743,7 @@ contains
 
       
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
              !if (.not.thisoctal%edgecell(subcell)) then
              dx = returnCodeUnitLength(thisoctal%subcellsize*gridDistanceScale)
@@ -1803,7 +1767,6 @@ contains
   recursive subroutine computepressureGeneral(grid, thisOctal, withViscosity)
      use inputs_mod, only : etaViscosity, useViscosity
      use mpi
-     integer :: myrank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child
@@ -1812,7 +1775,6 @@ contains
     logical :: withViscosity
 !    logical :: useviscosity                                                                                                                                                                                             
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     eta = etaViscosity
 
@@ -1828,7 +1790,7 @@ contains
           end do
        else
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle                                                                                                                                                             
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
 !Get pressure, independent of viscosity
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
@@ -1855,7 +1817,12 @@ contains
              write(*,*) "pressureu has nan"
              write(*,*) "velocity: ",thisoctal%rhou(subcell),thisoctal%rhov(subcell), thisoctal%rhow(subcell)
              write(*,*) "rho: ", thisoctal%rho(subcell)
+             write(*,*) "temperature ",thisOctal%temperature(subcell)
+             write(*,*) "ios ",thisOctal%iEquationOfState(subcell)
              write(*,*) "cen ",subcellcentre(thisoctal, subcell)
+             write(*,*) "rank ",myrankGlobal
+             write(*,*) "mpithread ",thisOctal%mpiThread(subcell)
+             write(*,*) "depth ",thisOctal%nDepth
              stop
           endif
        endif
@@ -1866,7 +1833,6 @@ contains
   recursive subroutine pressureforceu(thisoctal, dt)
     use mpi
     use inputs_mod, only : radiationPressure
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1874,7 +1840,6 @@ contains
     
 
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1887,11 +1852,11 @@ contains
              end if
           end do
        else
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrank," error in setting up x_i values"
+                write(*,*) myrankGlobal," error in setting up x_i values"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
                 write(*,*) thisoctal%ndepth
                 write(*,*) "centre ",subcellcentre(thisoctal,subcell)
@@ -1952,14 +1917,12 @@ contains
   recursive subroutine pressureforcev(thisoctal, dt)
     use mpi
     use inputs_mod, only : radiationPressure
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
 
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1972,11 +1935,11 @@ contains
              end if
           end do
        else
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrank," error in setting up x_i values"
+                write(*,*) myrankGlobal," error in setting up x_i values"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
                 write(*,*) thisoctal%ndepth
                 write(*,*) "centre ",subcellcentre(thisoctal,subcell)
@@ -2034,13 +1997,11 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient -z direction
   recursive subroutine pressureforcew(thisoctal, dt)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhow, dx, dv
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -2055,11 +2016,11 @@ contains
        else
 
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrank," error in setting up x_i values"
+                write(*,*) myrankGlobal," error in setting up x_i values"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
                 write(*,*) thisoctal%ndepth
                 write(*,*) "centre ",subcellcentre(thisoctal,subcell)
@@ -2699,9 +2660,7 @@ recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
   type(octal), pointer :: thisOctal
   type(octal), pointer :: child
   real(double) :: totalFlux, dt
-  integer :: myRank, ierr
 
-  call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
@@ -2714,7 +2673,7 @@ recursive subroutine sumFluxes(thisOctal, dt, totalFlux)
            end if
         end do
      else
-        if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+        if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
         if (.not.thisoctal%edgecell(subcell)) then
         totalFlux = totalFlux + thisOctal%flux_i(subcell)
         end if
@@ -3303,7 +3262,7 @@ end subroutine sumFluxes
     smallest = 1.d10*grid%octreeRoot%subcellSize/dble(2**maxdepthamr)
     tp = 1.d30
     do i = 1,nSource
-       tp = min(tp, 0.5d0*smallest / modulus(source(i)%velocity))
+       tp = min(tp, 0.5d0*smallest / max(1.d-20,modulus(source(i)%velocity)))
     enddo
     tc = min(tc, tp)
     if (nSource > 1) then
@@ -3333,14 +3292,12 @@ end subroutine sumFluxes
 
   recursive subroutine computeCourantTime(grid, thisOctal, tc)
     use mpi
-    integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: tc, dx, cs, speed
   
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3353,7 +3310,7 @@ end subroutine sumFluxes
              end if
           end do
        else
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
           if (.not.thisOctal%ghostCell(subcell)) then
 
              cs = soundSpeed(thisOctal, subcell)
@@ -3392,7 +3349,6 @@ end subroutine sumFluxes
 
   recursive subroutine pressureTimeStep(thisoctal, dt)
     use mpi
-    integer :: myrank, ierr
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3400,7 +3356,6 @@ end subroutine sumFluxes
     
 
 
-    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -3413,7 +3368,7 @@ end subroutine sumFluxes
              end if
           end do
        else
-          if (.not.octalonthread(thisoctal, subcell, myrank)) cycle
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 
              
@@ -3461,11 +3416,9 @@ end subroutine sumFluxes
     real(double) :: u2, eKinetic, eTot, eThermal
     logical, save :: firstTime = .true.
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    integer :: myRank, ierr
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
-    if(octalOnThread(thisOctal, subcell,myRank)) then
+    if(octalOnThread(thisOctal, subcell,myRankGlobal)) then
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic 
           if (thisOctal%threed) then
@@ -3525,27 +3478,26 @@ end subroutine sumFluxes
     integer :: nHydroThreads
     real(double) :: tc(512), totalMass, totalEnergy
     integer :: it
-    integer :: myRank, ierr
     integer :: nPairs, thread1(5120), thread2(5120), group(5120), nBound(5120), ngroup
     integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, temptc(512)
     character(len=80) :: plotfile
     real(double) :: iniM, endM, iniE, endE
-    integer :: evenUpArray(nThreadsGlobal-1)
+    integer :: evenUpArray(nHydroThreadsGlobal)
+    integer :: ierr
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
     mu = 2.d0
-    nHydroThreads = nThreadsGlobal - 1
+    nHydroThreads = nHydroThreadsGlobal
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
     mu = 2.d0
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
+    if (myRankGlobal == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankGlobal /= 0) then
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
@@ -3616,9 +3568,9 @@ end subroutine sumFluxes
 
 !find the largest allowed time step on the grid, such that no cell advects material to cells other than
 !their nearest neighbours
-       if (myrank /= 0) then
-          tc(myrank) = 1.d30
-          call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
+       if (myrankGlobal /= 0) then
+          tc(myrankGlobal) = 1.d30
+          call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
        endif
 
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -3626,7 +3578,7 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-       if (myrank == 1) call tune(6,"Hydrodynamics step")
+       if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
 
        if (myrankGlobal /= 0) then
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -3637,7 +3589,7 @@ end subroutine sumFluxes
 !mass/energy conservation diagnostics
           call findEnergyOverAllThreads(grid, totalenergy)
           call findMassOverAllThreads(grid, totalmass)
-          if(myRank == 1) then
+          if(myRankGlobal == 1) then
              endM = totalMass
              endE = totalEnergy
              print *, "dM (%) = ", (1.d0 - (endM/iniM))*100.d0
@@ -3662,7 +3614,7 @@ end subroutine sumFluxes
 !ensure all celss are within one level of refinement of one another
           call setAllUnchanged(grid%octreeRoot)
           call evenUpGridMPI(grid, .true., dorefine, evenuparray)
-          if (myrank == 1) call tune(6,"Hydrodynamics step")
+          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call zeroRefinedLastTime(grid%octreeRoot)
 
@@ -3699,7 +3651,7 @@ end subroutine sumFluxes
     endM = totalMass
     endE = totalEnergy
     
-    if(myRank == 1) then
+    if(myRankGlobal == 1) then
        print *, "dM (%) = ", (1.d0 - (endM/iniM))*100.d0
        print *, "dE (%) = ", (1.d0 - (endE/iniE))*100.d0
        print *, "endM", endM
@@ -3724,7 +3676,6 @@ end subroutine sumFluxes
     real(double) :: currentTime !, smallTime
     real(double) :: initialmass
     integer :: i, j, it, iUnrefine, iRefine
-    integer :: myRank, ierr
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff,totalMass !, ang
     type(VECTOR) :: direction, viewVec, angMom
@@ -3733,9 +3684,10 @@ end subroutine sumFluxes
     integer :: nHydroThreads
     integer :: nGroup, group(5120)
 !    logical :: doRefine
-    integer :: evenUpArray(nThreadsGlobal-1)
+    integer :: evenUpArray(nHydroThreadsGlobal)
     logical :: doSelfGrav
     logical, save  :: firstStep = .true.
+    integer :: ierr
 
     doSelfGrav = .true.
 
@@ -3750,7 +3702,7 @@ end subroutine sumFluxes
     if (grid%geometry == "diagSod") doSelfGrav = .false.
     if (grid%geometry == "kelvin" ) doSelfGrav = .false.  
 
-    nHydroThreads = nThreadsGlobal - 1
+    nHydroThreads = nHydroThreadsGlobal
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     mu = 2.d0
@@ -3773,7 +3725,6 @@ end subroutine sumFluxes
     call writeCodeUnits()
 
     tdump = returnCodeUnitTime(tdump)
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
     if (myrankGlobal /= 0) then
@@ -3817,7 +3768,7 @@ end subroutine sumFluxes
 !refine the grid where necessary
           if(doRefine) then
              call writeInfo("Initial refine", TRIVIAL)    
-             if (myrank == 1) call tune(6, "Initial refine")
+             if (myrankGlobal == 1) call tune(6, "Initial refine")
              call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrTolerance, evenuparray)
 !             call writeVtkFile(grid, "afterinitrefine.vtk", &
@@ -3854,7 +3805,7 @@ end subroutine sumFluxes
           if(dorefine) then
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
-             if (myrank == 1) call tune(6, "Initial refine")
+             if (myrankGlobal == 1) call tune(6, "Initial refine")
              call writeVtkFile(grid, "afterinitevenup.vtk", &
                   valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
                   "u_i          ", &
@@ -3886,8 +3837,8 @@ end subroutine sumFluxes
 
 
 !initial gravity 
-             if (myrank == 1) call tune(6, "Self-Gravity")
-             if (myrank == 1) write(*,*) "Doing multigrid self gravity"
+             if (myrankGlobal == 1) call tune(6, "Self-Gravity")
+             if (myrankGlobal == 1) write(*,*) "Doing multigrid self gravity"
 !             call writeVtkFile(grid, "beforeselfgrav.vtk", &
 !                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
 !                  ,"phi          " /))
@@ -3911,8 +3862,8 @@ end subroutine sumFluxes
 !             call writeVtkFile(grid, "afterselfgrav.vtk", &
 !                  valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
 !                  "phigas       ","phi          "/))
-             if (myrank == 1) write(*,*) "Done"
-             if (myrank == 1) call tune(6, "Self-Gravity")
+             if (myrankGlobal == 1) write(*,*) "Done"
+             if (myrankGlobal == 1) call tune(6, "Self-Gravity")
           endif          
        endif
     endif
@@ -3934,12 +3885,12 @@ end subroutine sumFluxes
 
 !calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
 !nearest neighbour
-    if (myrank /= 0) then
-       tc(myrank) = 1.d30
-       call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
-       if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrank))
+    if (myrankGlobal /= 0) then
+       tc(myrankGlobal) = 1.d30
+       call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
+       if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
        call pressureGradientTimeStep(grid, dt)
-       tc(myRank) = min(tc(myrank), dt)
+       tc(myRankGlobal) = min(tc(myrankGlobal), dt)
     endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
     if (firstStep) then
@@ -3957,7 +3908,7 @@ end subroutine sumFluxes
        tdump =  20.d0 * dt
     endif
 
-    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
+    if (myRankGlobal == 1) write(*,*) "CFL set to ", cflNumber
 
     if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
     if (it ==0) nextDumpTime = 0.
@@ -3972,24 +3923,24 @@ end subroutine sumFluxes
 
 !loop until end of simulation time
     do while(currentTime <= tend)
-       if (myrank /= 0) then
-          tc(myrank) = 1.d30
-          call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
-          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrank))
+       if (myrankGlobal /= 0) then
+          tc(myrankGlobal) = 1.d30
+          call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
+          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
           call pressureGradientTimeStep(grid, dt)
-          tc(myRank) = min(tc(myrank), dt)
+          tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
        dt = MINVAL(temptc(1:nHydroThreads))
        dt = dt * dble(cflNumber)
 
        if (writeoutput) write(*,*) "Courant time is ",dt
-       if (myrank==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)
+       if (myrankGlobal==1)write(*,*) "Current time is ",returnPhysicalUnitTime(currentTime)
        call findMassoverAllThreads(grid, totalmass)
        if (nBodyPhysics) then
           totalmass = totalMass + SUM(globalSourceArray(1:globalnSource)%mass)
        endif
-       if (myrank==1)write(*,*) "Current mass: ",totalmass/initialmass,initialMass/msol
+       if (myrankGlobal==1)write(*,*) "Current mass: ",totalmass/initialmass,initialMass/msol
 
        call findAngMomoverAllThreads(grid, angMom, VECTOR(0.d0, 0.d0, 0.d0))
        if (nBodyPhysics.and.(globalnSource > 0)) then
@@ -3997,15 +3948,15 @@ end subroutine sumFluxes
              angMom = angMom + globalSourceArray(i)%angMomentum
           enddo
        endif
-       if (myrank==1)write(*,*) "Current ang mom: ",modulus(angMom), angmom
+       if (myrankGlobal==1)write(*,*) "Current ang mom: ",modulus(angMom), angmom
 
        if ((currentTime + dt) .gt. nextDumpTime) then
           dt = nextDumpTime - currentTime
        endif
 
        if (myrankGlobal /= 0) then
-          if (myrank == 1) write(*,*) "courantTime", dt,cflnumber
-          if (myrank == 1) call tune(6,"Hydrodynamics step")
+          if (myrankGlobal == 1) write(*,*) "courantTime", dt,cflnumber
+          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
 
 
 
@@ -4029,19 +3980,19 @@ end subroutine sumFluxes
           enddo
 
 
-          if (myrank == 1) call tune(6,"Hydrodynamics step")
+          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
 
 !unrefine the grid where necessary
           iUnrefine = iUnrefine + 1
           if(doUnRefine) then
              if (iUnrefine == 5) then
-                if (myrank == 1)call tune(6, "Unrefine grid")
+                if (myrankGlobal == 1)call tune(6, "Unrefine grid")
                ! nUnrefine = 0
                 call setAllUnchanged(grid%octreeRoot)
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
                 call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                                 !          write(*,*) "Unrefined ", nUnrefine, " cells"
-                if (myrank == 1)call tune(6, "Unrefine grid")
+                if (myrankGlobal == 1)call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
           end if
@@ -4083,11 +4034,11 @@ end subroutine sumFluxes
 !                  "pressure     ", &
 !                  "q_i          "/))
 
-             if (myrank == 1) call tune(6, "Loop refine")
+             if (myrankGlobal == 1) call tune(6, "Loop refine")
              
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
              
-             if (myrank == 1) call tune(6, "Loop refine")                  
+             if (myrankGlobal == 1) call tune(6, "Loop refine")                  
           end if
        endif
 
@@ -4102,8 +4053,8 @@ end subroutine sumFluxes
 
 !update the simulation time
        currentTime = currentTime + dt
-       if (myRank == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
-       if (myRank == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
+       if (myRankGlobal == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
+       if (myRankGlobal == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
 
 !dump simulation data if simulation time is greater than next dump time
        if (currentTime .ge. nextDumpTime) then
@@ -4136,7 +4087,7 @@ end subroutine sumFluxes
 
           write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
           call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
-          if (myrank==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
+          if (myrankGlobal==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -4153,7 +4104,6 @@ end subroutine sumFluxes
     real(double) :: dt, tc(512), temptc(512), mu
     real(double) :: currentTime
     integer :: i, it, iUnrefine
-    integer :: myRank, ierr
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass
@@ -4165,12 +4115,12 @@ end subroutine sumFluxes
     integer :: nHydroThreads 
 !    logical :: converged
     integer :: nUnrefine, jt, count
-    integer :: evenUpArray(nThreadsGlobal-1)
+    integer :: evenUpArray(nHydroThreadsGlobal)
+    integer :: ierr
 
     nUnrefine = 0
     count = 0
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    nHydroThreads = nThreadsGlobal - 1
+    nHydroThreads = nHydroThreadsGlobal
 
     it = grid%iDump
     currentTime = grid%currentTime
@@ -4192,7 +4142,7 @@ end subroutine sumFluxes
        viewVec = rotateY(viewVec, 25.d0*degtorad)
 
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
-       if (myRank == 1) write(*,*) "CFL set to ", cflNumber
+       if (myRankGlobal == 1) write(*,*) "CFL set to ", cflNumber
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        do i = 1, nPairs
@@ -4266,9 +4216,9 @@ end subroutine sumFluxes
 !calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
 !nearest neighbour
     tc = 0.d0
-    if (myrank /= 0) then
-       tc(myrank) = 1.d30
-       call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
+    if (myrankGlobal /= 0) then
+       tc(myrankGlobal) = 1.d30
+       call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
     endif
     call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
     tc = tempTc
@@ -4292,13 +4242,13 @@ end subroutine sumFluxes
 !loop until simulation end time
     do while(currentTime < tEnd)
 
-       if (myrank == 1) write(*,*) "current time " ,currentTime
+       if (myrankGlobal == 1) write(*,*) "current time " ,currentTime
        jt = jt + 1
        tc = 0.d0
 
-       if (myrank /= 0) then
-          tc(myrank) = 1.d30
-          call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
+       if (myrankGlobal /= 0) then
+          tc(myrankGlobal) = 1.d30
+          call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
        endif
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,MPI_COMM_WORLD, ierr)
 
@@ -4316,8 +4266,8 @@ end subroutine sumFluxes
        endif
 
        if (myrankGlobal /= 0) then
-          if (myrank == 1) write(*,*) "courantTime", dt, it
-          if (myrank == 1) call tune(6,"Hydrodynamics step")
+          if (myrankGlobal == 1) write(*,*) "courantTime", dt, it
+          if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
           call writeInfo("calling hydro step",TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -4344,7 +4294,7 @@ end subroutine sumFluxes
           endif
        end if
     
-       if (myrank == 1) call tune(6,"Hydrodynamics step")
+       if (myrankGlobal == 1) call tune(6,"Hydrodynamics step")
 
        call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -5216,9 +5166,6 @@ end subroutine sumFluxes
     integer :: nProbeOutside
     logical :: corner
     logical, optional :: flag
-    integer :: myRank, ierr
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
     do subcell = 1, thisOctal%maxChildren
@@ -5234,7 +5181,7 @@ end subroutine sumFluxes
           end do
        else
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
 
           if (thisOctal%oned) then
@@ -5559,10 +5506,8 @@ end subroutine sumFluxes
     integer :: nProbes, iProbe
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
-    integer :: myRank, ierr
     character(len=10) :: boundary
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal == 0) goto 666
     do subcell = 1, thisOctal%maxChildren
 
@@ -5577,7 +5522,7 @@ end subroutine sumFluxes
           end do
        else
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           thisOctal%edgeCell(subcell) = .false.
           if (.not.associated(thisOctal%corner)) then
@@ -5680,10 +5625,8 @@ end subroutine sumFluxes
     integer :: nDepth
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
-    integer :: myRank, ierr
     character(len=10) :: boundary
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal == 0) goto 666
 
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
@@ -5695,8 +5638,6 @@ end subroutine sumFluxes
        do subcell = 1, thisOctal%maxChildren
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           thisOctal%edgeCell(subcell) = .false.
           if (thisOctal%oned) then
@@ -5787,10 +5728,8 @@ end subroutine sumFluxes
     integer :: nProbes, iProbe
     type(VECTOR) :: probe(6), currentDirection
     integer :: nProbeOutside
-    integer :: myRank, ierr
 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal ==0 ) goto 666
     do subcell = 1, thisOctal%maxChildren
 
@@ -5804,7 +5743,7 @@ end subroutine sumFluxes
              end if
           end do
        else
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           thisOctal%ghostCell(subcell) = .false.
 
@@ -6022,10 +5961,8 @@ end subroutine sumFluxes
     integer :: nProbes, iProbe, nDepth
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
-    integer :: myRank, ierr
     logical :: trigger
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal ==0 ) goto 666
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
        do i = 1, thisOctal%nChildren, 1
@@ -6256,7 +6193,7 @@ end subroutine sumFluxes
     integer :: ierr, k, j
     real(double) :: tol
     real(double) :: index = 1.d0
-    integer :: evenuparray(nThreadsGlobal-1), itemp
+    integer :: evenuparray(nHydroThreadsGlobal), itemp
     integer :: endloop, nworking
     integer, allocatable ::  safe(:, :)
 !    character(len=80) :: plotfile
@@ -6267,16 +6204,16 @@ end subroutine sumFluxes
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
-       if(nThreadsGlobal == 17) then
+       if(nHydroThreadsGlobal == 16) then
           nworking = 4
        else
           nworking = 1
        end if
     else if(grid%octreeroot%threed) then
        endloop = 8
-       if(nThreadsGlobal == 65) then
+       if(nHydroThreadsGlobal == 64) then
           nworking = 8
-       else if(nThreadsGlobal == 512) then
+       else if(nHydroThreadsGlobal == 512) then
           nworking = 32
        else
           nworking = 1
@@ -6286,11 +6223,11 @@ end subroutine sumFluxes
        nworking = 1
     end if
 
-    allocate(safe(endloop, nThreadsGlobal-1))
+    allocate(safe(endloop, nHydroThreadsGlobal))
 
     safe = 0
     do k = 1, endloop
-       do j = 1, nTHreadsGlobal-1
+       do j = 1, nHydroTHreadsGlobal
           if(evenupArray(j) == k) then
              safe(k, j) = j 
           end if
@@ -6315,7 +6252,7 @@ end subroutine sumFluxes
        enddo
        index = index + 1.d0
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-       call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        itemp = itemp+1
 !       write(plotfile,"(a,i5.5,a)") "afterefine",itemp,".vtk"
 !             call writeVtkFile(grid, plotfile, &
@@ -6330,7 +6267,7 @@ end subroutine sumFluxes
 !                  "mpithread    ", &
 !                  "q_i          "/))
 
-       if (ALL(tConverged(1:nthreadsGlobal-1))) exit
+       if (ALL(tConverged(1:nHydrothreadsGlobal))) exit
     enddo
 
 
@@ -6358,7 +6295,6 @@ end subroutine sumFluxes
     integer :: neighbourSubcell, nDir
     real(double) :: r, grad, maxGradient
     real(double) :: limit
-    integer :: myRank, ierr
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     real(double) :: speed1, speed2
@@ -6382,7 +6318,6 @@ end subroutine sumFluxes
    end if
 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
     if(mod(index, 2.d0) /= 0.d0) then
@@ -6412,7 +6347,7 @@ end subroutine sumFluxes
           if (.not.converged_tmp) converged=converged_tmp
        else
 
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -6532,6 +6467,18 @@ end subroutine sumFluxes
        enddo
        if (.not.converged) exit
     endif
+
+    if (converged.and.(globalnSource>0)) then
+       do iSource = 1, globalNSource
+          if (inSubcell(thisOctal,subcell, globalSourceArray(isource)%position) &
+               .and. (thisOctal%nDepth < maxDepthAMR)) then
+             call addNewChildWithInterp(thisOctal, subcell, grid)
+             converged = .false.
+             exit
+          endif
+       enddo
+       if (.not.converged) exit
+    endif
              
 
     if (converged.and.refineOnMass) then
@@ -6583,7 +6530,7 @@ end subroutine sumFluxes
 
              maxGradient = max(grad, maxGradient)
 
-             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
+             if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then    
 
                 if((maxGradient > amrtemperaturetol) .and. (thisOctal%nDepth < maxDepthAMR)) then 
                    call addNewChildWithInterp(thisOctal, subcell, grid)
@@ -6614,7 +6561,7 @@ end subroutine sumFluxes
 
              maxGradient = max(grad, maxGradient)
 
-             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then    
+             if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then    
                 if((maxGradient > amrRhoeTol) .and. (thisOctal%nDepth < maxDepthAMR)) then                   
                    call addNewChildWithInterp(thisOctal, subcell, grid)
                    converged = .false.
@@ -6676,7 +6623,7 @@ end subroutine sumFluxes
 
              maxGradient = max(grad, maxGradient)
 
-             if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+             if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
 !                if ((thisOctal%ionFrac(subcell,1) > 0.9d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) < 0.1d0) .and. &
                 if((maxGradient > amrIonFracTol) .and. (thisOctal%nDepth < maxDepthAMR)) then
                    call addNewChildWithInterp(thisOctal, subcell, grid)
@@ -6714,11 +6661,9 @@ end subroutine refineGridGeneric2
     integer :: subcell, i
     logical :: converged, converged_tmp
     logical, optional :: inherit
-    integer :: myRank, ierr
     converged = .true.
     converged_tmp=.true.
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -6737,7 +6682,7 @@ end subroutine refineGridGeneric2
        else
           
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
 
           if ((thisOctal%edgeCell(subcell)) &
@@ -6762,11 +6707,8 @@ end subroutine refineGridGeneric2
     integer :: subcell, i
     logical :: converged, converged_tmp
     logical, optional :: inherit
-    integer :: myRank, ierr
     converged = .true.
     converged_tmp=.true.
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -6786,7 +6728,7 @@ end subroutine refineGridGeneric2
        else
           
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
 
           if ((thisOctal%feederCell(subcell)) &
@@ -7106,7 +7048,7 @@ end subroutine refineGridGeneric2
     type(GRIDTYPE) :: grid
     logical :: inheritFlag
     integer, optional :: dumpfiles
-    integer :: myRank, nThreads, thisThread
+    integer :: nThreads, thisThread
     integer :: ierr
     logical :: globalConverged(512), localChanged(512), tConverged(512)
     type(VECTOR) :: locs(200000), eLocs(200000)
@@ -7127,7 +7069,6 @@ end subroutine refineGridGeneric2
     integer, allocatable ::  safe(:, :)
 
 !    character(len=20) :: plotfile
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
     ! first even up the local part of the grid
     if (myrankGlobal == 0) goto 666
@@ -7165,16 +7106,16 @@ end subroutine refineGridGeneric2
 
     if(grid%octreeRoot%twoD) then 
        endloop = 4
-       if(nThreadsGlobal == 17) then
+       if(nHydroThreadsGlobal == 16) then
           nworking = 4
        else
           nworking = 1
        end if
     else if(grid%octreeroot%threed) then
        endloop = 8
-       if(nThreadsGlobal == 65) then
+       if(nHydroThreadsGlobal == 64) then
           nworking = 8
-       else if(nThreadsGlobal == 512) then
+       else if(nHydroThreadsGlobal == 512) then
           nworking = 32
        else
           nworking = 1
@@ -7184,10 +7125,10 @@ end subroutine refineGridGeneric2
        nworking = 1
     end if
 
-    allocate(safe(endloop, nThreadsGlobal-1))
+    allocate(safe(endloop, nHydroThreadsGlobal))
     safe = 0
     do k = 1, endloop
-       do j = 1, nTHreadsGlobal-1
+       do j = 1, nHydroTHreadsGlobal
           if(evenupArray(j) == k) then
              safe(k, j) = j 
           end if
@@ -7221,24 +7162,24 @@ end subroutine refineGridGeneric2
           end do
           index = index + 1.d0
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 !          if (myrank == 1) write(*,*) "first evenup ",tConverged(1:nThreadsGlobal-1)
-          if (ALL(tConverged(1:nthreadsGlobal-1))) exit
+          if (ALL(tConverged(1:nHydrothreadsGlobal))) exit
        enddo
 
        if (evenAcrossThreads) then             
              nLocs = 0
              nExternalLocs = 0
-             call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
-             call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+             call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRankGlobal), locs, thread, depth)
+             call MPI_ALLREDUCE(nLocs, tempnLocs, nHydroThreadsglobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
              
              nLocsGlobal = SUM(tempnLocs)
              do thisThread = 1, nThreads - 1
-                if(thisThread == myRank) then
+                if(thisThread == myRankGlobal) then
                    do iThread = 1, nThreads-1
                       nTemp(1) = 0
-                      if (iThread /= myRank) then
-                         do i = 1 , nLocs(myRank)
+                      if (iThread /= myRankGlobal) then
+                         do i = 1 , nLocs(myRankGlobal)
                             if (thread(i) == iThread) then
                                nTemp(1) = nTemp(1) + 1
                                temp(nTemp(1),1) = locs(i)%x
@@ -7294,7 +7235,7 @@ end subroutine refineGridGeneric2
 !                      print *, "RANK TIME ", myRank, nExternalLocs, iThread
 !                   end if
                    do i = 1, nExternalLocs
-                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
+                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRankGlobal))
                       converged=.true.
                       if(ANY(localChanged)) converged = .false.
                    enddo
@@ -7334,19 +7275,19 @@ end subroutine refineGridGeneric2
              enddo
              index = index + 1.d0
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-            call MPI_ALLREDUCE(globalConverged, tConverged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+            call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 !             if (myrank == 1) write(*,*) "second evenup ",tConverged(1:nThreadsGlobal-1)
-             if (ALL(tConverged(1:nthreadsGlobal-1))) exit
+             if (ALL(tConverged(1:nHydrothreadsGlobal))) exit
           enddo
           if (PRESENT(dumpfiles)) then
              write(vtkfilename,'(a,i4.4,a,i4.4,a)') "aftereven",dumpfiles,"_",iter,".vtk"
              call writeVtkFile(grid, vtkFilename)
           endif
 
-          call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(localChanged, globalChanged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
 
 !          if (myrank == 1) write(*,*) "globalChanged ",globalChanged(1:nThreadsGlobal-1)
-          if (ANY(globalChanged(1:nThreadsGlobal-1)) .or. .not. converged) then
+          if (ANY(globalChanged(1:nHydroThreadsGlobal)) .or. .not. converged) then
              allThreadsConverged = .false.
           else
              allThreadsConverged = .true.
@@ -7379,7 +7320,6 @@ end subroutine refineGridGeneric2
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
-    integer :: myRank, ierr
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
     integer :: nd!, nd2
     real(double) :: index
@@ -7388,7 +7328,6 @@ end subroutine refineGridGeneric2
     converged = .true.
     converged_tmp=.true.
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
     if(mod(index, 2.d0) /= 0.d0) then
@@ -7417,7 +7356,7 @@ end subroutine refineGridGeneric2
           if (.not.converged_tmp) converged=converged_tmp
        else
 
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -7438,7 +7377,7 @@ end subroutine refineGridGeneric2
              end if
              
              !THAW - need to provide a case for when boundary partner is not on thread (i.e. for periodics)
-             if(octalOnThread(bOctal, bSubcell, myRank)) then
+             if(octalOnThread(bOctal, bSubcell, myRankGlobal)) then
                 if(thisOctal%nDepth > bOctal%nDepth .and. bOctal%nDepth < maxDepthAMR) then
                    call addNewChildWithInterp(bOctal, bsubcell, grid)
                    converged = .false.
@@ -7464,7 +7403,7 @@ end subroutine refineGridGeneric2
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
-                if(octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+                if(octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
 
                    if(neighbourOctal%nDepth > thisOctal%nDepth) then
                       call addNewChildWithInterp(thisOctal, subcell, grid)
@@ -7591,7 +7530,7 @@ end subroutine refineGridGeneric2
                    exit
                 endif
                 
-                if (octalOnThread(neighbourOctal, neighbourSubcell, myrank)) then         
+                if (octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then         
                    !                      if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
                    if (((thisOctal%nDepth-neighbourOctal%nDepth) > 1).and.(neighbourOctal%ndepth < maxDepthAMR)) then
                       call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
@@ -7616,15 +7555,13 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: locator
     integer :: depth
     integer :: subcell
-    integer :: myRank, ierr
     logical :: localChanged 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     call findSubcellTD(locator, grid%octreeRoot, thisOctal,subcell)
     
-    if (myRank /= thisOctal%mpiThread(subcell)) then
-       write(*,*) "There is a bug somewhere: ",myrank
+    if (myRankGlobal /= thisOctal%mpiThread(subcell)) then
+       write(*,*) "There is a bug somewhere: ",myrankGlobal
        stop
     endif
 !    WRITE(*,*) "ATTEMPTNG TO SPLIT", depth, thisOctal%nDepth,  myRank
@@ -7652,13 +7589,11 @@ end subroutine refineGridGeneric2
     integer, intent(out) :: thread(:), depth(:)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
-    integer :: myRank, ierr
     integer, intent(out) :: nLocs
     converged = .true.
     converged_tmp=.true.
 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -7674,7 +7609,7 @@ end subroutine refineGridGeneric2
        else
 
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -7704,7 +7639,7 @@ end subroutine refineGridGeneric2
                    neighbourOctal => thisOctal
                    call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
 
-                   if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+                   if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
                       nLocs = nLocs + 1
 !                      print *, "found ", nLocs, "on other threads", myRank
 !                      print *, octVec
@@ -7735,7 +7670,6 @@ end subroutine refineGridGeneric2
     integer :: dependentThread(:)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
-    integer :: myRank, ierr
     integer :: nDependent
     logical :: alreadyInList
     integer :: iDep
@@ -7743,7 +7677,6 @@ end subroutine refineGridGeneric2
     converged_tmp=.true.
 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -7759,7 +7692,7 @@ end subroutine refineGridGeneric2
        else
 
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -7789,7 +7722,7 @@ end subroutine refineGridGeneric2
                    neighbourOctal => thisOctal
                    call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
 
-                   if (neighbourOctal%mpiThread(neighboursubcell) /= myRank) then
+                   if (neighbourOctal%mpiThread(neighboursubcell) /= myRankGlobal) then
                       alreadyInList = .false.
                       do iDep = 1, nDependent
                          if (neighbourOctal%mpiThread(neighbourSubcell) == dependentThread(iDep)) then
@@ -7818,7 +7751,7 @@ end subroutine refineGridGeneric2
     integer :: iThread
     integer :: ierr
 
-    do iThread = 1, nThreadsGlobal-1
+    do iThread = 1, nHydroThreadsGlobal
        if (myRankGlobal == iThread) then
           call writeAMRgridMpi(filename,fileFormatted,grid,mpiFlag=.true.)
        endif
@@ -7835,7 +7768,7 @@ end subroutine refineGridGeneric2
     integer :: ierr
     integer :: nOctals, nVoxels
 
-    do iThread = 0, nThreadsGlobal-1
+    do iThread = 0, nHydroThreadsGlobal
        if (myRankGlobal == iThread) then
           call readAMRgridMpi(filename,fileFormatted,grid,mpiFlag=.true.)
           call updateMaxDepth(grid, searchLimit = 100000)
@@ -7851,7 +7784,6 @@ end subroutine refineGridGeneric2
 
   recursive subroutine gSweep(thisOctal, grid, deltaT, fracChange)
     use mpi
-    integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
@@ -7865,7 +7797,6 @@ end subroutine refineGridGeneric2
     real(double) :: xnext, px, py, pz
     gGrav = bigG  * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -7954,7 +7885,6 @@ end subroutine refineGridGeneric2
 
   recursive subroutine gSweep2(thisOctal, grid, deltaT, fracChange)
     use mpi
-    integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
@@ -7971,7 +7901,6 @@ end subroutine refineGridGeneric2
     real(double), parameter :: SOR = 1.2d0
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -8117,7 +8046,7 @@ end subroutine refineGridGeneric2
 
   recursive subroutine gSweepLevel(thisOctal, grid, deltaT, fracChange, ghostFracChange, nDepth)
     use mpi
-    integer :: myRank, ierr, nd
+    integer :: nd
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
@@ -8135,7 +8064,6 @@ end subroutine refineGridGeneric2
 
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
        do i = 1, thisOctal%nChildren, 1
@@ -8221,7 +8149,7 @@ end subroutine refineGridGeneric2
     real(double), parameter :: tol = 1.d-4,  tol2 = 1.d-4
     real(double) :: thisFrac
     integer :: it, ierr, i, j
-    nHydroThreads = nThreadsGlobal - 1
+    nHydroThreads = nHydroThreadsGlobal
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 
@@ -8369,7 +8297,7 @@ end subroutine refineGridGeneric2
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    real(double) :: mu, rhoPhys, gamma, cs, rhoNorm
+    real(double) :: mu, rhoPhys, gamma, cs
 
     mu = 0.d0
 
@@ -8438,11 +8366,11 @@ end subroutine refineGridGeneric2
           getPressure = ((4.1317d9*1.d-20)/(1.d-20**2)) * thisOctal%rho(subcell)**2
 
        case(4) ! federrath et al.
-          rhoNorm = dble(thisOctal%rho(subcell)/1.e-15)
+          rho = thisOctal%rho(subcell)/1.d-15
           cs = 0.166d5
-          if (rhoNorm <= 0.25d0) then
+          if (rho <= 0.25d0) then
              gamma = 1.d0
-          else if ((rhoNorm > 0.25d0).and.(rhoNorm <= 5.d0)) then
+          else if ((rho > 0.25d0).and.(rho <= 5.d0)) then
              gamma = 1.1d0
           else
              gamma = 4.d0/3.d0

@@ -75,7 +75,7 @@ contains
     character(len=80) :: mpiFilename, datFilename
     real(double) :: dt, tc(513), temptc(513),cfl, gamma, mu
     integer :: iUnrefine
-    integer :: myRank, ierr
+    integer :: ierr
     real(double) ::  nextDumpTime
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
@@ -128,8 +128,6 @@ contains
 
 !    tdump = returnCodeUnitTime(tdump)
 
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
 
@@ -200,15 +198,16 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    if (myRank == 1) write(*,*) "CFL set to ", cfl
+    if (myRankGlobal == 1) write(*,*) "CFL set to ", cfl
 
-    if (myrank /= 0) then
+    if (myrankGlobal /= 0) then
 
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
+       call resetnh(grid%octreeRoot)
 
 
        do i = 1, nPairs
@@ -242,11 +241,12 @@ contains
           else
              call evenUpGridMPI(grid, .false., .true., evenuparray)
           endif
+          call resetnh(grid%octreeRoot)
           
           call writeInfo("Calling exchange across boundary", TRIVIAL)
-          if (myRank == 1) call tune(6,"Exchange across boundary")
+          if (myRankGlobal == 1) call tune(6,"Exchange across boundary")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          if (myRank == 1) call tune(6,"Exchange across boundary")
+          if (myRankGlobal == 1) call tune(6,"Exchange across boundary")
           call writeInfo("Done", TRIVIAL)
           
 !          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -255,6 +255,7 @@ contains
           call refineGridGeneric(grid, amrtolerance, evenuparray)
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,.true., evenuparray)
+          call resetnh(grid%octreeRoot)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
@@ -276,6 +277,7 @@ contains
              if (irefine == 1) then
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
+                call resetnh(grid%octreeRoot)
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 call writeInfo("Done",TRIVIAL)
@@ -299,12 +301,12 @@ contains
 
 !       if (myrank /= 0) call addStellarWind(grid%octreeRoot, globalsourcearray(1))
           
-          if (myrank /= 0) then
+          if (myrankGlobal /= 0) then
              call calculateEnergyFromTemperature(grid%octreeRoot)
              call calculateRhoE(grid%octreeRoot, direction)
           endif
                     
-          if (myrank/=0) then
+          if (myrankGlobal/=0) then
              call writeInfo("Refining individual subgrids", TRIVIAL)
              call setAllUnchanged(grid%octreeRoot)
              if (.not.grid%splitOverMpi) then
@@ -324,7 +326,8 @@ contains
              call refineGridGeneric(grid, amrtolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
-             if (myrank /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+             call resetnh(grid%octreeRoot)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
                 call writeVtkFile(grid, "stellarwind.vtk", &
                 valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
@@ -334,8 +337,8 @@ contains
              !THAW - self gravity
 
              if (doselfGrav) then
-                if (myrank == 1) call tune(6, "Self-Gravity")
-                if (myrank == 1) write(*,*) "Doing multigrid self gravity"
+                if (myrankGlobal == 1) call tune(6, "Self-Gravity")
+                if (myrankGlobal == 1) write(*,*) "Doing multigrid self gravity"
 !                call writeVtkFile(grid, "beforeselfgrav.vtk", &
 !                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
 !                ,"phi          " /))
@@ -357,15 +360,15 @@ contains
 !                call writeVtkFile(grid, "afterselfgrav.vtk", &
 !                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", &
 !                "phigas       ","phi          "/))
-                if (myrank == 1) write(*,*) "Done"
-                if (myrank == 1) call tune(6, "Self-Gravity")
+                if (myrankGlobal == 1) write(*,*) "Done"
+                if (myrankGlobal == 1) call tune(6, "Self-Gravity")
               
              endif
              
           endif
           !       enddo
        
-       if (myrank /= 0) then
+       if (myrankGlobal /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot)
           call calculateRhoE(grid%octreeRoot, direction)          
        endif
@@ -394,15 +397,15 @@ contains
 
        
        tc = 0.d0
-       if (myrank /= 0) then
-          tc(myrank) = 1.d30
-          call computeCourantTime(grid, grid%octreeRoot, tc(myRank))
-          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrank))
+       if (myrankGlobal /= 0) then
+          tc(myrankGlobal) = 1.d30
+          call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
+          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
           call pressureGradientTimeStep(grid, dt)
-          tc(myRank) = min(tc(myrank), dt)
+          tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-       dt = MINVAL(temptc(1:nHydroThreads))
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+       dt = MINVAL(temptc(1:nHydroThreadsGlobal))
        dt = dt * dble(cfl)
 
 
@@ -412,8 +415,8 @@ contains
           dt = dt * 0.01d0
        endif
   
-       if (myrank == 1) then
-          write(*,*) temptc(1:nThreadsGlobal)
+       if (myrankGlobal == 1) then
+          write(*,*) temptc(1:nHydroThreadsGlobal)
           write(*,*) "courantTime", dt
        endif
        dumpThisTime = .false.
@@ -430,11 +433,11 @@ contains
 
 
 
-       if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", &
+       if (myrankGlobal == 1) write(*,*) "dump ",dumpThisTime, " current ", &
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
-       if (myrank == 1) write(*,*) "Time step", dt
-       if (myRank == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
+       if (myrankGlobal == 1) write(*,*) "Time step", dt
+       if (myRankGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -479,6 +482,8 @@ contains
           end if
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
+          call resetnh(grid%octreeRoot)
+
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
@@ -496,12 +501,32 @@ contains
 !          end if
        end if
 
-          if (myrank /= 0) then
+          if (myrankGlobal /= 0) then
              call calculateEnergyFromTemperature(grid%octreeRoot)
              call calculateRhoE(grid%octreeRoot, direction)
           endif
 
-          if (myRank /= 0) then
+
+       if (myRankGlobal == 1) call tune(6,"Hydrodynamics step")
+       call writeInfo("calling hydro step",TRIVIAL)
+       
+       if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+!       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!            "hydrovelocity","sourceCont   ","pressure     "/))
+
+       if (severeDamping) call cutVacuum(grid%octreeRoot)
+
+       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+       call writeVtkFile(grid, mpiFilename, &
+            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+            "hydrovelocity","sourceCont   ","pressure     ", &
+	     "mpithread    "/))
+       if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+
+          if (myRankGlobal /= 0) then
              
              call setAllUnchanged(grid%octreeRoot)
              call evenUpGridMPI(grid,.false.,.true., evenuparray)
@@ -510,29 +535,17 @@ contains
 
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
-             if (myrank /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif
 
           if (severeDamping) call cutVacuum(grid%octreeRoot)
 
-       if (myRank == 1) call tune(6,"Hydrodynamics step")
-       call writeInfo("calling hydro step",TRIVIAL)
-       
-       if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-!       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
-!       call writeVtkFile(grid, mpiFilename, &
-!            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!            "hydrovelocity","sourceCont   ","pressure     "/))
-
-
-       if (myrank /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
-       if (severeDamping) call cutVacuum(grid%octreeRoot)
 
 !add/merge sink particles where necessary
-       if (myrank /= 0) then
+       if (myrankGlobal /= 0) then
           if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)       
           if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
           do i = 1, globalnSource
@@ -549,11 +562,11 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 
-       if (myRank == 1) call tune(6,"Hydrodynamics step")
-       if (myrank /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       if (myrank /= 0) call resetNh(grid%octreeRoot)
+       if (myRankGlobal == 1) call tune(6,"Hydrodynamics step")
+       if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (myrankGlobal /= 0) call resetNh(grid%octreeRoot)
 
-       if (myrank /= 0) then
+       if (myrankGlobal /= 0) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 3) then
              if (myrankglobal == 1) call tune(6, "Unrefine grid")
@@ -568,7 +581,7 @@ contains
 
        grid%currentTime = grid%currentTime + dt
        
-       if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
+       if (myRankGlobal == 1) write(*,*) "Current time: ",grid%currentTime
 
 !Track the evolution of the ionization front with time
 !          write(datFilename, '(a, i4.4, a)') "Ifront.dat"
@@ -645,11 +658,10 @@ end subroutine radiationHydro
        monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
-         optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks
+         optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
     use mpi
     implicit none
-    integer :: myRank, ierr
     integer(bigint) :: nMonte
     logical, optional :: sublimate
     logical :: doSublimate, timeDep, monteCheck
@@ -702,7 +714,7 @@ end subroutine radiationHydro
     integer(bigint) :: iMonte_beg, iMonte_end, nSCat
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
-    integer :: iThread, nThreads
+    integer :: iThread
     logical :: endLoop
     logical :: crossedMPIboundary
     integer :: tag = 41
@@ -725,7 +737,7 @@ end subroutine radiationHydro
     integer :: maxStackLimit
     integer :: sendStackLimit
 
-    integer :: evenuparray(nThreadsGlobal-1)
+    integer :: evenuparray(nHydroThreadsGlobal)
     integer :: k
     real(double) :: nuThresh
 
@@ -782,6 +794,7 @@ end subroutine radiationHydro
     real(double) :: countArray(1000) = 0.d0
 
     character(len=80) :: mpiFilename
+    integer :: ierr
 
     !AMR
 !    integer :: iUnrefine, nUnrefine
@@ -794,8 +807,6 @@ end subroutine radiationHydro
     !   zerothStackLimit = 1
     !end if
     
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
     
     if(stacklimit == 0) then
        stacklimit = 200
@@ -809,7 +820,7 @@ end subroutine radiationHydro
 
     if(customStacks) then
        optimizeStack = .false.
-       maxStackLimit = maxval(stackLimitArray(1:nThreads))
+       maxStackLimit = maxval(stackLimitArray(1:nHydroThreadsGlobal))
        sendStackLimit = stackLimitArray(myRankGlobal+1)
     else
        maxStackLimit = stackLimit
@@ -825,7 +836,7 @@ end subroutine radiationHydro
 !    iUnrefine = 0
 
     
-    allocate(photonPacketStack(maxStackLimit*nThreads))
+    allocate(photonPacketStack(maxStackLimit*nHydroThreadsGlobal))
     allocate(toSendStack(maxStackLimit))
     allocate(currentStack(maxStackLimit))
 
@@ -875,8 +886,8 @@ end subroutine radiationHydro
 
 
 
-    allocate(nEscapedArray(1:nThreads-1))
-    allocate(nSaved(nThreads))
+    allocate(nEscapedArray(1:nHydroThreadsGlobal))
+    allocate(nSaved(nHydroThreadsGlobal))
     nescapedArray = 0    
     dprCounter = 0
 
@@ -1043,7 +1054,7 @@ end subroutine radiationHydro
 
        if(optimizeStack .and. nIter > 0) then
           bufferSize = 0
-          allocate(photonPacketStack(stackLimit*nThreads))
+          allocate(photonPacketStack(stackLimit*nHydroThreadsGlobal))
           allocate(toSendStack(stackLimit))
           allocate(currentStack(stackLimit))
           call MPI_PACK_SIZE(stackLimit, MPI_PHOTON_STACK, MPI_COMM_WORLD, bufferSize, ierr)
@@ -1095,11 +1106,11 @@ end subroutine radiationHydro
           epsoverdeltat = lcore/dble(nMonte)
        end if
        
-       if (myrank /= 0) call zeroDistanceGrid(grid%octreeRoot)
+       if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
-       if (myrank == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
+       if (myrankGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
 
-       if (myrank == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
+       if (myrankGlobal == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        !Thaw - stack optimization
        if(optimizeStack) then
@@ -1121,7 +1132,7 @@ end subroutine radiationHydro
 
        countArray = 0.d0
 
-       if(optimizeStack .and. myRank == 0) then
+       if(optimizeStack .and. myRankGlobal == 0) then
           write(*,*) "DOING OPTIMIZATION"
           write(*,*) "StackLimit ", stacklimit
           write(*,*) "dstack", dstack
@@ -1133,7 +1144,7 @@ end subroutine radiationHydro
           iniCustomTime=.false.
        end if
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-          if (myRank == 0) then
+          if (myRankGlobal == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
@@ -1195,12 +1206,12 @@ end subroutine radiationHydro
                 nSaved(iThread) = nSaved(iThread) + 1
 
                 !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
-                do optCounter = 1, nThreads-1
+                do optCounter = 1, nHydroThreadsGlobal
                    if(nSaved(optCounter) /= 0) then
                       if(nSaved(optCounter) == (zerothstackLimit) .or. &
-                           (nMonte - nInf) < (zerothstackLimit*nThreads)) then
+                           (nMonte - nInf) < (zerothstackLimit*nHydroThreadsGlobal)) then
                          thisPacket = 1
-                         do sendCounter = 1, (maxStackLimit*nThreads)
+                         do sendCounter = 1, (maxStackLimit*nHydroThreadsGlobal)
                             if(photonPacketStack(sendCounter)%destination == optCounter &
                                  .and. photonPacketStack(sendCounter)%freq /= 0.d0) then           
                                toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
@@ -1250,7 +1261,7 @@ end subroutine radiationHydro
                 close(333)
              end if
                 
-                do iThread = 1, nThreads - 1
+                do iThread = 1, nHydroThreadsGlobal
                    toSendStack(1)%destination = 500
                    call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, MPI_COMM_WORLD,  ierr)
                    call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
@@ -1262,7 +1273,7 @@ end subroutine radiationHydro
              
              do while(photonsStillProcessing)                   
                 toSendStack%freq = 0.d0
-                do iThread = 1, nThreads - 1
+                do iThread = 1, nHydroThreadsGlobal
                    toSendStack(1)%destination = 999
                    !toSendStack(1)%freq = 100.d0
                    
@@ -1272,14 +1283,14 @@ end subroutine radiationHydro
                    
                 enddo
                 
-                nEscaped = SUM(nEscapedArray(1:nThreads-1))
+                nEscaped = SUM(nEscapedArray(1:nHydroThreadsGlobal))
              
                 nEscapedGlobal = nEscaped
                 if (nEscaped == nMonte) then
                    photonsStillProcessing = .false.
                 else if(nEscaped > nMonte) then
                    write(*,*) "nEscaped greater than nMonte, Exiting..."
-                   do iThread = 1, nThreads -1
+                   do iThread = 1, nHydroThreadsGlobal
                       write(*,*) "nEscapedArray(iThread) ", iThread, nEscapedArray(iThread)
                    end do
                    stop
@@ -1290,7 +1301,7 @@ end subroutine radiationHydro
               write(*,*) "Finishing iteration..."
 
 
-             do iThread = 1, nThreads - 1
+             do iThread = 1, nHydroThreadsGlobal
                 !tosendstack(1)%freq = 100.d0
                 toSendStack(1)%destination = 888
 !                toSendStack(2)%destination = 999
@@ -1339,13 +1350,13 @@ end subroutine radiationHydro
                       sendAllPhotons = .true.
                       stackSize = 0
                       !Evacuate everything currently in need of sending
-                      do optCounter = 1, nThreads-1
-                         if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
+                      do optCounter = 1, nHydroThreadsGlobal
+                         if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
                             if(nSaved(optCounter) == sendStackLimit .or. sendAllPhotons) then
                                thisPacket = 1
                                
                                toSendStack%freq = 0.d0
-                               do sendCounter = 1, (maxStackLimit*nThreads)
+                               do sendCounter = 1, (maxStackLimit*nHydroThreadsGlobal)
                                   if(photonPacketStack(sendCounter)%destination /= 0 .and. &
                                        photonPacketStack(sendCounter)%destination == optCounter) then
                                      
@@ -1384,7 +1395,7 @@ end subroutine radiationHydro
                   end if
                   Currentstack%destination = 0
                else if (stackSize < 0) then
-                  write(*,*) "StackSize less than zero... aborting.", myRank, myRankGlobal
+                  write(*,*) "StackSize less than zero... aborting.", myRankGlobal
                   stop
                end if
                
@@ -1403,9 +1414,9 @@ end subroutine radiationHydro
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat ) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request) &
-               !$OMP SHARED(photonPacketStack, myRankGlobal, myRank, currentStack, escapeCheck) &
+               !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
-               !$OMP SHARED(nlambda, lamarray, tlimit, nThreads, sendAllPhotons,toSendStack) &
+               !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, gammaTableArray, freq) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
@@ -1478,12 +1489,12 @@ end subroutine radiationHydro
                          nSaved(newThread) = nSaved(newThread) + 1
                          
                          !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
-                         do optCounter = 1, nThreads-1
-                            if(optCounter /= myRank .and. nSaved(optCounter) /= 0) then
+                         do optCounter = 1, nHydroThreadsGlobal
+                            if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
                                if(nSaved(optCounter) == (sendStackLimit) .or. sendAllPhotons) then
                                   thisPacket = 1
                                   toSendStack%freq = 0.d0
-                                  do sendCounter = 1, (maxStackLimit*nThreads)
+                                  do sendCounter = 1, (maxStackLimit*nHydroThreadsGlobal)
                                      if(photonPacketStack(sendCounter)%destination /= 0 .and. &
                                           photonPacketStack(sendCounter)%destination == optCounter) then 
                                         
@@ -1641,16 +1652,16 @@ end subroutine radiationHydro
 
           endif
 
-       if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
+       if (myrankGlobal == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        !Get the time for the iteration and see if it has improved with a new stack size
-       if(optimizeStack .and. .not. optConverged .and. myRank /= 0) then  
+       if(optimizeStack .and. .not. optConverged .and. myRankGlobal /= 0) then  
              call MPI_BARRIER(amrCommunicator, ierr)
              call wallTime(endTime)
 
              !Make sure we are working with the same time
-             if(myRank == 1) then
-                do optCount = 2, nThreadsGlobal-1
+             if(myRankGlobal == 1) then
+                do optCount = 2, nHydroThreadsGlobal
                    call MPI_SEND(endTime, 1, MPI_INTEGER, optCount, tag, MPI_COMM_WORLD,  ierr)
                 end do
              else 
@@ -1738,12 +1749,12 @@ end subroutine radiationHydro
           if(stacklimit <= 0) then
              stacklimit = 1
           end if
-          if(myRank == 1) then
+          if(myRankGlobal == 1) then
              call MPI_SEND(stackLimit, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
           end if
        end if
        
-       if(myRank == 0 .and. optimizeStack) then
+       if(myRankGlobal == 0 .and. optimizeStack) then
           call MPI_RECV(stackLimit, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, status, ierr)
        end if
 
@@ -1765,7 +1776,7 @@ end subroutine radiationHydro
        end if
  
 
-       if (myrank /= 0) then
+       if (myrankGlobal /= 0) then
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
           nTotScat = i
           if (writeoutput) write(*,*) "Iteration had ",real(nTotScat)/real(nMonte), " scatters per photon"
@@ -1788,21 +1799,27 @@ end subroutine radiationHydro
     ioctal_beg = 1
     ioctal_end = nOctal
 
-
-    if (myRank == 0) write(*,*) "Ninf ",ninf
-    if (myrank == 1) call tune(6, "Temperature/ion corrections")
+    if (myRankGlobal == 0) write(*,*) "Ninf ",ninf
+    if (myrankGlobal == 1) call tune(6, "Temperature/ion corrections")
 
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
 
-    if (myrank == 1) then
+    if (myrankGlobal == 1) then
        i = 0
        j = 0 
        call testforZero(grid%octreeRoot, i, j)
        write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
     endif
 
-    if (myRank /= 0) then
+
+    call writeVtkFile(grid, "beforethermalcalc.vtk", &
+         valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+         "hydrovelocity","sourceCont   ","pressure     ", &
+         "crossings    "/))!
+
+
+    if (myRankGlobal /= 0) then
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
@@ -1817,11 +1834,12 @@ end subroutine radiationHydro
           
           if (dustOnly) then
              do subcell = 1, thisOctal%maxChildren
+                if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
                 if (.not.thisOctal%hasChild(subcell)) then
                    v = cellVolume(thisOctal, subcell)
                    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                    dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
-                   thisOctal%temperature(subcell) = real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0
+                   thisOctal%temperature(subcell) = max(tMinGlobal,real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0)
                 endif
              enddo
 
@@ -1858,7 +1876,7 @@ end subroutine radiationHydro
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     if (writeoutput) &
          write(*,*) "Finished calculating ionization and thermal equilibria"
-    if (myrank == 1) call tune(6, "Temperature/ion corrections")
+    if (myrankGlobal == 1) call tune(6, "Temperature/ion corrections")
 
 
 
@@ -1889,7 +1907,7 @@ end subroutine radiationHydro
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
-       if (myRank /= 0) then
+       if (myRankGlobal /= 0) then
           do iOctal =  iOctal_beg, iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
@@ -1969,7 +1987,7 @@ end subroutine radiationHydro
              
 !!!Rank 0, collate results and decide if converged 
              converged = .false.
-             do iThread = 1 , (nThreadsGlobal-1)
+             do iThread = 1 , nHydroThreadsGlobal
                 call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr )
                 call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
                 if(thisThreadConverged .and. .not. failed) then
@@ -1983,13 +2001,13 @@ end subroutine radiationHydro
                 end if
              end do
              
-             do iThread = 1, (nThreadsGlobal-1)
+             do iThread = 1, nHydroThreadsGlobal
                 call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr) 
                 call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)   
              end do
           end if
           
-          if(myRank /= 0) then
+          if(myRankGlobal /= 0) then
              call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
              call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
              
@@ -2004,11 +2022,11 @@ end subroutine radiationHydro
      if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
      if(converged) then
-        if(myRank == 0) then
+        if(myRankGlobal == 0) then
            write(*,*) "photoionization loop converged at iteration ", niter
         end if
      else if(underSampledTOT .and. monteCheck) then
-        if(myRank == 0) then
+        if(myRankGlobal == 0) then
            write(*,*) "Undersampled cell, increasing nMonte"
         end if
         nMonte = nMonte *2
@@ -2016,6 +2034,10 @@ end subroutine radiationHydro
      
 
      write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+        call writeVtkFile(grid, mpiFilename, &
+             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+             "hydrovelocity","sourceCont   ","pressure     ", &
+             "crossings    "/))!
 
      if(singleMegaPhoto) then
 
@@ -2046,7 +2068,7 @@ end subroutine radiationHydro
 !            "sourceCont   "/))
  !    end if
 
-     if(myRank /= 0) then
+     if(myRankGlobal /= 0) then
 !        iUnrefine = iUnrefine + 1
 !        if(doUnRefine) then
 !           if (iUnrefine == 5) then
@@ -2110,7 +2132,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   use inputs_mod, only : periodicX, periodicY, periodicZ
   use mpi
 
-  integer :: myRank, ierr!, trackErr, sclHandle, classHandle, stateHandle, sclStart, sclEnd
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
    type(OCTAL), pointer :: thisOctal, tempOctal
@@ -2144,7 +2165,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical :: ok, outofTime, neverInteracted
    logical :: sourcePhoton, crossedPeriodic
 
-   call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     stillinGrid = .true.
     escaped = .false.
@@ -2289,7 +2309,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
         
       if (stillInGrid) then
 
-          if (.not.octalOnThread(nextOctal, nextsubcell, myRank)) then
+          if (.not.octalOnThread(nextOctal, nextsubcell, myRankGlobal)) then
              stillInGrid = .false.
              escaped = .true.
              crossedMPIboundary = .true.
@@ -2944,14 +2964,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     use mpi
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    integer :: ierr, myRank
 
-      call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
-          if(octalOnThread(thisOCtal, subcell, myRank)) then
+          if(octalOnThread(thisOCtal, subcell, myRankGlobal)) then
              thisOctal%temperature(subcell) = real(10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2))
           end if
        endif
@@ -2973,16 +2991,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
     real :: underCorrection = 1.
-    integer :: nIter, ierr, myRank
+    integer :: nIter
     
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
        if (.not.thisOctal%hasChild(subcell)) then
 
  !THAW - trying to root out mpi things
-          if(octalOnThread(thisOctal, subcell, myRank)) then
+          if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
           
              if (thisOctal%inflow(subcell)) then
                 
@@ -4120,7 +4137,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
         write(22,*) r*1.e10/pctocm,netot
   
      end do
-     do sendThread = 1, nThreadsGlobal-1
+     do sendThread = 1, nHydroThreadsGlobal
         r = 1.d30
         call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
      enddo
@@ -5085,6 +5102,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     real(double) :: mu
 
     do subcell = 1, thisOctal%maxChildren
+       if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -5096,6 +5114,12 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           end do
        else
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          if (mu == 0.d0) then
+             write(*,*) "nh ",thisOctal%nh(subcell)
+             write(*,*) "ionfrac ",thisOctal%ionFrac(subcell,:)
+             write(*,*) "thisOctal%ndepth ",thisOctal%nDepth
+             write(*,*) "thisOctal%rho ",thisOctal%rho(subcell)
+          endif
           eThermal = 1.5d0 * thisOctal%temperature(subcell)*kerg/(mu*mHydrogen)
           thisOctal%energy(subcell) =  eThermal
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
@@ -5155,10 +5179,10 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     integer :: nLams
     character(len=80) :: message
 
-    allocate(nDoneArray(1:nThreadsGlobal-1))
-    allocate(totalFluxArray(1:nThreadsGlobal-1))
-    allocate(tempTotalFlux(1:nThreadsGlobal-1))
-    allocate(threadProbArray(1:nThreadsGlobal-1))
+    allocate(nDoneArray(1:nHydroThreadsGlobal))
+    allocate(totalFluxArray(1:nHydroThreadsGlobal))
+    allocate(tempTotalFlux(1:nHydroThreadsGlobal))
+    allocate(threadProbArray(1:nHydroThreadsGlobal))
 
     lambdaImage     = getImageWavelength(imageNum)
     outputImageType = getImageType(imageNum)
@@ -5179,7 +5203,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
-    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nThreadsGlobal-1)
+    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nHydroThreadsGlobal)
     totalEmission = totalEmission * 1.d30
 
     ! Probability that a photon comes from a source rather than the envelope
@@ -5278,15 +5302,15 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
 
        photonsStillProcessing = .true.
        do while (photonsStillProcessing)
-          do iThread = 1, nThreadsGlobal-1
+          do iThread = 1, nHydroThreadsGlobal
              call sendPhoton(thisPhoton, iThread, endLoop = .false., report=.true.)
              call MPI_RECV(nDoneArray(iThread), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
           enddo
-          nDone = SUM(nDoneArray(1:nThreadsGlobal-1))
+          nDone = SUM(nDoneArray(1:nHydroThreadsGlobal))
           write(*,*) myrankglobal, " thinks ", nDone, " photons have completed "
           if (nDone == nPhotons) photonsStillProcessing = .false.
        enddo
-       do iThread = 1, nThreadsGlobal-1
+       do iThread = 1, nHydroThreadsGlobal
           call sendPhoton(thisPhoton, iThread, endLoop = .true.)
        enddo
 
@@ -5377,9 +5401,9 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
     endif
     call collateImages(thisImage)
 
-     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nThreadsGlobal-1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
+     call MPI_ALLREDUCE(totalFluxArray, tempTotalFlux, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
      totalFluxArray = tempTotalFlux
-     totalFlux = SUM(totalFluxArray(1:nThreadsGlobal-1))
+     totalFlux = SUM(totalFluxArray(1:nHydroThreadsGlobal))
 
 #ifdef USECFITSIO
     if (myrankGlobal == 0) then

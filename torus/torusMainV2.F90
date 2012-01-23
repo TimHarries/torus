@@ -58,10 +58,7 @@ program torus
   ! FOR MPI IMPLEMENTATION=======================================================
   !  initialize the system for running MPI
   call MPI_INIT(ierr) 
-
-  ! Set up amrCOMMUNICATOR and global mpi groups
-  call setupAMRCOMMUNICATOR
-
+  call MPI_COMM_RANK(MPI_COMM_WORLD, myRankGlobal, ierr)
   !===============================================================================
 #endif
 
@@ -90,11 +87,18 @@ program torus
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
-  ! set up a random seed
-  call run_random_test_suite
 
 !  call testSuiteRandom()  
   call inputs()
+
+#ifdef MPI
+  ! Set up amrCOMMUNICATOR and global mpi groups
+  call setupAMRCOMMUNICATOR
+#endif
+
+  ! set up a random seed
+  call run_random_test_suite
+
 
   smallestCellSize = amrGridSize / dble(2**maxDepthAMR)
 
@@ -134,7 +138,7 @@ program torus
   call freeGlobalSourceArray()
 #ifdef MPI
   call torus_mpi_barrier
-  call freeAMRCOMMUNICATOR
+  if (hydrodynamics) call freeAMRCOMMUNICATOR
   call MPI_FINALIZE(ierr)
 #endif
 !666 continue

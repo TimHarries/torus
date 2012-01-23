@@ -1650,6 +1650,10 @@ contains
        
     end if
 
+    call getInteger("nhydrothreads", nHydroThreadsInput, cLine, fLine, nLines, &
+         "Number of threads for domain decomposition: ","(a,i3,a)", 64, ok, .false.)
+
+
     call getString("", limiterType, cLine, fLine, nLines, &
          "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
 

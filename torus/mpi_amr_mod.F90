@@ -10,36 +10,45 @@ contains
 
   subroutine setupAMRCOMMUNICATOR
     use mpi
-    integer :: ierr, ranks(1)
-    integer :: worldGroup, amrGroup
+    use inputs_mod, only : nHydroThreadsinput, hydrodynamics
+    integer :: ierr, i
+    integer, allocatable :: ranks(:)
+    integer :: worldGroup, amrGroup, localWorldGroup
 
-    call MPI_COMM_GROUP(MPI_COMM_WORLD, worldGroup, ierr)
-    ranks(1) = 0
-    call MPI_GROUP_EXCL(worldGroup, 1, ranks, amrGroup, ierr)
-    call MPI_COMM_CREATE(MPI_COMM_WORLD, amrGroup, amrCOMMUNICATOR, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRankGlobal, ierr)
+       call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
+    nHydroThreadsGlobal = nHydroThreadsinput
+    if (hydrodynamics) then
 
+       if (mod(nThreadsGlobal, (nHydroThreadsGlobal+1)) /= 0) then
+          write(*,*) "Number of MPI threads is ",nThreadsGlobal
+          write(*,*) "Number of threads per decomposed domain is ", nHydroThreadsGlobal+1
+          write(*,*) "Can't distribute work properly"
+          stop
+       endif
+       
+       nHydroSetsGlobal = nThreadsGlobal / (nHydroThreadsGlobal+1)
 
-    if (nThreadsGlobal == 2) nHydroThreadsGlobal = 2
-    if (nThreadsGlobal == 3) nHydroThreadsGlobal = 2
+       
+       myHydroSetGlobal = myRankWorldGlobal / (nHydroThreadsGlobal+1)
+       
+       call MPI_COMM_GROUP(MPI_COMM_WORLD, worldGroup, ierr)
 
-    if (nThreadsGlobal == 4) nHydroThreadsGlobal = 4
-    if (nThreadsGlobal == 5) nHydroThreadsGlobal = 4
+       allocate(ranks(1:(nHydroThreadsGlobal+1)))
+       do i = 1, nHydroThreadsGlobal+1
+          ranks(i) = myHydroSetGlobal * (nHydroThreadsGlobal+1) + i - 1
+       enddo
+       call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal+1, ranks, localWorldGroup, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, localWorldGroup, localWorldCOMMUNICATOR, ierr)
+       deallocate(ranks)
 
-
-    if (nThreadsGlobal == 8) nHydroThreadsGlobal = 8
-    if (nThreadsGlobal == 9) nHydroThreadsGlobal = 8
-
-    if (nThreadsGlobal == 16) nHydroThreadsGlobal = 16
-    if (nThreadsGlobal == 17) nHydroThreadsGlobal = 16
-
-    if (nThreadsGlobal == 64) nHydroThreadsGlobal = 64
-    if (nThreadsGlobal == 65) nHydroThreadsGlobal = 64
-
-    if (nThreadsGlobal == 512) nHydroThreadsGlobal = 512
-    if (nThreadsGlobal == 513) nHydroThreadsGlobal = 512
-
+       allocate(ranks(1:1))
+       ranks(1) = 0
+       call MPI_GROUP_EXCL(localWorldGroup, 1, ranks, amrGroup, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, amrGroup, amrCOMMUNICATOR, ierr)
+       deallocate(ranks)
+       call MPI_COMM_RANK(localWorldCommunicator, myRankGlobal, ierr)
+    endif
   end subroutine setupAMRCOMMUNICATOR
 
 ! Free communicator created by setupAMRCOMMUNICATOR
@@ -457,7 +466,6 @@ contains
     type(octal), pointer  :: neighbourOctal
     character(len=*) :: boundaryType
     integer :: receiveThread, sendThread, tsubcell
-    integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
     integer, parameter :: nStorage = 17
@@ -470,9 +478,9 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
     integer :: nDepth
+    integer :: ierr
     real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
     case("left")
        direction = VECTOR(-1.d0, 0.d0, 0.d0)
@@ -499,7 +507,7 @@ contains
 !    write(*,*) myrank, "boundary number is ",nbound
     
 
-    if (myRank == receiveThread) then
+    if (myRankGlobal == receiveThread) then
        allocate(octalArray(grid%nOctals))
        nOctals = 0
        call getOctalArray(grid%octreeRoot,octalArray, nOctals)
@@ -516,7 +524,7 @@ contains
              if (.not.thisOctal%hasChild(subcell)) then
                 
 !                if (thisOctal%mpiThread(subcell) /= myRank) cycle
-                if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+                if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
                 
                 octVec = subcellCentre(thisOctal, subcell) + &
                      (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
@@ -573,8 +581,8 @@ contains
 
        ! now send a finish signal to the sendThread
     else
-       if (myRank /= sendThread) then
-          write(*,*) "subroutine called within thread ", myRank, " but expecing to be ", sendthread
+       if (myRankGlobal /= sendThread) then
+          write(*,*) "subroutine called within thread ", myRankGlobal, " but expecing to be ", sendthread
           stop
        endif
        sendLoop = .true.
@@ -609,7 +617,7 @@ contains
                 if ((nDepth - neighbourOctal%nDepth) > 1) then
                    write(*,*) "Octal depth differs by more than 1 across boundary!!!"
                    write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
-                   write(*,*) "myrank ",myrank
+                   write(*,*) "myrank ",myrankGlobal
                    write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
                    write(*,*) "at ", pVec%x, pVec%y, pVec%z
                    stop
@@ -682,7 +690,6 @@ contains
     type(octal), pointer  :: neighbourOctal
     character(len=*) :: boundaryType
     integer :: receiveThread, sendThread
-    integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
     integer, parameter :: nStorage = 4
@@ -695,9 +702,9 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
     integer :: nDepth
+    integer :: ierr
 !    real(double) :: q , rho, rhoe, rhov, rhow, pressure, phi, flux, phigas
 !"
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
     case("leftupper")
        direction = VECTOR(-1.d0, 0.d0, 1.d0)
@@ -729,7 +736,7 @@ contains
     end select
 !    write(*,*) myrank, "boundary number is ",nbound
     
-    if (myRank == receiveThread) then
+    if (myRankGlobal == receiveThread) then
        allocate(octalArray(grid%nOctals))
        nOctals = 0
        call getOctalArray(grid%octreeRoot,octalArray, nOctals)
@@ -746,7 +753,7 @@ contains
              if (.not.thisOctal%hasChild(subcell)) then
                 
 !                if (thisOctal%mpiThread(subcell) /= myRank) cycle
-                if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+                if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
                 
                 octVec = subcellCentre(thisOctal, subcell) + &
                      ((sqrt(2.d0)*(thisOctal%subcellSize/2.d0))+0.01d0 * grid%halfSmallestSubcell) * direction
@@ -805,8 +812,8 @@ contains
 
        ! now send a finish signal to the sendThread
     else
-       if (myRank /= sendThread) then
-          write(*,*) "subroutine called within thread ", myRank, " but expecing to be ", sendthread
+       if (myRankGlobal /= sendThread) then
+          write(*,*) "subroutine called within thread ", myRankGlobal, " but expecing to be ", sendthread
           stop
        endif
        sendLoop = .true.
@@ -851,11 +858,9 @@ contains
     integer :: group(:), nGroup, iGroup
     integer, optional :: useThisBound
     integer :: rBound
-    integer :: myRank, ierr
     logical :: doExchange
     character(len=10) :: boundaryType(6) = (/"left  ","right ", "top   ", "bottom", "front ", "back  "/)
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    integer :: ierr
     if (myrankGlobal == 0) goto 666
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
@@ -874,7 +879,7 @@ contains
              endif
              if (doExchange) then
                 !       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
-                if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
+                if ((myRankGlobal == thread1(iPair)).or.(myRankGlobal == thread2(iPair))) then
                    !          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
                    call receiveAcrossMpiBoundary(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair))
                    !          write(*,*) myrank, " finished receive across boundary"
@@ -913,12 +918,11 @@ contains
     integer :: cornerGroup(:), nCornerGroup, iGroup
     integer, optional :: useThisBound
     integer :: rBound!, cOne, cTwo
-    integer :: myRank, ierr
     logical :: doExchange
+    integer :: ierr
     character(len=12) :: cornerType(8) = (/"leftupper   ","rightlower  ", "rightupper  ", "leftlower   ", &
       "topupper    ", "bottomlower ", "toplower    ", "bottomupper " /)
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     if (myrankGlobal == 0) goto 666
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
@@ -934,7 +938,7 @@ contains
                 if (nCornerBound(iPair) == useThisBound) doExchange = .true.
              endif
              if (doExchange) then
-                if ((myRank == cornerThread1(iPair)).or.(myRank == cornerThread2(iPair))) then
+                if ((myRankGlobal == cornerThread1(iPair)).or.(myRankGlobal == cornerThread2(iPair))) then
 
                    call receiveAcrossMpiCorner(grid, cornerType(nCornerBound(iPair)), &
                       cornerThread1(iPair), cornerThread2(iPair))
@@ -974,12 +978,12 @@ contains
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
     use mpi
+    integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
     type(octal), pointer  :: neighbourOctal
     character(len=*) :: boundaryType
     integer :: receiveThread, sendThread, tsubcell
-    integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
     integer, parameter :: nStorage = 17
@@ -993,7 +997,6 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
     case("left")
        direction = VECTOR(-1.d0, 0.d0, 0.d0)
@@ -1020,7 +1023,7 @@ contains
 !    write(*,*) myrank, "boundary number is ",nbound
     
 
-    if (myRank == receiveThread) then
+    if (myRankGlobal == receiveThread) then
        allocate(octalArray(grid%nOctals))
        nOctals = 0
        call getOctalArrayLevel(grid%octreeRoot,octalArray, nOctals, nDepth)
@@ -1034,7 +1037,7 @@ contains
              
                 
 !                if (thisOctal%mpiThread(subcell) /= myRank) cycle
-                if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+                if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
                 
                 octVec = subcellCentre(thisOctal, subcell) + &
                      (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
@@ -1090,8 +1093,8 @@ contains
 
        ! now send a finish signal to the sendThread
     else
-       if (myRank /= sendThread) then
-          write(*,*) "subroutine called within thread ", myRank, " but expecing to be ", sendthread
+       if (myRankGlobal /= sendThread) then
+          write(*,*) "subroutine called within thread ", myRankGlobal, " but expecing to be ", sendthread
           stop
        endif
        sendLoop = .true.
@@ -1168,10 +1171,10 @@ contains
     integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup, iGroup
     integer :: rBound
-    integer :: myRank, ierr, nDepth
+    integer :: nDepth
     character(len=10) :: boundaryType(6) = (/"left  ","right ", "top   ", "bottom", "front ", "back  "/)
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    integer :: ierr
+    
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
     do iGroup = 1, nGroup
@@ -1180,7 +1183,7 @@ contains
 
           if (group(iPair) == iGroup) then
              !       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
-             if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
+             if ((myRankGlobal == thread1(iPair)).or.(myRankGlobal == thread2(iPair))) then
                 !          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
                 call receiveAcrossMpiBoundaryLevel(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair), nDepth)
                 !          write(*,*) myrank, " finished receive across boundary"
@@ -1347,11 +1350,10 @@ contains
       integer :: list(1000), nList
       real, allocatable :: sort(:)
       type(GRIDTYPE) :: grid      
-      integer :: i, myRank, ierr, nThreads, iThread                            
+      integer :: i, nThreads, iThread                            
       integer, intent(out) :: ncornerPairs, cornerthread1(:), cornerthread2(:) 
       integer, intent(out) :: ncornerBound(:), ncornerGroup, cornergroup(:)    
-
-         call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)       
+      integer :: ierr
          call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)     
  
          nCornerPairs = 0                                 
@@ -1416,12 +1418,10 @@ contains
     type(VECTOR) :: dirVec(6), centre, octVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
-    integer :: myRank, ierr
     integer :: thread1(:), thread2(:), nBound(:), nPairs, iPair
     integer :: i1, i2
     logical :: alreadyInList
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -1500,18 +1500,15 @@ contains
     use mpi
     type(GRIDTYPE) :: grid
     integer, intent(out) :: nPairs, thread1(:), thread2(:), nBound(:), nGroup, group(:)
-    integer :: nThreads, iThread
-    integer :: myRank, ierr, i
+    integer :: iThread
+    integer :: i
     integer, allocatable :: indx(:), itmp(:)
     real, allocatable :: sort(:)
     integer :: list(1000), nList
 
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
-
     nPairs = 0
-    do iThread = 1, nThreads-1
+    do iThread = 1, nHydroThreadsGlobal
        call determineBoundaryPairs(grid%octreeRoot, grid, nPairs,  thread1, thread2, nBound, iThread)
     enddo
 
@@ -1581,16 +1578,14 @@ contains
 
     real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
     real(double), intent(out) :: xplus, px, py, pz
-    integer :: myRank, ierr
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     nbound = getNboundFromDirection(direction)
 
     if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
        write(*,*) "Bonndary error for twod: ",nbound
     endif
-    if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
 
        nd = neighbourOctal%nDepth
 
@@ -1650,7 +1645,7 @@ contains
           tSubcell = neighbourSubcell
           call findSubcellLocal(rVec, tOctal, tSubcell)
           
-          if (tOctal%mpiThread(tSubcell) == myRank) then
+          if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
              qnext = tOctal%q_i(tSubcell)
           else
              qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
@@ -1665,7 +1660,7 @@ contains
 
 
        if (.not.associated(thisOctal%mpiBoundaryStorage)) then
-          write(*,*) "boundary storage not allocated when it should be!", myrank, neighbourOctal%mpiThread(neighboursubcell), &
+          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, neighbourOctal%mpiThread(neighboursubcell), &
                thisOctal%mpiThread(subcell)
           write(*,*) "direction",  direction,nBound
           write(*,*) "this centre",subcellCentre(thisOctal, subcell)
@@ -1898,7 +1893,6 @@ contains
 
   subroutine columnAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
-    integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
@@ -1907,7 +1901,6 @@ contains
     integer :: subcell
     real(double) ::  totDist
 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     sigma = 0.d0
     currentPosition = rVec
     totDist = 0.d0
@@ -1924,7 +1917,7 @@ contains
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        totDist = totDist + distToNextCell
-       if (myrank == thisOctal%mpiThread(subcell)) then
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
           sigma = sigma + distToNextCell*thisOctal%rho(subcell)
        endif
 
@@ -2030,19 +2023,18 @@ contains
     logical :: check
     integer :: nHydroThreads
     integer :: nFirstLevel
-    nHydroThreads = nThreadsGlobal - 1
 
     check = .true.
 
     if (thisOctal%twoD) then
-       if (nHydroThreads == 4) then
+       if (nHydroThreadsGlobal == 4) then
           if (thisOctal%mpiThread(subcell) == myRank) then
              check = .true.
           else
              check = .false.
           endif
        endif
-       if (nHydroThreads == 16) then
+       if (nHydroThreadsGlobal == 16) then
           nFirstLevel = (myRank-1) / 4 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
@@ -2061,7 +2053,7 @@ contains
     endif
 
     if (thisOctal%threeD) then
-       if (nHydroThreads == 8) then
+       if (nHydroThreadsGlobal == 8) then
 
           if (thisOctal%mpiThread(subcell) == myRank) then
              check = .true.
@@ -2069,7 +2061,7 @@ contains
              check = .false.
           endif
        endif
-       if (nHydroThreads == 64) then
+       if (nHydroThreadsGlobal == 64) then
           nFirstLevel = (myRank-1) / 8 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
@@ -2087,7 +2079,7 @@ contains
 !          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
        endif
 
-       if (nHydroThreads == 512) then
+       if (nHydroThreadsGlobal == 512) then
           nFirstLevel = (myRank-1) / 64 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
@@ -2912,6 +2904,8 @@ end subroutine dumpStromgrenRadius
     parent%child(newChildIndex)%maxChildren = parent%maxChildren
     parent%child(newChildIndex)%cylindrical = parent%cylindrical
 
+       
+
 
     parent%child(newChildIndex)%inFlow = parent%inFlow
     parent%child(newChildIndex)%parent => parent
@@ -3073,6 +3067,7 @@ end subroutine dumpStromgrenRadius
 
           thisOctal%energy(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, energyPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
+
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, phiPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
@@ -3870,21 +3865,21 @@ end subroutine dumpStromgrenRadius
     integer :: evenUpArray(nThreadsGlobal-1)
 
     if(grid%octreeRoot%twoD) then
-       if((nthreadsGlobal-1) == 4) then
+       if((nHydrothreadsGlobal) == 4) then
           evenUpArray = (/1, 2, 3, 4/)
-       else if((nthreadsGlobal-1) == 16) then
+       else if((nHydrothreadsGlobal) == 16) then
           evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
        end if
     else if(grid%octreeRoot%threeD) then
-       if((nthreadsGlobal-1) == 8) then
+       if((nHydrothreadsGlobal) == 8) then
           evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8/)
-       else if((nthreadsGlobal-1) == 64) then
+       else if((nHydrothreadsGlobal) == 64) then
           evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
                1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2           
                1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3           
                1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/)!pane 4             
 
-       else if(nTHreadsGlobal-1==512) then
+       else if(nHydroTHreadsGlobal==512) then
             evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
                  1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1  
                  1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
@@ -4485,9 +4480,9 @@ end subroutine getAllInRadius
          stop
       end if
       
-      if((2**(nDimensions) + 1) /= nThreadsGlobal .and. &
-         (4**(nDimensions) + 1) /= nThreadsGlobal .and. &
-         (8**(nDimensions) + 1) /= nThreadsGlobal) then
+      if((2**(nDimensions)) /= nHydroThreadsGlobal .and. &
+         (4**(nDimensions)) /= nHydroThreadsGlobal .and. &
+         (8**(nDimensions)) /= nHydroThreadsGlobal) then
          if(myRankGlobal == 0) then
             write(*,*) "An incorrect number of threads has been used:"
             write(*,*) "For this model try: ", (2**(nDimensions) + 1), &
@@ -4532,13 +4527,13 @@ end subroutine distributeMPIthreadLabels
 
 !Label an individual subcell with its MPI thread
 subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
-  use mpi_global_mod, only: nThreadsGlobal
+  use mpi_global_mod, only: nHydroThreadsGlobal
   type(octal), pointer   :: parent
   integer ::  i, iChild, newChildIndex
 
-    if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
-         ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
-         ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
+    if ( ((parent%twoD)  .and.((nHydroThreadsGlobal) == 4)) .or. &
+         ((parent%threed).and.((nHydroThreadsGlobal) == 8)).or. &
+         ((parent%oneD)  .and.((nHydroThreadsGlobal) == 2)) ) then
        parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
 
     else
@@ -4560,7 +4555,7 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
           endif
        endif
     endif
-    if ((parent%twod).and.(nThreadsGlobal - 1) == 16) then
+    if ((parent%twod).and.(nHydroThreadsGlobal) == 16) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -4570,7 +4565,7 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
        endif
     endif
 
-    if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
+    if ((parent%threed).and.(nHydroThreadsGlobal) == 64) then
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
@@ -4580,7 +4575,7 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
        endif
     endif
 
-    if ((parent%threed).and.(nThreadsGlobal - 1) == 512) then
+    if ((parent%threed).and.(nHydroThreadsGlobal) == 512) then
        if (parent%child(newChildIndex)%nDepth > 3) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else

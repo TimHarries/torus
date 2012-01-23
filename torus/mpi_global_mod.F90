@@ -3,10 +3,13 @@ module mpi_global_mod
   implicit none
 
   integer :: amrCOMMUNICATOR
+  integer :: localWorldCommunicator
   integer :: myRankGlobal
+  integer :: myRankWorldGlobal
   integer :: nThreadsGlobal
   integer :: nHydroThreadsGlobal
-
+  integer :: nHydroSetsGlobal
+  integer :: myHydroSetGlobal
 ! Set logical variables to say how Torus is parallelised
 ! For hybrid MPI/OpenMP configurations all three are set to true
 #ifdef MPI

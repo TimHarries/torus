@@ -1214,7 +1214,6 @@ function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
   !print *, "mu = ", mu
 
 
-
 !  real(double) :: mu, tot
 !  integer :: subcell
 !  type(OCTAL) :: thisOctal

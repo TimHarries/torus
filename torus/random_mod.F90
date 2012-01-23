@@ -147,7 +147,7 @@ contains
     use mpi
     use mpi_global_mod, only : nThreadsGlobal
 #endif
-    use mpi_global_mod, only : myRankGlobal
+    use mpi_global_mod, only : myRankWorldGlobal
     integer :: nOmpThreads, iOmpThread, nTot
     integer, allocatable :: itest(:)
     logical :: different
@@ -186,7 +186,7 @@ contains
 
     !$OMP PARALLEL DEFAULT (NONE) &
     !$OMP PRIVATE(iOmpThread, ntot, ithread, r) &
-    !$OMP SHARED(nOmpThreads, itest, nThreadsGlobal, myrankGlobal)
+    !$OMP SHARED(nOmpThreads, itest, nThreadsGlobal, myrankWorldGlobal)
 
 
 #ifdef _OPENMP
@@ -195,7 +195,7 @@ contains
     
  
 
-    iThread = myRankGlobal*nOmpThreads + iOmpThread
+    iThread = myRankWorldGlobal*nOmpThreads + iOmpThread
     call randomNumberGenerator(getDouble=r)
     itest(iThread) = nint(r * 100000000.d0)
     !$OMP END PARALLEL
@@ -210,7 +210,7 @@ contains
     deallocate(itemp)
 #endif
     
-    if (myrankGlobal == 0) then
+    if (myrankWorldGlobal == 0) then
     different = .true.
     call localsort(size(itest),itest)
     different = .true.
@@ -234,7 +234,7 @@ contains
     use mpi
     use mpi_global_mod, only : nThreadsGlobal
 #endif
-    use mpi_global_mod, only : myRankGlobal
+    use mpi_global_mod, only : myRankWorldGlobal
     integer :: nOmpThreads, iOmpThread, nTot
     integer, allocatable :: itest(:)
     logical :: different
@@ -270,7 +270,7 @@ contains
 
     !$OMP PARALLEL DEFAULT (NONE) &
     !$OMP PRIVATE(iOmpThread, ntot, ithread, r) &
-    !$OMP SHARED(nOmpThreads, itest, nThreadsGlobal, myrankGlobal)
+    !$OMP SHARED(nOmpThreads, itest, nThreadsGlobal, myrankWorldGlobal)
 
 
 #ifdef _OPENMP
@@ -279,7 +279,7 @@ contains
     
  
 
-    iThread = myRankGlobal*nOmpThreads + iOmpThread
+    iThread = myRankWorldGlobal*nOmpThreads + iOmpThread
     call randomNumberGenerator(getDouble=r)
     itest(iThread) = nint(r * 100000000.d0)
     !$OMP END PARALLEL
@@ -294,7 +294,7 @@ contains
     deallocate(itemp)
 #endif
     
-    if (myrankGlobal == 0) then
+    if (myrankWorldGlobal == 0) then
     different = .false.
     call localsort(size(itest),itest)
     different = .false.
@@ -318,7 +318,7 @@ contains
 ! Test whether all threads are producing independent random numbers
   subroutine test_random_across_threads(debug)
     use mpi
-    use mpi_global_mod, only : nThreadsGlobal, myRankGlobal
+    use mpi_global_mod, only : nThreadsGlobal, myRankWorldGlobal
     implicit none
     real(double) :: r
     integer :: i, ierr
@@ -329,14 +329,14 @@ contains
     i = nint(r * 100000000.d0)
     allocate(itest(1:nThreadsGlobal))
     itest = 0
-    itest(myRankGlobal+1) = i
+    itest(myRankWorldGlobal+1) = i
     allocate(itemp(SIZE(itest)))
      itemp = 0
      call MPI_REDUCE(itest,itemp,SIZE(itest),MPI_INTEGER,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      itest = itemp
      deallocate(itemp)
-     if (myrankGlobal ==0) then
+     if (myrankWorldGlobal ==0) then
         if (present(debug)) then
            if (debug) then
               do i = 1, nThreadsGlobal
@@ -398,7 +398,7 @@ contains
 #endif
 
   SUBROUTINE seedFromClockTime(ibig)
-    use mpi_global_mod, only: myRankGlobal
+    use mpi_global_mod, only: myRankWorldGlobal
 
     integer(bigint) :: ibig
     integer :: iValues(8)
@@ -420,7 +420,7 @@ contains
      nt = omp_get_num_threads()
 #endif
      
-    ibig = (j+(myRankGlobal+1)*nt)*ibig
+    ibig = (j+(myRankWorldGlobal+1)*nt)*ibig
   END SUBROUTINE seedFromClockTime
 
 

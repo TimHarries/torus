@@ -257,6 +257,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
   real(double) :: bandwidth   ! Band width of a filter[A]
   real(double) :: weightsource
+  real(double) :: totalOutputLuminosity, tempdouble
   real :: probContPhoton
   character(len=80) :: thisImageType
   logical :: stokesImage 
@@ -1313,6 +1314,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            allocate(contWeightArray(1:nLambda))
 #endif
 
+           totalOutputLuminosity = 0.d0
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
         if (mie) then
@@ -1425,6 +1427,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      call MPI_REDUCE(nTot,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
      nTot = tempInt
 
+     write(*,*) myrankGlobal, " lum ",totalOutputluminosity
+     call MPI_REDUCE(totalOutputLuminosity,tempDouble,1,MPI_DOUBLE,MPI_SUM,0, MPI_COMM_WORLD,ierr)
+     totalOutputLuminosity = tempDouble
+     if (myrankGlobal == 0) write(*,*) myrankGlobal, " total output luminosity ",totalOutputLuminosity*1.d20
  if (stokesimage) then
    do i = 1, nImageLocal
      allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
@@ -1474,7 +1480,14 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 #endif
 
- if (myRankIsZero) then 
+  if (myRankIsZero) then 
+
+     write(message,*) " "
+     call writeInfo(message, IMPORTANT)
+     write(message,*) "Total output luminosity: ",totalOutputLuminosity, " ergs"
+     call writeInfo(message, IMPORTANT)
+     write(message,*) " "
+     call writeInfo(message, IMPORTANT)
 
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
@@ -1484,7 +1497,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      call writeInfo(message, TRIVIAL)
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
-
      
      if (grid%adaptive) then
         write(message,*)  tooFewSamples, ' rays had 2 or less samples.'
@@ -1501,7 +1513,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      write(message,*) " " 
      call writeInfo(message, TRIVIAL)
 
- end if 
+  end if
 
 !     if (.not.grid%cartesian.and.(grid%rCore /= 0.)) then
 !        if (wtot_line /= 0.) write(*,*) "Mean radius of line formation",meanr_line/wtot_line/grid%rCore
@@ -2209,6 +2221,7 @@ CONTAINS
                thistau = -log(max(1.e-20,(1. - r1)))
                if (thistau .gt. tauExt(nTau)) then
                   escaped = .true.  
+                  totalOutputLuminosity = totalOutputLuminosity + thisPhoton%stokes%i * exp(-tauExt(ntau))
                else
                   escaped = .false.  
                endif
@@ -2747,6 +2760,7 @@ CONTAINS
                   thistau = -log(max(1.e-20,(1. - r1)))
                   if (thistau .gt. tauExt(nTau)) then
                      escaped = .true.  
+                     totalOutputLuminosity = totalOutputLuminosity + thisPhoton%stokes%i * exp(-tauExt(ntau))
                   else
                      escaped = .false.  
                   endif
