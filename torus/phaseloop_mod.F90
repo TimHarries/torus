@@ -239,7 +239,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !  integer, dimension(:), allocatable :: photonBelongsRank
 !  integer, parameter :: tag = 0
 !  logical :: rankComplete
-   integer ::   tempInt, ierr     
+   integer ::   tempInt, ierr
+   real(double) :: tempdouble
 #endif
 
   ! O VI spectrum stuff
@@ -257,7 +258,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
   real(double) :: bandwidth   ! Band width of a filter[A]
   real(double) :: weightsource
-  real(double) :: totalOutputLuminosity, tempdouble
+  real(double) :: totalOutputLuminosity
   real :: probContPhoton
   character(len=80) :: thisImageType
   logical :: stokesImage 
@@ -1757,7 +1758,7 @@ CONTAINS
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
 !$OMP SHARED(o6yArray, yArray, yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) &
-!$OMP REDUCTION(+: ntot,tooFewSamples, boundaryProbs, negativeOpacity)
+!$OMP REDUCTION(+: ntot,tooFewSamples, boundaryProbs, negativeOpacity, totalOutputLuminosity)
 
 
    call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
