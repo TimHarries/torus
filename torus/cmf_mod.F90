@@ -3388,7 +3388,7 @@ contains
 
 
     doCube = calcDataCube
-    doSpec = calcPhotometry.or.calcSpectrum
+    doSpec = calcSpectrum
 
     broadBandFreq = 1.d15
     if (PRESENT(forceLambda)) then

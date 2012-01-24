@@ -56,6 +56,7 @@ contains
 
     rDash = r
     phiDash = atan((sin(phi)*sin(theta))/(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
+    phiDash = atan2((sin(phi)*sin(theta)),(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
     if (phiDash /= 0.d0) then
        thetaDash = asin(max(-1.d0,min(1.d0,sin(phi)*sin(theta)/sin(phiDash))))
     else
