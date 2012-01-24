@@ -9844,12 +9844,12 @@ end subroutine minMaxDepth
              eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-             if (eKinetic + eThermal + eGrav > 0.d0) then
-                write(*,*) "Cell in accretion radius but not bound"
-                write(*,*) "eGrav ",eGrav
-                write(*,*) "ethermal ",eThermal
-                write(*,*) "eKinetic ",eKinetic
-             endif
+!             if (eKinetic + eThermal + eGrav > 0.d0) then
+!                write(*,*) "Cell in accretion radius but not bound"
+!                write(*,*) "eGrav ",eGrav
+!                write(*,*) "ethermal ",eThermal
+!                write(*,*) "eKinetic ",eKinetic
+!             endif
              if (eKinetic + eThermal + eGrav < 0.d0) then
                 if (rhoLocal > rhoThreshold) then
                    

@@ -141,11 +141,14 @@ contains
        grid%iDump = 0
        deltaTforDump = 3.14d10 !1kyr
 
+       deltaTforDump = tdump
+
        if (grid%geometry == "hii_test") deltaTforDump = 9.d10
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
        if(grid%geometry == "molefil") deltaTforDump = tdump
+       if(grid%geometry == "sphere") deltaTforDump = tdump
        if(grid%geometry == "turbulence") then
 !turbulence phase
           deltaTforDump = 1.57d12 !50kyr
@@ -329,9 +332,9 @@ contains
              if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
              call resetnh(grid%octreeRoot)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-                call writeVtkFile(grid, "stellarwind.vtk", &
-                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-                ,"phi          " /))
+!                call writeVtkFile(grid, "stellarwind.vtk", &
+!                valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+!                ,"phi          " /))
 
 
              !THAW - self gravity
@@ -416,8 +419,8 @@ contains
        endif
   
        call mpi_barrier(MPI_COMM_WORLD,ierr)
-       if (myrankGlobal == 1) then
-          write(*,*) myHydroSetGlobal,temptc(1:nHydroThreadsGlobal)
+       if (myrankWorldGlobal == 1) then
+!          write(*,*) myHydroSetGlobal,temptc(1:nHydroThreadsGlobal)
           write(*,*) "courantTime", dt
        endif
 
@@ -437,7 +440,7 @@ contains
 
 
 
-       if (myrankGlobal == 1) write(*,*) "dump ",dumpThisTime, " current ", &
+       if (myrankWorldGlobal == 1) write(*,*) "dump ",dumpThisTime, " current ", &
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
        if (myrankWorldGlobal == 1) write(*,*) "Time step", dt
@@ -523,11 +526,11 @@ contains
 
        if (severeDamping) call cutVacuum(grid%octreeRoot)
 
-       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
-       call writeVtkFile(grid, mpiFilename, &
-            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-            "hydrovelocity","sourceCont   ","pressure     ", &
-            "mpithread    "/))
+!       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!            "hydrovelocity","sourceCont   ","pressure     ", &
+!            "mpithread    "/))
        if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
 
           if (myRankGlobal /= 0) then
@@ -797,6 +800,10 @@ end subroutine radiationHydro
     real(double) :: lams(1000) = 0.d0
     real(double) :: countArray(1000) = 0.d0
     real(double) :: tempDouble
+
+    real, allocatable :: tempCell(:,:), temp1(:), temp2(:)
+
+    integer :: n_rmdr, mOctal
 
     character(len=80) :: mpiFilename
     integer :: ierr
@@ -1606,7 +1613,7 @@ end subroutine radiationHydro
                                else ! non-ionizing photon must be absorbed by dust
                                   call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                                endif
-                               if (firsttime.and.(myrankglobal==1)) then
+                               if (firsttime.and.(myrankWorldglobal==1)) then
                                   firsttime = .false.
                                   open(67,file="pdf.dat",status="unknown",form="formatted")
                                   do i = 1, nfreq
@@ -1795,7 +1802,7 @@ end subroutine radiationHydro
        if (myrankGlobal /= 0) then
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
           nTotScat = i
-          if (writeoutput) write(*,*) "Iteration had ",real(nTotScat)/real(nMonte), " scatters per photon"
+          if (writeoutput) write(*,*) "Iteration had ",real(nTotScat)/real(nThreadMonte), " scatters per photon"
        endif
 
 
@@ -1840,10 +1847,10 @@ end subroutine radiationHydro
     endif
 
 
-    call writeVtkFile(grid, "beforethermalcalc.vtk", &
-         valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-         "hydrovelocity","sourceCont   ","pressure     ", &
-         "crossings    "/))!
+!    call writeVtkFile(grid, "beforethermalcalc.vtk", &
+!         valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!         "hydrovelocity","sourceCont   ","pressure     ", &
+!         "crossings    "/))!
 
 
     if (myRankGlobal /= 0) then
@@ -1852,6 +1859,21 @@ end subroutine radiationHydro
        ioctal_beg = 1
        ioctal_end = nOctal
 
+       if (nHydroSetsGlobal > 1) then
+          np = nHydroSetsGlobal
+          n_rmdr = MOD(nOctal, np)
+          mOctal = nOctal/np
+          
+          if (myHydroSetGlobal .lt. n_rmdr ) then
+             iOctal_beg = (mOctal+1)*myHydroSetGlobal + 1
+             iOctal_end = iOctal_beg + mOctal
+          else
+             iOctal_beg = mOctal*myHydroSetGlobal + 1 + n_rmdr
+             iOctal_end = iOctal_beg + mOctal - 1
+          end if
+          allocate(tempCell(1:nOctal,1:8))
+          tempCell = 0.
+       endif
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
@@ -1897,9 +1919,21 @@ end subroutine radiationHydro
 
              
           endif
+          if (nHydroSetsGlobal > 1) tempCell(iOctal,:) = thisOctal%temperature(:)
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
+
+       if (nHydroSetsGlobal > 1) then
+          allocate(temp1(1:(nOctal*8)), temp2(1:nOctal*8))
+          temp1 = RESHAPE(tempCell, (/SIZE(temp1)/))
+          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
+          tempCell = RESHAPE(temp2,SHAPE(tempCell))
+          do iOctal = 1, nOctal
+             octalArray(iOctal)%content%temperature(:) = tempCell(iOctal,:)
+          enddo
+          deallocate(temp1, temp2, tempCell)
+       endif
 
     endif
 
@@ -1940,6 +1974,8 @@ end subroutine radiationHydro
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
        if (myRankGlobal /= 0) then
+          iOctal_beg = 1
+          iOctal_end = nOctal
           do iOctal =  iOctal_beg, iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren

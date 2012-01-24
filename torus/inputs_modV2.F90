@@ -112,6 +112,13 @@ contains
     call getLogical("splitovermpi", splitOverMPI, cLine, fLine, nLines, &
          "Grid is domain decomposed over MPI: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if (splitOverMPI) then
+       call getInteger("nhydrothreads", nHydroThreadsInput, cLine, fLine, nLines, &
+            "Number of threads for domain decomposition: ","(a,i3,a)", 64, ok, .true.)
+    endif
+
+
+
     call getLogical("debug", debug, cLine, fLine, nLines, &
          "Output debug information: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1649,9 +1656,6 @@ contains
        
        
     end if
-
-    call getInteger("nhydrothreads", nHydroThreadsInput, cLine, fLine, nLines, &
-         "Number of threads for domain decomposition: ","(a,i3,a)", 64, ok, .false.)
 
 
     call getString("", limiterType, cLine, fLine, nLines, &

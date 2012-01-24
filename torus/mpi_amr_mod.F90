@@ -10,7 +10,7 @@ contains
 
   subroutine setupAMRCOMMUNICATOR
     use mpi
-    use inputs_mod, only : nHydroThreadsinput, hydrodynamics
+    use inputs_mod, only : nHydroThreadsinput, splitOverMPI
     integer :: ierr, i, j
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
@@ -21,7 +21,7 @@ contains
     nHydroSetsGlobal = 1
     myHydroSetGlobal = 0
     nHydroThreadsGlobal = nHydroThreadsinput
-    if (hydrodynamics) then
+    if (splitOverMPI) then
 
        if (mod(nThreadsGlobal, (nHydroThreadsGlobal+1)) /= 0) then
           write(*,*) "Number of MPI threads is ",nThreadsGlobal
