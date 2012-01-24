@@ -1435,7 +1435,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton) &
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
-               !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat ) &
+               !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell ) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
@@ -1443,7 +1443,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nTotScat, gammaTableArray, freq) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
-               !$OMP SHARED(stackSize, nFreq, tempcell) &
+               !$OMP SHARED(stackSize, nFreq) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal)
                
                finished = .false.
@@ -1877,9 +1877,9 @@ end subroutine radiationHydro
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
-       !$OMP PRIVATE(dustHeating) &
+       !$OMP PRIVATE(dustHeating, tempcell) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
-       !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal)
+       !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end
