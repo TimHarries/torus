@@ -1436,15 +1436,15 @@ end subroutine radiationHydro
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat ) &
-               !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request) &
+               !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, gammaTableArray, freq) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
-               !$OMP SHARED(stackSize, nFreq) &
-               !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator)
+               !$OMP SHARED(stackSize, nFreq, tempcell) &
+               !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal)
                
                finished = .false.
                escaped = .false.
@@ -1946,9 +1946,9 @@ end subroutine radiationHydro
 
 
 
-    if(grid%geometry == "lexington") then
-       call dumpLexingtonMPI(grid, epsoverdeltat, niter)
-    end if
+!    if(grid%geometry == "lexington") then
+ !      call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+  !  end if
 
     if(grid%geometry == "point") then
        write(mpiFilename,'(a, i4.4, a)') "point.grid"
