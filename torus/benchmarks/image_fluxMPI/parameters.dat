@@ -20,6 +20,8 @@ geometry        point
 ! See readPhotoionPhysicsParameters for parameters
 !
 
+nhydrothreads 8
+
 photoionphysics  T 
 dustphysics      T
 

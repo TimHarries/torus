@@ -17,6 +17,8 @@ geometry        lexington
 dorefine F
 dounrefine F
 
+nhydrothreads 2
+
 !
 ! Physics 
 ! Allow parameters to default for now

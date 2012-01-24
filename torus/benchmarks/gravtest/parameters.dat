@@ -11,6 +11,8 @@ amrtolerance 1.d30
 hydrodynamics T
 nbodyphysics T
 
+nhydrothreads 8
+
 mindepthamr 5
 maxdepthamr 6
 cfl 0.3
