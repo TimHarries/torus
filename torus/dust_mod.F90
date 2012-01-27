@@ -821,10 +821,9 @@ contains
   recursive subroutine emptyDustCavity(thisOctal, position, radius)
 
     use inputs_mod, only : nDustType, grainFrac
-    type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(VECTOR) :: position, rVec
+    type(VECTOR) :: position
     real(double) :: r, radius
     integer :: subcell, i
 
