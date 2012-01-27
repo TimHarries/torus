@@ -118,7 +118,7 @@ contains
           source(iSource)%radius = sourceRadius(iSource)
           source(iSource)%position = sourcePos(iSource)
           source(iSource)%velocity = sourceVel(iSource)
-          source(iSource)%accretionRadius = 1.d10*2.5d0*amrgridSize/(2.d0**minDepthAMR)
+          source(iSource)%accretionRadius = 1.d10*2.5d0*smallestCellSize
           source(isource)%luminosity = fourPi * stefanBoltz * &
                (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
           source(iSource)%prob = sourceProb(iSource)

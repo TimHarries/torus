@@ -148,7 +148,7 @@ CONTAINS
 
     else
 
-    SELECT CASE (grid%geometry)
+    SELECT CASE (trim(grid%geometry))
 
     CASE("pathtest")
        call calcPathTestDensity(thisOctal,subcell)
@@ -385,6 +385,7 @@ CONTAINS
          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
       endif
       thisOctal%dustTypeFraction(subcell,:) = 0.1
+
 
     CASE ("magstream")
 
@@ -3179,7 +3180,7 @@ CONTAINS
          ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
-    use inputs_mod, only : amrtolerance
+    use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3206,7 +3207,7 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
     LOGICAL                    :: split        
-    real(double) :: massratio, d1, d2
+    real(double) :: massratio, d1, d2, masstol
     real(oct)  :: cellSize
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
@@ -3323,6 +3324,7 @@ CONTAINS
 
           end if
        end do
+
 
     else
        
@@ -3807,7 +3809,10 @@ CONTAINS
 
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
-          
+                 massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
+                 if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
+                      .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+
        case("unisphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
@@ -7182,11 +7187,11 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
     if (rMod < sphereRadius) then
        thisOctal%rho(subcell) = rhoSphere * (rMod/sphereRadius)**beta
-       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
     else
        thisOctal%rho(subcell) = 1.d-2 * rhoSphere
-       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
     thisOctal%iequationOfState(subcell) = 1 ! isothermal

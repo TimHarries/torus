@@ -7,6 +7,8 @@ module dust_mod
   use utils_mod, only: locate
   use octal_mod, only: OCTAL, subcellCentre
   use amr_mod, only: amrGridValues, returnKappa
+  use mpi_global_mod
+  use mpi_amr_mod, only : octalOnThread
   use mieDistCrossSection_mod, only: mieDistCrossSection
 
   implicit none
@@ -815,6 +817,39 @@ contains
     end do
 
   end subroutine fillDustUniform
+
+  recursive subroutine emptyDustCavity(thisOctal, position, radius)
+
+    use inputs_mod, only : nDustType, grainFrac
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: position, rVec
+    real(double) :: r, radius
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call emptyDustCavity(child, position, radius)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          r = modulus(subcellCentre(thisOctal, subcell) - position)
+          if (r < radius) then
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-6
+          else
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+          endif
+       end if
+    end do
+
+  end subroutine emptyDustCavity
 
 
   recursive subroutine sublimateDustWR104(thisOctal)

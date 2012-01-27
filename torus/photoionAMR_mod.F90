@@ -55,7 +55,8 @@ contains
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
-    use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize
+    use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
+    use dust_mod, only : emptyDustCavity
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
@@ -213,9 +214,9 @@ contains
        call resetnh(grid%octreeRoot)
 
 
-       do i = 1, nPairs
-          if (myrankWorldglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
-       enddo
+!       do i = 1, nPairs
+!          if (myrankWorldglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
+!       enddo
 
        if(grid%currentTime == 0.d0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -270,6 +271,8 @@ contains
 
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
        call ionizeGrid(grid%octreeRoot)
+       if (grid%geometry == "sphere") &
+            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
        if(.not. noPhoto) then
 
@@ -490,6 +493,8 @@ contains
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call resetnh(grid%octreeRoot)
+          if (grid%geometry == "sphere") &
+               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
@@ -574,16 +579,17 @@ contains
        if (myrankGlobal /= 0) call resetNh(grid%octreeRoot)
 
        if (myrankGlobal /= 0) then
-          iUnrefine = iUnrefine + 1
-          if (iUnrefine == 3) then
-             if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
-             call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
-             if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
-             iUnrefine = 0
+          if (dounrefine) then
+             iUnrefine = iUnrefine + 1
+             if (iUnrefine == 3) then
+                if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
+                call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
+                if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
+                iUnrefine = 0
+             endif
+             call evenUpGridMPI(grid, .true., .true., evenuparray)
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           endif
-          call evenUpGridMPI(grid, .true., .true., evenuparray)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
        endif
 
        grid%currentTime = grid%currentTime + dt
@@ -879,7 +885,7 @@ end subroutine radiationHydro
 
     doSublimate = .true.
     if (PRESENT(sublimate)) doSublimate = sublimate
-
+       
 
 
 !Allocate memory for send buffer - fixes deadlocks
@@ -1270,6 +1276,11 @@ end subroutine radiationHydro
                 write(*,*) "lcore = ", lcore
                 write(*,*) "totalPower = ", totalPower
                 write(*,*) "ratio = ", lcore/totalPower
+                write(*,*) "nmonte ",nMonte
+                write(*,*) "nthreadmonte ",nThreadMonte
+                write(*,*) "epsoverdt ",epsOverDeltaT
+                write(*,*) "lcore / nMonte ",lCore/dble(nMonte)
+                write(*,*) "lcore / nThreadMonte ",lCore/dble(nThreadMonte)
                 write(*,*) "Rank 0 sent all initial bundles"
                 write(*,*) "Telling Ranks to pass stacks ASAP "
              endif
@@ -2101,11 +2112,12 @@ end subroutine radiationHydro
      end if
      
 
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-        call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-             "hydrovelocity","sourceCont   ","pressure     ", &
-             "crossings    "/))!
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!        call writeVtkFile(grid, mpiFilename, &
+!             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!             "hydrovelocity","sourceCont   ","pressure     ", &
+!             "crossings    ", &
+!             "dust1        "/))
 
      if(singleMegaPhoto) then
 
@@ -5326,7 +5338,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     call zeroEtaCont(grid%octreeRoot)
     
     call quickSublimate(grid%octreeRoot) ! do dust sublimation
-    
+
     call torus_mpi_barrier ! Why is there a barrier here?
 
     thisImage = initImage(imageNum)

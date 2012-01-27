@@ -3,7 +3,9 @@
 
 
 module messages_mod
-  
+
+  use kind_mod
+
   implicit none
 
   interface writeFormatted
@@ -40,6 +42,22 @@ contains
        write(*,formatString) "! "//trim(message), value
     endif
   end subroutine writeFormattedReal
+
+  subroutine reportValue(message, value, unit, level)
+    character(len=*) :: message, unit
+    real(double) :: value
+    integer :: level
+    logical :: thisOutputInfo
+    
+    thisOutputInfo = outputInfo
+    if (verbosityLevel .lt. Level) then
+       thisoutputinfo = .false.
+    endif
+
+    if (writeoutput.and.thisoutputInfo) then
+       write(*,'(a,1pe10.3,a)') "! "//trim(message), value, trim(unit)
+    endif
+  end subroutine reportValue
 
   subroutine writeFormattedInteger(formatString, message, value, level)
     character(len=*) :: formatString, message

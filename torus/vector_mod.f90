@@ -232,6 +232,22 @@ contains
 
   end function subtract
 
+  subroutine reportVector(message, value, unit, level)
+    character(len=*) :: message, unit
+    type(VECTOR) :: value
+    integer :: level
+    logical :: thisOutputInfo
+    
+    thisOutputInfo = outputInfo
+    if (verbosityLevel .lt. Level) then
+       thisoutputinfo = .false.
+    endif
+
+    if (writeoutput.and.thisoutputInfo) then
+       write(*,'(a,3(1pe10.3),a)') "! "//trim(message), value%x, value%y, value%z, " "//trim(unit)
+    endif
+  end subroutine reportVector
+
   pure subroutine getPolar(vec, r, theta, phi)
     use constants_mod, only: twoPi
     implicit none

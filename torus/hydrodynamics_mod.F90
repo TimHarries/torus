@@ -3316,9 +3316,8 @@ end subroutine sumFluxes
           if (.not.thisOctal%ghostCell(subcell)) then
 
              cs = soundSpeed(thisOctal, subcell)
-             dx = grid%halfSmallestsubcell *gridDistanceScale* 2.d0
 
-             dx= thisOctal%subcellSize * gridDistanceScale
+             dx= smallestCellSize * gridDistanceScale
 
 !Use max velocity not average
              speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
@@ -6315,6 +6314,7 @@ end subroutine sumFluxes
        refineongradient = .true.
     end if
 
+    if (amrTolerance > 1.d29) refineOnGradient = .false.
 
    if(refineonionization .and. .not. photoionization) then
       refineOnIonization = .false.
@@ -6499,10 +6499,10 @@ end subroutine sumFluxes
 !       bigJ = 0.25d0
 !       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
 !       cs = soundSpeed(thisOctal, subcell)
-       massTol = (1.d0/128.d0)*rhoThreshold*1.d30*thisOctal%subcellSize**3
+       massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
-!          write(*,*) "splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+          write(*,*)  myrankGlobal," splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
 !          write(*,*) "mass tol ",masstol
 
 !          write(*,*) myrankglobal, " calling interp after split on jeans"
@@ -9248,7 +9248,7 @@ end subroutine minMaxDepth
              source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
              source(nsource)%mass = (thisOctal%rho(subcell) - rhoThreshold)*thisOctal%subcellSize**3*1.d30
              source(nsource)%radius = rsol/1.d10
-             source(nSource)%accretionRadius = 2.5d0*thisOctal%subcellSize * 1.d10
+             source(nSource)%accretionRadius = 2.5d0 * smallestCellSize * 1.d10
              source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 

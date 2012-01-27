@@ -117,7 +117,7 @@ contains
     
 
   subroutine updateSourcePositions(source, nSource, dt, grid)
-    use inputs_mod, only : maxDepthAMR
+    use inputs_mod, only : maxDepthAMR, smallestCellSize
 #ifdef MPI
     use mpi
     integer :: ierr
@@ -130,12 +130,11 @@ contains
     integer :: nok, nbad
     integer :: kmax, kount
     real(double) :: acc, eps, minDt, thisDt, thisTime
-    real(double) :: dxsav, xp(2000), yp(2000,2000), halfSmallest
+    real(double) :: dxsav, xp(2000), yp(2000,2000)
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
-    halfSmallest = grid%octreeRoot%subcellSize/dble(2**maxdepthamr)
-    call calculateEps(halfSmallest,source, nsource,eps)
+    call calculateEps(smallestCellSize, source, nsource,eps)
 
     nvar = nSource * 6
     allocate(yStart(1:nvar), dydx(1:nVar))
@@ -205,10 +204,10 @@ contains
 #endif
   end subroutine updateSourcePositions
 
-  subroutine calculateEps(halfSmallestSubcell, source, nsource, eps)
+  subroutine calculateEps(smallestCellSize, source, nsource, eps)
     type(SOURCETYPE) :: source(:)
     integer :: nSource
-    real(double) :: eps, r, minsep, halfSmallestSubcell
+    real(double) :: eps, r, minsep, smallestCellSize
     integer :: i, j
 
     minSep = 1.d30
@@ -221,8 +220,8 @@ contains
        enddo
     enddo
     eps = 1.d-6 * minSep
-    eps = max(eps, halfSmallestSubcell*1.d10/128.d0)
-
+    eps = max(eps, smallestCellSize*1.d10)
+    eps = smallestCellSize*1.d10
   end subroutine calculateEps
 
   subroutine nBodyStep(source, nSource, dt, grid)
