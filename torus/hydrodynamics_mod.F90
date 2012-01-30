@@ -4071,7 +4071,7 @@ end subroutine sumFluxes
              call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
           endif
-          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+          write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
 
           if (writeoutput) then
@@ -4079,7 +4079,7 @@ end subroutine sumFluxes
              call writeSourceArray(plotfile)
           endif
 
-          write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
+          write(plotfile,'(a,i4.4,a)') "dump_",it,".vtk"
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ",&
                "hydrovelocity", &
@@ -4146,7 +4146,6 @@ end subroutine sumFluxes
 !determine which mpi threads are in contact with one another (i.e. share a domain boundary)
        if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cflNumber
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
        do i = 1, nPairs
           if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
        enddo
@@ -4350,9 +4349,9 @@ end subroutine sumFluxes
           grid%iDump = it
           grid%currentTime = currentTime
           call hydrovelocityConvert(grid%octreeRoot)
-          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+          write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
           call writeAMRgrid(plotfile,.false. ,grid)
-          write(plotfile,'(a,i4.4,a)') "output",it,".vtk"
+          write(plotfile,'(a,i4.4,a)') "dump_",it,".vtk"
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
                "u_i          ", &

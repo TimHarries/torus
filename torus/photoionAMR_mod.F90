@@ -173,9 +173,9 @@ contains
 !       deltaTforDump = 3.14d11
 !       tend = 50.d0*deltaTforDump
 
-       if (grid%geometry == "sphere") &
-            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
-
+       if (grid%geometry(1:6) == "sphere") then
+          call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
+       endif
 
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
@@ -277,7 +277,7 @@ contains
 
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
        call ionizeGrid(grid%octreeRoot)
-       if (grid%geometry == "sphere") &
+       if (grid%geometry(1:6) == "sphere") &
             call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
        if(.not. noPhoto) then
@@ -423,9 +423,9 @@ contains
 
 !       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
        
-       if (nstep < 3) then
-          dt = dt * 0.01d0
-       endif
+!       if (nstep < 3) then
+!          dt = dt * 0.01d0
+!       endif
   
        call mpi_barrier(MPI_COMM_WORLD,ierr)
        if (myrankWorldGlobal == 1) then
@@ -2118,12 +2118,12 @@ end subroutine radiationHydro
      end if
      
 
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-     call writeVtkFile(grid, mpiFilename, &
-          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-          "hydrovelocity","sourceCont   ","pressure     ", &
-          "crossings    ", &
-          "dust1        "/))
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!     call writeVtkFile(grid, mpiFilename, &
+!          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!          "hydrovelocity","sourceCont   ","pressure     ", &
+!          "crossings    ", &
+!          "dust1        "/))
 
      if(singleMegaPhoto) then
 

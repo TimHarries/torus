@@ -1734,6 +1734,9 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr, i
 
+      do i = 1, len(value)
+         value(i:i) = " "
+      enddo
       call MPI_RECV(i, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       call MPI_RECV(value, i, MPI_CHARACTER, 0, tag, localWorldCommunicator, status, ierr)
 

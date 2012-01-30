@@ -1486,13 +1486,11 @@ contains
              dirVec(1) = VECTOR(-1.d0, 0.d0, 0.d0)
              dirVec(2) = VECTOR(+1.d0, 0.d0, 0.d0)
           endif
-
           do j = 1, nDir
              octVec = centre + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
                 neighbourOctal => thisOctal 
                call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
-                
 !                if (neighbourOctal%mpiThread(neighboursubcell) /= iThread) then
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
                    i1 = ithread
@@ -2046,7 +2044,6 @@ contains
     integer :: subcell
     integer :: myRank
     logical :: check
-    integer :: nHydroThreads
     integer :: nFirstLevel
 
     check = .true.
@@ -2134,14 +2131,14 @@ contains
     endif
 
     if (thisOctal%oned) then
-       if (nHydroThreads == 2) then
+       if (nHydroThreadsGlobal == 2) then
           if (thisOctal%mpiThread(subcell) == myRank) then
              check = .true.
           else
              check = .false.
           endif
        endif
-       if (nHydroThreads == 4) then
+       if (nHydroThreadsGlobal == 4) then
           nFirstLevel = (myRank-1) / 2 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
