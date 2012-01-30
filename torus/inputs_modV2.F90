@@ -1396,6 +1396,8 @@ contains
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+    call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
+         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
 
     if(splitovermpi) then
        call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &

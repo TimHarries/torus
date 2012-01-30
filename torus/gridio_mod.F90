@@ -1676,7 +1676,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleIntegerFlexi
 
@@ -1687,7 +1687,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, 1, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleRealFlexi
 
@@ -1698,7 +1698,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleDoubleFlexi
 
@@ -1709,7 +1709,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleLogicalFlexi
 
@@ -1721,7 +1721,7 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(v, 3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(v, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
       
       value = VECTOR(v(1), v(2), v(3))
 
@@ -1734,8 +1734,8 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr, i
 
-      call MPI_RECV(i, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(value, i, MPI_CHARACTER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(i, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, i, MPI_CHARACTER, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleCharacterFlexi
 #endif    
@@ -2102,9 +2102,9 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(value, SIZE(value), MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
 
     endif
   end subroutine sendAttributePointerInteger1DFlexi
@@ -2122,9 +2122,9 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(value, SIZE(value), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_REAL, iThread, tag, localWorldCommunicator, ierr)
 
     endif
   end subroutine sendAttributePointerReal1DFlexi
@@ -2142,9 +2142,9 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(value, SIZE(value), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 
     endif
   end subroutine sendAttributePointerDouble1DFlexi
@@ -2163,12 +2163,12 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
        allocate(temp(SIZE(value,1)*SIZE(value,2)))
        temp = RESHAPE(value,SHAPE(temp))
-       call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        deallocate(temp)
 
     endif
@@ -2188,12 +2188,12 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
        allocate(temp(SIZE(value,1)*SIZE(value,2)))
        temp = RESHAPE(value,SHAPE(temp))
-       call MPI_SEND(temp, SIZE(temp), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(temp, SIZE(temp), MPI_REAL, iThread, tag, localWorldCommunicator, ierr)
        deallocate(temp)
 
     endif
@@ -2213,13 +2213,13 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value,3), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,3), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
        allocate(temp(SIZE(value,1)*SIZE(value,2)*SIZE(value,3)))
        temp = RESHAPE(value,SHAPE(temp))
-       call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        deallocate(temp)
 
     endif
@@ -2236,9 +2236,9 @@ contains
 
 
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, SIZE(value), MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticLogical1DFlexi
 
@@ -2253,8 +2253,8 @@ contains
 
 
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, 1, MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticLogicalSingleFlexi
 
@@ -2269,8 +2269,8 @@ contains
 
 
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticIntegerSingleFlexi
 
@@ -2285,8 +2285,8 @@ contains
 
 
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, 1, MPI_REAL, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticRealSingleFlexi
 
@@ -2301,8 +2301,8 @@ contains
 
 
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, 1, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticDoubleSingleFlexi
 
@@ -2320,8 +2320,8 @@ contains
     loc(2) = value%y
     loc(3) = value%z
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticVECTORSingleFlexi
 
@@ -2336,9 +2336,9 @@ contains
 
 
     attributeName = name
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(len(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, len(value), MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(len(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, len(value), MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
        
   end subroutine sendAttributeStaticCharacterSingleFlexi
 
@@ -2356,7 +2356,7 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
     n = SIZE(value)
     n3 = 3 * n
     allocate(temp(1:n3))
@@ -2366,8 +2366,8 @@ contains
        temp(j+2) = value(i)%y
        temp(j+3) = value(i)%z
     enddo
-    call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(temp, n3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(temp, n3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
     deallocate(temp)
   end subroutine sendAttributeStaticVector1DFlexi
   
@@ -2384,9 +2384,9 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, SIZE(value), MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
 
   end subroutine sendAttributeStaticInteger1DFlexi
 
@@ -2401,9 +2401,9 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, SIZE(value), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_REAL, iThread, tag, localWorldCommunicator, ierr)
 
   end subroutine sendAttributeStaticReal1DFlexi
 
@@ -2419,9 +2419,9 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(value, SIZE(value), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(value, SIZE(value), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 
   end subroutine sendAttributeStaticDouble1DFlexi
 
@@ -2438,12 +2438,12 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
     allocate(temp(SIZE(value,1)*SIZE(value,2)))
     temp = RESHAPE(value,SHAPE(temp))
-    call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
     deallocate(temp)
 
      end subroutine sendAttributeStaticDouble2DFlexi
@@ -2461,12 +2461,12 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
     allocate(temp(SIZE(value,1)*SIZE(value,2)))
     temp = RESHAPE(value,SHAPE(temp))
-    call MPI_SEND(temp, SIZE(temp), MPI_REAL, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(temp, SIZE(temp), MPI_REAL, iThread, tag, localWorldCommunicator, ierr)
     deallocate(temp)
 
   end subroutine sendAttributeStaticReal2DFlexi
@@ -2484,13 +2484,13 @@ contains
 
     attributeName = name
 
-    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-    call MPI_SEND(SIZE(value,3), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+    call MPI_SEND(SIZE(value,3), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
     allocate(temp(SIZE(value,1)*SIZE(value,2)*SIZE(value,3)))
     temp = RESHAPE(value,SHAPE(temp))
-    call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+    call MPI_SEND(temp, SIZE(temp), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
     deallocate(temp)
     
   end subroutine sendAttributeStaticDouble3DFlexi
@@ -2508,9 +2508,9 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(value, SIZE(value), MPI_LOGICAL, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)
 
     endif
   end subroutine sendAttributePointerLogical1DFlexi
@@ -2530,7 +2530,7 @@ contains
     attributeName = name
     if (associated(value)) then
 
-       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
        n = SIZE(value)
        n3 = 3 * n
        allocate(temp(1:n3))
@@ -2540,8 +2540,8 @@ contains
           temp(j+2) = value(i)%y
           temp(j+3) = value(i)%z
        enddo
-       call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
-       call MPI_SEND(temp, n3, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(n, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(temp, n3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        deallocate(temp)
     endif
   end subroutine sendAttributePointerVector1DFlexi
@@ -2556,8 +2556,8 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayIntegerFlexi
 
@@ -2569,8 +2569,8 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(value, n, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayRealFlexi
 
@@ -2582,8 +2582,8 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayLogicalFlexi
 
@@ -2595,8 +2595,8 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayDoubleFlexi
 
@@ -2609,10 +2609,10 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       n3 = 3 * n
       allocate(temp(1:n3))
-      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
       do i = 1, n
          j = (i-1)*3
          value(i) = VECTOR(temp(j+1), temp(j+2), temp(j+3))
@@ -2635,9 +2635,9 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveIntegerPointer1dFlexi
 
@@ -2653,9 +2653,9 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveRealPointer1dFlexi
 
@@ -2671,9 +2671,9 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveDoublePointer1dFlexi
 
@@ -2690,11 +2690,11 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n, 1:m))
       allocate(temp(1:(n*m)))
-      call MPI_RECV(temp, n*m, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(temp, n*m, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
       value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
       deallocate(temp)
     end subroutine receiveDoublePointer2dFlexi
@@ -2712,12 +2712,12 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(l, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(l, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n, 1:m, 1:l))
       allocate(temp(1:(n*m*l)))
-      call MPI_RECV(temp, n*m*l, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(temp, n*m*l, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
       value(1:n,1:m,1:l) = RESHAPE(temp, SHAPE(value))
       deallocate(temp)
     end subroutine receiveDoublePointer3dFlexi
@@ -2735,11 +2735,11 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
-      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n, 1:m))
       allocate(temp(1:(n*m)))
-      call MPI_RECV(temp, n*m, MPI_REAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(temp, n*m, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
       value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
       deallocate(temp)
     end subroutine receiveRealPointer2dFlexi
@@ -2757,9 +2757,9 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveLogicalPointer1dFlexi
 
@@ -2778,11 +2778,11 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
       n3 = 3 * n
       allocate(temp(1:n3))
-      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, MPI_COMM_WORLD, status, ierr)
+      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
       do i = 1, n
          j = (i-1)*3
          value(i) = VECTOR(temp(j+1), temp(j+2), temp(j+3))
@@ -3010,18 +3010,13 @@ contains
 
          do iSet = 0, nHydroSetsGlobal - 1
             if (myHydroSetGlobal == iSet) then
-               if (myrankGlobal == 0) then
-                  writeoutput = .true.
-               else
-                  writeoutput = .false.
-               endif
                
                if (associated(grid%octreeRoot)) then
                   call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
                   grid%octreeRoot => null()
                endif
                
-               do iThread = 1, nThreadsGlobal - 1
+               do iThread = 1, nHydroThreadsGlobal
                   if (myrankGlobal == iThread) then
                      call openGridFile(gridFilename, fileformatted)
                      call readStaticComponents(grid, fileFormatted)
@@ -3051,12 +3046,6 @@ contains
                grid%nOctals = nOctals
                !         call checkAMRgrid(grid, .false.)
                close(20)
-               if (myrankGlobal == 1) then
-                  writeoutput = .true.
-               else
-                  writeoutput = .false.
-               endif
-
             endif
             call torus_mpi_barrier
          enddo
@@ -3416,6 +3405,8 @@ contains
 
             case("version")
                call readSingleFlexi(20, grid%version, fileFormatted)
+               write(message,'(a,a,a,a)') "Dump file written by TORUS version  ", trim(torusVersion)
+               call writeInfo(message, IMPORTANT)
                if (grid%version /= torusVersion) then
                   write(message,'(a,a,a,a)') "This dump file written with ", trim(grid%version), &
                        " and read with ", trim(torusVersion)
@@ -3847,7 +3838,7 @@ contains
 
       do while (.true.)
 
-         call MPI_RECV(tag, 20, MPI_CHARACTER, 0, mpitag, MPI_COMM_WORLD, status, ierr)
+         call MPI_RECV(tag, 20, MPI_CHARACTER, 0, mpitag, localWorldCommunicator, status, ierr)
          tag = ADJUSTL(tag)
          if (tag == "OCTALBEGINS") cycle
          if (tag == "OCTALENDS") exit
@@ -4150,7 +4141,7 @@ contains
      integer :: iThread
 
       tmp = "OCTALBEGINS"
-      call MPI_SEND(tmp, 20, MPI_CHARACTER, iThread, mpitag, MPI_COMM_WORLD, ierr)
+      call MPI_SEND(tmp, 20, MPI_CHARACTER, iThread, mpitag, localWorldCommunicator, ierr)
       call sendAttributeStaticFlexi(iThread, "nDepth", thisOctal%nDepth)
       call sendAttributeStaticFlexi(iThread, "nChildren", thisOctal%nChildren)
       call sendAttributeStaticFlexi(iThread, "indexChild", thisOCtal%IndexChild)
@@ -4314,7 +4305,7 @@ contains
 
       call sendAttributeStaticFlexi(iThread, "mpiThread", thisOctal%mpiThread)
       tmp = "OCTALENDS"
-      call MPI_SEND(tmp, 20, MPI_CHARACTER, iThread, mpitag, MPI_COMM_WORLD, ierr)
+      call MPI_SEND(tmp, 20, MPI_CHARACTER, iThread, mpitag, localWorldCommunicator, ierr)
 
 
     end subroutine sendOctalViaMPI

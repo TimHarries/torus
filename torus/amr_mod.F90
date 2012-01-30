@@ -3809,7 +3809,7 @@ CONTAINS
 
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
-                 massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
+                 massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
                  if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
                       .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 

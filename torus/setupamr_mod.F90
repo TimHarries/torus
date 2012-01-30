@@ -49,7 +49,8 @@ contains
     use mpi_amr_mod
     use inputs_mod, only : photoionPhysics, rho0, sphereMass
 #ifdef PHOTOION
-    use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff
+    use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff, &
+         hasPhotoionAllocations, allocatePhotoionAttributes
 #endif
 #endif
     use vh1_mod, only: read_vh1
@@ -102,6 +103,13 @@ contains
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI
 #ifdef PHOTOION
+
+       if (photoionPhysics) then
+          if (.not.hasPhotoionAllocations(grid)) then
+             call allocatePhotoionAttributes(grid%octreeRoot, grid)
+          endif
+       endif
+
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 #endif
 #endif

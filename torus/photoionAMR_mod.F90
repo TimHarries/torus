@@ -28,7 +28,7 @@ implicit none
 
 private
 public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
-     neutralGrid, resizePhotoionCoeff, resetNH
+     neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes
 #ifdef HYDRO
 public :: radiationHydro
 #endif
@@ -167,10 +167,15 @@ contains
           deltaTforDump = 1.57d11
           tend = 40.d0*deltaTforDump
        endif
+       deltaTforDump = tDump
        
 !       grid%currentTime = 0.d0
 !       deltaTforDump = 3.14d11
 !       tend = 50.d0*deltaTforDump
+
+       if (grid%geometry == "sphere") &
+            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
+
 
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
@@ -207,6 +212,7 @@ contains
     if (myrankGlobal /= 0) then
 
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
@@ -2112,12 +2118,12 @@ end subroutine radiationHydro
      end if
      
 
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!        call writeVtkFile(grid, mpiFilename, &
-!             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!             "hydrovelocity","sourceCont   ","pressure     ", &
-!             "crossings    ", &
-!             "dust1        "/))
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+     call writeVtkFile(grid, mpiFilename, &
+          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+          "hydrovelocity","sourceCont   ","pressure     ", &
+          "crossings    ", &
+          "dust1        "/))
 
      if(singleMegaPhoto) then
 
@@ -2734,7 +2740,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           CALL resizePhotoionCoeff(child, grid)
        END DO
     endif
-
     j = SIZE(thisOctal%photoIonCoeff,1)
     k = SIZE(thisOctal%photoIonCoeff,2)
     allocate(temp(1:j,1:k))
@@ -2750,7 +2755,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     enddo
     deallocate(temp)
-
     !Allocate contributors
     allocate(thisOctal%sourceContribution(j,grid%nion))
     allocate(thisOctal%diffuseContribution(j,grid%nion))
@@ -2778,6 +2782,99 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     deallocate(temp)
           
   END SUBROUTINE resizePhotoionCoeff
+
+  function hasPhotoionAllocations(grid) result(found)
+    type(GRIDTYPE) :: grid
+    logical :: found
+
+    found = .true.
+    call checkPhotoIonAllocationsSub(grid%octreeRoot, found)
+  end function hasPhotoionAllocations
+
+  recursive subroutine checkPhotoionAllocationsSub(thisOctal, found)
+    integer :: subcell, i
+    type(OCTAL), pointer :: thisOctal, child
+    logical :: found
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkPhotoionAllocationsSub(child, found)
+                exit
+             end if
+          end do
+       else
+          if (.not.associated(thisOctal%photoionCoeff)) found = .false.
+       endif
+    enddo
+  end subroutine CheckPhotoionAllocationsSub
+
+
+  RECURSIVE subroutine allocatePhotoionAttributes(thisOctal, grid)
+    use inputs_mod, only : nDustType
+    type(GRIDTYPE) :: grid
+    TYPE(OCTAL), POINTER  :: thisOctal 
+    TYPE(OCTAL), POINTER  :: child
+    INTEGER :: i
+
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       DO i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          CALL allocatePhotoIonAttributes(child, grid)
+       END DO
+    endif
+
+      call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+      thisOctal%oldFrac = 1.d-30
+      call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
+      thisOctal%dustType = 1
+      call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
+      thisOctal%dustTypeFraction = 0.d0
+      thisOctal%dustTypeFraction(:,:) = 1.d0
+
+      call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
+       
+      call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+
+      call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nh, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nhi, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nhei, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nhii, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+
+      call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
+
+      call allocateAttribute(thisOctal%ionFrac, thisOctal%maxchildren, grid%nIon)
+      call allocateAttribute(thisOctal%photoionCoeff, thisOctal%maxchildren, grid%nIon)
+      call allocateAttribute(thisOctal%sourceContribution, thisOctal%maxchildren, grid%nIon)
+      call allocateAttribute(thisOctal%diffuseContribution, thisOctal%maxchildren, grid%nIon)
+      call allocateAttribute(thisOctal%normSourceContribution, thisOctal%maxchildren, grid%nIon)
+      thisOctal%inflow = .true.
+
+    end SUBROUTINE allocatePhotoionAttributes
+
+
 
   recursive subroutine zeroDistanceGrid(thisOctal)
   type(octal), pointer   :: thisOctal
