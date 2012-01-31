@@ -406,7 +406,7 @@ contains
 
     do i = 1, nDustType
        do j = 1, nLambda
-          if ((miePhase(i,j,nMuMie)%element(1,1)/max(1.d-30,miePhase(i,j,nMuMie-1)%element(1,1))) > 10.d0) then
+          if ((miePhase(i,j,nMuMie)%element(1,1)/max(1.e-30,miePhase(i,j,nMuMie-1)%element(1,1))) > 10.d0) then
              miePhase(i,j,nMuMie)%element  = real(10.d0 * miePhase(i,j,nMuMie-1)%element)
              if (writeoutput.and.firstTime) then
                 write(*,*) "! Undersampeld miephase fixed (near 180)"
@@ -414,7 +414,7 @@ contains
              endif
           endif
 
-          if ((miePhase(i,j,1)%element(1,1)/max(1.d-30,miePhase(i,j,2)%element(1,1))) > 10.d0) then
+          if ((miePhase(i,j,1)%element(1,1)/max(1.e-30,miePhase(i,j,2)%element(1,1))) > 10.d0) then
              miePhase(i,j,1)%element  = real(10.d0 * miePhase(i,j,2)%element)
              if (writeoutput.and.firstTime) then
                 write(*,*) "! Undersampeld miephase fixed (near 0)"
