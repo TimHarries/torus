@@ -1963,9 +1963,9 @@ end subroutine radiationHydro
 
 
 
-!    if(grid%geometry == "lexington") then
- !      call dumpLexingtonMPI(grid, epsoverdeltat, niter)
-  !  end if
+    if(grid%geometry == "lexington") then
+      call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+   end if
 
     if(grid%geometry == "point") then
        write(mpiFilename,'(a, i4.4, a)') "point.grid"
