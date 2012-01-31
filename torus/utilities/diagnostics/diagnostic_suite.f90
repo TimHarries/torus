@@ -297,20 +297,33 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   real :: neRatioArray(:)
   integer :: i
   real :: dratio, factor, dNe, grad
+  logical, save :: firstTimeA = .true.
+  logical, save :: firstTimeB = .true.
   
   converged = .false.
-
+  i = 0
   if(ratioID == 1) then
      if(ratio < neRatioArray(45)) then
-        print *, "electron density tends to zero"
-        print *, "neRatioArray(1) ", neRatioArray(1)
-        print *, "ratio ", ratio
-        call exit_program(0)
+        if(firstTimeA) then
+           print *, "electron density tends to zero"
+           print *, "neRatioArray(1) ", neRatioArray(1)
+           print *, "ratio ", ratio
+           print *, "proceeding with minimum known value", 10.**(neArray(1))
+           firstTimeA = .false.
+        end if
+!           call exit_program(0)
+
+        n_e = 10.**(neArray(1))
      else if(ratio > neRatioArray(1)) then
-        print *, "electron density tends to infinity"
-        print *, "neRatioArray(45) ", neRatioArray(45)
-        print *, "ratio ", ratio
-        call exit_program(0)
+        if(firstTimeB) then
+           print *, "warning -electron density tends to infinity"
+           print *, "neRatioArray(45) ", neRatioArray(45)
+           print *, "ratio ", ratio
+           print *, "proceeding with maximum allowed value of", 10.**(neArray(45))
+           firstTimeB = .false.
+        end if
+        n_e = 10.**(neArray(45))
+!        call exit_program(0)
      else
 
         do i = 44, 2, -1
