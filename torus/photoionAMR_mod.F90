@@ -5936,9 +5936,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
      totalEmissionArray = 0.d0
      totalProbArray = 0.d0
 
-     call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal), totalProbArray(myRankGlobal))
-     write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal)
-
+     if (myrankGlobal /= 0) then
+        call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal), totalProbArray(myRankGlobal))
+        write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal)
+     endif
 
      tArray = 0.d0
      call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, &
@@ -5969,6 +5970,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
         biasCorrection = 1.0
      end if
      
+     if (myrankGlobal /= 0) &
      call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal))
 
      deallocate(totalEmissionArray, totalProbArray, tArray)
