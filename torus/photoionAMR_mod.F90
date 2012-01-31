@@ -651,6 +651,11 @@ contains
           write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
           call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename)
 
+          if (writeoutput) then
+             write(mpiFilename,'(a,i4.4,a)') "source",grid%idump,".dat"
+             call writeSourceArray(mpifilename)
+          endif
+
           
 !Track the evolution of the ionization front with time
        if(grid%geometry == "hii_test") then
@@ -5941,6 +5946,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
         write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal)
      endif
 
+
      tArray = 0.d0
      call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, &
           localWorldCommunicator, ierr)
@@ -5970,8 +5976,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
         biasCorrection = 1.0
      end if
      
-     if (myrankGlobal /= 0) &
-     call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal))
+     if (myrankGlobal /= 0) call computeProbDist3AMRMpi(grid%octreeRoot, biasCorrection, totalProbArray(myRankGlobal))
 
      deallocate(totalEmissionArray, totalProbArray, tArray)
    end subroutine computeProbDistAMRMpi

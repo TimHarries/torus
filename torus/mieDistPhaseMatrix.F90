@@ -548,7 +548,9 @@ contains
       do i = 1, nMuMie
          do m = 1, 4
             do n = 1, 4
-               miePhase(i)%element(m,n) = real(miePhase(i)%element(m,n) / normFac)
+               if (normFac /= 0.d0) then
+                  miePhase(i)%element(m,n) = real(miePhase(i)%element(m,n) / normFac)
+               endif
             enddo
          enddo
       enddo
