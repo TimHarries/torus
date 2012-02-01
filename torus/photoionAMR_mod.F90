@@ -3202,10 +3202,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       t2 = 30000.
 !
                       
-                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
-                      t1 = tlow
-                      t2 = 2000.
-                   endif
+!                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
+!                      t1 = tlow
+!                      t2 = 2000.
+!                   endif
 !                   else
 !                      t1 = 100.
 !                      t2 = 30000.
