@@ -274,29 +274,32 @@ endif
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
 
-#    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
-
-    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces
-#    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
     FASTFLAG= -O3 # -ipo
-#    FASTFLAG= -O3 -xS
-#    DEBUGFLAG=-g -O0 -warn -warn nounused -traceback -fpe0 -fp-stack-check -gen-interfaces
+#    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
+#    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
 
-# Include run-time error checking using ifort. Use environment variable to avoid clash with 
-# ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
-    ifeq ($(debug), yes)
-      export F90FLAGS=-check all -check noarg_temp_created
-    endif
-# Uncomment this line to include MPI correctness checking using ITC libraries
-# when using version 3.1 of the Intel MPI libraries
-#  DEBUGFLAG += -check 
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+# Uncomment this line to include MPI correctness checking 
+# It is not enabled by default as it can be slow
+#    DEBUGFLAG += -check_mpi
+
+## This section was required for setting debug flags with Intel MPI version 3.x 
+## There was a conflict between -check in ifort and mpif90. This is fixed in the 4.x versions. 
+##
+## # Include run-time error checking using ifort. Use environment variable to avoid clash with 
+## # ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
+##    ifeq ($(debug), yes)
+##      export F90FLAGS=-check all -check noarg_temp_created
+##    endif
+## # Uncomment this line to include MPI correctness checking using ITC libraries
+## # when using version 3.1 of the Intel MPI libraries
+## #  DEBUGFLAG += -check
+
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zen
     F2CLIB=
-#    -L$(PATH2G2C) -lg2c
     STATICLIBS= -Bstatic
-    STARLIBS= #-DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     ZLIBLIBS = -lz	
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
