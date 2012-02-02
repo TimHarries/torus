@@ -1977,6 +1977,7 @@ end subroutine radiationHydro
 
       if(myrankWorldGlobal /= 0) then
          call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)         
+!         print *, "rank ", myRankWorldGlobal, "sent ", luminosity1/1.e37, "to 0"
          call MPI_SEND(luminosity1, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator,  ierr)
          call getForbiddenLineLuminosity(grid, "N II", 1.22d6, luminosity1)
          call MPI_SEND(luminosity1, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator,  ierr)
@@ -2036,6 +2037,8 @@ end subroutine radiationHydro
             do threadCounter = 1, nThreadsGlobal-1 
                call MPI_RECV(thisLum, 1, MPI_DOUBLE_PRECISION, threadCounter, tag, localWorldCommunicator, status, ierr)
                zTemp = zTemp + thisLum
+!               print *, "0 got ", thisLum/1.e37, "from ", threadCounter
+!               print *, "total so far is ", zTemp/1.e37
             end do
 
             select case(recCounter)
@@ -3238,14 +3241,31 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
              end if
           end do
        else
-          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-
-          v = cellVolume(thisOctal, subcell)
-          hbeta = (10.d0**(-0.870d0*log10(thisOctal%temperature(subcell))+3.57d0)) * &
-               thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
-               thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
-          luminosity = luminosity + hbeta * (v*1.d30)
-       endif
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
+!             v = 3.d0*cellVolume(thisOctal, subcell)/fourpi 
+             v = cellVolume(thisOctal, subcell)
+!             if(thisOctal%oneD) then
+!                v = thisOctal%subcellSize**3 * 1.d30
+!             else if(thisOctal%twoD) then
+!                v = thisOctal%subcellSize**2 * 1.d30
+!             else
+!                v = 
+!             end if
+             hbeta = (10.d0**(-0.870d0*log10(thisOctal%temperature(subcell))+3.57d0)) * &
+                  thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
+                  thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
+             luminosity = luminosity + hbeta * (v*1.d30)
+!             print *, "position ", subcellCentre(thisOctal, subcell)
+!             print *, "luminosity ", luminosity
+!             print *, "v ", v
+!             print *, "hbeta ", hbeta
+!             print *, "thisOctal%ne(subcell) ", thisOctal%nh(subcell)
+!             print *, "thisOctal%nh(subcell) ", thisOctal%ne(subcell)
+!             print *, "grid%ion(1)%abundance", grid%ion(1)%abundance
+!             print *, "thisOctal%temperature(subcell)", thisOctal%temperature(subcell)
+!             stop
+          endif
+       end if
     enddo
   end subroutine getHbetaluminosity
 
@@ -4667,17 +4687,18 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
              end if
           end do
        else
-          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-          rVec = subcellCentre(thisOctal,subcell)
-          v = cellVolume(thisOctal, subcell)
-
-          call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
-               
-          rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
-               grid%ion(iion)%transition(itrans)%a/ergtoev
-          rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
-          luminosity = luminosity + rate * v * 1.d30
-          
+          if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
+             rVec = subcellCentre(thisOctal,subcell)
+!             v = 3.d0*cellVolume(thisOctal, subcell)/fourpi
+             v = cellVolume(thisOctal, subcell)
+             
+             call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
+             
+             rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
+                  grid%ion(iion)%transition(itrans)%a/ergtoev
+             rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+             luminosity = luminosity + rate * v * 1.d30
+          end if
        endif
     enddo
   end subroutine sumLineLuminosity

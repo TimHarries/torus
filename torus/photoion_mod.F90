@@ -967,6 +967,15 @@ end subroutine photoIonizationloop
                thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
                thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
           luminosity = luminosity + hbeta * (v*1.d30)
+!          print *, "position ", subcellCentre(thisOctal, subcell)
+!          print *, "luminosity ", luminosity
+!          print *, "v ", v
+!          print *, "hbeta ",hbeta
+!          print *, "thisOctal%ne(subcell) ",thisOctal%nh(subcell)
+!          print *, "thisOctal%nh(subcell) ",thisOctal%ne(subcell)
+!          print *, "grid%ion(1)%abundance", grid%ion(1)%abundance
+!          print *, "thisOctal%temperature(subcell)",thisOctal%temperature(subcell)
+!          stop
        endif
     enddo
   end subroutine getHbetaluminosity

@@ -717,6 +717,7 @@ CONTAINS
 
 
   real(double) function cellVolume(thisOctal, subcell) result(v)
+    use inputs_mod, only: splitOverMPI
     use constants_mod, only: fourPi, twoPi, pi
     type(OCTAL) :: thisOctal
     integer :: subcell
@@ -724,10 +725,14 @@ CONTAINS
     type(VECTOR) :: rVec
   
     if (thisOctal%oneD) then
-       rVec = subcellCentre(thisOctal, subcell)
-       r1 = rVec%x - thisOctal%subcellSize/2.d0
-       r2 = rVec%x + thisOctal%subcellSize/2.d0
-       v = (fourPi / 3.d0) * (r2**3-r1**3)
+       if(.not. splitOverMPI) then
+          rVec = subcellCentre(thisOctal, subcell)
+          r1 = rVec%x - thisOctal%subcellSize/2.d0
+          r2 = rVec%x + thisOctal%subcellSize/2.d0
+          v = (fourPi / 3.d0) * (r2**3-r1**3)
+       else
+          v = thisOctal%subcellSize**3
+       end if
        goto 666
     endif
 
