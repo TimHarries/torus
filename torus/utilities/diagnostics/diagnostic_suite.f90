@@ -21,8 +21,8 @@ integer :: numFiles
 real :: temperature
 real :: TempLineRatio
 real :: NeLineRatio
-real :: neArray(45)
-real :: neRatioArray(45)
+real, allocatable :: neArray(:)
+real, allocatable :: neRatioArray(:)
 
 menuChoice = 0
 submenu = 0
@@ -30,12 +30,20 @@ subsubmenu = 0
 
 do
    call display_navigate_menu(menuChoice, submenu, subsubmenu)
-   
+
    if(menuChoice == 1) then
       tempratioID = submenu
       neratioID = subsubmenu
 
-      call setup_density_data(neArray, neRatioArray)
+      if(neRatioID == 1) then
+         allocate(neArray(45))
+         allocate(neRatioArray(45))
+      else if(neRatioID == 2) then
+         allocate(neArray(59))
+         allocate(neRatioArray(59))
+      end if
+
+      call setup_density_data(neArray, neRatioArray, neRatioID)
 
       print *, "!-Enter the temperature sensitive line ratio value:"
       read(*,*) TemplineRatio
@@ -55,8 +63,16 @@ do
    else if(menuChoice == 3) then
       neRatioID = subsubmenu
 
-      call setup_density_data(neArray, neRatioArray)
-
+      if(neRatioID == 1) then
+         allocate(neArray(45))
+         allocate(neRatioArray(45))
+      else if(neRatioID == 2) then
+         allocate(neArray(59))
+         allocate(neRatioArray(59))
+      end if
+      
+      call setup_density_data(neArray, neRatioArray, neRatioID)
+      
       print *, "!-Enter the electron density sensitive line ratio value:"
       read(*,*) NelineRatio
 
@@ -77,68 +93,77 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
   integer :: choice
   integer :: submenu
   integer :: subsubmenu
+  logical :: localOK
 
   if(choice == 0 .and. submenu == 0 .and. subsubmenu == 0) then
-
-     call print_main_menu()
-
-     read(*,*) choice
-     
-     if(choice > 0 .and. choice < 4) then
-        call display_navigate_menu(choice, submenu, subsubmenu)
-     else if (choice == 4) then
-        call exit_program(0)
-    else 
-        print *, "Please enter a valid choice: ""1"", ""2"", ""3"" or ""4"""
-     end if
-
+     localOK = .false.
+     do while (.not. localOK)
+        call print_main_menu()
+        
+        read(*,*) choice
+        
+        if(choice > 0 .and. choice < 4) then
+           localOK = .true.
+           call display_navigate_menu(choice, submenu, subsubmenu)
+        else if (choice == 4) then
+           call exit_program(0)
+        else 
+           print *, "Please enter a valid choice: ""1"", ""2"", ""3"" or ""4"""
+        end if
+     end do
   else if(choice == 1 .or. choice == 2) then
      if(submenu == 0) then
-
-        call print_temperature_menu()
-        
-        read(*,*) submenu
-        
-        if(submenu > 0 .and. submenu < 5) then
-           !all if ok
-           if(choice == 1) then
-              !also need the ne sensitive line choice
-              call display_navigate_menu(choice, submenu, subsubmenu)
+        localOK = .false.
+        do while (.not. localOK)
+           call print_temperature_menu()
+           
+           read(*,*) submenu
+           
+           if(submenu > 0 .and. submenu < 5) then
+              !all if ok
+              if(choice == 1) then
+                 !also need the ne sensitive line choice
+                 localOK = .true.
+                 call display_navigate_menu(choice, submenu, subsubmenu)
+              end if
+           else if(submenu == 5) then
+              call exit_program(0)
+           else
+              print *, "Please enter a valid choice: ""1"",""2"", ""3"", ""4""or ""5"""
            end if
-        else if(submenu == 5) then
-           call exit_program(0)
-        else
-           print *, "Please enter a valid choice: ""1"",""2"", ""3"", ""4""or ""5"""
-        end if
+        end do
      else if(submenu > 0 .and. submenu < 5) then
-        
-        call print_density_menu()
-
-        read(*,*) subsubmenu
-        
-        if(subsubmenu == 1) then
-
-        else if(submenu == 2) then
-           call exit_program(0)
-        else
-           print *, "Please enter a valid choice: ""1"" or ""2"""
-        end if
-
+        localOk = .false.
+        do while (.not. localOK)
+           call print_density_menu()
+           
+           read(*,*) subsubmenu
+           
+           if(subsubmenu == 1) then
+              localOK = .true.
+           else if(submenu == 2) then
+              call exit_program(0)
+           else
+              print *, "Please enter a valid choice: ""1"", ""2"" or ""3"""
+           end if
+        end do
      end if
 
   else if (choice == 3) then
-     call print_density_menu()
+     localOK = .false.
+        do while (.not. localOK)
+        call print_density_menu()
         
-     read(*,*) subsubmenu
-     
-     if(subsubmenu == 1) then
+        read(*,*) subsubmenu
         
-     else if(submenu == 2) then
-        call exit_program(0)
-     else
-        print *, "Please enter a valid choice: ""1"" or ""2"""
-     end if
-     
+        if(subsubmenu == 1) then
+           localOk = .true.
+        else if(submenu == 2) then
+           call exit_program(0)
+        else
+           print *, "Please enter a valid choice: ""1"", ""2"" or ""3"""
+        end if
+     end do
   else
      print *, "Hard coded error in menu setup"
      call exit_program(0)
@@ -210,37 +235,49 @@ subroutine print_density_menu()
   print *, "Choose a ratio from the options below"
   print *, " "
   print *, "1. [O II] (3729/3726) "
-  print *, "2. Exit "
+  print *, "2. [S II] (6716/6731)"
+  print *, "3. Exit "
   print *, " "
   print *, "choice: "
 
 
 end subroutine print_density_menu
 
-subroutine setup_density_data(neArray, neRatioArray)
+subroutine setup_density_data(neArray, neRatioArray, neRatioID)
   implicit none
 
   integer, parameter :: n_oii_lines=45
-  character(len=34), parameter :: data_path="electron_density_data/wang_OII.dat"
+  integer, parameter :: n_sii_lines=59
+  character(len=34), parameter :: data_pathA="electron_density_data/wang_OII.dat"
+  character(len=34), parameter :: data_pathB="electron_density_data/wang_SII.dat"
   integer :: ier
-  integer :: counter
+  integer :: counter, neRatioID, nLines
   real, intent(out) :: neArray(n_oii_lines), neRatioArray(n_oii_lines)
   real :: ne_err_plus(n_oii_lines), ne_err_minus(n_oii_lines)
   real :: neRatio_err_plus(n_oii_lines), neRatio_err_minus(n_oii_lines)
 
   print *, "!- Opening electron density data file"
-  open(1, file=data_path, status="old", iostat=ier)
-  if(ier /= 0) then
-     print *, "Error opening "//data_path
-     call exit_program(0)
-  else
-     print *, "!- Opened electron density data file successfully"
+  if(neRatioID == 1) then
+     open(1, file=data_pathA, status="old", iostat=ier)
+     nLines = n_oii_lines
+     if(ier /= 0) then
+        print *, "Error opening "//data_pathA
+        call exit_program(0)
+     else
+        print *, "!- Opened electron density data file successfully"
+     end if
+  else if (neRatioID == 2) then
+     open(1, file=data_pathB, status="old", iostat=ier)
+     nLines = n_sii_Lines
+     if(ier /= 0) then
+        print *, "Error opening "//data_pathB
+        call exit_program(0)
+     else
+        print *, "!- Opened electron density data file successfully"
+     end if
   end if
-!  neArray(1) = 1.
-!  neRatioArray(1) = 1.5
-!  neArray(1) = 1.
-!  neRatioArray(1) = 4.
-  do counter = 1, n_oii_lines
+
+  do counter = 1, nLines
      read (1,*) neArray(counter), ne_err_plus(counter), ne_err_minus(counter), &
           neRatioArray(counter), neRatio_err_plus(counter), neRatio_err_minus(counter)
   end do
@@ -286,8 +323,6 @@ subroutine Temp_Calc(n_e, ratio, ratioID, T)
   print *, "!- Derived temperature is ", T, "K"
 end subroutine Temp_Calc
 
-
-
 subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   implicit none
   real :: ratio, n_e, ratio_check, diff, Ne_max
@@ -295,7 +330,7 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   integer :: ratioID
   real :: neArray(:)
   real :: neRatioArray(:)
-  integer :: i
+  integer :: i, max
   real :: dratio, factor, dNe, grad
   logical, save :: firstTimeA = .true.
   logical, save :: firstTimeB = .true.
@@ -303,47 +338,49 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   converged = .false.
   i = 0
   if(ratioID == 1) then
-     if(ratio < neRatioArray(45)) then
-        if(firstTimeA) then
-           print *, "electron density tends to zero"
-           print *, "neRatioArray(1) ", neRatioArray(1)
-           print *, "ratio ", ratio
-           print *, "proceeding with minimum known value", 10.**(neArray(1))
-           firstTimeA = .false.
-        end if
-!           call exit_program(0)
-
-        n_e = 10.**(neArray(1))
-     else if(ratio > neRatioArray(1)) then
-        if(firstTimeB) then
-           print *, "warning -electron density tends to infinity"
-           print *, "neRatioArray(45) ", neRatioArray(45)
-           print *, "ratio ", ratio
-           print *, "proceeding with maximum allowed value of", 10.**(neArray(45))
-           firstTimeB = .false.
-        end if
-        n_e = 10.**(neArray(45))
-!        call exit_program(0)
-     else
-
-        do i = 44, 2, -1
-           if(ratio >= neRatioArray(i+1) .and. ratio < neRatioArray(i)) then
-              dNe = neArray(i) - neArray(i+1)
-              dratio = neRatioArray(i) - neRatioArray(i+1)
-              grad = dNe/dratio
-              print *, "grad", grad
-              print *, "ratio ", ratio              
-              n_e = 10.**(neArray(i+1) + grad*(ratio-neRatioArray(i+1)))
-
-!              n_e = (neArray(i+1) +grad*(ratio-neArray(i+1)))
-              goto 100
-           end if
-        end do
-     end if
+     max = 45
+  else if(ratioID == 2) then
+     max = 59
   else
      print *, "invalid ratio ID"
-     call exit_program(0)
+     call exit_program(0)     
   end if
+  if(ratio < neRatioArray(max)) then
+     if(firstTimeA) then
+        print *, "electron density tends to zero"
+        print *, "neRatioArray(1) ", neRatioArray(1)
+        print *, "ratio ", ratio
+        print *, "proceeding with minimum known value", 10.**(neArray(1))
+        firstTimeA = .false.
+     end if
+     !           call exit_program(0)
+     
+     n_e = 10.**(neArray(1))
+  else if(ratio > neRatioArray(1)) then
+     if(firstTimeB) then
+        print *, "warning -electron density tends to infinity"
+        print *, "neRatioArray(",max,") ", neRatioArray(max)
+        print *, "ratio ", ratio
+        print *, "proceeding with maximum allowed value of", 10.**(neArray(max))
+        firstTimeB = .false.
+     end if
+     n_e = 10.**(neArray(45))
+     !        call exit_program(0)
+  else
+     
+     do i = max, 2, -1
+        if(ratio >= neRatioArray(i+1) .and. ratio < neRatioArray(i)) then
+           dNe = neArray(i) - neArray(i+1)
+           dratio = neRatioArray(i) - neRatioArray(i+1)
+           grad = dNe/dratio
+           print *, "grad", grad
+           print *, "ratio ", ratio              
+           n_e = 10.**(neArray(i+1) + grad*(ratio-neRatioArray(i+1)))           
+           goto 100
+        end if
+     end do
+  end if
+  
  
 100 continue
   print *, "!- Derived electron density is ", n_e, "cm^-3", i
