@@ -139,9 +139,9 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
            
            read(*,*) subsubmenu
            
-           if(subsubmenu == 1) then
+           if(subsubmenu == 1 .or. subsubmenu == 2) then
               localOK = .true.
-           else if(submenu == 2) then
+           else if(subsubmenu == 3) then
               call exit_program(0)
            else
               print *, "Please enter a valid choice: ""1"", ""2"" or ""3"""
@@ -156,9 +156,9 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
         
         read(*,*) subsubmenu
         
-        if(subsubmenu == 1) then
+        if(subsubmenu == 1 .or. subsubmenu == 2) then
            localOk = .true.
-        else if(submenu == 2) then
+        else if(subsubmenu == 2) then
            call exit_program(0)
         else
            print *, "Please enter a valid choice: ""1"", ""2"" or ""3"""
@@ -266,6 +266,10 @@ subroutine setup_density_data(neArray, neRatioArray, neRatioID)
      else
         print *, "!- Opened electron density data file successfully"
      end if
+     do counter = 1, nLines           
+        read (1,*) neArray(counter), ne_err_plus(counter), ne_err_minus(counter), &
+             neRatioArray(counter), neRatio_err_plus(counter), neRatio_err_minus(counter)
+     end do
   else if (neRatioID == 2) then
      open(1, file=data_pathB, status="old", iostat=ier)
      nLines = n_sii_Lines
@@ -275,12 +279,12 @@ subroutine setup_density_data(neArray, neRatioArray, neRatioID)
      else
         print *, "!- Opened electron density data file successfully"
      end if
+     do counter = 1, nLines
+        read (1,*) neArray(counter), neRatioArray(counter)
+     end do
   end if
 
-  do counter = 1, nLines
-     read (1,*) neArray(counter), ne_err_plus(counter), ne_err_minus(counter), &
-          neRatioArray(counter), neRatio_err_plus(counter), neRatio_err_minus(counter)
-  end do
+
 
   close(1)
 
