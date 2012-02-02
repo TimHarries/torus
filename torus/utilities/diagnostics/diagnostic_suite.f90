@@ -187,8 +187,8 @@ subroutine print_temperature_menu()
   print *, "Choose a ratio from the options below"
   print *, " "
   print *, "1. [OIII] (5007+4959)/4363 "
-  print *, "2. [NII] (6583+6548)/5755 "
-  print *, "3. [NeIII] (3968+3869)/3343 "
+  print *, "2. [NIII] (6583+6548)/5755 "
+  print *, "3. [NeII] (3968+3869)/3343 "
   print *, "4. [SIII] (9532+9069)/6312 "
   print *, "5. Exit "
   print *, " "
@@ -346,7 +346,7 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   end if
  
 100 continue
-  print *, "!- Derived electron density is ", n_e, "cm^3", i
+  print *, "!- Derived electron density is ", n_e, "cm^-3", i
 end subroutine Ne_Calc
 
 
