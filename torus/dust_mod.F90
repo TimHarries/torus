@@ -1069,7 +1069,7 @@ contains
 
   subroutine createRossArray(grid)
     use inputs_mod, only : nDustType
-    use atom_mod, only: dbNubydT
+    use atom_mod, only: bnu
     type(GRIDTYPE) :: grid
     integer :: i, j, k
     real(double) :: bNuTot, rosselandKappa, temperature
@@ -1092,13 +1092,10 @@ contains
           do i =  grid%nLambda,2,-1
              freq = cSpeed / (grid%lamArray(i)*1.e-8)
              dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
-!             rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
-!                  (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))
-!             bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
              if ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)) /= 0.) then
-                rosselandKappa = rosselandKappa + dbNubydT(freq, dble(temperature)) * dFreq / &
-                     (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))
-                bnutot = bnutot + dbNubydT(freq, dble(temperature))*dfreq
+                rosselandKappa = rosselandKappa + (bnu(freq, dble(temperature)) * dFreq / &
+                     (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)))
+                bnutot = bnutot + bnu(freq, dble(temperature))*dfreq
              endif
 
           enddo

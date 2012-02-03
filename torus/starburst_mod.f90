@@ -160,7 +160,7 @@ contains
 
       nOB = 0
       do i = 1, nSource
-         if (source(i)%mass > 15.) then
+         if (source(i)%mass*msol > 15.) then
             nOB = nOB + 1
          endif
       enddo
@@ -168,8 +168,6 @@ contains
          write(*,*) "Number of OB stars (>15 msol): ",nOB
       endif
       do i = 1, nSource
-         source(i)%mass = source(i)%mass * msol
-!         write(*,*) i, " source mass, teff, radius, ",source(i)%mass, source(i)%teff, source(i)%radius*1.d10/rsol
          if (i < nSource) then
             call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
          else
@@ -250,7 +248,7 @@ contains
 
       u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
       
-      source%mass = mass1 + (mass2 - mass1) * u
+      source%mass = (mass1 + (mass2 - mass1) * u)
       source%luminosity = logL1 + (logL2 - logL1) * u
       source%luminosity = (10.d0**source%luminosity) * lSol
       source%teff = logT1 + (logT2  - logT1) * u
@@ -272,6 +270,70 @@ contains
 
 
     end subroutine setSourceProperties
+
+    subroutine setSourceArrayProperties(source, nSource)
+      type(SOURCETYPE) :: source(:)
+      integer :: nSource, i
+      real(double) :: lumAcc, tAcc
+
+      do i = 1, nSource
+         source(i)%age = 1.e5
+         source(i)%initialmass = source(i)%mass/msol
+         call getHosokawaProperties(source(i))
+         lumAcc = source(i)%mass * source(i)%mdot / (source(i)%radius*1.d10)
+         source(i)%luminosity = source(i)%luminosity + lumAcc
+         tAcc = (lumAcc / (fourPi*stefanBoltz*source(i)%radius**2*1.d20))**0.25d0
+         if (Writeoutput) then
+            write(*,*) "Information for source: ",i
+            write(*,*) "Mass: ",source(i)%mass/msol
+            write(*,*) "radius: ",source(i)%radius*1.d10/rsol
+            write(*,*) "lum: ", source(i)%luminosity/lSol
+            write(*,*) "teff: ",source(i)%teff
+            write(*,*) "accretion temp: ",tacc
+            write(*,*) "accretion lum: ",lumAcc/lsol
+         endif
+         if (i < nSource) then
+            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+         else
+            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10, freeUp=.true.)
+         endif
+         if (tAcc > 0.d0) call addToSpectrumBB(source(i)%spectrum, tAcc, 1.d0)
+      enddo
+    end subroutine setSourceArrayProperties
+
+    subroutine setSourceLumTemp(source, thisTable)
+      use inputs_mod, only : smallestCellSize
+      type(SOURCETYPE) :: source
+      type(TRACKTABLE) :: thisTable
+      integer :: i, j
+      real(double) :: t, u, mass1, logL1, logT1
+      real(double) :: mass2, logL2, logT2
+
+      call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
+      
+      call locate(thisTable%age(i,1:thisTable%nAges(i)), thisTable%nAges(i), source%age, j)
+      t = (source%age - thisTable%age(i, j))/(thisTable%age(i,j+1)-thisTable%age(i,j))
+      mass1 = thisTable%massAtAge(i,j) + t * (thisTable%massAtAge(i,j+1)-thisTable%massAtAge(i,j))
+      logL1 = thisTable%logL(i,j) + t * (thisTable%logL(i,j+1)-thisTable%logL(i,j))
+      logT1 = thisTable%logTeff(i,j) + t * (thisTable%logTeff(i,j+1)-thisTable%logTeff(i,j))
+
+      call locate(thisTable%age(i+1,1:thisTable%nAges(i+1)), thisTable%nAges(i+1), source%age, j)
+      t = (source%age - thisTable%age(i+1, j))/(thisTable%age(i+1,j+1)-thisTable%age(i+1,j))
+      mass2 = thisTable%massAtAge(i+1,j) + t * (thisTable%massAtAge(i+1,j+1)-thisTable%massAtAge(i+1,j))
+      logL2 = thisTable%logL(i+1,j) + t * (thisTable%logL(i+1,j+1)-thisTable%logL(i+1,j))
+      logT2 = thisTable%logTeff(i+1,j) + t * (thisTable%logTeff(i+1,j+1)-thisTable%logTeff(i+1,j))
+
+      u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
+      
+      source%mass = (mass1 + ((mass2 - mass1) * u))*msol
+      source%luminosity = logL1 + (logL2 - logL1) * u
+      source%luminosity = (10.d0**source%luminosity) * lSol
+      source%teff = logT1 + (logT2  - logT1) * u
+      source%teff = 10.d0**source%teff
+      source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
+      
+
+    end subroutine setSourceLumTemp
 
       
 
@@ -314,6 +376,45 @@ contains
 
      end subroutine readinTracks
 
+     subroutine getHosokawaProperties(source)
+       type(SOURCETYPE) :: source
+       integer, parameter :: nSteps = 176
+       real(double) :: mStar(nSteps), rStar(nSteps), rPhot(nSteps), lstar(nSteps), ltot(nSteps), tstep(nSteps)
+       real(double) :: t 
+       integer :: i, j
+       character(len=80) :: message
+       character(len=200) :: dataDirectory, tFile
+       logical, save :: firstTime = .true.
+
+       if (firstTime) then
+          call unixGetenv("TORUS_DATA", dataDirectory, i)
+          tfile = trim(dataDirectory)//"/md3.dat"
+          open(43, file=tfile, status="old", form="formatted")
+          read(43,'(a)') message
+          do i = 1, nSteps
+             read(43,*) j, mStar(i), rStar(i), rPhot(i), lStar(i), lTot(i), tStep(i)
+          enddo
+          close(43)
+          mstar = mStar * mSol
+          rstar = rStar * rSol
+          rPhot = rPhot * rSol
+          lStar = lStar * lSol
+          lTot = lTot * lSol
+          firstTime = .false.
+       endif
+       if (source%mass < mstar(1)) then
+          i = 1
+          t = 0.d0
+       else
+          call locate(mStar, nSteps, source%mass, i)
+          t = (source%mass - mStar(i))/(mStar(i+1)-mstar(i))
+          source%radius = (rStar(i) + t * (rStar(i+1) - rStar(i)))/1.d10
+          source%luminosity = lStar(i) + t * (lStar(i+1) - lStar(i))
+          source%teff = (source%luminosity / (fourpi * source%radius**2 * 1.d20 * stefanBoltz))**0.25d0
+       endif
+
+     end subroutine getHosokawaProperties
+       
 
 
      subroutine readSchallerModel(thisTable, nMass, initMass, thisfile)

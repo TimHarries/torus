@@ -9715,6 +9715,7 @@ end subroutine minMaxDepth
 
        sourceArray(iSource)%angMomentum = sourceArray(iSource)%angMomentum + accretedAngMomentum(iSource)
 
+       sourceArray(iSource)%mdot = accretedMass(isource)/timestep
        if (writeoutput) then
           write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * 3d7

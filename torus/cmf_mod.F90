@@ -3344,6 +3344,7 @@ contains
     integer, parameter :: maxFreq = 2000
     real(double) :: freqArray(maxFreq), broadBandFreq, transitionFreq
     logical :: doCube, doSpec
+    logical :: storeLineoff
 #ifdef USECFITSIO
     character(len=80) :: tempChar, tempFilename
 #endif
@@ -3364,6 +3365,8 @@ contains
     ! Find the total # of precessor being used in this run
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
+
+    storeLineOff = lineOff
 
     iAtom = 1
     iTrans = 1
@@ -3539,6 +3542,8 @@ contains
     deallocate(vArray, spec)
     deallocate(da, domega, rayPosition)
 666 continue
+    lineOff = storeLineOff
+
   end subroutine calculateAtomSpectrum
 
 

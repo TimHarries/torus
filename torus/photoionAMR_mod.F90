@@ -56,7 +56,8 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use dust_mod, only : emptyDustCavity
+    use starburst_mod
+    use dust_mod, only : emptyDustCavity, sublimateDust
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
@@ -108,6 +109,7 @@ contains
           close(57)
        endif
     endif
+
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -277,8 +279,8 @@ contains
 
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
        call ionizeGrid(grid%octreeRoot)
-       if (grid%geometry(1:6) == "sphere") &
-            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
+!       if (grid%geometry(1:6) == "sphere") &
+!            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
        if(.not. noPhoto) then
 
@@ -290,12 +292,18 @@ contains
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call resetnh(grid%octreeRoot)
+                if (nbodyPhysics) then
+                   call  setSourceArrayProperties(globalsourceArray, globalnSource)
+                endif
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
+                if (nbodyPhysics) then
+                   call  setSourceArrayProperties(globalsourceArray, globalnSource)
+                endif
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 call writeInfo("Done",TRIVIAL)
@@ -338,7 +346,7 @@ contains
              call refineGridGeneric(grid, amrtolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
-             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+!             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
              call resetnh(grid%octreeRoot)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 !                call writeVtkFile(grid, "stellarwind.vtk", &
@@ -499,9 +507,12 @@ contains
           looplimittime = 1.d30
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call resetnh(grid%octreeRoot)
-          if (grid%geometry == "sphere") &
-               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
+!          if (grid%geometry == "sphere") &
+!               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
+                if (nbodyPhysics) then
+                   call  setSourceArrayProperties(globalsourceArray, globalnSource)
+                endif
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
@@ -553,7 +564,7 @@ contains
 
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
-             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+!             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif
@@ -682,8 +693,9 @@ end subroutine radiationHydro
        monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
-         optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal
+         optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
+    use dust_mod, only : sublimateDust, stripDustAway
     use mpi
     implicit none
     integer(bigint) :: nMonte, nThreadMonte
@@ -751,7 +763,7 @@ end subroutine radiationHydro
     integer(bigint), allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 
-    real(double) :: deltaT, fluctuationCheck 
+    real(double) :: deltaT, fluctuationCheck, maxDeltaT
     logical :: anyUndersampled, undersampledTOT
     logical :: underSamFailed, escapeCheck
     logical :: sourcePhoton
@@ -780,9 +792,10 @@ end subroutine radiationHydro
     logical, save :: iniIterTime=.false.
     logical, save :: iniCustomTime=.true.
     real(double) :: m1, m2
+    real :: tauMax
   !  real :: oldTime = 1.e10
   !  integer :: newStackLimit= 0, oldStackLimit= 0
-
+    real(double) :: oldT(8), oldF(8), fracT(8), fracF(8)
     integer :: thisPacket, sendCounter
     integer, allocatable :: nSaved(:)
     integer :: stackSize, p
@@ -815,19 +828,19 @@ end subroutine radiationHydro
     !OMP variables
     logical :: finished = .false.
     logical :: voidThread
-
     !Energy cons variables
     real(double) :: totalPower = 0.d0
     real(double) :: lams(1000) = 0.d0
     real(double) :: countArray(1000) = 0.d0
     real(double) :: tempDouble
 
-    real, allocatable :: tempCell(:,:), temp1(:), temp2(:)
+    real, allocatable :: tempCell(:,:), temp1(:), temp2(:), tempIon(:,:,:)
 
     integer :: n_rmdr, mOctal
-
-    character(len=80) :: mpiFilename
+    character(len=80) :: mpiFilename, message
     integer :: ierr
+    integer :: iter, nFrac
+    real :: totFrac
 
     !AMR
 !    integer :: iUnrefine, nUnrefine
@@ -1082,8 +1095,33 @@ end subroutine radiationHydro
     converged = .false.
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+
+    if (maxiter > 1) then
+       if (variableDustSublimation) then
+          call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
+       endif
+    endif
+
+
     do while(.not.converged)
 
+! Set up the dust fraction
+       if (variableDustSublimation) then
+
+
+          if (nIter == 3) tauMax = 0.1
+          if (nIter == 5) tauMax = 1.d0
+          if (niter == 7) tauMax = 10.d0
+          if (nIter == 8) tauMax = 1.d30
+          nFrac = 0
+          totFrac = 0.d0
+          if (nIter >= 3) then
+             write(message,*) myrankWorldGlobal," Setting dust type max optical depth to ", tauMax
+             call writeInfo(message, TRIVIAL)
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          endif
+
+       end if
 
        if(optimizeStack .and. nIter > 0) then
           bufferSize = 0
@@ -1295,7 +1333,6 @@ end subroutine radiationHydro
                 write(*,*) "nthreadmonte ",nThreadMonte
                 write(*,*) "epsoverdt ",epsOverDeltaT
                 write(*,*) "lcore / nMonte ",lCore/dble(nMonte)
-                write(*,*) "lcore / nThreadMonte ",lCore/dble(nThreadMonte)
                 write(*,*) "Rank 0 sent all initial bundles"
                 write(*,*) "Telling Ranks to pass stacks ASAP "
              endif
@@ -1511,7 +1548,7 @@ end subroutine radiationHydro
                    do while(.not.escaped)
 
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
-                           photonPacketWeight, epsOverDeltaT, nfreq, freq, tPhoton, tLimit, &
+                           photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
                            crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
                       if (crossedMPIBoundary) then    
@@ -1687,6 +1724,7 @@ end subroutine radiationHydro
                          Endif
                       end if
                    enddo
+!                   write(*,*) "photon escaped after ",nscat," scatterings"
                    nTotScat = nTotScat + nScat
                    nPhot = nPhot + 1
                 end if
@@ -1865,12 +1903,12 @@ end subroutine radiationHydro
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
 
-    if (myrankWorldGlobal == 1) then
-       i = 0
-       j = 0 
-       call testforZero(grid%octreeRoot, i, j)
-       write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
-    endif
+!    if (myrankWorldGlobal == 1) then
+!       i = 0
+!       j = 0 
+!       call testforZero(grid%octreeRoot, i, j)
+!       write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
+!    endif
 
 
 !    call writeVtkFile(grid, "beforethermalcalc.vtk", &
@@ -1899,6 +1937,8 @@ end subroutine radiationHydro
           end if
           allocate(tempCell(1:nOctal,1:8))
           tempCell = 0.
+          allocate(tempIon(1:nOctal,1:8,1:grid%nIon))
+          tempIon = 0.
        endif
 
        !$OMP PARALLEL DEFAULT(NONE) &
@@ -1919,33 +1959,55 @@ end subroutine radiationHydro
                    v = cellVolume(thisOctal, subcell)
                    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                    dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
+                   kappap = max(1.d-30,kappap)
                    thisOctal%temperature(subcell) = max(tMinGlobal,real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0)
                 endif
              enddo
 
           else             
-             do i = 1, nTimes
-                if(timeDep) then
+             if(timeDep) then
+                do i = 1, nTimes
                    call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
                    if (quickThermal) then
                       call quickThermalCalc(thisOctal)
                    else
                       call calculateThermalBalanceTimeDep(grid, thisOctal, epsOverDeltaT, deltaTime)
                    end if
-                else
+                enddo
+                
+             else
+                oldT = thisOctal%temperature
+                oldF = thisOctal%ionFrac(:,1)
+                converged = .false.
+                iter = 0
+                do while(.not.converged)
+                   iter = iter + 1
                    call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
                    if (quickThermal) then
                       call quickThermalCalc(thisOctal)
                    else
-                      call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
-
+                      call calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
                    endif
-                end if
-             enddo
+                   fracT = abs(thisOctal%temperature - oldT)/oldT
+                   fracF = abs(thisOctal%ionFrac(:,1) - oldF)/oldF
+                   oldT = thisOctal%temperature
+                   oldF = thisOctal%ionFrac(:,1)
+                   converged = (ALL(fracT < 0.01d0)).and. (ALL(FracF < 0.01d0))
+                   !                      if (inSubcell(thisOctal, 1, VECTOR(0.d0, 0.d0, 0.d0)).and.(octalOnThread(thisOctal,1,myRankWorldGlobal))) then
+                   !                         write(*,*) i, "temp, frac ",thisOctal%temperature(1),thisOctal%ionFrac(1,1)
+                   !                      endif
+                   if (iter > 100) then
+                      write(*,*) "temperature/ionization fraction not converged after 100 iterations"
+                      converged = .true.
+                   endif
+                   !                   write(*,*) "ion/thermal converged after ",iter
+                enddo
+             end if
 
              
           endif
           if (nHydroSetsGlobal > 1) tempCell(iOctal,:) = thisOctal%temperature(:)
+          if (nHydroSetsGlobal > 1) tempIon(iOctal,:,:) = thisOctal%ionFrac(:,:)
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
@@ -1959,6 +2021,14 @@ end subroutine radiationHydro
              octalArray(iOctal)%content%temperature(:) = tempCell(iOctal,:)
           enddo
           deallocate(temp1, temp2, tempCell)
+          allocate(temp1(1:(nOctal*8*grid%nIon)), temp2(1:nOctal*8*grid%nion))
+          temp1 = RESHAPE(tempIon, (/SIZE(temp1)/))
+          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
+          tempIon = RESHAPE(temp2,SHAPE(tempIon))
+          do iOctal = 1, nOctal
+             octalArray(iOctal)%content%ionFrac(:,:) = tempIon(iOctal,:,:)
+          enddo
+          deallocate(temp1, temp2, tempIon)
        endif
 
     endif
@@ -2155,6 +2225,7 @@ end subroutine radiationHydro
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
+     maxDeltaT = -1.d30
        if (myRankGlobal /= 0) then
           iOctal_beg = 1
           iOctal_end = nOctal
@@ -2172,7 +2243,7 @@ end subroutine radiationHydro
                          deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
                               thisOctal%TLastIter(subcell)  
                          deltaT = abs(deltaT)                 
-                                                  
+                         maxDeltaT = max(deltaT, maxDeltaT)
                          if(deltaT > 5.0d-2) then
                             if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                                anyUndersampled = .true.
@@ -2227,6 +2298,7 @@ end subroutine radiationHydro
              end do
              
              !Send converged information
+!             write(*,*) myrankGlobal, " converged, undersampled,failed ",thisThreadConverged, anyUndersampled, failed, maxDeltaT
              call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
              call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
 
@@ -2262,6 +2334,9 @@ end subroutine radiationHydro
              call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
              
           end if
+          if (myrankGlobal == 0) maxDeltaT = -1.d30
+          call mpi_allreduce(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+          maxDeltaT = tempDouble
           
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
      
@@ -2270,7 +2345,8 @@ end subroutine radiationHydro
      !     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
      if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     
+     if ((maxiter > 1).and.(niter <= 8).and.variableDustSublimation) converged = .false.
+     if ((.not.Converged).and.(myrankWorldglobal==0)) write(*,*) "Maximum fractional temperature changed ",maxDeltaT
      if(converged) then
         if(myRankWorldGlobal == 0) then
            write(*,*) "photoionization loop converged at iteration ", niter
@@ -2283,12 +2359,12 @@ end subroutine radiationHydro
      end if
      
 
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!     call writeVtkFile(grid, mpiFilename, &
-!          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!          "hydrovelocity","sourceCont   ","pressure     ", &
-!          "crossings    ", &
-!          "dust1        "/))
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+     call writeVtkFile(grid, mpiFilename, &
+          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+          "hydrovelocity","sourceCont   ","pressure     ", &
+          "crossings    ", &
+          "dust1        "/))
 
      if(singleMegaPhoto) then
 
@@ -2379,7 +2455,7 @@ end subroutine radiationHydro
 end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
   use inputs_mod, only : periodicX, periodicY, periodicZ
   use mpi
 
@@ -2394,14 +2470,16 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    integer :: endSubcell
    real(double) :: photonPacketWeight
    integer :: nFreq
-   real(double) :: freq(:)
+   real(double) :: freq(:), dfreq(:)
    integer :: subcell, tempSubcell
    real(oct) :: tval, tau, r
    real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   real(double) :: kappaScaDb, kappaAbsDb
+   real(double) :: kappaScaDb, kappaAbsDb, kappaRoss
+   real(double) :: wallDist
+   real(double), parameter ::  gamma = 3.d0
    real(oct) :: thisTau
    real(oct) :: thisFreq
    real(oct) :: thisLam
@@ -2412,9 +2490,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !   integer :: ilambda
    logical, intent(out) :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
-   integer :: nextSubcell
+   integer :: nextSubcell, i
    logical :: ok, outofTime, neverInteracted
    logical :: sourcePhoton, crossedPeriodic
+   logical :: usedMRW
 
 
     stillinGrid = .true.
@@ -2451,15 +2530,43 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     call locate(lamArray, nLambda, real(thisLam), iLam)
 
     call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-         actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+         actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, rosselandKappa=kappaRoss, &
          grid=grid, inFlow=inFlow)
     oldOctal => thisOctal
+
+    
+    usedMRW = .false.
+    i = 0
+    call distanceToNearestWall(grid, rVec, uHat, wallDist, thisOctal, subcell)
+    do while (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10))
+!       write(*,*) "optical depth ", &
+!            (kappaAbsdb + kappaScadb)*thisOctal%subcellSize, &
+!            thisOctal%rho(subcell)*kappaRoss*thisOctal%subcellSize*1.d10
+       call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+            freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+       usedMRW = .true.
+       call distanceToNearestWall(grid, rVec, uHat, wallDist, thisOctal, subcell)
+       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+       i = i + 1
+    enddo
+    if (usedMRW) then
+       tau = 1.d30
+       thisLam = (cspeed/thisFreq)*1.d8
+       call locate(lamArray, nLambda, real(thisLam), iLam)
+       call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, rosselandKappa=kappaRoss, &
+            grid=grid, inFlow=inFlow)
+!       write(*,*) "MRW finished after ",i
+    endif
+
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
     else
        thisTau = 1.0e-28
     end if
+
+    if (usedMRW.and.(tau < thisTau)) write(*,*) "bug ",tau,thistau,tval
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 
@@ -2570,7 +2677,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! update the distance grid
 
-       if (.not.outOfTime) then
+       if ((.not.outOfTime).and.(.not.usedMRW))  then
           call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, sourcePhoton)
        endif
          
@@ -3119,6 +3226,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           thisOctal%ionFrac(subcell,1) = 1.e-10
           thisOctal%ionFrac(subcell,2) = 1.
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
+          thisOctal%temperature(subcell) = 1500.
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.e-10
              thisOctal%ionFrac(subcell,4) = 1.       
@@ -3340,6 +3448,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
     use mpi
+    use inputs_mod, only : tMinGlobal
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
@@ -3347,8 +3456,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     integer :: subcell
     logical :: converged, found
     real :: t1, t2, tm
-!    real, parameter :: Tlow = 100.
-    real, parameter :: Tlow = 3.
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
     real :: underCorrection = 1.
@@ -3372,27 +3479,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
 !                if (thisOctal%ionFrac(subcell,1) > 0.9d0) write(*,*) "total heating ",totalheating
                    if (totalHeating < 1.d-30) then
-                      thisOctal%temperature(subcell) = tLow
+                      thisOctal%temperature(subcell) = tminGlobal
                    else
                       nIter = 0
                       converged = .false.
                       
-                      t1 = tlow
+                      t1 = tMinGlobal
                       t2 = 30000.
 !
                       
-!                   if (thisOctal%dustTypeFraction(subcell,1) > 0.9) then
-!                      t1 = tlow
-!                      t2 = 2000.
-!                   endif
-!                   else
-!                      t1 = 100.
-!                      t2 = 30000.
-!                      t1 = 5000.
-!                      t1 = 20000.
-!                   endif
-!                   t1 = tLow
-!                   t2 = 50000.
                       found = .true.
                       
                       if (found) then
@@ -3403,14 +3498,17 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          if (y1*y2 > 0.d0) then
                             if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
                                tm = t1
+!                               write(*,*) "Cell set to cold. Cooling is ", &
+!                                 HHecooling(grid, thisOctal, subcell, t1), " heating is ", totalHeating
                             else
                                tm  = t2
-!                            write(*,*) "Cell set to hot. Cooling is ", &
-!                                 HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1), " heating is ", totalHeating
+                            write(*,*) "Cell set to hot. Cooling is ", &
+                                 HHecooling(grid, thisOctal, subcell, t1), " heating is ", totalHeating
                             endif
                             converged = .true.
                          endif
                          if (totalHeating < 1.d-30) then
+                            write(*,*) "no heating, set to cold ",totalheating
                             tm = t1
                             converged = .true.
                          endif
@@ -3447,7 +3545,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       endif
                       deltaT = tm - thisOctal%temperature(subcell)
                       thisOctal%temperature(subcell) = &
-                      max(thisOctal%temperature(subcell) + underCorrection * deltaT,tLow)
+                      max(thisOctal%temperature(subcell) + underCorrection * deltaT,tMinGlobal)
 !                                write(*,*) thisOctal%temperature(subcell), niter
                    endif
                 else
@@ -3458,6 +3556,138 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
       enddo
   end subroutine calculateThermalBalance
+
+  subroutine calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
+    use mpi
+    use inputs_mod, only : tMinGlobal
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    real(double) :: epsOverDeltaT
+    real(double) :: totalHeating
+    integer :: subcell
+    logical :: converged, found
+    real :: a, b
+    real(double) :: c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
+    integer, parameter :: itmax = 100
+    integer :: iter
+    real(double), parameter :: eps = 3.d-8
+    real :: t1, t2, tm
+    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, newT
+    real :: deltaT
+    real :: underCorrection = 0.5
+    integer :: nIter
+    tol = 1.d-2
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (.not.thisOctal%hasChild(subcell)) then
+
+ !THAW - trying to root out mpi things
+          if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
+          
+             if (thisOctal%inflow(subcell)) then
+                
+                
+                if (.not.thisOctal%undersampled(subcell)) then
+                   
+
+                   
+                   call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+
+                   iter = 0
+                   if ((totalHeating < HHecooling(grid, thisOctal, subcell, tMinGlobal)).or.(totalHeating < 1.d-30)) then
+                      newT = tminGlobal
+                   else if ((totalHeating > HHecooling(grid, thisOctal, subcell, 20000.))) then
+                      newT = 20000.
+                   else
+                      nIter = 0
+                      converged = .false.
+                      
+                      !try nearby temperatures to start the bracket
+                      t1 = thisOctal%temperature(subcell) * 0.8d0
+                      t2 = thisOctal%temperature(subcell) * 1.2d0
+                      FA = (totalHeating - HHecooling(grid, thisOctal, subcell, t1)) !FUNC(A)
+                      FB = (totalHeating - HHecooling(grid, thisOctal, subcell, t2)) !FUNC(B)
+
+                      IF (FB*FA.GT.0.d0) then
+                         t1 = tMinGlobal
+                         t2 = 20000.
+                      endif
+
+                      A = t1
+                      B = t2
+                      FA = (totalHeating - HHecooling(grid, thisOctal, subcell, a)) !FUNC(A)
+                      FB = (totalHeating - HHecooling(grid, thisOctal, subcell, b)) !FUNC(B)
+                      IF (FB*FA.GT.0.d0) write(*,*) 'Root must be bracketed for ZBRENT.',totalHeating,fa,fb
+                      FC = FB
+                      DO ITER=1,ITMAX
+                         IF(FB*FC.GT.0.d0) THEN
+                            C=A
+                            FC=FA
+                            D=B-A
+                            E=D
+                         ENDIF
+                         IF(ABS(FC).LT.ABS(FB)) THEN
+                            A=B
+                            B=C
+                            C=A
+                            FA=FB
+                            FB=FC
+                            FC=FA
+                         ENDIF
+                         TOL1=2.d0*EPS*ABS(B)+0.5d0*TOL
+                         XM=0.5d0*(C-B)
+                         IF(ABS(XM).LE.TOL1 .OR. FB.EQ.0.d0)THEN
+                            newT = B
+                            exit
+                         ENDIF
+                         IF(ABS(E).GE.TOL1 .AND. ABS(FA).GT.ABS(FB)) THEN
+                            S=FB/FA
+                            IF(A.EQ.C) THEN
+                               P=2.*XM*S
+                               Q=1.-S
+                            ELSE
+                               Q=FA/FC
+                               R=FB/FC
+                               P=S*(2.d0*XM*Q*(Q-R)-(B-A)*(R-1.d0))
+                               Q=(Q-1.d0)*(R-1.d0)*(S-1.d0)
+                            ENDIF
+                            IF(P.GT.0.d0) Q=-Q
+                            P=ABS(P)
+                            IF(2.d0*P .LT. MIN(3.d0*XM*Q-ABS(TOL1*Q),ABS(E*Q))) THEN
+                               E=D
+                               D=P/Q
+                            ELSE
+                               D=XM
+                               E=D
+                            ENDIF
+                         ELSE
+                            D=XM
+                            E=D
+                         ENDIF
+                         A=B
+                         FA=FB
+                         IF(ABS(D) .GT. TOL1) THEN
+                            B=B+D
+                         ELSE
+                            B=B+SIGN(TOL1,XM)
+                         ENDIF
+                         FB = (totalHeating - HHecooling(grid, thisOctal, subcell, b)) !FUNC(B)
+                      enddo
+                      if (ABS(XM).gt.TOL1) write(*,*) 'ZBRENT exceeding maximum iterations.', xm, tol1
+                      newT = B
+
+
+                   END if
+                   deltaT = newT-thisOctal%temperature(subcell)
+                   thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * deltaT
+!                   write(*,*) "thermal balance new converged after ",iter
+                endif
+             endif
+          end if
+       endif
+      enddo
+  end subroutine calculateThermalBalanceNew
 
   subroutine calculateEquilibriumTemperature(grid, thisOctal, subcell, epsOverDeltaT, Teq)
     type(gridtype) :: grid
@@ -3848,11 +4078,14 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   integer :: nIonizationStages
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
+  real(double), allocatable :: newFrac(:)
   real(double), allocatable :: xplus1overx(:)
+  real(double), parameter :: underCorrection = 0.6d0
 
   v = cellVolume(thisOctal, subcell)
   k = 1
-  
+  allocate(newFrac(1:SIZE(thisOctal%ionFrac,2)))
+  newFrac = thisOctal%ionFrac(subcell,:)
   do while(k <= grid%nIon)
 
      iStart = k
@@ -3880,18 +4113,27 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
 !             write(*,*) i,xplus1overx(i), thisOctal%photoioncoeff(subcell,iion), &
 !             thisOctal%ne(subcell), epsoverdeltat,v,chargeExchangeIonization, chargeExchangeRecombination
      enddo
-     thisOctal%ionFrac(subcell, iStart:iEnd) = 1.d0
+!     thisOctal%ionFrac(subcell, iStart:iEnd) = 1.d0
+     newFrac(iStart:iEnd) = 1.d0
      do i = 1, nIonizationStages - 1
         iIon = iStart+i-1
-        thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
+!        thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
+        newFrac(iIon+1) = newFrac(iIon) * xplus1overx(i)
 !        if ((myRankGlobal==1).and.grid%ion(iion)%species(1:2) =="H ") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
      enddo
      
-     if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
-        thisOctal%ionFrac(subcell,iStart:iEnd) = &
-             max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+!     if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
+!        thisOctal%ionFrac(subcell,iStart:iEnd) = &
+!             max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+!     else
+!        thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
+!     endif
+
+     if (SUM(newFrac(iStart:iEnd)) /= 0.d0) then
+        newFrac(iStart:iEnd) = &
+             max(1.d-50,newFrac(iStart:iEnd))/SUM(newFrac(iStart:iEnd))
      else
-        thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
+        newFrac(iStart:iEnd) = 1.d-50
      endif
 
         deallocate(xplus1overx)
@@ -3899,6 +4141,8 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
         k = iEnd + 1
      end do
 
+     thisOctal%ionFrac(subcell,:) = thisOctal%ionFrac(subcell,:) + underCorrection * (newFrac - thisOctal%ionFrac(subcell,:))
+     deallocate(newFrac)
      thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
 
    end subroutine solveIonizationBalance
@@ -6343,6 +6587,76 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec)
 
   end subroutine updateGridMPIphoto
+
+  subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+       freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+    use inputs_mod, only : smallestCellSize
+    type(GRIDTYPE) :: grid
+    real(double) :: spectrum(2000)
+    real(double) :: freq(:), dfreq(:), thisFreq
+    real :: lamArray(:)
+    integer :: nFreq, nlambda
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: rVec, uHat, nextrVec, cen, rHat, leavingPos
+    real(double) :: r0, zeta, wallDist, kappaRoss, diffCoeff, mrwDist, tval
+    real :: kappaP
+    logical, save :: firstTime = .true.
+    integer, parameter :: ny = 100
+    real(double) :: y(ny), prob(ny), thisY
+    integer :: i, n
+    if (firstTime) then
+       do i = 1, ny
+          y(i) = dble(i-1)/dble(ny-1)
+          prob(i) = 0.d0
+          do n = 1, 1000
+             prob(i) = prob(i) + 2.d0 * (-1.d0)**(n+1) * y(i)**(n**2)
+          enddo
+       enddo
+       prob(ny) = 1.d0
+       firstTime = .false.
+!       do i = 1, ny
+!          write(*,*) i, y(i), prob(i)
+!       enddo
+!       stop
+    endif
+       
+       
+
+    call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
+    kappaRoss = kappaRoss * 1.d10
+    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
+
+    cen = subcellCentre(thisOctal, subcell)
+    rHat = randomUnitVector()
+
+    call distanceToCellBoundary(grid, cen, rHat, tVal, thisOctal, subcell)
+
+    leavingPos = cen + (tVal-0.01d0*smallestCellSize) * rHat
+    call distanceToCellBoundary(grid, leavingPos, rHat, tVal, thisOctal, subcell)
+
+    r0 = modulus(rVec - leavingPos)
+!    call distanceToNearestWall(grid, rVec, uHat, r0, thisOctal, subcell)
+    call randomNumberGenerator(getDouble=zeta)
+    call locate(prob, ny, zeta, i)
+    thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
+    mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap
+!    rVec = rVec + uHat * r0
+
+    rVec = leavingPos
+    uHat = (-1.d0) * rHat
+    do while ((uHat.dot.rHat) < 0.d0)
+       uHat = randomUnitVector()
+    enddo
+    
+    spectrum = 1.d-50
+    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+
+  end subroutine modifiedRandomWalk
+       
+
 #endif
 
 

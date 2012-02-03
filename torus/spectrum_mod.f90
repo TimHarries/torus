@@ -626,6 +626,7 @@ module spectrum_mod
             do i = 1, nKurucz
                call freeSpectrum(kspectrum(i))
             enddo
+            firstTime = .true.
          endif
       endif
       call freeSpectrum(spec1)
