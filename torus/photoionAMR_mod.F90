@@ -715,7 +715,7 @@ end subroutine radiationHydro
     real(double) :: lCore
     integer(bigint) :: iMonte
     integer :: subcell
-    integer :: i, j
+    integer :: i
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
@@ -2537,7 +2537,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     
     usedMRW = .false.
     i = 0
-    call distanceToNearestWall(grid, rVec, uHat, wallDist, thisOctal, subcell)
+    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
     do while (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10))
 !       write(*,*) "optical depth ", &
 !            (kappaAbsdb + kappaScadb)*thisOctal%subcellSize, &
@@ -2545,7 +2545,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
        usedMRW = .true.
-       call distanceToNearestWall(grid, rVec, uHat, wallDist, thisOctal, subcell)
+       call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
        call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
        i = i + 1
     enddo
@@ -3565,14 +3565,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: epsOverDeltaT
     real(double) :: totalHeating
     integer :: subcell
-    logical :: converged, found
+    logical :: converged
     real :: a, b
     real(double) :: c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
     integer, parameter :: itmax = 100
     integer :: iter
     real(double), parameter :: eps = 3.d-8
-    real :: t1, t2, tm
-    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, newT
+    real :: t1, t2
+    real(double) :: Hheating, Heheating, dustHeating, newT
     real :: deltaT
     real :: underCorrection = 0.5
     integer :: nIter
@@ -6598,8 +6598,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     integer :: nFreq, nlambda
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: rVec, uHat, nextrVec, cen, rHat, leavingPos
-    real(double) :: r0, zeta, wallDist, kappaRoss, diffCoeff, mrwDist, tval
+    type(VECTOR) :: rVec, uHat, cen, rHat, leavingPos
+    real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist, tval
     real :: kappaP
     logical, save :: firstTime = .true.
     integer, parameter :: ny = 100
@@ -6636,7 +6636,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     call distanceToCellBoundary(grid, leavingPos, rHat, tVal, thisOctal, subcell)
 
     r0 = modulus(rVec - leavingPos)
-!    call distanceToNearestWall(grid, rVec, uHat, r0, thisOctal, subcell)
+!    call distanceToNearestWall(rVec, r0, thisOctal, subcell)
     call randomNumberGenerator(getDouble=zeta)
     call locate(prob, ny, zeta, i)
     thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))

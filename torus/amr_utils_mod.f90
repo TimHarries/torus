@@ -1443,17 +1443,16 @@ module amr_utils_mod
 
      end subroutine distanceToCellBoundary
 
-  subroutine distanceToNearestWall(grid, posVec, direction, tVal, sOctal, sSubcell)
+  subroutine distanceToNearestWall(posVec, tVal, sOctal, sSubcell)
     use inputs_mod, only : amr3d, cylindrical
     implicit none
-    type(GRIDTYPE), intent(in)    :: grid
     type(VECTOR), intent(in) :: posVec
-    type(VECTOR), intent(in) :: direction
     type(OCTAL), pointer :: sOctal
     integer :: sSubcell
     real(double), intent(out) :: tval
     real(double) :: d
     type(VECTOR) :: cen
+    
     if (.not.(amr3d).or.(amr3d.and.cylindrical)) then
        write(*,*) "distanceToNearestWall not implemented for this geometry"
        stop
