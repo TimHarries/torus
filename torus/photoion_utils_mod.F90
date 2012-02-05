@@ -951,7 +951,7 @@ recursive subroutine quickSublimate(thisOctal, fraction)
 !                   thisOctal%dustTypeFraction(subcell,:) = 1.d0
 !                endif
 !                thisOctal%ne(subcell) = tiny(thisOctal%ne(subcell))
-1                thisOctal%ionFrac(subcell,1) = 1.d0
+!1                thisOctal%ionFrac(subcell,1) = 1.d0
 !                thisOctal%ionFrac(subcell,2) = tiny(thisOctal%ionFrac(subcell,2))
 !             endif
 !          Else
