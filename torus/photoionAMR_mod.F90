@@ -1943,7 +1943,7 @@ end subroutine radiationHydro
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
-       !$OMP PRIVATE(dustHeating, tempcell) &
+       !$OMP PRIVATE(dustHeating, tempcell, oldf, iter, fract fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal)
 
