@@ -1943,7 +1943,7 @@ end subroutine radiationHydro
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
-       !$OMP PRIVATE(dustHeating, tempcell, oldf, iter, fract, fracf, converged, tempion) &
+       !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal)
 
@@ -2478,7 +2478,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical :: stillinGrid
    logical :: escaped
    real(double) :: kappaScaDb, kappaAbsDb, kappaRoss
-   real(double) :: wallDist
    real(double), parameter ::  gamma = 3.d0
    real(oct) :: thisTau
    real(oct) :: thisFreq
