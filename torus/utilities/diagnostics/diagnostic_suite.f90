@@ -361,7 +361,7 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
         print *, "neRatioArray(1) ", neRatioArray(1)
         print *, "ratio ", ratio
         print *, "proceeding with minimum known value", 10.**(neArray(1))
-        firstTimeA = .false.
+!        firstTimeA = .false.
      end if
      !           call exit_program(0)
      
@@ -372,20 +372,22 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
         print *, "neRatioArray(",max,") ", neRatioArray(max)
         print *, "ratio ", ratio
         print *, "proceeding with maximum allowed value of", 10.**(neArray(max))
-        firstTimeB = .false.
+!        firstTimeB = .false.
      end if
      n_e = 10.**(neArray(45))
      !        call exit_program(0)
   else
      
-     do i = max, 2, -1
+     do i = 1, max
         if(ratio >= neRatioArray(i+1) .and. ratio < neRatioArray(i)) then
-           dNe = neArray(i) - neArray(i+1)
-           dratio = neRatioArray(i) - neRatioArray(i+1)
+           dNe = neArray(i+1) - neArray(i)
+           dratio = neRatioArray(i+1) - neRatioArray(i)
            grad = dNe/dratio
            print *, "grad", grad
            print *, "ratio ", ratio              
-           n_e = 10.**(neArray(i+1) + grad*(ratio-neRatioArray(i+1)))           
+           print *, "dNe ", dNe
+           print *, "dratio ", dratio
+           n_e = 10.**(neArray(i) + grad*(ratio-neRatioArray(i)))
            goto 100
         end if
      end do
