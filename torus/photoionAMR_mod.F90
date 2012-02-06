@@ -3571,8 +3571,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     integer :: iter
     real(double), parameter :: eps = 3.d-8
     real :: t1, t2
-    real(double) :: Hheating, Heheating, dustHeating, newT
-    real :: deltaT
+    real(double) :: Hheating, Heheating, dustHeating, newT, deltaT
     real :: underCorrection = 0.5
     integer :: nIter
     tol = 1.d-2
@@ -3679,7 +3678,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
                    END if
                    deltaT = newT- dble(thisOctal%temperature(subcell))
-                   thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * deltaT
+                   thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * real(deltaT)
 !                   write(*,*) "thermal balance new converged after ",iter
                 endif
              endif
