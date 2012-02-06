@@ -52,6 +52,9 @@ do
       call calculate_temperature_and_ne(tempratioID, neratioID, tempLineRatio, &
            NeLineRatio, neArray, neRatioArray)
       
+      deallocate(neArray)
+      deallocate(neRatioArray)
+
    else if(menuChoice == 2) then
       ratioID = submenu
       print *, "!- Enter the electron density"
@@ -77,6 +80,9 @@ do
       read(*,*) NelineRatio
 
       call ne_calc(n_e, neLineRatio, neratioID, neArray, neRatioArray)
+
+      deallocate(neArray)
+      deallocate(neRatioArray)
 
    end if
 

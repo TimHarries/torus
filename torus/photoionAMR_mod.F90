@@ -278,7 +278,7 @@ contains
     end if
 
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
-       call ionizeGrid(grid%octreeRoot)
+          call ionizeGrid(grid%octreeRoot)
 !       if (grid%geometry(1:6) == "sphere") &
 !            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
