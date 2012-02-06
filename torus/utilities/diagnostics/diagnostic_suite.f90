@@ -36,8 +36,8 @@ do
       neratioID = subsubmenu
 
       if(neRatioID == 1) then
-         allocate(neArray(45))
-         allocate(neRatioArray(45))
+         allocate(neArray(49))
+         allocate(neRatioArray(49))
       else if(neRatioID == 2) then
          allocate(neArray(59))
          allocate(neRatioArray(59))
@@ -67,8 +67,8 @@ do
       neRatioID = subsubmenu
 
       if(neRatioID == 1) then
-         allocate(neArray(45))
-         allocate(neRatioArray(45))
+         allocate(neArray(49))
+         allocate(neRatioArray(49))
       else if(neRatioID == 2) then
          allocate(neArray(59))
          allocate(neRatioArray(59))
@@ -252,7 +252,7 @@ end subroutine print_density_menu
 subroutine setup_density_data(neArray, neRatioArray, neRatioID)
   implicit none
 
-  integer, parameter :: n_oii_lines=45
+  integer, parameter :: n_oii_lines=49
   integer, parameter :: n_sii_lines=59
   character(len=34), parameter :: data_pathA="electron_density_data/wang_OII.dat"
   character(len=34), parameter :: data_pathB="electron_density_data/wang_SII.dat"
@@ -348,7 +348,7 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   converged = .false.
   i = 0
   if(ratioID == 1) then
-     max = 45
+     max = 49
   else if(ratioID == 2) then
      max = 59
   else
