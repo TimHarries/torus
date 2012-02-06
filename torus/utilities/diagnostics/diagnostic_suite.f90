@@ -358,23 +358,23 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   if(ratio < neRatioArray(max)) then
      if(firstTimeA) then
         print *, "electron density tends to zero"
-        print *, "neRatioArray(1) ", neRatioArray(1)
+        print *, "neRatioArray(max) ", neRatioArray(max)
         print *, "ratio ", ratio
-        print *, "proceeding with minimum known value", 10.**(neArray(1))
+        print *, "proceeding with minimum known value", 10.**(neArray(max))
 !        firstTimeA = .false.
      end if
      !           call exit_program(0)
      
-     n_e = 10.**(neArray(1))
+     n_e = 10.**(neArray(max))
   else if(ratio > neRatioArray(1)) then
      if(firstTimeB) then
         print *, "warning -electron density tends to infinity"
-        print *, "neRatioArray(",max,") ", neRatioArray(max)
+        print *, "neRatioArray(",1,") ", neRatioArray(1)
         print *, "ratio ", ratio
-        print *, "proceeding with maximum allowed value of", 10.**(neArray(max))
+        print *, "proceeding with maximum allowed value of", 10.**(neArray(1))
 !        firstTimeB = .false.
      end if
-     n_e = 10.**(neArray(45))
+     n_e = 10.**(neArray(1))
      !        call exit_program(0)
   else
      
