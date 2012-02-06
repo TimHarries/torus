@@ -1096,11 +1096,11 @@ end subroutine radiationHydro
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
-    if (maxiter > 1) then
-       if (variableDustSublimation) then
-          call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
-       endif
-    endif
+!    if (maxiter > 1) then
+!       if (variableDustSublimation) then
+!          call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
+!       endif
+!    endif
 
 
     do while(.not.converged)
@@ -1943,7 +1943,7 @@ end subroutine radiationHydro
 
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
-       !$OMP PRIVATE(dustHeating, tempcell, oldf, iter, fract fracf, converged, tempion) &
+       !$OMP PRIVATE(dustHeating, tempcell, oldf, iter, fract, fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal)
 
@@ -2537,26 +2537,20 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     
     usedMRW = .false.
     i = 0
-    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-    do while (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10))
-!       write(*,*) "optical depth ", &
-!            (kappaAbsdb + kappaScadb)*thisOctal%subcellSize, &
-!            thisOctal%rho(subcell)*kappaRoss*thisOctal%subcellSize*1.d10
+!    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
+
+!    do while (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10))
+
+    if (thisOctal%rho(subcell)*kappaRoss*1.d10*thisOctal%subcellSize > 5.d0) then
        call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
        usedMRW = .true.
-       call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
-       i = i + 1
-    enddo
-    if (usedMRW) then
        tau = 1.d30
        thisLam = (cspeed/thisFreq)*1.d8
        call locate(lamArray, nLambda, real(thisLam), iLam)
        call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, rosselandKappa=kappaRoss, &
+            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
             grid=grid, inFlow=inFlow)
-!       write(*,*) "MRW finished after ",i
     endif
 
 
