@@ -1959,7 +1959,7 @@ end subroutine radiationHydro
                    v = cellVolume(thisOctal, subcell)
                    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                    dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
-                   kappap = max(1.d-30,kappap)
+                   kappap = max(1.e-30,kappap)
                    thisOctal%temperature(subcell) = max(tMinGlobal,real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0)
                 endif
              enddo
@@ -2007,7 +2007,7 @@ end subroutine radiationHydro
              
           endif
           if (nHydroSetsGlobal > 1) tempCell(iOctal,:) = thisOctal%temperature(:)
-          if (nHydroSetsGlobal > 1) tempIon(iOctal,:,:) = thisOctal%ionFrac(:,:)
+          if (nHydroSetsGlobal > 1) tempIon(iOctal,:,:) = real(thisOctal%ionFrac(:,:))
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
@@ -3566,8 +3566,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: totalHeating
     integer :: subcell
     logical :: converged
-    real :: a, b
-    real(double) :: c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
+    real(double) :: a, b, c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
     integer, parameter :: itmax = 100
     integer :: iter
     real(double), parameter :: eps = 3.d-8
@@ -3604,8 +3603,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       converged = .false.
                       
                       !try nearby temperatures to start the bracket
-                      t1 = thisOctal%temperature(subcell) * 0.8d0
-                      t2 = thisOctal%temperature(subcell) * 1.2d0
+                      t1 = thisOctal%temperature(subcell) * 0.8
+                      t2 = thisOctal%temperature(subcell) * 1.2
                       FA = (totalHeating - HHecooling(grid, thisOctal, subcell, t1)) !FUNC(A)
                       FB = (totalHeating - HHecooling(grid, thisOctal, subcell, t2)) !FUNC(B)
 
@@ -3616,8 +3615,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
                       A = t1
                       B = t2
-                      FA = (totalHeating - HHecooling(grid, thisOctal, subcell, a)) !FUNC(A)
-                      FB = (totalHeating - HHecooling(grid, thisOctal, subcell, b)) !FUNC(B)
+                      FA = (totalHeating - HHecooling(grid, thisOctal, subcell, real(a))) !FUNC(A)
+                      FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
                       IF (FB*FA.GT.0.d0) write(*,*) 'Root must be bracketed for ZBRENT.',totalHeating,fa,fb
                       FC = FB
                       DO ITER=1,ITMAX
@@ -3672,14 +3671,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          ELSE
                             B=B+SIGN(TOL1,XM)
                          ENDIF
-                         FB = (totalHeating - HHecooling(grid, thisOctal, subcell, b)) !FUNC(B)
+                         FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
                       enddo
                       if (ABS(XM).gt.TOL1) write(*,*) 'ZBRENT exceeding maximum iterations.', xm, tol1
                       newT = B
 
 
                    END if
-                   deltaT = newT-thisOctal%temperature(subcell)
+                   deltaT = newT- dble(thisOctal%temperature(subcell))
                    thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * deltaT
 !                   write(*,*) "thermal balance new converged after ",iter
                 endif
