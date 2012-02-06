@@ -1468,8 +1468,6 @@ module amr_utils_mod
     tVal = min(posVec%y - (cen%y - d), tVal)
     tVal = min(posVec%z - (cen%z - d), tVal)
 
-!666    continue
-
   end subroutine distanceToNearestWall
 
   subroutine distanceToGridEdge(grid, posVec, direction, tVal)
