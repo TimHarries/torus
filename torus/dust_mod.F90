@@ -920,7 +920,7 @@ contains
 
           temperature = thisOctal%temperature(subcell)
           if (present(subTemp)) then
-             sublimationTemp = subTemp
+             sublimationTemp = real(subTemp)
           else
              sublimationTemp = real(max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2)))
           endif
