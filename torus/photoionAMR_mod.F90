@@ -841,6 +841,7 @@ end subroutine radiationHydro
     integer :: ierr
     integer :: iter, nFrac
     real :: totFrac
+    integer :: maxChild
 
     !AMR
 !    integer :: iUnrefine, nUnrefine
@@ -1096,32 +1097,15 @@ end subroutine radiationHydro
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
-!    if (maxiter > 1) then
-!       if (variableDustSublimation) then
-!          call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
-!       endif
-!    endif
+    if (maxiter > 1) then
+       if (variableDustSublimation) then
+          call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
+       endif
+    endif
 
 
     do while(.not.converged)
 
-! Set up the dust fraction
-       if (variableDustSublimation) then
-
-
-          if (nIter == 3) tauMax = 0.1
-          if (nIter == 5) tauMax = 1.d0
-          if (niter == 7) tauMax = 10.d0
-          if (nIter == 8) tauMax = 1.d30
-          nFrac = 0
-          totFrac = 0.d0
-          if (nIter >= 3) then
-             write(message,*) myrankWorldGlobal," Setting dust type max optical depth to ", tauMax
-             call writeInfo(message, TRIVIAL)
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-          endif
-
-       end if
 
        if(optimizeStack .and. nIter > 0) then
           bufferSize = 0
@@ -1160,6 +1144,29 @@ end subroutine radiationHydro
        photonPacketStack%crossedPeriodic = .false.
  
       nIter = nIter + 1
+
+! Set up the dust fraction
+       if (variableDustSublimation) then
+
+
+          if (nIter == 2) tauMax = 0.1
+          if (nIter == 3) tauMax = 1.d0
+          if (niter == 4) tauMax = 10.d0
+          if (nIter == 5) tauMax = 100.d0
+          if (nIter == 6) tauMax = 1000.d0
+          if (nIter == 7) tauMax = 1.d30
+          nFrac = 0
+          totFrac = 0.d0
+          if (nIter >= 3) then
+             write(message,*) myrankWorldGlobal," Setting dust type max optical depth to ", tauMax
+             call writeInfo(message, TRIVIAL)
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, subTemp=1500.d0, minLevel=1.d-10)
+          endif
+          if (maxIter == 1) call  sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax=1.e30, subTemp=1500.d0)
+       end if
+
+
+
       nInf=0
 
        call clearContributions(grid%octreeRoot)
@@ -1693,6 +1700,7 @@ end subroutine radiationHydro
                                uHat = randomUnitVector() ! isotropic emission
                                                        
                                nScat = nScat + 1
+                               thisOctal%chiLine(subcell) = thisOctal%chiline(subcell) + 1.d0
                                
                                                         !                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
                                
@@ -1935,9 +1943,10 @@ end subroutine radiationHydro
              iOctal_beg = mOctal*myHydroSetGlobal + 1 + n_rmdr
              iOctal_end = iOctal_beg + mOctal - 1
           end if
-          allocate(tempCell(1:nOctal,1:8))
+          maxChild = grid%octreeRoot%maxChildren
+          allocate(tempCell(1:nOctal,1:maxChild))
           tempCell = 0.
-          allocate(tempIon(1:nOctal,1:8,1:grid%nIon))
+          allocate(tempIon(1:nOctal,1:maxChild,1:grid%nIon))
           tempIon = 0.
        endif
 
@@ -1976,8 +1985,8 @@ end subroutine radiationHydro
                 enddo
                 
              else
-                oldT = thisOctal%temperature
-                oldF = thisOctal%ionFrac(:,1)
+                oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
+                oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
                 converged = .false.
                 iter = 0
                 do while(.not.converged)
@@ -1988,11 +1997,13 @@ end subroutine radiationHydro
                    else
                       call calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
                    endif
-                   fracT = abs(thisOctal%temperature - oldT)/oldT
-                   fracF = abs(thisOctal%ionFrac(:,1) - oldF)/oldF
-                   oldT = thisOctal%temperature
-                   oldF = thisOctal%ionFrac(:,1)
-                   converged = (ALL(fracT < 0.01d0)).and. (ALL(FracF < 0.01d0))
+                   fracT(1:thisOctal%maxChildren) = abs(thisOctal%temperature(1:thisOctal%maxChildren) - &
+                        oldT(1:thisOctal%maxChildren))/oldT(1:thisOctal%maxChildren)
+                   fracF(1:thisOctal%maxChildren) = abs(thisOctal%ionFrac(1:thisOctal%maxChildren,1) &
+                        - oldF(1:thisOctal%maxChildren))/oldF(1:thisOctal%maxChildren)
+                   oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
+                   oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
+                   converged = (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)).and. (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
                    !                      if (inSubcell(thisOctal, 1, VECTOR(0.d0, 0.d0, 0.d0)).and.(octalOnThread(thisOctal,1,myRankWorldGlobal))) then
                    !                         write(*,*) i, "temp, frac ",thisOctal%temperature(1),thisOctal%ionFrac(1,1)
                    !                      endif
@@ -2013,7 +2024,7 @@ end subroutine radiationHydro
        !$OMP END PARALLEL
 
        if (nHydroSetsGlobal > 1) then
-          allocate(temp1(1:(nOctal*8)), temp2(1:nOctal*8))
+          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
           temp1 = RESHAPE(tempCell, (/SIZE(temp1)/))
           call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
           tempCell = RESHAPE(temp2,SHAPE(tempCell))
@@ -2021,7 +2032,7 @@ end subroutine radiationHydro
              octalArray(iOctal)%content%temperature(:) = tempCell(iOctal,:)
           enddo
           deallocate(temp1, temp2, tempCell)
-          allocate(temp1(1:(nOctal*8*grid%nIon)), temp2(1:nOctal*8*grid%nion))
+          allocate(temp1(1:(nOctal*maxChild*grid%nIon)), temp2(1:nOctal*maxChild*grid%nion))
           temp1 = RESHAPE(tempIon, (/SIZE(temp1)/))
           call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
           tempIon = RESHAPE(temp2,SHAPE(tempIon))
@@ -2364,6 +2375,7 @@ end subroutine radiationHydro
           valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
           "hydrovelocity","sourceCont   ","pressure     ", &
           "crossings    ", &
+          "chiline      ", &
           "dust1        "/))
 
      if(singleMegaPhoto) then
@@ -2540,7 +2552,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 !    do while (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10))
 
-    if (thisOctal%rho(subcell)*kappaRoss*1.d10*thisOctal%subcellSize > 5.d0) then
+    if (thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)*kappaRoss*1.d10*thisOctal%subcellSize > 20.d0) then
        call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
        usedMRW = .true.
@@ -2550,6 +2562,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
             actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
             grid=grid, inFlow=inFlow)
+       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
     endif
 
 
@@ -3165,6 +3178,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           thisOctal%Heheating(subcell) = 0.d0
           thisOctal%photoIonCoeff(subcell,:) = 0.d0
           thisOctal%distanceGrid(subcell) = 0.d0
+          thisOctal%chiline(subcell) = 0.d0
           thisOctal%radiationMomentum(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        endif
     enddo
@@ -6615,8 +6629,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        
 
     call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
-    kappaRoss = kappaRoss * 1.d10
-    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
+    diffCoeff = 1.d0 / (thisOctal%dustTypeFraction(subcell,1)*3.d0*thisOctal%rho(subcell)*kappaRoss)
 
     cen = subcellCentre(thisOctal, subcell)
     rHat = randomUnitVector()
@@ -6624,15 +6637,14 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     call distanceToCellBoundary(grid, cen, rHat, tVal, thisOctal, subcell)
 
     leavingPos = cen + (tVal-0.01d0*smallestCellSize) * rHat
-    call distanceToCellBoundary(grid, leavingPos, rHat, tVal, thisOctal, subcell)
 
-    r0 = modulus(rVec - leavingPos)
+    r0 = modulus(rVec - leavingPos)*1.d10
 !    call distanceToNearestWall(rVec, r0, thisOctal, subcell)
     call randomNumberGenerator(getDouble=zeta)
     call locate(prob, ny, zeta, i)
     thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
     mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
 !    rVec = rVec + uHat * r0
 
     rVec = leavingPos

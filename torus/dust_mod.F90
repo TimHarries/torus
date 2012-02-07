@@ -880,13 +880,15 @@ contains
     end do
   end subroutine sublimateDustWR104
 
-  recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax)
+  recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real :: totFrac
     real :: tauMax
+    real(double), optional :: subTemp, minLevel
+    real(double) :: smallVal
     integer :: nFrac
     real(double) :: frac, newFrac, deltaFrac, normFac, thistau
     real ::  temperature, sublimationTemp, subrange
@@ -898,31 +900,43 @@ contains
     kappaSca = 0.d0; kappaAbs = 0.d0
     subrange = 1.d0
 
+    if (present(minLevel)) then
+       smallVal = minLevel
+    else
+       smallVal = 1.d-20
+    endif
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call sublimateDust(grid, child, totFrac,nFrac, tauMax)
+                call sublimateDust(grid, child, totFrac,nFrac, tauMax, subTemp, minLevel)
                 exit
              end if
           end do
        else
 
           temperature = thisOctal%temperature(subcell)
-          sublimationTemp = real(max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2)))
+          if (present(subTemp)) then
+             sublimationTemp = subTemp
+          else
+             sublimationTemp = real(max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2)))
+          endif
           if (temperature < sublimationTemp) newFrac = 1.
 
           if (temperature >= sublimationTemp) then
              newfrac = exp(-dble((temperature-sublimationtemp)/subRange))
           endif
-          newfrac = max(newfrac,1.d-20)
+
+          newfrac = max(newfrac,smallVal)
 
           deltaFrac = newFrac - thisOctal%oldFrac(subcell)
 
           frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
-          frac = max(frac, 1.d-20)
+
+          frac = max(frac, smallVal)
 
           normfac = SUM(thisOctal%dustTypeFraction(subcell,:))
 
@@ -1086,8 +1100,8 @@ contains
 
     do k = 1, grid%nTempRossArray
        temperature = 3. + (maxTemp-3.)*real(k-1)/real(grid%nTempRossArray-1)
+       rosselandKappa = 0.
        do j = 1, nDustType
-          rosselandKappa = 0.
           Bnutot = 0.
           do i =  grid%nLambda,2,-1
              freq = cSpeed / (grid%lamArray(i)*1.e-8)

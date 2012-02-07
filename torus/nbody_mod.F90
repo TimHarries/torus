@@ -221,7 +221,7 @@ contains
     enddo
     eps = 1.d-6 * minSep
     eps = max(eps, smallestCellSize*1.d10)
-    eps = 0.1d0*smallestCellSize*1.d10
+    eps = 0.5d0*smallestCellSize*1.d10
   end subroutine calculateEps
 
   subroutine nBodyStep(source, nSource, dt, grid)

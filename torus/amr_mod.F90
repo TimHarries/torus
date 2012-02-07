@@ -3180,6 +3180,7 @@ CONTAINS
          ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
+    use inputs_mod, only : inputnsource, sourcepos
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -3200,6 +3201,7 @@ CONTAINS
     type(octal), pointer :: neighbourOctal
     integer :: neighbourSubcell
 !    TYPE(octal), POINTER       :: thisOctal
+    integer :: iSource
     INTEGER, INTENT(IN)        :: subcell
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
@@ -3324,6 +3326,37 @@ CONTAINS
 
           end if
        end do
+
+
+       if (inputnSource>0) then
+          centre = subcellCentre(thisOctal, subcell)
+          do iSource = 1, inputNsource
+             r = modulus(centre - sourcePos(iSource))/smallestCellSize
+             if ((r < 12.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
+                split = .true.
+             endif
+          enddo
+       endif
+
+       if (inputnSource > 0) then
+          do iSource = 1, inputnSource
+             if (inSubcell(thisOctal,subcell, sourcePos(isource)) &
+                  .and. (thisOctal%nDepth < maxDepthAMR)) then
+                split = .true.
+             endif
+          enddo
+       endif
+             
+
+       if (refineOnJeans) then
+          massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
+          if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
+               .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
+             split = .true.
+          endif
+       endif
+
+       
 
 
     else
@@ -3872,9 +3905,9 @@ CONTAINS
           
           ! Split is decided using mindepthAMR defined globally
           
-          !      if ((rVec%z > 0).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
-          !      if ( (modulus(rVec)< 0.5d5).and.(thisOctal%nDepth < 10) ) split = .true.
-          
+          massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
+          if ((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) split = .true.
+
        case("benchmark")
           
           cellSize = thisOctal%subcellSize 
@@ -11559,6 +11592,7 @@ end function readparameterfrom2dmap
              thisOctal%rho(subcell) = rhoBlandfordPayne(cellCentre)
              thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre)
              thisOctal%temperature(subcell) = real(DW_temperature)
+             thisOctal%fixedTemperature(subcell) = .true.
 
 !             IF ((thisoctal%threed).and.(subcell == 8)) &
                   CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
@@ -11661,6 +11695,7 @@ end function readparameterfrom2dmap
              
              thisOctal%inFlow(subcell) = .true.
              thisOctal%velocity(subcell) = velocityMahdavi(cellCentre)
+             thisOctal%fixedTemperature(subcell) = .true.
              thisV = modulus(thisOctal%velocity(subcell))*cSpeed
              if (thisV /= 0.d0) then
                 thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3 

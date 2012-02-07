@@ -110,7 +110,11 @@ program torus
 
   call setupMicrophysics(grid)
 
+
+
   call  setupamrgrid(grid)
+
+
 !  call checkAMRgrid(grid, .false.)
 
 !  call writeAMRgrid("test.dat",.false.,grid)
@@ -118,8 +122,10 @@ program torus
 !  call torus_mpi_barrier
 !  goto 666
 
+!  call writeVtkFile(grid, "rho.vtk")
 
   call setupGlobalSources(grid)
+
 
   call writeBanner("Run-time messages","+",TRIVIAL)
 

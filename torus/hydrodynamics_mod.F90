@@ -3857,7 +3857,7 @@ end subroutine sumFluxes
                          
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
-                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 0.1d0*grid%halfSmallestSubcell)
+                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 0.1d0*smallestCellSize)
              endif
              call sumGasStarGravity(grid%octreeRoot)
 
