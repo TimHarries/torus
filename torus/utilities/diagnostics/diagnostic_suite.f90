@@ -131,6 +131,8 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
                  !also need the ne sensitive line choice
                  localOK = .true.
                  call display_navigate_menu(choice, submenu, subsubmenu)
+              else
+                 localOK = .true.
               end if
            else if(submenu == 5) then
               call exit_program(0)
