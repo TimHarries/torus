@@ -84,6 +84,13 @@ do
       deallocate(neArray)
       deallocate(neRatioArray)
 
+
+   else if (menuChoice == 4) then
+      print *, "!-Enter the electron density:"
+      read(*,*) n_e
+      print *, "!-Enter the temperature: "
+      read(*,*) temperature
+      call pressure_calc(temperature, n_e)
    end if
 
    submenu = 0
@@ -112,9 +119,11 @@ recursive subroutine display_navigate_menu(choice, submenu, subsubmenu)
            localOK = .true.
            call display_navigate_menu(choice, submenu, subsubmenu)
         else if (choice == 4) then
+           localOK = .true.
+        else if (choice == 5) then
            call exit_program(0)
         else 
-           print *, "Please enter a valid choice: ""1"", ""2"", ""3"" or ""4"""
+           print *, "Please enter a valid choice: ""1"", ""2"", ""3"", ""4"" or ""5"""
         end if
      end do
   else if(choice == 1 .or. choice == 2) then
@@ -201,7 +210,8 @@ subroutine print_main_menu()
   print *, "1. Get Ne and Temperature from two line ratios "
   print *, "2. Get Temperature from line ratio and given Ne "
   print *, "3. Get Ne from a given line ratio"
-  print *, "4. Exit "
+  print *, "4. Get pressure from Te and Ne "
+  print *, "5. Exit "
   print *, " "
   print *, "choice: "
   
@@ -400,6 +410,39 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   print *, "!- Derived electron density is ", n_e, "cm^-3", i
 end subroutine Ne_Calc
 
+
+subroutine pressure_Calc(temperature, n_e)
+  implicit none
+
+  real :: pressure
+  real :: soundSpeed
+  real :: temperature
+  real :: n_e
+  real, parameter :: mHydrogen = 1.6733e-24
+  real, parameter :: kB = 1.380626e-16
+  !assume completely ionized where these are applicable
+  !i.e n_e = n_p & M = n_e(m_h)
+
+  !get isothermal sound speed
+  
+  soundSpeed = sqrt(n_e*kB*temperature)
+  
+  pressure = 2.*n_e*mHydrogen*(soundSpeed**2)
+  
+  print *, " "
+  print *, " "
+  print *, " "
+  print *, "************************"
+  print *, "        RESULTS         "
+  print *, "************************"
+  print *, " "
+  print *, "---------------------------------------"
+  print *, "Temperature: ", temperature
+  print *, "Electron Density: ", n_e
+  print *, "Pressure: ", pressure
+  print *, "---------------------------------------"
+
+end subroutine pressure_Calc
 
 subroutine calculate_temperature_and_ne(tempratioID, neratioID, tempLineRatio, &
      NeLineRatio, neArray, neRatioArray)
