@@ -39,8 +39,8 @@ do
          allocate(neArray(49))
          allocate(neRatioArray(49))
       else if(neRatioID == 2) then
-         allocate(neArray(59))
-         allocate(neRatioArray(59))
+         allocate(neArray(60))
+         allocate(neRatioArray(60))
       end if
 
       call setup_density_data(neArray, neRatioArray, neRatioID)
@@ -70,8 +70,8 @@ do
          allocate(neArray(49))
          allocate(neRatioArray(49))
       else if(neRatioID == 2) then
-         allocate(neArray(59))
-         allocate(neRatioArray(59))
+         allocate(neArray(60))
+         allocate(neRatioArray(60))
       end if
       
       call setup_density_data(neArray, neRatioArray, neRatioID)
@@ -218,8 +218,8 @@ subroutine print_temperature_menu()
   print *, "Choose a ratio from the options below"
   print *, " "
   print *, "1. [OIII] (5007+4959)/4363 "
-  print *, "2. [NIII] (6583+6548)/5755 "
-  print *, "3. [NeII] (3968+3869)/3343 "
+  print *, "2. [NII] (6583+6548)/5755 "
+  print *, "3. [NeIII] (3968+3869)/3343 "
   print *, "4. [SIII] (9532+9069)/6312 "
   print *, "5. Exit "
   print *, " "
@@ -253,7 +253,7 @@ subroutine setup_density_data(neArray, neRatioArray, neRatioID)
   implicit none
 
   integer, parameter :: n_oii_lines=49
-  integer, parameter :: n_sii_lines=59
+  integer, parameter :: n_sii_lines=60
   character(len=34), parameter :: data_pathA="electron_density_data/wang_OII.dat"
   character(len=34), parameter :: data_pathB="electron_density_data/wang_SII.dat"
   integer :: ier
@@ -350,7 +350,7 @@ subroutine Ne_Calc(n_e, ratio, ratioID, neArray, neRatioArray)
   if(ratioID == 1) then
      max = 49
   else if(ratioID == 2) then
-     max = 59
+     max = 60
   else
      print *, "invalid ratio ID"
      call exit_program(0)     
