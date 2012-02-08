@@ -6620,11 +6620,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        enddo
        prob(ny) = 1.d0
        firstTime = .false.
-       if (myrankWorldGlobal == 1) then
-          do i = 1, ny
-             write(*,*) i, y(i), prob(i)
-          enddo
-       endif
+       do i = 1, ny
+          write(*,*) i, y(i), prob(i)
+       enddo
     endif
        
        

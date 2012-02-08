@@ -3541,7 +3541,7 @@ contains
     totalFlux = toPerAngstrom(spec(1), broadBandFreq)
     deallocate(vArray, spec)
     deallocate(da, domega, rayPosition)
-666 continue
+
     lineOff = storeLineOff
 
   end subroutine calculateAtomSpectrum
