@@ -2,7 +2,7 @@ module setupamr_mod
 
   Use cmfgen_class
   use amr_mod
-  use vtk_mod
+  use vtk_mod, only: writeVTKFile, writeVTKFileSource
   use vector_mod
   use magnetic_mod
   use messages_mod
@@ -949,6 +949,7 @@ contains
 !routine to read in the velocity field produced by the generating code of M. R. Bate.
       subroutine readgridTurbulence(grid)
       use mpi
+      use mpi_amr_mod, only: octalOnThread
       use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
       type(GRIDTYPE) :: grid
       type(OCTAL), pointer :: thisOctal
@@ -1888,6 +1889,7 @@ contains
 
   subroutine turbulentVelocityField(grid, vDispersion)
     use inputs_mod, only : maxDepthAMR
+    use utils_mod, only: gasdev
     type(GRIDTYPE) :: grid
     real(double) :: vDispersion
     real(double) :: deltaV, wavenumber, vmag
