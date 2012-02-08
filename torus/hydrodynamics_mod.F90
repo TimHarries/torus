@@ -1839,10 +1839,10 @@ contains
     real(double) :: dt, rhou, dx, dv
     integer :: iSource
     type(VECTOR) :: rVec, rHat, fVec
-    real(double) :: force, rMod
+    real(double) :: force, rMod, eps
+
+    eps = smallestCellSize * 1.d10
     
-
-
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -1876,7 +1876,7 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * &!!!!!!!!!!!!!!!!!!!!!!!
                      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
-             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
+             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity due to gas
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
@@ -1887,9 +1887,11 @@ contains
                 rMod = modulus(rVec)
                 rHat = rVec
                 call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/rMod**2))*rHat
+                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
                 force = force + (fVec.dot.VECTOR(1.d0,0.d0,0.d0))
              enddo
+
+             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + force * dt ! gravity due to stars
 !             write(*,*) "impulse ",force*dt, - (dt/2.d0) * & !gravity
 !                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
 !                  thisoctal%phi_i_minus_1(subcell)) / dx
@@ -1940,7 +1942,9 @@ contains
     real(double) :: dt, rhou, dx, dv
     integer :: iSource
     type(VECTOR) :: rVec, rHat, fVec
-    real(double) :: force, rMod
+    real(double) :: force, rMod, eps
+
+    eps = smallestCellSize * 1.d10
 
 
 
@@ -1974,9 +1978,20 @@ contains
                     thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * &
                     (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
-             thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * & !gravity
+             thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * & !gravity due to gas
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
+
+             force = 0.d0
+             do isource = 1, globalnSource
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rMod = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
+                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+                force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
+             enddo
+             thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + force * dt ! gravity due to stars
                     
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "rhov ",thisoctal%rhov(subcell)
@@ -1995,15 +2010,6 @@ contains
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
 
-             force = 0.d0
-             do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
-                rMod = modulus(rVec)
-                rHat = rVec
-                call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/rMod**2))*rHat
-                force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
-             enddo
 
              if (radiationPressure) then
                 thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
@@ -2033,7 +2039,9 @@ contains
     real(double) :: dt, rhow, dx, dv
     integer :: iSource
     type(VECTOR) :: rVec, rHat, fVec
-    real(double) :: force, rMod
+    real(double) :: force, rMod, eps
+
+    eps = smallestCellSize * 1.d10
 
 
     do subcell = 1, thisoctal%maxchildren
@@ -2070,9 +2078,20 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * &
                   (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / dx
 
-             thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * & !gravity
+             thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - (dt/2.d0) * & !gravity due to gas
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
+
+             force = 0.d0
+             do isource = 1, globalnSource
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rMod = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
+                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+                force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
+             enddo
+             thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + force * dt ! gravity due to stars
 
 !Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then
@@ -2083,16 +2102,6 @@ contains
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * & !gravity
                   rhow * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
-
-             force = 0.d0
-             do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
-                rMod = modulus(rVec)
-                rHat = rVec
-                call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/rMod**2))*rHat
-                force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
-             enddo
 
              if (radiationPressure) then
                 thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
@@ -2131,12 +2140,12 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
-          if (thisOctal%rho(subcell) < 1.d-25) then
-             thisoctal%rhou(subcell) = 0.01d0 * thisOctal%rhou(subcell)
-             thisoctal%rhov(subcell) = 0.01d0 * thisOctal%rhov(subcell)
-             thisoctal%rhow(subcell) = 0.01d0 * thisOctal%rhow(subcell)
-             thisoctal%rhoe(subcell) = 0.01d0 * thisOctal%rhoe(subcell)
-          endif
+!          if (thisOctal%rho(subcell) < 1.d-25) then
+             thisoctal%rhou(subcell) = 0.9d0 * thisOctal%rhou(subcell)
+             thisoctal%rhov(subcell) = 0.9d0 * thisOctal%rhov(subcell)
+             thisoctal%rhow(subcell) = 0.9d0 * thisOctal%rhow(subcell)
+             thisoctal%rhoe(subcell) = 0.9d0 * thisOctal%rhoe(subcell)
+!          endif
        endif
     enddo
   end subroutine damp
@@ -3446,7 +3455,7 @@ end subroutine sumFluxes
 
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-          thisOctal%phi_i(subcell) = thisOctal%phi_gas(subcell) + thisOctal%phi_stars(subcell)
+          thisOctal%phi_i(subcell) = thisOctal%phi_gas(subcell) !+ thisOctal%phi_stars(subcell)
        endif
     enddo
   end subroutine sumGasStarGravity
@@ -9884,15 +9893,18 @@ end subroutine minMaxDepth
                   thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
                   thisOctal%rhow(subcell) / thisOctal%rho(subcell))
              eGrav = cellMass * thisOctal%phi_i(subcell)
+             do i = 1, nSource
+                eGrav = eGrav - bigG*cellMass*source(i)%mass / (modulus(cellCentre-source(i)%position)*1.d10)
+             enddo
              eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-!             if (eKinetic + eThermal + eGrav > 0.d0) then
-!                write(*,*) "Cell in accretion radius but not bound"
-!                write(*,*) "eGrav ",eGrav
-!                write(*,*) "ethermal ",eThermal
-!                write(*,*) "eKinetic ",eKinetic
-!             endif
+             if (eKinetic + eThermal + eGrav > 0.d0) then
+                write(*,*) "Cell in accretion radius but not bound"
+                write(*,*) "eGrav ",eGrav
+                write(*,*) "ethermal ",eThermal
+                write(*,*) "eKinetic ",eKinetic
+             endif
              if (eKinetic + eThermal + eGrav < 0.d0) then
                 if (rhoLocal > rhoThreshold) then
                    

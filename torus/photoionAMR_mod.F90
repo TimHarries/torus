@@ -6620,10 +6620,11 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        enddo
        prob(ny) = 1.d0
        firstTime = .false.
-!       do i = 1, ny
-!          write(*,*) i, y(i), prob(i)
-!       enddo
-!       stop
+       if (myrankWorldGlobal == 1) then
+          do i = 1, ny
+             write(*,*) i, y(i), prob(i)
+          enddo
+       endif
     endif
        
        
@@ -6644,7 +6645,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     call locate(prob, ny, zeta, i)
     thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
     mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap * 0.1d0
 !    rVec = rVec + uHat * r0
 
     rVec = leavingPos

@@ -149,6 +149,7 @@ contains
                globalSourceArray, globalnsource, 1, vflux, forceLambda=5500.d0, occultingDisc=.true.)
           if (writeoutput) write(66,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
                returnMagnitude(bFlux, "B") -  returnMagnitude(vFlux,"V")
+          write(*,*) "v, b flux",vflux, bflux
        enddo
        if (writeoutput) close(66)
     endif

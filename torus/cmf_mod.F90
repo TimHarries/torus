@@ -3383,11 +3383,11 @@ contains
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
-    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
-         "sourceline ",  &
-         "ne         ", "jnu        ","haschild   ", &
-         "inflow     ","temperature", "velocity   ", &
-         "cornervel  "/))
+!    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
+!         "sourceline ",  &
+!         "ne         ", "jnu        ","haschild   ", &
+!         "inflow     ","temperature", "velocity   ", &
+!         "cornervel  "/))
 
 
     doCube = calcDataCube
@@ -3438,7 +3438,7 @@ contains
 #endif
     endif
 
-    if (.not.doSpec) goto 666
+!    if (.not.doSpec) goto 666
 #ifdef MPI
   call randomNumberGenerator(syncIseed=.true.)
 #endif
@@ -3569,8 +3569,8 @@ contains
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = globalSourceArray(1)%radius 
-!    rMax = 2.d0*grid%octreeRoot%subcellSize
-    rMax = 5.d0*rmin
+    rMax = grid%octreeRoot%subcellSize
+!    rMax = 5.d0*rmin
 
     do ir = 1, nr1
        r1 = rMin * dble(ir-1)/dble(nr1)
