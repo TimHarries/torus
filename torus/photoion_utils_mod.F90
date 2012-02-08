@@ -938,7 +938,11 @@ recursive subroutine quickSublimate(thisOctal, fraction)
           if (thisOctal%temperature(subcell) > 1500.) then
              thisOctal%dustTypeFraction(subcell,:) = 1.d-20
           else
-             thisOctal%dustTypeFraction(subcell,:) = fraction
+             if (present(fraction)) then
+                thisOctal%dustTypeFraction(subcell,:) = fraction
+             else
+                thisOctal%dustTypeFraction(subcell,:) = 1.d0
+             endif
           endif
 !
 !          if(.not. hOnly) then

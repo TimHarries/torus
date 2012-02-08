@@ -1837,6 +1837,9 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
+    integer :: iSource
+    type(VECTOR) :: rVec, rHat, fVec
+    real(double) :: force, rMod
     
 
 
@@ -1876,6 +1879,20 @@ contains
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
+
+
+             force = 0.d0
+             do isource = 1, globalnSource
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rMod = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
+                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/rMod**2))*rHat
+                force = force + (fVec.dot.VECTOR(1.d0,0.d0,0.d0))
+             enddo
+!             write(*,*) "impulse ",force*dt, - (dt/2.d0) * & !gravity
+!                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
+!                  thisoctal%phi_i_minus_1(subcell)) / dx
 
              if (radiationPressure) then
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
@@ -1921,6 +1938,9 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
+    integer :: iSource
+    type(VECTOR) :: rVec, rHat, fVec
+    real(double) :: force, rMod
 
 
 
@@ -1975,6 +1995,16 @@ contains
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
 
+             force = 0.d0
+             do isource = 1, globalnSource
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rMod = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
+                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/rMod**2))*rHat
+                force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
+             enddo
+
              if (radiationPressure) then
                 thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
                      dt * thisOctal%radiationMomentum(subcell)%y/dv
@@ -2001,6 +2031,9 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhow, dx, dv
+    integer :: iSource
+    type(VECTOR) :: rVec, rHat, fVec
+    real(double) :: force, rMod
 
 
     do subcell = 1, thisoctal%maxchildren
@@ -2050,6 +2083,16 @@ contains
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * & !gravity
                   rhow * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
+
+             force = 0.d0
+             do isource = 1, globalnSource
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rMod = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
+                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/rMod**2))*rHat
+                force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
+             enddo
 
              if (radiationPressure) then
                 thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
