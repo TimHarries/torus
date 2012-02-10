@@ -862,7 +862,7 @@ end subroutine radiationHydro
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
-    nSmallPackets = 100
+    nSmallPackets = 10
     smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
 
 
@@ -1539,13 +1539,15 @@ end subroutine radiationHydro
                !$OMP PARALLEL DEFAULT(NONE) &
                !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton) &
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
+               !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
+               !$OMP PRIVATE(smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell ) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
-               !$OMP SHARED(nTotScat, gammaTableArray, freq) &
+               !$OMP SHARED(nTotScat, gammaTableArray, freq, nsmallpackets) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq) &
@@ -1710,7 +1712,7 @@ end subroutine radiationHydro
                             !$OMP CRITICAL (update_escaped)
                             nEscaped = nEscaped + 1
                             if (bigPhotonPacket) then
-                               write(*,*) myrankGlobal, " big photon packet escaped. bug"
+!                               write(*,*) myrankGlobal, " big photon packet escaped. bug"
                                nEscaped = nEscaped + nSmallPackets -1
                             endif
 !                            if (smallPhotonPacket) write(*,*) "small photon escaped after ",nscat," scatterings"
