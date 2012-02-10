@@ -1439,7 +1439,7 @@ contains
        call getLogical("periodicZ", periodicZ, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in z direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getInteger("bufferCap", bufferCap, cLine, fLine, nLines, &
-            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 10000, ok, .false.)
+            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 20000, ok, .false.)
     end if
 
 !
@@ -2232,7 +2232,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
  do i = 1, nLines
   k = index(cline(i)," ")-1
   j = len_trim(name)
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if ((trim(cLine(i)(1:k)) .eq. name(1:j)).and.(j==k)) then
      if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:80),*) value

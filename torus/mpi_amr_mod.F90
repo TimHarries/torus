@@ -2595,7 +2595,7 @@ end subroutine dumpStromgrenRadius
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen
-    real(double) :: loc(3), rho, rhou , rhoe, p, phi, phi_gas
+    real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas
     character(len=*) :: thisFile
     integer :: ierr
     integer, parameter :: nStorage = 10
@@ -2634,9 +2634,9 @@ end subroutine dumpStromgrenRadius
           rhou = tempStorage(6)
           rhoe = tempStorage(7)
           p = tempStorage(8)
-          phi = tempStorage(9)
+          phi_stars = tempStorage(9)
           phi_gas = tempStorage(10)
-          write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi, phi_gas
+          write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
           !print *, "POSITION 2 ", position
@@ -2677,7 +2677,7 @@ end subroutine dumpStromgrenRadius
              tempStorage(6) = sqrt(thisOctal%rhou(subcell)**2+thisOctal%rhov(subcell)**2+thisOctal%rhow(subcell)**2)
              tempStorage(7) = thisOctal%rhoe(subcell)             
              tempStorage(8) = thisOctal%pressure_i(subcell)             
-             tempStorage(9) = thisOctal%phi_i(subcell)             
+             tempStorage(9) = thisOctal%phi_stars(subcell)             
              tempStorage(10) = thisOctal%phi_gas(subcell)             
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif

@@ -4,6 +4,7 @@
 
 module diffusion_mod
 
+use mpi_amr_mod, only : octalOnThread
 use constants_mod
 use vector_mod
 use messages_mod
@@ -845,8 +846,14 @@ end subroutine gaussSeidelSweep
              end if
           end do
        else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
           tau = kros * thisOctal%rho(subcell) * thisOctal%subcellSize *1.e10
+          if (.not.associated(thisOctal%diffusionApprox)) then
+             allocate(thisOCtal%diffusionApprox(1:thisOctal%maxChildren))
+             thisOctal%diffusionApprox = .false.
+          endif
           if (tau > taudiff) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(ndiff))  nDiff = nDiff + 1
@@ -857,6 +864,48 @@ end subroutine gaussSeidelSweep
     end do
 
   end subroutine defineDiffusionOnRosseland
+
+  recursive subroutine defineDiffusionOnKappap(grid, thisOctal, taudiff, nDiff)
+    use inputs_mod, only :  resetDiffusion
+    real :: tauDiff
+    type(GRIDTYPE) :: grid
+    integer, optional :: nDiff
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+    real(double) :: tau
+    real :: kappap
+    kappap = 0.d0
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call defineDiffusionOnKappap(grid, child, taudiff, nDiff)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+          tau = dble(kappap) * thisOctal%subcellSize *1.e10
+          if (.not.associated(thisOctal%diffusionApprox)) then
+             allocate(thisOCtal%diffusionApprox(1:thisOctal%maxChildren))
+             thisOctal%diffusionApprox = .false.
+          endif
+          if (tau > taudiff) then
+             thisOctal%diffusionApprox(subcell) = .true.
+             if (PRESENT(ndiff))  nDiff = nDiff + 1
+          else
+             if (resetDiffusion) thisOctal%diffusionApprox(subcell) = .false.
+          endif
+       end if
+    end do
+
+  end subroutine defineDiffusionOnKappap
 
   recursive subroutine resetDiffusionTemp(thisOctal, temp)
     type(octal), pointer   :: thisOctal

@@ -6550,7 +6550,7 @@ end subroutine sumFluxes
 !       bigJ = 0.25d0
 !       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
 !       cs = soundSpeed(thisOctal, subcell)
-       massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
+       massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
        if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
           write(*,*)  myrankGlobal," splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol

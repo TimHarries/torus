@@ -3349,9 +3349,11 @@ CONTAINS
              
 
        if (refineOnJeans) then
-          massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
+          massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
           if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
-               .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
+               .and.(thisOctal%nDepth < maxDepthAMR)) then 
+	       write(*,*) "split ",thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3/masstol
+	       
              split = .true.
           endif
        endif
@@ -3842,7 +3844,7 @@ CONTAINS
 
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
-                 massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
+                 massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
                  if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
                       .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
@@ -3905,7 +3907,7 @@ CONTAINS
           
           ! Split is decided using mindepthAMR defined globally
           
-          massTol = (1.d0/128.d0)*rhoThreshold*1.d30*smallestCellSize**3
+          massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
           if ((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) split = .true.
 
        case("benchmark")

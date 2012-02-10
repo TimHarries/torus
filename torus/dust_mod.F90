@@ -1100,8 +1100,8 @@ contains
 
     do k = 1, grid%nTempRossArray
        temperature = 3. + (maxTemp-3.)*real(k-1)/real(grid%nTempRossArray-1)
-       rosselandKappa = 0.
        do j = 1, nDustType
+       rosselandKappa = 0.
           Bnutot = 0.
           do i =  grid%nLambda,2,-1
              freq = cSpeed / (grid%lamArray(i)*1.e-8)

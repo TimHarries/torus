@@ -2,7 +2,7 @@ program check
 
   implicit none
   logical :: passed
-  real(kind=8) :: r(1000),phigas(1000), phi(1000),phi_gas(1000)
+  real(kind=8) :: r(1000), phi_stars(1000),phi_gas(1000)
   real(kind=8) :: phiAnalytical
   real(kind=8), parameter :: bigG = 6.67259d-8
   real(kind=8), parameter :: msol = 1.9891d33
@@ -20,7 +20,7 @@ program check
   n = 1
   do 
 
-     read(20,*,end=30) r(n), junk1, junk2, junk3, junk4,  phi(n), phigas(n)
+     read(20,*,end=30) r(n), junk1, junk2, junk3, junk4,  phi_stars(n), phi_gas(n)
      n = n + 1
   enddo
   30 continue
@@ -36,16 +36,16 @@ program check
     else
         phiAnalytical = (2.d0/3.d0)*pi*bigG*rhoMean*(r(i)**2 - 3.d0*pc**2)
      endif
-     frac_gas = abs((phigas(i) - phiAnalytical)/phiAnalytical)
+     frac_gas = abs((phi_gas(i) - phiAnalytical)/phiAnalytical)
      maxFrac_Gas = max(maxFrac_gas, frac_gas)
 
      rToStar = sqrt(r(i)**2 + 3e18**2)
      phiAnalytical = phiAnalytical - bigG*0.1d0*msol/rToStar
 
-     frac_tot = abs((phi(i) - phiAnalytical)/phiAnalytical)
+     frac_tot = abs(((phi_gas(i)+phi_stars(i)) - phiAnalytical)/phiAnalytical)
      maxFrac_tot = max(maxFrac_tot, frac_tot)
 
-     write(*,'(1p,5e12.4)') r(i), frac_gas ,frac_tot,phigas(i),phiAnalytical
+     write(*,'(1p,5e12.4)') r(i), frac_gas ,frac_tot,phi_gas(i),phiAnalytical
   enddo
   passed = .true.
   if (maxFrac_gas > 0.01d0) then
