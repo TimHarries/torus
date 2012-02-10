@@ -1,26 +1,27 @@
 #!/bin/ksh
 
-# This script builds Torus for MPI/OpenMp/hybrid configurations
+# This script builds Torus for MPI/OpenMP/hybrid configurations on Zen
 # D. Acreman, February 2012
-
-# Known problems
-#
-# 1. svn version number is not correct
-# 2. There's no way to build with -j flag
 
 print_help(){
     echo 
-    echo "This script builds Torus for MPI/OpenMp/hybrid configurations."
+    echo "This script builds Torus for MPI/OpenMP/hybrid configurations."
     echo "The Torus source code needs to be available."
     echo "Exiting builds will not be deleted but will be updated."
     echo "Torus executables will be put in the bin directory"
     echo "Run script with arguments openmp/mpi/hybrid/all."
+    echo "Other arguments are passed to the make command"
     echo 
 }
 
 ####################################
 # Start here                       #
 ####################################
+
+echo
+echo "Torus build script"
+echo "------------------"
+echo 
 
 openmp=no
 mpi=no
@@ -29,6 +30,7 @@ hybrid=no
 #
 # Parse command line flags
 #
+make_args=
 while [ $# -gt 0 ]
 do
     case "$1" in 
@@ -40,7 +42,7 @@ do
 	openmp) openmp=yes;;
 	mpi) mpi=yes;;
 	hybrid) hybrid=yes;;
-	*) echo "Unrecognised option $1";;
+	*) make_args="${make_args} $1";;
     esac
 shift
 done
@@ -64,6 +66,7 @@ if [[ -e torus/Makefile ]]; then
     echo "Found a Makefile in the torus directory"
 else
     echo "Did not find torus/Makefile"
+    exit 1
 fi
 
 # Do we have a bin directory?
@@ -73,6 +76,13 @@ else
     echo "Making bin directory"
     mkdir bin
 fi
+
+#
+# Create svn version header
+#
+cd torus
+./createsvnversion.csh
+cd ..
 
 #
 # Do builds 
@@ -91,7 +101,7 @@ if [[ $openmp == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make SYSTEM=zensingle openmp=yes
+    make getsvnver=no SYSTEM=zensingle openmp=yes $make_args
     cp torus.zensingle ../../bin/torus.openmp
     cd ../.. 
 fi
@@ -109,8 +119,8 @@ if [[ $mpi == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make SYSTEM=zen
-    cp torus.zensingle ../../bin/torus.mpi
+    make getsvnver=no SYSTEM=zen $make_args
+    cp torus.zen ../../bin/torus.mpi
     cd ../..
 fi
 
@@ -127,8 +137,8 @@ if [[ $hybrid == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make SYSTEM=zen openmp=yes
-    cp torus.zensingle ../../bin/torus.hybrid
+    make getsvnver=no SYSTEM=zen openmp=yes $make_args
+    cp torus.zen ../../bin/torus.hybrid
     cd ../..
 fi
 
@@ -137,5 +147,7 @@ if [[ $mpi == no && $openmp == no && $hybrid == no ]]; then
     print_help
     exit 1
 fi
+
+exit 0
 
 # End of file

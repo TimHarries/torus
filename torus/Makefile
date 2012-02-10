@@ -32,6 +32,8 @@ atomic = yes
 # These are set later on, don't set in the make command
 stateq = no
 datacube = no
+# Run script to get subversion version number
+getsvnver = yes
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -679,10 +681,12 @@ ctags:
 	@ctags --langmap='fortran:+(*.F90)' \
 	       *.f90 *.f *.F90
 
-svnver: 
+svnver:
+    ifeq ($(getsvnver), yes)
 	    @echo "calling createsvnversion"
 	    @./createsvnversion.csh 
 	    @echo "...done"
+    endif
 
 torus_version_mod.o: svnver $(VERSIONSOURCE)
 
