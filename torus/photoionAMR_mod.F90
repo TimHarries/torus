@@ -1611,8 +1611,8 @@ end subroutine radiationHydro
                             bigPhotonPacket = .false.
                             call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-!                            write(*,*) myrankWorldGlobal, " creating small photon packet ",ismallPhotonPacket, &
-!                                 thisOctal%subcellSize*kappap*1.d10
+                            write(*,*) myrankWorldGlobal, " creating small photon packet ",ismallPhotonPacket, &
+                                 thisOctal%subcellSize*kappap*1.d10, (cspeed/thisFreq)*1.d8
                          endif
                       endif
                          
@@ -2649,7 +2649,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     i = 0
     call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
 
-    if (wallDist > gamma/(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)*kappaRoss*1.d10)) then
+    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
        call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
        usedMRW = .true.
@@ -6703,7 +6703,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        
 
     call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
-    diffCoeff = 1.d0 / (thisOctal%dustTypeFraction(subcell,1)*3.d0*thisOctal%rho(subcell)*kappaRoss)
+    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
     i = 0
     call distanceToNearestWall(rVec, r0, thisOctal, subcell)
     do
@@ -6716,7 +6716,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        rVec = rVec + uHat * r0
 !       uHat = randomUnitVector()
        call distanceToNearestWall(rVec, r0, thisOctal, subcell)
-       if (r0 < gamma/(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
+       if (r0 < gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
     enddo
     spectrum = 1.d-50
     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
