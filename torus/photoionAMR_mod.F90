@@ -862,7 +862,7 @@ end subroutine radiationHydro
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
-    nSmallPackets = 10
+    nSmallPackets = 100
     smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
 
 
@@ -1190,7 +1190,7 @@ end subroutine radiationHydro
 
        resetDiffusion = .true.
        ndiff = 0
-       call defineDiffusionOnKappap(grid, grid%octreeRoot, 10., nDiff)
+       call defineDiffusionOnKappap(grid, grid%octreeRoot, 1., nDiff)
 !       write(*,*) myrankWorldGlobal, " has ",ndiff, "cells in diffusion approx"
 
 
@@ -1583,7 +1583,8 @@ end subroutine radiationHydro
                 ! here a new photon has been received, and we add its momentum
 
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
-                thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHat * (epsOverDeltaT*photonPacketWeight/cSpeed)
+                thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + &
+                     uHat * (epsOverDeltaT*photonPacketWeight/cSpeed)
 !                if (myrankWorldGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
                 doingSmallPackets = .false.
                 startNewSmallPacket = .false.
@@ -1611,8 +1612,9 @@ end subroutine radiationHydro
                             bigPhotonPacket = .false.
                             call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-                            write(*,*) myrankWorldGlobal, " creating small photon packet ",ismallPhotonPacket, &
-                                 thisOctal%subcellSize*kappap*1.d10, (cspeed/thisFreq)*1.d8
+!                            write(*,*) myrankWorldGlobal, " creating small photon packet ",ismallPhotonPacket, &
+!                                 thisOctal%subcellSize*kappap*1.d10, (cspeed/thisFreq)*1.d8
+!                            write(*,*) "escaped ",escaped
                          endif
                       endif
                          
@@ -1711,7 +1713,7 @@ end subroutine radiationHydro
                                write(*,*) myrankGlobal, " big photon packet escaped. bug"
                                nEscaped = nEscaped + nSmallPackets -1
                             endif
-                            if (smallPhotonPacket) write(*,*) "small photon escaped after ",nscat," scatterings"
+!                            if (smallPhotonPacket) write(*,*) "small photon escaped after ",nscat," scatterings"
                             !$OMP END CRITICAL (update_escaped)
                          end if
 
@@ -1776,6 +1778,7 @@ end subroutine radiationHydro
                                uHat = randomUnitVector() ! isotropic emission
                                                        
                                nScat = nScat + 1
+!                               if (smallPhotonPacket) write(*,*) "small photon scattering ",nscat
                                thisOctal%chiLine(subcell) = thisOctal%chiline(subcell) + 1.d0
                                
                                                         !                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
@@ -1792,7 +1795,6 @@ end subroutine radiationHydro
                                   smallPacketOrigin = rVec
                                   smallPacketFreq = thisFreq
                                   startNewSmallPacket = .true.
-                                  write(*,*) "big photon underwent ",nscat," scatterings"
                                endif
 
 
