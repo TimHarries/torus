@@ -4242,8 +4242,8 @@ contains
     enddo
     allocate(xt(n), yt(n))
 
-    xt = x
-    yt = y
+    xt(1:n) = x(1:n)
+    yt(1:n) = y(1:n)
     nt = 0
     do i = 1, n
        if (d(i) > eps) then

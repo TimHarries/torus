@@ -796,7 +796,7 @@ contains
           u0 = getUT(treal, uCoeff(1,:))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-          if ((t > 3.).and.(pe /= 0.d0)) then
+          if ((t > 3.).and.(pe > 1.d-30)) then
              N1overN0 = (10.d0**N1overN0)/pe
           else
              N1overN0 = 0.d0
@@ -864,7 +864,7 @@ contains
           u0 = getUT(treal, uCoeff(1,:))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-          if ((t > 3.).and.(pe /= 0.d0)) then
+          if ((t > 3.).and.(pe >  1.d-30)) then
              N1overN0 = (10.d0**N1overN0)/pe
           else
              N1overN0 = 1.d-30

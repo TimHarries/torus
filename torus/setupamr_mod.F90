@@ -27,7 +27,7 @@ contains
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
     use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics
-    use inputs_mod, only : amrGridSize, doSmoothGrid
+    use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
@@ -307,10 +307,12 @@ contains
 !          ttauridisc = .false.
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
           minRho = 1.d30
-          call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-               minRho, minR)
-          call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-               minRho, minR)
+          if (ttauriMagnetosphere) then
+             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+                  minRho, minR)
+             call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+                  minRho, minR)
+          endif
           if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
@@ -388,10 +390,12 @@ contains
 
 
           case("ttauri")
-             call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                  minRho, minR)
-             call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                  minRho, minR)
+             if (ttauriMagnetosphere) then
+                call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+                     minRho, minR)
+                call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+                     minRho, minR)
+             endif
              call testVelocity(grid%octreeRoot,grid)
        
              if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
