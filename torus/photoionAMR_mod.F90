@@ -1574,12 +1574,13 @@ end subroutine radiationHydro
                !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
-               !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell ) &
+               !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
+               !$OMP PRIVATE(bigPhotonPacketWeight) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
-               !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
+               !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
-               !$OMP SHARED(nTotScat, nScatbigPhoton,gammaTableArray, freq, nsmallpackets) &
+               !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq) &
@@ -1635,7 +1636,7 @@ end subroutine radiationHydro
                          if (iSmallPhotonPacket > nSmallPackets) then
                             doingSmallPackets = .false.
 !                            write(*,*) myrankWorldGlobal," Finished doing small photon packets"
-                            goto 777
+                            goto 555
                          else
                             rVec = smallPacketOrigin
                             thisFreq = smallPacketFreq
@@ -1881,6 +1882,7 @@ end subroutine radiationHydro
                    nTotScat = nTotScat + nScat
                    nPhot = nPhot + 1
                 end if
+555             continue
                 !$OMP BARRIER
                 !$OMP END PARALLEL
 777             continue
