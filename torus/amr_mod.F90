@@ -3181,7 +3181,7 @@ CONTAINS
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos
-    use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize
+    use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3565,6 +3565,8 @@ CONTAINS
           inflow=.false.
           insideStar = .false.
           outsideStar = .false.
+
+          if (ttauriMagnetosphere) then
           do i = 1, 400
              rVec = randomPositionInCell(thisOctal,subcell)
              if (inFLowMahdavi(1.d10*rVec)) then
@@ -3606,7 +3608,7 @@ CONTAINS
                 splitInAzimuth = .true.
              endif
           endif
-          
+          endif
           
           if (ttauriwind) then
              inflow = .false.
@@ -5320,7 +5322,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
     USE inputs_mod, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
                                 TTauriRinner, TTauriRouter, ttau_acc_on, &
-                                 vturb
+                                 vturb, ttauriMagnetosphere
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
     use density_mod, only:   density, TTauriInFlow
 
@@ -5353,7 +5355,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     r = real(modulus(point))
     if (r < (ttauriRstar/1.d10)) thisOctal%inflow(subcell) = .false.
 
-
+    if (.not.ttauriMagnetosphere) then
     if (.not. ttau_acc_on) then
        ! we don't include the magnetopsherical accretion
        thisOctal%rho(subcell) = 1.e-19
@@ -5430,7 +5432,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   thisOctal%velocity(subcell) = TTauriVelocity(point)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
-     
+endif
   if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
   IF ((thisoctal%threed).and.(subcell == 8)) &
        CALL fillVelocityCorners(thisOctal,TTauriVelocity)
@@ -11613,8 +11615,8 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesBlandfordPayne
 
   recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
-    use magnetic_mod, only : rhoAlphaDisc
-    use inputs_mod, only : rSublimation
+    use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
+    use inputs_mod, only : rSublimation, alphaDiscTemp
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r, fac
     type(octal), pointer   :: thisOctal
@@ -11649,13 +11651,16 @@ end function readparameterfrom2dmap
              endif
           endif
           if ((thisRho > thisOctal%rho(subcell)).and.(r < rSublimation)) then
-             thisOctal%temperature(subcell) = 2000.
+             thisOctal%temperature(subcell) = alphaDiscTemp
           endif
           thisOCtal%rho(subcell) = max(thisRho, thisOctal%rho(subcell))
+          thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)
+          CALL fillVelocityCorners(thisOctal,velocityAlphaDisc)
                        
        endif
     enddo
   end subroutine assignDensitiesAlphaDisc
+
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
     use inputs_mod, only :  vturb, isothermTemp, ttauriRstar

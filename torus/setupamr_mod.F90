@@ -398,11 +398,14 @@ contains
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
 
-             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"etaline  ", &
-                                                                     "chiline  ", &
-                                                                     "inflow   ", &
-                                                                     "cornervel", &
-                                                                     "fixedtemp"/))
+             call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"rho        ", &
+                                                                     "dust1      ", &
+                                                                     "etaline    ", &
+                                                                     "chiline    ", &
+                                                                     "inflow     ", &
+                                                                     "cornervel  ", &
+                                                                     "temperature", &
+                                                                     "fixedtemp  "/))
 #ifdef STATEQ
           case("cmfgen")
               call map_cmfgen_opacities(grid)

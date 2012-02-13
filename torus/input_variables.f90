@@ -368,7 +368,7 @@
   real :: scale, rscale
   real :: mCore, diskTemp, mDisc
   real :: epsilonDisc
-  real :: alphaDisc, betaDisc
+  real :: alphaDisc, betaDisc, alphaDiscTemp
   real :: scaleDensity
   real :: vRot
   real :: mdot
@@ -424,7 +424,7 @@
   real :: MdotParameter5, MdotParameter6
   real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
   real :: Thotspot
-  logical :: ttauriwarp, ttauriwind, ttauridisc
+  logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere
   real :: TTauriRstar ! stellar radius (in R_sol units)
   real :: TTauriMstar ! stellar mass   (in M_sol units)
   real :: TTauriDiskHeight ! (in R_star units)

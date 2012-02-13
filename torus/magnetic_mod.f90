@@ -142,7 +142,29 @@ contains
 
 
 666 continue
+
   end function velocityMahdavi
+
+  type (VECTOR) function velocityAlphadisc(point)
+    type(VECTOR), intent(in) :: point
+
+    velocityAlphaDisc = point
+    velocityAlphaDisc = VECTOR(0.d0, 0.d0, 0.d0)
+  end function velocityAlphaDisc
+
+
+  type (VECTOR) function velocityTTauriKeplerian(point)
+    use inputs_mod, only : ttauriMstar
+    type(VECTOR), intent(in) :: point
+    type(VECTOR) :: vVec
+    real(double) :: v
+    type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+
+    vVec = VECTOR(point%z, point%y, 0.d0) .cross. zAxis
+    call normalize(vVec)
+    v = sqrt(bigG*ttauriMstar/(modulus(point)*1.d10))
+    velocityTTauriKeplerian = v * vVec
+  end function velocityTTauriKeplerian
 
   logical function inflowBlandfordPayneArray(rVec)
     type(VECTOR) :: rVec(:)

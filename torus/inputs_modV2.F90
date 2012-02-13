@@ -504,13 +504,19 @@ contains
        rcore = TTauriRstar/1.0e10       ! [10^10cm]
        call getReal("ttaurimstar", TTauriMstar, real(msol), cLine, fLine, nLines, &
             "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
-       call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
-            "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
-       call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
+
+
+       call getLogical("ttaurimag", ttauriMagnetosphere, cLine, fLine, nLines, &
+            "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (ttauriMagnetosphere) then
+          call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
+               "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
+          call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
             "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
 
-       call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
-            "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
+          call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
+               "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
+       endif
 
        call getDouble("lxoverlbol", lxOverLBol, 1.d0, cLine, fLine, nLines, &
             "X-ray luminosity  (Bolometric luminosities): ","(a,f7.1,1x,a)", 0.d0, ok, .false.)
@@ -545,6 +551,9 @@ contains
           call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
                "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
+          call getReal("disctemp", alphaDiscTemp, 1., cLine, fLine, nLines, &
+               "Disc temperature inside sub radius: ","(a,f5.3,a)", 1.25, ok, .true.)
+
        endif
 
        call getReal("curtainsphi1s", curtainsPhi1s, 1., cLine, fLine, nLines, &
@@ -572,6 +581,7 @@ contains
        curtain_width =  curtain_width*real(Pi/180.0)
 
 
+       if (tTauriMagnetosphere) then
        call getString("mdottype", mDotType, cLine, fLine, nLines, &
             "T Tauri accretion rate model: ","(a,a,1x,a)","constant", ok, .true.)
        call getReal("mdotpar1", MdotParameter1, 1., cLine, fLine, nLines, &
@@ -586,7 +596,7 @@ contains
             "5th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
        call getReal("mdotpar6", MdotParameter6, 1., cLine, fLine, nLines, &
             "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-
+       endif
        call getLogical("ttauriwarp", ttauriwarp, cLine, fLine, nLines, &
             "Include warped disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
 

@@ -44,6 +44,7 @@ type PHOTONPACKET
     logical :: crossedPeriodic
     logical :: bigPhotonPacket
     logical :: smallPhotonPacket
+    logical :: lastPhoton
 end type PHOTONPACKET
 
   real :: heIRecombinationFit(32, 3, 3)
@@ -86,7 +87,6 @@ contains
     integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: group(1000), nGroup
 !    logical :: globalConverged(512), tConverged(512)
-    integer :: nHydroThreads
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
     integer :: iRefine, nUnrefine
@@ -100,7 +100,8 @@ contains
     real :: iterTime(3)
     integer :: iterStack(3)
     integer :: optID
-    nHydroThreads = nThreadsGlobal-1
+    integer :: ithread
+
     dumpThisTime = .false.
 
 
@@ -444,8 +445,15 @@ contains
           write(*,*) "courantTime", dt
        endif
 
-!       if (myrankGlobal /= 0) call checkSetsAreTheSame(grid%octreeRoot)
-
+       write(*,*) myrankWorldGlobal, " courant time ",dt
+       if (myrankGlobal /= 0) then
+          do iThread = 1, nHydroThreadsGlobal
+             if (myrankGlobal == iThread) then
+                call checkSetsHaveSameNumberOfOctals(grid, iThread)
+                call mpi_barrier(amrCommunicator, ierr)
+             endif
+          enddo
+       endif
        dumpThisTime = .false.
 
        if ((grid%currentTime + dt) >= timeOfNextDump) then
@@ -758,7 +766,7 @@ end subroutine radiationHydro
     integer :: iThread
     logical :: endLoop
     logical :: crossedMPIboundary
-    integer :: tag = 41
+    integer, parameter :: tag = 41, finaltag = 55
     integer(bigint) :: nTotScat, nPhot
     integer :: newThread, iSignal
     logical, save :: firstTimeTables = .true.
@@ -815,10 +823,10 @@ end subroutine radiationHydro
     type(PHOTONPACKET), allocatable :: toSendStack(:), currentStack(:)
 
    !Custom MPI type variables
-    integer(MPI_ADDRESS_KIND) :: displacement(10)
-    integer :: count = 10
-    integer :: blocklengths(10) = (/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1/)
-    integer :: oldTypes(10) 
+    integer(MPI_ADDRESS_KIND) :: displacement(11)
+    integer :: count = 11
+    integer :: blocklengths(11) = (/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1/)
+    integer :: oldTypes(11)
     Integer :: iDisp
 
     !Buffer send variables 
@@ -837,9 +845,9 @@ end subroutine radiationHydro
     logical :: doingSmallPackets
     logical :: startNewSmallPacket
     integer :: nSmallPackets
-    logical :: bigPhotonPacket, smallPhotonPacket
+    logical :: bigPhotonPacket, smallPhotonPacket, lastPhoton
     integer :: iSmallPhotonPacket
-    real(double) :: smallPhotonPacketWeight, smallPacketFreq
+    real(double) :: smallPhotonPacketWeight, smallPacketFreq, bigPhotonPacketWeight
     type(VECTOR) :: smallPacketOrigin
     
 
@@ -858,11 +866,11 @@ end subroutine radiationHydro
     real :: totFrac
     integer :: maxChild
     integer :: ndiff
-
+    integer :: nScatBigPacket, j, nScatSmallPacket
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
-    nSmallPackets = 10
+    nSmallPackets = 100
     smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
 
 
@@ -915,7 +923,7 @@ end subroutine radiationHydro
     !MPI datatype for the photon_stack data type
     oldTypes = (/ MPI_VECTOR, MPI_VECTOR, MPI_DOUBLE_PRECISION, &
          MPI_DOUBLE_PRECISION, MPI_DOUBLE_PRECISION, MPI_INTEGER, MPI_LOGICAL, MPI_LOGICAL, &
-         MPI_LOGICAL, MPI_LOGICAL/)
+         MPI_LOGICAL, MPI_LOGICAL, MPI_LOGICAL/)
 
     call MPI_GET_ADDRESS(toSendStack(1)%rVec, displacement(1), ierr)
     call MPI_GET_ADDRESS(toSendStack(1)%uHat, displacement(2), ierr)
@@ -927,8 +935,9 @@ end subroutine radiationHydro
     call MPI_GET_ADDRESS(toSendStack(1)%crossedPeriodic, displacement(8), ierr)
     call MPI_GET_ADDRESS(toSendStack(1)%bigPhotonPacket, displacement(9), ierr)
     call MPI_GET_ADDRESS(toSendStack(1)%smallPhotonPacket, displacement(10), ierr)
+    call MPI_GET_ADDRESS(toSendStack(1)%lastPhoton, displacement(11), ierr)
 
-    do iDisp = 10, 1, -1
+    do iDisp = 11, 1, -1
        displacement(iDisp) = displacement(iDisp) - displacement(1)
     end do
 
@@ -1196,6 +1205,7 @@ end subroutine radiationHydro
 
 
       nInf=0
+      nMonte = nMonte / nSmallPackets
 
        call clearContributions(grid%octreeRoot)
 
@@ -1229,6 +1239,8 @@ end subroutine radiationHydro
        iMonte_end = nThreadMonte
 
        totalPower = 0.d0
+       nScatBigPacket = 0
+       nScatSmallPacket = 0
        nTotScat = 0
        nPhot = 0
        nSaved = 0
@@ -1256,6 +1268,11 @@ end subroutine radiationHydro
              mainloop: do iMonte = iMonte_beg, iMonte_end
                    if ((myHydroSetGlobal == 0).and.&
                         (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
+                   if (iMonte == nThreadMonte) then
+                      lastPhoton = .true.
+                   else
+                      lastPhoton = .false.
+                   endif
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
@@ -1309,6 +1326,7 @@ end subroutine radiationHydro
                       photonPacketStack(optCounter)%sourcePhoton = .true.
                       photonPacketStack(optCounter)%bigPhotonPacket = .true.
                       photonPacketStack(optCounter)%smallPhotonPacket = .false.
+                      photonPacketStack(optCounter)%lastPhoton = lastPhoton
                       exit
                    end if
                 end do
@@ -1335,6 +1353,7 @@ end subroutine radiationHydro
                                toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic 
                                toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
                                toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+                               toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
                                thisPacket = thisPacket + 1
                                nInf = nInf + 1
                                
@@ -1384,18 +1403,26 @@ end subroutine radiationHydro
                 end do
                 close(333)
              end if
-                
+
                 do iThread = 1, nHydroThreadsGlobal
                    toSendStack(1)%destination = 500
                    call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
-                   call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)
-                   
+                   call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
                 end do
 
+             do i = 1, nSmallPackets
+                call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
+                     finaltag, localWorldCommunicator, status, ierr)
+!                write(*,*) "zeroth thread received final photon signal from ",j
+             enddo
+                
+             call sleep(10)
 
              photonsStillProcessing = .true.
              
+             i = 0
              do while(photonsStillProcessing)                   
+                i = i + 1
                 toSendStack%freq = 0.d0
                 do iThread = 1, nHydroThreadsGlobal
                    toSendStack(1)%destination = 999
@@ -1410,16 +1437,20 @@ end subroutine radiationHydro
                 nEscaped = SUM(nEscapedArray(1:nHydroThreadsGlobal))
              
                 nEscapedGlobal = nEscaped
-                if (nEscaped == nThreadMonte*100) then
+                if (nEscaped == nThreadMonte*nSmallPackets) then
                    photonsStillProcessing = .false.
-                else if(nEscaped > nThreadMonte*100) then
+                else if(nEscaped > nThreadMonte*nSmallPackets) then
                    write(*,*) "nEscaped greater than nMonte, Exiting..."
                    do iThread = 1, nHydroThreadsGlobal
                       write(*,*) "nEscapedArray(iThread) ", iThread, nEscapedArray(iThread)
                    end do
                    stop
                 end if
-                print *, "nEscaped ", nEscapedGlobal
+!                print *, "nEscaped ", nEscapedGlobal
+                if (i > 100000) then
+                   write(*,*) "Problem with photon conservation"
+                   exit
+                endif
              end do
 
              if (myrankWorldGlobal == 1) write(*,*) "Finishing iteration..."
@@ -1495,6 +1526,7 @@ end subroutine radiationHydro
                                     toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
                                     toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
                                     toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+                                    toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
                                     thisPacket = thisPacket + 1
                                     !nInf = nInf + 1
                                     
@@ -1540,14 +1572,14 @@ end subroutine radiationHydro
                !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton) &
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
-               !$OMP PRIVATE(smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
+               !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell ) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(tag, noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
-               !$OMP SHARED(nTotScat, gammaTableArray, freq, nsmallpackets) &
+               !$OMP SHARED(nTotScat, nScatbigPhoton,gammaTableArray, freq, nsmallpackets) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq) &
@@ -1572,6 +1604,7 @@ end subroutine radiationHydro
                         crossedPeriodic = currentStack(p)%crossedPeriodic
                         bigPhotonPacket = currentStack(p)%bigPhotonPacket
                         smallPhotonPacket = currentStack(p)%smallPhotonPacket
+                        lastPhoton = currentStack(p)%lastPhoton
                         currentStack(p)%freq = 0.d0
                         exit
                      end if
@@ -1601,16 +1634,14 @@ end subroutine radiationHydro
                          iSmallPhotonPacket = iSmallPhotonPacket + 1
                          if (iSmallPhotonPacket > nSmallPackets) then
                             doingSmallPackets = .false.
-                            escaped = .true.
 !                            write(*,*) myrankWorldGlobal," Finished doing small photon packets"
                             goto 777
                          else
                             rVec = smallPacketOrigin
                             thisFreq = smallPacketFreq
-                            photonPacketWeight = smallPhotonPacketWeight
+                            photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             uHat = randomUnitVector()
                             smallPhotonPacket = .true.
-                            nscat = 0
                             bigPhotonPacket = .false.
                             call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                             call returnKappa(grid, thisOctal, subcell, kappap=kappap)
@@ -1624,7 +1655,7 @@ end subroutine radiationHydro
 
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
-                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, bigPhotonPacket)
 !                      if (escaped.and.bigPHotonPacket) then
 !                         write(*,*) myrankGlobal, " big photon packet escaped ",rVec
 !                      endif
@@ -1644,6 +1675,7 @@ end subroutine radiationHydro
                                photonPacketStack(optCounter)%crossedPeriodic = crossedPeriodic
                                photonPacketStack(optCounter)%bigPhotonPacket = bigPhotonPacket
                                photonPacketStack(optCounter)%smallPhotonPacket = smallPhotonPacket
+                               photonPacketStack(optCounter)%lastPhoton = lastPhoton
                                if(crossedPeriodic) then
                                   nPeriodic = nPeriodic + 1
                                end if
@@ -1674,6 +1706,7 @@ end subroutine radiationHydro
                                         toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
                                         toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
                                         toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+                                        toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
                                         thisPacket = thisPacket + 1
                                         !nInf = nInf + 1
                                      
@@ -1702,20 +1735,30 @@ end subroutine radiationHydro
                          end do
                          !$OMP END CRITICAL (crossed_mpi_boundary)
                          finished = .true.
+!                         if (doingsmallpackets) &
+!                              write(*,*) myrankGlobal, " set finished true ", ismallPhotonPacket,doingsmallPackets
                       endif
 
+                      if ((.not.crossedMPIboundary).and.finished.and.doingSmallPackets &
+                           .and.escaped) write(*,*) "ismall ",ismallphotonpacket
 
                       if(.not. finished) then
                          if (noDiffuseField) escaped = .true.
 
                          if (escaped) then
                             !$OMP CRITICAL (update_escaped)
-                            nEscaped = nEscaped + 1
-                            if (bigPhotonPacket) then
-!                               write(*,*) myrankGlobal, " big photon packet escaped. bug"
-                               nEscaped = nEscaped + nSmallPackets -1
+                            if (smallPhotonPacket) nEscaped = nEscaped + 1
+                            if (bigPhotonPacket) nEscaped = nEscaped + nSmallPackets
+                            if (lastPhoton.and.smallPhotonPacket) then
+!                               write(*,*) myrankGlobal, " last small photon escaped"
+                               call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                             endif
-!                            if (smallPhotonPacket) write(*,*) "small photon escaped after ",nscat," scatterings"
+                            if (lastPhoton.and.bigPhotonPacket) then
+!                               write(*,*) myrankGlobal, " last big photon escaped"
+                               do i = 1, nSmallPackets
+                                  call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
+                               enddo
+                            endif
                             !$OMP END CRITICAL (update_escaped)
                          end if
 
@@ -1778,12 +1821,13 @@ end subroutine radiationHydro
                                endif
                                thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                                uHat = randomUnitVector() ! isotropic emission
+                            endif
                                                        
                                nScat = nScat + 1
-!                               if (smallPhotonPacket) write(*,*) "small photon scattering ",nscat
+                               if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
+                               if (smallPhotonPacket) nScatSmallPacket = nScatSmallPacket + 1
                                thisOctal%chiLine(subcell) = thisOctal%chiline(subcell) + 1.d0
                                
-                                                        !                            if ((thisFreq*hcgs*ergtoev) < 13.6) escaped = .true.
 
 ! ok here we can split the current photon into multiple smaller photon packets if necessary
 
@@ -1793,16 +1837,13 @@ end subroutine radiationHydro
                                   smallPhotonPacket = .true.
                                   iSmallPhotonPacket = 0
                                   doingSmallPackets = .true.
-                                  photonPacketWeight = photonPacketWeight * smallPhotonPacketWeight
+                                  bigphotonPacketWeight = photonPacketWeight
                                   smallPacketOrigin = rVec
                                   smallPacketFreq = thisFreq
                                   startNewSmallPacket = .true.
                                endif
-
-
                                
                                
-                            endif
                          endif
                          if (nScat > 100000) then
                             write(*,*) "Nscat exceeded 10000, forcing escape"
@@ -1831,6 +1872,7 @@ end subroutine radiationHydro
 
                       if (escaped.and.doingSmallPackets) then
                          escaped = .false.
+                         finished = .false.
                          startNewSmallPacket = .true.
 !                         write(*,*) myrankWorldGlobal, " small photon packet escaped, getting new one"
                       endif
@@ -1978,7 +2020,15 @@ end subroutine radiationHydro
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
           nTotScat = i
           if (writeoutput) write(*,*) "Iteration had ",&
-               real(nTotScat)/real(nThreadMonte*nSmallPackets), " scatters per photon"
+               real(nTotScat)/real(nThreadMonte*nSmallPackets), " scatters per photon packet"
+          call MPI_ALLREDUCE(nScatSmallPacket, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+          nScatSmallPacket = i
+          if (writeoutput) write(*,*) "Iteration had ",&
+               real(nScatSmallPacket)/real(nThreadMonte*nSmallPackets), " scatters per small photon packet"
+          call MPI_ALLREDUCE(nScatBigPacket, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+          nScatBigPacket = i
+          if (writeoutput) write(*,*) "Iteration had ",&
+               real(nScatBigPacket)/real(nThreadMonte), " scatters per big photon packet"
        endif
 
 
@@ -2572,12 +2622,14 @@ end subroutine radiationHydro
 end subroutine photoIonizationloopAMR
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, &
+     bigPhotonPacket)
   use inputs_mod, only : periodicX, periodicY, periodicZ
   use mpi
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
+   logical :: bigPhotonPacket
    type(OCTAL), pointer :: thisOctal
    type(OCTAL),pointer :: oldOctal
    real(double) :: tPhoton, tLimit, epsOverDeltaT
@@ -2689,6 +2741,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
        if (tPhoton > tLimit) then
           escaped = .true.
+          if (bigPhotonPacket) write(*,*) myrankGlobal, " big photon packet escaped due to tlimit. bug"
           outOfTime = .true.
        endif
 
@@ -2764,7 +2817,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              stillingrid = .false.
           end if
           escaped = .true. 
-      endif
+
+       endif
           
        octVec = rVec
        
@@ -2827,6 +2881,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
           if (tVal == 0.0d0) then
              escaped = .true.
+             write(*,*) "tval zero error!"
              stillingrid = .false.
           endif
        endif ! still in grid
@@ -6578,6 +6633,31 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
 
 #ifdef MPI
+
+  subroutine  checkSetsHaveSameNumberOfOctals(grid, iThread)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer :: iThread
+    integer, allocatable :: nVoxels(:), temp(:)
+    integer :: ierr, i
+    logical :: same
+    allocate(nVoxels(1:NHydroSetsGlobal), temp(1:NHydroSetsGlobal))
+    nVoxels = 0
+    temp = 0
+    call countVoxelsOnThread(grid%octreeRoot, nVoxels(myHydroSetGlobal+1))
+    call mpi_allreduce(nVoxels, temp, nHydroSetsGlobal, &
+         MPI_INTEGER, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+         ierr)
+    same = .true.
+    do i = 1, size(nVoxels)
+       if (any(nVoxels(i) /= nVoxels)) same = .false.
+    enddo
+    if (.not.same) then
+       write(*,*) "ERROR!! Octal numbers differ for thread ",ithread, " sets ",nVoxels
+    endif
+    deallocate(nVoxels)
+  end subroutine checkSetsHaveSameNumberOfOctals
+    
   subroutine updateGridMPIphoto(grid, amrParComm)
     use gridtype_mod, only : gridtype
     use mpi
@@ -6609,7 +6689,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     nIndex = 0
     call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
 
-
+    write(*,*) myrankWorldGlobal, " packed ",nVoxels, " data"
     allocate(tempDoubleArray(nVoxels))
     allocate(tempRealArray(nVoxels))
 
@@ -6665,7 +6745,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     
     nIndex = 0
     call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
-
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    write(*,*) "done mpi update successfully"
     deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec)
 
   end subroutine updateGridMPIphoto
