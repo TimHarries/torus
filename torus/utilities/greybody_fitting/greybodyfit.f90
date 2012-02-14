@@ -4,9 +4,7 @@
 !Last updated: 14/02/2012
 
 !- based on what I read in Thompson et al. 2004 A&A 414, 1017
-!- also uses Hildebrand, 1983, QJRAS, 24, 267 - the much better paper
-
-!- not very pretty at present but I think it works
+!- also uses Hildebrand, 1983, QJRAS, 24, 267
 
 program greybodyfit
 implicit none
@@ -21,7 +19,7 @@ double precision, parameter :: radToDeg = 180.d0/pi
 double precision, parameter :: radiansToArcSec = radToDeg * 60.d0 * 60.d0
 double precision, parameter :: ArcSecsToRadians = pi/6.48d5 
 double precision, parameter :: arcsec = 1.d0/3600.d0 * degtorad
-
+double precision, parameter :: mSol = 1.9891d30            ! g
 
 character(len=80) :: sedFilename
 integer :: ier
@@ -111,6 +109,9 @@ Nu_ref = c/(850.*um)
 !cutoff = 8.*um
 !cutoff = 10.d0*um
 cutoff = 0.25*um
+
+print *, "cutoff ", cutoff
+
 !beamSize = 17.3!*ArcSecsToRadians
 beamSize = 22.9*ArcSecsToRadians
 !beamSize = 25.*ArcSecsToRadians
@@ -211,7 +212,7 @@ write(*,*) "!- Derived dust temperature is: ", T_dust
 !read(*,*) C_nu
 
 !C_nu = 50.d0
-C_nu = (50.d0)*1.d-7
+C_nu = (500.d0)!*1.d-7
 
 !now to calculate the dust mass
 
@@ -221,8 +222,8 @@ if(B == 0.d0) then
 end if
 Mass = (distance**2. * flux_ref*C_nu)/B
 
-write(*,*) "Dust mass:"
-write(*,'(5e14.5)') mass
+write(*,*) "Dust mass (kg), Mo:"
+write(*,'(5e14.5)') mass, mass/msol
 
 B = calcPlanck(10.d0, lam_ref, debug)
 if(B == 0.d0) then
