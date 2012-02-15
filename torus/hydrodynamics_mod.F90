@@ -1840,7 +1840,6 @@ contains
     integer :: iSource
     type(VECTOR) :: rVec, rHat, fVec
     real(double) :: force, rMod, eps
-    logical,save :: firstTime = .true.
 
     eps = smallestCellSize * 1.d10
     
