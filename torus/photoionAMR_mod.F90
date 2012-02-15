@@ -2063,7 +2063,6 @@ end subroutine radiationHydro
        stop
     endif
 
-    call  identifyUndersampled(grid%octreeRoot)
 
 ! now we need to reduce the estimators across all the hydro sets.
 
@@ -2077,6 +2076,7 @@ end subroutine radiationHydro
        enddo
     endif
 
+    call  identifyUndersampled(grid%octreeRoot)
 
 
     if (myRankWorldGlobal == 0) write(*,*) "Ninf ",ninf
