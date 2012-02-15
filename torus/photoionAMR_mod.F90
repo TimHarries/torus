@@ -100,7 +100,6 @@ contains
     real :: iterTime(3)
     integer :: iterStack(3)
     integer :: optID
-    integer :: ithread
 
     dumpThisTime = .false.
 
