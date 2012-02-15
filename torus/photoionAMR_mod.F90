@@ -1430,7 +1430,7 @@ end subroutine radiationHydro
 !                write(*,*) "zeroth thread received final photon signal from ",j
              enddo
 
-	     if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
+             if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
                 
              photonsStillProcessing = .true.
              
