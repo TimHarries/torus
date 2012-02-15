@@ -462,7 +462,7 @@ contains
 !                .true., evenuparray, sublimate=.false.)
 !           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
 !                iterTime, .true., evenuparray, sign, sublimate=.false.)
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, &
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)
 
 #else
