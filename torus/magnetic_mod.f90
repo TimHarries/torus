@@ -138,7 +138,7 @@ contains
     vp = rotateZ(vp, -phiDash)
 
     vp = rotateY(vp, beta)
-    velocityMahdavi = vp
+    velocityMahdavi = vp + ttauriKeplerianVelocity(point)
 
 
 666 continue
@@ -149,22 +149,23 @@ contains
     type(VECTOR), intent(in) :: point
 
     velocityAlphaDisc = point
-    velocityAlphaDisc = VECTOR(0.d0, 0.d0, 0.d0)
+    velocityAlphaDisc = ttauriKeplerianVelocity(point)
   end function velocityAlphaDisc
 
 
-  type (VECTOR) function velocityTTauriKeplerian(point)
+  type (VECTOR) function TTauriKeplerianVelocity(point)
     use inputs_mod, only : ttauriMstar
     type(VECTOR), intent(in) :: point
-    type(VECTOR) :: vVec
+    type(VECTOR) :: vVec, rVec
     real(double) :: v
     type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
 
-    vVec = VECTOR(point%z, point%y, 0.d0) .cross. zAxis
+    rVec = VECTOR(point%x, point%y, 0.d0)
+    vVec = rVec .cross. zAxis
     call normalize(vVec)
-    v = sqrt(bigG*ttauriMstar/(modulus(point)*1.d10))
-    velocityTTauriKeplerian = v * vVec
-  end function velocityTTauriKeplerian
+    v = sqrt(bigG*ttauriMstar/(modulus(rVec)*1.d10))/cSpeed
+    TTauriKeplerianVelocity = v * vVec
+  end function TTauriKeplerianVelocity
 
   logical function inflowBlandfordPayneArray(rVec)
     type(VECTOR) :: rVec(:)
@@ -225,9 +226,9 @@ contains
 !          vel = max(20.d5, vel)
           velocityBlandfordPayne = (vel/cSpeed) * rVec 
           velocityBlandfordPayne = rotateZ(velocityBlandfordPayne, -phi)
+          velocityBlandfordPayne = velocityBlandfordPayne + ttauriKeplerianVelocity(point)
        endif
     endif
-
 
 666 continue
   end function velocityBlandfordPayne

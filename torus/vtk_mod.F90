@@ -2959,6 +2959,14 @@ end subroutine writeXMLVtkFileAMR
                   value = thisOctal%ncrossings(subcell)
                   if (thisOctal%diffusionApprox(subcell)) value = 1.e6
                   rArray(1, n) = real(value)
+
+               case("diff")
+                  if (thisOctal%diffusionApprox(subcell)) then
+                     value = 1.d0
+                  else
+                     value = 0.d0
+                  endif
+                  rArray(1, n) = real(value)
                   
                case("phi")
                   rArray(1, n) = real(thisOctal%phi_i(subcell))

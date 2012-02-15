@@ -3651,7 +3651,7 @@ CONTAINS
              r = sqrt(cellcentre%x**2 + cellcentre%y**2)
              hr = height * (r / (100.d0*autocm/1.d10))**betadisc
              
-             if ((r+cellsize/2.d0) > (ttauririnner/1.d10)) then
+             if ((r+cellsize/2.d0) > max(ttauririnner/1.d10,rinner)) then
                 if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
                 if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
                 if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &

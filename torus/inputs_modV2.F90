@@ -507,7 +507,7 @@ contains
 
 
        call getLogical("ttaurimag", ttauriMagnetosphere, cLine, fLine, nLines, &
-            "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
+            "Include a T Tauri magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
        if (ttauriMagnetosphere) then
           call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
                "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
@@ -1669,9 +1669,6 @@ contains
        
     end if
 
-
-    call getString("", limiterType, cLine, fLine, nLines, &
-         "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
 
     call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
          "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)

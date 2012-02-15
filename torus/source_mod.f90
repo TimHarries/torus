@@ -87,6 +87,7 @@ module source_mod
       integer :: lunit
 
       write(lunit) source%position
+      write(lunit) source%velocity
       write(lunit) source%force
       write(lunit) source%radius
       write(lunit) source%luminosity
@@ -111,6 +112,7 @@ module source_mod
       integer :: lunit
 
       read(lunit) source%position
+      read(lunit) source%velocity
       read(lunit) source%force
       read(lunit) source%radius
       read(lunit) source%luminosity

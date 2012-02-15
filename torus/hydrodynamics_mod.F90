@@ -1840,6 +1840,7 @@ contains
     integer :: iSource
     type(VECTOR) :: rVec, rHat, fVec
     real(double) :: force, rMod, eps
+    logical,save :: firstTime = .true.
 
     eps = smallestCellSize * 1.d10
     
@@ -1879,8 +1880,13 @@ contains
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity due to gas
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
-
-
+!             if (firstTime) then
+!                firstTime = .false.
+!                write(*,*) "thread ",myrankWorldGlobal," has"
+!                write(*,*) "globalnsource ",globalnSource
+!                write(*,*) "source1 pos ",globalSourceArray(1)%position
+!                write(*,*) "source1 mass ",globalSourceArray(1)%mass
+!             endif
              force = 0.d0
              do isource = 1, globalnSource
                 rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
@@ -2856,7 +2862,6 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
-
 !self gravity (periodic)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
     if (selfGravity .and. .not. dirichlet) then
@@ -2883,6 +2888,7 @@ end subroutine sumFluxes
        call computepressureGeneral(grid, grid%octreeroot, .false.)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
        call setuppressure(grid%octreeroot, grid, direction) !Thaw
+
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
        call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
     end if 
@@ -2926,6 +2932,7 @@ end subroutine sumFluxes
 
 !modify rhou and rhoe due to pressure/graviational potential gradient
     call pressureForceU(grid%octreeRoot, dt/2.d0)
+
 
     if (myrankWorldglobal == 1) call tune(6,"X-direction step")
 
@@ -9768,7 +9775,8 @@ end subroutine minMaxDepth
        sourceArray(iSource)%angMomentum = sourceArray(iSource)%angMomentum + accretedAngMomentum(iSource)
 
        sourceArray(iSource)%mdot = accretedMass(isource)/timestep
-       if (writeoutput) then
+       if (myrankGlobal == 1) then
+          write(*,*) "source data for set ",myHydroSetGlobal
           write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * 3d7
           write(*,*)  "position ",sourceArray(isource)%position
@@ -9779,6 +9787,110 @@ end subroutine minMaxDepth
     deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
 
   end subroutine doMyAccretion
+recursive subroutine checkSetsAreTheSame(thisOctal)
+  use mpi
+  use ion_mod, only : nGlobalIon, globalIonArray, returnMu
+
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i, ierr
+  real(double), allocatable :: temp(:), temp2(:)
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkSetsAreTheSame(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          allocate(temp(1:nHydroSetsGlobal),temp2(1:nHydroSetsGlobal))
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%temperature(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid temperatures differ"
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%phi_i(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid phi_i differ ",temp2
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%ionfrac(subcell,1))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid ionfrac1 differ ",temp2
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%ionfrac(subcell,2))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid ionfrac2 differ ",temp2
+
+
+
+          temp = 0.d0
+          if (photoionPhysics) then
+             temp(myHydroSetGlobal+1) = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          else
+             temp(myHydroSetGlobal+1)= 2.33d0
+          endif
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid mu differ ",temp2
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%pressure_i(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid pressure_i differ ",temp2
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%rho(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid densities differ"
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%rhou(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid rhou differ ",temp2
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%rhov(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid rhov differ ",temp2
+
+          temp = 0.d0
+          temp(myHydroSetGlobal+1) = dble(thisOctal%rhow(subcell))
+          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+               ierr)
+          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid rhow differ ",temp2
+
+
+          deallocate(temp, temp2)
+             
+       endif
+    enddo
+  end subroutine checkSetsAreTheSame
 
 
 

@@ -93,7 +93,7 @@ contains
     else
        write(message,'(a,f10.1)') "Transition not found in identifyTransition: ",lamline
        call writeFatal(message)
-       
+       stop
     endif
   end subroutine identifyTransitionCmf
 

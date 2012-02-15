@@ -66,7 +66,7 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront
+         perturbIfront, checkSetsAreTheSame
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
     use inputs_mod, only: singleMegaPhoto
@@ -96,7 +96,7 @@ contains
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     logical :: noPhoto=.false.
-    integer :: evenUpArray(nThreadsGlobal-1)
+    integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
     integer :: optID
@@ -428,6 +428,8 @@ contains
           call pressureGradientTimeStep(grid, dt)
           tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif
+
+
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
        dt = MINVAL(temptc(1:nHydroThreadsGlobal))
        dt = dt * dble(cfl)
@@ -445,15 +447,6 @@ contains
           write(*,*) "courantTime", dt
        endif
 
-       write(*,*) myrankWorldGlobal, " courant time ",dt
-       if (myrankGlobal /= 0) then
-          do iThread = 1, nHydroThreadsGlobal
-             if (myrankGlobal == iThread) then
-                call checkSetsHaveSameNumberOfOctals(grid, iThread)
-                call mpi_barrier(amrCommunicator, ierr)
-             endif
-          enddo
-       endif
        dumpThisTime = .false.
 
        if ((grid%currentTime + dt) >= timeOfNextDump) then
@@ -485,7 +478,7 @@ contains
              call MPI_SEND(photoLoop, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator,  ierr)
              call MPI_RECV(photoLoopGlobal, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
           else
-             do i = 1, nThreadsGlobal-1
+             do i = 1, nHydroThreadsGlobal
                 photoLoop = .false.
                 call MPI_RECV(photoLoop, 1, MPI_LOGICAL, i, tag, localWorldCommunicator, status, ierr)
               
@@ -496,7 +489,7 @@ contains
                 end if
              end do
             
-             do i = 1, nThreadsGlobal -1
+             do i = 1, nHydroThreadsGlobal
                 call MPI_SEND(photoLoopGlobal, 1, MPI_LOGICAL, i, tag, localWorldCommunicator,  ierr)
              end do
           end if
@@ -564,7 +557,11 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     ", &
 !            "mpithread    "/))
+
        if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+
+       call checkSetsAreTheSame(grid%octreeRoot)
+
 
           if (myRankGlobal /= 0) then
              
@@ -706,12 +703,12 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation
     use inputs_mod, only : resetDiffusion
-    use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi
+    use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
     use mpi
     implicit none
-    integer(bigint) :: nMonte, nThreadMonte
+    integer(bigint) :: nMonte, nThreadMonte, nTotalMonte
     logical, optional :: sublimate
     logical :: doSublimate, timeDep, monteCheck
     real(double) :: tLimit
@@ -867,11 +864,10 @@ end subroutine radiationHydro
     integer :: maxChild
     integer :: ndiff
     integer :: nScatBigPacket, j, nScatSmallPacket
+    logical :: sourceInThickCell, tempLogical
+    real(double) :: kappaRoss
     !AMR
 !    integer :: iUnrefine, nUnrefine
-
-    nSmallPackets = 100
-    smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
 
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
@@ -1086,41 +1082,41 @@ end subroutine radiationHydro
        if(.not. monteCheck .or. readGrid) then
           !waymaker photoionization loop
           if(grid%octreeRoot%twoD) then
-                nMonte = int(4.d0**(maxDepthAMR))
+                nTotalMonte = int(4.d0**(maxDepthAMR))
              else if(grid%octreeRoot%threeD) then
                 !nMonte = (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
 !                nMonte = 150000000
-                nMonte = 209715200
+                nTotalMonte = 209715200
                ! nMonte = 409600.0
              else
                 !nMonte = 2**(maxDepthAMR)
-                nMonte = 100000
+                nTotalMonte = 100000
              end if
           
        else 
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
-                nMonte = int(10.d0 * (4.d0**(maxDepthAMR)))
+                nTotalMonte = int(10.d0 * (4.d0**(maxDepthAMR)))
              else if(grid%octreeRoot%threeD) then
 !                nMonte = 1000.d0
-                nMonte = int(100.d0 * (8.d0**(maxDepthAMR)))
+                nTotalMonte = int(100.d0 * (8.d0**(maxDepthAMR)))
 !                nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 ! nMonte = 1.d0 * (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
              else
-                nMonte = int(500.d0 * 2**(maxDepthAMR))
+                nTotalMonte = int(500.d0 * 2**(maxDepthAMR))
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
-             nMonte = 209715200
-             write(*,*) "nMonte = ", nMonte
+             nTotalMonte = 209715200
+             write(*,*) "nMonte = ", nTotalMonte
           end if
           
        end if
        
     else
-       nMonte = inputnMonte
+       nTotalMonte = inputnMonte
     endif
 
     nIter = 0
@@ -1202,10 +1198,29 @@ end subroutine radiationHydro
        call defineDiffusionOnKappap(grid, grid%octreeRoot, 1., nDiff)
 !       write(*,*) myrankWorldGlobal, " has ",ndiff, "cells in diffusion approx"
 
-
+    nSmallPackets = 0
+    sourceInThickCell = .false.
+    do i = 1, globalnSource
+       call findSubcellTD(globalSourceArray(i)%position, grid%octreeRoot,thisOctal, subcell)
+       if (octalOnThread(thisOctal,subcell,myrankGlobal)) then
+          call returnKappa(grid, thisOctal, subcell, rosselandKappa = kappaRoss)
+          if (thisOctal%subcellSize*thisOctal%rho(subcell)*kappaRoss*1.d10 > 1.d0) then
+             sourceInThickCell = .true.
+          endif
+       endif
+    enddo
+    call mpi_allreduce(sourceInThickCell, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
+    sourceInThickCell = tempLogical
+    if (sourceInThickCell) then
+       nSmallPackets = 100
+       smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
+    endif
+    if (writeoutput) then
+       write(*,*) "Setting nSmallPackets to ",nSmallPackets
+    endif
 
       nInf=0
-      nMonte = nMonte / nSmallPackets
+      nMonte = nTotalMonte / max(nSmallPackets,1)
 
        call clearContributions(grid%octreeRoot)
 
@@ -1393,7 +1408,6 @@ end subroutine radiationHydro
                 write(*,*) "epsoverdt ",epsOverDeltaT
                 write(*,*) "lcore / nMonte ",lCore/dble(nMonte)
                 write(*,*) "Rank 0 sent all initial bundles"
-                write(*,*) "Telling Ranks to pass stacks ASAP "
              endif
 
              if(binPhotons) then
@@ -1410,14 +1424,14 @@ end subroutine radiationHydro
                    call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
                 end do
 
-             do i = 1, nSmallPackets
+             do i = 1, max(nSmallPackets,1)
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
                      finaltag, localWorldCommunicator, status, ierr)
 !                write(*,*) "zeroth thread received final photon signal from ",j
              enddo
-                
-             call sleep(10)
 
+	     if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
+                
              photonsStillProcessing = .true.
              
              i = 0
@@ -1437,18 +1451,18 @@ end subroutine radiationHydro
                 nEscaped = SUM(nEscapedArray(1:nHydroThreadsGlobal))
              
                 nEscapedGlobal = nEscaped
-                if (nEscaped == nThreadMonte*nSmallPackets) then
+                if (nEscaped == nThreadMonte*max(nSmallPackets,1)) then
                    photonsStillProcessing = .false.
-                else if(nEscaped > nThreadMonte*nSmallPackets) then
-                   write(*,*) "nEscaped greater than nMonte, Exiting..."
+                else if(nEscaped > nThreadMonte*max(1,nSmallPackets)) then
+                   write(*,*) "nEscaped greater than nMonte, Exiting...",nEscaped
                    do iThread = 1, nHydroThreadsGlobal
                       write(*,*) "nEscapedArray(iThread) ", iThread, nEscapedArray(iThread)
                    end do
-                   stop
+                   photonsStillProcessing = .false.
                 end if
 !                print *, "nEscaped ", nEscapedGlobal
                 if (i > 100000) then
-                   write(*,*) "Problem with photon conservation"
+                   write(*,*) "!!! Problem with photon conservation ",nEscaped 
                    exit
                 endif
              end do
@@ -1749,14 +1763,14 @@ end subroutine radiationHydro
                          if (escaped) then
                             !$OMP CRITICAL (update_escaped)
                             if (smallPhotonPacket) nEscaped = nEscaped + 1
-                            if (bigPhotonPacket) nEscaped = nEscaped + nSmallPackets
+                            if (bigPhotonPacket) nEscaped = nEscaped + max(nSmallPackets,1)
                             if (lastPhoton.and.smallPhotonPacket) then
 !                               write(*,*) myrankGlobal, " last small photon escaped"
                                call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                             endif
                             if (lastPhoton.and.bigPhotonPacket) then
 !                               write(*,*) myrankGlobal, " last big photon escaped"
-                               do i = 1, nSmallPackets
+                               do i = 1, max(1,nSmallPackets)
                                   call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                                enddo
                             endif
@@ -1827,12 +1841,14 @@ end subroutine radiationHydro
                                nScat = nScat + 1
                                if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
                                if (smallPhotonPacket) nScatSmallPacket = nScatSmallPacket + 1
+                               nTotScat = nTotScat + 1
                                thisOctal%chiLine(subcell) = thisOctal%chiline(subcell) + 1.d0
                                
 
 ! ok here we can split the current photon into multiple smaller photon packets if necessary
 
-                               if ((bigPhotonPacket).and.(.not.thisOctal%diffusionApprox(subcell))) then
+                               if ((bigPhotonPacket).and.(.not.thisOctal%diffusionApprox(subcell)).and. &
+                                    (nSmallPackets > 0)) then
 !                                  write(*,*) myrankWorldGlobal, " splitting bigphoton into small photons"
                                   bigPhotonPacket = .false.
                                   smallPhotonPacket = .true.
@@ -1879,7 +1895,6 @@ end subroutine radiationHydro
                       endif
                    enddo
 !                   write(*,*) "photon escaped after ",nscat," scatterings"
-                   nTotScat = nTotScat + nScat
                    nPhot = nPhot + 1
                 end if
 555             continue
@@ -1997,7 +2012,7 @@ end subroutine radiationHydro
        end if
        
        if(myRankGlobal == 0 .and. optimizeStack) then
-          call MPI_RECV(stackLimit, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(stackLimit, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
        end if
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -2022,11 +2037,14 @@ end subroutine radiationHydro
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
           nTotScat = i
           if (writeoutput) write(*,*) "Iteration had ",&
-               real(nTotScat)/real(nThreadMonte*nSmallPackets), " scatters per photon packet"
+               real(nTotScat)/real(nThreadMonte*max(nSmallPackets,1)), " scatters per photon packet"
           call MPI_ALLREDUCE(nScatSmallPacket, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
           nScatSmallPacket = i
-          if (writeoutput) write(*,*) "Iteration had ",&
-               real(nScatSmallPacket)/real(nThreadMonte*nSmallPackets), " scatters per small photon packet"
+          if (nSmallPackets > 0) then
+             if (writeoutput) write(*,*) "Iteration had ",&
+                  real(nScatSmallPacket)/real(nThreadMonte*nSmallPackets), " scatters per small photon packet"
+          endif
+
           call MPI_ALLREDUCE(nScatBigPacket, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
           nScatBigPacket = i
           if (writeoutput) write(*,*) "Iteration had ",&
@@ -2196,11 +2214,13 @@ end subroutine radiationHydro
              octalArray(iOctal)%content%ionFrac(:,:) = tempIon(iOctal,:,:)
           enddo
           deallocate(temp1, temp2, tempIon)
+          call resetNe(grid%octreeRoot)
        endif
 
     endif
 
     !deallocate(octalArray)
+    call adjustChiline(grid%octreeRoot)
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     if (writeoutput) &
@@ -2208,11 +2228,10 @@ end subroutine radiationHydro
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
 
-
     if(grid%geometry == "lexington") then
       call dumpLexingtonMPI(grid, epsoverdeltat, niter)
 
-      if(myrankWorldGlobal /= 0) then
+      if(myrankGlobal /= 0) then
          call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)         
 !         print *, "rank ", myRankWorldGlobal, "sent ", luminosity1/1.e37, "to 0"
          call MPI_SEND(luminosity1, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator,  ierr)
@@ -2271,7 +2290,7 @@ end subroutine radiationHydro
       else
          zTemp = 0.d0
          do recCounter = 1, 27
-            do threadCounter = 1, nThreadsGlobal-1 
+            do threadCounter = 1, nHydroThreadsGlobal
                call MPI_RECV(thisLum, 1, MPI_DOUBLE_PRECISION, threadCounter, tag, localWorldCommunicator, status, ierr)
                zTemp = zTemp + thisLum
 !               print *, "0 got ", thisLum/1.e37, "from ", threadCounter
@@ -2412,6 +2431,7 @@ end subroutine radiationHydro
                          deltaT = abs(deltaT)                 
                          maxDeltaT = max(deltaT, maxDeltaT)
                          if(deltaT > 5.0d-2) then
+                            write(*,*) "max ",maxDeltaT, thisOctal%temperature(subcell), thisOctal%Tlastiter(subcell)
                             if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
                                anyUndersampled = .true.
                             endif
@@ -2532,7 +2552,8 @@ end subroutine radiationHydro
           "hydrovelocity","sourceCont   ","pressure     ", &
           "crossings    ", &
           "chiline      ", &
-          "dust1        "/))
+          "dust1        ", &
+          "diff         "/))
 
      if(singleMegaPhoto) then
 
@@ -2706,7 +2727,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     usedMRW = .false.
     i = 0
     call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-
     if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
        call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
@@ -2718,7 +2738,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
             grid=grid, inFlow=inFlow)
        call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
     endif
-
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
@@ -3020,6 +3039,28 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        end if
     end do
   end subroutine clearContributions
+
+  recursive subroutine adjustChiline(thisOctal)
+    TYPE(OCTAL),pointer :: thisOctal
+    TYPE(OCTAL),pointer :: child
+    integer :: i, subcell
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call adjustChiline(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          thisOctal%chiline(subcell) = thisOctal%chiline(subcell) / dble(thisOctal%nCrossings(subcell))
+       end if
+    end do
+  end subroutine adjustChiline
 
 recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt, timeSinceLastRecomb)
     use constants_mod, only : cspeed
@@ -3424,6 +3465,27 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     enddo
   end subroutine resetNh
+
+  recursive subroutine resetNe(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call resetNe(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%ne(subcell) = returnNe(thisOctal, subcell, globalIonArray, nGlobalIon)
+       endif
+    enddo
+  end subroutine resetNe
 
   recursive subroutine checkfor2d(thisOctal)
   type(octal), pointer   :: thisOctal
@@ -5712,39 +5774,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     enddo
   end subroutine countVoxelsOnThread
 
-recursive subroutine checkSetsAreTheSame(thisOctal)
-  use mpi
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i, ierr
-  real(double), allocatable :: temp(:), temp2(:)
-  
-  do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call checkSetsAreTheSame(child)
-                exit
-             end if
-          end do
-       else
-          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-          allocate(temp(1:nHydroSetsGlobal),temp2(1:nHydroSetsGlobal))
-          temp = 0.d0
-          temp(myHydroSetGlobal+1) = dble(thisOctal%temperature(subcell))
-          call mpi_allreduce(temp, temp2, nHydroSetsGlobal, &
-               MPI_DOUBLE_PRECISION, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
-               ierr)
-!          if (abs(temp2(1)-temp2(2)) > epsilon(temp2)) write(*,*) "WARNING grid temperatures differ"
-
-
-          deallocate(temp, temp2)
-             
-       endif
-    enddo
-  end subroutine checkSetsAreTheSame
 
   recursive subroutine  identifyUndersampled(thisOctal)
     use inputs_mod, only : minCrossings
@@ -6650,6 +6679,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     call mpi_allreduce(nVoxels, temp, nHydroSetsGlobal, &
          MPI_INTEGER, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
          ierr)
+    nVoxels = temp
     same = .true.
     do i = 1, size(nVoxels)
        if (any(nVoxels(i) /= nVoxels)) same = .false.
@@ -6691,7 +6721,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     nIndex = 0
     call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
 
-    write(*,*) myrankWorldGlobal, " packed ",nVoxels, " data"
+!    write(*,*) myrankWorldGlobal, " packed ",nVoxels, " data"
     allocate(tempDoubleArray(nVoxels))
     allocate(tempRealArray(nVoxels))
 
@@ -6747,8 +6777,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     
     nIndex = 0
     call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-    write(*,*) "done mpi update successfully"
     deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec)
 
   end subroutine updateGridMPIphoto
