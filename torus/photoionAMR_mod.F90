@@ -864,6 +864,7 @@ end subroutine radiationHydro
     integer :: ndiff
     integer :: nScatBigPacket, j, nScatSmallPacket
     logical :: sourceInThickCell, tempLogical
+    logical :: undersampled
     real(double) :: kappaRoss
     !AMR
 !    integer :: iUnrefine, nUnrefine
@@ -2411,118 +2412,138 @@ end subroutine radiationHydro
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
      maxDeltaT = -1.d30
-       if (myRankGlobal /= 0) then
-          iOctal_beg = 1
-          iOctal_end = nOctal
-          do iOctal =  iOctal_beg, iOctal_end
-             thisOctal => octalArray(iOctal)%content
-             do subcell = 1, thisOctal%maxChildren
-                if (.not.thisOctal%hasChild(subcell)) then
+     undersampled = .false.
+     if (myRankGlobal /=0 ) then
+        call findMaxFracTempChangeAndUndersampled(thisOctal, maxDeltaT, undersampled)
+     endif
+     write(*,*) myrankglobal,maxdeltaT
+     call MPI_ALLREDUCE(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+     maxDeltaT = tempDouble
+     call MPI_ALLREDUCE(undersampled, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
+     undersampled = tempLogical
 
-                      if (niter == 1) then
-                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-                         thisThreadConverged = .false.
-                         
-                      else
-                         
-                         deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
-                              thisOctal%TLastIter(subcell)  
-                         deltaT = abs(deltaT)                 
-                         maxDeltaT = max(deltaT, maxDeltaT)
-                         if(deltaT > 5.0d-2) then
-                            write(*,*) "max ",maxDeltaT, thisOctal%temperature(subcell), thisOctal%Tlastiter(subcell)
-                            if (thisOctal%nCrossings(subcell) /= 0 .and. thisOctal%nCrossings(subcell) < minCrossings) then
-                               anyUndersampled = .true.
-                            endif
-                         end if
-                         
-                         if(deltaT < 5.0d-2 .and. .not. failed) then
-                            thisThreadConverged = .true.
-                         else 
-                            if(niter > 2) then
-                               fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
-                                    thisOctal%TLastLastIter(subcell))
-                               
-                               if(fluctuationCheck < 5.0d-2 .and. .not. failed) then!
-                                  thisThreadConverged = .true.
-                               else
-                                  thisThreadConverged = .false.                             
-!                                  if(deltaT /= 0.d0 .and. .not. failed) then
-!                                     write(*,*) "deltaT = ", deltaT
-!                                     write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-!                                     write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-!                                     write(*,*) "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
-!                                     write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
-!                                     write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
-!                                  end if
-                                  failed = .true.
-                               end if
-                            else
-                               thisThreadConverged = .false.  
-!                               if(deltaT /= 0.d0 .and. .not. failed) then
-!                                  write(*,*) "deltaT = ", deltaT
-!                                  write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-!                                  write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-!                                  write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
-!                                  write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
+     converged = .false.
+     if (myrankWorldGlobal == 0) write(*,*) "Maximum fractional change in T is ",maxDeltaT
+     if (maxDeltaT < 0.05d0) converged = .true.
+     if (undersampled) then
+        converged = .false.
+        nTotalMonte = nTotalMonte * 2
+        if (myrankWorldGlobal) write(*,*) "Undersampled cells found. Increasing nMonte to ",nMonte
+     endif
+
+
+!       if (myRankGlobal /= 0) then
+!          iOctal_beg = 1
+!          iOctal_end = nOctal
+!          do iOctal =  iOctal_beg, iOctal_end
+!             thisOctal => octalArray(iOctal)%content
+!             do subcell = 1, thisOctal%maxChildren
+!                if (.not.thisOctal%hasChild(subcell)) then
+!
+!                      if (niter == 1) then
+!                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
+!                         thisThreadConverged = .false.
+!                         
+!                      else
+!                         
+!                         deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
+!                              thisOctal%TLastIter(subcell)  
+!                         deltaT = abs(deltaT)                 
+!                         maxDeltaT = max(deltaT, maxDeltaT)
+!                         if(deltaT > 5.0d-2) then
+!                            write(*,*) "max ",maxDeltaT, thisOctal%temperature(subcell), thisOctal%Tlastiter(subcell)
+!                         end if
+!                         if (thisOctal%nCrossings(subcell) < minCrossings) then
+!                            anyUndersampled = .true.
+!                         endif
+!                         
+!                         if(deltaT < 5.0d-2 .and. .not. failed) then
+!                            thisThreadConverged = .true.
+!                         else 
+!                            if(niter > 2) then
+!                               fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
+!                                    thisOctal%TLastLastIter(subcell))
+!                               
+!                               if(fluctuationCheck < 5.0d-2 .and. .not. failed) then!
+!                                  thisThreadConverged = .true.
+!                               else
+!                                  thisThreadConverged = .false.                             
+!!                                  if(deltaT /= 0.d0 .and. .not. failed) then
+!!                                     write(*,*) "deltaT = ", deltaT
+!!                                     write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+!!                                     write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+!!                                     write(*,*) "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
+!!                                     write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
+!!                                     write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
+!!                                  end if
+!                                  failed = .true.
 !                               end if
-                               failed = .true.
-                            end if
-                         end if
-                         
-                         !Check for temperature oscillations
-                         if(niter > 1) then
-                            thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
-                         end if
-                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-                      end if
-                   end if
-                   
-                end do
-                
-                !Send result to master rank 
-             end do
-             
-             !Send converged information
-!             write(*,*) myrankGlobal, " converged, undersampled,failed ",thisThreadConverged, anyUndersampled, failed, maxDeltaT
-             call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-             call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-
-          else
-             failed = .false.
-             underSamFailed = .false.
-             underSampledTOT = .false.
-             
-!!!Rank 0, collate results and decide if converged 
-             converged = .false.
-             do iThread = 1 , nHydroThreadsGlobal
-                call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr )
-                call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)
-                if(thisThreadConverged .and. .not. failed) then
-                   converged = .true.
-                else
-                   converged = .false.
-                   failed = .true.
-                end if
-                if(anyUndersampled) then
-                   undersampledTOT=.true.
-                end if
-             end do
-             
-             do iThread = 1, nHydroThreadsGlobal
-                call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr) 
-                call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)   
-             end do
-          end if
-          
-          if(myRankGlobal /= 0) then
-             call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
-             
-          end if
-          if (myrankGlobal == 0) maxDeltaT = -1.d30
-          call mpi_allreduce(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
-          maxDeltaT = tempDouble
+!                            else
+!                               thisThreadConverged = .false.  
+!!                               if(deltaT /= 0.d0 .and. .not. failed) then
+!!                                  write(*,*) "deltaT = ", deltaT
+!!                                  write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
+!!                                  write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
+!!                                  write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
+!!                                  write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
+!!                               end if
+!                               failed = .true.
+!                            end if
+!                         end if
+!                         
+!                         !Check for temperature oscillations
+!                         if(niter > 1) then
+!                            thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
+!                         end if
+!                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
+!                      end if
+!                   end if
+!                   
+!                end do
+!                
+!                !Send result to master rank 
+!             end do
+!             
+!             !Send converged information
+!!             write(*,*) myrankGlobal, " converged, undersampled,failed ",thisThreadConverged, anyUndersampled, failed, maxDeltaT
+!             call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+!             call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+!
+!          else
+!             failed = .false.
+!             underSamFailed = .false.
+!             underSampledTOT = .false.
+!             
+!!!!Rank 0, collate results and decide if converged 
+!             converged = .false.
+!             do iThread = 1 , nHydroThreadsGlobal
+!                call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr )
+!                call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)
+!                if(thisThreadConverged .and. .not. failed) then
+!                   converged = .true.
+!                else
+!                   converged = .false.
+!                   failed = .true.
+!                end if
+!                if(anyUndersampled) then
+!                   undersampledTOT=.true.
+!                end if
+!             end do
+!             
+!             do iThread = 1, nHydroThreadsGlobal
+!                call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr) 
+!                call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)   
+!             end do
+!          end if
+!          
+!          if(myRankGlobal /= 0) then
+!             call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
+!             call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
+!             
+!          end if
+!          if (myrankGlobal == 0) maxDeltaT = -1.d30
+!          call mpi_allreduce(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+!          maxDeltaT = tempDouble
           
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
      
@@ -2530,20 +2551,25 @@ end subroutine radiationHydro
      
      !     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
-     if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     if ((maxiter > 1).and.(niter <= 8).and.variableDustSublimation) converged = .false.
-     if ((.not.Converged).and.(myrankWorldglobal==0)) write(*,*) "Maximum fractional temperature changed ",maxDeltaT
-     if(converged) then
-        if(myRankWorldGlobal == 0) then
-           write(*,*) "photoionization loop converged at iteration ", niter
-        end if
-     else if(underSampledTOT .and. monteCheck) then
-        if(myRankWorldGlobal == 0) then
-           write(*,*) "Undersampled cell, increasing nMonte"
-        end if
-        nMonte = nMonte *2
-     end if
-     
+!     if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!     if ((maxiter > 1).and.(niter <= 8).and.variableDustSublimation) converged = .false.
+!     if ((.not.Converged).and.(myrankWorldglobal==0)) write(*,*) "Maximum fractional temperature changed ",maxDeltaT
+!     if(converged) then
+!        if(myRankWorldGlobal == 0) then
+!           write(*,*) "photoionization loop converged at iteration ", niter
+!        end if
+!     else if(underSampledTOT .and. monteCheck) then
+!        if(myRankWorldGlobal == 0) then
+!           write(*,*) "Undersampled cell, increasing nMonte"
+!        end if
+!        nMonte = nMonte *2
+!     end if
+!
+!     if (myrankWorldGlobal == 0) then
+!        write(*,*) "converged ",converged
+!        write(*,*) "undersampledTot ", underSampledTot
+!        write(*,*) "monteCheck ",monteCheck
+!     endif
 
      write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
      call writeVtkFile(grid, mpiFilename, &
@@ -3016,6 +3042,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
   !Clear the tracers for photon contributions between iterations 
   !Removes contamination from noisy, early iterations
+
   recursive subroutine clearContributions(thisOctal)
     TYPE(OCTAL),pointer :: thisOctal
     TYPE(OCTAL),pointer :: child
@@ -3060,6 +3087,37 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        end if
     end do
   end subroutine adjustChiline
+
+  recursive subroutine findMaxFracTempChangeAndUndersampled(thisOctal, frac, undersampled)
+    use inputs_mod, only : minCrossings
+    TYPE(OCTAL),pointer :: thisOctal
+    TYPE(OCTAL),pointer :: child
+    real(double) :: frac
+    integer :: i, subcell
+    logical :: undersampled
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findMAxFracTempChangeAndUndersampled(child, frac, undersampled)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          frac = max(abs(thisOctal%temperature(subcell) - thisOctal%TlastIter(subcell))/thisOctal%temperature(subcell), frac)
+          thisOctal%tLastIter(subcell) = thisOctal%temperature(subcell)
+          if (thisOctal%nCrossings(subcell) < minCrossings) undersampled = .true.
+       endif
+    end do
+  end subroutine findMaxFracTempChangeAndUndersampled
+
+
+
 
 recursive subroutine advancedCheckForPhotoLoop(grid, thisOctal, photoLoop, dt, timeSinceLastRecomb)
     use constants_mod, only : cspeed
