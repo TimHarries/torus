@@ -2428,7 +2428,7 @@ end subroutine radiationHydro
      if (undersampled) then
         converged = .false.
         nTotalMonte = nTotalMonte * 2
-        if (myrankWorldGlobal) write(*,*) "Undersampled cells found. Increasing nMonte to ",nMonte
+        if (myrankWorldGlobal == 0) write(*,*) "Undersampled cells found. Increasing nMonte to ",nTotalMonte
      endif
 
 
@@ -3109,7 +3109,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
-          frac = max(abs(thisOctal%temperature(subcell) - thisOctal%TlastIter(subcell))/thisOctal%temperature(subcell), frac)
+          frac = max(abs(dble(thisOctal%temperature(subcell)) - &
+               thisOctal%TlastIter(subcell))/dble(thisOctal%temperature(subcell)), frac)
           thisOctal%tLastIter(subcell) = thisOctal%temperature(subcell)
           if (thisOctal%nCrossings(subcell) < minCrossings) undersampled = .true.
        endif
