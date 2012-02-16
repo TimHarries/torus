@@ -19,7 +19,7 @@ double precision, parameter :: radToDeg = 180.d0/pi
 double precision, parameter :: radiansToArcSec = radToDeg * 60.d0 * 60.d0
 double precision, parameter :: ArcSecsToRadians = pi/6.48d5 
 double precision, parameter :: arcsec = 1.d0/3600.d0 * degtorad
-double precision, parameter :: mSol = 1.9891d30            ! g
+double precision, parameter :: mSol = 1.9891d30            ! kg
 
 character(len=80) :: sedFilename
 integer :: ier
@@ -52,9 +52,12 @@ debug = .false.
 
 !!write(*,*) "!- Enter thermal emission sed filename: "
 !read(*,*) sedFilename
-sedFilename="test_inc013_thermal_direct.dat"
+!sedFilename="test_inc013.dat"
+sedFilename="isosphere_inc077.dat"
 !sedFilename="2Med_SED_conv_inc000_thermal_direct.dat"
 !sedFilename="2Low_SED_conv_inc000.dat"
+!sedFilename="2Hi_SED_conv_inc000.dat"
+!sedFilename="2Med_SED_conv_inc000.dat"
 
 
 !write(*,*) "!- Enter number of lines in file: "
@@ -63,7 +66,7 @@ numLines= 200
 
 !write(*,*) "!- Enter starting search temperature (recommend 1 K): "
 !read(*,*) Tmin
-Tmin = 0.1d0
+Tmin = 0.01d0
 
 !write(*,*) "!- Enter final search temperature (recommend 1500K): "
 !read(*,*) Tmax
@@ -73,20 +76,20 @@ Tmax = 1500.d0
 !write(*,*) "!- Enter temperature search interval (recommend 0.1 K): "
 !read(*,*) dT
 
-dT = 0.1d0
+dT = 0.01d0
 
 !write(*,*) "!- Enter distance to object (m): "
 !read(*,*) distance
 
 
-distance = 3.0857d18
-!distance = 3.08568025d18
+!distance = 3.0857d198
+distance = 3.08568025d19
 
 !write(*,*) "!- Enter image size (m): "
 !read(*,*) size
 
-size = 4.0d14
-!size = 1.5d17
+!size = 4.0d14
+size = 1.5d17
 
 beta = 2.d0
 
@@ -105,10 +108,10 @@ print *, "Solid angle subtended is: ", Omega
 
 lam_ref = 850.*Um
 Nu_ref = c/(850.*um)
-!cutoff = 450.*um
+cutoff = 45.*um
 !cutoff = 8.*um
-!cutoff = 10.d0*um
-cutoff = 0.25*um
+!cutoff = 450.d0*um
+!cutoff = 0.25*um
 
 print *, "cutoff ", cutoff
 
@@ -173,10 +176,10 @@ do i = 1, numJobs
             
             B = calcPlanck(T_dust, lam_ref, debug)
 !            tau_ref = flux_ref/(pi*(beamSize**2)*B)
-            tau_ref = flux_ref/(Omega*B)
+            tau_ref = flux_ref/(Omega*B*nu_ref)
             tau = tau_ref*((c/lambdaArray(j))/(nu_ref))**beta
             B = calcPlanck(T_dust, lambdaArray(j),debug)  
-            F_nu = Omega*B*(1.d0 - exp(-tau))    
+            F_nu = Omega*B*(1.d0 - exp(-tau))*(c/lambdaArray(j))
 !            F_nu = Omega*B*tau    
             totalResidual(i) = totalResidual(i) + (abs(F_nu-fluxArray(j))/fluxArray(j))
             
@@ -191,7 +194,7 @@ do i = 1, numJobs
 !      print *, "temperature ", t_dust
 !      print *, "improved by ", (1.d0-(totalResidual(i)/minresidual))*100.d0, "%"
       minResidual = totalResidual(i)
-      minResidualID = i
+      minResidualID = i-1
 !      minbeta = beta
 !      print *, "minResidual ", minResidual
 !      if(percentDiff < 1.d-6) then
@@ -212,41 +215,42 @@ write(*,*) "!- Derived dust temperature is: ", T_dust
 !read(*,*) C_nu
 
 !C_nu = 50.d0
-C_nu = (500.d0)!*1.d-7
+C_nu = (1590.d0)!*1.d-7
 
 !now to calculate the dust mass
-
+print *, "lam ref ", lam_ref
+debug= .false.
 B = calcPlanck(T_dust, lam_ref, debug)
 if(B == 0.d0) then
    B = calcPlanck(T_dust, lam_ref, debug)
 end if
-Mass = (distance**2. * flux_ref*C_nu)/B
-
+Mass = (distance**2. * flux_ref*C_nu)/(B*nu_ref)
 write(*,*) "Dust mass (kg), Mo:"
 write(*,'(5e14.5)') mass, mass/msol
 
-B = calcPlanck(10.d0, lam_ref, debug)
+B = calcPlanck(20.d0, lam_ref, debug)
 if(B == 0.d0) then
-   B = calcPlanck(10.d0, lam_ref, debug)
+   B = calcPlanck(20.d0, lam_ref, debug)
 end if
-write(*,*) "Mass at 10 K:"
-write(*,'(5e14.5)') mass
-Mass = (distance**2. * flux_ref*C_nu)/B
+write(*,*) "Mass at 20 K:"
+Mass = (distance**2. * flux_ref*C_nu)/(B*nu_ref)
+write(*,'(5e14.5)') mass, mass/msol
 
-B = calcPlanck(50.d0, lam_ref, debug)
+B = calcPlanck(2.6d0, lam_ref, debug)
 if(B == 0.d0) then
-   B = calcPlanck(50.d0, lam_ref, debug)
+   B = calcPlanck(2.6d0, lam_ref, debug)
 end if
-write(*,*) "Mass at 50 K:"
-write(*,'(5e14.5)') mass
-Mass = (distance**2. * flux_ref*C_nu)/B
+write(*,*) "Mass at 2.6 K:"
+Mass = (distance**2. * flux_ref*C_nu)/(B*nu_ref)
+write(*,'(5e14.5)') mass, mass/msol
+
 
 !print *, "flux_ref ", flux_ref
 !print *, "lam_ref", lam_ref
 !print *, "B ", B
 !print *, "distance ", distance
 
-
+debug=.false.
 
 open(2, file="matched_spectrum.dat", status="unknown", iostat=ier)
 open(3, file="residuals.dat", status="unknown", iostat=ier)
@@ -262,11 +266,11 @@ print *, "Proceeding with tau_ref ", tau_ref
 do i = 1, numLines
    B = calcPlanck(T_dust, lam_ref, debug)
 !   tau_ref = flux_ref/(pi*(beamSize**2)*B)
-   tau_ref = flux_ref/(Omega*B)
+   tau_ref = flux_ref/(Omega*B*nu_ref)
    if(lambdaArray(i) > cutoff .and. lambdaArray(i) <= upperLimit) then
       tau = tau_ref*((c/lambdaArray(i))/(nu_ref))**beta
       B = calcPlanck(T_dust, lambdaArray(i), debug)
-      F_nu = Omega*B*(1.d0 - exp(-tau))
+      F_nu = Omega*B*(1.d0 - exp(-tau))*(c/lambdaArray(i))
 !      F_nu = Omega*B*tau       
       write(2,'(5e14.5)') lambdaArray(i)/um, F_nu
    end if
@@ -308,10 +312,10 @@ subroutine run_tests(Omega, lam_ref, flux_ref)
 
   B1 = calcPlanck(10.d0, lam_ref, debug)
 !  tau_ref = flux_ref/(pi*(beamSize**2)*B1)
-  tau_ref = (flux_ref/(Omega*B1))
+  tau_ref = (flux_ref/(Omega*B1*nu_ref))
   tau = tau_ref
   B2 = calcPlanck(10.d0, lam_ref,debug)
-  F_nu = Omega*B2*(1.d0 - exp(-tau))    
+  F_nu = Omega*B2*(1.d0 - exp(-tau))*(nu_ref)
 !  F_nu = Omega*B2*tau    
 
   print *, " "
@@ -366,7 +370,7 @@ subroutine run_tests(Omega, lam_ref, flux_ref)
      print *, "failed to open spectrum.dat in tests"
      stop
   end if
-
+  debug = .true.
   do i = 1, nJobs
      this_I =  calcPlanck(5778.d0, lambda, debug)
      if(this_I > max_I) then
@@ -378,7 +382,7 @@ subroutine run_tests(Omega, lam_ref, flux_ref)
   end do !
   close(9)
   lam_max = b/5778.d0
-  
+  debug=.false.
   print *, "Wiens law predicts: ", lam_max
   print *, "my model gets: ", peak_lam
   print *, "fractional difference is: ", (peak_lam - lam_max)/lam_max
@@ -423,21 +427,23 @@ double precision function calcPlanck(temperature, lambda, debug)
 
 
 !nu
-!  fac1 = ((2.d0*h*nu**3.d0)/(c**2.d0))*(1.d0/((exp(h*nu/(kB*temperature))-1.d0)))
+
+  if(debug) then
+     fac1 = ((2.d0*h*c**2.d0)/(lambda**5.d0))*(1.d0/((exp((h*c)/(lambda*kB*temperature))-1.d0)))
+  else
+     fac1 = ((2.d0*h*nu**3.d0)/(c**2.d0))*(1.d0/((exp(h*nu/(kB*temperature))-1.d0)))
+  end if
 
 !rayleigh-jeans
 !     fac1 = 2.d0*(nu**2)*kB*Temperature/(c**2)
 
 !lam
-  fac1 = ((2.d0*h*c**2.d0)/(lambda**5.d0))*(1.d0/((exp((h*c)/(lambda*kB*temperature))-1.d0)))
+
 
   calcPlanck = fac1
 
-  if(debug) then
-     print *, "fac1 ", fac1
-  end if
 
-  
+
 end function calcPlanck
 
 
