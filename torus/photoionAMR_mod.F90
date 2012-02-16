@@ -772,9 +772,9 @@ end subroutine radiationHydro
     integer(bigint), allocatable :: nEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 
-    real(double) :: deltaT, fluctuationCheck, maxDeltaT
-    logical :: anyUndersampled, undersampledTOT
-    logical :: underSamFailed, escapeCheck
+    real(double) :: deltaT, maxDeltaT
+    logical :: anyUndersampled
+    logical :: escapeCheck
     logical :: sourcePhoton
 
     integer :: dprCounter
