@@ -46,7 +46,7 @@ module source_mod
     subroutine writeSourceList(source, nSource)
       type(SOURCETYPE) :: source(:)
       integer :: nSource
-      real :: fromSpec
+      real(double) :: fromSpec
       real(double) :: tot
       integer :: i, j
 
