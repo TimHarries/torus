@@ -230,6 +230,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+    CASE("isosphere")
+       call calcIsoSphereDensity(thisOctal, subcell)
+
     CASE("planar")
        call calcPlanarIfrontDensity(thisOctal, subcell)
 
@@ -3844,6 +3847,9 @@ CONTAINS
        case("bonnor", "empty", "planar")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
+       case("isophsphere")
+          if(thisOctal%nDepth < 7) split = .true.
+
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
                  massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
@@ -6940,6 +6946,36 @@ endif
     yplusbound = 2
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
+
+  subroutine calcIsoSphereDensity(thisOctal,subcell)
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: rMod
+
+
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    if ((rMod*1.d10) < 1.6d0*pcToCm) then
+       thisOctal%rho(subcell) = 100.d0*mHydrogen
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = 1.d-30*mHydrogen
+       thisOctal%temperature(subcell) = 10.d0
+    endif
+
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+
+  end subroutine calcIsoSphereDensity
 
   subroutine calcPlanarIfrontDensity(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
