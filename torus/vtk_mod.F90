@@ -1328,13 +1328,17 @@ contains
 #endif
   end subroutine writeVTKfileNbody
 
-  subroutine writeVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString, xml)
+  subroutine writeVtkFileAMR(grid, RootvtkFilename, valueTypeFilename, valueTypeString, xml)
     use inputs_mod, only : cylindrical, usebinaryxmlvtkfiles, parallelVTUfiles
+    use inputs_mod, only : iModel
+    use utils_mod, only : findMultiFilename
+
 #ifdef MPI
     use mpi
 #endif
     type(GRIDTYPE) :: grid
-    character(len=*) :: vtkFilename
+    character(len=*) :: rootVTKfilename
+    character(len=80) :: vtkFilename
     character(len=100) :: xmlFilename
     integer :: nValueType
     character(len=20) :: valueType(50)
@@ -1353,6 +1357,9 @@ contains
     integer, allocatable :: iOffsetArray(:)
     integer :: iThread
 #endif
+
+    call findMultiFilename(rootVTKFilename, iModel, vtkfilename)
+
 
     if (useBinaryXMLVtkFiles) then
        xmlFilename = adjustl(vtkFilename)

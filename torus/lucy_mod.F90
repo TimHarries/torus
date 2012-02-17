@@ -2799,7 +2799,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine setBiasOnTau(grid, iLambda)
-    use inputs_mod, only : cylindrical
+    use inputs_mod, only : cylindrical, amr3d
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
@@ -2865,9 +2865,9 @@ subroutine setBiasOnTau(grid, iLambda)
 
 !$OMP PARALLEL DEFAULT (NONE) &
 !$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
-!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda)
+!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d)
 
-     if (cylindrical) then
+     if (amr3d) then
         nDir = 6
      else
         nDir = 4
@@ -2901,33 +2901,41 @@ subroutine setBiasOnTau(grid, iLambda)
              else
 
                 tau = 1.d30
-                if (cylindrical) then
-                   ndir = 6
-                   arrayVec(1) = VECTOR(0.d0, 0.d0, 1.d0)
-                   arrayVec(2) = VECTOR(0.d0, 0.d0,-1.d0)
-                   arrayVec(3) = VECTOR(rVec%x, rVec%y,0.d0)
-                   call normalize(arrayVec(3))
-                   arrayVec(4) = (-1.d0)*arrayVec(3)
-                   arrayVec(3) = rotateZ(arrayVec(3), 0.1d0*degtorad)
-                   arrayVec(4) = rotateZ(arrayVec(4), 0.1d0*degtorad)
-                   arrayVec(5) = arrayVec(3).cross.arrayVec(1)
-                   call normalize(arrayVec(5))
-                   arrayVec(6) = (-1.d0)*arrayVec(5)
+                if (amr3d) then
+                   if (cylindrical) then
+                      ndir = 6
+                      arrayVec(1) = VECTOR(0.d0, 0.d0, 1.d0)
+                      arrayVec(2) = VECTOR(0.d0, 0.d0,-1.d0)
+                      arrayVec(3) = VECTOR(rVec%x, rVec%y,0.d0)
+                      call normalize(arrayVec(3))
+                      arrayVec(4) = (-1.d0)*arrayVec(3)
+                      arrayVec(3) = rotateZ(arrayVec(3), 0.1d0*degtorad)
+                      arrayVec(4) = rotateZ(arrayVec(4), 0.1d0*degtorad)
+                      arrayVec(5) = arrayVec(3).cross.arrayVec(1)
+                      call normalize(arrayVec(5))
+                      arrayVec(6) = (-1.d0)*arrayVec(5)
+                   else
+                      ndir = 6
+                      arrayVec(1) = VECTOR(0.d0, 0.d0, 1.d0)
+                      arrayVec(2) = VECTOR(0.d0, 0.d0,-1.d0)
+                      arrayVec(3) = VECTOR(1.d0, 0.d0, 0.d0)
+                      arrayVec(4) = VECTOR(-1.d0, 0.d0,0.d0)
+                      arrayVec(5) = VECTOR(0.d0, 1.d0, 0.d0)
+                      arrayVec(6) = VECTOR(0.d0,-1.d0, 0.d0)
+                   endif
                 endif
-
 
 
                 do i = 1, ndir 
                   direction = arrayVec(i)
-                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0, startOctal=thisOctal, startSubcell=subcell)
+                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 10.d0, startOctal=thisOctal, startSubcell=subcell)
                    tau = min(tau, thisTau)
                 enddo
                 if (tau < 5.) then
                    thisOctal%biasCont3D(subcell) = 1.d0
                 else
-                   thisOctal%biasCont3D(subcell) = 1.e-20
+                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.e-20)
                 endif
-!                max(exp(-tau),1.e-5)
 
              endif
 

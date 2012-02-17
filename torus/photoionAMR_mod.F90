@@ -2416,7 +2416,6 @@ end subroutine radiationHydro
      if (myRankGlobal /=0 ) then
         call findMaxFracTempChangeAndUndersampled(thisOctal, maxDeltaT, undersampled)
      endif
-     write(*,*) myrankglobal,maxdeltaT
      call MPI_ALLREDUCE(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
      maxDeltaT = tempDouble
      call MPI_ALLREDUCE(undersampled, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
@@ -2430,7 +2429,11 @@ end subroutine radiationHydro
         nTotalMonte = nTotalMonte * 2
         if (myrankWorldGlobal == 0) write(*,*) "Undersampled cells found. Increasing nMonte to ",nTotalMonte
      endif
-
+     if ((maxiter > 1).and.(niter <= 8).and.variableDustSublimation) converged = .false.
+     if (nIter >= maxIter) then
+        if (myRankWorldGlobal == 0) write(*,*) "Exceeded maxiter iterations, forcing convergence"
+        converged = .true.
+     endif
 
 !       if (myRankGlobal /= 0) then
 !          iOctal_beg = 1
@@ -2692,7 +2695,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   real(double) :: kappaScaDb, kappaAbsDb, kappaRoss, wallDist
+   real(double) :: kappaScaDb, kappaAbsDb, kappaRoss!, wallDist
    real(double), parameter ::  gamma = 3.d0
    real(oct) :: thisTau
    real(oct) :: thisFreq
@@ -2751,18 +2754,18 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     usedMRW = .false.
     i = 0
-    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
-       call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-            freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-       usedMRW = .true.
-       thisLam = (cspeed/thisFreq)*1.d8
-       call locate(lamArray, nLambda, real(thisLam), iLam)
-       call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-            grid=grid, inFlow=inFlow)
-       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
-    endif
+!    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
+!    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
+!       call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+!            freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+!       usedMRW = .true.
+!       thisLam = (cspeed/thisFreq)*1.d8
+!       call locate(lamArray, nLambda, real(thisLam), iLam)
+!       call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+!            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+!            grid=grid, inFlow=inFlow)
+!       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+!    endif
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)

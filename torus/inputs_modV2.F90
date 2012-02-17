@@ -1,4 +1,3 @@
-! 
 module inputs_mod
 
   use vector_mod
@@ -123,8 +122,28 @@ contains
          "Output debug information: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
+    call getLogical("multimodels", multimodels, cLine, fLine, nLines, &
+         "Perform calculation on multiple models: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    nModelStart = 1
+    nModelEnd = 1
+    iModel = 1
+    if (multimodels) then
+       call getInteger("nstart", nModelStart, cLine, fLine, nLines, &
+            "Starting number for model: ","(a,i3,a)", 1, ok, .true.)
+       call getInteger("nend", nModelEnd, cLine, fLine, nLines, &
+            "Starting number for model: ","(a,i3,a)", 1, ok, .true.)
+    endif
+
+
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
+
+    if (multimodels.and.(.not.readgrid)) then
+       write(message,*) "Multiple models specified by readgrid set to false"
+       call writeFatal(message)
+       stop
+    endif
 
     
     if(readgrid) call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &
@@ -136,6 +155,12 @@ contains
     if (readgrid) call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
     
+    if (multimodels.and.(index(gridInputFilename, "*") == 0)) then
+       write(message,*) "Multiple models but input filename has no asterixes"
+       call writeFatal(message)
+       stop
+    endif
+
     call readGridInitParameters(cLine, fLine, nLines)
 
     call readGeometrySpecificParameters(cLine, fLine, nLines)
@@ -947,6 +972,8 @@ contains
     end select
   end subroutine readGeometrySpecificParameters
          
+
+
 
   subroutine readGridInitParameters(cLine, fLine, nLines)
     character(len=80) :: cLine(:)
@@ -2167,11 +2194,11 @@ contains
     call getInteger("nphase", nPhase, cLine, fLine, nLines, &
          "Number of phases: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-    call getInteger("nstart", nStartPhase, cLine, fLine, nLines, &
-         "Start at phase: ", "(a,i3,1x,a)", 1, ok, .false.)
+!    call getInteger("nstart", nStartPhase, cLine, fLine, nLines, &
+!         "Start at phase: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-    call getInteger("nend", nEndPhase, cLine, fLine, nLines, &
-         "End at phase: ", "(a,i3,1x,a)", nPhase, ok, .false.)
+!    call getInteger("nend", nEndPhase, cLine, fLine, nLines, &
+!         "End at phase: ", "(a,i3,1x,a)", nPhase, ok, .false.)
 
     ! Used for optical depth tests in phaseloop
     call getReal("lambdatau", lambdatau, 1.0, cLine, fLine, nLines, &

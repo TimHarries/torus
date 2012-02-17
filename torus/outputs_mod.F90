@@ -53,7 +53,7 @@ contains
 #endif
 #endif
 
-    real(double) :: rSub
+!    real(double) :: rSub
     type(GRIDTYPE) :: grid
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
@@ -272,11 +272,11 @@ contains
              call quickSublimate(grid%octreeRoot)
           end if
 #endif
-          call getSublimationRadius(grid, rSub)
-          write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
-          call writeInfo(message, FORINFO)
-          write(message, '(a, f7.3,a )') "Final inner radius is: ",(rSub/globalSourceArray(1)%radius), " core radii"
-          call writeInfo(message, FORINFO)
+!          call getSublimationRadius(grid, rSub)
+!          write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
+!          call writeInfo(message, FORINFO)
+!          write(message, '(a, f7.3,a )') "Final inner radius is: ",(rSub/globalSourceArray(1)%radius), " core radii"
+!          call writeInfo(message, FORINFO)
 
 
           fastIntegrate=.true.

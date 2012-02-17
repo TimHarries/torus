@@ -53,7 +53,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use gridtype_mod, only: GRIDTYPE       
   use gridio_mod, only: writeamrgrid
   use parallel_mod, only: torus_mpi_barrier
-  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint
+  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint, findMultiFilename
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
@@ -294,7 +294,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real :: logMassLossRate
   real :: usePhotonWavelength
   logical :: forcedWavelength=.false.
-  character(len=80) :: opacityDataFile
+  character(len=80) :: opacityDataFile, tempFilename
   logical :: fillTio=.false.
   logical :: plezModelOn=.false.
   logical :: fillThomson=.false.
@@ -342,6 +342,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      nInclination = getNumSedInc()
      outfile = sedFileName
   endif
+  call findMultiFilename(outfile, iModel, tempFilename)
+  outfile = tempFilename
 
   if ( grid%geometry == "cmfgen" ) then 
      probContPhoton = 0.2
@@ -678,12 +680,13 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 !     call  createDustCrossSectionPhaseMatrix(grid, grid%lamArray, nLambda, miePhase, nMuMie)
 !     call setupDust(grid, grid%lamArray, nLambda, miePhase, nMumie, fileStart="sed")
-     if (writeoutput) then
-        write(*,*) "nlambda ",nlambda
-        write(*,*) "grid%nlambda ",grid%nLambda
-        write(*,*) "size(grid%lamArray) ",size(grid%lamarray)
-        write(*,*) "grid%lamArray ",grid%lamArray
-     endif
+
+!     if (writeoutput) then
+!        write(*,*) "nlambda ",nlambda
+!        write(*,*) "grid%nlambda ",grid%nLambda
+!        write(*,*) "size(grid%lamArray) ",size(grid%lamarray)
+!        write(*,*) "grid%lamArray ",grid%lamArray
+!     endif
 
      if (noScattering) then
         if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
@@ -1129,6 +1132,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            call writeInfo(message, TRIVIAL)
         end if
 
+
        if (iPhase == nStartPhase .and. iInclination == 1) originalOutFile = outFile
          
        write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
@@ -1336,7 +1340,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            
 !           if (doTuning) call tune(6,"Calculate bias on tau")
-!           call setBiasOnTau(grid, iLambdaPhoton)
+           call setBiasOnTau(grid, iLambdaPhoton)
 !           if (doTuning) call tune(6,"Calculate bias on tau")
 
            call computeProbDist(grid, totLineEmission, &
@@ -1428,10 +1432,14 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      call MPI_REDUCE(nTot,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
      nTot = tempInt
 
-     write(*,*) myrankGlobal, " lum ",totalOutputluminosity
      call MPI_REDUCE(totalOutputLuminosity,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, MPI_COMM_WORLD,ierr)
      totalOutputLuminosity = tempDouble
-     if (myrankGlobal == 0) write(*,*) myrankGlobal, " total output luminosity ",totalOutputLuminosity*1.d20
+     if (myrankGlobal == 0) then
+        write(*,*) "Total output luminosity (solar lum): ",totalOutputLuminosity*1.d20/lSol
+        write(*,*) "Total source luminosity (solar lum): ", &
+             sumSourceLuminosity(source, nsource, 1.e0,1.e30)/lsol, source(1)%luminosity/lsol
+
+     endif
  if (stokesimage) then
    do i = 1, nImageLocal
      allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
@@ -1645,7 +1653,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 #ifdef MPI
 ! No need to free the grid if there is only one trip on phaseloop
- if (myRankGlobal /= 0 .and. .not.noPhaseUpdate .and. nStartPhase /= nEndPhase ) call freeGrid(grid)
+! if (myRankGlobal /= 0 .and. .not.noPhaseUpdate .and. nStartPhase /= nEndPhase ) call freeGrid(grid)
 #endif
   call torus_mpi_barrier !('waiting inside end of phase loop...')
   enddo phaseLoop

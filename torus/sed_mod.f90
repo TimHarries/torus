@@ -90,7 +90,6 @@ contains
           end do
        end if
     end if
-
     sedFilename = filename
 
   end subroutine setSedParameters

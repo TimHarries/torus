@@ -92,6 +92,27 @@ contains
     deallocate(t)
   end subroutine reverse
        
+  subroutine findMultiFilename(rootFilename, iNumber, actualFilename)
+    character(len=*) :: rootFilename, actualFilename
+    character(len=80) :: beginString, endString
+    character(len=20) :: fortranFormat
+    integer :: iNumber
+    integer :: i1, i2, nAsterix
+
+    if (index(rootfilename, "*") == 0) then
+       actualFilename = rootFilename
+       goto 666
+    endif
+
+    i1 = index(rootfilename,"*")
+    i2 = index(rootfilename, "*", back=.true.)
+    beginString = rootFilename(1:i1-1)
+    endString = trim(rootFilename(i2+1:))
+    nAsterix = i2 - i1 + 1
+    write(fortranFormat, '(a,i1,a,i1,a)') "(a,i",nAsterix,".",nAsterix,",a)"
+    write(actualFilename, fortranFormat) trim(beginString), iNumber, trim(endString)
+666 continue
+  end subroutine findMultiFilename
 
   subroutine solveQuad(a, b, c, x1, x2,ok)
     implicit none

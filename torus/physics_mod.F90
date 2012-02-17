@@ -92,16 +92,14 @@ contains
        do i = 0, nThreadsGlobal-1
           if (myrankGlobal == i) then
 #endif
-             write(message,*) "Reading sources from file: ",trim(sourcefilename)
-             call writeInfo(message,TRIVIAL)
              call readSourceArray(sourceFilename)
-
+             
 #ifdef MPI
           endif
           call torus_mpi_barrier
        enddo
 #endif
-
+       call writeSourceList(GlobalSourceArray, GlobalnSource)
     else
 
     do iSource = 1, nSource

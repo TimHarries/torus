@@ -46,20 +46,41 @@ module source_mod
     subroutine writeSourceList(source, nSource)
       type(SOURCETYPE) :: source(:)
       integer :: nSource
-      integer :: i
+      real :: fromSpec
+      real(double) :: tot
+      integer :: i, j
 
-
+      if (writeoutput) &
+           write(*,'(a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "N","M","R","L","L(spec)","x","y","z"
       do i = 1, nSource
-         write(*,'(i2.2, f7.4, f7.4, 1p,e12.3,e12.3,e12.3,e12.3)') i,source(i)%mass/msol, &
-              source(i)%radius*1.d10/rsol, source(i)%position%x, &
+         fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
+         if (writeoutput) &
+              write(*,'(i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') i,source(i)%mass/msol, &
+              source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, fromspec/lsol, source(i)%position%x, &
               source(i)%position%y,source(i)%position%z
+         tot = 0.d0
+         do j = 1, source(i)%spectrum%nLambda
+            if (j < source(i)%spectrum%nlambda) then
+               tot = tot + source(i)%spectrum%flux(j) * source(i)%spectrum%dlambda(j)
+            endif
+!            write(*,*) j,source(i)%spectrum%lambda(j),source(i)%spectrum%flux(j), source(i)%spectrum%dlambda(j)
+         enddo
+         tot = tot * fourPi*source(i)%radius**2 * 1.d20
+         write(*,*) myrankGlobal, " lum ",tot/lsol
       enddo
     end subroutine writeSourceList
 
-    subroutine writeSourceArray(filename)
-      character(len=*) :: filename
+    subroutine writeSourceArray(rootfilename)
+      use inputs_mod, only : iModel
+      use utils_mod, only : findMultiFilename
+      character(len=*) :: rootFilename
+      character(len=80) :: filename
       integer :: iSource
       integer, parameter :: lunit = 65
+
+      call findMultiFilename(rootFilename, iModel, filename)
+
+
 
       open(lunit, file=filename, form="unformatted", status="unknown")
       write(lunit) globalnSource
@@ -69,10 +90,18 @@ module source_mod
       close(lunit)
     end subroutine writeSourceArray
 
-    subroutine readSourceArray(filename)
-      character(len=*) :: filename
+    subroutine readSourceArray(rootfilename)
+      use inputs_mod, only : iModel
+      use utils_mod, only : findMultiFilename
+      character(len=*) :: rootfilename
+      character(len=80) :: filename, message
       integer :: iSource
       integer, parameter :: lunit = 65
+
+
+      call findMultiFilename(rootFilename, iModel, filename)
+      write(message,*) "Reading sources from file: ",trim(filename)
+      call writeInfo(message,TRIVIAL)
 
       open(lunit, file=filename, form="unformatted", status="old")
       read(lunit) globalnSource

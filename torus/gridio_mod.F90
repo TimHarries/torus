@@ -133,14 +133,20 @@ module gridio_mod
 
 contains
 
-  subroutine writeAMRgrid(filename,fileFormatted,grid)
-    character(len=*) :: filename
+  subroutine writeAMRgrid(rootfilename,fileFormatted,grid)
+    use inputs_mod, only : iModel
+    use utils_mod, only : findMultiFilename
+    character(len=*) :: rootfilename
+    character(len=80) :: filename
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: writeFile
 #ifdef MPI
     integer :: iThread, ierr
 #endif
+
+
+    call findMultiFilename(rootFilename, iModel, filename)
 
     writeFile = .true.
 
@@ -694,9 +700,11 @@ contains
    end subroutine writeAMRgridSingle
 
 
-  subroutine readAMRgrid(filename,fileFormatted,grid)
-    use inputs_mod, only: gridUsesAMR
-    character(len=*) :: filename
+  subroutine readAMRgrid(rootfilename,fileFormatted,grid)
+    use inputs_mod, only: gridUsesAMR, iModel
+    use utils_mod, only : findMultiFilename
+    character(len=*) :: rootfilename
+    character(len=80) :: filename
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: readFile
@@ -707,6 +715,8 @@ contains
 
     readFile = .true.
     gridUsesAMR = .true. 
+
+    call findMultiFilename(rootFilename, iModel, filename)
 
     if (associated(grid%octreeRoot)) then
        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)

@@ -43,6 +43,9 @@ program torus
   use mpi
 #endif
 
+  implicit none
+
+  character(len=80) :: message
   type(GRIDTYPE) :: grid
 
 #ifdef MPI
@@ -88,7 +91,7 @@ program torus
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
 
-!  call testSuiteRandom()  
+  !  call testSuiteRandom()  
   call inputs()
 
 #ifdef MPI
@@ -99,55 +102,63 @@ program torus
   ! set up a random seed
   call run_random_test_suite
 
-
   smallestCellSize = amrGridSize / dble(2**maxDepthAMR)
+
+  do iModel = nModelStart, nModelEnd
+     if ((nModelEnd-nModelStart) > 0) then
+        write(message,'(a,i4.4)') "Performing calculation for model number ", iModel
+        call writeBanner(message,"-",TRIVIAL)
+     endif
 
 #ifdef USEZLIB
 
 #else
-  useBinaryXMLVTKfiles = .false.
+     useBinaryXMLVTKfiles = .false.
 #endif
 
-  call setupMicrophysics(grid)
+     call setupMicrophysics(grid)
 
 
 
-  call  setupamrgrid(grid)
+     call  setupamrgrid(grid)
 
 
-!  call checkAMRgrid(grid, .false.)
+     !  call checkAMRgrid(grid, .false.)
 
-!  call writeAMRgrid("test.dat",.false.,grid)
-!  call writeVtkFile(grid, "mpi.vtk",  valueTypeString=(/"mpithread"/))
-!  call torus_mpi_barrier
-!  goto 666
+     !  call writeAMRgrid("test.dat",.false.,grid)
+     !  call writeVtkFile(grid, "mpi.vtk",  valueTypeString=(/"mpithread"/))
+     !  call torus_mpi_barrier
+     !  goto 666
 
-!  call writeVtkFile(grid, "rho.vtk")
+     !  call writeVtkFile(grid, "rho.vtk")
 
-  call setupGlobalSources(grid)
-
-
-  call writeBanner("Run-time messages","+",TRIVIAL)
-
-  call randomNumberGenerator(randomSeed=.true.)
-
-  call doPhysics(grid)
-
-  call doOutputs(grid)
-
-  if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
+     call setupGlobalSources(grid)
 
 
-  call torus_mpi_barrier
-  call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-  call freeGrid(grid)
-  call freeGlobalSourceArray()
+     call writeBanner("Run-time messages","+",TRIVIAL)
+
+     call randomNumberGenerator(randomSeed=.true.)
+
+     call doPhysics(grid)
+
+     call doOutputs(grid)
+
+     if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
+
+
+     call torus_mpi_barrier
+     call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+     call freeGrid(grid)
+     call freeGlobalSourceArray()
+
+  enddo
+
 #ifdef MPI
   call torus_mpi_barrier
   if (hydrodynamics) call freeAMRCOMMUNICATOR
   call MPI_FINALIZE(ierr)
 #endif
-!666 continue
+  !666 continue
   call writeBanner("Torus completed","o",TRIVIAL)
 
 end program torus
