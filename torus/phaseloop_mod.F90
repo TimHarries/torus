@@ -1437,7 +1437,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (myrankGlobal == 0) then
         write(*,*) "Total output luminosity (solar lum): ",totalOutputLuminosity*1.d20/lSol
         write(*,*) "Total source luminosity (solar lum): ", &
-             sumSourceLuminosity(source, nsource, 1.e0,1.e30)/lsol, source(1)%luminosity/lsol
+             sumSourceLuminosity(source, nsource, 1.e0,1.e30)/lsol
 
      endif
  if (stokesimage) then
@@ -2230,7 +2230,7 @@ CONTAINS
                thistau = -log(max(1.e-20,(1. - r1)))
                if (thistau .gt. tauExt(nTau)) then
                   escaped = .true.  
-                  totalOutputLuminosity = totalOutputLuminosity + thisPhoton%stokes%i * exp(-tauExt(ntau))
+                  totalOutputLuminosity = totalOutputLuminosity + thisPhoton%stokes%i ! * exp(-tauExt(ntau))
                else
                   escaped = .false.  
                endif
@@ -2769,7 +2769,7 @@ CONTAINS
                   thistau = -log(max(1.e-20,(1. - r1)))
                   if (thistau .gt. tauExt(nTau)) then
                      escaped = .true.  
-                     totalOutputLuminosity = totalOutputLuminosity + thisPhoton%stokes%i * exp(-tauExt(ntau))
+                     totalOutputLuminosity = totalOutputLuminosity + thisPhoton%stokes%i !* exp(-tauExt(ntau))
                   else
                      escaped = .false.  
                   endif

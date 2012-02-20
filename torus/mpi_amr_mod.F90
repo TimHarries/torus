@@ -74,6 +74,8 @@ contains
           
           
 
+    else
+       myrankGlobal = myrankWorldGlobal
     endif
   end subroutine setupAMRCOMMUNICATOR
 

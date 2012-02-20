@@ -90,7 +90,7 @@ contains
 
 #ifdef MPI
        do i = 0, nThreadsGlobal-1
-          if (myrankGlobal == i) then
+          if (myrankWorldGlobal == i) then
 #endif
              call readSourceArray(sourceFilename)
              

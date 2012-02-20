@@ -63,10 +63,8 @@ module source_mod
             if (j < source(i)%spectrum%nlambda) then
                tot = tot + source(i)%spectrum%flux(j) * source(i)%spectrum%dlambda(j)
             endif
-!            write(*,*) j,source(i)%spectrum%lambda(j),source(i)%spectrum%flux(j), source(i)%spectrum%dlambda(j)
          enddo
          tot = tot * fourPi*source(i)%radius**2 * 1.d20
-         write(*,*) myrankGlobal, " lum ",tot/lsol
       enddo
     end subroutine writeSourceList
 
@@ -101,11 +99,13 @@ module source_mod
 
       call findMultiFilename(rootFilename, iModel, filename)
       write(message,*) "Reading sources from file: ",trim(filename)
+!      write(*,*) myrankWorldGlobal,trim(message)
       call writeInfo(message,TRIVIAL)
 
       open(lunit, file=filename, form="unformatted", status="old")
       read(lunit) globalnSource
       do iSource = 1, globalnSource
+         call freeSource(globalSourceArray(iSource))
          call readSource(globalsourceArray(isource), lunit)
       enddo
       close(lunit)

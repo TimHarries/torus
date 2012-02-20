@@ -276,6 +276,7 @@ contains
       integer :: nSource, i
       real(double) :: lumAcc, tAcc
 
+
       do i = 1, nSource
          source(i)%age = 1.e5
          source(i)%initialmass = source(i)%mass/msol
@@ -298,7 +299,17 @@ contains
             call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10, freeUp=.true.)
          endif
          if (tAcc > 0.d0) call addToSpectrumBB(source(i)%spectrum, tAcc, 1.d0)
+         call normalizedSpectrum(source(i)%spectrum)
       enddo
+      if (Writeoutput) call writeSourceArray("tempsource.dat")
+
+         if (writeoutput) then
+            open(77,file="spec.dat",status="unknown",form="formatted")
+            do i = 1, source(1)%spectrum%nLambda
+               write(77,*) source(1)%spectrum%lambda(i),source(1)%spectrum%flux(i)
+            enddo
+            close(77)
+         endif
     end subroutine setSourceArrayProperties
 
     subroutine setSourceLumTemp(source, thisTable)

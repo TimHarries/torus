@@ -7239,7 +7239,7 @@ endif
   subroutine calcSphere(thisOctal,subcell)
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
-    use inputs_mod, only : beta, omega
+    use inputs_mod, only : beta, omega, hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -7267,10 +7267,12 @@ endif
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
-    thisOctal%iequationOfState(subcell) = 1 ! isothermal
-    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%energy(subcell) = eThermal
-    thisOctal%gamma(subcell) = 2.d0
+    if (hydrodynamics) then
+       thisOctal%iequationOfState(subcell) = 1 ! isothermal
+       ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+       thisOctal%energy(subcell) = eThermal
+       thisOctal%gamma(subcell) = 2.d0
+    endif
 
   end subroutine calcSphere
 

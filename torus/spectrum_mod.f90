@@ -2,6 +2,7 @@ module spectrum_mod
 
   use constants_mod
   use messages_mod
+  use mpi_global_mod
   use utils_mod, only: locate
   use unix_mod, only: unixGetenv
   implicit none
@@ -346,6 +347,7 @@ module spectrum_mod
       integer ::lunit, nLambda
       
       read(lunit) nLambda
+!      write(*,*) myrankWorldGlobal, " reading nlambda ",nlambda
       allocate(spectrum%flux(1:nLambda))
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%dlambda(1:nLambda))
@@ -353,6 +355,7 @@ module spectrum_mod
       allocate(spectrum%ppw(1:nLambda))
       spectrum%nLambda = nLambda
       read(lunit) spectrum%flux(1:nLambda)
+!      write(*,*) myrankWorldGlobal, " flux " , spectrum%flux(1:nlambda)
       read(lunit) spectrum%lambda(1:nLambda)
       read(lunit) spectrum%dlambda(1:nLambda)
       read(lunit) spectrum%prob(1:nLambda)
@@ -557,7 +560,7 @@ module spectrum_mod
       real :: loggArray(11)
       logical, save :: firstTime = .true.
       character(len=200) :: thisFile1, thisFile2, dataDirectory
-      character(len=80) :: label1, label2
+      character(len=80) :: label1, label2, message
       integer :: i1, i2
       integer, parameter :: nKurucz = 410
       type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
@@ -585,43 +588,49 @@ module spectrum_mod
 
 
 
-      call locate(teffArray, nFiles, real(teff), i)
-      call locate(loggArray, 11, real(logg*100.), j)
+      if ((teff > teffArray(1)).and.(teff < teffArray(nFiles))) then
+         call locate(teffArray, nFiles, real(teff), i)
+         call locate(loggArray, 11, real(logg*100.), j)
 
-      t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
-      if (t  > 0.5) j = j + 1
-      t = (teff - teffArray(i))/(teffArray(i+1)-teffArray(i))
-      i1 = i
-      i2 = i + 1
-      call createKuruczFilename(teffArray(i1), loggArray(j), thisFile1, label1)
-      call createKuruczFilename(teffArray(i2), loggArray(j), thisFile2, label2)
-
-!      write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
-!      call writeInfo(message, TRIVIAL)
-!      write(message, '(a,a)') "                                        : ",trim(label2)
-!      call writeInfo(message, TRIVIAL)
-
-      call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
-      if (.not.ok1) then
-         if (writeoutput) then
-            write(*,*) "Can't find kurucz spectrum: ",trim(thisfile1)," ",trim(label1)
-!            do i = 1, nKurucz
-!               write(*,*) trim(label1), " and ", trim(klabel(i))
-!            enddo
+         t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
+         if (t  > 0.5) j = j + 1
+         t = (teff - teffArray(i))/(teffArray(i+1)-teffArray(i))
+         i1 = i
+         i2 = i + 1
+         call createKuruczFilename(teffArray(i1), loggArray(j), thisFile1, label1)
+         call createKuruczFilename(teffArray(i2), loggArray(j), thisFile2, label2)
+         
+         write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
+         call writeInfo(message, TRIVIAL)
+         write(message, '(a,a)') "                                        : ",trim(label2)
+         call writeInfo(message, TRIVIAL)
+         
+         call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
+         if (.not.ok1) then
+            if (writeoutput) then
+               write(*,*) "Can't find kurucz spectrum: ",trim(thisfile1)," ",trim(label1)
+               !            do i = 1, nKurucz
+               !               write(*,*) trim(label1), " and ", trim(klabel(i))
+               !            enddo
 !            stop
+            endif
          endif
-      endif
-      call readKuruczSpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok2)
-      if (.not.ok2) then
-         if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",trim(thisfile2), " ", trim(label2)
-      endif
-
-      if (ok1.and.ok2) then
-         call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+         call readKuruczSpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok2)
+         if (.not.ok2) then
+            if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",trim(thisfile2), " ", trim(label2)
+         endif
+         
+         if (ok1.and.ok2) then
+            call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+         else
+            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+         endif
       else
-         call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
-      endif
-      if (PRESENT(freeUp)) then
+            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+         endif
+
+
+         if (PRESENT(freeUp)) then
          if (freeup) then
             do i = 1, nKurucz
                call freeSpectrum(kspectrum(i))

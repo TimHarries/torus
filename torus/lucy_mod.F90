@@ -2799,7 +2799,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine setBiasOnTau(grid, iLambda)
-    use inputs_mod, only : cylindrical, amr3d
+    use inputs_mod, only : cylindrical, amr3d, amr1d
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
@@ -2873,11 +2873,17 @@ subroutine setBiasOnTau(grid, iLambda)
         nDir = 4
      endif
 
+     if (amr1d) ndir = 2
      if (nDir == 4) then
         arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
         arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
         arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
         arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
+     endif
+
+     if (nDir == 2) then
+        arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
+        arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
      endif
 
 
@@ -2934,7 +2940,7 @@ subroutine setBiasOnTau(grid, iLambda)
                 if (tau < 5.) then
                    thisOctal%biasCont3D(subcell) = 1.d0
                 else
-                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-20)
+                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-6)
                 endif
 
              endif

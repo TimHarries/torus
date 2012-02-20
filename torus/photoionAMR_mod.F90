@@ -2688,7 +2688,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    integer, intent(out) :: newThread
    real(double) :: photonPacketWeight
    integer :: nFreq
-   real(double) :: freq(:), dfreq(:)
+   real(double) :: freq(:), dfreq(:), tempDouble
    integer :: subcell
    real(oct) :: tval, tau, r
    real :: lamArray(:)
@@ -2752,6 +2752,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     oldOctal => thisOctal
 
 
+    tempDouble = dfreq(1)
     usedMRW = .false.
     i = 0
 !    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
