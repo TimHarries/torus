@@ -2865,7 +2865,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
 !$OMP PARALLEL DEFAULT (NONE) &
 !$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
-!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d)
+!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d)
 
      if (amr3d) then
         nDir = 6
