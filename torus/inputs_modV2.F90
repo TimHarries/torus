@@ -139,11 +139,11 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
-    if (multimodels.and.(.not.readgrid)) then
-       write(message,*) "Multiple models specified by readgrid set to false"
-       call writeFatal(message)
-       stop
-    endif
+!    if (multimodels.and.(.not.readgrid)) then
+!       write(message,*) "Multiple models specified by readgrid set to false"
+!       call writeFatal(message)
+!       stop
+!    endif
 
     
     if(readgrid) call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &

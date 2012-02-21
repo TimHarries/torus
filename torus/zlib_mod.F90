@@ -40,7 +40,6 @@ contains
   subroutine compressBytes(inArray, nIn, outArray, nOut)
     integer(kind=1), pointer :: inArray(:)
     integer(bigint) :: nIn, nOut
-    integer :: nInFourByte
     integer(kind=1), pointer :: outArray(:)
     type(c_ptr) :: c_outlen
     integer :: j, iMax
