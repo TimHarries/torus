@@ -55,7 +55,6 @@ contains
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
 
     use fits_utils_mod
-
     implicit none
     
     type(DATACUBE), intent(in) :: thisCube

@@ -15,8 +15,11 @@ module molecular_mod
    use random_mod
    use octal_mod
    use math_mod
-   use datacube_mod, only: DATACUBE, TELESCOPE, initCube, npixels, writeDataCube, &
+   use datacube_mod, only: DATACUBE, TELESCOPE, initCube, npixels, &
         addspatialaxes, addvelocityaxis, convertspatialaxes
+#ifdef USECFITSIO
+   use datacube_mod, only : writeDataCube
+#endif
    use parallel_mod, only : torus_mpi_barrier
    use gridio_mod, only: readamrgrid, writeamrgrid
    use atom_mod, only: bnu
