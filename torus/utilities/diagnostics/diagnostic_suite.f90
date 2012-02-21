@@ -284,9 +284,12 @@ subroutine setup_density_data(neArray, neRatioArray, neRatioID)
      else
         print *, "!- Opened electron density data file successfully"
      end if
+!     print *, "nLines ", nLines
      do counter = 1, nLines           
+  !      print *, "counter ", counter
         read (1,*) neArray(counter), ne_err_plus(counter), ne_err_minus(counter), &
              neRatioArray(counter), neRatio_err_plus(counter), neRatio_err_minus(counter)
+ !       print *, "counter B"
      end do
   else if (neRatioID == 2) then
      open(1, file=data_pathB, status="old", iostat=ier)
