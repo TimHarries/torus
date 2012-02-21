@@ -321,8 +321,8 @@ contains
     real(double), allocatable :: dummy(:)     
 
 
-    open(unit=LUIN, file=TRIM(filename), form='unformatted')
     call findMultiFilename(rootfilename, iModel, filename)
+    open(unit=LUIN, file=TRIM(filename), form='unformatted')
 
 
     ! reading in the first line
@@ -361,11 +361,15 @@ contains
   end subroutine read_sph_data
 
 ! Read SPH data from a splash ASCII dump.
-  subroutine new_read_sph_data(filename)
+  subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: internalView, convertRhoToHI, ih2frac
+    use inputs_mod, only : iModel
+    use utils_mod, only : findMultiFilename
+
     implicit none
 
-    character(LEN=*), intent(in)  :: filename
+    character(LEN=*), intent(in)  :: rootfilename
+    character(LEN=80) :: filename
     character(len=20) :: word(40), unit(40)
     integer :: nword, nunit
     !   
@@ -382,6 +386,7 @@ contains
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT
     logical :: haveUandUoverT
 
+    call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
     read(LUIN,*)

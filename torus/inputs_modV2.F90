@@ -130,9 +130,9 @@ contains
     iModel = 1
     if (multimodels) then
        call getInteger("nstart", nModelStart, cLine, fLine, nLines, &
-            "Starting number for model: ","(a,i3,a)", 1, ok, .true.)
+            "Starting number for model: ","(a,i7,a)", 1, ok, .true.)
        call getInteger("nend", nModelEnd, cLine, fLine, nLines, &
-            "Starting number for model: ","(a,i3,a)", 1, ok, .true.)
+            "Starting number for model: ","(a,i7,a)", 1, ok, .true.)
     endif
 
 
@@ -155,11 +155,11 @@ contains
     if (readgrid) call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
     
-    if (multimodels.and.(index(gridInputFilename, "*") == 0)) then
-       write(message,*) "Multiple models but input filename has no asterixes"
-       call writeFatal(message)
-       stop
-    endif
+!    if (multimodels.and.(index(gridInputFilename, "*") == 0)) then
+!       write(message,*) "Multiple models but input filename has no asterixes"
+!       call writeFatal(message)
+!       stop
+!    endif
 
     call readGridInitParameters(cLine, fLine, nLines)
 

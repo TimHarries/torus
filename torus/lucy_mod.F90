@@ -2799,7 +2799,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine setBiasOnTau(grid, iLambda)
-    use inputs_mod, only : cylindrical, amr3d, amr1d
+    use inputs_mod, only : cylindrical, amr3d, amr1d, smallestCellSize
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
@@ -2865,7 +2865,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
 !$OMP PARALLEL DEFAULT (NONE) &
 !$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
-!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d)
+!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
 
      if (amr3d) then
         nDir = 6
@@ -2897,7 +2897,7 @@ subroutine setBiasOnTau(grid, iLambda)
 
              rVec = subcellCentre(thisOctal, subcell)
              if (thisOctal%threed) then
-                rVec = rVec + 0.01d0*grid%halfSmallestSubcell*randomUnitVector()
+                rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
              endif
               
              call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
