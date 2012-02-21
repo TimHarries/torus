@@ -40,6 +40,7 @@ contains
   subroutine compressBytes(inArray, nIn, outArray, nOut)
     integer(kind=1), pointer :: inArray(:)
     integer(bigint) :: nIn, nOut
+    integer :: nInFourByte
     integer(kind=1), pointer :: outArray(:)
     type(c_ptr) :: c_outlen
     integer :: j, iMax
@@ -49,14 +50,18 @@ contains
 
     allocate(inBuffer(1:nIn))
     inBuffer(1:nIn) = inArray(1:nIn)
-    iMax = int(compressBound(nIn))
+
+    iMax = int(compressBound(int(nIn, kind=c_long)))
     allocate(outBuffer(1:iMax))
 
     c_inbuffer = c_loc(inBuffer(1))
     c_outbuffer = c_loc(outBuffer(1))
     outlen = iMax
     c_outlen = c_loc(outlen)
-    j = compress(c_outbuffer, c_outLen, c_inbuffer, nIn)
+
+
+    j = compress(c_outbuffer, c_outLen, c_inbuffer, int(nIn, kind=c_long))
+       
     nOut = outLen
     allocate(outArray(1:nOut))
     outArray(1:nOut) = outbuffer(1:nOut)

@@ -1434,12 +1434,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      call MPI_REDUCE(totalOutputLuminosity,tempDouble,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, MPI_COMM_WORLD,ierr)
      totalOutputLuminosity = tempDouble
-     if (myrankGlobal == 0) then
-        write(*,*) "Total output luminosity (solar lum): ",totalOutputLuminosity*1.d20/lSol
-        write(*,*) "Total source luminosity (solar lum): ", &
-             sumSourceLuminosity(source, nsource, 1.e0,1.e30)/lsol
-
-     endif
  if (stokesimage) then
    do i = 1, nImageLocal
      allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
@@ -1495,6 +1489,15 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      call writeInfo(message, IMPORTANT)
      write(message,*) "Total output luminosity: ",totalOutputLuminosity*1.d20, " ergs"
      call writeInfo(message, IMPORTANT)
+
+     if (myrankGlobal == 0) then
+        write(*,*) "Total output luminosity (solar lum): ",totalOutputLuminosity*1.d20/lSol
+        write(*,*) "Total source luminosity (solar lum): ", &
+             sumSourceLuminosity(source, nsource, 1.e0,1.e30)/lsol
+
+     endif
+
+
      write(message,*) " "
      call writeInfo(message, IMPORTANT)
 

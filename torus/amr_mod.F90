@@ -7263,7 +7263,7 @@ endif
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
     else
-       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
+       thisOctal%rho(subcell) = 1.d-1 * rhoSphere
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif

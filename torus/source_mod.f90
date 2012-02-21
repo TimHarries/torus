@@ -65,6 +65,7 @@ module source_mod
             endif
          enddo
          tot = tot * fourPi*source(i)%radius**2 * 1.d20
+         write(*,*) myrankGlobal, " source lum ",tot/lsol
       enddo
     end subroutine writeSourceList
 
@@ -102,8 +103,16 @@ module source_mod
 !      write(*,*) myrankWorldGlobal,trim(message)
       call writeInfo(message,TRIVIAL)
 
+      if (globalnSource > 0) then
+         do iSource = 1, globalnSource
+            call freeSource(globalSourceArray(iSource))
+         enddo
+      endif
+
       open(lunit, file=filename, form="unformatted", status="old")
       read(lunit) globalnSource
+
+      allocate(globalSourceArray(1:globalnSource))
       do iSource = 1, globalnSource
          call freeSource(globalSourceArray(iSource))
          call readSource(globalsourceArray(isource), lunit)

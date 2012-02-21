@@ -2695,7 +2695,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   real(double) :: kappaScaDb, kappaAbsDb, kappaRoss!, wallDist
+   real(double) :: kappaScaDb, kappaAbsDb, kappaRoss, wallDist
    real(double), parameter ::  gamma = 3.d0
    real(oct) :: thisTau
    real(oct) :: thisFreq
@@ -2755,18 +2755,18 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     tempDouble = dfreq(1)
     usedMRW = .false.
     i = 0
-!    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-!    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
-!       call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-!            freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-!       usedMRW = .true.
-!       thisLam = (cspeed/thisFreq)*1.d8
-!       call locate(lamArray, nLambda, real(thisLam), iLam)
-!       call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-!            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-!            grid=grid, inFlow=inFlow)
-!       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
-!    endif
+    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
+    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
+       call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+            freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+       usedMRW = .true.
+       thisLam = (cspeed/thisFreq)*1.d8
+       call locate(lamArray, nLambda, real(thisLam), iLam)
+       call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+            grid=grid, inFlow=inFlow)
+       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+    endif
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
@@ -6891,7 +6891,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
        thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
        rVec = rVec + uHat * r0
-!       uHat = randomUnitVector()
+       uHat = randomUnitVector()
        call distanceToNearestWall(rVec, r0, thisOctal, subcell)
        if (r0 < gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
     enddo

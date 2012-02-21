@@ -304,11 +304,14 @@ contains
   ! Note: This routine only works with the 'old' (unknown how old) dump file
   ! format. Use new_read_sph_data to read in ASCII created by SPLASH.
 
-  subroutine read_sph_data(this, filename)
+  subroutine read_sph_data(this, rootfilename)
+    use inputs_mod, only : iModel
+    use utils_mod, only : findMultiFilename
     implicit none
     type(sph_data), intent(inout) :: this
-    character(LEN=*), intent(in)  :: filename
+    character(LEN=*), intent(in)  :: rootfilename
     !   
+    character(len=80) :: filename
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
 !    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
 !    integer*4 :: npart,  nsph, nptmass
@@ -319,7 +322,8 @@ contains
 
 
     open(unit=LUIN, file=TRIM(filename), form='unformatted')
-  
+    call findMultiFilename(rootfilename, iModel, filename)
+
 
     ! reading in the first line
     READ(LUIN) udist, umass, utime, npart, n1, n2, time, nptmass, gaspartmass
