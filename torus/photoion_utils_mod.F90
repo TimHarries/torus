@@ -66,7 +66,7 @@ type GAMMATABLE
 end type GAMMATABLE
 
 ! If a subroutine/function needs to be used outside this module declare it as public here. 
-public :: solvePops, refineLambdaArray, addRadioContinuumEmissivity
+public :: solvePops, refineLambdaArray, addRadioContinuumEmissivity, identifyForbiddenTransitionsInRange
 private :: getCollisionalRates, identifyForbiddenTransition, addForbiddenToEmission, identifyRecombinationTransition, &
      addRecombinationToEmission, addForbiddenEmissionLine, addRecombinationEmissionLine
 !     addRecombinationToEmission, addRadioContinuumEmissivity, addForbiddenEmissionLine, addRecombinationEmissionLine
@@ -540,6 +540,30 @@ subroutine addForbiddenEmissionLine(grid, dLambda, lineWavelength)
   if (ok) call addForbiddenToEmission(grid, grid%octreeRoot, dLambda, iIon, iTransition) 
 
 end subroutine addForbiddenEmissionLine
+
+!for SED/image generation over multiple lines
+subroutine identifyForbiddenTransitionsInRange(grid, lamStart, lamEnd, transitionLams)
+
+  type(GRIDTYPE),intent(in) :: grid
+  real(double),intent(in) :: lamStart, lamEnd
+  integer :: i, j, k
+  real(double), intent(out) :: transitionLams(5000)
+
+  transitionLams = 0.d0
+  k = 1
+  do i = 1, grid%nIon
+     do j = 1, grid%ion(i)%nTransitions
+        if (grid%ion(i)%transition(j)%lambda < lamEnd .and. &
+             grid%ion(i)%transition(j)%lambda > lamStart) then
+           
+           transitionLams(k) = grid%ion(i)%transition(j)%lambda
+           k = k + 1
+           
+        end if
+     end do
+  enddo
+
+end subroutine identifyForbiddenTransitionsInRange
 
 subroutine identifyForbiddenTransition(grid, lambda, iIon, iTransition, ok)
   type(GRIDTYPE),intent(in) :: grid

@@ -273,6 +273,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 #ifdef USECFITSIO
   character(len=80) :: header
 #endif
+
+
+  !multi-line-continuum SEDS/images
+!  real(double) :: transitionLams(5000)
+
+
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
@@ -1341,8 +1347,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            if(freefreeSED) then
               call  addRadioContinuumEmissivity(grid%octreeRoot)
-           end if
-!           if(forbiddenSED) then
+           end if           
+!           if(forbiddenSED .and. iOuterLoop/= 1) then
+!              call identifyForbiddenTransitionsInRange(grid, grid%lamArray(iLambdaPhoton-1) &
+!                   ,grid%lamArray(iLambdaPhoton) ,transitionLams)
 !              call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
 !           end if
 !           if(recombinationSED) then
