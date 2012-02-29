@@ -97,7 +97,7 @@ beta = 2.d0
 
 !theta = asin(size/(2.d0*distance))
 
-theta = atan(size/distance)
+theta = atan(size/(2.d0*distance))
 
 Omega = 2.d0*pi*(1.d0 - cos(theta))
 
