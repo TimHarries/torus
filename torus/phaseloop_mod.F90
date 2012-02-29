@@ -62,6 +62,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use fillGridTio_mod
   use fillGridRayleigh_mod
   use fillGridThomson_mod
+  use photoion_utils_mod, only :  addRadioContinuumEmissivity
   implicit none
 
 ! Arguments
@@ -1319,6 +1320,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            allocate(contWeightArray(1:nLambda))
 #endif
 
+!THAW - flag for multi-source SEDs
            totalOutputLuminosity = 0.d0
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
@@ -1334,11 +1336,19 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !              write(message,*) "Tau to gap at ",grid%lamArray(ilambdaPhoton),"angstroms: ",thistaudble
 !              call writeInfo(message, TRIVIAL)
 !           endif
-
-
+           
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
-           
+           if(freefreeSED) then
+              call  addRadioContinuumEmissivity(grid%octreeRoot)
+           end if
+!           if(forbiddenSED) then
+!              call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
+!           end if
+!           if(recombinationSED) then
+!              call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
+!           end if
+
 !           if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
 !           if (doTuning) call tune(6,"Calculate bias on tau")
@@ -1362,10 +1372,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
 !           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
            
-
-
-
-
            probDust = chanceDust
            weightDust = 1.
            weightPhoto = 1.
@@ -1665,6 +1671,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   deallocate(sourceSpectrum2)
 
 CONTAINS
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

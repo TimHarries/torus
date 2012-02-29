@@ -66,9 +66,10 @@ type GAMMATABLE
 end type GAMMATABLE
 
 ! If a subroutine/function needs to be used outside this module declare it as public here. 
-public :: solvePops, refineLambdaArray
+public :: solvePops, refineLambdaArray, addRadioContinuumEmissivity
 private :: getCollisionalRates, identifyForbiddenTransition, addForbiddenToEmission, identifyRecombinationTransition, &
-     addRecombinationToEmission, addRadioContinuumEmissivity, addForbiddenEmissionLine, addRecombinationEmissionLine
+     addRecombinationToEmission, addForbiddenEmissionLine, addRecombinationEmissionLine
+!     addRecombinationToEmission, addRadioContinuumEmissivity, addForbiddenEmissionLine, addRecombinationEmissionLine
 
 contains
 

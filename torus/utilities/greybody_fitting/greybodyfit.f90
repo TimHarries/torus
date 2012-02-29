@@ -53,7 +53,7 @@ debug = .false.
 !!write(*,*) "!- Enter thermal emission sed filename: "
 !read(*,*) sedFilename
 !sedFilename="test_inc013.dat"
-sedFilename="isosphere_inc077.dat"
+sedFilename="Med_SED_broad_SI_inc000.dat"
 !sedFilename="2Med_SED_conv_inc000_thermal_direct.dat"
 !sedFilename="2Low_SED_conv_inc000.dat"
 !sedFilename="2Hi_SED_conv_inc000.dat"
@@ -108,7 +108,7 @@ print *, "Solid angle subtended is: ", Omega
 
 lam_ref = 850.*Um
 Nu_ref = c/(850.*um)
-cutoff = 45.*um
+cutoff = 450.*um
 !cutoff = 8.*um
 !cutoff = 450.d0*um
 !cutoff = 0.25*um
@@ -146,7 +146,7 @@ do i = 1, numLines
          grad = (fluxArray(i) - fluxArray(i-1))/(lambdaArray(i) - lambdaArray(i-1))
          flux_ref = fluxArray(i-1) + (grad*((lam_ref) - lambdaArray(i-1)))
 !         upperLimit = lambdaArray(i)
-         upperLimit = 1.d10
+         upperLimit = 850.*um
          print *, "flux_ref", flux_ref
       end if
    end if

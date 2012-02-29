@@ -2139,6 +2139,7 @@ contains
     real, allocatable :: inclinations(:)
     character(len=80) :: outFile 
 
+
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
 
@@ -2237,6 +2238,17 @@ contains
        call getString("lamfilename", lamFilename, cLine, fLine, nLines, &
             "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
+
+
+    call getLogical("freefreesed", freefreeSED, cLine, fLine, nLines, &
+         "Include free-free emission in SED: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    call getLogical("recombinationsed", recombinationSED, cLine, fLine, nLines, &
+         "Include recombination emission in SED: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("forbiddensed", forbiddenSED, cLine, fLine, nLines, &
+         "Include forbidden line emission in SED: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (allocated(inclinations)) then 
        call setSedParameters(outFile,jansky,SIsed,sed,incList=inclinations)
