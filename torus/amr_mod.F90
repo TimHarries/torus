@@ -3337,6 +3337,7 @@ CONTAINS
              r = modulus(centre - sourcePos(iSource))/smallestCellSize
              if ((r < 12.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
                 split = .true.
+                exit
              endif
           enddo
        endif
@@ -3346,6 +3347,7 @@ CONTAINS
              if (inSubcell(thisOctal,subcell, sourcePos(isource)) &
                   .and. (thisOctal%nDepth < maxDepthAMR)) then
                 split = .true.
+                exit
              endif
           enddo
        endif

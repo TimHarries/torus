@@ -1217,6 +1217,7 @@ contains
   end subroutine writeVTKfileSource
 
   subroutine writeVTKfileNbody(nSource, source, vtkFilename)
+    use inputs_mod, only : donBodyOnly
     use source_mod
     use mpi_global_mod
     integer :: nSource
@@ -1254,7 +1255,11 @@ contains
        do i = 1, source(iSource)%surface%nElements
           cVec = source(iSource)%surface%element(i)%position
           call normalize(cVec)
-          cVec = cVec * source(isource)%accretionRadius/1.d10
+          if (donBodyOnly) then
+             cVec = cvec * 0.01d0
+          else
+             cVec = cVec * source(isource)%accretionRadius/1.d10
+          endif
           dphi = source(iSource)%surface%element(i)%dphi
           dtheta = source(iSource)%surface%element(i)%dtheta
           aVec = cVec.cross.zAxis

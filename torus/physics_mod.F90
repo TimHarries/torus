@@ -93,7 +93,7 @@ contains
           if (myrankWorldGlobal == i) then
 #endif
              call readSourceArray(sourceFilename)
-             
+
 #ifdef MPI
           endif
           call torus_mpi_barrier
@@ -102,191 +102,199 @@ contains
        call writeSourceList(GlobalSourceArray, GlobalnSource)
     else
 
-    do iSource = 1, nSource
-   
-       if (stellarSource(isource)) then
+       do iSource = 1, nSource
 
-          source(isource)%stellar = .true.
-          source(isource)%diffuse = .false.
-          
-          source(isource)%limbDark = 0.d0
-          source(iSource)%teff = sourceTeff(iSource)
-          source(iSource)%mass = sourceMass(iSource)
-          source(iSource)%mdot = sourceMdot(iSource)
-          source(iSource)%radius = sourceRadius(iSource)
-          source(iSource)%position = sourcePos(iSource)
-          source(iSource)%velocity = sourceVel(iSource)
-          source(iSource)%accretionRadius = 1.d10*2.5d0*smallestCellSize
-          source(isource)%luminosity = fourPi * stefanBoltz * &
-               (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
-          source(iSource)%prob = sourceProb(iSource)
-          source(iSource)%pointSource = pointSourceArray(iSource)
-          
-          source(isource)%outsideGrid = .false.
-          source(isource)%onEdge      = .false. 
-          source(isource)%onCorner    = .false. 
-          !       distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
-          !       if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
-          !          source(isource)%outsideGrid = .true.
-          !          source(isource)%distance = modulus(source(isource)%position)*1.d10
-          !          source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-          !               (fourPi*source(isource)%distance**2)
-          !       else if ( distToEdge < grid%halfSmallestSubcell) then
-          !          source(iSource)%onEdge = .true.
-          !          source(iSource)%onCorner = .false.
-          !          !Thaw - accomodating corner sources
-          !          if(grid%octreeRoot%twoD) then
-          !             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
-          !             if ( distToEdge < grid%halfSmallestSubcell) then
-          !                source(iSource)%onCorner = .true.
-          !             end if
-          !          else if(grid%octreeRoot%threeD) then
-          !             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
-          !             if ( distToEdge < grid%halfSmallestSubcell) then
-          !                distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
-          !                if ( distToEdge < grid%halfSmallestSubcell) then
-          !                   source(iSource)%onCorner = .true.
-          !                end if
-          !             else
-          !                source(iSource)%onCorner = .false.
-          !             end if
-          !          end if
-          
-          source(iSource)%onCorner = .false.
-          
-          
-          !This currently only captures corners, edges will come later
-          distToEdge = abs(abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%z))
-          !       print *, "distToEdge ", distToEdge
-          !       print *, "smallestSubcell", grid%halfSmallestSubcell
-          !       print *, "abs(source(iSource)%position%z)", abs(source(iSource)%position%z)       
-          !       print *, "grid%octreeRoot%centre%z", grid%octreeRoot%centre%z
-          
+          if (stellarSource(isource)) then
 
-          
 
-          ! Find distance of source from upper or lower z boundary, whichever is smaller.
-          
-          
-          distToedge = min ( abs( source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
-               abs( source(iSource)%position%z - (grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize) ) )
-          
-          
-          if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
-             source(isource)%outsideGrid = .true.
-             source(isource)%distance = modulus(source(isource)%position)*1.d10
-             
-             
-             !source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-             !     (fourPi*source(isource)%distance**2)
-          else if ( distToEdge < grid%halfSmallestSubcell) then          
-             source(iSource)%onEdge = .true.
-             source(iSource)%onCorner = .false.
-             !Thaw - accomodating corner sources
-             
-             if(grid%octreeRoot%twoD) then
-                distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
-                !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
-                
-                if ( grid%octreeRoot%cylindrical ) then 
+             if (doNbodyOnly) then
+                source(iSource)%mass = sourceMass(iSource)
+                source(iSource)%position = sourcePos(iSource)
+                source(iSource)%velocity = sourceVel(iSource)
+             else
+                source(isource)%stellar = .true.
+                source(isource)%diffuse = .false.
+
+                source(isource)%limbDark = 0.d0
+                source(iSource)%teff = sourceTeff(iSource)
+                source(iSource)%mass = sourceMass(iSource)
+                source(iSource)%mdot = sourceMdot(iSource)
+                source(iSource)%radius = sourceRadius(iSource)
+                source(iSource)%position = sourcePos(iSource)
+                source(iSource)%velocity = sourceVel(iSource)
+                source(iSource)%accretionRadius = 1.d10*2.5d0*smallestCellSize
+                source(isource)%luminosity = fourPi * stefanBoltz * &
+                     (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+                source(iSource)%prob = sourceProb(iSource)
+                source(iSource)%pointSource = pointSourceArray(iSource)
+                source(isource)%time = 0.d0
+                source(isource)%outsideGrid = .false.
+                source(isource)%onEdge      = .false. 
+                source(isource)%onCorner    = .false. 
+                !       distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
+                !       if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
+                !          source(isource)%outsideGrid = .true.
+                !          source(isource)%distance = modulus(source(isource)%position)*1.d10
+                !          source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+                !               (fourPi*source(isource)%distance**2)
+                !       else if ( distToEdge < grid%halfSmallestSubcell) then
+                !          source(iSource)%onEdge = .true.
+                !          source(iSource)%onCorner = .false.
+                !          !Thaw - accomodating corner sources
+                !          if(grid%octreeRoot%twoD) then
+                !             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+                !             if ( distToEdge < grid%halfSmallestSubcell) then
+                !                source(iSource)%onCorner = .true.
+                !             end if
+                !          else if(grid%octreeRoot%threeD) then
+                !             distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+                !             if ( distToEdge < grid%halfSmallestSubcell) then
+                !                distToEdge = abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))
+                !                if ( distToEdge < grid%halfSmallestSubcell) then
+                !                   source(iSource)%onCorner = .true.
+                !                end if
+                !             else
+                !                source(iSource)%onCorner = .false.
+                !             end if
+                !          end if
+
+                source(iSource)%onCorner = .false.
+
+
+                !This currently only captures corners, edges will come later
+                distToEdge = abs(abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%z))
+                !       print *, "distToEdge ", distToEdge
+                !       print *, "smallestSubcell", grid%halfSmallestSubcell
+                !       print *, "abs(source(iSource)%position%z)", abs(source(iSource)%position%z)       
+                !       print *, "grid%octreeRoot%centre%z", grid%octreeRoot%centre%z
+
+
+
+
+                ! Find distance of source from upper or lower z boundary, whichever is smaller.
+
+
+                distToedge = min ( abs( source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
+                     abs( source(iSource)%position%z - (grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize) ) )
+
+
+                if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
+                   source(isource)%outsideGrid = .true.
+                   source(isource)%distance = modulus(source(isource)%position)*1.d10
+
+
+                   !source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+                   !     (fourPi*source(isource)%distance**2)
+                else if ( distToEdge < grid%halfSmallestSubcell) then          
+                   source(iSource)%onEdge = .true.
                    source(iSource)%onCorner = .false.
-                else if(grid%octreeRoot%twoD) then
-                   distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
-                end if
-                if ( distToEdge < grid%halfSmallestSubcell) then
-                   source(iSource)%onCorner = .true.
-                end if
-             else if(grid%octreeRoot%threeD) then
-                distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
-                !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
-                if ( distToEdge < grid%halfSmallestSubcell) then
-                   distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%y))
-                   !                distToEdge = abs(abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize)))
-                   if ( distToEdge < grid%halfSmallestSubcell) then
-                      source(iSource)%onCorner = .true.
+                   !Thaw - accomodating corner sources
+
+                   if(grid%octreeRoot%twoD) then
+                      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+                      !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
+
+                      if ( grid%octreeRoot%cylindrical ) then 
+                         source(iSource)%onCorner = .false.
+                      else if(grid%octreeRoot%twoD) then
+                         distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+                      end if
+                      if ( distToEdge < grid%halfSmallestSubcell) then
+                         source(iSource)%onCorner = .true.
+                      end if
+                   else if(grid%octreeRoot%threeD) then
+                      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+                      !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
+                      if ( distToEdge < grid%halfSmallestSubcell) then
+                         distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%y))
+                         !                distToEdge = abs(abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize)))
+                         if ( distToEdge < grid%halfSmallestSubcell) then
+                            source(iSource)%onCorner = .true.
+                         end if
+                      else
+                         source(iSource)%onCorner = .false.
+                      end if
                    end if
-                else
-                   source(iSource)%onCorner = .false.
+
+                   if(source(iSource)%onCorner .and. myRankGlobal == 1) then
+                      write(*,*) "Source on corner!"
+                   else  if(source(iSource)%outsideGrid) then
+                      write(*,*) "Source outside grid!"
+                   end if
+
+                   if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)
+                   if(source(iSource)%onedge)   call writeinfo("Source is on edge",   TRIVIAL)
+
+                endif
+
+                if(source(iSource)%outsideGrid .and. myRankGlobal == 1) then
+                   write(*,*) "Source outside grid!"
                 end if
-             end if
-             
-             if(source(iSource)%onCorner .and. myRankGlobal == 1) then
-                write(*,*) "Source on corner!"
-             else  if(source(iSource)%outsideGrid) then
-                write(*,*) "Source outside grid!"
-             end if
-             
-             if(source(iSource)%onCorner) call writeinfo("Source is on corner", TRIVIAL)
-             if(source(iSource)%onedge)   call writeinfo("Source is on edge",   TRIVIAL)
-             
+
+                select case(inputContFluxFile(isource))
+                case("blackbody")
+                   !          if(biasToLyman) then
+                   !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
+                   !                  1000)
+                   !          else
+                   call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
+                   !          end if
+                case("kurucz")
+                   call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
+                        source(isource)%radius*1.d10)
+                case DEFAULT
+                   call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
+                end select
+
+                call normalizedSpectrum(source(isource)%spectrum)
+                !       lamStart = 10.d0
+                !       lamEnd = 1000.d4
+                !       nlambda = 1000
+                call buildSphere(source(isource)%position, dble(source(isource)%radius), &
+                     source(isource)%surface, 100, source(isource)%teff, &
+                     source(isource)%spectrum)
+                call sumSurface(source(isource)%surface, sumSurfaceluminosity)
+                fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
+                !       if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
+                !          if (myrankGlobal==0) then
+                !             write(*,*) "WARNING: luminosity from effective temperature and that from the SED differ by >1%"
+                !             write(*,*) "Lum from Teff (lSol): ",fac/lSol
+                !             write(*,*) "Lum from SED  (lSol): ",source(1)%luminosity/lSol
+                !             write(*,*) "Implied source of accretion luminosity of: ",(source(1)%luminosity-fac)/lSol
+                !             tmp = 1.d0/(1.d0/(source(1)%radius * 1.e10) - 1.d0/(rInner*1.d10)) ! [cm]
+                !             fac = (source(1)%luminosity-fac) * tmp / (bigG * mCore)
+                !             write(*,*) "Mass accretion rate could be ",fac/mSol/ secstoYears, " solar masses/year"
+                !          endif
+                !       endif
+
+                fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
+                write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac
+                call writeInfo(message, TRIVIAL)
+                write(message,*) "Setting source luminosity to luminosity from spectrum: ",sumSurfaceLuminosity/lsol, " lsol"
+                call writeInfo(message, TRIVIAL)
+                source(iSource)%luminosity = sumSurfaceLuminosity
+             endif
+             else
+
+                source(isource)%stellar = .false.
+                source(isource)%diffuse = .true.
+                select case (diffuseType(iSource))
+
+                case("isrf")
+                   call createSourceISRF(source(isource), grid)
+                case("cmb")
+                   call createSourceCMB(source(isource), grid)
+                case DEFAULT
+                   call writeFatal("Diffuse source type not recognized")
+                end select
           endif
-          
-          if(source(iSource)%outsideGrid .and. myRankGlobal == 1) then
-             write(*,*) "Source outside grid!"
-          end if
-          
-          select case(inputContFluxFile(isource))
-          case("blackbody")
-             !          if(biasToLyman) then
-             !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
-             !                  1000)
-             !          else
-             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
-             !          end if
-          case("kurucz")
-             call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
-                  source(isource)%radius*1.d10)
-          case DEFAULT
-             call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
-          end select
-          
-          call normalizedSpectrum(source(isource)%spectrum)
-          !       lamStart = 10.d0
-          !       lamEnd = 1000.d4
-          !       nlambda = 1000
-          call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-               source(isource)%surface, 100, source(isource)%teff, &
-               source(isource)%spectrum)
-          call sumSurface(source(isource)%surface, sumSurfaceluminosity)
-          fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
-          !       if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
-          !          if (myrankGlobal==0) then
-          !             write(*,*) "WARNING: luminosity from effective temperature and that from the SED differ by >1%"
-          !             write(*,*) "Lum from Teff (lSol): ",fac/lSol
-          !             write(*,*) "Lum from SED  (lSol): ",source(1)%luminosity/lSol
-          !             write(*,*) "Implied source of accretion luminosity of: ",(source(1)%luminosity-fac)/lSol
-          !             tmp = 1.d0/(1.d0/(source(1)%radius * 1.e10) - 1.d0/(rInner*1.d10)) ! [cm]
-          !             fac = (source(1)%luminosity-fac) * tmp / (bigG * mCore)
-          !             write(*,*) "Mass accretion rate could be ",fac/mSol/ secstoYears, " solar masses/year"
-          !          endif
-          !       endif
-          
-          fac = fourPi * stefanBoltz * (source(isource)%radius*1.d10)**2 * (source(isource)%teff)**4
-          write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "Setting source luminosity to luminosity from spectrum: ",sumSurfaceLuminosity/lsol, " lsol"
-          call writeInfo(message, TRIVIAL)
-          source(iSource)%luminosity = sumSurfaceLuminosity
-       else
-
-             source(isource)%stellar = .false.
-             source(isource)%diffuse = .true.
-          select case (diffuseType(iSource))
-
-             case("isrf")
-                call createSourceISRF(source(isource), grid)
-             case("cmb")
-                call createSourceCMB(source(isource), grid)
-             case DEFAULT
-                call writeFatal("Diffuse source type not recognized")
-          end select
+       end do
+       if (.not.donBodyOnly) then
+          if (Writeoutput) call testRandomSource(source, nsource)
+          if (Writeoutput) call testSourceSpectrum(source, nsource)
        endif
 
-    end do
-       if (Writeoutput) call testRandomSource(source, nsource)
-       if (Writeoutput) call testSourceSpectrum(source, nsource)
-       
- endif
+    endif
   end subroutine setupSources
 
   subroutine doPhysics(grid)

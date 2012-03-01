@@ -120,7 +120,8 @@ program torus
 
 
 
-     call  setupamrgrid(grid)
+     if (doSetupAMRgrid) then
+        call  setupamrgrid(grid)
 
 
      !  call checkAMRgrid(grid, .false.)
@@ -130,7 +131,8 @@ program torus
      !  call torus_mpi_barrier
      !  goto 666
 
-     !  call writeVtkFile(grid, "rho.vtk")
+        call writeVtkFile(grid, "rho.vtk")
+     endif
 
      call setupGlobalSources(grid)
 
@@ -147,7 +149,7 @@ program torus
 
 
      call torus_mpi_barrier
-     call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+     if (dosetupAMRgrid )call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
      call freeGrid(grid)
      call freeGlobalSourceArray()
 

@@ -36,6 +36,7 @@ module source_mod
      logical :: diffuse ! isrf, cmb
      type(VECTOR) :: angMomentum
      real(double) :: accretionRadius
+     real(double) :: time
   end type SOURCETYPE
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
@@ -43,12 +44,45 @@ module source_mod
 
   contains
 
+    subroutine writeSourceHistory(rootfilename, source, nSource)
+      use inputs_mod, only : iModel
+      type(SOURCETYPE) :: source(:)
+      character(len=*) :: rootFilename
+      character(len=80) :: filename
+      integer :: nSource
+      integer :: i
+      logical, save :: firstTime = .true.
+      if (writeoutput) then
+         do i = 1, nSource
+            write(filename,'(a,i3.3,a)') trim(rootFilename),i,".dat"
+            write(*,*) "filename ",trim(filename)
+            if (firstTime) then
+               open(22, file=filename, status="unknown", form="formatted")
+               write(22,'(a4,a12,a8,a8,a9,a12,a12,a12,a12,a12,a12,a12)') &
+                    "#  N","Age (yr)","Mass","Radius","Teff","Lum","Mdot","x","y","z"
+            else
+               open(22, file=filename, status="old", form="formatted", position="append")
+            endif
+            write(22,'(i4.4, 1p, e12.3, 0p, f8.2, f8.2, f9.1, 1p, e12.3, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') &
+                 iModel,source(i)%age*secstoYears, &
+                 source(i)%mass/msol, &
+                 source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, source(i)%mdot/msol/secstoyears, &
+                 source(i)%position%x, &
+                 source(i)%position%y,source(i)%position%z
+            close(22)
+         enddo
+         if (firstTime) firstTime = .false.
+      endif
+    end subroutine writeSourceHistory
+
     subroutine writeSourceList(source, nSource)
       type(SOURCETYPE) :: source(:)
       integer :: nSource
       real(double) :: fromSpec
       real(double) :: tot
       integer :: i, j
+
+      
 
       if (writeoutput) &
            write(*,'(a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "N","M","R","L","L(spec)","x","y","z"
@@ -141,6 +175,7 @@ module source_mod
       write(lunit) source%diffuse
       write(lunit) source%angMomentum
       write(lunit) source%accretionRadius
+!      write(lunit) source%time
       call writeSpectrumToDump(source%spectrum,lunit)
       call writeSurface(source%surface, lunit)
     end subroutine writeSource
@@ -166,6 +201,7 @@ module source_mod
       read(lunit) source%diffuse
       read(lunit) source%angMomentum
       read(lunit) source%accretionRadius
+!      read(lunit) source%time
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)
     end subroutine readSource

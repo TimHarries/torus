@@ -702,9 +702,8 @@ contains
 
        tAbs(1:npts) = (1.-albedo(1:npts))*kappa(1:npts)
        tSca(1:npts) = albedo(1:npts)*kappa(1:npts)
-
+       
        tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
-
     case("jenny")
        npts = 1
 30     read(20,*,end=40) tlam(npts), sigmaAbs(npts),sigmaSca(npts)
@@ -727,6 +726,7 @@ contains
        call locate(tlam,npts,lambda(i),j)
        kappaAbs(i) = logint(lambda(i), tlam(j), tlam(j+1), tAbs(j), tAbs(j+1))*1.e10
        kappaSca(i) = logint(lambda(i), tlam(j), tlam(j+1), tSca(j), tSca(j+1))*1.e10
+       if (writeoutput) write(*,*) lambda(i), kappaAbs(i), kappaSca(i)
     enddo
 
     !    write(*,*) "Correcting xsections by dust-to-gas ratio!!!!!!!!"

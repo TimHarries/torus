@@ -1617,7 +1617,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         do i1 = 1, nImageLocal
            name_filter = get_filter_name(filters, i1)
            bandwidth = 0.5*FWHM_filters(filters, i1)  ! 1/2 of FWHM  [A]
-           lambda_eff = lambda_eff_filters(filters, i1) ! Effective wavelength of filter in [A]   
+           if (nlambda == 1) then
+              lambda_eff = grid%lamArray(1)
+           else
+              lambda_eff = lambda_eff_filters(filters, i1) ! Effective wavelength of filter in [A]   
+           endif
 !           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
 !           call writeImage(obsImageSet(i1), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"

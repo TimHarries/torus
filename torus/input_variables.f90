@@ -23,6 +23,7 @@
   logical :: photoionEquilibrium
   logical :: hydrodynamics
   logical :: timeDependentRT
+  logical :: donBodyOnly
 
 !-------------------------------
 ! Type of output to be generated
@@ -39,6 +40,7 @@
 !-----------------------------------
  
   logical :: readGrid, writeGrid  ! Do we read/write the AMR grid from/to a file
+  logical :: doSetupAMRgrid       ! sometimes (rarely) we don't want a grid at all
   logical :: multimodels          ! perform calculation on multiple models
   integer :: nModelStart, nModelEnd ! start and end numbers for multiple models
   integer :: iModel               ! current model number
@@ -247,6 +249,8 @@
 
   logical :: readSources
   character(len=80) :: sourceFilename
+  logical :: sourceHistory
+  character(len=80) :: sourceHistoryFilename
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10), sourceMdot(10)
   logical :: stellarSource(10)

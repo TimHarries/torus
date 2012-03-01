@@ -27,7 +27,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled
+    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -349,6 +349,7 @@ contains
 
           endif
 
+          nCellsInDiffusion = 0
           call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
 
 
@@ -730,6 +731,7 @@ contains
 
           nCellsInDiffusion = 0
           nUndersampled = 0
+          if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
           call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
           percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
 
@@ -793,6 +795,7 @@ contains
 
 
 
+          nCellsInDiffusion = 0
           call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
           !       call unsetOnDirect(grid%octreeRoot)
           write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
@@ -897,7 +900,7 @@ contains
              if (writeoutput) write(*,*) "Global Memory has ",humanReadableMemory(globalMemoryFootprint)
              call findTotalMemory(grid, totMem)
              if (writeoutput) write(*,*) "Full check  has ", humanReadableMemory(totMem)
-             if (writeoutput) write(*,*) "Max memory availables ", humanReadableMemory(maxMemoryAvailable)
+             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
 
 
              nCellsInDiffusion = 0
@@ -935,10 +938,10 @@ contains
 
        if ((grid%geometry == "shakara").and.variableDustSublimation.and.(iIter_grand > 2)) then
           call getSublimationRadius(grid, subRadius)
-          write(message, '(a, i3, a, f7.3,a )') "End of lucy iteration ",iIter_grand,&
+          write(message, '(a, i3, a, f8.1,a )') "End of lucy iteration ",iIter_grand,&
                ": Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
           call writeInfo(message, FORINFO)
-          write(message, '(a, i3, a, f7.3,a )') "End of lucy iteration ",iIter_grand,&
+          write(message, '(a, i3, a, f8.1,a )') "End of lucy iteration ",iIter_grand,&
                ": Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
           call writeInfo(message, FORINFO)
       endif
@@ -976,7 +979,7 @@ contains
 
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     "/))
+            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       "/))
 
        !    !
        !    ! Write grid structure to a tmp file.
@@ -2940,7 +2943,7 @@ subroutine setBiasOnTau(grid, iLambda)
                 if (tau < 5.) then
                    thisOctal%biasCont3D(subcell) = 1.d0
                 else
-                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-10)
+                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-5)
                 endif
 
              endif

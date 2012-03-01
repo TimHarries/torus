@@ -2854,7 +2854,11 @@ contains
                         phiProf(dv, thisOctal, subcell, &
                         thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
                    
-                   fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
+                   if (nLower > 0.d0) then
+                      fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
+                   else
+                      fac = 1.d30
+                   endif
                    jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
                    
                 else
@@ -3778,6 +3782,7 @@ contains
                 cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
                      + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
                      -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
+!                write(*,*) "intensity ",cube%intensity(ix,iy,iv-iv1+1)
                 totArea = totArea + Area(iray)
              enddo
 !             write(*,*) "Pixel done with ",nRay, " rays. check on area ",totArea/(dx**2)

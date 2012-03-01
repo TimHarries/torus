@@ -1832,7 +1832,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceu(thisoctal, dt)
     use mpi
-    use inputs_mod, only : radiationPressure
+    use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1896,7 +1896,7 @@ contains
                 force = force + (fVec.dot.VECTOR(1.d0,0.d0,0.d0))
              enddo
 
-             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + force * dt ! gravity due to stars
+             if (nBodyPhysics) thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + force * dt ! gravity due to stars
 !             write(*,*) "impulse ",force*dt, - (dt/2.d0) * & !gravity
 !                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
 !                  thisoctal%phi_i_minus_1(subcell)) / dx
@@ -1940,7 +1940,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient -y direction 
   recursive subroutine pressureforcev(thisoctal, dt)
     use mpi
-    use inputs_mod, only : radiationPressure
+    use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1996,7 +1996,7 @@ contains
                 fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
                 force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
              enddo
-             thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + force * dt ! gravity due to stars
+             if (nBodyPhysics) thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + force * dt ! gravity due to stars
                     
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "rhov ",thisoctal%rhov(subcell)
@@ -2038,6 +2038,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient -z direction
   recursive subroutine pressureforcew(thisoctal, dt)
     use mpi
+    use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -2096,7 +2097,7 @@ contains
                 fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
                 force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
              enddo
-             thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + force * dt ! gravity due to stars
+             if (nBodyPhysics) thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + force * dt ! gravity due to stars
 
 !Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then
@@ -3123,8 +3124,9 @@ end subroutine sumFluxes
        call transferTempStorage(grid%octreeRoot, justGrav = .true.)
     endif
 
-    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) &
-         call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
+       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+    endif
 
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
        call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)

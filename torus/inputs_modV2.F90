@@ -121,6 +121,9 @@ contains
     call getLogical("debug", debug, cLine, fLine, nLines, &
          "Output debug information: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("setupamr", doSetupAMRgrid, cLine, fLine, nLines, &
+         "Set up or readin and AMR grid: ","(a,1l,1x,a)", .true., ok, .false.)
+
 
     call getLogical("multimodels", multimodels, cLine, fLine, nLines, &
          "Perform calculation on multiple models: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -250,18 +253,6 @@ contains
     if (photoionPhysics) call readPhotoionPhysicsParameters(cLine, fLine, nLines)
 #endif
 
-    call getLogical("readsources", readsources, cLine, fLine, nLines, &
-         "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    if (.not. readsources) then
-       if (checkPresent("nsource", cLine, nLines)) then
-          call readSourceParameters(cLine, fLine, nLines)
-       endif
-    else
-       call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
-                  "Source filename: ","(a,a,1x,a)","none", ok, .true.)
-    endif
-
 ! the type of calculation
 
     call writeBanner("Type of model calculation","*",TRIVIAL)
@@ -277,6 +268,9 @@ contains
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("nbody", donBodyOnly, cLine, fLine, nLines, &
+         "Perform an n-body (bigG=1) calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -296,6 +290,19 @@ contains
     
     call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
             "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)
+
+    call getLogical("readsources", readsources, cLine, fLine, nLines, &
+         "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (.not. readsources) then
+       if (checkPresent("nsource", cLine, nLines)) then
+          call readSourceParameters(cLine, fLine, nLines)
+       endif
+    else
+       call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
+                  "Source filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
+
 
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
@@ -348,8 +355,17 @@ contains
     call getLogical("image", calcImage, cLine, fLine, nLines, &
          "Calculate an image: ","(a,1l,1x,a)", .false., ok, .false.)
 
+
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("sourcehistory", sourceHistory, cLine, fLine, nLines, &
+         "Write out the source history: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (sourceHistory) then
+       call getString("historyfilename", sourceHistoryFilename, cLine, fLine, nLines, &
+            "Source history filename: ","(a,a,1x,a)",  " ", ok, .true.)
+    endif
 
     call getLogical("screened", screened, cLine, fLine, nLines, &
          "Screen stellar photons: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1135,6 +1151,13 @@ contains
        call getLogical("writedust", writeDustToFile, cLine, fLine, nLines, &
          "Write dust opacities and phase matrices to file: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("dustfile", dustfile, cLine, fline, nLines, &
+            "Get dust properties from file: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (dustfile) then
+          call getString("kappafile", dustFilename(1), cline, fLine, nLines, &
+               "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
+       endif
+
        grainFracTotal = 0.
        do i = 1, nDustType
           write(grainTypeLabel, '(a,i1.1)') "graintype",i
@@ -1177,7 +1200,6 @@ contains
                "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
           if (writeoutput) write(*,*)
        enddo
-
           if (.not. readDustFromFile) &
        call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
          "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1266,52 +1288,67 @@ contains
        call getLogical(keyword, stellarSource(i), cLine, fLine, nLines, &
             "Stellar source: ","(a,xxxx,a)",.true., ok, .false.)
 
-       if (stellarSource(i)) then
-          write(keyword, '(a,i1)') "radius",i
-          call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
-               "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
-          
-          write(keyword, '(a,i1)') "teff",i
-          call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
-               "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
-          
-          write(keyword, '(a,i1)') "mass",i
-          call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
-            "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
-
-          write(keyword, '(a,i1)') "mdot",i
-          call getDouble(keyword, sourceMdot(i), msol/(365.25d0 * 24.d0 * 3600.d0), cLine, fLine, nLines, &
-            "Source mass-loss rate (solar masses/year) : ","(a,f9.6,a)",0.d0, ok, .false.)
-
-          write(keyword, '(a,i1)') "contflux",i
-          call getString(keyword, inputcontFluxFile(i), cLine, fLine, nLines, &
-               "Continuum flux file: ","(a,a,a)","none", ok, .true.)
-          
+       if (doNbodyOnly) then
           write(keyword, '(a,i1)') "sourcepos",i
           call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
-               "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+               "Source position: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
           write(keyword, '(a,i1)') "velocity",i
-          call getVector(keyword, sourceVel(i), 1.d5, cLine, fLine, nLines, &
-               "Source velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+          call getVector(keyword, sourceVel(i), 1.d0, cLine, fLine, nLines, &
+               "Source velocity: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+          write(keyword, '(a,i1)') "mass",i
+          call getDouble(keyword, sourceMass(i), 1.d0, cLine, fLine, nLines, &
+               "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
 
-          write(keyword, '(a,i1)') "probsource",i
-          call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
-               "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
 
-          write(keyword, '(a,i1)') "pointsource",i
-          call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
-               "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
        else
-          write(keyword, '(a,i1)') "diffusetype",i
-          call getString(keyword, diffuseType(i), cLine, fLine, nLines, &
-            "Type of diffuse radiation field: ","(a,a,1x,a)","none", ok, .true.)
-       endif
 
+          if (stellarSource(i)) then
+             write(keyword, '(a,i1)') "radius",i
+             call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
+                  "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
+
+             write(keyword, '(a,i1)') "teff",i
+             call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
+                  "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
+
+             write(keyword, '(a,i1)') "mass",i
+             call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
+                  "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
+
+             write(keyword, '(a,i1)') "mdot",i
+             call getDouble(keyword, sourceMdot(i), msol/(365.25d0 * 24.d0 * 3600.d0), cLine, fLine, nLines, &
+                  "Source mass-loss rate (solar masses/year) : ","(a,f9.6,a)",0.d0, ok, .false.)
+
+             write(keyword, '(a,i1)') "contflux",i
+             call getString(keyword, inputcontFluxFile(i), cLine, fLine, nLines, &
+                  "Continuum flux file: ","(a,a,a)","none", ok, .true.)
+
+             write(keyword, '(a,i1)') "sourcepos",i
+             call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
+                  "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+             write(keyword, '(a,i1)') "velocity",i
+             call getVector(keyword, sourceVel(i), 1.d5, cLine, fLine, nLines, &
+                  "Source velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+             write(keyword, '(a,i1)') "probsource",i
+             call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
+                  "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
+
+             write(keyword, '(a,i1)') "pointsource",i
+             call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
+                  "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
+          else
+             write(keyword, '(a,i1)') "diffusetype",i
+             call getString(keyword, diffuseType(i), cLine, fLine, nLines, &
+                  "Type of diffuse radiation field: ","(a,a,1x,a)","none", ok, .true.)
+          endif
+       endif
     enddo
 
     call getDouble("biasphidir", biasPhiDirection, degtorad, cLine, fLine, nLines, &
-            "Azimuthal direction of photon bias: ","(a,f5.0,a)",-1.d0, ok, .false.)
+         "Azimuthal direction of photon bias: ","(a,f5.0,a)",-1.d0, ok, .false.)
 
     if (biasPhiDirection > 0.d0) then
 

@@ -11,9 +11,9 @@ contains
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
 #endif
-    use source_mod, only : globalNSource, globalSourceArray
+    use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry
-    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom
+    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
@@ -43,7 +43,7 @@ contains
     use blob_mod, only : blobtype
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
-    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename
+    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -92,11 +92,13 @@ contains
          (.not.calcSpectrum).and. &
          (.not.calcDataCube).and. &
          (.not.calcPhotometry).and. &
-         (.not.calcBenchmark) ) then
+         (.not.calcBenchmark) .and. &
+         (.not. sourceHistory)) then
        goto 666
     endif
 
     nimage = getnImage()
+
 
     if (calcBenchmark) then
        select case (grid%geometry)
@@ -332,6 +334,10 @@ contains
 
     endif
 #endif
+    if (sourceHistory) then
+       call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource)
+    endif
+
 
 666 continue
   end subroutine doOutputs

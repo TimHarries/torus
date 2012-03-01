@@ -559,7 +559,8 @@ contains
 
        if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
 
-       call checkSetsAreTheSame(grid%octreeRoot)
+
+       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
 
 
           if (myRankGlobal /= 0) then
@@ -671,6 +672,7 @@ contains
 
           if (writeoutput) then
              write(mpiFilename,'(a,i4.4,a)') "source",grid%idump,".dat"
+             globalSourceArray(:)%time = grid%currentTime
              call writeSourceArray(mpifilename)
           endif
 
@@ -3087,6 +3089,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%ncrossings(subcell) > 0) &
           thisOctal%chiline(subcell) = thisOctal%chiline(subcell) / dble(thisOctal%nCrossings(subcell))
        end if
     end do

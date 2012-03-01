@@ -91,9 +91,10 @@ contains
     use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar
     type(VECTOR), intent(in) :: point
-    type(VECTOR) :: rvec, vp, magneticAxis, rVecDash
+    type(VECTOR) :: rvec, vp, magneticAxis, rVecDash, vSolid
     real(double) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
     real(double) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
+    real(double) :: velMagAtCorotation
 
 
     rVec = point*1.d10
@@ -138,7 +139,15 @@ contains
     vp = rotateZ(vp, -phiDash)
 
     vp = rotateY(vp, beta)
-    velocityMahdavi = vp + ttauriKeplerianVelocity(point)
+
+    velMagAtCorotation = sqrt(bigG*ttauriMstar/ttauriRouter)/cSpeed
+    rVec = VECTOR(point%x*1.d10,point%y*1.d10,0.d0)
+    vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
+    call normalize(vSolid)
+    vSolid = (modulus(rVec)/velMagAtCorotation) * vSolid 
+    
+
+    velocityMahdavi = vp + vSolid
 
 
 666 continue
@@ -163,7 +172,10 @@ contains
     rVec = VECTOR(point%x, point%y, 0.d0)
     vVec = rVec .cross. zAxis
     call normalize(vVec)
-    v = sqrt(bigG*ttauriMstar/(modulus(rVec)*1.d10))/cSpeed
+    v = 0.d0
+    if (modulus(rVec) /= 0.d0) then
+       v = sqrt(bigG*ttauriMstar/(modulus(rVec)*1.d10))/cSpeed
+    endif
     TTauriKeplerianVelocity = v * vVec
   end function TTauriKeplerianVelocity
 

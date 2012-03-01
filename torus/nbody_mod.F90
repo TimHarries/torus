@@ -13,6 +13,7 @@ contains
 
 
   subroutine calculateGasSourceInteraction(source, nSource, grid, eps)
+    use inputs_mod, only : doNbodyOnly
 #ifdef MPI
     use mpi
 #endif
@@ -32,6 +33,7 @@ contains
        source(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
     enddo
 
+    if (.not. donBodyOnly) then
 !    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
     if (grid%splitOverMpi) call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
@@ -58,6 +60,7 @@ contains
        deallocate(temp, temp2)
     endif
 #endif
+ endif
 !    if (writeoutput) then
 !       write(*,*) "forces ",source(1)%force
 !    endif
@@ -75,12 +78,13 @@ contains
   subroutine donBodyOnly(tEnd, dt, grid)
     use vtk_mod, only : writevtkfilenbody
     use source_mod, only : globalnSource, globalSourceArray
+    use surface_mod, only : emptySurface, buildSpherenBody
     character(len=80)  :: plotFile
     type(GRIDTYPE) :: grid
     real(double) :: dt, currentTime, tEnd
     real(double) :: totalEnergy, ePot, eKin
     real(double), allocatable :: tmp(:)
-    integer :: it,i 
+    integer :: it,i,j
 
     currentTime = 0.d0
     it = 0
@@ -90,7 +94,15 @@ contains
     if (writeoutput) write(44,'(a)') "Step      Time (s)      p.e. (J)        k.e. (J)      E_total (J)"
     if (writeoutput) open(45, file="position.dat", form="formatted", status="unknown")
     if (Writeoutput) write(45,'(a)') "Step      Time (s)     position x y z..." 
+       do j = 1, globalnSource
+          call emptySurface(globalsourceArray(j)%surface)
+          call buildSphereNbody(globalsourceArray(j)%position, 0.01d0, &
+               globalsourceArray(j)%surface, 20)
+       enddo
+
     do while (currentTime  < tEnd)
+
+
        write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
        call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
        call sumEnergy(globalsourcearray, globalnSource, totalenergy, ePot, eKin, grid)
@@ -101,7 +113,7 @@ contains
           tmp(i*3-1) = globalSourceArray(i)%position%y
           tmp(i*3) = globalSourceArray(i)%position%z
        enddo
-       if (writeoutput) write(45,'(i6,1p,20e15.5,0p)') it, currentTime, tmp(1:globalnsource*3)
+       if (writeoutput) write(45,'(i6,1p,20e15.5,0p)') it, currentTime, globalSourceArray(1:globalnSource)%position
        deallocate(tmp)
        call  nBodyStep(globalsourceArray, globalnSource, dt, grid)
        currentTime = currentTime + dt
@@ -225,7 +237,7 @@ contains
   end subroutine calculateEps
 
   subroutine nBodyStep(source, nSource, dt, grid)
-    use inputs_mod, only : inputEps
+    use inputs_mod, only : inputEps, donBodyOnly
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(sourcetype) :: source(:)
@@ -250,16 +262,25 @@ contains
 
     do i = 1,nSource
        ia = (i-1)*6 + 1
-       ystart(ia+0) = returnCodeUnitLength(source(i)%position%x*1.d10)
-       ystart(ia+1) = returnCodeUnitSpeed(source(i)%velocity%x)
-
-       ystart(ia+2) = returnCodeUnitLength(source(i)%position%y*1.d10)
-       ystart(ia+3) = returnCodeUnitSpeed(source(i)%velocity%y)
-
-       ystart(ia+4) = returnCodeUnitLength(source(i)%position%z*1.d10)
-       ystart(ia+5) = returnCodeUnitSpeed(source(i)%velocity%z)
-
-
+       if (.not.donBodyOnly) then
+          ystart(ia+0) = returnCodeUnitLength(source(i)%position%x*1.d10)
+          ystart(ia+1) = returnCodeUnitSpeed(source(i)%velocity%x)
+          
+          ystart(ia+2) = returnCodeUnitLength(source(i)%position%y*1.d10)
+          ystart(ia+3) = returnCodeUnitSpeed(source(i)%velocity%y)
+          
+          ystart(ia+4) = returnCodeUnitLength(source(i)%position%z*1.d10)
+          ystart(ia+5) = returnCodeUnitSpeed(source(i)%velocity%z)
+       else
+          ystart(ia+0) = returnCodeUnitLength(source(i)%position%x)
+          ystart(ia+1) = returnCodeUnitSpeed(source(i)%velocity%x)
+          
+          ystart(ia+2) = returnCodeUnitLength(source(i)%position%y)
+          ystart(ia+3) = returnCodeUnitSpeed(source(i)%velocity%y)
+          
+          ystart(ia+4) = returnCodeUnitLength(source(i)%position%z)
+          ystart(ia+5) = returnCodeUnitSpeed(source(i)%velocity%z)
+       endif
     enddo
 
     thisTime = 0.d0
@@ -282,15 +303,25 @@ contains
        thisTime = thisTime + thisDt
        do i = 1, nSource
           ia = (i-1)*6 + 1
-          source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))/1.d10
-          source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
+          if (.not.donBodyOnly) then
+             source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))/1.d10
+             source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
           
-          source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))/1.d10
-          source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+             source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))/1.d10
+             source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+             
+             source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
+             source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
+          else
+             source(i)%position%x = returnPhysicalUnitLength(ystart(ia+0))
+             source(i)%velocity%x = returnPhysicalUnitSpeed(ystart(ia+1))
           
-          source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))/1.d10
-          source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
-          
+             source(i)%position%y = returnPhysicalUnitLength(ystart(ia+2))
+             source(i)%velocity%y = returnPhysicalUnitSpeed(ystart(ia+3))
+             
+             source(i)%position%z = returnPhysicalUnitLength(ystart(ia+4))
+             source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
+          endif
        enddo
     enddo
     deallocate(yStart,dydx)
@@ -466,6 +497,7 @@ contains
 
 
   subroutine sourceSourceForces(source, nSource, eps)
+    use inputs_mod, only : donBodyOnly
     type(SOURCETYPE) :: source(:)
     real(double) :: eps, r
     integer :: nSource
@@ -479,7 +511,11 @@ contains
              r = modulus(rVec)
              if (r /= 0.d0) then
                 rHat = rVec/r
-                source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / ( 1.d20*r**2 + eps**2)) * rHat
+                if (donBodyOnly) then
+                   source(i)%force = source(i)%force + (source(i)%mass*source(j)%mass / (r**2 + eps**2)) * rHat
+                else
+                   source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / ( 1.d20*r**2 + eps**2)) * rHat
+                endif
 !                if ((r/eps < 10.0).and.(writeoutput)) write(*,*) "Gravity softening becoming important"
              endif
           endif
@@ -488,6 +524,7 @@ contains
   end subroutine sourceSourceForces
 
   subroutine sumEnergy(source, nSource, totalenergy, ePot, eKin, grid)
+    use inputs_mod, only : doNbodyOnly
 #ifdef MPI
     use mpi
     integer :: ierr
@@ -507,8 +544,13 @@ contains
        do j = 1, nSource
 
           if (i /= j) then
-             epot = epot - 0.5d0 * bigG*source(i)%mass*source(j)%mass / &
-                  (modulus(source(i)%position-source(j)%position)*1.d10)
+             if (doNbodyOnly) then
+                epot = epot - 0.5d0 * source(i)%mass*source(j)%mass / &
+                     (modulus(source(i)%position-source(j)%position))
+             else
+                epot = epot - 0.5d0 * bigG*source(i)%mass*source(j)%mass / &
+                     (modulus(source(i)%position-source(j)%position)*1.d10)
+             endif
           endif
        enddo
        ekin = ekin + 0.5d0 * source(i)%mass * modulus(source(i)%velocity)**2
@@ -680,6 +722,7 @@ contains
   end subroutine mmid
 
   subroutine derivs(x, y, dydx, grid, graveps)
+    use inputs_mod, only : doNBodyOnly
     integer, parameter :: nmax = 10000
     type(GRIDTYPE) :: grid
     real(double) :: x, y(nmax), dydx(nmax), test, graveps
@@ -699,9 +742,17 @@ contains
     do i = 1, globalNSource
        testsource(i)%mass = globalSourceArray(i)%mass
        ia = 6*(i-1)+1
-       testSource(i)%position = (VECTOR(returnPhysicalUnitLength(y(ia)), &
-            returnPhysicalUnitLength(y(ia+2)), &
-            returnPhysicalUnitLength(y(ia+4))))/1.d10
+
+       if (.not.doNbodyOnly) then
+          testSource(i)%position = (VECTOR(returnPhysicalUnitLength(y(ia)), &
+               returnPhysicalUnitLength(y(ia+2)), &
+               returnPhysicalUnitLength(y(ia+4))))/1.d10
+       else
+          testSource(i)%position = (VECTOR(returnPhysicalUnitLength(y(ia)), &
+               returnPhysicalUnitLength(y(ia+2)), &
+               returnPhysicalUnitLength(y(ia+4))))
+       endif
+
        testSource(i)%force = VECTOR(0.d0, 0.d0, 0.d0)
     enddo
 
