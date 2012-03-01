@@ -62,7 +62,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use fillGridTio_mod
   use fillGridRayleigh_mod
   use fillGridThomson_mod
-  use photoion_utils_mod, only :  addRadioContinuumEmissivity
+  use photoion_utils_mod, only :  addRadioContinuumEmissivityMono
   implicit none
 
 ! Arguments
@@ -1346,7 +1346,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            if(freefreeSED) then
-              call  addRadioContinuumEmissivity(grid%octreeRoot)
+              call  addRadioContinuumEmissivityMono(grid%octreeRoot, grid%lamArray(ilambdaPhoton))
            end if           
 !           if(forbiddenSED .and. iOuterLoop/= 1) then
 !              call identifyForbiddenTransitionsInRange(grid, grid%lamArray(iLambdaPhoton-1) &

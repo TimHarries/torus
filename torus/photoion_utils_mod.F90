@@ -66,9 +66,9 @@ type GAMMATABLE
 end type GAMMATABLE
 
 ! If a subroutine/function needs to be used outside this module declare it as public here. 
-public :: solvePops, refineLambdaArray, addRadioContinuumEmissivity, identifyForbiddenTransitionsInRange
+public :: solvePops, refineLambdaArray, addRadioContinuumEmissivityMono, identifyForbiddenTransitionsInRange
 private :: getCollisionalRates, identifyForbiddenTransition, addForbiddenToEmission, identifyRecombinationTransition, &
-     addRecombinationToEmission, addForbiddenEmissionLine, addRecombinationEmissionLine
+     addRecombinationToEmission, addForbiddenEmissionLine, addRecombinationEmissionLine, addRadioContinuumEmissivity
 !     addRecombinationToEmission, addRadioContinuumEmissivity, addForbiddenEmissionLine, addRecombinationEmissionLine
 
 contains
@@ -787,6 +787,43 @@ end subroutine addRecombinationEmissionLine
     end do
 
   end subroutine addRadioContinuumEmissivity
+
+  recursive subroutine addRadioContinuumEmissivityMono(thisOctal, lambda)
+
+    use stateq_mod, only : alpkk
+    type(octal), pointer  :: thisOctal
+    type(octal), pointer  :: child 
+    integer               :: subcell
+    integer               :: i
+    real(double) :: eta, freq
+    real :: lambda
+    
+    do subcell = 1, thisOctal%maxChildren, 1
+
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call addRadioContinuumEmissivityMono(child, lambda)
+                exit
+             end if
+          end do            
+       else
+          freq = cspeed / (lambda*1.d10)
+          eta =  thisOctal%Ne(subcell)**2 * &
+               alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
+               exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
+          
+          eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+             
+          thisOctal%etaCont(subcell) = eta * 1.d10
+          thisOctal%biasCont3d(subcell) = 1.d0
+       end if
+
+    end do
+
+  end subroutine addRadioContinuumEmissivityMono
 
 ! ??07 Imaging
 subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
