@@ -780,7 +780,7 @@ end subroutine addRecombinationEmissionLine
           
           eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
              
-          thisOctal%etaCont(subcell) = eta * 1.d10
+          thisOctal%etaCont(subcell) = eta !* 1.d10
           thisOctal%biasCont3d(subcell) = 1.d0
        end if
 
@@ -811,7 +811,7 @@ end subroutine addRecombinationEmissionLine
              end if
           end do            
        else
-          freq = cspeed / (lambda*1.d-10)
+          freq = cspeed / (lambda*angstromToCm)
           eta =  thisOctal%Ne(subcell)**2 * &
                alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
                exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
@@ -819,9 +819,9 @@ end subroutine addRecombinationEmissionLine
           eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
           
           if(stack) then
-             thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + (eta * 1.d10)
+             thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + (eta)!*1.d10)
           else
-             thisOctal%etaCont(subcell) = eta * 1.d10
+             thisOctal%etaCont(subcell) = eta! * 1.d10
           end if
           thisOctal%biasCont3d(subcell) = 1.d0
        end if

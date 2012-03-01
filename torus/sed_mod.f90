@@ -279,7 +279,7 @@ contains
     else if (SedInSiUnits) then
        write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
     else
-       write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Ang)'
+       write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Hz)'
     end if
 
 33  format(6(1x, 1PE14.5))
