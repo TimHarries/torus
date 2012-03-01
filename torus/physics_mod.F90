@@ -174,7 +174,8 @@ contains
                 ! Find distance of source from upper or lower z boundary, whichever is smaller.
 
 
-                distToedge = min ( abs( source(iSource)%position%z - (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
+                distToedge = min ( abs( source(iSource)%position%z - &
+                     (grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize) ), &
                      abs( source(iSource)%position%z - (grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize) ) )
 
 
@@ -191,22 +192,26 @@ contains
                    !Thaw - accomodating corner sources
 
                    if(grid%octreeRoot%twoD) then
-                      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+                      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)) &
+                           -abs(source(iSource)%position%x))
                       !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
 
                       if ( grid%octreeRoot%cylindrical ) then 
                          source(iSource)%onCorner = .false.
                       else if(grid%octreeRoot%twoD) then
-                         distToEdge = abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
+                         distToEdge = abs(source(iSource)%position%x) &
+                              - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))
                       end if
                       if ( distToEdge < grid%halfSmallestSubcell) then
                          source(iSource)%onCorner = .true.
                       end if
                    else if(grid%octreeRoot%threeD) then
-                      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%x))
+                      distToEdge = abs(abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)) &
+                           -abs(source(iSource)%position%x))
                       !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
                       if ( distToEdge < grid%halfSmallestSubcell) then
-                         distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%y))
+                         distToEdge = abs(abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize)) &
+                              -abs(source(iSource)%position%y))
                          !                distToEdge = abs(abs(source(iSource)%position%y) - abs((grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize)))
                          if ( distToEdge < grid%halfSmallestSubcell) then
                             source(iSource)%onCorner = .true.

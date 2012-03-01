@@ -1156,54 +1156,58 @@ contains
        if (dustfile) then
           call getString("kappafile", dustFilename(1), cline, fLine, nLines, &
                "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
-       endif
-
-       grainFracTotal = 0.
-       do i = 1, nDustType
-          write(grainTypeLabel, '(a,i1.1)') "graintype",i
-          write(grainFracLabel, '(a,i1.1)') "grainfrac",i
-          write(aMinLabel, '(a,i1.1)') "amin",i
-          write(aMaxLabel, '(a,i1.1)') "amax",i
-          write(qDistLabel, '(a,i1.1)') "qdist",i
-          write(pDistLabel, '(a,i1.1)') "pdist",i
-          write(a0Label, '(a,i1.1)') "a0",i
+          nDustType = 1
+          grainfrac = 1.
           
+
+       else
+
+          grainFracTotal = 0.
+          do i = 1, nDustType
+             write(grainTypeLabel, '(a,i1.1)') "graintype",i
+             write(grainFracLabel, '(a,i1.1)') "grainfrac",i
+             write(aMinLabel, '(a,i1.1)') "amin",i
+             write(aMaxLabel, '(a,i1.1)') "amax",i
+             write(qDistLabel, '(a,i1.1)') "qdist",i
+             write(pDistLabel, '(a,i1.1)') "pdist",i
+             write(a0Label, '(a,i1.1)') "a0",i
+             
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
-          !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
-          !       if (writeoutput) write(*,*)
-          call getString(grainTypeLabel, grainType(i), cLine, fLine, nLines, &
-               "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+             !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
+             !       if (writeoutput) write(*,*)
+             call getString(grainTypeLabel, grainType(i), cLine, fLine, nLines, &
+                  "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
-          call getReal(grainFracLabel, grainFrac(i), 1., cLine, fLine, nLines, &
-               "Grain fractional abundance: ","(a,f8.5,1x,a)",1. , ok, .false.)
-          grainFracTotal = grainFracTotal + grainFrac(i)
-
-          if (.not. readDustFromFile) &
-          call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
-               "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
-
-          if (.not. readDustFromFile) &
-          call getReal(amaxLabel, aMax(i), 1., cLine, fLine, nLines, &
-               "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
-
-          if (.not. readDustFromFile) &
-          call getReal(qDistLabel, qdist(i), 1., cLine, fLine, nLines, &
-               "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
-
-          if (.not. readDustFromFile) &
-          call getReal(a0Label, a0(i), 1., cLine, fLine, nLines, &
-               "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
-
-
-          if (.not. readDustFromFile) &
+             call getReal(grainFracLabel, grainFrac(i), 1., cLine, fLine, nLines, &
+                  "Grain fractional abundance: ","(a,f8.5,1x,a)",1. , ok, .false.)
+             grainFracTotal = grainFracTotal + grainFrac(i)
+             
+             if (.not. readDustFromFile) &
+                  call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
+                  "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
+             
+             if (.not. readDustFromFile) &
+                  call getReal(amaxLabel, aMax(i), 1., cLine, fLine, nLines, &
+                  "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
+             
+             if (.not. readDustFromFile) &
+                  call getReal(qDistLabel, qdist(i), 1., cLine, fLine, nLines, &
+                  "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
+             
+             if (.not. readDustFromFile) &
+                  call getReal(a0Label, a0(i), 1., cLine, fLine, nLines, &
+                  "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
+             
+             
+             if (.not. readDustFromFile) &
           call getReal(pdistLabel, pdist(i), 1., cLine, fLine, nLines, &
-               "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
-          if (writeoutput) write(*,*)
-       enddo
+          "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
+             if (writeoutput) write(*,*)
+          enddo
           if (.not. readDustFromFile) &
-       call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
-         "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
-
+               call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
+               "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+       endif
   end subroutine readDustPhysicsParameters
 
   subroutine readAtomicPhysicsParameters(cLine, fLine, nLines)
