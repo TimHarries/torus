@@ -788,7 +788,7 @@ end subroutine addRecombinationEmissionLine
 
   end subroutine addRadioContinuumEmissivity
 
-  recursive subroutine addRadioContinuumEmissivityMono(thisOctal, lambda)
+  recursive subroutine addRadioContinuumEmissivityMono(thisOctal, lambda, stack)
 
     use stateq_mod, only : alpkk
     type(octal), pointer  :: thisOctal
@@ -797,6 +797,7 @@ end subroutine addRecombinationEmissionLine
     integer               :: i
     real(double) :: eta, freq
     real :: lambda
+    logical, intent(in) :: stack
     
     do subcell = 1, thisOctal%maxChildren, 1
 
@@ -805,19 +806,23 @@ end subroutine addRecombinationEmissionLine
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call addRadioContinuumEmissivityMono(child, lambda)
+                call addRadioContinuumEmissivityMono(child, lambda, stack)
                 exit
              end if
           end do            
        else
-          freq = cspeed / (lambda*1.d10)
+          freq = cspeed / (lambda*1.d-10)
           eta =  thisOctal%Ne(subcell)**2 * &
                alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
                exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
           
           eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-             
-          thisOctal%etaCont(subcell) = eta * 1.d10
+          
+          if(stack) then
+             thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + (eta * 1.d10)
+          else
+             thisOctal%etaCont(subcell) = eta * 1.d10
+          end if
           thisOctal%biasCont3d(subcell) = 1.d0
        end if
 

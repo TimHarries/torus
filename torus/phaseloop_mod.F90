@@ -1346,7 +1346,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            if(freefreeSED) then
-              call  addRadioContinuumEmissivityMono(grid%octreeRoot, grid%lamArray(ilambdaPhoton))
+              call  addRadioContinuumEmissivityMono(grid%octreeRoot, grid%lamArray(ilambdaPhoton), .true.)
            end if           
 !           if(forbiddenSED .and. iOuterLoop/= 1) then
 !              call identifyForbiddenTransitionsInRange(grid, grid%lamArray(iLambdaPhoton-1) &
