@@ -1821,14 +1821,16 @@ end subroutine radiationHydro
                                   !Subsequent progress is now a diffuse photon
                                   sourcePhoton = .false.
                                else ! non-ionizing photon must be absorbed by dust
-                                  call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                                  call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, &
+                                       subcell, grid, nlambda, lamArray)
                                endif
                                if (firsttime.and.(myrankWorldglobal==1)) then
                                   firsttime = .false.
                                   open(67,file="pdf.dat",status="unknown",form="formatted")
-				  write(67,*) "% ",thisOctal%temperature(subcell)
+                                  write(67,*) "% ",thisOctal%temperature(subcell)
                                   do i = 1, nfreq
-                                     write(67,*) (cspeed/freq(i))*1.e8, spectrum(i),bnu(freq(i),dble(thisOctal%temperature(subcell)))
+                                     write(67,*) (cspeed/freq(i))*1.e8, spectrum(i), &
+                                          bnu(freq(i),dble(thisOctal%temperature(subcell)))
                                   enddo
                                   close(67)
 !                                  open(68,file="freq.dat",status="unknown",form="formatted")
