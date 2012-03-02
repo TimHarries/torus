@@ -373,7 +373,7 @@ contains
        close(20)
 
     case DEFAULT
-       if (writeoutput) write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
+       write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
        stop
     end select
 
@@ -465,9 +465,9 @@ contains
     ! quick test for zero total abundance.
     total_abundance = SUM(abundance)
     if ( total_abundance <= 0.0 ) then
-       if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
-       if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-       if (writeoutput) write(*,*) "  ==> Exiting the program ... "
+       write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
+       write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+       write(*,*) "  ==> Exiting the program ... "
        stop 
     end if
 
@@ -1342,7 +1342,7 @@ contains
           miePhase = fillIsotropic()
           call writeInfo("Completed.",TRIVIAL)
           goto 666
-       endif
+       else
 
        if (readMiePhase) then
           open(144, file='miephasefile', status="old", form="unformatted")
@@ -1473,7 +1473,7 @@ contains
           deallocate(mReal)
           deallocate(mImg)
        endif
-
+    endif
        if (writeMiePhase) then
           open(144, file='miephasefile', status="replace", form="unformatted")
           write(unit=144) miePhase

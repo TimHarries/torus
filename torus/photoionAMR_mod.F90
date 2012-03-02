@@ -1826,8 +1826,9 @@ end subroutine radiationHydro
                                if (firsttime.and.(myrankWorldglobal==1)) then
                                   firsttime = .false.
                                   open(67,file="pdf.dat",status="unknown",form="formatted")
+				  write(67,*) "% ",thisOctal%temperature(subcell)
                                   do i = 1, nfreq
-                                     write(67,*) freq(i), spectrum(i)
+                                     write(67,*) (cspeed/freq(i))*1.e8, spectrum(i),bnu(freq(i),dble(thisOctal%temperature(subcell)))
                                   enddo
                                   close(67)
 !                                  open(68,file="freq.dat",status="unknown",form="formatted")
@@ -3473,7 +3474,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           thisOctal%ionFrac(subcell,1) = 1.e-10
           thisOctal%ionFrac(subcell,2) = 1.
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
-          thisOctal%temperature(subcell) = 1500.
+          thisOctal%temperature(subcell) = 10.
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.e-10
              thisOctal%ionFrac(subcell,4) = 1.       
