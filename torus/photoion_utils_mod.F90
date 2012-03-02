@@ -817,7 +817,10 @@ end subroutine addRecombinationEmissionLine
                exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
           
           eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-          
+
+
+          !This only works with the stuff in phaseloop_mod. 
+          !For image generation need to add the factor of 10
           if(stack) then
              thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + (eta)!*1.d10)
           else
