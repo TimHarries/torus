@@ -1158,7 +1158,7 @@ contains
                "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
           nDustType = 1
           grainfrac = 1.
-	  isoTropicScattering = .true.
+          isoTropicScattering = .true.
           
 
        else
