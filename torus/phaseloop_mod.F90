@@ -1347,13 +1347,17 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
-#ifdef PHOTOION
+
            if(freefreeSED) then
+#ifdef PHOTOION
               call  addRadioContinuumEmissivityMono(grid%octreeRoot, grid%lamArray(ilambdaPhoton), .true.)
-           end if
 #else
-           call writeFatal("Torus was built without photoionisation. Cannot add free free emission to SED")
+      call writeFatal("Torus was built without photoionisation. Cannot add free free emission to SED")
 #endif
+           end if
+
+     
+
 
 !           if(freefreeSED) then
 !              call  addRadioContinuumEmissivityMono(grid%octreeRoot, grid%lamArray(ilambdaPhoton), .true.)
