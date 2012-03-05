@@ -1609,7 +1609,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
                !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
-               !$OMP SHARED(stackSize, nFreq) &
+               !$OMP SHARED(stackSize, nFreq, radPressureTest) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal)
                
                finished = .false.
