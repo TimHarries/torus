@@ -181,7 +181,7 @@ contains
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
-	  call quickSublimate(grid%octreeRoot)
+          call quickSublimate(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("molcluster")
