@@ -92,14 +92,14 @@ contains
        do i = 0, nThreadsGlobal-1
           if (myrankWorldGlobal == i) then
 #endif
-             call readSourceArray(sourceFilename)
+             call readSourceArray(nsource, source, sourceFilename)
 
 #ifdef MPI
           endif
           call torus_mpi_barrier
        enddo
 #endif
-       call writeSourceList(GlobalSourceArray, GlobalnSource)
+       call writeSourceList(source, nSource)
     else
 
        do iSource = 1, nSource

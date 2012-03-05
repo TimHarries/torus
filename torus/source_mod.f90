@@ -85,11 +85,11 @@ module source_mod
       
 
       if (writeoutput) &
-           write(*,'(a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "N","M","R","L","L(spec)","x","y","z"
+           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "Ran ""N","M","R","L","L(spec)","x","y","z"
       do i = 1, nSource
          fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
-         if (writeoutput) &
-              write(*,'(i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') i,source(i)%mass/msol, &
+              write(*,'(i3.3,1x,i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') myrankWorldGlobal, i,&
+              source(i)%mass/msol, &
               source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, fromspec/lsol, source(i)%position%x, &
               source(i)%position%y,source(i)%position%z
          tot = 0.d0
@@ -99,7 +99,7 @@ module source_mod
             endif
          enddo
          tot = tot * fourPi*source(i)%radius**2 * 1.d20
-         write(*,*) myrankGlobal, " source lum ",tot/lsol
+!         write(*,*) myrankWorldGlobal, " source lum ",tot/lsol
       enddo
     end subroutine writeSourceList
 
@@ -123,9 +123,11 @@ module source_mod
       close(lunit)
     end subroutine writeSourceArray
 
-    subroutine readSourceArray(rootfilename)
+    subroutine readSourceArray(nSource, source, rootfilename)
       use inputs_mod, only : iModel
       use utils_mod, only : findMultiFilename
+      type(SOURCETYPE) :: source(:)
+      integer :: nSource
       character(len=*) :: rootfilename
       character(len=80) :: filename, message
       integer :: iSource
@@ -137,19 +139,18 @@ module source_mod
 !      write(*,*) myrankWorldGlobal,trim(message)
       call writeInfo(message,TRIVIAL)
 
-      if (globalnSource > 0) then
-         do iSource = 1, globalnSource
-            call freeSource(globalSourceArray(iSource))
+      if (SIZE(source) > 0) then
+         do iSource = 1, SIZE(source)
+            call freeSource(source(isource))
          enddo
       endif
 
       open(lunit, file=filename, form="unformatted", status="old")
-      read(lunit) globalnSource
+      read(lunit) nSource
 
-      allocate(globalSourceArray(1:globalnSource))
-      do iSource = 1, globalnSource
-         call freeSource(globalSourceArray(iSource))
-         call readSource(globalsourceArray(isource), lunit)
+      do iSource = 1, nSource
+         call freeSource(source(isource))
+         call readSource(source(isource), lunit)
       enddo
       close(lunit)
     end subroutine readSourceArray
@@ -202,6 +203,7 @@ module source_mod
       read(lunit) source%angMomentum
       read(lunit) source%accretionRadius
 !      read(lunit) source%time
+      call freeSpectrum(source%spectrum)
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)
     end subroutine readSource

@@ -95,6 +95,7 @@ contains
     integer :: i, status, tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
+    real(double) :: radDt
     logical :: noPhoto=.false.
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
@@ -424,6 +425,9 @@ contains
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
+          raddt = 1.d30
+          call radpressureTimeStep(grid%octreeRoot, raddt)
+          tc(myRankGlobal) = min(tc(myrankGlobal), raddt)
           call pressureGradientTimeStep(grid, dt)
           tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif
@@ -432,8 +436,6 @@ contains
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
        dt = MINVAL(temptc(1:nHydroThreadsGlobal))
        dt = dt * dble(cfl)
-
-
 !       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
        
 !       if (nstep < 3) then
@@ -667,6 +669,8 @@ contains
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       "/))
 
+
+
           write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
           call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename)
 
@@ -675,6 +679,11 @@ contains
              globalSourceArray(:)%time = grid%currentTime
              call writeSourceArray(mpifilename)
           endif
+
+          write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
+          call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+               VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+
 
           
 !Track the evolution of the ionization front with time
@@ -702,7 +711,8 @@ end subroutine radiationHydro
        monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
-         optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation
+         optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
+         radPressureTest
     use inputs_mod, only : resetDiffusion
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1761,6 +1771,8 @@ end subroutine radiationHydro
 
                       if(.not. finished) then
                          if (noDiffuseField) escaped = .true.
+                         
+                         if (radPressureTest) escaped = .true.
 
                          if (escaped) then
                             !$OMP CRITICAL (update_escaped)
@@ -2579,14 +2591,14 @@ end subroutine radiationHydro
 !        write(*,*) "monteCheck ",monteCheck
 !     endif
 
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-     call writeVtkFile(grid, mpiFilename, &
-          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-          "hydrovelocity","sourceCont   ","pressure     ", &
-          "crossings    ", &
-          "chiline      ", &
-          "dust1        ", &
-          "diff         "/))
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!     call writeVtkFile(grid, mpiFilename, &
+!          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!          "hydrovelocity","sourceCont   ","pressure     ", &
+!          "crossings    ", &
+!          "chiline      ", &
+!          "dust1        ", &
+!          "diff         "/))
 
      if(singleMegaPhoto) then
 
@@ -6908,11 +6920,46 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
   end subroutine modifiedRandomWalk
        
 
+
+
+  recursive subroutine radpressureTimeStep(thisoctal, dt)
+    use mpi
+    use inputs_mod, only : gridDistanceScale
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt, dx, acc, dv
+    
+
+
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call radpressureTimestep(child, dt)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+          if (.not.thisoctal%ghostcell(subcell)) then
+
+             dv = cellVolume(thisOctal, subcell)*1.d30
+             dx = thisoctal%subcellsize * griddistancescale 
+             acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%radiationMomentum(subcell))/dv
+             acc = max(1.d-30, acc)
+             dt = min(dt, sqrt(dx/acc))
+          endif
+       endif
+    enddo
+  end subroutine radpressureTimeStep
+
 #endif
 
-
 end module photoionAMR_mod
-
 
 
 #endif

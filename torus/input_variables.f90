@@ -731,7 +731,7 @@
   logical           :: blockHandout ! Enable MPI block handout
   character(len=10) :: geometry
   integer(kind=bigInt) :: nPhotons ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
-
+  logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity
   real    :: TMinGlobal   ! globally applied minimum temperature

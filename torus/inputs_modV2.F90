@@ -1457,6 +1457,10 @@ contains
     call getLogical("nodiffuse", noDiffuseField, cLine, fLine, nLines, &
          "Ignore diffuse radiation field: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("radpresstest", radPressureTest, cLine, fLine, nLines, &
+         "Radiation-pressure test (on-the-spot absorption): ","(a,1l,a)", .false., ok, .false.)
+
+
     if(nodiffusefield) then
        call getLogical("monochromatic", monochromatic, cLine, fLine, nLines, &
             "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)

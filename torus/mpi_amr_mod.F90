@@ -2614,7 +2614,7 @@ end subroutine dumpStromgrenRadius
     position = startPoint
     direction = endPoint - startPoint
     call normalize(direction)
-
+    if (myHydroSetGlobal /= 0) goto 666
 
     if (myrankWorldGlobal == 0) then
 

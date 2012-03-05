@@ -197,16 +197,16 @@ contains
           source(i)%velocity%z = returnPhysicalUnitSpeed(ystart(ia+5))
     
        enddo
-       if (writeoutput) then
-          open(57, file="pos.dat",status="old",position="append")
-          write(57,*)  real(source(1)%position%x*1.d10/autocm), &
-               real(source(1)%position%y*1.d10/autocm), &
-               real(source(2)%position%x*1.d10/autocm), &
-               real(source(2)%position%y*1.d10/autocm), &
-               real(source(3)%position%x*1.d10/autocm), &
-               real(source(3)%position%y*1.d10/autocm)
-          close(57)
-       endif
+!       if (writeoutput) then
+!          open(57, file="pos.0dat",status="old",position="append")
+!          write(57,*)  real(source(1)%position%x*1.d10/autocm), &
+!               real(source(1)%position%y*1.d10/autocm), &
+!               real(source(2)%position%x*1.d10/autocm), &
+!               real(source(2)%position%y*1.d10/autocm), &
+!               real(source(3)%position%x*1.d10/autocm), &
+!              real(source(3)%position%y*1.d10/autocm)
+!          close(57)
+!       endif
     enddo
     deallocate(yStart,dydx)
 !    call sumEnergy(source, nSource, energy)

@@ -2146,12 +2146,12 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
-!          if (thisOctal%rho(subcell) < 1.d-25) then
-             thisoctal%rhou(subcell) = 0.9d0 * thisOctal%rhou(subcell)
-             thisoctal%rhov(subcell) = 0.9d0 * thisOctal%rhov(subcell)
-             thisoctal%rhow(subcell) = 0.9d0 * thisOctal%rhow(subcell)
-             thisoctal%rhoe(subcell) = 0.9d0 * thisOctal%rhoe(subcell)
-!          endif
+          if (thisOctal%rho(subcell) < 1.d-24) then
+             thisoctal%rhou(subcell) = 0.8d0 * thisOctal%rhou(subcell)
+             thisoctal%rhov(subcell) = 0.8d0 * thisOctal%rhov(subcell)
+             thisoctal%rhow(subcell) = 0.8d0 * thisOctal%rhow(subcell)
+             thisoctal%rhoe(subcell) = 0.8d0 * thisOctal%rhoe(subcell)
+          endif
        endif
     enddo
   end subroutine damp
