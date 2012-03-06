@@ -425,7 +425,8 @@ contains
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
-          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, globalsourceArray, tc(myrankGlobal))
+          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, &
+               globalsourceArray, tc(myrankGlobal))
           raddt = 1.d30
           call radpressureTimeStep(grid%octreeRoot, raddt)
           tc(myRankGlobal) = min(tc(myrankGlobal), raddt)
