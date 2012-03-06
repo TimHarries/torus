@@ -780,7 +780,7 @@ end subroutine addRecombinationEmissionLine
           
           eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
              
-          thisOctal%etaCont(subcell) = eta * 1.d10
+          thisOctal%etaCont(subcell) = eta !* 1.d10
           thisOctal%biasCont3d(subcell) = 1.d0
        end if
 

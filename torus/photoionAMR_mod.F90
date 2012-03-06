@@ -1,4 +1,4 @@
-#ifdef PHOTOION
+ifdef PHOTOION
 !Photoionization module - started on October 4th 2005 by th 
 
 module photoionAMR_mod
@@ -6153,7 +6153,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        call writeInfo(message)
     endif
 
-    powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
+    powerPerPhoton = (lCore + totalEmission) / (dble(nPhotons)*1.d20)
     write(message,*) "power per photon ",powerperphoton
     call writeInfo (message, FORINFO)
 
