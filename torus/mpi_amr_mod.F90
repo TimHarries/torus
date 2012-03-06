@@ -23,6 +23,20 @@ contains
     nHydroThreadsGlobal = nHydroThreadsinput
     if (splitOverMPI) then
 
+       if (nHydroThreadsInput == 0) then
+
+          if (mod(nThreadsGlobal, 513) == 0) then
+             nHydroThreadsGlobal = 512
+          else if (mod(nThreadsGlobal, 65) == 0) then
+             nHydroThreadsGlobal = 64
+          else if (mod(nThreadsGlobal, 9) == 0) then
+             nHydroThreadsGlobal = 8
+          else
+             write(*,*) "Number of MPI threads is ",nThreadsGlobal
+             write(*,*) "Can't figure out automatically what domain decomp is required"
+             stop
+          endif
+       endif
        if (mod(nThreadsGlobal, (nHydroThreadsGlobal+1)) /= 0) then
           write(*,*) "Number of MPI threads is ",nThreadsGlobal
           write(*,*) "Number of threads per decomposed domain is ", nHydroThreadsGlobal+1

@@ -58,6 +58,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
   use sed_mod
+  use vtk_mod
   use physics_mod, only : setupdust
   use fillGridTio_mod
   use fillGridRayleigh_mod
@@ -1290,6 +1291,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (mie)     call setBiasOnTau(grid, iLambda)
      if (doTuning) call tune(6,"Calculate bias on tau")
 
+     call writeVtkFile(grid, "phaseloop.vtk", &
+          valueTypeString=(/"rho          ", &
+                            "dust1        ", &
+                            "temperature  "/))
 
      !  These should be zero-ed for each viewing angle!
      tooFewSamples = 0 

@@ -1888,11 +1888,11 @@ contains
 !             endif
              force = 0.d0
              do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
                 rMod = modulus(rVec)
                 rHat = rVec
                 call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
                 force = force + (fVec.dot.VECTOR(1.d0,0.d0,0.d0))
              enddo
 
@@ -1989,11 +1989,11 @@ contains
 
              force = 0.d0
              do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
                 rMod = modulus(rVec)
                 rHat = rVec
                 call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
                 force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
              enddo
              if (nBodyPhysics) thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + force * dt ! gravity due to stars
@@ -2090,11 +2090,11 @@ contains
 
              force = 0.d0
              do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(1)%position)
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
                 rMod = modulus(rVec)
                 rHat = rVec
                 call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(1)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
                 force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
              enddo
              if (nBodyPhysics) thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + force * dt ! gravity due to stars
@@ -2147,10 +2147,10 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
           if (thisOctal%rho(subcell) < 1.d-24) then
-             thisoctal%rhou(subcell) = 0.8d0 * thisOctal%rhou(subcell)
-             thisoctal%rhov(subcell) = 0.8d0 * thisOctal%rhov(subcell)
-             thisoctal%rhow(subcell) = 0.8d0 * thisOctal%rhow(subcell)
-             thisoctal%rhoe(subcell) = 0.8d0 * thisOctal%rhoe(subcell)
+             thisoctal%rhou(subcell) = 0.5d0 * thisOctal%rhou(subcell)
+             thisoctal%rhov(subcell) = 0.5d0 * thisOctal%rhov(subcell)
+             thisoctal%rhow(subcell) = 0.5d0 * thisOctal%rhow(subcell)
+             thisoctal%rhoe(subcell) = 0.5d0 * thisOctal%rhoe(subcell)
           endif
        endif
     enddo
@@ -3348,6 +3348,58 @@ end subroutine sumFluxes
     endif
   end subroutine computeCourantTimeNbody
 
+  recursive subroutine computeCourantTimeGasSource(grid, thisOctal, nsource, source, tc)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    integer :: subcell, i, isource
+    real(double) :: tc
+    type(VECTOR) :: rVec, rHat, force
+    real(double) :: acc, dx, rMod, eps
+  
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call computeCourantTimeGasSource(grid, child, nsource, source, tc)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          if (.not.thisOctal%ghostCell(subcell)) then
+
+
+             dx= smallestCellSize * gridDistanceScale
+             eps = smallestCellSize * gridDistanceScale
+    
+             force = VECTOR(0.d0, 0.d0, 0.d0)
+             do isource = 1, globalnSource
+                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-source(isource)%position)
+                rMod = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
+                force = force +((-1.d0)*(bigG * source(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+             enddo
+             acc = modulus(force) / thisOctal%rho(subcell)
+
+             acc = max(1.d-30, acc)
+             tc = min(tc, sqrt(dx/acc))
+
+          endif
+ 
+       endif
+    enddo
+  end subroutine computeCourantTimeGasSource
+
+
+
 
 !calculate the courant time - the shortest time step that can be taken with no material being 
 !advect more than one grid cell. 
@@ -3951,6 +4003,7 @@ end subroutine sumFluxes
        tc(myrankGlobal) = 1.d30
        call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
        if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
+       if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, globalsourceArray, tc(myrankGlobal))
        call pressureGradientTimeStep(grid, dt)
        tc(myRankGlobal) = min(tc(myrankGlobal), dt)
     endif
@@ -3989,6 +4042,7 @@ end subroutine sumFluxes
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
+          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, globalsourceArray, tc(myrankGlobal))
           call pressureGradientTimeStep(grid, dt)
           tc(myRankGlobal) = min(tc(myrankGlobal), dt)
        endif

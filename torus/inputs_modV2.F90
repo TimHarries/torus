@@ -113,7 +113,7 @@ contains
 
     if (splitOverMPI) then
        call getInteger("nhydrothreads", nHydroThreadsInput, cLine, fLine, nLines, &
-            "Number of threads for domain decomposition: ","(a,i3,a)", 64, ok, .true.)
+            "Number of threads for domain decomposition: ","(a,i3,a)", 0, ok, .false.)
     endif
 
 

@@ -66,7 +66,7 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront, checkSetsAreTheSame
+         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
     use inputs_mod, only: singleMegaPhoto
@@ -425,6 +425,7 @@ contains
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
+          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, globalsourceArray, tc(myrankGlobal))
           raddt = 1.d30
           call radpressureTimeStep(grid%octreeRoot, raddt)
           tc(myRankGlobal) = min(tc(myrankGlobal), raddt)
@@ -1227,6 +1228,7 @@ end subroutine radiationHydro
        nSmallPackets = 100
        smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
     endif
+    if (radPressureTest) nSmallPackets = 0
     if (writeoutput) then
        write(*,*) "Setting nSmallPackets to ",nSmallPackets
     endif
@@ -2692,7 +2694,7 @@ end subroutine photoIonizationloopAMR
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, &
      bigPhotonPacket)
-  use inputs_mod, only : periodicX, periodicY, periodicZ
+  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -2785,12 +2787,20 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
     endif
 
+
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
     else
        thisTau = 1.0e-28
     end if
-
+    if (radPressureTest) then
+       if (thisOctal%rho(subcell) < 1.d-24) then
+          thisTau = 1.d-30
+       else
+          thisTau = 1.d30
+       endif
+    endif
+       
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 
@@ -2945,6 +2955,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           else
              thisTau = 1.0e-28
           end if
+
+          if (radPressureTest) then
+             if (thisOctal%rho(subcell) < 1.d-24) then
+                thisTau = 1.d-30
+             else
+                thisTau = 1.d30
+             endif
+          endif
 
           if (tVal == 0.0d0) then
              escaped = .true.
