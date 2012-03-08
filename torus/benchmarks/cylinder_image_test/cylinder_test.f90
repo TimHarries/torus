@@ -20,7 +20,7 @@ integer :: counter, ierr
 dx = gridSize/201.
 
 !Get average emission
-j = j_o /(pi*L*(r_cylinder**2))
+j = j_o /(pi*L*(r_cylinder**2)*1.e20)
 
 r = -(gridSize/2.0) + (dx/2.0)
 
