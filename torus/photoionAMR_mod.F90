@@ -78,7 +78,7 @@ contains
     integer :: nLambda
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename
-    real(double) :: dt, tc(513), temptc(513),cfl, gamma, mu
+    real(double) :: dt, cfl, gamma, mu
     integer :: iUnrefine
     integer :: ierr
     real(double) ::  nextDumpTime
