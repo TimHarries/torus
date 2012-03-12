@@ -3184,7 +3184,7 @@ CONTAINS
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos
-    use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere
+    use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3380,6 +3380,13 @@ CONTAINS
           if ((density(cellCentre, grid) > 1.d29).and.(thisOctal%nDepth < 9)) split = .true.
           if ((cellCentre%x < 7.e6).and.(thisOctal%nDepth < 7)) split = .true.
                              
+       case("radpress")
+          rVec = subcellCentre(thisOctal,subcell)
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if (rCavity > 0.d0) then
+             if (abs(modulus(rvec) - rCavity)/rCavity < 0.1d0) split = .true.
+          endif
+
        case("hii_test")
           rInner = 0.2d0*pctocm/1.d10
           rVec = subcellCentre(thisOctal, subcell)
@@ -8701,6 +8708,7 @@ end function readparameterfrom2dmap
 
   subroutine assign_radpresstest(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+    use inputs_mod, only : rCavity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
@@ -8708,7 +8716,7 @@ end function readparameterfrom2dmap
    
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = (1.d2)*mHydrogen
-!    if (modulus(rvec) < 2.0d7) thisOctal%rho(subcell) = 1.d0 * mHydrogen
+    if (modulus(rVec) < rCavity) thisOctal%rho(subcell) = 1.d-26
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.

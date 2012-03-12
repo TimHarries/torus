@@ -2131,6 +2131,7 @@ contains
   recursive subroutine damp(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
+    real(double) :: speed, fac
     integer :: subcell, i
   
     do subcell = 1, thisoctal%maxchildren
@@ -2146,11 +2147,20 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
+          speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+               thisOctal%rhov(subcell)**2)/thisOctal%rho(subcell)**2
+          speed = sqrt(speed)
+          if (speed > 0.d0) then
+             fac = min(speed, 1d5)/speed
+          else
+             fac = 1.d0
+          endif
+          fac = 0.5d0
           if (thisOctal%rho(subcell) < 1.d-24) then
-             thisoctal%rhou(subcell) = 0.5d0 * thisOctal%rhou(subcell)
-             thisoctal%rhov(subcell) = 0.5d0 * thisOctal%rhov(subcell)
-             thisoctal%rhow(subcell) = 0.5d0 * thisOctal%rhow(subcell)
-             thisoctal%rhoe(subcell) = 0.5d0 * thisOctal%rhoe(subcell)
+             thisoctal%rhou(subcell) = fac * thisOctal%rhou(subcell)
+             thisoctal%rhov(subcell) = fac * thisOctal%rhov(subcell)
+             thisoctal%rhow(subcell) = fac * thisOctal%rhow(subcell)
+             thisoctal%rhoe(subcell) = fac * thisOctal%rhoe(subcell)
           endif
        endif
     enddo

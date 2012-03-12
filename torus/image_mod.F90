@@ -530,6 +530,8 @@ module image_mod
        !  Write another optional keyword to the header.
        !
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
+       call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
+
 
        ! write keywords and set values which depend on the axis units
        select case (getAxisUnits())
@@ -566,16 +568,24 @@ module image_mod
        end select
 
        ! write x-axis keywords
-       call ftpkys(unit,'CTYPE1'," X","x axis", status)
+       call ftpkys(unit,'CTYPE1',"RA--TAN","x axis", status)
        call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+       call ftpkyd(unit,'CDELT1',(dx/radianstoarcsec)/3600.d0,10,' ',status)
+       call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
        call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
 
        ! write y-axis keywords
-       call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+       call ftpkys(unit,'CTYPE2',"DEC--TAN","y axis", status)
        call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+       call ftpkyd(unit,'CDELT2',(dy/radianstoarcsec)/3600.d0,10 ,' ',status)
+       call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
        call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
+
+       call ftpkyd(unit,'CD1_1',(dx/radianstoArcSec)/3600.d0,10,' ',status)
+       call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
+       call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
+       call ftpkyd(unit,'CD2_2',(dx/radianstoArcSec)/3600.d0,10,' ',status)
+
 
        !
        !  Close the file and free the unit number.

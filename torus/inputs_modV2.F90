@@ -805,6 +805,10 @@ contains
           call getReal("rinner", rInner, 1.e7, cLine, fLine, nLines, &
                "Inner Radius (10^17cm): ","(a,1pe8.1,1x,a)", 30., ok, .true.)
 
+       case("radpress")
+          call getDouble("rcavity", rCavity, 1.d0, cLine, fLine, nLines, &
+               "Cavity radius (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+
        case("benchmark")
           call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)

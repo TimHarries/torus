@@ -4133,9 +4133,10 @@ end subroutine dumpStromgrenRadius
     integer :: ierr, j, k, m, counter, counter2
     integer :: functionality
     integer :: endloop
-    real(double) :: storageArray(1000,12), searchRadius
-    real(double) :: tempStorageArray(1000,12) 
-    real(double) :: tempdoublearray(12000)
+    integer, parameter :: maxStorage = 1000
+    real(double) :: storageArray(maxStorage,12), searchRadius
+    real(double) :: tempStorageArray(maxStorage,12) 
+    real(double) :: tempdoublearray(12*maxStorage)
     integer :: check(endloop, nHydroThreadsGlobal)
     integer :: nVals
     integer :: cellRef
@@ -4198,16 +4199,16 @@ end subroutine dumpStromgrenRadius
           do m = 1, nHydroThreadsGlobal
              if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nHydroThreadsGlobal))) then 
                 !Will recv a 1D array and translate it into 2D later
-!                call MPI_RECV(tempStorageArray, 1200, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
-                call MPI_RECV(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
+!                call MPI_RECV(tempStorageArray 12000, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(tempDoubleArray, SIZE(tempDoubleArray), MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
 
                 !Now convert it back to 2D
                 tempStorageArray = reshape(tempDoubleArray, shape(tempStorageArray))
 
-                do counter = 1, 1000
+                do counter = 1, maxStorage
                    if(tempstorageArray(counter,1) > 1.d0) then
-                      do counter2 = 1, 1001
-                         if(counter2 == 1001) then
+                      do counter2 = 1, maxStorage+1
+                         if(counter2 == maxStorage+1) then
                             call torus_abort("Fetched too many variables")
                          end if
                          if(storageArray(counter2, 1) == 0.d0) then
@@ -4295,7 +4296,8 @@ end subroutine dumpStromgrenRadius
     integer :: i
     type(VECTOR) :: position, rVec
     real(double) :: searchRadius
-    real(double) :: storageArray(1000,12)
+    integer, parameter :: maxStorage = 1000
+    real(double) :: storageArray(maxStorage,12)
     integer :: cellRef, k
     logical :: changed, useTop, check
 

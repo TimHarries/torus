@@ -68,7 +68,7 @@ contains
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource
     use dimensionality_mod, only: setCodeUnit
-    use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping
+    use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto
     use parallel_mod, only: torus_abort
     use mpi
@@ -95,7 +95,7 @@ contains
     integer :: i, status, tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
-    real(double) :: radDt
+    real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble
     logical :: noPhoto=.false.
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
@@ -213,6 +213,13 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
+    if (myrankGlobal /= 0) then
+       call writeInfo("Setting up even up array", TRIVIAL)
+       call setupEvenUpArray(grid, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+       call evenUpGridMPI(grid, .false., .true., evenuparray)
+    endif
+
     if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cfl
 
     if (myrankGlobal /= 0) then
@@ -220,9 +227,6 @@ contains
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call writeInfo("Setting up even up array", TRIVIAL)
-       call setupEvenUpArray(grid, evenUpArray)
-       call writeInfo("Done", TRIVIAL)
        call resetnh(grid%octreeRoot)
 
 
@@ -420,24 +424,63 @@ contains
        nstep = nstep + 1
 
        
-       tc = 0.d0
+!       tc = 0.d0
+!       if (myrankGlobal /= 0) then
+!          tc(myrankGlobal) = 1.d30
+!          call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
+!          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
+!          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, &
+!               globalsourceArray, tc(myrankGlobal))
+!          raddt = 1.d30
+!          call radpressureTimeStep(grid%octreeRoot, raddt)
+!          tc(myRankGlobal) = min(tc(myrankGlobal), raddt)
+!          call pressureGradientTimeStep(grid, dt)
+!          tc(myRankGlobal) = min(tc(myrankGlobal), dt)
+!       endif
+!       call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
+!       dt = MINVAL(temptc(1:nHydroThreadsGlobal))
+!       dt = dt * dble(cfl)
+
+       gasDt = 1.d30
+       sourcesourcedt = 1.d30
+       gasSourcedt = 1.d30
+       raddt = 1.d30
+       pressuredt = 1.d30
        if (myrankGlobal /= 0) then
-          tc(myrankGlobal) = 1.d30
-          call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
-          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tc(myrankGlobal))
+          call computeCourantTime(grid, grid%octreeRoot, gasDt)
+          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, sourceSourceDt)
           if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, &
-               globalsourceArray, tc(myrankGlobal))
-          raddt = 1.d30
-          call radpressureTimeStep(grid%octreeRoot, raddt)
-          tc(myRankGlobal) = min(tc(myrankGlobal), raddt)
-          call pressureGradientTimeStep(grid, dt)
-          tc(myRankGlobal) = min(tc(myrankGlobal), dt)
+               globalsourceArray, gasSourceDt)
+          if (radiationPressure) call radpressureTimeStep(grid%octreeRoot, raddt)
+          call pressureGradientTimeStep(grid, pressureDt)
        endif
 
 
-       call MPI_ALLREDUCE(tc, tempTc, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
-       dt = MINVAL(temptc(1:nHydroThreadsGlobal))
+       call MPI_ALLREDUCE(gasdt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       gasDt = tempDouble
+       call MPI_ALLREDUCE(sourceSourcedt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       sourceSourcedt = tempDouble
+       call MPI_ALLREDUCE(gasSourcedt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       gasSourceDt = tempDouble
+       call MPI_ALLREDUCE(raddt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       raddt = tempDouble
+       call MPI_ALLREDUCE(pressuredt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       pressureDt = tempDouble
+       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt)
+
+       if (writeoutput) then
+          write(*,"(a,1p,e12.3)") "Courant Time: ", dt* dble(cfl)
+          write(*,"(a,1p,e12.3)") "Std courant Time: ", gasdt
+          write(*,"(a,1p,e12.3)") "Source-source courant Time: ", sourceSourceDT
+          write(*,"(a,1p,e12.3)") "Gas-source courant Time: ", gasSourceDt
+          write(*,"(a,1p,e12.3)") "Radiation pressure courant time: ", raddt
+          write(*,"(a,1p,e12.3)") "Pressure gradient courant time: ", pressuredt
+       endif
+       
+
        dt = dt * dble(cfl)
+
+
 !       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
        
 !       if (nstep < 3) then
@@ -2795,7 +2838,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        thisTau = 1.0e-28
     end if
     if (radPressureTest) then
-       if (thisOctal%rho(subcell) < 1.d-24) then
+       if (thisOctal%rho(subcell) < 1.d-22) then
           thisTau = 1.d-30
        else
           thisTau = 1.d30
@@ -2958,7 +3001,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           end if
 
           if (radPressureTest) then
-             if (thisOctal%rho(subcell) < 1.d-24) then
+!             thisTau = 1.d20 * thisOctal%rho(subcell)
+             if (thisOctal%rho(subcell) < 1.d-22) then
                 thisTau = 1.d-30
              else
                 thisTau = 1.d30
