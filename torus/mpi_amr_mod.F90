@@ -4200,7 +4200,8 @@ end subroutine dumpStromgrenRadius
              if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nHydroThreadsGlobal))) then 
                 !Will recv a 1D array and translate it into 2D later
 !                call MPI_RECV(tempStorageArray 12000, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
-                call MPI_RECV(tempDoubleArray, SIZE(tempDoubleArray), MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(tempDoubleArray, SIZE(tempDoubleArray), MPI_DOUBLE_PRECISION, m, tag, &
+                     localWorldCommunicator, status, ierr)
 
                 !Now convert it back to 2D
                 tempStorageArray = reshape(tempDoubleArray, shape(tempStorageArray))
