@@ -570,7 +570,7 @@ module image_mod
        ! write x-axis keywords
        call ftpkys(unit,'CTYPE1',"RA--TAN","x axis", status)
        call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT1',(dx/radianstoarcsec)(3600.d0,10,' ',status)
+       call ftpkyd(unit,'CDELT1',(dx/radianstoarcsec)*3600.d0,10,' ',status)
        call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
        call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
 
