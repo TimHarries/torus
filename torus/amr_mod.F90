@@ -7653,7 +7653,7 @@ endif
 !         1.30d0, 1.36d0, 1.42d0, 1.49d0, 1.56d0, 1.64d0, 1.72d0, 1.81d0, 1.9d0, 2.00d0 /)
 !    real(double) :: a, t, r0, fac, alpha1, m, u, p, rho, temp, ethermal, mval,rhoArray(21), velArray(21)
     real(double) :: bigA, a, r0, r, rho, u, temp, p, ethermal
-    integer :: i, j
+!    integer :: i, j
 
     bigA = 2.2d0
     a = sqrt(kerg*10.d0/(2.33d0*mHydrogen))
