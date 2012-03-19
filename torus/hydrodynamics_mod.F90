@@ -10232,7 +10232,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(SOURCETYPE) :: sourceArray(:)
 
     do i = 1, nSource
-       if (sourceArray(i)%mdot > 0.d0) then
+       if (sourceArray(i)%mass > 15.d0*mSol) then
           call addStellarWindRecur(grid%octreeRoot, sourceArray(i))
        endif
     enddo
@@ -10245,7 +10245,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm
+    real(double) :: r, v, vterm, fac, maxSpeed, mdot
     type(VECTOR) :: cellCentre, rVec
  
 
@@ -10264,22 +10264,24 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
+          maxspeed = 0.2d5
           thisOctal%boundaryCell(subcell) = .false.
           cellCentre = subcellCentre(thisOctal, subcell)
           rVec = cellCentre - source%position
           r = modulus(rVec)
           rVec = rVec / r
           if (r < smallestCellSize*5.d0) then
-!             mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
-             vterm = 2.d0 * 1.d5
+             mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
+             vterm = 0.2d0 * 1.d5
              thisOctal%boundaryCell(subcell) = .true.
-             rho = real(source%mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
+             rho = real(mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
              v = vterm
-             thisOctal%rho(subcell) = rho
+	     fac = 1.d0
+             thisOctal%rho(subcell) = rho * fac
              thisOctal%velocity(subcell) = (v/cspeed)*rVec
-             thisOctal%rhou(subcell) = rVec%x * v * rho
-             thisOctal%rhov(subcell) = rVec%y * v * rho
-             thisOctal%rhow(subcell) = rVec%z * v * rho
+             thisOctal%rhou(subcell) = rVec%x * v * rho * fac
+             thisOctal%rhov(subcell) = rVec%y * v * rho * fac
+             thisOctal%rhow(subcell) = rVec%z * v * rho * fac
              thisOctal%temperature(subcell) = 10000.d0
              thisOctal%rhoe(subcell) = 0.5d0 * thisOCtal%rho(subcell)* v**2
              thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) + &

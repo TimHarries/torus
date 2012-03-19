@@ -69,7 +69,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto
+    use inputs_mod, only: singleMegaPhoto, stellarwinds
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -327,7 +327,7 @@ contains
           call torus_abort("Finished single photo calculation, ending...")
        end if
 
-!       if (myrank /= 0) call addStellarWind(grid%octreeRoot, globalsourcearray(1))
+       if ((myrankglobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
           
           if (myrankGlobal /= 0) then
              call calculateEnergyFromTemperature(grid%octreeRoot)
@@ -354,7 +354,7 @@ contains
              call refineGridGeneric(grid, amrtolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
-!             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+             if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
              call resetnh(grid%octreeRoot)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 !                call writeVtkFile(grid, "stellarwind.vtk", &
@@ -619,7 +619,7 @@ contains
 
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
-!             if (myrankGlobal /= 0) call addStellarWind(grid, globalnSource, globalsourcearray)
+             if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif

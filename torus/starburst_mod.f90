@@ -160,7 +160,7 @@ contains
 
       nOB = 0
       do i = 1, nSource
-         if (source(i)%mass*msol > 15.) then
+         if (source(i)%mass > 15.*msol) then
             nOB = nOB + 1
          endif
       enddo
@@ -248,7 +248,7 @@ contains
 
       u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
       
-      source%mass = (mass1 + (mass2 - mass1) * u)
+      source%mass = (mass1 + (mass2 - mass1) * u) * mSol
       source%luminosity = logL1 + (logL2 - logL1) * u
       source%luminosity = (10.d0**source%luminosity) * lSol
       source%teff = logT1 + (logT2  - logT1) * u

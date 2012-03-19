@@ -1481,7 +1481,10 @@ contains
             "Variance reduction, extent of bias: ", "(a,es9.3,1x,a)", 100.d0, ok, .false.)
 
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
-         "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
+         "Hydrogen-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("stellarwinds", stellarWinds, cLine, fline, nLines, &
+         "Include stellar wind outflow feedback: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)

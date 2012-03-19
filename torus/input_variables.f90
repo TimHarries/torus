@@ -65,6 +65,7 @@
   logical :: monochromatic     !Use a monochromatic radiation field
   logical :: quickThermal      !Use a simplified thermal balance calculation
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
+  logical :: stellarWinds      ! include stellar winds in hydro calc
   ! Parameters  specific to domain decomposed photoionisation 
 
   !Stack optimization

@@ -1288,13 +1288,16 @@ contains
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use inputs_mod, only : minDepthAMR, photoionPhysics, hydrodynamics
+    use inputs_mod, only : minDepthAMR, photoionPhysics, hydrodynamics, inputNSource, &
+         sourcepos, smallestCellSize, maxDepthAmr
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
+    type(VECTOR) :: centre
+    integer :: isource
     real :: rho, aFac
     integer :: subcell, i, j
     real, allocatable :: r(:), s(:)
-    real(double) :: ethermal
+    real(double) :: ethermal, r1
     real :: rmin, rmax, tot, fac, mean
     logical :: converged, split
 
@@ -1346,7 +1349,31 @@ contains
              endif
           endif
 
-          if (thisOctal%nDepth == minDepthAMR) split = .false.
+
+          if (inputnSource>0) then
+             centre = subcellCentre(thisOctal, subcell)
+             do iSource = 1, inputNsource
+                r1 = modulus(centre - sourcePos(iSource))/smallestCellSize
+                if ((r1 < 12.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
+                   split = .true.
+                endif
+                if ((r1 < 24.d0) .and. (thisOctal%nDepth < maxDepthAMR-1)) then
+                   split = .true.
+                endif
+             enddo
+          endif
+
+          if (inputnSource > 0) then
+             do iSource = 1, inputnSource
+                if (inSubcell(thisOctal,subcell, sourcePos(isource)) &
+                     .and. (thisOctal%nDepth < maxDepthAMR)) then
+                   split = .true.
+                   exit
+                endif
+             enddo
+          endif
+
+!          if (thisOctal%nDepth == minDepthAMR) split = .false.
 !          if (myrankGlobal==1) then
 !             write(*,*) "depth ",thisOctal%nDepth, " subcell ",subcell, " mpithread ",thisOctal%mpithread(subcell), " split ",split
 !          endif
