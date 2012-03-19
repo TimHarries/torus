@@ -1837,9 +1837,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
-    integer :: iSource
-    type(VECTOR) :: rVec, rHat, fVec
-    real(double) :: force, rMod, eps
+    real(double) :: eps
 
     eps = smallestCellSize * 1.d10
     
@@ -1945,9 +1943,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
-    integer :: iSource
-    type(VECTOR) :: rVec, rHat, fVec
-    real(double) :: force, rMod, eps
+    real(double) :: eps
 
     eps = smallestCellSize * 1.d10
 
@@ -2043,9 +2039,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhow, dx, dv
-    integer :: iSource
-    type(VECTOR) :: rVec, rHat, fVec
-    real(double) :: force, rMod, eps
+    real(double) :: eps
 
     eps = smallestCellSize * 1.d10
 
