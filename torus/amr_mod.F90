@@ -7641,18 +7641,18 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
-    real(double) :: x, r,  v
+!    real(double) :: x, r,  v
     logical, save :: firstTime = .true.
-    real(double) :: xArray(21) = (/ 0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, &
-         0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0/)
-    real(double) :: alphaArray(21) = (/ 1.d30, 71.5d0, 27.8d0, 16.4d0, 11.5d0, 8.76d0, 7.09d0, 5.95d0, &
-         5.14d0, 4.52d0, 4.04d0, 3.66d0, 3.35d0, 3.08d0, 2.86d0, 2.67d0, 2.50d0, 2.35d0, 2.22d0, 2.10d0, 2.00d0 /)
-    real(double) :: vArray(21) = (/ -1.d30, -5.44d0, -3.47d0, -2.58d0, -2.05d0, -1.68d0, -1.40d0, -1.18d0, -1.01d0, &
-         -0.861d0, -0.735d0, -0.625d0, -0.528d0, -0.442d0, -0.363d0, -0.291d0, -0.225d0, -0.163d0, -0.106d0, -0.051d0, 0.000d0 /)
-    real(double) :: mArray(21) = (/ 0.975d0, 0.981d0, 0.993d0, 1.01d0, 1.03d0, 1.05d0, 1.08d0, 1.12d0, 1.16d0, 1.20d0, 1.25d0, &
-         1.30d0, 1.36d0, 1.42d0, 1.49d0, 1.56d0, 1.64d0, 1.72d0, 1.81d0, 1.9d0, 2.00d0 /)
-    real(double) :: a, t, r0, fac, alpha1, m, u, p, rho, temp, ethermal, mval,rhoArray(21), velArray(21)
-    real(double) :: bigA
+!    real(double) :: xArray(21) = (/ 0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, &
+!         0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0/)
+!    real(double) :: alphaArray(21) = (/ 1.d30, 71.5d0, 27.8d0, 16.4d0, 11.5d0, 8.76d0, 7.09d0, 5.95d0, &
+!         5.14d0, 4.52d0, 4.04d0, 3.66d0, 3.35d0, 3.08d0, 2.86d0, 2.67d0, 2.50d0, 2.35d0, 2.22d0, 2.10d0, 2.00d0 /)
+!    real(double) :: vArray(21) = (/ -1.d30, -5.44d0, -3.47d0, -2.58d0, -2.05d0, -1.68d0, -1.40d0, -1.18d0, -1.01d0, &
+!         -0.861d0, -0.735d0, -0.625d0, -0.528d0, -0.442d0, -0.363d0, -0.291d0, -0.225d0, -0.163d0, -0.106d0, -0.051d0, 0.000d0 /)
+!    real(double) :: mArray(21) = (/ 0.975d0, 0.981d0, 0.993d0, 1.01d0, 1.03d0, 1.05d0, 1.08d0, 1.12d0, 1.16d0, 1.20d0, 1.25d0, &
+!         1.30d0, 1.36d0, 1.42d0, 1.49d0, 1.56d0, 1.64d0, 1.72d0, 1.81d0, 1.9d0, 2.00d0 /)
+!    real(double) :: a, t, r0, fac, alpha1, m, u, p, rho, temp, ethermal, mval,rhoArray(21), velArray(21)
+    real(double) :: bigA, a, r0, r, rho, u, temp, p, ethermal
     integer :: i, j
 
     bigA = 2.2d0
