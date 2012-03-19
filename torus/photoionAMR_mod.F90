@@ -665,6 +665,8 @@ contains
        endif
 
        grid%currentTime = grid%currentTime + dt
+
+       if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = grid%currentTime
        
        if (myRankWorldGlobal == 1) write(*,*) "Current time: ",grid%currentTime
 

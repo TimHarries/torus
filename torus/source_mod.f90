@@ -63,7 +63,7 @@ module source_mod
             else
                open(22, file=filename, status="old", form="formatted", position="append")
             endif
-            write(22,'(i4.4, 1p, e12.3, 0p, f8.2, f8.2, f9.1, 1p, e12.3, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') &
+            write(22,'(i4.4, 1p, e12.3, 0p, f8.4, f8.4, f9.1, 1p, e12.3, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') &
                  iModel,source(i)%age*secstoYears, &
                  source(i)%mass/msol, &
                  source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, source(i)%mdot/msol/secstoyears, &

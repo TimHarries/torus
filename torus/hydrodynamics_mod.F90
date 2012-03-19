@@ -4186,6 +4186,7 @@ end subroutine sumFluxes
 
 !update the simulation time
        currentTime = currentTime + dt
+       if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = currentTime
        if (myRankWorldGlobal == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
        if (myRankWorldGlobal == 1) write(*,*) "percent to next dump ",100.*(nextDumpTime-currentTime)/tdump
 
