@@ -176,7 +176,7 @@ module source_mod
       write(lunit) source%diffuse
       write(lunit) source%angMomentum
       write(lunit) source%accretionRadius
-!      write(lunit) source%time
+      write(lunit) source%time
       call writeSpectrumToDump(source%spectrum,lunit)
       call writeSurface(source%surface, lunit)
     end subroutine writeSource
@@ -202,7 +202,7 @@ module source_mod
       read(lunit) source%diffuse
       read(lunit) source%angMomentum
       read(lunit) source%accretionRadius
-!      read(lunit) source%time
+      read(lunit) source%time
       call freeSpectrum(source%spectrum)
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)

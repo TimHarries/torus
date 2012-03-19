@@ -1886,17 +1886,17 @@ contains
 !                write(*,*) "source1 pos ",globalSourceArray(1)%position
 !                write(*,*) "source1 mass ",globalSourceArray(1)%mass
 !             endif
-             force = 0.d0
-             do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
-                rMod = modulus(rVec)
-                rHat = rVec
-                call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
-                force = force + (fVec.dot.VECTOR(1.d0,0.d0,0.d0))
-             enddo
-
-             if (nBodyPhysics) thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + force * dt ! gravity due to stars
+!             force = 0.d0
+!             do isource = 1, globalnSource
+!                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
+!                rMod = modulus(rVec)
+!                rHat = rVec
+!                call normalize(rHat)
+!                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+!                force = force + (fVec.dot.VECTOR(1.d0,0.d0,0.d0))
+!             enddo
+!
+!             if (nBodyPhysics) thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + force * dt ! gravity due to stars
 !             write(*,*) "impulse ",force*dt, - (dt/2.d0) * & !gravity
 !                  thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
 !                  thisoctal%phi_i_minus_1(subcell)) / dx
@@ -1986,17 +1986,17 @@ contains
              thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - (dt/2.d0) * & !gravity due to gas
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
-
-             force = 0.d0
-             do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
-                rMod = modulus(rVec)
-                rHat = rVec
-                call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
-                force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
-             enddo
-             if (nBodyPhysics) thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + force * dt ! gravity due to stars
+!
+!             force = 0.d0
+!             do isource = 1, globalnSource
+!                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
+!                rMod = modulus(rVec)
+!                rHat = rVec
+!                call normalize(rHat)
+!                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+!                force = force + (fVec.dot.VECTOR(0.d0,1.d0,0.d0))
+!             enddo
+!             if (nBodyPhysics) thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + force * dt ! gravity due to stars
                     
              if (isnan(thisoctal%rhov(subcell))) then
                 write(*,*) "rhov ",thisoctal%rhov(subcell)
@@ -2088,16 +2088,16 @@ contains
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
-             force = 0.d0
-             do isource = 1, globalnSource
-                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
-                rMod = modulus(rVec)
-                rHat = rVec
-                call normalize(rHat)
-                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
-                force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
-             enddo
-             if (nBodyPhysics) thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + force * dt ! gravity due to stars
+!             force = 0.d0
+!             do isource = 1, globalnSource
+!                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
+!                rMod = modulus(rVec)
+!                rHat = rVec
+!                call normalize(rHat)
+!                fVec = ((-1.d0)*(bigG * globalSourceArray(isource)%mass * thisOctal%rho(subcell)/(rMod**2 + eps**2)))*rHat
+!                force = force + (fVec.dot.VECTOR(0.d0,0.d0,1.d0))
+!             enddo
+!             if (nBodyPhysics) thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + force * dt ! gravity due to stars
 
 !Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then
@@ -3507,6 +3507,7 @@ end subroutine sumFluxes
 
 !sum gas and star contributions to total graviational potential
   recursive subroutine sumGasStarGravity(thisOctal)
+    use inputs_mod, only : doGasGravity
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3525,7 +3526,11 @@ end subroutine sumFluxes
 
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-          thisOctal%phi_i(subcell) = thisOctal%phi_gas(subcell) !+ thisOctal%phi_stars(subcell)
+          if (doGasGravity) then
+             thisOctal%phi_i(subcell) = thisOctal%phi_gas(subcell) + thisOctal%phi_stars(subcell)
+          else
+             thisOctal%phi_i(subcell) = thisOctal%phi_stars(subcell)
+          endif
        endif
     enddo
   end subroutine sumGasStarGravity
@@ -3863,6 +3868,7 @@ end subroutine sumFluxes
 
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
+       call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
        call writeInfo("Done", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
     endif
@@ -10035,7 +10041,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
   recursive subroutine performGasAccretion(thisOctal, accretedMass, accretedLinMomentum, accretedAngMomentum, &
        source, nSource)
     use mpi
-    use inputs_mod, only : rhoThreshold
+    use inputs_mod, only : rhoThreshold, geometry
     type(SOURCETYPE) :: source(:)
     real(double) :: accretedMass(:)
     type(VECTOR) :: accretedLinMomentum(:), accretedAngMomentum(:), cellCentre, cellVelocity
@@ -10071,14 +10077,15 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                   thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
                   thisOctal%rhow(subcell) / thisOctal%rho(subcell))
              eGrav = cellMass * thisOctal%phi_i(subcell)
-             do i = 1, nSource
-                eGrav = eGrav - bigG*cellMass*source(i)%mass / (modulus(cellCentre-source(i)%position)*1.d10)
-             enddo
+!             do i = 1, nSource
+!                eGrav = eGrav - bigG*cellMass*source(i)%mass / (modulus(cellCentre-source(i)%position)*1.d10)
+!             enddo
              eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
+             if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
              if (eKinetic + eThermal + eGrav > 0.d0) then
-                write(*,*) "Cell in accretion radius but not bound"
+                write(*,*) "Cell in accretion radius but not bound ",eKinetic+eThermal+eGrav
                 write(*,*) "eGrav ",eGrav
                 write(*,*) "ethermal ",eThermal
                 write(*,*) "eKinetic ",eKinetic

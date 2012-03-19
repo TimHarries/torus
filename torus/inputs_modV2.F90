@@ -1484,7 +1484,7 @@ contains
          "Hydrogren-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
-         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
+         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
 
     if(splitovermpi) then
        call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
@@ -1617,7 +1617,7 @@ contains
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",200,ok,.false.)
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
-         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
+         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
 
     call getReal("taudiff", tauDiff, 1., cLine, fLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
@@ -1720,6 +1720,9 @@ contains
 
     call getLogical("radpressure", radiationPressure, cLine, fLine, nLines, &
          "Include radiation pressure terms: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("gasgravity", doGasGravity, cLine, fLine, nLines, &
+         "Include gas gravity: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("fluxinterp", fluxinterp, cLine, fLine, nLines, &
          "Interpolate flux at fine coarse boundaries: ","(a,1l,1x,a)", .false., ok, .false.)

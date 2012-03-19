@@ -3339,6 +3339,10 @@ CONTAINS
                 split = .true.
                 exit
              endif
+             if ((r < 24.d0) .and. (thisOctal%nDepth < maxDepthAMR-1)) then
+                split = .true.
+                exit
+             endif
           enddo
        endif
 
@@ -7592,7 +7596,7 @@ endif
   end subroutine calcKrumholzDiscDensity
 
   subroutine calcBondiDensity(thisOctal,subcell)
-    use inputs_mod, only : gridDistanceScale, bondiCentre, sourcemass
+    use inputs_mod, only : gridDistanceScale, bondiCentre, sourcemass, smallestCellSize
     use utils_mod, only : bondi
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7600,6 +7604,7 @@ endif
     real(double) :: ethermal, soundSpeed
     real(double) :: x, y, z, r, rBondi, rhoInfty, v
     real(double), parameter :: lambda = 1.12d0
+    logical, save :: firstTime = .true.
     rVec = subcellCentre(thisOctal, subcell)-bondiCentre
     vVec = (-1.d0)*rVec
     call normalize(vVec)
@@ -7612,6 +7617,14 @@ endif
     v = y * soundSpeed
 
 !    write(*,*) "theoretical ",fourPi*1.d-25*rBondi**2 * 1.12d0*soundSpeed/msol*(365.25*24.*3600.)
+    if (firstTime) then
+       firstTime = .false.
+       if (writeoutput) then
+          write(*,*) "Bondi radius (cm): ",rBondi
+          write(*,*) "Bondi radius/cell size: ",rBondi/(smallestCellSize*1.d10)
+          write(*,*) "Mass accretion rate ",fourPi*1.d-25*rBondi**2*soundSpeed/msol*(365.25*24.*3600.)
+       endif
+    endif
     thisOctal%temperature(subcell) = 10.d0
     thisOCtal%rho(subcell) = rhoinfty * z
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
@@ -7629,7 +7642,7 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
     real(double) :: x, r,  v
-
+    logical, save :: firstTime = .true.
     real(double) :: xArray(21) = (/ 0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, &
          0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0/)
     real(double) :: alphaArray(21) = (/ 1.d30, 71.5d0, 27.8d0, 16.4d0, 11.5d0, 8.76d0, 7.09d0, 5.95d0, &
@@ -7638,46 +7651,39 @@ endif
          -0.861d0, -0.735d0, -0.625d0, -0.528d0, -0.442d0, -0.363d0, -0.291d0, -0.225d0, -0.163d0, -0.106d0, -0.051d0, 0.000d0 /)
     real(double) :: mArray(21) = (/ 0.975d0, 0.981d0, 0.993d0, 1.01d0, 1.03d0, 1.05d0, 1.08d0, 1.12d0, 1.16d0, 1.20d0, 1.25d0, &
          1.30d0, 1.36d0, 1.42d0, 1.49d0, 1.56d0, 1.64d0, 1.72d0, 1.81d0, 1.9d0, 2.00d0 /)
-    real(double) :: a, t, r0, fac, alpha1, m, u, p, rho, temp, ethermal
-    integer :: i
+    real(double) :: a, t, r0, fac, alpha1, m, u, p, rho, temp, ethermal, mval,rhoArray(21), velArray(21)
+    real(double) :: bigA
+    integer :: i, j
 
-
+    bigA = 2.2d0
+    a = sqrt(kerg*10.d0/(2.33d0*mHydrogen))
+    r0 = msol / (a**2 * bigA / bigG)
+    if (firstTime) then
+       if (writeoutput) write(*,*) "Radius of sphere is ",r0
+       firstTime = .false.
+    endif
     rVec = subcellCentre(thisOctal, subcell)
     vVec = rVec
     call normalize(vVec)
     r = modulus(rVec)*gridDistanceScale
-    a = sqrt(kerg*10.d0/(2.33d0 * mHydrogen))
 
-    t = 1.3d12
-    r0 = t * a
-    if (r < r0) then
-       x  = r / (a*t)
-       call locate(xArray, 21, x, i)
-       if (i > 1) then
-          fac = (x - xArray(i))/(xArray(i+1)-xArray(i))
-          alpha1 = alphaArray(i) + fac * (alphaArray(i+1)-alphaArray(i))
-          v =  vArray(i) + fac * (vArray(i+1)-vArray(i))
-          m =  mArray(i) + fac * (mArray(i+1)-mArray(i))
-          rho = alpha1 / (fourPi * bigG * t**2)
-       else
-          alpha1 = (marray(1)/(2.d0*x**3))**0.5d0
-          v = -(2.d0*mArray(1)/x)**0.25
-          rho = alpha1 / (fourPi * bigG * t**2)
-       endif
-       u = a * v
-       temp = 10.d0
-       p = rho/(2.33d0*mHydrogen)*kerg*temp
-    else
-       u = 0.d0
-       rho = 0.1d0 * alphaArray(21) / (fourPi * bigG * t**2)
+    rho = a**2 * bigA / (fourPi*bigG * r**2)
+    u = 0.d0
+    temp = 10.d0
+    if (r > r0) then 
+       rho = 0.1d0 * a**2 * bigA / (fourPi*bigG * r0**2)
        temp = 100.d0
-       p = rho/(2.33d0*mHydrogen)*kerg*temp
     endif
+
+    p = rho/(2.33d0*mHydrogen)*kerg*temp
+
 
     thisOctal%temperature(subcell) = real(temp)
     thisOCtal%rho(subcell) = rho
     thisOctal%pressure_i(subcell) =  p
     thisOctal%velocity(subcell) = (u/cSpeed) * Vvec
+
+
 
     eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2

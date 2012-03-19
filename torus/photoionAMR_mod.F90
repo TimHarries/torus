@@ -2838,7 +2838,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        thisTau = 1.0e-28
     end if
     if (radPressureTest) then
-       if (thisOctal%rho(subcell) < 1.d-22) then
+       if (thisOctal%rho(subcell) < 1.d-24) then
           thisTau = 1.d-30
        else
           thisTau = 1.d30
@@ -3002,7 +3002,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
           if (radPressureTest) then
 !             thisTau = 1.d20 * thisOctal%rho(subcell)
-             if (thisOctal%rho(subcell) < 1.d-22) then
+             if (thisOctal%rho(subcell) < 1.d-24) then
                 thisTau = 1.d-30
              else
                 thisTau = 1.d30
@@ -3777,6 +3777,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine quickThermalCalc(thisOctal)
     use mpi
+    use inputs_mod, only : tMinGlobal
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
 
@@ -3785,7 +3786,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
        if (.not.thisOctal%hasChild(subcell)) then
           if(octalOnThread(thisOCtal, subcell, myRankGlobal)) then
-             thisOctal%temperature(subcell) = real(10.d0 + (10000.d0-10.d0) * thisOctal%ionFrac(subcell,2))
+             thisOctal%temperature(subcell) = real(dble(tminGlobal) + (10000.d0-dble(tminGlobal)) * thisOctal%ionFrac(subcell,2))
           end if
        endif
        
