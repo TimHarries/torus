@@ -2860,7 +2860,7 @@ end subroutine sumFluxes
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize/2.d0)
        endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -3143,7 +3143,7 @@ end subroutine sumFluxes
        call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 0.1d0*grid%halfSmallestSubcell)
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize/2.d0)
        endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -3979,7 +3979,7 @@ end subroutine sumFluxes
                          
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
-                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 0.1d0*smallestCellSize)
+                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize/2.d0)
              endif
              call sumGasStarGravity(grid%octreeRoot)
 

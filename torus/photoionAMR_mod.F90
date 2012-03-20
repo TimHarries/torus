@@ -381,7 +381,8 @@ contains
                                 
                 call zeroSourcepotential(grid%octreeRoot)
                 if (globalnSource > 0) then
-                   call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+                   call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, &
+                        smallestCellSize/2.d0)
                 endif
                 call sumGasStarGravity(grid%octreeRoot)
                 

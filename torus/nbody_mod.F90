@@ -451,7 +451,7 @@ contains
     type(OCTAL), pointer :: thisOctal, child
     integer :: subcell, i, iSource
     type(VECTOR) :: rVec, cen
-    real(double) :: r, eps
+    real(double) :: r, eps, thisPhi
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -468,8 +468,11 @@ contains
           do iSource = 1, nSource
              rVec = cen - source(isource)%position
              r = modulus(rVec)
-             thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) - &
-                  (bigG*source(isource)%mass/ (max(r*1.d10,eps*1.d10)))
+!             thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) - &
+!                  (bigG*source(isource)%mass/ (max(r*1.d10,eps*1.d10)))
+             thisPhi = bigG*source(isource)%mass*(1.d0/(eps*1.d10)) * (atan(r/eps) - piby2)
+             thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) + thisPhi
+!             write(*,*) thisPhi, -(bigG*source(isource)%mass/ (max(r*1.d10,eps*1.d10)))
           enddo
        endif
     enddo
