@@ -7655,7 +7655,7 @@ endif
     real(double) :: bigA, a, r0, r, rho, u, temp, p, ethermal
 !    integer :: i, j
 
-    bigA = 2.2d0
+    bigA = 4.d0
     a = sqrt(kerg*10.d0/(2.33d0*mHydrogen))
     r0 = msol / (a**2 * bigA / bigG)
     if (firstTime) then

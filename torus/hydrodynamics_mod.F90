@@ -394,7 +394,6 @@ contains
 
              thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dx)
 
-
           endif
        endif
     enddo
@@ -2458,6 +2457,10 @@ contains
              write(*,*) "q ", thisoctal%q_i_plus_1(subcell), thisoctal%q_i(subcell), thisoctal%q_i_minus_1(subcell)
              if (.not.associated(thisoctal%mpiboundarystorage)) &
                 write(*,*) "cell is not on a boundary"
+             thisOctal%rho(subcell) = 1.d-29
+             thisOctal%rhou(subcell) = 1.d-29
+             thisOctal%rhov(subcell) = 1.d-29
+             thisOctal%rhow(subcell) = 1.d-29
 
           endif
        endif
@@ -2833,7 +2836,7 @@ end subroutine sumFluxes
   subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
     use mpi
-    use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet
+    use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -2857,10 +2860,10 @@ end subroutine sumFluxes
 
     if (selfGravity) then
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize/2.d0)
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
        endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -3140,10 +3143,10 @@ end subroutine sumFluxes
 
     if (selfGravity) then
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize/2.d0)
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
        endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -3381,7 +3384,7 @@ end subroutine sumFluxes
 
 
              dx= smallestCellSize * gridDistanceScale
-             eps = smallestCellSize * gridDistanceScale
+             eps = 0.5d0*smallestCellSize * gridDistanceScale
     
              force = VECTOR(0.d0, 0.d0, 0.d0)
              do isource = 1, globalnSource
@@ -3436,7 +3439,7 @@ end subroutine sumFluxes
              dx= smallestCellSize * gridDistanceScale
 
 !Use max velocity not average
-             speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
+             speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
              speed = sqrt(speed)/thisOctal%rho(subcell)
              tc = min(tc, dx / max(1.d-30,(cs + speed)) )
           endif
@@ -3968,7 +3971,7 @@ end subroutine sumFluxes
 !                  ,"phi          " /))
              
              call zeroPhiGas(grid%octreeRoot)
-             call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+             if (doGasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
              
 !for periodic self-gravity
              if(.not. dirichlet) then
@@ -3979,7 +3982,7 @@ end subroutine sumFluxes
                          
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
-                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize/2.d0)
+                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
              endif
              call sumGasStarGravity(grid%octreeRoot)
 
@@ -4172,7 +4175,7 @@ end subroutine sumFluxes
        if (doSelfGrav) then
           call zeroSourcepotential(grid%octreeRoot)
           if (globalnSource > 0) then
-             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, grid%halfSmallestSubcell)
+             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
           endif
           call sumGasStarGravity(grid%octreeRoot)
        endif
@@ -10276,7 +10279,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              thisOctal%boundaryCell(subcell) = .true.
              rho = real(mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
              v = vterm
-	     fac = 1.d0
+             fac = 1.d0
              thisOctal%rho(subcell) = rho * fac
              thisOctal%velocity(subcell) = (v/cspeed)*rVec
              thisOctal%rhou(subcell) = rVec%x * v * rho * fac
