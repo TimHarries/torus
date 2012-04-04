@@ -168,7 +168,7 @@ contains
 !          allocate(outBuffer(1:i))
           allocate(inBuffer(1:maxBuffer))
           inBuffer = buffer
-          call compressBytes(inbuffer, maxBuffer, outBuffer, nOut)
+          call compressBytes(inbuffer, int(maxBuffer, kind=c_long), outBuffer, nOut)
           write(lunit) nout
           write(lunit) outBuffer(1:nOut)
           deallocate(outBuffer, inBuffer)
@@ -353,13 +353,13 @@ contains
     endif
 
     if (present(logicalArray1d)) then
-       nbytes = SIZE(logicalArray1d)*sizeof(logicalArray1d(1))
+       nbytes = int(SIZE(logicalArray1d)*sizeof(logicalArray1d(1)))
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(logicalArray1d, inputBuffer(1:nBytes))
     endif
 
     if (present(logicalValue)) then
-       nbytes = sizeof(logicalValue)
+       nbytes = int(sizeof(logicalValue))
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(logicalValue, inputBuffer(1:nBytes))
     endif
@@ -384,7 +384,7 @@ contains
     endif
 
     if (present(realValue)) then
-       nbytes = sizeof(realValue)
+       nbytes = int(sizeof(realValue))
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(realValue, inputBuffer(1:nBytes))
     endif
@@ -438,7 +438,7 @@ contains
 !          allocate(outBuffer(1:i))
           allocate(inBuffer(1:maxBuffer))
           inBuffer = buffer
-          call compressBytes(inbuffer, maxBuffer, outBuffer, nOut)
+          call compressBytes(inbuffer, int(maxBuffer, kind=c_long), outBuffer, nOut)
           write(lunit) nout
           write(lunit) outBuffer(1:nOut)
           deallocate(outBuffer, inBuffer)
@@ -456,7 +456,7 @@ contains
 !          allocate(outBuffer(1:i))
           allocate(inBuffer(1:maxBuffer))
           inBuffer = buffer
-          call compressBytes(inBuffer, maxBuffer, outBuffer, nOut)
+          call compressBytes(inBuffer, int(maxBuffer, kind=c_long), outBuffer, nOut)
           write(lunit) nout
           write(lunit) outBuffer(1:nOut)
           deallocate(outBuffer, inBuffer)
@@ -584,7 +584,7 @@ contains
     real(double), optional :: doubleArray3d(:,:,:)
     integer(kind=1), allocatable :: inputBuffer(:)
     integer(kind=1), pointer :: outBuffer(:), compressedBuffer(:)
-    integer :: nBytes, iByte, i
+    integer :: nBytes, iByte
     integer(kind=bigInt) :: nout, nCompressed
     
     if (present(cString)) then
@@ -640,7 +640,7 @@ contains
     endif
 
     if (present(logicalValue)) then
-       nBytes = sizeof(logicalValue)
+       nBytes = int(sizeof(logicalValue))
        allocate(inputBuffer(1:nBytes))
     endif
 
@@ -655,7 +655,7 @@ contains
     endif
 
     if (present(logicalArray1d)) then
-       nBytes = size(logicalArray1d)*sizeof(logicalArray1d(1))
+       nBytes = int(size(logicalArray1d)*sizeof(logicalArray1d(1)))
        allocate(inputBuffer(1:nBytes))
     endif
        
@@ -745,7 +745,6 @@ contains
 
 
     deallocate(inputBuffer)
-666 continue
   end subroutine readCompressedFileGeneric
 
 #endif

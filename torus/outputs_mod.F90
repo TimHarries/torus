@@ -95,7 +95,7 @@ contains
          (.not.calcBenchmark) .and. &
          (.not. sourceHistory).and. &
          (.not.dowriteRadialfile) &
-	 ) then
+         ) then
        goto 666
     endif
 

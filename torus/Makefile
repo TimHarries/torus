@@ -630,6 +630,7 @@ F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIF
 
 
 all: depends $(ALLOBJ)
+	svnversion
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
