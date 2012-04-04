@@ -2156,7 +2156,6 @@ contains
   recursive subroutine damp(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    real(double) :: speed, fac
     integer :: subcell, i
   
     do subcell = 1, thisoctal%maxchildren
@@ -9215,12 +9214,10 @@ end subroutine minMaxDepth
      use mpi
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
-     real(double) :: temp(12),rhomax
+     real(double) :: rhomax
      integer :: nSource
      integer :: iThread
-     integer :: j, tag, ierr
-     integer :: status(MPI_STATUS_SIZE)
-     logical :: stillReceiving
+     integer :: tag
 
      tag = 77
 
@@ -9239,20 +9236,17 @@ end subroutine minMaxDepth
   recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
     use mpi
     use inputs_mod, only : rhoThreshold, smallestCellSize
-    type(OCTAL), pointer :: thisOctal, child, neighbourOctal
-    integer :: neighbourSubcell
+    type(OCTAL), pointer :: thisOctal, child
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: centre
     real(double) :: bigJ, e, rhomax
     real(double), allocatable :: eGrav(:), eKinetic(:), eThermal(:)
-    real(double) :: temp(12), racc
-    integer :: nSource, nd
-    integer :: i, subcell, ierr, ithread, tag, nProbes
+    real(double) :: temp(13), racc
+    integer :: nSource
+    integer :: i, subcell, ierr, ithread, tag
     logical :: createSink
-    real(double) :: vLocal, vNeighbour, deltaV
-    real(double) :: q, phigas, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, xnext, px, py, pz
-    type(VECTOR) :: probe(6), locator, thisVel
+    type(VECTOR) :: thisVel
     integer, parameter :: maxPoints = 100
     integer :: npoints
     type(VECTOR) :: position(maxPoints), vel(maxPoints),rVec, vcom
@@ -9417,7 +9411,6 @@ end subroutine minMaxDepth
           endif
 
        endif
-666 continue
     enddo
   end subroutine recursaddSinks
 
@@ -10305,7 +10298,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
   subroutine getPointsInAccretionRadius(thisOctal, subcell, radius, grid, npoints, position, vel, mass, phi, cs)
     use mpi
-    type(VECTOR) :: thisPoint
     real(double) :: radius
     type(GRIDTYPE) :: grid
     integer :: nPoints
@@ -10341,20 +10333,31 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           call MPI_SEND(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
           call MPI_RECV(nOther, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
           if (nOther > 0) then
-             call MPI_RECV(position(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(position(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(position(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(position(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(position(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(position(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
              
-             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
              
-             call MPI_RECV(mass(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(mass(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
              
-             call MPI_RECV(phi(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(phi(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
              
-             call MPI_RECV(cs(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(cs(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                  iThread, tag, localWorldCommunicator, status, ierr)
+
              nPoints = nPoints + nOther
+
           endif
        endif
     enddo
