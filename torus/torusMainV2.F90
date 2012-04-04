@@ -90,7 +90,8 @@ program torus
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
-
+!  if (Writeoutput) call compressTest()
+!  stop
   !  call testSuiteRandom()  
   call inputs()
 
@@ -135,7 +136,6 @@ program torus
      endif
 
      call setupGlobalSources(grid)
-
 
      call writeBanner("Run-time messages","+",TRIVIAL)
 

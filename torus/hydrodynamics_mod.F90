@@ -1041,7 +1041,7 @@ contains
 
     end if
 
-    deallocate(community)
+    deallocate(community, communitySubset)
     deallocate(xpos)
     deallocate(f)
 
@@ -1876,6 +1876,15 @@ contains
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - (dt/2.d0) * & !gravity due to gas
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
+
+!             if (thisOctal%rhou(subcell)/thisOctal%rho(subcell) > 1.8e5) then
+!                write(*,*) "bug tracked on x"
+!                write(*,*) "force from pressure ",(thisoctal%pressure_i_plus_1(subcell) - &
+!                     thisoctal%pressure_i_minus_1(subcell)) / dx
+!                write(*,*) "force from gravity ",thisoctal%rho(subcell)*(thisoctal%phi_i_plus_1(subcell) - &
+!                  thisoctal%phi_i_minus_1(subcell)) / dx
+!             endif
+!
 !             if (firstTime) then
 !                firstTime = .false.
 !                write(*,*) "thread ",myrankWorldGlobal," has"
@@ -2009,6 +2018,14 @@ contains
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - (dt/2.d0) * & !gravity
                   rhou  * (thisoctal%phi_i_plus_1(subcell) - thisoctal%phi_i_minus_1(subcell)) / dx
              endif
+!             if (thisOctal%rhov(subcell)/thisOctal%rho(subcell) > 1.8e5) then
+!                write(*,*) "bug tracked on y"
+!                write(*,*) "force from pressure ",(thisoctal%pressure_i_plus_1(subcell) - &
+!                     thisoctal%pressure_i_minus_1(subcell)) / dx
+!                write(*,*) "force from gravity ",thisoctal%rho(subcell)*(thisoctal%phi_i_plus_1(subcell) - &
+!                  thisoctal%phi_i_minus_1(subcell)) / dx
+!             endif
+!
 
 
              if (radiationPressure) then
@@ -2081,6 +2098,21 @@ contains
                   thisoctal%rho(subcell) *(thisoctal%phi_i_plus_1(subcell) - &
                   thisoctal%phi_i_minus_1(subcell)) / dx
 
+!             if (thisOctal%rhow(subcell)/thisOctal%rho(subcell) > 1.8e5) then
+!                write(*,*) "bug tracked on z ",1.d-5*thisOctal%rhow(subcell)/thisOctal%rho(subcell)
+!                write(*,*) "force from pressure ",(thisoctal%pressure_i_plus_1(subcell) - &
+!                     thisoctal%pressure_i_minus_1(subcell)) / dx
+!                write(*,*) "pressure i plus 1 ",thisOctal%pressure_i_plus_1(subcell)
+!                write(*,*) "pressure i ",thisOctal%pressure_i(subcell)
+!                write(*,*) "pressure i minus 1 ",thisOctal%pressure_i_minus_1(subcell)
+!                write(*,*) "thisOctal rho i plus 1 ", thisOctal%rho_i_plus_1(subcell)
+!                write(*,*) "thisOctal rho i ", thisOctal%rho(subcell)
+!                write(*,*) "thisOctal rho i minus 1", thisOctal%rho_i_minus_1(subcell)
+!                write(*,*) "force from gravity ",thisoctal%rho(subcell)*(thisoctal%phi_i_plus_1(subcell) - &
+!                  thisoctal%phi_i_minus_1(subcell)) / dx
+!             endif
+
+
 !             force = 0.d0
 !             do isource = 1, globalnSource
 !                rVec = 1.d10*(subcellCentre(thisOctal, subcell)-globalSourceArray(isource)%position)
@@ -2140,20 +2172,20 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
-          speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
-               thisOctal%rhov(subcell)**2)/thisOctal%rho(subcell)**2
-          speed = sqrt(speed)
-          if (speed > 0.d0) then
-             fac = min(speed, 1d5)/speed
-          else
-             fac = 1.d0
-          endif
-          fac = 0.5d0
+!          speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+!               thisOctal%rhov(subcell)**2)/thisOctal%rho(subcell)**2
+!          speed = sqrt(speed)
+!          if (speed > 0.d0) then
+!             fac = min(speed, 1d5)/speed
+!          else
+!             fac = 1.d0
+!          endif
+!          fac = 0.5d0
           if (thisOctal%rho(subcell) < 1.d-24) then
-             thisoctal%rhou(subcell) = fac * thisOctal%rhou(subcell)
-             thisoctal%rhov(subcell) = fac * thisOctal%rhov(subcell)
-             thisoctal%rhow(subcell) = fac * thisOctal%rhow(subcell)
-             thisoctal%rhoe(subcell) = fac * thisOctal%rhoe(subcell)
+             thisoctal%rhou(subcell) = 1.d-25
+             thisoctal%rhov(subcell) = 1.d-25
+             thisoctal%rhow(subcell) = 1.d-25
+             thisoctal%rhoe(subcell) = 1.d-25
           endif
        endif
     enddo
@@ -3455,14 +3487,17 @@ end subroutine sumFluxes
     dt = 1.d30
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     call setuppressure(grid%octreeroot, grid, direction)
+    call setuprhoPhi(grid%octreeroot, grid, direction)
     call pressureTimeStep(grid%octreeRoot, dt)
 
     direction = VECTOR(0.d0, 1.d0, 0.d0)
     call setuppressure(grid%octreeroot, grid, direction)
+    call setuprhoPhi(grid%octreeroot, grid, direction)
     call pressureTimeStep(grid%octreeRoot, dt)
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call setuppressure(grid%octreeroot, grid, direction)
+    call setuprhoPhi(grid%octreeroot, grid, direction)
     call pressureTimeStep(grid%octreeRoot, dt)
 
   end subroutine pressureGradientTimeStep
@@ -3495,8 +3530,13 @@ end subroutine sumFluxes
              dx = thisoctal%subcellsize * griddistancescale
              acc =  (1.d0/thisOctal%rho(subcell)) * &
                   (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / (2.d0*dx)
-             acc = max(1.d-30, acc)
+
+             acc = acc + &
+                  (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i_minus_1(subcell)) / (2.d0 * dx)
+             acc = max(1.d-30, abs(acc))
              dt = min(dt, sqrt(dx/acc))
+
+
           endif
        endif
     enddo
@@ -3582,7 +3622,7 @@ end subroutine sumFluxes
        case(3) ! polytropic
           cs = sqrt(thisOctal%gamma(subcell)*thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
        case(4) ! federrath
-          cs = 0.166d0
+          cs = 0.166d5
        case DEFAULT
           write(*,*) "Unknown equation of state passed to sound speed ", thisOctal%iEquationofState(subcell)
           
@@ -4143,12 +4183,14 @@ end subroutine sumFluxes
 
 !             iRefine = iRefine + 1 
 !             if (irefine == 3) then
+             if (myrankWorldGlobal == 1)call tune(6, "Refine grid")
                 call writeInfo("Refining grid part 2", TRIVIAL)    
                 call setAllUnchanged(grid%octreeRoot)
                 call refineGridGeneric(grid, amrTolerance, evenuparray)
                 call writeInfo("Done the refine part", TRIVIAL)                 
                 call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                 call writeInfo("Done the even up part", TRIVIAL)    
+             if (myrankWorldGlobal == 1)call tune(6, "Refine grid")
 !                iRefine = 0
 !             endif
 
@@ -9059,11 +9101,11 @@ end subroutine minMaxDepth
         call writesourcelist(source, nSource)
         call writeVtkFilenBody(nsource, source, "nbody_temp.vtk")
      endif
-     deallocate(newSource)
 666 continue
 
 
 
+     deallocate(newSource)
      deallocate(group)
    end subroutine mergeSinksFF
 
@@ -9186,41 +9228,9 @@ end subroutine minMaxDepth
         if (myrankGlobal == iThread) then
            rhomax = 0.d0
            call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
-!           write(*,*) "Maximum ratio of local density:threshold density ",rhomax
-           do j = 1, nHydroThreadsGlobal
-              if (j /= myRankGlobal) then
-                 temp(1) = 1.d30
-                 call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
-              endif
-           enddo
+           call shutdownRadiusServer()
         else
-           stillReceiving = .true.
-           do while (stillReceiving)
-              call mpi_recv(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-              if (temp(1) > 1.d29) then
-                 stillReceiving = .false.
-                 exit
-              else
-                 nSource = nSource + 1
-                 source(nsource)%position%x = temp(1) 
-                 source(nsource)%position%y = temp(2) 
-                 source(nsource)%position%z = temp(3) 
-                 source(nsource)%mass  = temp(4) 
-                 source(nsource)%velocity%x = temp(5) 
-                 source(nsource)%velocity%y = temp(6) 
-                 source(nsource)%velocity%z = temp(7) 
-                 source(nsource)%radius = temp(8)   
-                 source(nSource)%stellar = .true.
-                 source(nSource)%diffuse = .false.
-                 source(nSource)%accretionRadius = temp(9)
-                 source(nSource)%angMomentum%x = temp(10)
-                 source(nSource)%angMomentum%y = temp(11)
-                 source(nSource)%angMomentum%z = temp(12)
-                 call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
-                      100.d0, 1.d7, 1000)
-                 call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
-              endif
-           enddo
+           call getPointsInAccretionRadiusServer(grid, nSource, source)
         endif
      enddo
    end subroutine addSinks
@@ -9228,21 +9238,28 @@ end subroutine minMaxDepth
 
   recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
     use mpi
-    use inputs_mod, only : rhoThreshold
+    use inputs_mod, only : rhoThreshold, smallestCellSize
     type(OCTAL), pointer :: thisOctal, child, neighbourOctal
     integer :: neighbourSubcell
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
-    type(VECTOR) :: vel, centre
-    real(double) :: bigJ, cs, e, rhomax
-    real(double) :: eGrav, eKinetic, eThermal, cellMass
+    type(VECTOR) :: centre
+    real(double) :: bigJ, e, rhomax
+    real(double), allocatable :: eGrav(:), eKinetic(:), eThermal(:)
     real(double) :: temp(12), racc
     integer :: nSource, nd
     integer :: i, subcell, ierr, ithread, tag, nProbes
     logical :: createSink
     real(double) :: vLocal, vNeighbour, deltaV
-    real(double) :: q, phi, phigas, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, xnext, px, py, pz
-    type(VECTOR) :: probe(6), locator
+    real(double) :: q, phigas, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, xnext, px, py, pz
+    type(VECTOR) :: probe(6), locator, thisVel
+    integer, parameter :: maxPoints = 100
+    integer :: npoints
+    type(VECTOR) :: position(maxPoints), vel(maxPoints),rVec, vcom
+    real(double) :: mass(maxPoints), phi(maxPoints), cs(maxPoints)
+    real(double) :: cellMass
+    integer :: iPoint
+
     tag = 77
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -9257,7 +9274,10 @@ end subroutine minMaxDepth
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+
           if (thisOctal%ghostCell(subcell)) cycle
+
           centre = subcellCEntre(thisOctal, subcell)
           vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
                thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
@@ -9267,105 +9287,89 @@ end subroutine minMaxDepth
           
           createSink = .true.
 
-          if (thisOctal%rho(subcell) < rhoThreshold) createSink = .false.
+          if (thisOctal%rho(subcell) < rhoThreshold) then
+             createSink = .false.
+             cycle
+          endif
+
+
+          call getPointsInAccretionRadius(thisOctal, subcell, 2.5d0*smallestCellSize, grid, npoints, position, vel, mass, phi, cs)
 
 !          if (createSink) write(*,*) "Source creating passed jeans test ",thisOctal%rho(subcell)/rhoThreshold
           rhomax = max(rhomax, thisOctal%rho(subcell)/rhoThreshold)
 
           cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
+          allocate(eKinetic(1:nPoints), eGrav(1:nPoints), eThermal(1:nPoints))
 
-          eGrav = cellMass * thisOctal%phi_i(subcell)
-          eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
-          ekinetic = 0.5d0 * cellMass * modulus(vel)**2
+          vcom = VECTOR(0.d0,0.d0,0.d0)
+          do iPoint = 1, nPoints
+             vcom = vcom + (mass(iPoint)*vel(iPoint))
+          enddo
+          vcom = vcom / SUM(mass(1:nPoints))
 
+          do iPoint = 1, nPoints
+             eKinetic(iPoint) = 0.5d0 * mass(iPoint)* modulus(vel(ipoint)-vcom)**2
+          enddo
+          eGrav(1:nPoints) = mass(1:npoints) * phi(1:nPoints)
+          eThermal(1:nPoints) = 0.5d0 * mass(1:nPoints) * cs(1:nPoints)**2
 
-          if (eKinetic + eThermal + eGrav > 0.d0) createSink = .false.
-!          if (createSink) write(*,*) "Source creating passed bound test ",eGrav,eThermal,eKinetic
+          if (SUM(eKinetic) + SUM(eGrav) + SUM(eThermal) > 0.d0) then
+             createSink = .false.
+!             write(*,*) "bound test failed ",SUM(eKinetic)+SUM(eGrav)+SUM(eThermal),SUM(eKinetic), &
+!                  SUM(eGrav),SUM(eThermal)
+             if (SUM(eKinetic)+SUM(eGrav)+SUM(eThermal) > 1.d60) then
+                do iPoint = 1, nPoints
+                   write(*,*) iPoint, " pos ",position(iPoint), " vel ",vel(iPoint), " mass ",mass(ipoint), &
+                        " phi ",phi(iPoint), " cs ",cs(iPoint)
+                enddo
+             endif
+          endif
+
+!          endif
+          if (abs(SUM(eGrav))< (2.d0*SUM(eThermal))) then
+             createSink = .false.
+             write(*,*) "virial test failed ",abs(SUM(eGrav)),2.d0*SUM(ethermal)
+          endif
+
+          deallocate(eGrav, eKinetic, eThermal)
+          if (.not.createSink) cycle
+
+!          if (createSink) write(*,*) "Source creating passed virial test ",abs(eGrav),2.d0*eThermal
           do i = 1, nSource
-             cs = soundSpeed(thisOctal, subcell)
              racc = source(i)%accretionRadius
              if (modulus(centre - source(i)%position)*1.d10 < racc) then
                 createsink = .false.
                 exit
              endif
           enddo
+          if (.not.createSink) cycle
 !          if (createSink) write(*,*) "Source creating passed accretion radius test "
 
           if (createSink) then
-             nProbes = 6
-             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
-             probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
-             probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
-             probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
-             
-             do i = 1, nProbes
-                locator = subcellcentre(thisoctal, subcell) + probe(i) * &
-                     (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-                neighbouroctal => thisoctal
-                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, probe(i), q, rho, rhoe, &
-                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-                if (phi < thisOctal%phi_i(subcell)) then
-                   createSink = .false.
-!                   write(*,*) "Create sink failed not local phi min"
-                   exit
-                endif
-             enddo
+             if (MINVAL(phi(1:nPoints)) < phi(1)) then
+                createSink = .false.
+                write(*,*) "not phi minumum ",phi(1),minval(phi(1:nPoints))
+                cycle
+             endif
           endif
+
+
 
           if (createSink) then
-             nProbes = 6
-             probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
-             probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-             probe(3) = VECTOR(0.d0, 1.d0, 0.d0)
-             probe(4) = VECTOR(0.d0, -1.d0, 0.d0)
-             probe(5) = VECTOR(0.d0, 0.d0, 1.d0)
-             probe(6) = VECTOR(0.d0, 0.d0, -1.d0)
-             
-             do i = 1, nProbes
-                locator = subcellcentre(thisoctal, subcell) + probe(i) * &
-                     (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-                neighbouroctal => thisoctal
-                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, probe(i), q, rho, rhoe, &
-                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
-                select case (i)
-                   case(1)
-                      vLocal = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
-                      vNeighbour = rhou / rho
-                      deltaV = vNeighbour - vLocal
-                      if (deltaV > 0.d0) createSink = .false.
-                   case(2)
-                      vLocal = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
-                      vNeighbour = rhou / rho
-                      deltaV = vNeighbour - vLocal
-                      if (deltaV < 0.d0) createSink = .false.
-                   case(3)
-                      vLocal = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
-                      vNeighbour = rhov / rho
-                      deltaV = vNeighbour - vLocal
-                      if (deltaV > 0.d0) createSink = .false.
-                   case(4)
-                      vLocal = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
-                      vNeighbour = rhov / rho
-                      deltaV = vNeighbour - vLocal
-                      if (deltaV < 0.d0) createSink = .false.
-                   case(5)
-                      vLocal = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
-                      vNeighbour = rhow / rho
-                      deltaV = vNeighbour - vLocal
-                      if (deltaV > 0.d0) createSink = .false.
-                   case(6)
-                      vLocal = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
-                      vNeighbour = rhow / rho
-                      deltaV = vNeighbour - vLocal
-                      if (deltaV < 0.d0) createSink = .false.
-                   end select
+             do iPoint = 2, nPoints
+                rVec = position(iPoint) - position(1)
+                call normalize(rVec)
+                if ((rVec.dot.(vel(iPoint)-vel(1))) > 0.d0) then
+                   createSink = .false.
+                   write(*,*) "not converging ",rVec.dot.((vel(ipoint)-vel(1)))
+                endif
              enddo
-          endif
 
+             if (.not.createSink) then
+                write(*,*) "Create source failed on converging flow test"
+                cycle
+             endif
+          endif
 
           if (createSink) then
              nSource = nSource + 1
@@ -9377,40 +9381,43 @@ end subroutine minMaxDepth
              source(nsource)%mass = (thisOctal%rho(subcell) - rhoThreshold)*thisOctal%subcellSize**3*1.d30
              source(nsource)%radius = rsol/1.d10
              source(nSource)%accretionRadius = 2.5d0 * smallestCellSize * 1.d10
+             source(nSource)%age = grid%currentTime
              source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
-             vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+             thisvel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
                   thisOctal%rhow(subcell)/thisOctal%rho(subcell))
              e = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
              thisOctal%rho(subcell) =  rhoThreshold
-             thisOctal%rhou(subcell) = rhoThreshold * vel%x
-             thisOctal%rhov(subcell) = rhoThreshold * vel%y
-             thisOctal%rhow(subcell) = rhoThreshold * vel%z
+             thisOctal%rhou(subcell) = rhoThreshold * thisvel%x
+             thisOctal%rhov(subcell) = rhoThreshold * thisvel%y
+             thisOctal%rhow(subcell) = rhoThreshold * thisvel%z
              thisOctal%rhoe(subcell) = rhoThreshold * e
 
-             temp(1) = source(nsource)%position%x
-             temp(2) = source(nsource)%position%y
-             temp(3) = source(nsource)%position%z
-             temp(4) = source(nsource)%mass 
-             temp(5) = source(nsource)%velocity%x
-             temp(6) = source(nsource)%velocity%y
-             temp(7) = source(nsource)%velocity%z
-             temp(8) = source(nsource)%radius
-             temp(9) = source(nsource)%accretionRadius
-             temp(10) = source(nsource)%angMomentum%x
-             temp(11) = source(nsource)%angMomentum%y
-             temp(12) = source(nsource)%angMomentum%z
+             temp(1) = 1.d0
+             temp(2) = source(nsource)%position%x
+             temp(3) = source(nsource)%position%y
+             temp(4) = source(nsource)%position%z
+             temp(5) = source(nsource)%mass 
+             temp(6) = source(nsource)%velocity%x
+             temp(7) = source(nsource)%velocity%y
+             temp(8) = source(nsource)%velocity%z
+             temp(9) = source(nsource)%radius
+             temp(10) = source(nsource)%accretionRadius
+             temp(11) = source(nsource)%angMomentum%x
+             temp(12) = source(nsource)%angMomentum%y
+             temp(13) = source(nsource)%angMomentum%z
              
              do iThread = 1, nHydroThreadsGlobal
                 if (iThread /= myRankGlobal) then
-                   call mpi_send(temp, 12, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                   call mpi_send(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 endif
              enddo
              
           endif
 
        endif
+666 continue
     enddo
   end subroutine recursaddSinks
 
@@ -10294,6 +10301,210 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        endif
     enddo
   end subroutine addStellarWindRecur
+
+
+  subroutine getPointsInAccretionRadius(thisOctal, subcell, radius, grid, npoints, position, vel, mass, phi, cs)
+    use mpi
+    type(VECTOR) :: thisPoint
+    real(double) :: radius
+    type(GRIDTYPE) :: grid
+    integer :: nPoints
+    type(VECTOR) :: position(:), vel(:)
+    real(double) :: mass(:), phi(:), cs(:)
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: temp(13)
+    integer :: iThread
+    integer :: subcell
+    integer :: ierr
+    integer, parameter :: tag = 65
+    integer :: nOther
+    integer :: status(MPI_STATUS_SIZE)
+
+    npoints = 1
+    position(1) = subcellCentre(thisOctal, subcell)
+    vel(1) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+         thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+         thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+    mass(1) = cellVolume(thisOctal, subcell)*1.d30*thisOctal%rho(subcell)
+    phi(1) = thisOctal%phi_i(subcell)
+    cs(1) = soundSpeed(thisOctal, subcell)
+    call getPointsInAccretionRadiusLocal(grid%octreeRoot, position(1), radius, grid, npoints, position, vel, mass, phi, cs)
+    
+    temp(1) = 2.d0
+    temp(2) = position(1)%x
+    temp(3) = position(1)%y
+    temp(4) = position(1)%z
+    temp(5) = radius
+    temp(6) = thisOctal%mpiThread(subcell)
+    do iThread = 1, nHydroThreadsGlobal
+       if (iThread /= myRankGlobal) then
+          call MPI_SEND(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(nOther, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
+          if (nOther > 0) then
+             call MPI_RECV(position(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(position(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(position(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             
+             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             
+             call MPI_RECV(mass(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             
+             call MPI_RECV(phi(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             
+             call MPI_RECV(cs(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+             nPoints = nPoints + nOther
+          endif
+       endif
+    enddo
+
+  end subroutine getPointsInAccretionRadius
+  
+             
+  recursive subroutine getPointsinAccretionRadiusLocal(thisOctal, thisPoint, radius, grid, nPoints, position, vel, mass, phi, cs)
+    type(VECTOR) :: thisPoint
+    real(double) :: radius
+    type(GRIDTYPE) :: grid
+    integer :: nPoints
+    type(VECTOR) :: position(:), vel(:)
+    real(double) :: mass(:), phi(:), cs(:)
+    type(OCTAL), pointer :: thisOctal, child
+    type(VECTOR) :: cen
+    integer :: subcell, i
+    
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call getPointsinAccretionRadiusLocal(child, thisPoint, radius, grid, nPoints, position, vel, mass, phi, cs)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          if (inSubcell(thisOctal, subcell, thisPoint)) cycle
+
+          cen = subcellCentre(thisOctal, subcell)
+          if (modulus(cen - thisPoint) < radius) then
+             nPoints = npoints + 1
+             position(nPoints) = subcellCentre(thisOctal, subcell)
+             vel(nPoints) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                  thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                  thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             mass(nPoints) = cellVolume(thisOctal, subcell)*1.d30*thisOctal%rho(subcell)
+             phi(nPoints) = thisOctal%phi_i(subcell)
+             cs(nPoints) = soundSpeed(thisOctal, subcell)
+          endif
+
+       endif
+    enddo
+  end subroutine getPointsinAccretionRadiusLocal
+
+  subroutine shutdownRadiusServer()
+    use mpi
+    real(double) :: loc(13)
+    integer :: iThread
+    integer :: ierr
+    integer, parameter :: tag = 65
+
+    do iThread = 1, nHydroThreadsGlobal
+       if (myRankGlobal /= iThread) then
+          loc(1) = 3.d0
+          call MPI_SEND(loc, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine shutdownRadiusServer
+          
+    
+
+  subroutine getPointsInAccretionRadiusServer(grid, nSource, source)
+    use mpi
+    integer :: nSource
+    type(sourcetype) :: source(:)
+    real(double) :: temp(13)
+    type(GRIDTYPE) :: grid
+    integer :: nPoints
+    integer :: ierr
+    integer, parameter :: tag = 65
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillServing
+    type(VECTOR) :: thisPoint
+    integer :: iThread
+    integer, parameter :: maxPoints = 100
+    type(VECTOR) :: position(maxPoints), vel(maxPoints)
+    real(double) :: mass(maxPoints), phi(maxPoints), cs(maxPoints)
+    integer :: isignal
+    real(double) :: radius
+
+    stillServing = .true.
+
+    do while(stillServing) 
+       call MPI_RECV(temp, 13, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+
+       iSignal = int(temp(1))
+       select case(isignal)
+          case(1)  ! added new source
+             nSource = nSource + 1
+             source(nsource)%position%x = temp(2) 
+             source(nsource)%position%y = temp(3) 
+             source(nsource)%position%z = temp(4) 
+             source(nsource)%mass  = temp(5) 
+             source(nsource)%velocity%x = temp(6) 
+             source(nsource)%velocity%y = temp(7) 
+             source(nsource)%velocity%z = temp(8) 
+             source(nsource)%radius = temp(9)   
+             source(nSource)%stellar = .true.
+             source(nSource)%diffuse = .false.
+             source(nSource)%accretionRadius = temp(10)
+             source(nSource)%angMomentum%x = temp(11)
+             source(nSource)%angMomentum%y = temp(12)
+             source(nSource)%angMomentum%z = temp(13)
+             call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
+                  100.d0, 1.d7, 1000)
+             call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
+          case(2) ! want points in radius
+
+             thisPoint%x = temp(2)
+             thisPoint%y = temp(3)
+             thisPoint%z = temp(4)
+             radius = temp(5)
+             iThread = int(temp(6))
+             nPoints = 0
+             call getPointsinAccretionRadiusLocal(grid%octreeRoot, thisPoint, radius, grid, nPoints, position, vel, mass, phi, cs)
+             call MPI_SEND(nPoints, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+             if (nPoints > 0) then
+                call MPI_SEND(position(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(position(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(position(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                
+                call MPI_SEND(position(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(position(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(position(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                
+                call MPI_SEND(mass(1:nPoints), nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                
+                call MPI_SEND(phi(1:nPoints), nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                
+                call MPI_SEND(cs(1:nPoints), nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+             endif
+          case(3) ! end server
+             stillServing = .false.
+          case DEFAULT
+             write(*,*) "Unknown signal received in getpointsinaccretionradiusserver ",isignal
+       end select
+    end do
+  end subroutine getPointsInAccretionRadiusServer
+
+
+
+
+
+
 
 
 

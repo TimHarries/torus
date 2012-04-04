@@ -35,6 +35,9 @@
   logical :: calcSpectrum
   logical :: calcBenchmark
 
+  logical :: dowriteRadialFile
+  character(len=80) :: radialFilename
+
 !-----------------------------------
 ! Write/read a grid for a warm start
 !-----------------------------------

@@ -32,7 +32,7 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics
     use disc_class, only:  new
     use discwind_class, only:  new
     use inputs_mod, only : xplusbound, yplusbound, zplusbound
@@ -406,7 +406,7 @@ contains
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
 
              call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"rho        ", &
-                                                                     "dust1      ", &
+!                                                                     "dust1      ", &
                                                                      "etaline    ", &
                                                                      "chiline    ", &
                                                                      "inflow     ", &
@@ -455,11 +455,13 @@ contains
              call turbulentVelocityField(grid, 1.d0)
 #ifdef MPI
           case("unisphere","gravtest")
-             call findmassoverallthreads(grid, totalmass)
-             call  torus_mpi_barrier
-             if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
-             call  torus_mpi_barrier
-             call findmassoverallthreads(grid, totalmass)
+             if (hydrodynamics) then
+                call findmassoverallthreads(grid, totalmass)
+                call  torus_mpi_barrier
+                if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
+                call  torus_mpi_barrier
+                call findmassoverallthreads(grid, totalmass)
+             endif
 #endif
           case DEFAULT
        end select

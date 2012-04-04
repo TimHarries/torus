@@ -19,7 +19,7 @@ contains
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, nv
     use inputs_mod, only : lineEmission, postsublimate
-    use inputs_mod, only : monteCarloRT
+    use inputs_mod, only : monteCarloRT, dowriteradialfile, radialfilename
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use image_utils_mod, only: getImageWavelength, getnImage
 #ifdef MPI
@@ -77,7 +77,7 @@ contains
     call writeBanner("Creating outputs","-",TRIVIAL)
 
     if (writegrid) then
-       call writeAMRgrid(gridOutputFilename,.false.,grid)
+          call writeAMRgrid(gridOutputFilename,.false.,grid)
 
        if (geometry == "kengo") then
           call writegridkengo(grid)
@@ -93,7 +93,9 @@ contains
          (.not.calcDataCube).and. &
          (.not.calcPhotometry).and. &
          (.not.calcBenchmark) .and. &
-         (.not. sourceHistory)) then
+         (.not. sourceHistory).and. &
+         (.not.dowriteRadialfile) &
+	 ) then
        goto 666
     endif
 
@@ -336,6 +338,12 @@ contains
 #endif
     if (sourceHistory) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource)
+    endif
+
+    if (dowriteRadialFile) then
+#ifdef MPI
+       call writeRadialFile(radialfilename, grid)
+#endif
     endif
 
 

@@ -46,7 +46,7 @@ CONTAINS
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
-   
+    use inputs_mod, only : geometry
     use luc_cir3d_class, only: calc_cir3d_mass_velocity
     use cmfgen_class, only: cmfgen_mass_velocity
     use jets_mod, only: calcJetsMassVelocity
@@ -148,7 +148,8 @@ CONTAINS
 
     else
 
-    SELECT CASE (trim(grid%geometry))
+!    write(*,'(a,a,a)') "trim(grid%geometry):",trim(grid%geometry),"*"
+    SELECT CASE (geometry)!trim(grid%geometry))
 
     CASE("pathtest")
        call calcPathTestDensity(thisOctal,subcell)
@@ -3583,7 +3584,7 @@ CONTAINS
           outsideStar = .false.
 
           if (ttauriMagnetosphere) then
-          do i = 1, 400
+          do i = 1, 40
              rVec = randomPositionInCell(thisOctal,subcell)
              if (inFLowMahdavi(1.d10*rVec)) then
                 inFlow = .true.
@@ -3600,9 +3601,13 @@ CONTAINS
           if (inFlow) then
              !        write(*,*) "c/l ",cellsize/laccretion
 
-             !        if (cellsize > lAccretion/fac) split = .true.
+!             if (cellsize > lAccretion/fac) split = .true.
              if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
                   split = .true.
+
+!             if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
+!                  split = .true.
+
 
              !        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
              if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 0.5d0)) then
@@ -3611,20 +3616,31 @@ CONTAINS
              endif
           endif
           
-          if (insidestar) then
-             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 5.)) then
-                split = .true.
-                splitInAzimuth = .true.
-             endif
-          endif
+!          if (insidestar) then
+!             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 5.)) then
+!                split = .true.
+!                splitInAzimuth = .true.
+!             endif
+!          endif
+
+
           
           if (inflow) then
-             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 7.5d0)) then
+!             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 7.5d0)) then
+             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.d0)) then
                 split = .true.
                 splitInAzimuth = .true.
              endif
           endif
           endif
+
+          inSideStar = .true.
+          do i = 1, 40
+             rVec = randomPositionInCell(thisOctal,subcell)
+             r = modulus(rVec)
+             if (r > (ttauriRstar/1.d10)) insideStar = .false.
+          enddo
+          if (inSideStar) split = .false.
           
           if (ttauriwind) then
              inflow = .false.
@@ -7224,7 +7240,7 @@ endif
 
   subroutine calcUniformSphere(thisOctal,subcell)
 
-    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity, hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7242,11 +7258,12 @@ endif
        thisOctal%temperature(subcell) = 100.d0
     endif
     thisOctal%velocity(subcell) = sphereVelocity
-    thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
-    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%energy(subcell) = eThermal
-    thisOctal%gamma(subcell) = 2.d0
-
+    if (hydrodynamics) then
+       thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
+       ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+       thisOctal%energy(subcell) = eThermal
+       thisOctal%gamma(subcell) = 2.d0
+    endif
   end subroutine calcUniformSphere
 
   subroutine calcSphere(thisOctal,subcell)
@@ -7465,8 +7482,8 @@ endif
        thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.1d0 * cos(2.d0 * phi)) !m=2 dens perturbation
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
-       thisOctal%temperature(subcell) = 10.d0
-       thisOctal%rho(subcell) = 1.d-3 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+       thisOctal%temperature(subcell) = 1000.d0
+       thisOctal%rho(subcell) = 1.d-1 * mCloud / (4.d0/3.d0*pi*rCloud**3)
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
@@ -7655,7 +7672,7 @@ endif
     real(double) :: bigA, a, r0, r, rho, u, temp, p, ethermal
 !    integer :: i, j
 
-    bigA = 4.d0
+    bigA = 29.3d0
     a = sqrt(kerg*10.d0/(2.33d0*mHydrogen))
     r0 = msol / (a**2 * bigA / bigG)
     if (firstTime) then
@@ -11776,8 +11793,8 @@ end function readparameterfrom2dmap
                 if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
              
                 CALL fillVelocityCorners(thisOctal,velocityMahdavi)
-
-                if ((subcell==1).and.(thisOCtal%inflow(subcell))) then
+ 
+               if ((subcell==1).and.(thisOCtal%inflow(subcell))) then
                    if ((modulus(thisOctal%cornerVelocity(1)) + &
                        modulus(thisOctal%cornerVelocity(2)) + &
                        modulus(thisOctal%cornerVelocity(3)) + &
@@ -13358,7 +13375,7 @@ end function readparameterfrom2dmap
     subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use inputs_mod, only : tHotSpot
+    use inputs_mod, only : tHotSpot, smallestCellSize
     type(SURFACETYPE) :: surface
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -13381,7 +13398,8 @@ end function readparameterfrom2dmap
 
     thisOctal => grid%octreeRoot
     do i = 1, surface%nElements
-       rVec = 1.005d0 * modulus(surface%Element(i)%position-surface%centre) * surface%element(i)%norm
+       rVec = (modulus(surface%Element(i)%position-surface%centre)  + 2.d0*smallestCellSize) &
+            *surface%element(i)%norm
        CALL findSubcellTD(rVec, grid%octreeRoot, thisOctal,subcell)
        v = modulus(thisOctal%velocity(subcell))*cspeed
        area = (surface%element(i)%area*1.d20)

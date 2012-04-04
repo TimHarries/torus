@@ -6,6 +6,7 @@ module inputs_mod
   use kind_mod
   use constants_mod
   use units_mod
+  use zlib_mod, only : uncompressedDumpFiles, buffer, nbuffer
   implicit none
 
   include "input_variables.f90"
@@ -18,6 +19,7 @@ contains
 
     integer :: nLines
     logical :: ok
+    logical :: compresseddumpfiles
     character(len=80), allocatable :: cLine(:) 
     character(len=80) :: message, thisLine
     logical :: done
@@ -97,6 +99,12 @@ contains
 
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
          "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
+
+    call getLogical("compressdumps", compressedDumpFiles, cLine, fLine, nLines, &
+         "Use compressed dump files: ","(a,1l,1x,a)", .false., ok, .false.)
+    uncompressedDumpFiles = .not.compressedDumpFiles
+    nbuffer = 0
+    buffer = 0
 
     call getLogical("parallelvtu", parallelVTUfiles, cLine, fLine, nLines, &
          "Use parallel VTU files: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -361,6 +369,15 @@ contains
 
     call getLogical("sourcehistory", sourceHistory, cLine, fLine, nLines, &
          "Write out the source history: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    call getLogical("writeradialfile", dowriteRadialFile, cLine, fLine, nLines, &
+         "Write out a radial dump: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (dowriteRadialFile) then
+       call getString("radialfilename", radialFilename, cLine, fLine, nLines, &
+            "Radial filename: ","(a,a,1x,a)",  " ", ok, .true.)
+    endif
 
     if (sourceHistory) then
        call getString("historyfilename", sourceHistoryFilename, cLine, fLine, nLines, &
@@ -1529,7 +1546,7 @@ contains
        call getLogical("periodicZ", periodicZ, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in z direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getInteger("bufferCap", bufferCap, cLine, fLine, nLines, &
-            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 20000, ok, .false.)
+            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 40000, ok, .false.)
     end if
 
 !

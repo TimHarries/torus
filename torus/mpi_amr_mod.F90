@@ -2604,6 +2604,21 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
 end subroutine dumpStromgrenRadius
 
 
+subroutine writeRadialFile(rootFilename, grid)
+  use inputs_mod, only : iModel
+  use utils_mod, only : findMultiFilename
+  character(len=*) :: rootFilename
+  character(len=80) :: thisFile
+  type(GRIDTYPE) :: grid
+  type(VECTOR) :: startPoint, endPoint
+  integer :: nPoints
+
+  call findMultiFilename(rootFilename, iModel, thisFile)
+  startPoint = VECTOR(0.d0, 0.d0, 0.d0)
+  endPoint = VECTOR(grid%octreeRoot%subcellSize, grid%octreeRoot%subcellSize, grid%octreeRoot%subcellsize)
+  call  dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
+end subroutine writeRadialFile
+
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     use mpi
     type(GRIDTYPE) :: grid
@@ -3937,6 +3952,7 @@ end subroutine dumpStromgrenRadius
                  1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
                  1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/) !pane 8    
        else
+          write(*,*) "nHydroThreadsGlobal ",nHydroThreadsGlobal
           call torus_abort("unknown no. of hydro threads in setupEvenUpArray")
        end if
     else

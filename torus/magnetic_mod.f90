@@ -141,10 +141,10 @@ contains
     vp = rotateY(vp, beta)
 
     velMagAtCorotation = sqrt(bigG*ttauriMstar/ttauriRouter)/cSpeed
-    rVec = VECTOR(point%x*1.d10,point%y*1.d10,0.d0)
+    rVec = VECTOR(point%x,point%y,0.d0)
     vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
     call normalize(vSolid)
-    vSolid = (modulus(rVec)/velMagAtCorotation) * vSolid 
+    vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid 
     
 
     velocityMahdavi = vp + vSolid
