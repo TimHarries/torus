@@ -141,28 +141,32 @@ cd torus_scaling${i}
 #
 
 # Run OpenMP test
-for threads in 12 24; do 
-    export TORUS_NUM_THREADS=$threads
-    mkdir openmp${threads}
-    cd openmp${threads}
-    ln -s ../../run/* . 
-    ln -s ../../bin/torus.openmp
-    write_openmp_pbs_file
-    qsub openmp.pbs
-    cd ..
-done
+if [[ ${DO_OPENMP} == "yes" ]]; then
+    for threads in 12 24; do 
+	export TORUS_NUM_THREADS=$threads
+	mkdir openmp${threads}
+	cd openmp${threads}
+	ln -s ../../run/* . 
+	ln -s ../../bin/torus.openmp
+	write_openmp_pbs_file
+	qsub openmp.pbs
+	cd ..
+    done
+fi
 
 # Run MPI tests
-for procs in 12 24; do 
-    export TORUS_NUM_PROCS=$procs
-    mkdir mpi${procs}
-    cd mpi${procs}
-    ln -s ../../run/* . 
-    ln -s ../../bin/torus.mpi
-    write_mpi_pbs_file
-    qsub mpi.pbs
-    cd ..
-done
+if [[ ${DO_MPI} == "yes" ]]; then
+    for procs in 12 24; do 
+	export TORUS_NUM_PROCS=$procs
+	mkdir mpi${procs}
+	cd mpi${procs}
+	ln -s ../../run/* . 
+	ln -s ../../bin/torus.mpi
+	write_mpi_pbs_file
+	qsub mpi.pbs
+	cd ..
+    done
+fi
 
 echo "Jobs submitted. Timings will be written to times.dat"
 echo "Exiting"
