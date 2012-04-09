@@ -418,7 +418,8 @@ module molecular_mod
 ! Allocate space for n_H2 and initialise, if not already done
            if (.not.associated(thisOctal%nh2)) then 
               allocate(thisOctal%nh2(1:thisOctal%maxChildren))
-              thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
+!              thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
+              thisOctal%nh2 = thisOctal%rho / (2.d0*mHydrogen)
            end if
 ! Temporary graph making code for molcluster. V1 code should ultimately be removed 
 !           if(plotlevels .and. molcluster) then
