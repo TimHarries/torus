@@ -395,7 +395,8 @@ module molecular_mod
         call writeinfo("Done", FORINFO)
         firsttime1 = .false.
      elseif(addnewmoldata .and. firsttime1) then ! read intermediate grid
-        call readAMRgrid("notmolecular.grid",.false.,grid)
+!- grid is now read in elsewhere THAW
+!        call readAMRgrid("notmolecular.grid",.false.,grid)
         restart = .false.
         firsttime1 = .false.
      endif
@@ -418,6 +419,7 @@ module molecular_mod
 ! Allocate space for n_H2 and initialise, if not already done
            if (.not.associated(thisOctal%nh2)) then 
               allocate(thisOctal%nh2(1:thisOctal%maxChildren))
+!- There was a bug here, it would only assign values to one subcell per octal THAW
 !              thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
               thisOctal%nh2 = thisOctal%rho / (2.d0*mHydrogen)
            end if
