@@ -1196,6 +1196,9 @@ module molecular_mod
 
             warned_neg_dtau = .false. 
 
+#ifdef MPI
+            if(myrankglobal /= 0) then
+#endif
             !$OMP DO SCHEDULE(static)
     do iOctal = ioctal_beg, ioctal_end
 !       if (debug .and. writeoutput) then
@@ -1213,21 +1216,21 @@ module molecular_mod
              nHe = 0.d0
              ne = 0.d0
              nProtons = 0.d0
+
              call getCollMatrix(thisOctal%nh2(subcell), dble(thisOctal%temperature(subcell)), &
                   thismolecule, nh, nHe, ne, nprotons, collmatrix(1:maxlevel,1:maxlevel), &
                   ctot(1:maxlevel))
 
 ! First populate ds, phi and i0 so that they can be passed on to calculatejbar             
-
              do iRay = 1, nRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &
                      thisMolecule,fixedrays, warned_neg_dtau) ! does the hard work - populates i0 etc
                 i0(iray,1:maxtrans) = i0temp(1:maxtrans)
-!                write(*,*) i0temp(1)
-!                write(*,*) thisoctal%molecularlevel(1:2,subcell)
+                !                write(*,*) i0temp(1)
+                !                write(*,*) thisoctal%molecularlevel(1:2,subcell)
              enddo
-
+       
              if(debug) where(isnan(i0)) i0 = 0.d0
 ! set iteration within subcell to 0
              iter = 0
@@ -1316,7 +1319,11 @@ module molecular_mod
           endif ! if no child
        enddo ! all subcells
     enddo ! all octals
-!$OMP END DO
+#ifdef MPI
+ end if
+#endif
+
+ !$OMP END DO
      deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4)
     !$OMP BARRIER
     !$OMP END PARALLEL
