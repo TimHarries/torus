@@ -3464,6 +3464,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
       call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
 
+      call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
+      call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
+      call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
+
       call allocateAttribute(thisOctal%ionFrac, thisOctal%maxchildren, grid%nIon)
       call allocateAttribute(thisOctal%photoionCoeff, thisOctal%maxchildren, grid%nIon)
       call allocateAttribute(thisOctal%sourceContribution, thisOctal%maxchildren, grid%nIon)
@@ -6009,6 +6014,33 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   end subroutine calcContinuumEmissivity
 
+  recursive subroutine  zeroCornerEmissivity(grid, thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call zeroCornerEmissivity(grid, child)
+                exit
+             end if
+          end do
+       else
+          if(octalonthread(thisOctal, subcell, myrankglobal)) then
+             if (thisOctal%edgecell(subcell)) then
+                thisOctal%etaCont(subcell) = 0.d0
+             endif
+          end if
+       endif
+    enddo
+
+  end subroutine zeroCornerEmissivity
+
 
   function getRandomWavelengthPhotoion(grid, thisOctal, subcell, lamArray, nLambda) result(thisLambda)
 
@@ -6115,6 +6147,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   subroutine createImageSplitGrid(grid, nSource, source, imageNum)
     use inputs_mod, only: nPhotons, gridDistance
+    use hydrodynamics_mod, only: setupEdges
     use image_utils_mod
     use mpi
     integer, intent(in) :: imageNum
@@ -6142,7 +6175,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     integer :: iLambdaPhoton
     real(double) :: lCore, r
     real(double), allocatable :: threadProbArray(:)
-    integer :: np(10)
+    integer :: np(100)
     integer :: nDone
     integer :: tag = 41
     integer, allocatable :: nDoneArray(:)
@@ -6187,6 +6220,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     call setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
 
+    if(myRankGlobal /= 0.d0) then
+       call setupEdges(grid%octreeRoot, grid)
+       
+       call zeroCornerEmissivity(grid, grid%octreeRoot)
+    end if
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
     if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nHydroThreadsGlobal)
     totalEmission = totalEmission * 1.d30

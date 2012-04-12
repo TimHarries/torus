@@ -13502,6 +13502,11 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
        
+       call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
+
        call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
@@ -13581,6 +13586,11 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+
+       call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nh, thisOctal%maxChildren)

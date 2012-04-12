@@ -5680,6 +5680,7 @@ end subroutine sumFluxes
     character(len=10) :: boundary
 
     if (myrankGlobal == 0) goto 666
+
     do subcell = 1, thisOctal%maxChildren
 
        if (thisOctal%hasChild(subcell)) then
@@ -5694,7 +5695,6 @@ end subroutine sumFluxes
        else
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-
           thisOctal%edgeCell(subcell) = .false.
           if (.not.associated(thisOctal%corner)) then
              allocate(thisOctal%corner(1:thisOctal%maxChildren))
