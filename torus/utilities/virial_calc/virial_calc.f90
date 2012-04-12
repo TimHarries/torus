@@ -38,7 +38,7 @@ double precision, parameter :: ne_hC = 38.19d0
 double precision, parameter :: ne_hD = 39.45d0
 double precision, parameter :: ne_rat_lo = 19.03d0
 double precision, parameter :: ne_rat_med = 39.63d0
-double precision, parameter :: ne_rat_lhi= 55.08d0
+double precision, parameter :: ne_rat_hi= 55.08d0
 
 !IBL properties
 double precision :: c_s_radio
@@ -116,21 +116,21 @@ P_rat_hi = IBLpressure(ne_rat_hi, c_s_rat_hi)
 print *, "**************************"
 print *, "      IBL PRESSURES       "
 print *, "**************************"
-print *, "P_lr ", P_lr
-print *, "P_lB ", P_lB
-print *, "P_lC ", P_lC
-print *, "P_lD ", P_lD
-print *, "P_rat_lo ", P_rat_lo
-print *, "P_mr ", P_mr
-print *, "P_mB ", P_mB
-print *, "P_mC ", P_mC
-print *, "P_mD ", P_mD
-print *, "P_rat_med ", P_rat_med
-print *, "P_hr ", P_hr
-print *, "P_hB ", P_hB
-print *, "P_hC ", P_hC
-print *, "P_hD ", P_hD
-print *, "P_rat_hi ", P_rat_hi
+print *, "P_lr ", P_lr, P_lr/P_cloud_low
+print *, "P_lB ", P_lB, P_lB/P_cloud_low
+print *, "P_lC ", P_lC, P_lC/P_cloud_low
+print *, "P_lD ", P_lD, P_lD/P_cloud_low
+print *, "P_rat_lo ", P_rat_lo, P_rat_lo/P_cloud_low
+print *, "P_mr ", P_mr, P_mr/P_cloud_med
+print *, "P_mB ", P_mB, P_mB/P_cloud_med
+print *, "P_mC ", P_mC, P_mC/P_cloud_med
+print *, "P_mD ", P_mD, P_mD/P_cloud_med
+print *, "P_rat_med ", P_rat_med, P_rat_med/P_cloud_med
+print *, "P_hr ", P_hr, P_hr/P_cloud_hi
+print *, "P_hB ", P_hB, P_hB/P_cloud_hi
+print *, "P_hC ", P_hC, P_hC/P_cloud_hi
+print *, "P_hD ", P_hD, P_hD/P_cloud_hi
+print *, "P_rat_hi ", P_rat_hi, P_rat_hi/P_cloud_hi
 print *, " "
 print *, " "
 
@@ -162,7 +162,7 @@ double precision function cloudSoundSpeed(T)
   double precision, parameter :: kerg = 1.380626d-16
   double precision :: T
 
-  isoSoundSpeed = sqtr(kerg*T/(1.36*mH))
+  cloudSoundSpeed = sqrt(kerg*T/(1.36*mH))
   
 end function cloudSoundSpeed
 
@@ -171,7 +171,7 @@ double precision function IBLSoundSpeed(T)
   double precision, parameter :: kerg = 1.380626d-16
   double precision :: T
 
-  isoSoundSpeed = sqtr(kerg*T/(0.6*mH))
+  IBLSoundSpeed = sqrt(kerg*T/(0.6*mH))
 
 end function IBLSoundSpeed
 
