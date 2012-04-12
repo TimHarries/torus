@@ -155,7 +155,7 @@ contains
 
                 call MPI_ALLREDUCE(tempArray, tempArray2, size(tempArray), MPI_REAL,&
                      MPI_SUM, MPI_COMM_WORLD, ierr)
-                temp = reshape(tempArray2, shape(temp))
+                temp(:,:,:,:) = reshape(tempArray2, shape(temp))
                 do j = 1, nLambda
                    do k = 1, nMuMie
                       do i1 = 1, 4
