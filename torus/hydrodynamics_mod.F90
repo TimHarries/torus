@@ -9217,9 +9217,6 @@ end subroutine minMaxDepth
      real(double) :: rhomax
      integer :: nSource
      integer :: iThread
-     integer :: tag
-
-     tag = 77
 
      do iThread = 1, nHydroThreadsGlobal
         if (myrankGlobal == iThread) then
@@ -9251,10 +9248,11 @@ end subroutine minMaxDepth
     integer :: npoints
     type(VECTOR) :: position(maxPoints), vel(maxPoints),rVec, vcom
     real(double) :: mass(maxPoints), phi(maxPoints), cs(maxPoints)
-    real(double) :: cellMass
+    real(double) :: cellMass, r
     integer :: iPoint
 
-    tag = 77
+    tag = 65
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -9352,10 +9350,13 @@ end subroutine minMaxDepth
           if (createSink) then
              do iPoint = 2, nPoints
                 rVec = position(iPoint) - position(1)
+                r = modulus(rVec)
                 call normalize(rVec)
-                if ((rVec.dot.(vel(iPoint)-vel(1))) > 0.d0) then
-                   createSink = .false.
-                   write(*,*) "not converging ",rVec.dot.((vel(ipoint)-vel(1)))
+                if (r < smallestCellSize*1.01d0) then
+                   if ((rVec.dot.(vel(iPoint)-vel(1))) > 0.d0) then
+                      createSink = .false.
+                      write(*,*) "not converging ",rVec.dot.((vel(ipoint)-vel(1)))
+                   endif
                 endif
              enddo
 
@@ -10485,9 +10486,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 call MPI_SEND(position(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 call MPI_SEND(position(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 
-                call MPI_SEND(position(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-                call MPI_SEND(position(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-                call MPI_SEND(position(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(vel(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(vel(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                call MPI_SEND(vel(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 
                 call MPI_SEND(mass(1:nPoints), nPoints, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 

@@ -733,7 +733,7 @@ contains
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, 1000, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
-       call genericAccretionSurface(globalsourcearray(1)%surface, grid, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
+       call genericAccretionSurface(globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
 
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion

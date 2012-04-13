@@ -509,7 +509,9 @@ CONTAINS
           if (phi  < 0.d0) phi = phi + twoPi
           dphi = returndPhi(thisOctal)
           phiStart = phi - dphi
+          if (phiStart  < 0.d0) phiStart = phiStart + twoPi
           phiEnd = phi + dphi
+          if (phiEnd < 0.d0) phiEnd = phiEnd + twopi
           corner(1) = VECTOR(r1*cos(phiStart), r1*sin(phiStart),zp)
           corner(2) = VECTOR(r2*cos(phiStart), r2*sin(phiStart),zp)
           corner(3) = VECTOR(r1*cos(phiEnd), r1*sin(phiEnd),zp)

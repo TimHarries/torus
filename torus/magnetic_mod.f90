@@ -35,13 +35,41 @@ contains
     enddo
   end function inFlowMahdaviArray
 
+  real(double) function pMahdavi(rVec)
+    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
+         TTauriDiskHeight
+    type(VECTOR) :: rVec
+    real(double) :: r, theta, phi
+    real(double) :: rDash, thetaDash, phiDash, beta
+    real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX
+    beta = dipoleOffset
+    r = modulus(rVec)    
+
+    thisY = rVec%y
+    thisX = rVec%x
+    if ((thisY == 0.d0).and.(rVec%x > 0.d0)) thisY = 1.d-10
+    if ((thisY == 0.d0).and.(rVec%x < 0.d0)) thisY = -1.d-5
+    if ((thisX == 0.d0).and.(rVec%y > 0.d0)) thisX = -1.d-10
+    phi = atan2(thisY,thisX)
+    rDash = r
+    theta = acos(rVec%z/r)
+    phiDash = atan2((sin(phi)*sin(theta)),(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
+
+    pMahdavi = 0.5d0*(1.d0+tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
+
+    if (cos(phiDash) > 0.d0) pMahdavi = 1.d0 - pMahdavi
+    pMahdavi = 0.5d0
+
+  end function pMahdavi
+
+
   logical function inFlowMahdaviSingle(rVec) 
     use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
          TTauriDiskHeight
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
     real(double) :: rDash, thetaDash, phiDash, beta
-    real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax
+    real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX, pMahdavi
 
     beta = dipoleOffset
     r = modulus(rVec)    
@@ -50,18 +78,19 @@ contains
        goto 666
     endif
     theta = acos(rVec%z/r)
-
-    phi = atan2(rVec%y, rVec%x)
-    if (phi <= 0.d0) phi = phi + twoPi
+    
+    thisY = rVec%y
+    thisX = rVec%x
+!    if ((thisY == 0.d0).and.(rVec%x > 0.d0)) thisY = 1.d-10
+!    if ((thisY == 0.d0).and.(rVec%x < 0.d0)) thisY = -1.d-5
+!    if ((thisX == 0.d0).and.(rVec%y > 0.d0)) thisX = -1.d-10
+    phi = atan2(thisY,thisX)+1.d-3
 
     rDash = r
-!    phiDash = atan((sin(phi)*sin(theta))/(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
     phiDash = atan2((sin(phi)*sin(theta)),(cos(phi)*sin(theta)*cos(beta)-cos(theta)*sin(beta)))
-    if (phiDash /= 0.d0) then
-       thetaDash = asin(max(-1.d0,min(1.d0,sin(phi)*sin(theta)/sin(phiDash))))
-    else
-       thetaDash = theta
-    endif
+
+    thetaDash = asin(max(-1.d0,min(1.d0,sin(phi)*sin(theta)/sin(phiDash))))
+
 
     sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
 
@@ -76,12 +105,21 @@ contains
 
     inflowMahdaviSingle = .false.
     if ((thisRmax >= rMaxMin).and.(thisRmax <= rMaxMax)) inflowMahdaviSingle = .true.
-    if (dipoleOffset /= 0.) then
-       if ((rVec%z < 0.d0).and.(rVec%x > 0.d0)) inflowMahdaviSingle = .false.
-       if ((rVec%z > 0.d0).and.(rVec%x < 0.d0)) inflowMahdaviSingle = .false.
-    endif
     if (r < ttauriRstar) inflowMahdaviSingle = .false.
     if (abs(rVec%z) < TTauriDiskHeight) inflowMahdaviSingle = .false.
+
+!    pMahdavi = 0.5d0*(1.d0+tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
+!    if (pMahdavi < 1.d0) inflowMahdaviSingle = .false.
+
+
+    if (beta /= 0.d0) then
+       if (cos(theta) > 0.d0) then
+          if (cos(phidash) < 0.d0) inFlowMahdaviSingle = .false.
+       else
+          if (cos(phidash) > 0.d0) inFlowMahdaviSingle = .false.
+       endif
+    endif
+
 
 666 continue
   end function inFlowMahdaviSingle
@@ -107,7 +145,7 @@ contains
     r = modulus(rVec)
     theta = acos(rVec%z/r)
     phi = atan2(rVec%y, rVec%x)
-    if (phi < 0.d0) phi = phi + twoPi
+!    if (phi < 0.d0) phi = phi + twoPi
 
     rVecDash = rotateY(rVec, -beta)
     rDash = modulus(rVecDash)

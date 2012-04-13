@@ -1183,7 +1183,7 @@ module molecular_mod
 		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
 		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
 		!$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
-		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed)
+		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed, myRankGlobal)
 
 
 ! Allocate the main working arrays for i0, ds and phi
@@ -1199,7 +1199,9 @@ module molecular_mod
 #ifdef MPI
             if(myrankglobal /= 0) then
 #endif
+
             !$OMP DO SCHEDULE(static)
+
     do iOctal = ioctal_beg, ioctal_end
 !       if (debug .and. writeoutput) then
 !          write(message,*) iOctal,ioctal_beg,ioctal_end
@@ -1319,14 +1321,16 @@ module molecular_mod
           endif ! if no child
        enddo ! all subcells
     enddo ! all octals
+ !$OMP END DO
+
 #ifdef MPI
  end if
 #endif
 
- !$OMP END DO
-     deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4)
-    !$OMP BARRIER
-    !$OMP END PARALLEL
+
+ deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4)
+ !$OMP BARRIER
+ !$OMP END PARALLEL
            
 #ifdef MPI
 

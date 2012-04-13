@@ -3220,7 +3220,7 @@ CONTAINS
     REAL                  :: x, y, z
     REAL(double) :: hr, rd, fac, warpHeight, phi1, phi2, phi
     real(double) :: warpheight1, warpheight2
-    real(double) :: warpradius1, warpradius2
+    real(double) :: warpradius1, warpradius2, height1, height2
     INTEGER               :: i
     real(double)      :: total_mass
     real(double), save :: rgrid(1000)
@@ -3248,7 +3248,7 @@ CONTAINS
     real(double) :: b, dphi, rhoc
     type(VECTOR) :: centre, dirVec(6), locator
     integer :: nDir
-    real(double) :: maxGradient, grad
+    real(double) :: maxGradient, grad, phiMax
 #ifdef SPH
     real(double) :: massPerCell, n_bin_az
     real(double) :: vgradx, vgrady, vgradz, vgrad
@@ -3584,7 +3584,8 @@ CONTAINS
           outsideStar = .false.
 
           if (ttauriMagnetosphere) then
-          do i = 1, 40
+
+          do i = 1, 400
              rVec = randomPositionInCell(thisOctal,subcell)
              if (inFLowMahdavi(1.d10*rVec)) then
                 inFlow = .true.
@@ -3601,19 +3602,19 @@ CONTAINS
           if (inFlow) then
              !        write(*,*) "c/l ",cellsize/laccretion
 
-!             if (cellsize > lAccretion/fac) split = .true.
-             if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
-                  split = .true.
+             if (cellsize > lAccretion/fac) split = .true.
+!             if (cellSize/(ttauriRstar/1.d10) > 0.05d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
+!                  split = .true.
 
-!             if (cellSize/(ttauriRstar/1.d10) > 0.005d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
+!             if (cellSize/(ttauriRstar/1.d10) > 0.05d0*(r0/(TTaurirStar/1.d10))**1.5d0) &
 !                  split = .true.
 
 
              !        if (cellSize > 0.0d0*(TTauririnner/1.d10)) split = .true.
-             if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 0.5d0)) then
-                split = .true.
-                splitinazimuth = .true.
-             endif
+!             if (insidestar.and.inflow.and.(thisOctal%dPhi*radtoDeg > 0.5d0)) then
+!                split = .true.
+!                splitinazimuth = .true.
+!             endif
           endif
           
 !          if (insidestar) then
@@ -3627,7 +3628,8 @@ CONTAINS
           
           if (inflow) then
 !             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 7.5d0)) then
-             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.d0)) then
+             phiMax = 7.5d0 !max(30.d0*(r0/(ttauriRouter/1.d10)),15.d0)
+             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > phiMax)) then
                 split = .true.
                 splitInAzimuth = .true.
              endif
@@ -3666,10 +3668,21 @@ CONTAINS
           
           if (ttauriwarp) then
              phi = atan2(cellCentre%y,cellCentre%x)
+             r = sqrt(cellcentre%x**2 + cellCentre%y**2)
              height = real(discHeightFunc(phi,hOverR) * r)
+             height1 = real(discHeightFunc(phi-thisOctal%dPhi/2.d0,hOverR) * r)
+             height2 = real(discHeightFunc(phi+thisOctal%dPhi/2.d0,hOverR) * r)
              if (((r-cellsize/2.d0) < (ttaurirOuter/1.d10)).and.( (r+cellsize/2.d0) > (ttaurirouter/1.d10))) then
                 if (thisOctal%cylindrical.and.(thisOctal%dPhi*radtodeg > 2.)) then
-                   if (abs(cellCentre%z-height) < 2.d0*cellSize) then
+                   if (abs(cellCentre%z-height) < cellSize) then
+                      split = .true.
+                      splitInAzimuth = .true.
+                   endif
+                   if (abs(cellCentre%z-height1) < cellSize) then
+                      split = .true.
+                      splitInAzimuth = .true.
+                   endif
+                   if (abs(cellCentre%z-height2) < cellSize) then
                       split = .true.
                       splitInAzimuth = .true.
                    endif
@@ -13372,23 +13385,24 @@ end function readparameterfrom2dmap
 
   end  subroutine findNearestSample
 
-    subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion,totalLum)
+    subroutine genericAccretionSurface(surface, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use inputs_mod, only : tHotSpot, smallestCellSize
+    use inputs_mod, only : tHotSpot, smallestCellSize, mDotParameter1, tTauriRstar
+    use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
     type(SURFACETYPE) :: surface
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: rVec
-    integer :: subcell
     real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
     integer :: i
     real(double) :: totalLum
     REAL(double), INTENT(IN) :: coreContFlux
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
+    real(double) :: astar, thisR, thisMdot, thisRho
 
     if (Writeoutput) write(*,*) "calculating generic accretion surface ",surface%nElements
+    astar = accretingAreaMahdavi()
+    thismdot = mDotparameter1*mSol/(365.25d0*24.d0*3600.d0)
 
     if (writeoutput.and.(Thotspot > 0.)) write(*,*) "Setting hot spot temperature to: ",thotspot
     accretingArea = 0.d0
@@ -13396,31 +13410,40 @@ end function readparameterfrom2dmap
     totallum = 0.d0
     totalmdot = 0.d0
 
-    thisOctal => grid%octreeRoot
     do i = 1, surface%nElements
-       rVec = (modulus(surface%Element(i)%position-surface%centre)  + 2.d0*smallestCellSize) &
+       rVec = (modulus(surface%Element(i)%position-surface%centre)*1.001d0) &
             *surface%element(i)%norm
-       CALL findSubcellTD(rVec, grid%octreeRoot, thisOctal,subcell)
-       v = modulus(thisOctal%velocity(subcell))*cspeed
+       surface%element(i)%hot = .false.
        area = (surface%element(i)%area*1.d20)
-       mdot = thisOctal%rho(subcell) * v * area
-       totalMdot = totalMdot + mdot
-       power = 0.5d0 * mdot * v**2
-       if (area /= 0.d0) then
-          flux = power / area
-       else
-          flux = 0.d0
-       endif
-       totalLum = totalLum + power
        totalArea = totalArea + area
 
-       if (thisOctal%rho(subcell) < 1.d-20) then
-          surface%element(i)%hot = .false.
-       else
-!       write(*,*) i , (mdot/msol)*365.25d0*24.d0*3600.d0
+       if (inflowMahdavi(rVec*1.d10)) then
+
+
+          thisR = modulus(rVec)*1.d10
+
+          v = modulus(velocityMahdavi(rVec))*cSpeed
+          
+          thisRho = 0.d0
+          if (v /= 0.d0) then
+             thisRho =  thismdot /(aStar * v)  * (ttauriRstar/thisR)**3 
+          endif
+          
+          mdot = thisRho * v * area
+
+
+
+          totalMdot = totalMdot + mdot
+          power = 0.5d0 * mdot * v**2
+          if (area /= 0.d0) then
+             flux = power / area
+          else
+             flux = 0.d0
+          endif
+          totalLum = totalLum + power
+          
           
           T = (flux/stefanBoltz)**0.25d0
-!          write(*,*) "recovered mass flux ", thisOctal%rho(subcell) * v
 
 
           surface%element(i)%hot = .true.

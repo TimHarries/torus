@@ -1732,7 +1732,7 @@ contains
              call randomNumberGenerator(randomSeed=.true.)
           endif
           call randomNumberGenerator(getReal=r)
-          write(*,*) myrankGlobal, r
+          write(*,*) myrankGlobal, " ran ",r
 
 
 
@@ -3472,7 +3472,7 @@ contains
 
 
     do iv = iv1, iv2
-       write(*,*) iv,varray(iv)*cspeed/1.d5
+!       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
@@ -3564,10 +3564,10 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 100
-    nr2 = 100
+    nr1 = 200
+    nr2 = 200
     nr = nr1 + nr2
-    nphi = 100
+    nphi = 500
     nray = 0
     i = 0
 
