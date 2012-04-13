@@ -40,8 +40,8 @@ contains
          TTauriDiskHeight
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
-    real(double) :: rDash, thetaDash, phiDash, beta
-    real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX
+    real(double) :: rDash, phiDash, beta
+    real(double) :: thisY, thisX
     beta = dipoleOffset
     r = modulus(rVec)    
 
@@ -69,7 +69,7 @@ contains
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
     real(double) :: rDash, thetaDash, phiDash, beta
-    real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX, pMahdavi
+    real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX
 
     beta = dipoleOffset
     r = modulus(rVec)    
