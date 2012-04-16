@@ -1196,9 +1196,9 @@ module molecular_mod
 
             warned_neg_dtau = .false. 
 
-#ifdef MPI
-            if(myrankglobal /= 0) then
-#endif
+!#ifdef MPI
+!            if(myrankglobal /= 0) then
+!#endif
 
             !$OMP DO SCHEDULE(static)
 
@@ -1323,9 +1323,9 @@ module molecular_mod
     enddo ! all octals
  !$OMP END DO
 
-#ifdef MPI
- end if
-#endif
+!#ifdef MPI
+! end if
+!#endif
 
 
  deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4)
