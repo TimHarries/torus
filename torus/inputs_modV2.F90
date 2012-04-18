@@ -1967,7 +1967,7 @@ contains
                "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
           call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
                "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
-          rotateViewAboutX = 90.0 - galaxyPositionAngle 
+          rotateViewAboutX = 90.0 - galaxyInclination
           rotateViewAboutY = 90.0 + galaxyPositionAngle
           rotateViewAboutZ = 0.0
        end if

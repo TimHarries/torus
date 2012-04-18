@@ -52,7 +52,8 @@ module datacube_mod
 contains
 
 #ifdef USECFITSIO
-  subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, write_nCol, write_axes)
+  subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, &
+       write_nCol, write_axes, write_WV)
 
     use fits_utils_mod
     implicit none
@@ -67,6 +68,7 @@ contains
     logical, optional, intent(in) :: write_Tau
     logical, optional, intent(in) :: write_nCol
     logical, optional, intent(in) :: write_axes
+    logical, optional, intent(in) :: write_WV
 
     integer :: status,unit,blocksize,bitpix,naxis
     integer, dimension(5) :: naxes
@@ -81,6 +83,7 @@ contains
     logical :: do_write_xaxis
     logical :: do_write_yaxis
     logical :: do_write_vaxis
+    logical :: do_write_WV
 
 
 ! Decide which arrays to write. Default is to write all which are allocated.
@@ -149,6 +152,12 @@ contains
           do_write_yaxis = .false.
           do_write_vaxis = .false.
        end if
+    end if
+
+    if ( present(write_WV) ) then 
+       do_write_WV = write_WV
+    else
+       do_write_WV = .false.
     end if
 
     call checkBitpix(FitsBitpix)
@@ -361,6 +370,8 @@ contains
        call ftppre(unit,group,fpixel,nelements,thisCube%i0_neg,status)
     endif
 
+    if( do_write_WV ) call writeWeightedVelocity
+
     !  Close the file and free the unit number.
     call ftclos(unit, status)
     call ftfiou(unit, status)
@@ -397,6 +408,87 @@ contains
         call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
 
       end subroutine addWCSinfo
+
+      subroutine writeWeightedVelocity
+
+        real, allocatable :: firstMoment(:,:), secondMoment(:,:)
+        real, allocatable :: S(:) ! background subtracted intensity
+        real :: intensitySum, background
+        integer :: i, j
+        character(len=80) :: message
+
+        allocate ( firstMoment(thisCube%nx, thisCube%ny) )
+        allocate ( secondMoment(thisCube%nx, thisCube%ny) )
+        allocate ( S(thisCube%nv) )
+
+        background = minVal(thisCube%intensity(:,:,:))
+        write(message,*) "Taking background as minimum value in cube: ", background
+        call writeInfo(message,FORINFO)
+
+        ! Calculate emission weighted velocity
+        do j=1, thisCube%ny
+           do i=1, thisCube%nx
+
+              S = thisCube%intensity(i,j,:) - background
+              intensitySum     = sum( S(:) )
+
+              firstMoment(i,j) = sum( S(:)*thisCube%vAxis(:) )
+              if (intensitySum /= 0.0 ) then 
+                 firstMoment(i,j) = firstMoment(i,j) / intensitySum
+              else
+                 firstMoment(i,j) = 0.0
+              endif
+
+              secondMoment(i,j) = sum (S(:) * ( (thisCube%vAxis(:)-firstMoment(i,j))**2 ) )
+              if ( intensitySum /= 0.0 ) then
+                 secondMoment(i,j) = sqrt(secondMoment(i,j) / intensitySum)
+              else
+                 secondMoment(i,j) = 0.0
+              end if
+
+           end do
+        end do
+
+
+        bitpix=FitsBitpix
+        naxis=2
+        naxes(1)=thisCube%nx
+        naxes(2)=thisCube%ny
+        nelements=naxes(1)*naxes(2)
+
+! First moment 
+        call FTCRHD(unit, status)
+        
+        ! Write the required header keywords.
+        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+        call ftpkys(unit,'BUNIT',"km/s","Velocity unit",status)
+
+        call addScalingKeywords(maxval(firstMoment), minval(firstMoment), unit, FitsBitpix)
+        call addWCSinfo
+
+       !  Write the array to the FITS file.
+        call ftppre(unit,group,fpixel,nelements,firstMoment,status)
+        call printFitsError(status)
+
+! Second moment
+        call FTCRHD(unit, status)
+        
+        ! Write the required header keywords.
+        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+        call ftpkys(unit,'BUNIT',"km/s","Velocity unit",status)
+
+        call addScalingKeywords(maxval(secondMoment), minval(secondMoment), unit, FitsBitpix)
+        call addWCSinfo
+
+       !  Write the array to the FITS file.
+        call ftppre(unit,group,fpixel,nelements,secondMoment,status)
+        call printFitsError(status)
+
+        deallocate (firstMoment)
+        deallocate (secondMoment)
+        deallocate (S)
+
+      end subroutine writeWeightedVelocity
     
     end subroutine writeDataCube
 

@@ -2552,7 +2552,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
          else
             pixelcorner = pixelcorner - (mydnpixels*imagebasis(1) + imagebasis(2))
          endif
-         
+
          do ipixels = ix1, ix2
             index = (/ipixels,jpixels/)
             imagegrid(ipixels,jpixels,:) = real(PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
@@ -4745,8 +4745,25 @@ END SUBROUTINE sobseq
    cube%intensity(:,:,:) = real(cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg))
 
 #if USECFITSIO
-   if(writeoutput) call writedatacube(cube, datacubeFilename)
+   if(writeoutput) then 
+
+      call writeinfo("Writing intensity to intensity_"//trim(dataCubeFileName), TRIVIAL)
+      call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+
+      call writeinfo("Writing column density to nCol_"//trim(dataCubeFileName), TRIVIAL)
+      call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
+
+      call writeinfo("Writing emission weighted velocity to WV_"//trim(dataCubeFileName), TRIVIAL)
+      call writedatacube(cube, "WV_"//trim(dataCubeFileName), write_Intensity=.false., write_ipos=.false., &
+           write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., write_WV=.true.)
+
+   endif
+#else
+   call writeWarning("TORUS was built without FITS. Cubes will not be written.")
 #endif
+
  end subroutine make_h21cm_image
 
 !-----------------------------------------------------------------------------------------------------------
