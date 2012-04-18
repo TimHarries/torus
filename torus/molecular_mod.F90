@@ -2527,10 +2527,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       real(double) :: dnpixels ! npixels as a double, save conversion
       real(double) :: mydnpixels ! number of x pixels in this slice
-      type(VECTOR) :: pixelcorner
+      type(VECTOR) :: pixelcorner, thisPixelcorner
       integer :: subpixels
       integer :: ipixels, jpixels
-      integer :: index(2)
 
       dnpixels = dble(npixels) 
       mydnpixels = dble(ix2 - ix1 + 1) 
@@ -2547,18 +2546,16 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       endif
 
       do jpixels = 1, npixels ! raster over image
-         if (jpixels .eq. 1) then 
-            pixelcorner = pixelcorner - imagebasis(2) 
-         else
-            pixelcorner = pixelcorner - (mydnpixels*imagebasis(1) + imagebasis(2))
-         endif
-
+         pixelcorner = pixelcorner - imagebasis(2) 
+!$OMP PARALLEL default(shared), private(ipixels, thisPixelcorner)
+!$OMP DO
          do ipixels = ix1, ix2
-            index = (/ipixels,jpixels/)
-            imagegrid(ipixels,jpixels,:) = real(PixelIntensity(viewvec,pixelcorner,imagebasis,grid,thisMolecule,&
+            thisPixelCorner = pixelcorner + real((ipixels-ix1),db) * imagebasis(1)
+            imagegrid(ipixels,jpixels,:) = real(PixelIntensity(viewvec,thisPixelcorner,imagebasis,grid,thisMolecule,&
                  iTrans,deltaV, subpixels))
-            pixelcorner = pixelcorner + imagebasis(1)
          enddo
+!$OMP END DO
+!$OMP END PARALLEL
       enddo
 
     end subroutine makeImageGrid
