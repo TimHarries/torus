@@ -413,6 +413,7 @@ contains
 
         real, allocatable :: firstMoment(:,:), secondMoment(:,:)
         real, allocatable :: S(:) ! background subtracted intensity
+        real, allocatable :: vAxis_sp(:)
         real :: intensitySum, background
         integer :: i, j
         character(len=80) :: message
@@ -420,6 +421,8 @@ contains
         allocate ( firstMoment(thisCube%nx, thisCube%ny) )
         allocate ( secondMoment(thisCube%nx, thisCube%ny) )
         allocate ( S(thisCube%nv) )
+        allocate ( vAxis_sp(thisCube%nv) )
+        vAxis_sp(:) = real(thisCube%vAxis(:))
 
         background = minVal(thisCube%intensity(:,:,:))
         write(message,*) "Taking background as minimum value in cube: ", background
@@ -432,14 +435,14 @@ contains
               S = thisCube%intensity(i,j,:) - background
               intensitySum     = sum( S(:) )
 
-              firstMoment(i,j) = sum( S(:)*thisCube%vAxis(:) )
+              firstMoment(i,j) = sum( S(:)*vAxis_sp(:) )
               if (intensitySum /= 0.0 ) then 
                  firstMoment(i,j) = firstMoment(i,j) / intensitySum
               else
                  firstMoment(i,j) = 0.0
               endif
 
-              secondMoment(i,j) = sum (S(:) * ( (thisCube%vAxis(:)-firstMoment(i,j))**2 ) )
+              secondMoment(i,j) = sum (S(:) * ( (vAxis_sp(:)-firstMoment(i,j))**2 ) )
               if ( intensitySum /= 0.0 ) then
                  secondMoment(i,j) = sqrt(secondMoment(i,j) / intensitySum)
               else
@@ -487,6 +490,7 @@ contains
         deallocate (firstMoment)
         deallocate (secondMoment)
         deallocate (S)
+        deallocate (vAxis_sp)
 
       end subroutine writeWeightedVelocity
     
