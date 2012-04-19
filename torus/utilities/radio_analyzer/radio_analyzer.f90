@@ -16,20 +16,20 @@ double precision, parameter :: arcsec = 1.d0/3600.d0 * degtorad
 
 !measured average fluxes (basically inputs)
 double precision, parameter :: lr = 0.009384
-double precision, parameter :: lB = 0.01035
-double precision, parameter :: lC = 0.008854
-double precision, parameter :: lD = 0.008057
+double precision, parameter :: lB = 0.01052
+double precision, parameter :: lC = 0.008904
+double precision, parameter :: lD = 0.008083
 double precision, parameter :: mr = 0.1509
-double precision, parameter :: mB = 0.1504
-double precision, parameter :: mC = 0.1469
-double precision, parameter :: mD = 0.1211
+double precision, parameter :: mB = 0.1505
+double precision, parameter :: mC = 0.1474
+double precision, parameter :: mD = 0.1243
 double precision, parameter :: hr = 0.04847
-double precision, parameter :: hB = 0.0554
-double precision, parameter :: hC = 0.04926
-double precision, parameter :: hD = 0.05257
+double precision, parameter :: hB = 0.05554
+double precision, parameter :: hC = 0.04942
+double precision, parameter :: hD = 0.05203
 
 !grid properties
-double precision, parameter :: theta_pix_D = 2.3067336 !pixel angular diameter
+double precision, parameter :: theta_pix_D = 2.51 !pixel angular diameter
 double precision, parameter :: R_lo_pix = 119.45       !size of masked areas
 double precision, parameter :: R_med_pix = 46.21
 double precision, parameter :: R_hi_pix = 109.24
@@ -43,9 +43,9 @@ double precision, parameter :: C= 4.4d-3
 double precision, parameter :: nu_GHz = 1.5 !GHz
 double precision, parameter :: Te = 1.d4
 double precision, parameter :: eta = 0.2d0
-double precision, parameter :: R_l = 1.336 !cloud radii in pc
-double precision, parameter :: R_m = 0.517
-double precision, parameter :: R_h = 1.222
+double precision, parameter :: R_l = 1.5 !cloud radii in pc
+double precision, parameter :: R_m = 0.6
+double precision, parameter :: R_h = 1.3
 
 !other
 double precision :: gridSize, dx, distance
@@ -140,34 +140,34 @@ print *, "D ", F_hD
 Phi_lr = calcPhi(F_lr, 2.d0*theta_l_R)
 Phi_lB = calcPhi(F_lB, 2.d0*theta_l_R)
 Phi_lC = calcPhi(F_lC, 2.d0*theta_l_R)
-Phi_lD = calcPhi(F_lB, 2.d0*theta_l_R)
+Phi_lD = calcPhi(F_lD, 2.d0*theta_l_R)
 Phi_mr = calcPhi(F_mr, 2.d0*theta_m_R)
 Phi_mB = calcPhi(F_mB, 2.d0*theta_m_R)
 Phi_mC = calcPhi(F_mC, 2.d0*theta_m_R)
-Phi_mD = calcPhi(F_mB, 2.d0*theta_m_R)
+Phi_mD = calcPhi(F_mD, 2.d0*theta_m_R)
 Phi_hr = calcPhi(F_hr, 2.d0*theta_h_R)
 Phi_hB = calcPhi(F_hB, 2.d0*theta_h_R)
 Phi_hC = calcPhi(F_hC, 2.d0*theta_h_R)
-Phi_hD = calcPhi(F_hB, 2.d0*theta_h_R)
+Phi_hD = calcPhi(F_hD, 2.d0*theta_h_R)
 
 print *, " "
-print *, "Incident ionizing fluxes (x10^9)"
+print *, "Incident ionizing fluxes (x10^7)"
 print *, "-----------------------"
 print *, "Low flux: "
-print *, "r ", Phi_lr/1.d9
-print *, "B ", Phi_lB/1.d9
-print *, "C ", Phi_lC/1.d9
-print *, "D ", Phi_lD/1.d9
+print *, "r ", Phi_lr/1.d7
+print *, "B ", Phi_lB/1.d7
+print *, "C ", Phi_lC/1.d7
+print *, "D ", Phi_lD/1.d7
 print *, "Medium flux: "
-print *, "r ", Phi_mr/1.d9
-print *, "B ", Phi_mB/1.d9
-print *, "C ", Phi_mC/1.d9
-print *, "D ", Phi_mD/1.d9
+print *, "r ", Phi_mr/1.d7
+print *, "B ", Phi_mB/1.d7
+print *, "C ", Phi_mC/1.d7
+print *, "D ", Phi_mD/1.d7
 print *, "High flux: "
-print *, "r ", Phi_hr/1.d9
-print *, "B ", Phi_hB/1.d9
-print *, "C ", Phi_hC/1.d9
-print *, "D ", Phi_hD/1.d9
+print *, "r ", Phi_hr/1.d7
+print *, "B ", Phi_hB/1.d7
+print *, "C ", Phi_hC/1.d7
+print *, "D ", Phi_hD/1.d7
 
 
 
@@ -176,15 +176,15 @@ print *, "D ", Phi_hD/1.d9
 ne_lr = calcne(F_lr, 2.d0*theta_l_R,R_l)
 ne_lB = calcne(F_lB, 2.d0*theta_l_R,R_l)
 ne_lC = calcne(F_lC, 2.d0*theta_l_R,R_l)
-ne_lD = calcne(F_lB, 2.d0*theta_l_R,R_l)
+ne_lD = calcne(F_lD, 2.d0*theta_l_R,R_l)
 ne_mr = calcne(F_mr, 2.d0*theta_m_R,R_m)
 ne_mB = calcne(F_mB, 2.d0*theta_m_R,R_m)
 ne_mC = calcne(F_mC, 2.d0*theta_m_R,R_m)
-ne_mD = calcne(F_mB, 2.d0*theta_m_R,R_m)
+ne_mD = calcne(F_mD, 2.d0*theta_m_R,R_m)
 ne_hr = calcne(F_hr, 2.d0*theta_h_R,R_h)
 ne_hB = calcne(F_hB, 2.d0*theta_h_R,R_h)
 ne_hC = calcne(F_hC, 2.d0*theta_h_R,R_h)
-ne_hD = calcne(F_hB, 2.d0*theta_h_R,R_h)
+ne_hD = calcne(F_hD, 2.d0*theta_h_R,R_h)
 
 print *, " "
 print *, "Electron densities"

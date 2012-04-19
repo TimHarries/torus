@@ -9,36 +9,36 @@ double precision, parameter :: mH = 1.6733d-24
 double precision, parameter :: pc = 3.0856776d18
 double precision, parameter :: msol = 1.9891d33
 
-double precision, parameter :: Tdust_low = 15.80d0
-double precision, parameter :: Mcloud_low = 0.11757d2*msol
-double precision, parameter :: Rcloud_low = 1.336d0*pc
-double precision, parameter :: Tdust_med = 25.74d0
-double precision, parameter :: Mcloud_med = 0.69212d1*msol
-double precision, parameter :: Rcloud_med = 0.517d0*pc
-double precision, parameter :: Tdust_hi = 20.67d0
-double precision, parameter :: Mcloud_hi = 0.43506d1*msol
-double precision, parameter :: Rcloud_hi = 1.222d0*pc
+double precision, parameter :: Tdust_low = 17.d0
+double precision, parameter :: Mcloud_low = 10.d0*msol
+double precision, parameter :: Rcloud_low = 1.45d0*pc
+double precision, parameter :: Tdust_med = 30.d0
+double precision, parameter :: Mcloud_med = 5.5d0*msol
+double precision, parameter :: Rcloud_med = 0.56d0*pc
+double precision, parameter :: Tdust_hi = 23.d0
+double precision, parameter :: Mcloud_hi = 3.6d0*msol
+double precision, parameter :: Rcloud_hi = 1.32d0*pc
 
 double precision, parameter :: T_radio = 1.d4
 double precision, parameter :: T_rat_lo = 8497.d0
 double precision, parameter :: T_rat_med = 8498.d0
 double precision, parameter :: T_rat_hi = 8379.d0
 
-double precision, parameter :: ne_lr = 15.94d0
-double precision, parameter :: ne_lB = 16.74d0
-double precision, parameter :: ne_lC = 15.48d0
-double precision, parameter :: ne_lD = 14.77d0
-double precision, parameter :: ne_mr = 102.76d0
-double precision, parameter :: ne_mB = 102.59d0
-double precision, parameter :: ne_mC = 101.39d0
-double precision, parameter :: ne_mD = 92.06d0
-double precision, parameter :: ne_hr = 37.88d0
-double precision, parameter :: ne_hB = 40.50d0
-double precision, parameter :: ne_hC = 38.19d0
-double precision, parameter :: ne_hD = 39.45d0
-double precision, parameter :: ne_rat_lo = 19.03d0
-double precision, parameter :: ne_rat_med = 39.63d0
-double precision, parameter :: ne_rat_hi= 55.08d0
+double precision, parameter :: ne_lr = 15.d0
+double precision, parameter :: ne_lB = 16.d0
+double precision, parameter :: ne_lC = 15.d0
+double precision, parameter :: ne_lD = 14.d0
+double precision, parameter :: ne_mr = 99.d0
+double precision, parameter :: ne_mB = 99.d0
+double precision, parameter :: ne_mC = 98.d0
+double precision, parameter :: ne_mD = 90.d0
+double precision, parameter :: ne_hr = 36.d0
+double precision, parameter :: ne_hB = 39.0d0
+double precision, parameter :: ne_hC = 37.d0
+double precision, parameter :: ne_hD = 38.d0
+double precision, parameter :: ne_rat_lo = 19.d0
+double precision, parameter :: ne_rat_med = 40.d0
+double precision, parameter :: ne_rat_hi= 55.d0
 
 !IBL properties
 double precision :: c_s_radio

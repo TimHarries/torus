@@ -52,8 +52,8 @@ debug = .false.
 
 !!write(*,*) "!- Enter thermal emission sed filename: "
 !read(*,*) sedFilename
-!sedFilename="test_inc013.dat"
-sedFilename="Med_SED_broad_SI_inc000.dat"
+sedFilename="Med_SED_SI_wff_v2_1000pc_inc000.dat"
+!sedFilename="isosphere_inc013.dat"
 !sedFilename="2Med_SED_conv_inc000_thermal_direct.dat"
 !sedFilename="2Low_SED_conv_inc000.dat"
 !sedFilename="2Hi_SED_conv_inc000.dat"
@@ -90,7 +90,7 @@ distance = 3.08568025d19
 
 !size = 4.0d14
 size = 1.5d17
-
+!size = 4.94d16
 beta = 2.d0
 
 !calculate the solid angle subtended by the image
@@ -181,7 +181,8 @@ do i = 1, numJobs
             B = calcPlanck(T_dust, lambdaArray(j),debug)  
             F_nu = Omega*B*(1.d0 - exp(-tau))*(c/lambdaArray(j))
 !            F_nu = Omega*B*tau    
-            totalResidual(i) = totalResidual(i) + (abs(F_nu-fluxArray(j))/fluxArray(j))
+            totalResidual(i) = totalResidual(i) + (abs(F_nu-fluxArray(j))**2/fluxArray(j))
+!            totalResidual(i) = totalResidual(i) + (abs(F_nu-fluxArray(j))/fluxArray(j))
             
             residualB(i) = residualB(i) +  (abs(fluxArray(j)-F_nu)/F_nu)
             zerothResidual = zerothResidual + fluxArray(j)
@@ -215,7 +216,8 @@ write(*,*) "!- Derived dust temperature is: ", T_dust
 !read(*,*) C_nu
 
 !C_nu = 50.d0
-C_nu = (1590.d0)!*1.d-7
+!cflag
+C_nu = (2150.d0)!*1.d-7
 
 !now to calculate the dust mass
 print *, "lam ref ", lam_ref
