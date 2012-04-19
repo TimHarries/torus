@@ -157,7 +157,7 @@ contains
 !    endif
 
     
-    if(readgrid) call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &
+    call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &
          "Do a long photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if(readgrid) call getLogical("justdump", justDump, cLine, fLine, nLines, &
