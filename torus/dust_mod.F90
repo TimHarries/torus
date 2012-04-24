@@ -1047,14 +1047,22 @@ contains
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
   end subroutine getTemperatureDensityRundust
 
-  recursive subroutine stripDustAway(thisOctal, fac, radius)
+  recursive subroutine stripDustAway(thisOctal, fac, radius, sourcePos)
 
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real(double) :: fac
     real(double) :: radius, r
     integer :: subcell, i
+    type(vector), optional :: sourcePos
+    type(vector) :: thisSourcePos
 
+! Use the source position if provided or default to the origin 
+    if (present(sourcePos)) then 
+       thisSourcePos = sourcePos
+    else
+       thisSourcePos = vector(0.0d0, 0.0d0, 0.0d0)
+    endif
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1062,12 +1070,16 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call stripDustAway(child, fac, radius)
+                if (present(sourcePos)) then 
+                   call stripDustAway(child, fac, radius, sourcePos)
+                else
+                   call stripDustAway(child, fac, radius)
+                endif
                 exit
              end if
           end do
        else
-          r = modulus(subcellCentre(thisOctal, subcell))
+          r = modulus(subcellCentre(thisOctal, subcell) - thisSourcePos)
           if (r < radius) then
              thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * fac
              thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))

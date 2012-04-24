@@ -39,6 +39,7 @@ contains
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
     use spectrum_mod, only: getwavelength
+    use dust_mod, only: stripDustAway, sublimateDust
 #ifdef MPI
     use parallel_mod, only: mpiBlockHandout, mpiGetblock
     use mpi
@@ -93,7 +94,9 @@ contains
     integer :: iOctal, iOctal_beg, iOctal_end, nOctal
     integer :: nVoxels, nOctals
 
-    real :: variableDustFraction
+! Variable dust 
+    integer :: nFrac
+    real :: totFrac, tauMax
 
 ! For testing convergence
 ! Temperature
@@ -184,12 +187,7 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if (variableDustSublimation) then 
-       maxIter = 40
-    else
-       maxIter = 20
-    end if
-
+    maxIter = 20
     nIter = 0
     
     converged = .false.
@@ -207,17 +205,34 @@ contains
        close(lun_convfile)
     end if
 
+
+! Remove dust from around the source, required in addition to the outflow condition
+    if (variableDustSublimation) then
+       call stripDustAway(grid%octreeRoot, 1.0d-20, 2.5d7, sourcePos=source(1)%position)
+    end if
+
+    call writeVtkFile(grid, "dust_initial.vtk", &
+         valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity"/))
+
     do while(.not.converged)
        nIter = nIter + 1
 
 
 ! Set up the dust fraction
        if (variableDustSublimation) then
-          if (nIter > 10) then 
-             variableDustFraction = min(real(nIter-10)/10.0,1.0)
-             write(message,*) "Setting dust type fraction to ", variableDustFraction
+
+          if (nIter == 2) tauMax = 0.1
+          if (nIter == 3) tauMax = 1.d0
+          if (niter == 4) tauMax = 10.d0
+          if (nIter == 5) tauMax = 100.d0
+          if (nIter == 6) tauMax = 1000.d0
+          if (nIter >= 7) tauMax = 1.d30
+          nFrac = 0
+          totFrac = 0.d0
+          if (nIter >= 2) then
+             write(message,*) myrankWorldGlobal," Setting dust type max optical depth to ", tauMax
              call writeInfo(message, TRIVIAL)
-             call quickSublimate(grid%OctreeRoot, fraction=variableDustFraction)
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, subTemp=1500.d0, minLevel=1.d-10)
           endif
        end if
 
@@ -661,7 +676,7 @@ contains
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
          "OII        ", "OIII       ", "tau        "/))
 
-    if (variableDustSublimation .and. nIter < 20 ) then
+    if (variableDustSublimation .and. nIter < 8 ) then
        converged = .false.
        call writeInfo("Variable dust sublimation in use, not converging yet.",FORINFO)
     else if (niter == maxIter) then 
@@ -3317,7 +3332,7 @@ end subroutine readHeIIrecombination
        call writeInfo(message)
     endif
 
-    powerPerPhoton = (lCore + totalEmission) / dble(nPhotons)
+    powerPerPhoton = ( (lCore + totalEmission) / dble(nPhotons) ) / 1.0d20
     write(message,*) "power per photon ",powerperphoton
     call writeInfo (message, FORINFO)
 

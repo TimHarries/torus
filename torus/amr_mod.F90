@@ -388,7 +388,6 @@ CONTAINS
       if (thisOctal%nDepth > 1) then
          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
       endif
-      thisOctal%dustTypeFraction(subcell,:) = 0.1
 
 
     CASE ("magstream")

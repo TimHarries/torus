@@ -11,6 +11,7 @@ module vh1_mod
   real(db), private, save, allocatable :: rho(:,:)
   real(db), private, save, allocatable :: xaxis(:)
   real(db), private, save, allocatable :: yaxis(:)
+  real(db), private, save, allocatable :: vx(:,:), vy(:,:)
 
 contains
 
@@ -31,7 +32,7 @@ contains
     integer :: vh1_cycle
     real :: time, dt
 
-    real(db) :: pres, vx, vy
+    real(db) :: pres
     integer :: i, j
     integer :: nlines
 
@@ -52,6 +53,8 @@ contains
     call writeInfo(message, FORINFO)
 
     allocate(rho(nx,ny))
+    allocate(vx(nx,ny))
+    allocate(vy(nx,ny))
     allocate(xaxis(nx))
     allocate(yaxis(ny))
 
@@ -69,7 +72,7 @@ contains
 ! Read vh1 data values
     do j=1, ny
        do i=1, nx
-          read(10,*) rho(i,j), pres, vy, vx
+          read(10,*) rho(i,j), pres, vy(i,j), vx(i,j)
        end do
     end do
 
@@ -108,7 +111,8 @@ contains
     TYPE(OCTAL), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
 
-    TYPE(vector) :: thisCentre
+    TYPE(vector) :: thisCentre, thisVel, sourceToCell
+    real(db) :: vOutflow
     integer :: this_i, this_j, i, j
 
     thisCentre = subcellcentre(thisOctal, subcell)
@@ -140,6 +144,23 @@ contains
 
 ! this_j is for VH-1 x-axis and this_i is for VH-1 y-axis
        thisOctal%rho(subcell) = rho(this_j, this_i)
+
+! Extract cell velocity from the VH-1 grid
+       thisVel=VECTOR(vy(this_j, this_i), 0.0, vx(this_j, this_i))
+! Store velocity for writing into VTK file. Needs to be as fraction of c. 
+       thisOctal%velocity(subcell) = thisVel/cspeed
+! Vector from source position to this cell. Note hardwired source position!!
+       sourceToCell = thisCentre - VECTOR(0.0, 0.0, 3.3e7)
+! Project velocity onto this vector to get the outflow velocity
+       vOutflow = (thisVel.dot.sourceToCell)/modulus(sourceToCell)
+
+! Set up initial dust distribution
+       if (vOutflow > 2000.0*1e5) then 
+! No dust in outflow
+          thisOctal%dustTypeFraction(subcell,:) = 0.0
+       else
+          thisOctal%dustTypeFraction(subcell,:) = 1.0
+       endif
 
     end if
 
