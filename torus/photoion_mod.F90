@@ -212,7 +212,7 @@ contains
     end if
 
     call writeVtkFile(grid, "dust_initial.vtk", &
-         valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity"/))
+         valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
 
     do while(.not.converged)
        nIter = nIter + 1
