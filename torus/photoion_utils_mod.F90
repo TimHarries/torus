@@ -753,6 +753,8 @@ end subroutine addRecombinationEmissionLine
 ! ??06 Continuum emission routines
 
   recursive subroutine addRadioContinuumEmissivity(thisOctal)
+!Emissivity calculation based on the third term of equation 75.2, page 333 of 
+!"Foundations of radiation hydrodynamics", Mihalas and Mihalas 1999
 
     use stateq_mod, only : alpkk
     type(octal), pointer  :: thisOctal
@@ -789,6 +791,8 @@ end subroutine addRecombinationEmissionLine
   end subroutine addRadioContinuumEmissivity
 
   recursive subroutine addRadioContinuumEmissivityMono(thisOctal, lambda, stack)
+!Emissivity calculation based on the third term of equation 75.2, page 333 of 
+!"Foundations of radiation hydrodynamics", Mihalas and Mihalas 1999
 
     use stateq_mod, only : alpkk
     type(octal), pointer  :: thisOctal
