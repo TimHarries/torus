@@ -15,24 +15,24 @@ double precision, parameter :: arcsec = 1.d0/3600.d0 * degtorad
 
 
 !measured average fluxes (basically inputs)
-double precision, parameter :: lr = 0.009384
-double precision, parameter :: lB = 0.01052
-double precision, parameter :: lC = 0.008904
-double precision, parameter :: lD = 0.008083
-double precision, parameter :: mr = 0.1509
-double precision, parameter :: mB = 0.1505
-double precision, parameter :: mC = 0.1474
-double precision, parameter :: mD = 0.1243
-double precision, parameter :: hr = 0.04847
-double precision, parameter :: hB = 0.05554
-double precision, parameter :: hC = 0.04942
-double precision, parameter :: hD = 0.05203
+double precision, parameter :: lr = 0.08295
+double precision, parameter :: lB = 0.08193
+double precision, parameter :: lC = 0.07597
+double precision, parameter :: lD = 0.05488
+double precision, parameter :: mr = 0.2447
+double precision, parameter :: mB = 0.2363
+double precision, parameter :: mC = 0.2116
+double precision, parameter :: mD = 0.1373
+double precision, parameter :: hr = 0.2831
+double precision, parameter :: hB = 0.2828
+double precision, parameter :: hC = 0.2730
+double precision, parameter :: hD = 0.2317
 
 !grid properties
-double precision, parameter :: theta_pix_D = 2.51 !pixel angular diameter
-double precision, parameter :: R_lo_pix = 119.45       !size of masked areas
-double precision, parameter :: R_med_pix = 46.21
-double precision, parameter :: R_hi_pix = 109.24
+double precision, parameter :: theta_pix_D = 2.5 !pixel angular diameter
+double precision, parameter :: R_lo_pix = 12.       !size of masked areas
+double precision, parameter :: R_med_pix = 12.
+double precision, parameter :: R_hi_pix = 12.
 double precision, parameter :: gridL = 9.25e5          !grid size (in au)
 integer, parameter :: npix=401                         !num pixels on image
 
@@ -52,6 +52,7 @@ double precision :: gridSize, dx, distance
 double precision :: theta_l_R_rad, theta_m_R_rad, theta_h_R_Rad    !angular radii of masked areas radians
 double precision :: theta_l_R, theta_m_R, theta_h_R    !angular radii of masked areas as
 double precision :: omega_l, omega_m, omega_h          !solid angle subtended by masked areas
+double precision :: omega_l_c, omega_m_c, omega_h_c          !solid angle subtended by cloud
 
 !Integrated fluxes
 double precision :: F_lr, F_lB, F_lC, F_lD
@@ -259,7 +260,7 @@ S_hD = M_hD/(4.d0*pi*R_h**2)
 
 
 print *, " "
-print *, "Photo-evaporative strengths (Mokyr^-1pc^-2)"
+print *, "Mass flux (Mokyr^-1pc^-2)"
 print *, "-----------------------"
 print *, "Low flux: "
 print *, "r ", S_lr/1.d3
@@ -276,6 +277,47 @@ print *, "r ", S_hr/1.d3
 print *, "B ", S_hB/1.d3
 print *, "C ", S_hC/1.d3
 print *, "D ", S_hD/1.d3
+
+
+!calculate the photo-evaporative strenghts
+
+omega_l_c = 2.d0*pi*(1.d0-cos(pi/3.d0))
+omega_m_c = 2.d0*pi
+omega_h_c = omega_l_c
+
+S_lr = M_lr/(omega_l_c*R_l**2)
+S_lB = M_lB/(omega_l_c*R_l**2)
+S_lC = M_lC/(omega_l_c*R_l**2)
+S_lD = M_lD/(omega_l_c*R_l**2)
+S_mr = M_mr/(omega_m_c*R_m**2)
+S_mB = M_mB/(omega_m_c*R_m**2)
+S_mC = M_mC/(omega_m_c*R_m**2)
+S_mD = M_mD/(omega_m_c*R_m**2)
+S_hr = M_hr/(omega_h_c*R_h**2)
+S_hB = M_hB/(omega_h_c*R_h**2)
+S_hC = M_hC/(omega_h_c*R_h**2)
+S_hD = M_hD/(omega_h_c*R_h**2)
+
+
+print *, " "
+print *, "Mass flux 2 (MoMyr^-1pc^-2)"
+print *, "-----------------------"
+print *, "Low flux: "
+print *, "r ", S_lr!/1.d3
+print *, "B ", S_lB!/1.d3
+print *, "C ", S_lC!/1.d3
+print *, "D ", S_lD!/1.d3
+print *, "Medium flux: "
+print *, "r ", S_mr!/1.d3
+print *, "B ", S_mB!/1.d3
+print *, "C ", S_mC!/1.d3
+print *, "D ", S_mD!/1.d3
+print *, "High flux: "
+print *, "r ", S_hr!/1.d3
+print *, "B ", S_hB!/1.d3
+print *, "C ", S_hC!/1.d3
+print *, "D ", S_hD!/1.d3
+
 
 contains
 
