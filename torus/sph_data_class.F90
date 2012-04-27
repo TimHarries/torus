@@ -386,6 +386,17 @@ contains
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT
     logical :: haveUandUoverT
 
+!
+! For SPH simulations with chemistry
+!
+! CO fraction. The column will not be labelled by splash
+! so need to specify which column to use.
+    logical, parameter :: useCO = .false.
+    integer, parameter :: iCO = 15
+    real(double)       :: COfrac
+! Do we need particle H2?
+    logical, parameter :: useH2=.false.
+
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted")
     read(LUIN,*) 
@@ -467,6 +478,18 @@ contains
        sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
     end if
 
+    if (useCO) then
+       write (message,'(a,i2)') "Reading CO fraction from column ", iCO
+       call writeInfo(message,FORINFO)
+       allocate(sphData%rhoCO(npart))
+    end if
+
+    if (useH2) then 
+       write (message,'(a,i2)') "Will store particle H2 density"
+       call writeInfo(message,FORINFO)
+       allocate(sphdata%rhoH2(npart))
+    end if
+
     sphData%useSphTem = .true.
     sphdata%totalgasmass = 0.d0
 
@@ -496,12 +519,7 @@ contains
        if (internalView) call rotate_particles
 
        u = junkArray(iu)
-       if ( convertRhoToHI ) then 
-          h2ratio = junkArray(ih2frac)
-          rhon = (1.0-2.0*h2ratio)*junkArray(irho)*5.0/7.0
-       else
-          rhon = junkArray(irho)
-       end if
+       rhon = junkArray(irho)
        h = junkArray(ih)
        itype = int(junkArray(iitype))
        gaspartmass = junkArray(imass)
@@ -541,6 +559,24 @@ contains
           endif
 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
+
+! For SPH simulations with chemistry we may need to set up H2 and CO
+          if ( convertRhoToHI .or. useH2 ) then
+             h2ratio = junkArray(ih2frac)
+          endif
+
+          if ( convertRhoToHI ) then
+             sphdata%rhon(igas) = (1.0-2.0*h2ratio)*rhon*5.0/7.0
+          end if
+
+          if (useCO) then 
+             COfrac = junkArray(iCO)
+             sphdata%rhoCO(igas) = COfrac * rhon
+          endif
+
+          if (useH2) then
+             sphdata%rhoH2(igas) = h2ratio*2.*rhon*5./7.
+          end if
           
 ! 3=sink, 4=star
        else if(itype .eq. 3 .or. itype .eq. 4) then
