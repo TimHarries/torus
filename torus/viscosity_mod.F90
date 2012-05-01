@@ -1,0 +1,253 @@
+module viscosity_mod
+  use messages_mod
+  use vector_mod
+  use amr_mod
+  use mpi_amr_mod
+  use mpi_global_mod
+  implicit none
+
+contains
+  
+  real(double) function dudx(thisOctal, subcell, dir_u, dir_x, grid)
+    use inputs_mod, only : smallestCellSize, gridDistanceScale
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    integer :: subcell, neighbourSubcell
+    real(double) :: u_i, u_i_plus_1
+    type(VECTOR) :: cen, cen2
+    type(VECTOR) :: dir_u, dir_x, locator
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, q11,q22,q33
+    integer :: nd
+    
+    cen = subcellCentre(thisOctal, subcell)
+
+    u_i = (dir_u.dot.(VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))))/thisOctal%rho(subcell)
+
+    locator = cen + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir_x
+    neighbouroctal => thisoctal
+    call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir_x, q, rho, rhoe, &
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+    cen2 = VECTOR(px,py,pz)
+    u_i_plus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
+
+
+    dudx = (u_i_plus_1 - u_i) / (thisOctal%subcellSize*gridDistanceScale)
+  end function dudx
+
+  real(double) function div_u(thisOctal, subcell, grid)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell, i, nDim
+    type(VECTOR) :: dir(3)
+    if (thisOctal%threed) then
+       ndim = 3
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       ndim = 2
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 0.d0, 1.d0)
+    endif
+
+    div_u = 0.d0
+    do i = 1, nDim
+       div_u = div_u + dudx(thisOctal, subcell, dir(i), dir(i), grid)
+    enddo
+  end function div_u
+
+  function symmetricVelocityGradientTensor(thisOctal, subcell, grid) result(out)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: out(3,3), temp(3,3)
+    type(GRIDTYPE) :: grid
+    integer :: i, j, nDim
+    type(VECTOR) :: dir(3)
+    if (thisOctal%threed) then
+       ndim = 3
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       ndim = 2
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 0.d0, 1.d0)
+    endif
+
+    
+
+    do i = 1, nDim
+       do j = 1, nDim
+         temp(i,j)  = dudx(thisOctal, subcell, dir(i), dir(j), grid)
+       enddo
+    enddo
+    do i = 1, nDim
+       do j = 1, nDim
+          out(i,j)  = 0.5d0*(temp(i,j) + temp(j,i))
+       enddo
+    enddo
+  end function symmetricVelocityGradientTensor
+
+  function viscosityQ(thisOctal, subcell, grid) result(out)
+    use inputs_mod, only : etaViscosity, smallestCellSize, gridDistanceScale
+    type(OCTAL), pointer :: thisoctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    real(double) :: out(3,3), symVelGrad(3,3), temp(3,3), divV, lengthScale
+    integer :: i,nDim
+
+    if (thisOctal%threed) then
+       ndim = 3
+    else
+       nDim = 2
+    endif
+
+    lengthScale = etaViscosity * smallestCellSize * gridDistanceScale
+    out = 0.d0
+    divV = div_u(thisOctal, subcell, grid)
+    if (divV < 0.d0) then
+       symVelGrad = symmetricVelocityGradientTensor(thisOctal, subcell, grid)
+       temp = symVelGrad
+       do i = 1, nDim
+          temp(i,i) = temp(i,i) - (1.d0/3.d0)*divV
+       enddo
+       out = (lengthScale**2 * thisOctal%rho(subcell) * divV)*temp
+    endif
+  end function viscosityQ
+
+  function qColonDelV(thisOctal, subcell, grid) result(out)
+    use inputs_mod, only : smallestCellsize,etaViscosity, gridDistanceScale
+    type(octal), pointer :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    real(double) :: out, symVelGrad(3,3), lengthScale, divV
+
+    lengthScale = etaViscosity * smallestCellSize * gridDistanceScale
+    out = 0.d0
+    divV = div_u(thisOctal, subcell, grid)
+    symVelGrad = symmetricVelocityGradientTensor(thisOctal, subcell, grid)
+
+    out = 0.d0
+    if (thisOctal%threed) then
+       out = lengthScale**2 * thisOctal%rho(subcell) * divV * &
+            ((symVelGrad(1,1)-symVelGrad(2,2))**2 + &
+             (symVelGrad(1,1)-symVelGrad(3,3))**2 + &
+             (symVelGrad(2,2)-symVelGrad(3,3))**2)/3.d0
+    else
+       out = lengthScale**2 * thisOctal%rho(subcell) * divV * &
+            ((symVelGrad(1,1)-symVelGrad(2,2))**2)/3.d0
+    endif
+
+  end function qColonDelV
+    
+
+
+  function divQ(thisOctal, subcell, iDir, grid) result(out)
+    use inputs_mod, only : smallestCellSize,gridDistanceScale
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal, neighbourOctal
+    real(double) :: out
+    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,q11,q22,q33
+    integer :: subcell, neighbourSubcell
+    type(VECTOR) :: dir(3), cen, cen2, locator
+    real(double) :: qa, qb
+    integer :: nd, iDir, nDim
+    if (thisOctal%threed) then
+       ndim = 3
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       ndim = 2
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 0.d0, 1.d0)
+    endif
+
+    qb = thisOctal%qViscosity(subcell,iDir,iDir)
+    cen2 = subcellCentre(thisOctal,subcell)
+    out = 0.d0
+    locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
+
+    
+    neighbouroctal => thisoctal
+    call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+    cen = VECTOR(px,py,pz)
+
+    select case(iDir)
+    case(1)
+       qa = q11
+    case(2)
+       qa = q22
+    case(3)
+       qa = q33
+    end select
+
+    out = (qb - qa) / (((cen2-cen).dot.dir(iDir))*gridDistanceScale)
+  end function divQ
+
+  recursive subroutine setupViscosity(thisoctal, grid)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setupViscosity(child, grid)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+          thisoctal%qViscosity(subcell,1:3,1:3) = 0.d0
+          if (.not.thisOctal%edgeCell(subcell)) then
+             thisoctal%qViscosity(subcell,1:3,1:3) = viscosityQ(thisOctal, subcell, grid)
+             if (.not.associated(thisOctal%chiline)) then
+                allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+             endif
+             thisOctal%chiLine(subcell) = qColonDelV(thisOctal, subcell, grid)
+          endif
+       endif
+    enddo
+  end subroutine setupViscosity
+
+  recursive subroutine viscousTimescale(thisoctal, grid, dt)
+    use inputs_mod, only : etaViscosity, smallestCellsize, gridDistanceScale
+    real(double) :: lengthScale
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    real(double) :: dt, thisTime, divV
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call viscousTimescale(child, grid, dt)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+          if (.not.thisOctal%ghostCell(subcell)) then
+             lengthScale = etaViscosity * smallestCellSize * gridDistanceScale
+             divV = div_u(thisOctal, subcell, grid)
+             thisTime = (smallestCellSize*gridDistanceScale)**2 /(4.d0* max(abs(divV),1.d-20) * lengthScale**2)
+             dt = min(thisTime, dt)
+          endif
+       endif
+    enddo
+  end subroutine viscousTimescale
+
+
+end module viscosity_mod
