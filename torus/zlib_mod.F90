@@ -353,13 +353,17 @@ contains
     endif
 
     if (present(logicalArray1d)) then
+#ifdef MEMCHECK
        nbytes = int(SIZE(logicalArray1d)*sizeof(logicalArray1d(1)))
+#endif
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(logicalArray1d, inputBuffer(1:nBytes))
     endif
 
     if (present(logicalValue)) then
+#ifdef MEMCHECK
        nbytes = int(sizeof(logicalValue))
+#endif
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(logicalValue, inputBuffer(1:nBytes))
     endif
@@ -384,7 +388,9 @@ contains
     endif
 
     if (present(realValue)) then
+#ifdef MEMCHECK
        nbytes = int(sizeof(realValue))
+#endif
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(realValue, inputBuffer(1:nBytes))
     endif
@@ -640,7 +646,9 @@ contains
     endif
 
     if (present(logicalValue)) then
+#ifdef MEMCHECK
        nBytes = int(sizeof(logicalValue))
+#endif
        allocate(inputBuffer(1:nBytes))
     endif
 
@@ -655,7 +663,9 @@ contains
     endif
 
     if (present(logicalArray1d)) then
+#ifdef MEMCHECK
        nBytes = int(size(logicalArray1d)*sizeof(logicalArray1d(1)))
+#endif
        allocate(inputBuffer(1:nBytes))
     endif
        

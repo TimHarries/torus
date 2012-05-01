@@ -1096,12 +1096,12 @@ contains
                 
                 if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
-                        direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
-                        q11, q22, q33)
+                        direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, &
+                        px, py, pz, q11, q22, q33)
                 else
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
-                        community(i), q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
-                        q11, q22, q33)
+                        community(i), q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
+                        xnext, px, py, pz, q11, q22, q33)
                 end if
                 
                 ID(i) = 1
@@ -1140,10 +1140,12 @@ contains
                    
                    if(octalOnTHread(mirrorOctal, mirrorSubcell, myRankGlobal)) then
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
-                           rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33) 
+                           rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
+                           nd, xnext, px, py, pz, q11, q22, q33) 
                    else
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, community(i), &
-                           q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33) 
+                           q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
+                           nd, xnext, px, py, pz, q11, q22, q33) 
                    end if
                    
                    mVec = VECTOR(px, py, pz)
@@ -1167,10 +1169,12 @@ contains
                       
                       if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, direction, q, &
-                              rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33) 
+                              rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
+                              nd, xnext, px, py, pz, q11, q22, q33) 
                       else
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), &
-                              q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,q11,q22,q33) 
+                              q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
+                              nd, xnext, px, py, pz,q11,q22,q33) 
                       end if
                       
                       ID(i) = 2
@@ -4367,9 +4371,6 @@ end subroutine sumFluxes
                "hydrovelocity", &
                "rhoe         ", &  
                "u_i          ", &
-               "q11          ", &
-               "q22          ", &
-               "q33          ", &
                "mpithread    ", &
                "phi          "/))
 

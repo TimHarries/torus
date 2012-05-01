@@ -1,4 +1,6 @@
 module viscosity_mod
+#ifdef MPI
+
   use messages_mod
   use vector_mod
   use amr_mod
@@ -249,5 +251,5 @@ contains
     enddo
   end subroutine viscousTimescale
 
-
+#endif
 end module viscosity_mod
