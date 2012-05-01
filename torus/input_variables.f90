@@ -68,6 +68,7 @@
   logical :: monochromatic     !Use a monochromatic radiation field
   logical :: quickThermal      !Use a simplified thermal balance calculation
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
+  logical :: addSinkParticles  ! add new sink particles
   logical :: stellarWinds      ! include stellar winds in hydro calc
   ! Parameters  specific to domain decomposed photoionisation 
 
@@ -103,6 +104,7 @@
   logical :: radiationPressure        ! use radiation pressure terms
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   real(double) :: etaViscosity        !Artificial viscosity parameter
+  logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
@@ -253,6 +255,7 @@
 !-------------------
 
   logical :: readSources
+  logical :: moveSources
   character(len=80) :: sourceFilename
   logical :: sourceHistory
   character(len=80) :: sourceHistoryFilename

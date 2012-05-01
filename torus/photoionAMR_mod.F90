@@ -60,6 +60,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use starburst_mod
+    use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
     use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
@@ -69,7 +70,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto, stellarwinds
+    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -95,7 +96,7 @@ contains
     integer :: i, status, tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
-    real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble
+    real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     logical :: noPhoto=.false.
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
@@ -447,6 +448,7 @@ contains
        gasSourcedt = 1.d30
        raddt = 1.d30
        pressuredt = 1.d30
+       viscDt = 1.d30
        if (myrankGlobal /= 0) then
           call computeCourantTime(grid, grid%octreeRoot, gasDt)
           if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, sourceSourceDt)
@@ -454,6 +456,9 @@ contains
                globalsourceArray, gasSourceDt)
           if (radiationPressure) call radpressureTimeStep(grid%octreeRoot, raddt)
           call pressureGradientTimeStep(grid, pressureDt)
+          if (useTensorViscosity) then
+             call viscousTimescale(grid%octreeRoot, grid, viscDt)
+          endif
        endif
 
 
@@ -467,7 +472,9 @@ contains
        raddt = tempDouble
        call MPI_ALLREDUCE(pressuredt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        pressureDt = tempDouble
-       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt)
+       call MPI_ALLREDUCE(viscdt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       viscDt = tempDouble
+       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt, viscDt)
 
        if (writeoutput) then
           write(*,"(a,1p,e12.3)") "Courant Time: ", dt* dble(cfl)
@@ -476,6 +483,8 @@ contains
           write(*,"(a,1p,e12.3)") "Gas-source courant Time: ", gasSourceDt
           write(*,"(a,1p,e12.3)") "Radiation pressure courant time: ", raddt
           write(*,"(a,1p,e12.3)") "Pressure gradient courant time: ", pressuredt
+          if (useTensorViscosity) &
+               write(*,"(a,1p,e12.3)") "Viscous time: ", viscdt
        endif
        
 
@@ -654,7 +663,7 @@ contains
        if (myrankGlobal /= 0) then
           if (dounrefine) then
              iUnrefine = iUnrefine + 1
-             if (iUnrefine == 3) then
+             if (iUnrefine == 50) then
                 if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
                 if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
@@ -680,7 +689,7 @@ contains
 !       write(mpiFilename,'(a, i4.4, a)') "dump_", nPhase,".vtk"
 !       call writeVtkFile(grid, mpiFilename, &
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!            "hydrovelocity","sourceCont   ","pressure     "/))
+!            "hydrovelocity","sourceCont   ", "pressure     "/))
 !       nPhase = nPhase + 1
        if (dumpThisTime) then
 
@@ -712,10 +721,12 @@ contains
 
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
           call writeAmrGrid(mpiFilename, .false., grid)
+
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     ","radmom       "/))
+               "hydrovelocity","sourceCont   ","pressure     ","radmom       ", &
+               "diff         ", "q11         ","q22         ","q33         "/))
 
 
 
@@ -921,11 +932,10 @@ end subroutine radiationHydro
     integer :: iter, nFrac
     real :: totFrac
     integer :: maxChild
-    integer :: ndiff
     integer :: nScatBigPacket, j, nScatSmallPacket
     logical :: sourceInThickCell, tempLogical
     logical :: undersampled
-    real(double) :: kappaRoss
+    real(double) :: maxDiffRadius
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
@@ -1253,22 +1263,28 @@ end subroutine radiationHydro
           if (maxIter == 1) call  sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax=1.e30, subTemp=1500.d0)
        end if
 
-       resetDiffusion = .true.
-       ndiff = 0
-       call defineDiffusionOnKappap(grid, grid%octreeRoot, 1., nDiff)
+       sourceInThickCell = .false.
+       maxDiffRadius = 0.d0
+    if (myrankGlobal /= 0) then
+       call defineDiffusionZone(grid, maxDiffRadius)
 !       write(*,*) myrankWorldGlobal, " has ",ndiff, "cells in diffusion approx"
 
-    nSmallPackets = 0
-    sourceInThickCell = .false.
-    do i = 1, globalnSource
-       call findSubcellTD(globalSourceArray(i)%position, grid%octreeRoot,thisOctal, subcell)
-       if (octalOnThread(thisOctal,subcell,myrankGlobal)) then
-          call returnKappa(grid, thisOctal, subcell, rosselandKappa = kappaRoss)
-          if (thisOctal%subcellSize*thisOctal%rho(subcell)*kappaRoss*1.d10 > 1.d0) then
-             sourceInThickCell = .true.
-          endif
-       endif
-    enddo
+       nSmallPackets = 0
+       do i = 1, globalnSource
+          if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
+       enddo
+    endif
+
+!    do i = 1, globalnSource
+!       call findSubcellTD(globalSourceArray(i)%position, grid%octreeRoot,thisOctal, subcell)
+!       if (octalOnThread(thisOctal,subcell,myrankGlobal)) then
+!          call returnKappa(grid, thisOctal, subcell, rosselandKappa = kappaRoss)
+!          if (thisOctal%subcellSize*thisOctal%rho(subcell)*kappaRoss*1.d10 > 1.d0) then
+!             sourceInThickCell = .true.
+!          endif
+!       endif
+!    enddo
+
     call mpi_allreduce(sourceInThickCell, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
     sourceInThickCell = tempLogical
     if (sourceInThickCell) then
@@ -1651,12 +1667,12 @@ end subroutine radiationHydro
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
-               !$OMP PRIVATE(bigPhotonPacketWeight) &
+               !$OMP PRIVATE(bigPhotonPacketWeight, iLam) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
-               !$OMP SHARED(dfreq, iLam, endLoop, nIter, spectrum) &
+               !$OMP SHARED(dfreq, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal)
@@ -2737,6 +2753,77 @@ end subroutine radiationHydro
  end if
 666 continue
 end subroutine photoIonizationloopAMR
+
+
+recursive subroutine defineDiffusionZone(grid, maxRadius)
+  use mpi
+  use inputs_mod,only : resetDiffusion
+  type(GRIDTYPE) :: grid
+  integer :: nDiff
+  real(double) :: maxRadius, temp
+  integer :: ierr
+  resetDiffusion = .true.
+  ndiff = 0
+  call defineDiffusionOnKappap(grid, grid%octreeRoot, 1., nDiff)
+  maxRadius = 0.d0
+  call findMaxRadiusToDiffusionCell(grid%octreeRoot, maxRadius)
+  call MPI_ALLREDUCE(maxRadius, temp, 1, MPI_DOUBLE_PRECISION, MPI_MAX, &
+       amrCommunicator, ierr)
+  maxRadius = temp
+  if (myrankWorldGlobal == 1) write(*,*) "Maximum diffusion radius ",maxRadius
+  call setDiffusionZoneOnRadius(grid%octreeRoot, maxRadius)
+end subroutine defineDiffusionZone
+
+recursive subroutine findMaxRadiusToDiffusionCell(thisOctal, maxRadius)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  real(double) :: maxRadius
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call findMaxRadiusToDiffusionCell(child, maxRadius)
+              exit
+           end if
+        end do
+     else
+        if (thisOctal%diffusionApprox(subcell)) then
+           maxRadius = max(maxRadius, modulus(subcellCentre(thisOctal, subcell) &
+                - globalSourceArray(1)%position))
+        endif
+     end if
+  end do
+end subroutine findMaxRadiusToDiffusionCell
+
+recursive subroutine  setDiffusionZoneOnRadius(thisOctal, maxRadius)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  real(double) :: maxRadius
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call setDiffusionZoneOnRadius(child, maxRadius)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+        if (modulus(subcellCentre(thisOctal, subcell) - globalSourceArray(1)%position) < maxRadius) then
+           thisOctal%diffusionApprox(subcell) = .true.
+        endif
+     end if
+  end do
+end subroutine setDiffusionZoneOnRadius
+
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, &

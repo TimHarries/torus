@@ -187,6 +187,8 @@ MODULE octal_mod
     TYPE(vector), pointer, DIMENSION(:)    :: cornerVelocity => null() ! velocity at corners of subcells
     real(double), DIMENSION(:), pointer    :: cornerrho => null() ! velocity at corners of subcells
     real(double)               :: phi, dphi, phimin, phimax
+
+    real(double), dimension(:,:,:), pointer :: qViscosity => null()
     
     logical, dimension(:), pointer                 :: diffusionApprox => null()
     logical, dimension(:), pointer                 :: fixedTemperature => null()

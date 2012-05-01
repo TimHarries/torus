@@ -207,10 +207,10 @@ contains
          "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
 
     call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 0, ok, .false.)
+         "Number of photon packets","(a,i8,a)", 0, ok, .false.)
 
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 10, ok, .false.)
+         "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
 
     if (nBodyPhysics) then
        call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
@@ -222,8 +222,14 @@ contains
        call getDouble("eps", inputEps, 1.d0, cLine, fLine, nLines, &
             "Gravity softening length (cm): ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
-    call getLogical("mergesinks", mergeBoundSinks, cLine, fLine, nLines, &
-         "Merge bound sinks ", "(a,1l,1x,a)", .true., ok, .false.)
+       call getLogical("addsinks", addSinkParticles, cLine, fLine, nLines, &
+            "Add sink particles: ", "(a,1l,1x,a)", .true., ok, .false.)
+
+       call getLogical("mergesinks", mergeBoundSinks, cLine, fLine, nLines, &
+            "Merge bound sinks: ", "(a,1l,1x,a)", .true., ok, .false.)
+
+       call getLogical("movesinks", moveSources, cLine, fLine, nLines, &
+            "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
 
     endif
 
@@ -1723,6 +1729,9 @@ contains
     call getDouble("etaviscosity", etaViscosity, 1.d0, cLine, fLine, nLines, &
          "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
 
+    call getLogical("tensorviscosity", useTensorViscosity, cLine, fLine, nLines, &
+         "Use tensor form for artificial viscosity: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &
          "Distance grid scale: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
 
@@ -2542,7 +2551,7 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  character(len=*) :: value
- character(len=80) :: cLine(:)
+ character(len=80) :: cLine(:), tmp
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -2555,7 +2564,9 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
      if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
   if (.not.ok) then
         ok = .true.
-        read(cLine(i)(j+1:),*) value
+        read(cLine(i)(j+1:),'(a)') tmp
+        tmp = trim(adjustl(tmp))
+        value = tmp
         fLine(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")

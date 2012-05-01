@@ -7281,7 +7281,7 @@ endif
   subroutine calcSphere(thisOctal,subcell)
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
-    use inputs_mod, only : beta, omega, hydrodynamics
+    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -7301,7 +7301,7 @@ endif
 
     rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
     if (rMod < sphereRadius) then
-       thisOctal%rho(subcell) = rhoSphere * (rMod/sphereRadius)**beta
+       thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
     else
@@ -9718,6 +9718,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%rhov, source%rhov)
     call copyAttribute(dest%rhow, source%rhow)
     call copyAttribute(dest%rhoe, source%rhoe)
+    call copyAttribute(dest%qViscosity, source%qViscosity)
     call copyAttribute(dest%refinedLastTime, source%refinedLastTime)
 
     call copyAttribute(dest%photoIonCoeff, source%photoIonCoeff)
@@ -13684,6 +13685,8 @@ end function readparameterfrom2dmap
 
 
        call allocateAttribute(thisOctal%phiLimit,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%qViscosity,thisOctal%maxchildren,3,3)
 
        call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)

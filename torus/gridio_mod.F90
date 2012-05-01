@@ -147,7 +147,8 @@ contains
     logical :: writeFile
 #ifdef MPI
      integer :: status(MPI_STATUS_SIZE)
-    integer :: iThread, ierr, tag
+    integer :: iThread, ierr
+    integer, parameter :: tag = 33
 #endif
 
 
@@ -328,6 +329,7 @@ contains
           endif
        endif
     endif
+    call writeInfo("File written and closed")
        
     
   contains
@@ -689,7 +691,10 @@ contains
           
           call writeAttributePointerFlexi(20, "rhoe", thisOctal%rhoe, fileFormatted)
           call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
+
+          call writeAttributePointerFlexi(20, "qViscosity", thisOctal%qViscosity, fileFormatted)
        
+
 
           call writeAttributePointerFlexi(20, "phi_i", thisOctal%phi_i, fileFormatted)
           call writeAttributePointerFlexi(20, "phi_gas", thisOctal%phi_gas, fileFormatted)
@@ -4132,6 +4137,9 @@ contains
          case("energy")
             call readPointerFlexi(20, thisOctal%energy, fileFormatted)
 
+         case("qViscosity")
+            call readPointerFlexi(20, thisOctal%qViscosity, fileFormatted)
+
 
          case("phi_i")
             call readPointerFlexi(20, thisOctal%phi_i, fileFormatted)
@@ -4458,6 +4466,9 @@ contains
          case("energy")
             call receivePointerFlexi(thisOctal%energy)
 
+         case("qViscosity")
+            call receivePointerFlexi(thisOctal%qViscosity)
+
 
          case("phi_i")
             call receivePointerFlexi(thisOctal%phi_i)
@@ -4658,6 +4669,8 @@ contains
 
       call sendAttributePointerFlexi(iThread, "rhoe", thisOctal%rhoe)
       call sendAttributePointerFlexi(iThread, "energy", thisOctal%energy)
+
+      call sendAttributePointerFlexi(iThread, "qViscosity", thisOctal%qViscosity)
 
 
       call sendAttributePointerFlexi(iThread, "phi_i", thisOctal%phi_i)
