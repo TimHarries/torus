@@ -1197,7 +1197,9 @@ end subroutine radiationHydro
 
     if (maxiter > 1) then
        if (variableDustSublimation) then
+          if (Writeoutput) write(*,*) "Stripping dust away."
           call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
+          if (Writeoutput) write(*,*) "Done."
        endif
     endif
 
@@ -1265,16 +1267,14 @@ end subroutine radiationHydro
 
        sourceInThickCell = .false.
        maxDiffRadius = 0.d0
-    if (myrankGlobal /= 0) then
-       call defineDiffusionZone(grid, maxDiffRadius)
-!       write(*,*) myrankWorldGlobal, " has ",ndiff, "cells in diffusion approx"
-
        nSmallPackets = 0
-       do i = 1, globalnSource
-          if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
-       enddo
-    endif
-
+       if (myrankGlobal /= 0) then
+          call defineDiffusionZone(grid, maxDiffRadius)
+          do i = 1, globalnSource
+             if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
+          enddo
+       endif
+       
 !    do i = 1, globalnSource
 !       call findSubcellTD(globalSourceArray(i)%position, grid%octreeRoot,thisOctal, subcell)
 !       if (octalOnThread(thisOctal,subcell,myrankGlobal)) then
@@ -1298,7 +1298,6 @@ end subroutine radiationHydro
 
       nInf=0
       nMonte = nTotalMonte / max(nSmallPackets,1)
-
        call clearContributions(grid%octreeRoot)
 
        if(monochromatic) then
@@ -1317,6 +1316,7 @@ end subroutine radiationHydro
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
        if (myrankWorldGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
+       if (myrankWorldGlobal == 1) write(*,*) "nhydrosetsglobal ",nHydroSetsGlobal
 
        if (myrankWorldGlobal == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
@@ -1329,6 +1329,7 @@ end subroutine radiationHydro
        iMonte_beg = 1
        iMonte_end = nMonte
        iMonte_end = nThreadMonte
+
 
        totalPower = 0.d0
        nScatBigPacket = 0
@@ -1390,7 +1391,6 @@ end subroutine radiationHydro
                    call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)                
                    thisFreq = cSpeed/(wavelength / 1.e8)
                 end if
-
                 totalPower = totalPower + epsOverDeltaT*photonPacketWeight
                 
                 if(binPhotons) then

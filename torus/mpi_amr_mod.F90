@@ -10,7 +10,7 @@ contains
 
   subroutine setupAMRCOMMUNICATOR
     use mpi
-    use inputs_mod, only : nHydroThreadsinput, splitOverMPI
+    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr2d
     integer :: ierr, i, j
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
@@ -31,9 +31,9 @@ contains
              nHydroThreadsGlobal = 64
           else if (mod(nThreadsGlobal, 9) == 0) then
              nHydroThreadsGlobal = 8
-          else if (mod(nThreadsGlobal, 17) == 0) then
+          else if (amr2d.and.mod(nThreadsGlobal, 17) == 0) then
              nHydroThreadsGlobal = 16
-          else if (mod(nThreadsGlobal, 5) == 0) then
+          else if (amr2d.and.mod(nThreadsGlobal, 5) == 0) then
              nHydroThreadsGlobal = 4
           else
              write(*,*) "Number of MPI threads is ",nThreadsGlobal
@@ -52,6 +52,14 @@ contains
 
        
        myHydroSetGlobal = myRankWorldGlobal / (nHydroThreadsGlobal+1)
+
+       if (myrankWorldGlobal == 0) then
+          write(*,*) " "
+          write(*,*) "Parallel info:"
+          write(*,*) "nHydrothreads: ",nHydroThreadsGlobal
+          write(*,*) "nHydroSetsGlobal: ",nHydroSetsGlobal
+          write(*,*) " "
+       endif
        
        call MPI_COMM_GROUP(MPI_COMM_WORLD, worldGroup, ierr)
 

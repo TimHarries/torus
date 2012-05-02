@@ -2555,7 +2555,7 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
- integer :: i, j, k
+ integer :: i, j, k, n
 
  ok = .false.
  do i = 1, nLines
@@ -2566,7 +2566,12 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
         ok = .true.
         read(cLine(i)(j+1:),'(a)') tmp
         tmp = trim(adjustl(tmp))
-        value = tmp
+        n = index(tmp, " ")
+        if (n == 0) then
+           value = tmp
+        else
+           value = tmp(1:n)
+        endif
         fLine(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")

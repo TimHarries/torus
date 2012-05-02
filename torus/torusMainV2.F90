@@ -98,6 +98,7 @@ program torus
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups
   call setupAMRCOMMUNICATOR
+!  write(*,*) myrankWorldGlobal, " para ",nHydroThreadsGlobal,NHydrosetsGlobal,myhydrosetglobal
 #endif
 
   ! set up a random seed
