@@ -3565,7 +3565,7 @@ contains
     integer :: nr1, nr2, i
 
     nr1 = 1000
-    nr2 = 200
+    nr2 = 0
     nr = nr1 + nr2
     nphi = 1000
     nray = 0
