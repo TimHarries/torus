@@ -32,7 +32,7 @@ image T
 nphotons 40000000
 distance 50.
 imagefile "testImage.fits"
-imagetype "freefree"
+imagetype freefree
 lambdaimage 60000.
 npixels 201
 
