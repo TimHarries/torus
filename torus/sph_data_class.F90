@@ -363,7 +363,7 @@ contains
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: internalView, convertRhoToHI, ih2frac
-    use inputs_mod, only : iModel
+    use inputs_mod, only : iModel, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
 
     implicit none
@@ -397,8 +397,12 @@ contains
 ! Do we need particle H2?
     logical, parameter :: useH2=.false.
 
+! Account for time in Galactic plane surveys
+    logical, parameter :: multiTime=.false.
+    real(double) :: extraPA
+
     call findMultiFilename(rootfilename, iModel, filename)
-    open(unit=LUIN, file=TRIM(filename), form="formatted")
+    open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
     read(LUIN,*) 
     read(LUIN,*)
     read(LUIN,*)
@@ -424,6 +428,11 @@ contains
        stop
     endif
     
+    if (internalView.and.multiTime) then
+       call rotateForTime
+    else
+       extraPA = 0.0
+    endif
 
     ix = indexWord("x",word,nWord)
     iy = indexWord("y",word,nWord)
@@ -516,7 +525,7 @@ contains
        vy = junkArray(ivy)
        vz = junkArray(ivz)
 
-       if (internalView) call rotate_particles
+       if (internalView) call rotate_particles(galaxyPositionAngle+extraPA, galaxyInclination)
 
        u = junkArray(iu)
        rhon = junkArray(irho)
@@ -622,21 +631,42 @@ contains
    
  contains
 
-   subroutine rotate_particles
-     use inputs_mod, only: galaxyPositionAngle, galaxyInclination
+   subroutine rotate_particles(thisPositionAngle, thisInclination)
+     real(double), intent(in) ::  thisPositionAngle, thisInclination
      TYPE(VECTOR) :: orig_sph, rot_sph
 
      orig_sph = VECTOR(xn,  yn,  zn)
-     rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
-     rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
+     rot_sph  = rotateZ( orig_sph,  thisPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, thisInclination*degToRad )
      xn = rot_sph%x; yn=rot_sph%y; zn=rot_sph%z
 
      orig_sph = VECTOR(vx,  vy,  vz)
-     rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
-     rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
+     rot_sph  = rotateZ( orig_sph,  thisPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, thisInclination*degToRad )
      vx = rot_sph%x; vy=rot_sph%y; vz=rot_sph%z
 
    end subroutine rotate_particles
+
+   subroutine rotateForTime
+     implicit none
+     real(double), parameter :: refTime = 5.3010001E+00 * 4.7165268E+07
+     real(double), parameter :: omega   = 1.0e-15 ! (rad s^-1)
+     real(double) :: deltaT
+
+     write(message,*) "Time of this dump: ", time*utime/1.0e6, " Myr"
+     call writeInfo(message,FORINFO)
+     write(message,*) "Reference time: ", refTime/1.0e6, " Myr"
+     call writeInfo(message,FORINFO)
+     deltaT = refTime - time*utime
+     write(message,*) "Time offset: ", deltaT/1.0e6, " Myr"
+     call writeInfo(message,FORINFO)
+     write(message,*) "Omega: ", omega, " rad s^-1"
+     call writeInfo(message,FORINFO)
+     extraPA = omega * (deltaT /secsToYears)  * radToDeg
+     write(message,*) "Angle offset: ", extraPA, " degrees"
+     call writeInfo(message,FORINFO)
+
+   end subroutine rotateForTime
 
   end subroutine new_read_sph_data
 
