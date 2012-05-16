@@ -107,6 +107,7 @@
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
+  real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
   logical :: useViscosity             !Use artificial viscosity
@@ -725,6 +726,7 @@
   real :: lambdatau  ! Wavelength at which testing optical depth computed [A]
   logical :: fastIntegrate 
   logical :: noScattering
+  logical :: forceFirstScat
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)

@@ -150,7 +150,7 @@ program torus
 
 
      call torus_mpi_barrier
-     if (dosetupAMRgrid )call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+     if (dosetupAMRgrid) call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
      call freeGrid(grid)
      call freeGlobalSourceArray()
 

@@ -299,7 +299,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   character(len=80) :: popFilename
   character(len=80) :: distortionType=" "
   logical :: doIntensivePeelOff=.false.
-  logical :: forceFirstScat=.false.
   integer :: nLower, nUpper
   real :: logMassLossRate
   real :: usePhotonWavelength
@@ -1335,6 +1334,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 !THAW - flag for multi-source SEDs
            totalOutputLuminosity = 0.d0
+
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
         if (mie) then
@@ -1378,6 +1378,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 !           if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
+!           call writeVtkFile(grid, "biasx.vtk", &
+!                valueTypeString=(/"rho          ", &
+!                "dust1        ", &
+!                "bias         ", &
+!                "temperature  "/))
+
 !           if (doTuning) call tune(6,"Calculate bias on tau")
 
            call computeProbDist(grid, totLineEmission, &

@@ -45,6 +45,7 @@ contains
     tMinGlobal = 3.
     filter_set_name = "natural"
     noscattering = .false.
+    forceFirstScat = .false.
     usebias = .true.
     
     intProFilename = "none"
@@ -298,6 +299,9 @@ contains
 
     call getLogical("severedamping", severedamping, cLine, fLine, nLines, &
          "Severe damping: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getDouble("hydrospeedlimit", hydroSpeedLimit, 1.d5, cLine, fLine, nLines, &
+            "Speed limit for hydrodynamic advection (km/s): ", "(a,f7.1,1x,a)", 0.d0, ok, .false.)
 
     call getLogical("dumpradial", dumpRadial, cLine, fLine, nLines, &
          "Dump a radial slice: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2101,6 +2105,9 @@ contains
 
     call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
          "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
+         "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)

@@ -515,6 +515,8 @@ contains
 
   subroutine receiveAcrossMpiBoundary(grid, boundaryType, receiveThread, sendThread)
     use mpi
+    use inputs_mod, only : useTensorViscosity
+
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
     type(octal), pointer  :: neighbourOctal
@@ -701,10 +703,11 @@ contains
                 tempStorage(14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
 
 
-                tempStorage(18) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
-                tempStorage(19) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
-                tempStorage(20) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
-
+                if (useTensorViscosity) then
+                   tempStorage(18) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
+                   tempStorage(19) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
+                   tempStorage(20) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+                endif
 !                write(*,*) myrank," set up tempstorage with ", &
 !                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
 !                     neighbourOctal%edgeCell(neighbourSubcell)
@@ -1040,6 +1043,7 @@ contains
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
     use mpi
+    use inputs_mod, only : useTensorViscosity
     integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -1211,10 +1215,11 @@ contains
                 tempStorage(16) = pVec%y
                 tempStorage(17) = pVec%z
 
-                tempStorage(18) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
-                tempStorage(19) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
-                tempStorage(20) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
-
+                if (useTensorViscosity) then
+                   tempStorage(18) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
+                   tempStorage(19) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
+                   tempStorage(20) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+                endif
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
 !                          write(*,*) myRank, " temp storage sent"
@@ -1631,6 +1636,8 @@ contains
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, q11, q22, q33)
     use mpi
+    use inputs_mod, only : useTensorViscosity
+
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
     type(VECTOR) :: direction, rVec, pVec
@@ -1671,9 +1678,11 @@ contains
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
-          q11 = neighbourOctal%qViscosity(neighbourSubcell,1,1)
-          q22 = neighbourOctal%qViscosity(neighbourSubcell,2,2)
-          q33 = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+          if (usetensorviscosity) then
+             q11 = neighbourOctal%qViscosity(neighbourSubcell,1,1)
+             q22 = neighbourOctal%qViscosity(neighbourSubcell,2,2)
+             q33 = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+          endif
 
        else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
           q   = neighbourOctal%q_i(neighbourSubcell)
@@ -1686,9 +1695,11 @@ contains
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
-          q11 = neighbourOctal%qViscosity(neighbourSubcell,1,1)
-          q22 = neighbourOctal%qViscosity(neighbourSubcell,2,2)
-          q33 = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+          if (usetensorviscosity) then
+             q11 = neighbourOctal%qViscosity(neighbourSubcell,1,1)
+             q22 = neighbourOctal%qViscosity(neighbourSubcell,2,2)
+             q33 = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+          endif
 
           if (thisOctal%oneD) then
              flux = neighbourOctal%flux_i(neighbourSubcell)
@@ -1769,6 +1780,8 @@ contains
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
        rhoe, pressure, flux, phi, phigas, q11, q22, q33)
+    use inputs_mod, only : useTensorViscosity
+
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
     real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi, phigas,q11,q22,q33
@@ -1794,9 +1807,11 @@ contains
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
-       q11 = neighbourOctal%qViscosity(neighbourSubcell, 1, 1)
-       q22 = neighbourOctal%qViscosity(neighbourSubcell, 2, 2)
-       q33 = neighbourOctal%qViscosity(neighbourSubcell, 3, 3)
+       if (useTensorViscosity) then
+          q11 = neighbourOctal%qViscosity(neighbourSubcell, 1, 1)
+          q22 = neighbourOctal%qViscosity(neighbourSubcell, 2, 2)
+          q33 = neighbourOctal%qViscosity(neighbourSubcell, 3, 3)
+       endif
      else if (neighbourOctal%twoD) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1
@@ -1823,9 +1838,11 @@ contains
        phigas = 0.5d0*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)))
 
 
-       q11 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),1,1) + neighbourOctal%qViscosity(nSubcell(2),1,1))
-       q22 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),2,2) + neighbourOctal%qViscosity(nSubcell(2),2,2))
-       q33 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),3,3) + neighbourOctal%qViscosity(nSubcell(2),3,3))
+       if (useTensorViscosity) then
+          q11 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),1,1) + neighbourOctal%qViscosity(nSubcell(2),1,1))
+          q22 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),2,2) + neighbourOctal%qViscosity(nSubcell(2),2,2))
+          q33 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),3,3) + neighbourOctal%qViscosity(nSubcell(2),3,3))
+       endif
 
     else if (neighbourOctal%threed) then
        if (direction%x > 0.9d0) then
@@ -1892,12 +1909,14 @@ contains
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
 
-       q11 = fac*(neighbourOctal%qViscosity(nSubcell(1),1,1) + neighbourOctal%qViscosity(nSubcell(2),1,1) + & 
-            neighbourOctal%qViscosity(nSubcell(3),1,1) + neighbourOctal%qViscosity(nSubcell(4),1,1))
-       q22 = fac*(neighbourOctal%qViscosity(nSubcell(1),2,2) + neighbourOctal%qViscosity(nSubcell(2),2,2) + & 
-            neighbourOctal%qViscosity(nSubcell(3),2,2) + neighbourOctal%qViscosity(nSubcell(4),2,2))
-       q33 = fac*(neighbourOctal%qViscosity(nSubcell(1),3,3) + neighbourOctal%qViscosity(nSubcell(2),3,3) + & 
-            neighbourOctal%qViscosity(nSubcell(3),3,3) + neighbourOctal%qViscosity(nSubcell(4),3,3))
+       if (useTensorViscosity) then
+          q11 = fac*(neighbourOctal%qViscosity(nSubcell(1),1,1) + neighbourOctal%qViscosity(nSubcell(2),1,1) + & 
+               neighbourOctal%qViscosity(nSubcell(3),1,1) + neighbourOctal%qViscosity(nSubcell(4),1,1))
+          q22 = fac*(neighbourOctal%qViscosity(nSubcell(1),2,2) + neighbourOctal%qViscosity(nSubcell(2),2,2) + & 
+               neighbourOctal%qViscosity(nSubcell(3),2,2) + neighbourOctal%qViscosity(nSubcell(4),2,2))
+          q33 = fac*(neighbourOctal%qViscosity(nSubcell(1),3,3) + neighbourOctal%qViscosity(nSubcell(2),3,3) + & 
+               neighbourOctal%qViscosity(nSubcell(3),3,3) + neighbourOctal%qViscosity(nSubcell(4),3,3))
+       endif
 
     endif
     

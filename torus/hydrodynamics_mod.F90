@@ -2246,6 +2246,44 @@ contains
   end subroutine damp
 
 !Use to damp oscillations/flow
+  recursive subroutine limitSpeed(thisoctal)
+    use inputs_mod, only : hydroSpeedLimit
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    real(double) :: speed,fac
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call limitSpeed(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+  
+         speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+               thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+          speed = sqrt(speed)
+          if (speed > hydroSpeedLimit) then
+             fac = hydroSpeedLimit/speed
+          else
+             fac = 1.d0
+          endif
+
+          thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
+          thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
+          thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
+
+       endif
+    enddo
+  end subroutine limitSpeed
+
+!Use to damp oscillations/flow
   recursive subroutine cutVacuum(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2543,10 +2581,15 @@ contains
              write(*,*) "q ", thisoctal%q_i_plus_1(subcell), thisoctal%q_i(subcell), thisoctal%q_i_minus_1(subcell)
              if (.not.associated(thisoctal%mpiboundarystorage)) &
                 write(*,*) "cell is not on a boundary"
-             thisOctal%rho(subcell) = 1.d-29
-             thisOctal%rhou(subcell) = 1.d-29
-             thisOctal%rhov(subcell) = 1.d-29
-             thisOctal%rhow(subcell) = 1.d-29
+             
+             thisOctal%rho(subcell) = SUM(thisOctal%rho(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
+                  dble(thisOctal%maxChildren)
+             thisOctal%rhou(subcell) = SUM(thisOctal%rhou(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
+                  dble(thisOctal%maxChildren)
+             thisOctal%rhov(subcell) = SUM(thisOctal%rhov(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
+                  dble(thisOctal%maxChildren)
+             thisOctal%rhow(subcell) = SUM(thisOctal%rhow(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
+                  dble(thisOctal%maxChildren)
 
           endif
        endif
@@ -2923,7 +2966,7 @@ end subroutine sumFluxes
        group, nGroup,doSelfGrav)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
-         moveSources
+         moveSources, hydroSpeedLimit
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -3231,7 +3274,7 @@ end subroutine sumFluxes
     if (myrankWorldglobal == 1) call tune(6,"X-direction step")
 
     if (severeDamping) call damp(grid%octreeRoot)
-
+    if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
     call periodBoundary(grid)
     call imposeBoundary(grid%octreeRoot, grid)
