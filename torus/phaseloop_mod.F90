@@ -1376,7 +1376,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !              call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
 !           end if
 
-!           if (doTuning) call tune(6,"Calculate bias on tau")
+           if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
 !           call writeVtkFile(grid, "biasx.vtk", &
 !                valueTypeString=(/"rho          ", &
@@ -1384,11 +1384,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !                "bias         ", &
 !                "temperature  "/))
 
-!           if (doTuning) call tune(6,"Calculate bias on tau")
+           if (doTuning) call tune(6,"Calculate bias on tau")
 
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
-
 
            totDustContinuumEmission = totdustContinuumEmission 
            lcore = tiny(lcore)
@@ -1825,15 +1824,6 @@ CONTAINS
     intPathError = 0
     photonFromEnvelope = .true.
     nFromEnv = 0
-!$OMP DO SCHEDULE(DYNAMIC,10)
-        innerPhotonLoop: do i = iInner_beg, iInner_end
-
-!           write(*,*) omp_get_thread_num(), i
-#ifdef MPI
- !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle innerPhotonLoop
-#endif
-           ! The following six arrays must be allocated and deallocated for each 
-           ! innerPhotonLoop to make the program work with OpenMP! (RK)
 
 #ifdef _OPENMP
            allocate(lambda(1:maxTau))
@@ -1844,6 +1834,19 @@ CONTAINS
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
 #endif
+
+
+!$OMP DO SCHEDULE(DYNAMIC,10)
+        innerPhotonLoop: do i = iInner_beg, iInner_end
+
+
+
+!           write(*,*) omp_get_thread_num(), i
+#ifdef MPI
+ !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle innerPhotonLoop
+#endif
+           ! The following six arrays must be allocated and deallocated for each 
+           ! innerPhotonLoop to make the program work with OpenMP! (RK)
 
 
 
@@ -1875,6 +1878,7 @@ CONTAINS
 
            ! initialize the photon
 
+
            
            contWeightArray = 1.
 
@@ -1903,6 +1907,8 @@ CONTAINS
                     thisPhoton%lambda = grid%lamArray(1) + r1*(grid%lamArray(nLambda)-grid%lamArray(1))
                  endif
            end select
+
+
            if (photonFromEnvelope) then
               nFromEnv = nFromEnv + 1
            endif
@@ -1995,6 +2001,9 @@ CONTAINS
                  call tauAlongPathFast(ilambdaPhoton, grid, thisPhoton%position, outvec, finalTau, &
                       startOctal = sourceOctal, startSubcell=sourceSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
               endif
+
+
+
 !                 print *, "nTau", nTau
 !                 print *, "tauExt", tauExt(nTau)
 !                 print *, "pos ",thisphoton%position
@@ -2228,7 +2237,6 @@ CONTAINS
               endif
 
            endif
-
 
 
            if (.not.fastIntegrate) then
@@ -2863,6 +2871,16 @@ CONTAINS
 
 999  continue  ! escape route for a bad photon
 
+
+           
+        enddo innerPhotonLoop
+
+
+
+!        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
+
+!$OMP END DO
+
 #ifdef _OPENMP
            deallocate(lambda)
            deallocate(tauSca)
@@ -2872,16 +2890,9 @@ CONTAINS
            deallocate(contTau)
            deallocate(contWeightArray)
 #endif
-           
-        enddo innerPhotonLoop
 
 
-
-!        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
-
-!$OMP END DO
 !$OMP END PARALLEL
-
 #ifdef MPI
 !     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',myRankGlobal, &
 !                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 

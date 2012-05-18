@@ -43,7 +43,12 @@ program torus
   use mpi
 #endif
 
+
+
   implicit none
+#ifdef _OPENMP
+    integer :: omp_get_num_threads, omp_get_thread_num
+#endif
 
   character(len=80) :: message
   type(GRIDTYPE) :: grid
@@ -123,6 +128,7 @@ program torus
 
 
      if (doSetupAMRgrid) then
+
         call  setupamrgrid(grid)
 
 
@@ -148,12 +154,18 @@ program torus
 
      if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 
-
+     call writeInfo("Before deallocation",TRIVIAL)
+     call resetGlobalMemory(grid)
      call torus_mpi_barrier
-     if (dosetupAMRgrid) call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+     if (associated(grid%octreeRoot)) then
+        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+     else
+        call writewarning("Want to delete grid but octreeroot not associated")
+     endif
+
+
      call freeGrid(grid)
      call freeGlobalSourceArray()
-
   enddo
 
 #ifdef MPI
