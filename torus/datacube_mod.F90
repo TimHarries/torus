@@ -424,8 +424,12 @@ contains
         allocate ( vAxis_sp(thisCube%nv) )
         vAxis_sp(:) = real(thisCube%vAxis(:))
 
-        background = minVal(thisCube%intensity(:,:,:))
-        write(message,*) "Taking background as minimum value in cube: ", background
+!        background = minVal(thisCube%intensity(:,:,:))
+!        write(message,*) "Taking background as minimum value in cube: ", background
+!        call writeInfo(message,FORINFO)
+
+        background = 5.0
+        write(message,*) "Using fixed background of: ", background
         call writeInfo(message,FORINFO)
 
         ! Calculate emission weighted velocity
@@ -433,6 +437,7 @@ contains
            do i=1, thisCube%nx
 
               S = thisCube%intensity(i,j,:) - background
+              where (S<0.0) S=0.0
               intensitySum     = sum( S(:) )
 
               firstMoment(i,j) = sum( S(:)*vAxis_sp(:) )
