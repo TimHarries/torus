@@ -2792,7 +2792,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      endif
 
      cube%obsDistance = gridDistance * 1d10!(in cm) Additional information that will be useful
-     write(message,'(a,f9.3,a)') "Observer Distance        : ",gridDistance/pctocm, " pc"
+     write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/pctocm, " pc"
      call writeinfo(message, TRIVIAL) 
      write(message,'(a,1pe12.3,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
      call writeinfo(message, TRIVIAL) 

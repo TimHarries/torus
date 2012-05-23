@@ -1912,11 +1912,6 @@ contains
        call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
                "(a,f8.2x,a)", 0.d0, ok, .false.)
 
-       call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
-            "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
-       call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
-            "Column containing H2 fraction ","(a,i2,a)", 14, ok, .false.)
-
        call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
             "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
@@ -1962,6 +1957,14 @@ contains
     end if
 
     if ( h21cm ) then 
+
+! Conversion from total density to HI density when chemistry is included
+! The grid needs to be loaded with HI density
+       call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
+            "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
+       call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
+            "Column containing H2 fraction ","(a,i2,a)", 11, ok, .false.)
+
        call getInteger("nSubpixels", nSubpixels, cLine, fLine, nLines, &
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, fLine, nLines, &
@@ -1981,8 +1984,8 @@ contains
           call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
                "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
           rotateViewAboutX = 90.0 - galaxyInclination
-          rotateViewAboutY = 90.0 + galaxyPositionAngle
-          rotateViewAboutZ = 0.0
+          rotateViewAboutY = 0.0
+          rotateViewAboutZ = 90.0 + galaxyPositionAngle
        end if
        
     end if
