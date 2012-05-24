@@ -2042,6 +2042,7 @@ contains
     integer :: i
     character(len=20) :: keyword
     character(len=10) :: axisUnits
+    character(len=10) :: fluxUnits
     character(len=80) :: outputImageType, imageFilename
     character(len=4)  :: iChar
     integer :: thisnpixels, npixels, nimage
@@ -2088,6 +2089,10 @@ contains
     call getReal("imagesize", imageSize, 1.0, cLine, fLine, nLines, &
          trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
 
+    call getString("imagefluxunits", fluxUnits, cLine, fLine, nLines,&
+         "Flux units for image:", "(a,a,1x,a)", "MJy/str", ok, .false.)
+
+
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
@@ -2131,7 +2136,7 @@ contains
           call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
               
-       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, &
+       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, fluxUnits, &
             imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety, gridDistance)
     else
        do i = 1, nImage
@@ -2196,7 +2201,7 @@ contains
           call getReal(keyword, thisOffsety, 1.0, cLine, fLine, nLines, &
                "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
 
-          call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, &
+          call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
                thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance)
        enddo
 

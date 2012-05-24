@@ -120,7 +120,6 @@ contains
        grid%lineEmission = atomicPhysics.or.molecularPhysics
 
        grid%splitOverMPI = splitOverMPI
-
        globalMemoryFootprint = 0
 
        select case (geometry)
@@ -493,7 +492,8 @@ contains
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 #endif
-        
+               grid%adaptive = .true.
+
 
 !        pause
 !       gridConverged = .false.

@@ -332,6 +332,23 @@ module image_mod
        end if
      end subroutine ConvertArrayToMJanskiesPerStr
 
+! Convert from ergs/s/A to Jy/Pix
+     subroutine ConvertArrayToJanskysPerPix(array, lambda)
+       real, intent(inout)      :: array(:,:)
+       real         :: lambda
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
+       real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
+       real(double), parameter :: PerAngstromToPerCm = 1.e8_db
+       real(double) :: nu, PerAngstromToPerHz
+
+
+       nu = cspeed / ( real(lambda,db) * angstromtocm)
+       PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
+
+       array = real(FluxToJanskies * PerAngstromToPerHz  * array)
+
+     end subroutine ConvertArrayToJanskysPerPix
+
 
      subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
 
@@ -515,7 +532,14 @@ module image_mod
              call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
                   samplings, cylinderTest=.true.)
           else
+       select case (getFluxUnits())
+          case("MJy/str")
              call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+          case("Jy/pix")
+             call ConvertArrayToJanskysPerPix(array, lambdaImage)
+          case DEFAULT
+             call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
+       end select
           end if
        else
           call writeInfo("No wavelength provided, not converting axis units")
@@ -530,7 +554,17 @@ module image_mod
        !  Write another optional keyword to the header.
        !
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
-       call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
+
+       select case (getFluxUnits())
+          case("MJy/str")
+             call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
+          case("Jy/pix")
+             call ftpkys(unit,'BUNIT', "JY/PIXEL", "units of image values", status)
+          case DEFAULT
+             call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
+       end select
+
+
 
 
        ! write keywords and set values which depend on the axis units

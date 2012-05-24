@@ -11,7 +11,7 @@ module image_utils_mod
 
   public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixelsX, &
        getImagenPixelsY, getImageFilename, getAxisUnits, getImageInc, getImagePA, &
-       getImageViewVec, getnImage, getImageOffsets, getImageSizeX, getImageSizeY
+       getImageViewVec, getnImage, getImageOffsets, getImageSizeX, getImageSizeY, getFluxUnits
 
   private
 
@@ -37,6 +37,7 @@ module image_utils_mod
 
 ! Parameters shared by all images
   character(len=10), save :: myAxisUnits
+  character(len=10), save :: myFluxUnits
 
 contains 
 
@@ -57,7 +58,7 @@ contains
 ! This routine also does some basic validation of the 
 ! values it has been given. 
 !
-  subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, &
+  subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, fluxUnits, &
        imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance)
     use messages_mod
     use constants_mod, only: autocm, pctocm, radToDeg, pi
@@ -70,6 +71,7 @@ contains
     character(len=80), intent(in) :: filename
     integer, intent(in) :: nPixels
     character(len=10), intent(in) :: axisUnits
+    character(len=10), intent(in) :: fluxUnits
     real, intent(in) :: imageSize
     real, intent(in) :: aspectRatio
     real, intent(in) :: inclination, positionAngle
@@ -115,6 +117,9 @@ contains
 
 ! Axis units (e.g. au, pc, arcsec)
     myAxisUnits = axisUnits
+
+! flux units
+    myFluxUnits = fluxUnits
 
 ! Size of image
 !
@@ -229,6 +234,13 @@ contains
     getAxisUnits=MyAxisUnits
 
   end function getAxisUnits
+
+  function getFluxUnits()
+
+    character(len=10) :: getFluxUnits
+    getFluxUnits=MyFluxUnits
+
+  end function getFluxUnits
 
 ! Return size (length or angular) of ith image
 ! If an invalid image number is requested then -1 is returned. 

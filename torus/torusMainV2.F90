@@ -46,9 +46,6 @@ program torus
 
 
   implicit none
-#ifdef _OPENMP
-    integer :: omp_get_num_threads, omp_get_thread_num
-#endif
 
   character(len=80) :: message
   type(GRIDTYPE) :: grid
