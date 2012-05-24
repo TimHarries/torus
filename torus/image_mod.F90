@@ -333,19 +333,20 @@ module image_mod
      end subroutine ConvertArrayToMJanskiesPerStr
 
 ! Convert from ergs/s/A to Jy/Pix
-     subroutine ConvertArrayToJanskysPerPix(array, lambda)
+     subroutine ConvertArrayToJanskysPerPix(array, lambda, distance)
        real, intent(inout)      :: array(:,:)
        real         :: lambda
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
-       real(double) :: nu, PerAngstromToPerHz
+       real(double) :: nu, PerAngstromToPerHz, scale, distance
 
 
        nu = cspeed / ( real(lambda,db) * angstromtocm)
        PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
+       scale = 1.d20/distance**2
 
-       array = real(FluxToJanskies * PerAngstromToPerHz  * array)
+       array = real(FluxToJanskies * PerAngstromToPerHz  * array * scale)
 
      end subroutine ConvertArrayToJanskysPerPix
 
@@ -536,7 +537,7 @@ module image_mod
           case("MJy/str")
              call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
           case("Jy/pix")
-             call ConvertArrayToJanskysPerPix(array, lambdaImage)
+             call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
           case DEFAULT
              call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
        end select
@@ -570,12 +571,14 @@ module image_mod
        ! write keywords and set values which depend on the axis units
        select case (getAxisUnits())
        case ("arcsec")
-          dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec
-          dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec
+          dx = ((dx * 1.d10)/objectDistance)*radtodeg
+          dy = ((dy * 1.d10)/objectDistance)*radtodeg
           refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
           refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
-          call ftpkys(unit,'CUNIT1', "arcsec", "x axis unit", status)
-          call ftpkys(unit,'CUNIT2', "arcsec", "y axis unit", status)
+          refValX = 270.
+          refValY = -23.
+          call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "deg", "y axis unit", status)
        case ("au", "AU")
           dx = (dx * 1.d10)/autocm
           dy = (dy * 1.d10)/autocm
@@ -602,23 +605,23 @@ module image_mod
        end select
 
        ! write x-axis keywords
-       call ftpkys(unit,'CTYPE1',"RA--TAN","x axis", status)
-       call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT1',(dx/radianstoarcsec)*3600.d0,10,' ',status)
+       call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
+       call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
+       call ftpkyd(unit,'CDELT1',dx,10,' ',status)
        call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
        call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
 
        ! write y-axis keywords
-       call ftpkys(unit,'CTYPE2',"DEC--TAN","y axis", status)
-       call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT2',(dy/radianstoarcsec)*3600.d0,10 ,' ',status)
+       call ftpkys(unit,'CTYPE2',"DEC--SIN","y axis", status)
+       call ftpkyd(unit,'CRPIX2',dble(image%ny/2.d0),-3,'reference pixel',status)
+       call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
        call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
        call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
 
-       call ftpkyd(unit,'CD1_1',(dx/radianstoArcSec)*3600.d0,10,' ',status)
+       call ftpkyd(unit,'CD1_1',dx,10,' ',status)
        call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
        call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
-       call ftpkyd(unit,'CD2_2',(dx/radianstoArcSec)*3600.d0,10,' ',status)
+       call ftpkyd(unit,'CD2_2',dy,10,' ',status)
 
 
        !

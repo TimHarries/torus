@@ -1836,7 +1836,7 @@ CONTAINS
 #endif
 
 
-!$OMP DO SCHEDULE(DYNAMIC,10)
+!$OMP DO SCHEDULE(DYNAMIC,100)
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
 
@@ -2875,11 +2875,11 @@ CONTAINS
            
         enddo innerPhotonLoop
 
+!$OMP END DO
 
 
 !        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
 
-!$OMP END DO
 
 #ifdef _OPENMP
            deallocate(lambda)

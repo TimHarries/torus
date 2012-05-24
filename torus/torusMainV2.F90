@@ -124,6 +124,7 @@ program torus
 
 
 
+!$OMP MASTER
      if (doSetupAMRgrid) then
 
         call  setupamrgrid(grid)
@@ -138,7 +139,7 @@ program torus
 
         call writeVtkFile(grid, "rho.vtk")
      endif
-
+!$OMP END MASTER
      call setupGlobalSources(grid)
 
      call writeBanner("Run-time messages","+",TRIVIAL)
