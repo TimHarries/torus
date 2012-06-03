@@ -4982,6 +4982,7 @@ type(vector) :: velocity
 type(gridtype) :: grid
 real(double) :: rho
 
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -5001,7 +5002,26 @@ real(double) :: rho
        endif
     enddo
 
-end subroutine returnVelocityVector
+  end subroutine returnVelocityVector
+
+
+subroutine returnVelocityVector2(position, velocity)
+!For use in molecular_mod.
+
+integer :: subcell
+type(octal), pointer :: thisOctal
+type(vector) :: position 
+type(vector) :: velocity
+real(double) :: rho
+
+
+call findsubcelllocal(position, thisoctal,subcell)
+
+rho = thisOctal%rho(subcell)
+velocity = VECTOR(thisOctal%rhou(subcell)/rho, thisOctal%rhov(subcell)/rho, &
+     thisOctal%rhow(subcell)/rho)
+
+end subroutine returnVelocityVector2
 
 
   recursive subroutine calculateRhoE(thisOctal, direction)

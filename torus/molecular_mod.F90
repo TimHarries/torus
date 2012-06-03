@@ -4305,7 +4305,7 @@ end subroutine plotdiscValues
 
      type(VECTOR) function velocity(position, grid, startOctal, subcell) RESULT(out)
        use inputs_mod, only : modelWasHydro
-       use hydrodynamics_mod, only : returnvelocityVector
+       use hydrodynamics_mod, only : returnvelocityVector2
        implicit none
 
        type(VECTOR), intent(in) :: position
@@ -4338,7 +4338,7 @@ end subroutine plotdiscValues
        elseif(ggtau) then
           Out = ggtauvelocity(Position)
        else if (modelWasHydro) then
-          call returnVelocityVector(grid%octreeroot, grid, position, Out)
+          call returnVelocityVector2(position, Out)
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
                                 actualSubcell = subcell, linearinterp = .false.)
