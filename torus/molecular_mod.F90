@@ -1021,10 +1021,10 @@ module molecular_mod
 
 ! dumpresults if in LTE
       nRay = 1
-      if(writeoutput .and. (.not. restart) .and. isinlte .and. outputconvergence) then
-         call writeinfo("Writing LTE levels", TRIVIAL)
-         call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
-      endif
+!      if(writeoutput .and. (.not. restart) .and. isinlte .and. outputconvergence) then
+!         call writeinfo("Writing LTE levels", TRIVIAL)
+!         call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
+!      endif
 ! set number of rays used to estimate jnu and determine level pops 
       nRay = initnray
 ! initialise random seed for AMC method
@@ -1225,14 +1225,17 @@ module molecular_mod
 
 ! First populate ds, phi and i0 so that they can be passed on to calculatejbar             
              do iRay = 1, nRay
+!                print *, "RAY ", iRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &
                      thisMolecule,fixedrays, warned_neg_dtau) ! does the hard work - populates i0 etc
+!                print *, "RAY ", iRay, "midpoint"
                 i0(iray,1:maxtrans) = i0temp(1:maxtrans)
+!                print *, "RAY ", iRay, "done"
                 !                write(*,*) i0temp(1)
                 !                write(*,*) thisoctal%molecularlevel(1:2,subcell)
              enddo
-       
+!             print *, "DONE RAYS"
              if(debug) where(isnan(i0)) i0 = 0.d0
 ! set iteration within subcell to 0
              iter = 0
@@ -1412,10 +1415,10 @@ module molecular_mod
            endif
         endif
         
-        if(writeoutput .and. outputconvergence) then
-           call writeinfo("Dumping results", FORINFO)
-           call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
-        endif
+!        if(writeoutput .and. outputconvergence) then
+!           call writeinfo("Dumping results", FORINFO)
+!           call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
+!        endif
 
         if(myrankiszero .and. plotlevels .and. .not.(amr1d)) then
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
@@ -4338,7 +4341,7 @@ end subroutine plotdiscValues
        elseif(ggtau) then
           Out = ggtauvelocity(Position)
        else if (modelWasHydro) then
-          call returnVelocityVector2(position, Out)
+          call returnVelocityVector2(grid, position, Out)
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
                                 actualSubcell = subcell, linearinterp = .false.)
