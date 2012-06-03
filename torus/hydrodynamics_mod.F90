@@ -4970,6 +4970,40 @@ end subroutine sumFluxes
     enddo
   end subroutine calculateRhoU
 
+
+recursive subroutine returnVelocityVector(thisOctal, grid, position, velocity)
+!For use in molecular_mod.
+
+integer :: subcell
+integer :: i
+type(octal), pointer :: thisOctal, child
+type(vector) :: position 
+type(vector) :: velocity
+type(gridtype) :: grid
+real(double) :: rho
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call returnVelocityVector(child, grid, position, velocity)
+                exit
+             end if
+          end do
+       else 
+          if(inSubcell(thisOctal, subcell, position)) then
+             rho = thisOctal%rho(subcell)
+             velocity = VECTOR(thisOctal%rhou(subcell)/rho, thisOctal%rhov(subcell)/rho, &
+                  thisOctal%rhow(subcell)/rho)
+          end if
+       endif
+    enddo
+
+end subroutine returnVelocityVector
+
+
   recursive subroutine calculateRhoE(thisOctal, direction)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 

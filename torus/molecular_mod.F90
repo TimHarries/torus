@@ -4304,9 +4304,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 end subroutine plotdiscValues
 
      type(VECTOR) function velocity(position, grid, startOctal, subcell) RESULT(out)
-
+       use inputs_mod, only : modelWasHydro
+       use hydrodynamics_mod, only : returnvelocityVector
        implicit none
-       
+
        type(VECTOR), intent(in) :: position
        type(gridtype), intent(in) :: grid
        type(octal), pointer, optional :: startOctal
@@ -4336,6 +4337,8 @@ end subroutine plotdiscValues
           Out = AGBstarVelocity(Position)
        elseif(ggtau) then
           Out = ggtauvelocity(Position)
+       else if (modelWasHydro) then
+          call returnVelocityVector(grid%octreeroot, grid, position, Out)
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
                                 actualSubcell = subcell, linearinterp = .false.)

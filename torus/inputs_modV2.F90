@@ -1426,6 +1426,8 @@ contains
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .false.)
        call getLogical("noturb", noturb, cLine, fLine, nLines, &
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
+       call getLogical("modelwashydro", modelWasHydro, cLine, fLine, nLines, &
+            "Model uses a hydro grid","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, fLine, nLines, &
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
        call getLogical("constantabundance", constantAbundance, cLine, fLine, nLines, &

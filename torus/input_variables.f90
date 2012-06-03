@@ -181,6 +181,7 @@
   logical :: addnewmoldata
   logical :: dongstep ! controls Ng Acceleration
   logical :: plotlevels   
+  logical :: modelwashydro
   logical :: writetempfits
   logical :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
