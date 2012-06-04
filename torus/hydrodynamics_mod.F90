@@ -5024,8 +5024,6 @@ if(inOctal(grid%octreeRoot, position)) then
    velocity = VECTOR(thisOctal%rhou(subcell)/rho, thisOctal%rhov(subcell)/rho, &
         thisOctal%rhow(subcell)/rho)
 else
-!   velocity = VECTOR(1.d-20, 1.d-20, 1.d-20)
-   velocity = VECTOR(0.d0, 0.d0, 0.d0)
 end if
 
 end subroutine returnVelocityVector2
