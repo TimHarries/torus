@@ -5005,28 +5005,7 @@ real(double) :: rho
   end subroutine returnVelocityVector
 
 
-subroutine returnVelocityVector2(grid, position, velocity)
-!For use in molecular_mod.
 
-integer :: subcell
-type(octal), pointer :: thisOctal
-type(gridtype) :: grid
-type(vector) :: position 
-type(vector) :: velocity
-real(double) :: rho
-
-
-if(inOctal(grid%octreeRoot, position)) then
-   thisOctal => grid%octreeRoot
-   call findsubcelllocal(position, thisoctal,subcell)
-
-   rho = thisOctal%rho(subcell)
-   velocity = VECTOR(thisOctal%rhou(subcell)/rho, thisOctal%rhov(subcell)/rho, &
-        thisOctal%rhow(subcell)/rho)
-else
-end if
-
-end subroutine returnVelocityVector2
 
 
   recursive subroutine calculateRhoE(thisOctal, direction)

@@ -4308,7 +4308,7 @@ end subroutine plotdiscValues
 
      type(VECTOR) function velocity(position, grid, startOctal, subcell) RESULT(out)
        use inputs_mod, only : modelWasHydro
-       use hydrodynamics_mod, only : returnVelocityVector2
+       use amr_utils_mod, only : returnVelocityVector2
        implicit none
 
        type(VECTOR), intent(in) :: position
