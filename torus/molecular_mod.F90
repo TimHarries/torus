@@ -1454,7 +1454,7 @@ module molecular_mod
 ! Double number of rays if convergence criterion not met and not using fixed rays
 !THAW - changed this logical so that doubling occurs for non-fixed rays
 !        if (.not.gridConvergedTest) then
-        if (gridConvergedTest) then
+        if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
               if (.not.fixedRays) then
 !                 if(mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) then
