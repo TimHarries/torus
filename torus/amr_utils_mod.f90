@@ -1881,8 +1881,9 @@ if(inOctal(grid%octreeRoot, position)) then
    call findsubcelllocal(position, thisoctal,subcell)
 
    rho = thisOctal%rho(subcell)
-   velocity = VECTOR(thisOctal%rhou(subcell)/rho, thisOctal%rhov(subcell)/rho, &
-        thisOctal%rhow(subcell)/rho)
+   velocity = VECTOR(thisOctal%rhou(subcell)/(rho*cspeed), &
+        thisOctal%rhov(subcell)/(rho*cspeed), &
+        thisOctal%rhow(subcell)/(rho*cspeed))
 else
 end if
 
