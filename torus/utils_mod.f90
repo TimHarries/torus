@@ -187,7 +187,7 @@ contains
     character(len=*) :: band
     select case (band)
        case("B")
-          offset = 6.7d-9
+          offset = 6.4d-9
        case("V") 
           offset = 3.75d-9
        case("R")
