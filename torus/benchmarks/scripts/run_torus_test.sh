@@ -445,7 +445,7 @@ case ${MODE} in
     daily) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
            export BUILD_ONLY="nagfor"
 	   export DEBUG_OPTS="yes"
-	   export TORUS_FC="gfortran"
+	   export TORUS_FC="gfortran -g -fcheck=all"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS daily test suite started on `date`
@@ -455,7 +455,7 @@ case ${MODE} in
     build) export SYS_TO_TEST=" "
            export BUILD_ONLY="nagfor gfortran ompiosx ompiosx-openmp"
 	   export DEBUG_OPTS="yes"
-	   export TORUS_FC="gfortran"
+	   export TORUS_FC="gfortran -g -fcheck=all"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS build tests started on `date`
@@ -465,7 +465,7 @@ case ${MODE} in
     stable) export SYS_TO_TEST="nagfor gfortran ompiosx ompiosx-openmp"
 	    export BUILD_ONLY=""
             export DEBUG_OPTS="yes no"
-	    export TORUS_FC="gfortran"
+	    export TORUS_FC="gfortran -g -fcheck=all"
 	    export PATH=~/bin:/usr/local/bin:${PATH}
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
