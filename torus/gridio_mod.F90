@@ -3642,7 +3642,7 @@ contains
          integer :: iThread
          integer :: nOctals, nVoxels
          character(len=80) :: message
-	 logical, save :: firstTime = .true.
+         logical, save :: firstTime = .true.
          type(romanova) :: romdata
 
          if (associated(grid%octreeRoot)) then
