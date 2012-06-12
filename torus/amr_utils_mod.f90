@@ -1890,4 +1890,226 @@ end if
 end subroutine returnVelocityVector2
 
 
+SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
+  use qshep2d_mod
+  use qshep3d_mod
+
+  type(gridtype) :: grid
+  TYPE(octal), pointer :: thisOctal
+  type(vector), allocatable :: rVecArray(:)
+  real(double) :: x1, x2, x3, y1, y2, y3, z1, z2, z3
+  integer :: i, nPoints, nq, nw, nr, j
+  real(double) :: radius, x, y, z
+  integer, parameter :: maxpts = 10000
+  real(double) :: xPoint(maxpts)
+  real(double) :: yPoint(maxpts)
+  real(double) :: zPoint(maxpts)
+  real(double) :: rhoPoint(maxpts)
+  real(double) :: rhoePoint(maxpts)
+  real(double) :: rhouPoint(maxpts)
+  real(double) :: rhovPoint(maxpts)
+  real(double) :: rhowPoint(maxpts)
+  real(double) :: energyPoint(maxpts)
+  real(double) :: pressurePoint(maxpts)
+  integer, allocatable :: lnext(:), lcell(:,:,:)
+  real(double), allocatable :: a(:,:), rsq(:)
+  integer :: ier
+  real(double) :: rmax
+  real(double) :: xyzmin(3), xyzdel(3)
+  character(len=80) :: message
+
+  if (thisOctal%threed) then
+     
+     allocate(rVecArray(27))
+     
+     x1 = thisOctal%centre%x - thisOctal%subcellSize
+     x2 = thisOctal%centre%x
+     x3 = thisOctal%centre%x + thisOctal%subcellSize
+     
+     y1 = thisOctal%centre%y - thisOctal%subcellSize
+     y2 = thisOctal%centre%y
+     y3 = thisOctal%centre%y + thisOctal%subcellSize
+     
+     z1 = thisOctal%centre%z - thisOctal%subcellSize
+     z2 = thisOctal%centre%z
+     z3 = thisOctal%centre%z + thisOctal%subcellSize
+    
+     rVecArray(1) = VECTOR(x1,y1,z1)
+     rVecArray(2) = VECTOR(x2,y1,z1)
+     rVecArray(3) = VECTOR(x3,y1,z1)
+     rVecArray(4) = VECTOR(x1,y2,z1)
+     rVecArray(5) = VECTOR(x2,y2,z1)
+     rVecArray(6) = VECTOR(x3,y2,z1)
+     rVecArray(7) = VECTOR(x1,y3,z1)
+     rVecArray(8) = VECTOR(x2,y3,z1)
+     rVecArray(9) = VECTOR(x3,y3,z1)
+     rVecArray(10) = VECTOR(x1,y1,z2)
+     rVecArray(11) = VECTOR(x2,y1,z2)
+     rVecArray(12) = VECTOR(x3,y1,z2)
+     rVecArray(13) = VECTOR(x1,y2,z2)
+     rVecArray(14) = VECTOR(x2,y2,z2)
+     rVecArray(15) = VECTOR(x3,y2,z2)
+     rVecArray(16) = VECTOR(x1,y3,z2)
+     rVecArray(17) = VECTOR(x2,y3,z2)
+     rVecArray(18) = VECTOR(x3,y3,z2)
+     rVecArray(19) = VECTOR(x1,y1,z3)
+     rVecArray(20) = VECTOR(x2,y1,z3)
+     rVecArray(21) = VECTOR(x3,y1,z3)
+     rVecArray(22) = VECTOR(x1,y2,z3)
+     rVecArray(23) = VECTOR(x2,y2,z3)
+     rVecArray(24) = VECTOR(x3,y2,z3)
+     rVecArray(25) = VECTOR(x1,y3,z3)
+     rVecArray(26) = VECTOR(x2,y3,z3)
+     rVecArray(27) = VECTOR(x3,y3,z3)
+
+     do j = 1, 27
+    
+        radius = thisOctal%subcellSize*4.d0
+        nPoints = 0
+        
+        do while (nPoints < 10)
+!           call getPointsInRadiusLocal2(rVecArray(j), radius, thisOctal, npoints, rho, rhoe, rhou, &
+!                rhov, rhow, energy, pressure, phi, x, y, z)
+
+           call getPointsInRadiusLocal2(rVecArray(j), radius, grid%octreeRoot, npoints, rhoPoint, rhoePoint, &
+                rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, xPoint, yPoint, zPoint)
+           radius = radius * 2.d0
+        enddo
+        
+        nq = min(40, nPoints - 1)
+        nw = min(40, nPoints - 1)
+        nr = max(1,nint((dble(nPoints)/3.d0)**0.333d0))
+        allocate(lCell(1:nr,1:nr,1:nr))
+        allocate(lnext(1:nPoints))
+        allocate(rsq(1:nPoints))
+        allocate(a(9,1:nPoints))
+        
+        call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+             xyzdel, rmax, rsq, a, ier )
+        if (ier /= 0) then
+           write(message,*) "Qshep3 returned an error ",ier
+           call writeWarning(message)
+           write(*,*) " npoints ",npoints
+           do i = 1, nPoints
+              write(*,*) xPoint(i), ypoint(i),zpoint(i)
+           enddo
+        endif
+        
+        thisOctal%cornerRho(j) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
+               xyzmin, xyzdel, rmax, rsq, a)
+        
+        call qshep3 (nPoints, xPoint, yPoint, zPoint, rhouPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+             xyzdel, rmax, rsq, a, ier )
+        if (ier /= 0) then
+           write(message,*) "Qshep3 returned an error ",ier
+           call writeWarning(message)
+           write(*,*) " npoints ",npoints
+           do i = 1, nPoints
+              write(*,*) xPoint(i), ypoint(i),zpoint(i)
+           enddo
+        endif
+
+        thisOctal%cornerVelocity(j)%x = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhouPoint, nr, lcell, lnext, &
+             xyzmin, xyzdel, rmax, rsq, a)
+        
+        
+        call qshep3 (nPoints, xPoint, yPoint, zPoint, rhovPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+             xyzdel, rmax, rsq, a, ier )
+        if (ier /= 0) then
+           write(message,*) "Qshep3 returned an error ",ier
+           call writeWarning(message)
+           write(*,*) " npoints ",npoints
+           do i = 1, nPoints
+              write(*,*) xPoint(i), ypoint(i),zpoint(i)
+           enddo
+        endif
+        
+        thisOctal%cornerVelocity(j)%y = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhovPoint, nr, lcell, lnext, &
+             xyzmin, xyzdel, rmax, rsq, a)
+        
+        call qshep3 (nPoints, xPoint, yPoint, zPoint, rhowPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+             xyzdel, rmax, rsq, a, ier )
+        if (ier /= 0) then
+           write(message,*) "Qshep3 returned an error ",ier
+           call writeWarning(message)
+           write(*,*) " npoints ",npoints
+           do i = 1, nPoints
+              write(*,*) xPoint(i), ypoint(i),zpoint(i)
+           enddo
+        endif
+     
+        thisOctal%cornerVelocity(j)%z = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhowPoint, nr, lcell, lnext, &
+             xyzmin, xyzdel, rmax, rsq, a)
+
+        deallocate(lCell, lnext, rsq, a)
+     
+     end do
+     
+  else 
+     call torus_abort("Molecular line transfer calculations only available for 3D hydro or radiation hydro grids")
+
+  end if
+     
+END SUBROUTINE fillHydroDensityVelocityCorners
+
+  recursive subroutine getPointsInRadiusLocal2(position, radius, thisOctal, npoints, rho, rhoe, rhou, rhov, rhow, &
+       energy, pressure, x, y, z)
+    real(double) :: rho(:), rhoe(:), rhou(:), rhov(:), rhow(:), energy(:), pressure(:), x(:), y(:), z(:)
+    type(VECTOR) :: position
+    real(double) :: radius, r
+    integer :: nPoints
+    type(OCTAL), pointer :: thisOctal, child, topOctal
+    integer :: subcell, i, topOctalSubcell, k
+    type(VECTOR) :: cen
+    logical :: changed, check
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  getPointsInRadiusLocal2(position, radius, child, npoints, rho, rhoe, rhou, rhov, rhow, energy, &
+                     pressure, x, y, z)
+                exit
+             end if
+          end do
+       else 
+             changed = .false.
+             topOctal => thisOctal
+             topOctalSubcell = subcell
+             do while(topOctal%changed(topOctalSubcell))
+                topOctalSubcell = topOctal%parentSubcell
+                topOctal => topOctal%parent
+                changed = .true.
+             enddo
+
+             cen = subcellCentre(topOctal, topOctalsubcell)
+             r = modulus(cen - position)
+             if (r < radius) then
+                check = .true.
+                do k = 1, nPoints
+                   if(cen%x == x(k) .and. cen%y == y(k) .and. cen%z == z(k)) then
+                      check = .false.
+                   end if
+                end do
+                if(check) then
+                   nPoints = nPoints + 1
+                   rho(nPoints) = topOctal%rho(topOctalsubcell)
+                   rhoe(nPoints) = topOctal%rhoe(topOctalsubcell)
+                   rhou(nPoints) = topOctal%rhou(topOctalsubcell)
+                   rhov(nPoints) = topOctal%rhov(topOctalsubcell)
+                   rhow(nPoints) = topOctal%rhow(topOctalsubcell)
+                   energy(nPoints) = topOctal%energy(topOctalsubcell)
+                   pressure(nPoints) = topOctal%pressure_i(topOctalsubcell)
+                   x(nPoints) = cen%x
+                   y(nPoints) = cen%y
+                   z(nPoints) = cen%z
+                end if
+             endif
+             if (changed) exit
+          endif
+    enddo
+  end subroutine getPointsInRadiusLocal2
+
 end module amr_utils_mod

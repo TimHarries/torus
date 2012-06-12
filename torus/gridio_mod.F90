@@ -751,13 +751,16 @@ contains
 
 
   subroutine readAMRgrid(rootfilename,fileFormatted,grid)
-    use inputs_mod, only: gridUsesAMR, iModel
+    use inputs_mod, only: gridUsesAMR, iModel, modelwashydro
     use utils_mod, only : findMultiFilename
+    type(romanova) :: romdata
     character(len=*) :: rootfilename
     character(len=80) :: filename
     logical :: fileFormatted
     type(GRIDTYPE) :: grid
     logical :: readFile
+    logical, save :: firstTime=.true.
+    character(len=80) :: message
     integer ::  nOctals, nVoxels
 #ifdef MPI
 !    integer :: iThread
@@ -786,8 +789,17 @@ contains
 !             call checkAMRgrid(grid, .false.)
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
              grid%nOctals = nOctals
+             if(modelwashydro) then
+                if(firstTime) then
+                   write(message,'(a,i3,a)') "Adding cell corner values"
 
+                   call writeInfo(message,TRIVIAL)
+                   firsttime = .false.
+                end if 
+                call finishgrid(grid%octreeRoot, grid, romData=romData)                
+             end if
 
+             
 !#ifdef MPI
 !       do iThread = 0, nThreadsGlobal-1
 !          if (iThread == myRankGlobal) then
@@ -3623,13 +3635,15 @@ contains
 
 
        subroutine readGridMPI(grid, gridfilename, fileFormatted)
-         use inputs_mod, only : splitOverMPI
+         use inputs_mod, only : splitOverMPI, modelwashydro
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
          logical :: fileFormatted
          integer :: iThread
          integer :: nOctals, nVoxels
          character(len=80) :: message
+	 logical, save :: firstTime = .true.
+         type(romanova) :: romdata
 
          if (associated(grid%octreeRoot)) then
             call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
@@ -3665,6 +3679,14 @@ contains
          endif
 
 
+         if(modelwashydro) then
+            if(firstTime) then
+               write(message,'(a,i3,a)') "Adding cell corner values"               
+               call writeInfo(message,TRIVIAL)
+               firsttime = .false.
+            end if
+            call finishgrid(grid%octreeRoot, grid, romData=romData)                
+         end if
 
 
           call torus_mpi_barrier

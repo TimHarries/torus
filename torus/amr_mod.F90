@@ -308,6 +308,7 @@ CONTAINS
        thisoctal%rho(subcell) = -9.9d99
        CALL molecularBenchmark(thisOctal, subcell)
 
+
     CASE ("h2obench1")
        CALL WaterBenchmark1(thisOctal, subcell)
 
@@ -1313,7 +1314,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
     
-    USE inputs_mod, ONLY : cylindrical, amr3d !, useHartmannTemp
+    USE inputs_mod, ONLY : cylindrical, amr3d, modelwashydro !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -1330,7 +1331,7 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
     TYPE(octal), POINTER   :: child
-  
+    logical, save :: firstTIme=.true.
     INTEGER :: subcell, iChild
 
     ! all of the work that must be done recursively goes here: 
@@ -1382,11 +1383,32 @@ CONTAINS
 
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return. 
-          goto 666
+          if(.not. modelWasHydro) then
+             goto 666
+          end if
           
        END SELECT
       
+       if(modelwashydro) then
+          if(firstTime) then
+             print *, "Allocating and populating cell corners"
+	     firstTime = .false.
+          end if
+          if( .not. thisoctal%haschild(subcell)) then 
+             if (.not. associated(thisoctal%cornervelocity)) then 
+                allocate(thisoctal%cornervelocity(27))
+                thisoctal%cornervelocity(:) = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+             endif
+             if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+                if(.not. associated(thisoctal%cornerrho)) Allocate(thisOctal%cornerrho(27))
+                recentoctal => thisoctal
+                CALL fillHydroDensityVelocityCorners(thisOctal, grid)
+                thisOctal%velocity = thisoctal%cornervelocity(14)
+             endif
+          end if
+       end if
     END DO
+    
    
     DO iChild = 1, thisOctal%nChildren, 1
        child => thisOctal%child(iChild)
@@ -2529,6 +2551,7 @@ CONTAINS
     real(double) :: weights(27), vr, vz
     logical, optional :: linearinterp
     logical :: linear
+    logical, save :: firstTime = .true.
 
     writedebug = .false.
     if (present(debug)) writedebug = debug
@@ -2574,8 +2597,11 @@ CONTAINS
 
    END IF
 
-   if (.not.associated(resultOctal%cornerVelocity)) goto 666
-
+   if (.not.associated(resultOctal%cornerVelocity) .and. firstTime) then
+      call writeWarning("Corner velocities not allocated! ! ! ")      
+      firstTime = .false.
+      goto 666
+   end if
       inc = 0.5 * resultOctal%subcellSize
       centre = subcellCentre(resultOctal,subcell)
       fac = 1. / resultOctal%subcellsize
@@ -5146,7 +5172,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
           z2 = thisOctal%centre%z
           z3 = thisOctal%centre%z + thisOctal%subcellSize
                     
-          ! now store the 'base level' values
+           ! now store the 'base level' values
           
           thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1))
           thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1))
@@ -8568,6 +8594,7 @@ end function readparameterfrom2dmap
 
     endif
   end function keplerianVelocity
+
 
   TYPE(vector)  function ggtauVelocity(point)
 
