@@ -2058,6 +2058,17 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
      z2 = thisOctal%centre%z
      z3 = thisOctal%centre%z + thisOctal%subcellSize
      
+     
+     rVecArray(1) =  vector(x1,0.d0,z1)
+     rVecArray(2) = vector(x2,0.d0,z1)
+     rVecArray(3) = vector(x3,0.d0,z1)
+     rVecArray(4) = vector(x1,0.d0,z2)
+     rVecArray(5) = vector(x2,0.d0,z2)
+     rVecArray(6) = vector(x3,0.d0,z2)
+     rVecArray(7) = vector(x1,0.d0,z3)
+     rVecArray(8) = vector(x2,0.d0,z3)
+     rVecArray(9) = vector(x3,0.d0,z3)
+     
      do j = 1, 9
     
         radius = thisOctal%subcellSize*4.d0
@@ -2066,7 +2077,6 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
         do while (nPoints < 10)
 !           call getPointsInRadiusLocal2(rVecArray(j), radius, thisOctal, npoints, rho, rhoe, rhou, &
 !                rhov, rhow, energy, pressure, phi, x, y, z)
-
            call getPointsInRadiusLocal2(rVecArray(j), radius, grid%octreeRoot, npoints, rhoPoint, rhoePoint, &
                 rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, xPoint, yPoint, zPoint)
            radius = radius * 2.d0
