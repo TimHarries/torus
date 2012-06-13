@@ -1899,7 +1899,7 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
   type(vector), allocatable :: rVecArray(:)
   real(double) :: x1, x2, x3, y1, y2, y3, z1, z2, z3
   integer :: i, nPoints, nq, nw, nr, j
-  real(double) :: radius, x, y, z
+  real(double) :: radius, x, y, z, xmin, zmin, dx, dz
   integer, parameter :: maxpts = 10000
   real(double) :: xPoint(maxpts)
   real(double) :: yPoint(maxpts)
@@ -1912,6 +1912,7 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
   real(double) :: energyPoint(maxpts)
   real(double) :: pressurePoint(maxpts)
   integer, allocatable :: lnext(:), lcell(:,:,:)
+  integer, allocatable :: lcell2d(:,:)
   real(double), allocatable :: a(:,:), rsq(:)
   integer :: ier
   real(double) :: rmax
@@ -2044,9 +2045,75 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
         deallocate(lCell, lnext, rsq, a)
      
      end do
+
+  else if (thisOctal%twoD) then
+
+     allocate(rVecArray(9))
+     
+     x1 = thisOctal%centre%x - thisOctal%subcellSize
+     x2 = thisOctal%centre%x
+     x3 = thisOctal%centre%x + thisOctal%subcellSize
+
+     z1 = thisOctal%centre%z - thisOctal%subcellSize
+     z2 = thisOctal%centre%z
+     z3 = thisOctal%centre%z + thisOctal%subcellSize
+     
+     do j = 1, 9
+    
+        radius = thisOctal%subcellSize*4.d0
+        nPoints = 0
+        
+        do while (nPoints < 10)
+!           call getPointsInRadiusLocal2(rVecArray(j), radius, thisOctal, npoints, rho, rhoe, rhou, &
+!                rhov, rhow, energy, pressure, phi, x, y, z)
+
+           call getPointsInRadiusLocal2(rVecArray(j), radius, grid%octreeRoot, npoints, rhoPoint, rhoePoint, &
+                rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, xPoint, yPoint, zPoint)
+           radius = radius * 2.d0
+        enddo
+
+        ypoint = 0.d0
+        y = 0.d0
+        rhovPoint = 0.d0
+        
+        nq = min(40, nPoints - 1)
+        nw = min(40, nPoints - 1)
+        nr = max(1,nint((dble(nPoints)/3.d0)**0.333d0))
+        allocate(lCell(1:nr,1:nr,1:nr))
+        allocate(lnext(1:nPoints))
+        allocate(rsq(1:nPoints))
+        allocate(a(9,1:nPoints))
+        
+        call qshep2 (nPoints, xPoint, zPoint, rhoPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+             dx, dz, rmax, rsq, a, ier )
+        if (ier /= 0) call writeWarning("Qshep2 returned an error for rho")
+        
+        thisOctal%cornerrho(j) = qs2val(x, z, nPoints, xPoint, zPoint, rhoPoint, nr, lcell2d, lnext, &
+             xmin, zmin, dx, dz, rmax, rsq, a)
+        
+        call qshep2 (nPoints, xPoint, zPoint, rhouPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+             dx, dz, rmax, rsq, a, ier )
+        
+        if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
+        
+        thisOctal%cornerVelocity(iSubcell)%x = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
+             xmin, zmin, dx, dz, rmax, rsq, a)
+                  
+        thisOctal%cornerVelocity(j)%y = 0.d0
+        
+        
+        call qshep2 (nPoints, xPoint, zPoint, rhowPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+             dx, dz, rmax, rsq, a, ier )        
+        if (ier /= 0) call writeWarning("Qshep2 returned an error for rhow")
+        
+        thisOctal%cornervelocity(j)%z = qs2val(x, z, nPoints, xPoint, zPoint, rhowPoint, nr, lcell2d, lnext, &
+             xmin, zmin, dx, dz, rmax, rsq, a)
+        
+        deallocate(lCell, lnext, rsq, a)     
+     end do
      
   else 
-     call torus_abort("Molecular line transfer calculations only available for 3D hydro or radiation hydro grids")
+     call torus_abort("Corner velocities only available in 2D or 3D calculations at present")
 
   end if
      
