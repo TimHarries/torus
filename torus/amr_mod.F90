@@ -2597,9 +2597,11 @@ CONTAINS
 
    END IF
 
-   if (.not.associated(resultOctal%cornerVelocity) .and. firstTime) then
-      call writeWarning("Corner velocities not allocated! ! ! ")      
-      firstTime = .false.
+   if (.not.associated(resultOctal%cornerVelocity)) then
+      if(firstTime) then
+         call writeWarning("Corner velocities not allocated! ! ! ")      
+         firstTime = .false.
+      end if
       goto 666
    end if
       inc = 0.5 * resultOctal%subcellSize
