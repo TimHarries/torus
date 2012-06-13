@@ -1806,7 +1806,7 @@ contains
              write(lUnit) attributeName
              write(lUnit) dataType
              write(lUnit) SIZE(value,1),SIZE(value,2), SIZE(value,3)
-             write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2),SIZE(value,3))
+             write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2),1:SIZE(value,3))
           else
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
