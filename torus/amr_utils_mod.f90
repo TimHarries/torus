@@ -2109,7 +2109,7 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
         thisOctal%cornervelocity(j)%z = qs2val(x, z, nPoints, xPoint, zPoint, rhowPoint, nr, lcell2d, lnext, &
              xmin, zmin, dx, dz, rmax, rsq, a)
         
-        deallocate(lCell, lnext, rsq, a)     
+        deallocate(lCell2d, lnext, rsq, a)     
      end do
      
   else 
