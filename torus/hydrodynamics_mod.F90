@@ -3312,13 +3312,14 @@ end subroutine sumFluxes
   end subroutine hydroStep3d
 
 !Perform a single hydrodynamics step, in x and z directions, for the 2D case.     
-  subroutine hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
-      nCornerBound, cornerGroup, nCornerGroup)
+  subroutine hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)!, nCornerPairs, cornerThread1, cornerThread2)
+!, &
+!      nCornerBound, cornerGroup, nCornerGroup)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup
-    integer :: nCornerPairs, cornerThread1(:), cornerThread2(:), nCornerBound(:)
-    integer :: cornerGroup(:), nCornerGroup
+!    integer :: nCornerPairs, cornerThread1(:), cornerThread2(:), nCornerBound(:)
+!    integer :: cornerGroup(:), nCornerGroup
     real(double) :: dt
     type(VECTOR) :: direction
     direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -3349,7 +3350,7 @@ end subroutine sumFluxes
 
 !advect rho, velocities and rhoe
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
     call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -3403,7 +3404,7 @@ end subroutine sumFluxes
        call rhiechowui(grid%octreeroot, grid, direction, dt)
     end if
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
 
 !advect rho, velocities and rhoe
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
@@ -3459,7 +3460,7 @@ end subroutine sumFluxes
     end if
 !advect rho, velocities and rhoe
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
     Call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
@@ -4430,7 +4431,7 @@ end subroutine sumFluxes
 
 !The main routine for 2D hydrodynamics
   subroutine doHydrodynamics2d(grid)
-    use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance
+    use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance, modelwashydro
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(512), temptc(512), mu
@@ -4442,8 +4443,8 @@ end subroutine sumFluxes
     type(VECTOR) :: direction, viewVec
     integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: nGroup, group(512)
-    integer :: cornerthread1(100), cornerthread2(100), ncornerBound(100), ncornerPairs
-    integer :: nCornerGroup, cornergroup(100)
+!    integer :: cornerthread1(100), cornerthread2(100), ncornerBound(100), ncornerPairs
+!    integer :: nCornerGroup, cornergroup(100)
     integer :: nHydroThreads 
 !    logical :: converged
     integer :: nUnrefine, jt, count
@@ -4491,15 +4492,15 @@ end subroutine sumFluxes
        call writeInfo("Done", TRIVIAL)
 
 
-       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
-       do i = 1, nCornerPairs
-          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
-       end do
+!       call returnCornerPairs(grid, nCornerPairs, cornerthread1, cornerthread2, nCornerBound, cornerGroup, nCornerGroup)
+!       do i = 1, nCornerPairs
+!          if (myrankglobal==1)write(*,*) "Corner pair ", i, cornerthread1(i), " -> ", cornerthread2(i), " bound ", nCornerbound(i)
+!       end do
 !
 
-       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
-       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
-       call writeInfo("Done", TRIVIAL)
+!       call writeInfo("Calling exchange across boundary corners", TRIVIAL)
+!       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
+!       call writeInfo("Done", TRIVIAL)
 
 !set up initial values
        if (it == 0) then
@@ -4538,6 +4539,13 @@ end subroutine sumFluxes
           call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
        endif
     endif
+
+    if(modelWasHydro) then
+       print *, "MODEL WAS HYDRO"
+       call populateHydroVelWithCornerVel(grid%octreeRoot, grid)
+       call writeVtkFile(grid, "post_corners.vtk", &
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " /))
+    end if
 
        call writeVTKfile(grid, "start.vtk")
        call writeVtkFile(grid, "start.vtk", &
@@ -4639,8 +4647,8 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !perform a hydrodynamics step in the x and z directions
-          call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, nCornerPairs, cornerThread1, cornerThread2, &
-             nCornerBound, cornerGroup, nCornerGroup)
+          call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)!, nCornerPairs, cornerThread1, cornerThread2, &
+!             nCornerBound, cornerGroup, nCornerGroup)
        end if
 
 !get total mass/energy on the grid, for diagnostics
@@ -4757,6 +4765,38 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine zeroRefinedLastTime
+
+!clear the memory of what cells werer refined in the last refinement sweep 
+  recursive subroutine populateHydroVelWithCornerVel(thisOctal, grid, startOctal)
+    use amr_mod, only : amrGridVelocity
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(octal), pointer, optional :: startOctal
+    type(gridtype) :: grid
+    integer :: subcell, i
+    type(vector) :: velocity, position
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call populateHydroVelWithCornerVel(child, grid, startOctal)
+                exit
+             end if
+          end do
+       else 
+          position = subcellCentre(thisOctal, subcell)
+          velocity = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
+               actualSubcell = subcell, linearinterp = .false.)
+
+          thisOctal%rhou(subcell) = velocity%x
+          thisOctal%rhov(subcell) = velocity%y
+          thisOctal%rhow(subcell) = velocity%z
+       endif
+    enddo
+  end subroutine populateHydroVelWithCornerVel
 
 
 !  recursive subroutine printRefinedLastTime(thisOctal)

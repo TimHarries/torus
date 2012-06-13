@@ -2079,7 +2079,7 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
         nq = min(40, nPoints - 1)
         nw = min(40, nPoints - 1)
         nr = max(1,nint((dble(nPoints)/3.d0)**0.333d0))
-        allocate(lCell(1:nr,1:nr,1:nr))
+        allocate(lCell2d(1:nr,1:nr))
         allocate(lnext(1:nPoints))
         allocate(rsq(1:nPoints))
         allocate(a(9,1:nPoints))
@@ -2096,7 +2096,7 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
         
         if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
         
-        thisOctal%cornerVelocity(iSubcell)%x = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
+        thisOctal%cornerVelocity(j)%x = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
              xmin, zmin, dx, dz, rmax, rsq, a)
                   
         thisOctal%cornerVelocity(j)%y = 0.d0

@@ -789,16 +789,6 @@ contains
 !             call checkAMRgrid(grid, .false.)
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
              grid%nOctals = nOctals
-             if(modelwashydro) then
-                if(firstTime) then
-                   write(message,'(a,i3,a)') "Adding cell corner values"
-
-                   call writeInfo(message,TRIVIAL)
-                   firsttime = .false.
-                end if 
-                call finishgrid(grid%octreeRoot, grid, romData=romData)                
-             end if
-
              
 !#ifdef MPI
 !       do iThread = 0, nThreadsGlobal-1
@@ -836,6 +826,16 @@ contains
        call grid_info_mpi(grid, "info_grid.dat")
     endif
 #endif
+
+    if(modelwashydro) then
+       if(firstTime) then
+          write(message,'(a,i3,a)') "Adding cell corner values"
+          
+          call writeInfo(message,TRIVIAL)
+          firsttime = .false.
+       end if
+       call finishgrid(grid%octreeRoot, grid, romData=romData)                
+    end if
 
   end subroutine readAMRgrid
 
@@ -3649,7 +3649,7 @@ contains
             call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
             grid%octreeRoot => null()
          endif
-
+         
          if (splitOverMPI) then
             do iThread = 1, nThreadsGlobal - 1
                if (myrankGlobal == iThread) then

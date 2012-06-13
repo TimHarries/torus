@@ -1731,6 +1731,8 @@ contains
     call getReal("cfl", cflNumber, 1., cLine, fLine, nLines, &
          "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
 
+    call getLogical("modelwashydro", modelwashydro, cLine, fLine, nLines, &
+         "Grid is based on hydro or radiation hydro calculation: ","(a,1l,a)", .false., ok, .false.)
 
     call getDouble("etaviscosity", etaViscosity, 1.d0, cLine, fLine, nLines, &
          "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
