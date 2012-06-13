@@ -41,6 +41,7 @@ contains
              stop
           endif
        endif
+
        if (mod(nThreadsGlobal, (nHydroThreadsGlobal+1)) /= 0) then
           write(*,*) "Number of MPI threads is ",nThreadsGlobal
           write(*,*) "Number of threads per decomposed domain is ", nHydroThreadsGlobal+1
@@ -97,6 +98,21 @@ contains
        call MPI_COMM_CREATE(MPI_COMM_WORLD, zeroThreadGroup, zeroThreadCommunicator, ierr)
        deallocate(ranks)
 
+
+!       if ((nHydroThreadsGlobal == 8).and.(nHydroSetsGlobal > nHydroThreadsGlobal)) then
+!          allocate(ranks(1:nhydroThreadsGlobal**2))
+!          n = 1
+!          ranks(1) = 0
+!          do i = 1, nHydroThreadsGlobal
+!             do j = 1, nHydroThreadsGlobal
+!                n = n + 1
+!                ranks(n) = (i-1) * (nHydroThreadsGlobal+1) + j
+!             enddo
+!          enddo
+!          call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal**2+1, ranks, hydroGroup, ierr)
+!          call MPI_COMM_CREATE(MPI_COMM_WORLD, hydroGroup, hydroCommunicator, ierr)
+!          deallocate(ranks)
+!       endif
           
           
 

@@ -599,7 +599,7 @@ contains
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
        
-       if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!       if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &
@@ -617,7 +617,7 @@ contains
        if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
 
 
-       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
+!       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
 
 
           if (myRankGlobal /= 0) then
@@ -630,7 +630,7 @@ contains
              call writeInfo("Evening up grid", TRIVIAL)
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
              if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif
 
@@ -670,7 +670,7 @@ contains
                 iUnrefine = 0
              endif
              call evenUpGridMPI(grid, .true., .true., evenuparray)
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+ !            call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           endif
        endif
 

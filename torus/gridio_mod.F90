@@ -1805,7 +1805,7 @@ contains
           if (uncompressedDumpFiles) then
              write(lUnit) attributeName
              write(lUnit) dataType
-             write(lUnit) SIZE(value,1),SIZE(value,2)
+             write(lUnit) SIZE(value,1),SIZE(value,2), SIZE(value,3)
              write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2),SIZE(value,3))
           else
              call writeCompressedFile(lunit, attributeName)
@@ -3819,8 +3819,8 @@ contains
             if (tag == "GRIDBEGINS") cycle
             if (tag == "GRIDENDS") exit
 
+!               write(*,*) "tag: ",trim(tag)
             select case (trim(tag))
-
             case("version")
                call readSingleFlexi(20, grid%version, fileFormatted)
                write(message,'(a,a,a,a)') "Dump file written by TORUS version  ", trim(torusVersion)

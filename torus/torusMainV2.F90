@@ -152,8 +152,10 @@ program torus
 
      if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 
-     call writeInfo("Before deallocation",TRIVIAL)
-     call resetGlobalMemory(grid)
+     if (associated(grid%octreeRoot)) then
+        call writeInfo("Before deallocation",TRIVIAL)
+        call resetGlobalMemory(grid)
+     endif
      call torus_mpi_barrier
      if (associated(grid%octreeRoot)) then
         call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
