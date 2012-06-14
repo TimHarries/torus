@@ -1098,9 +1098,16 @@ contains
                   else
                      write(lunit,*) 0.
                   endif
+               case("diff")
+                  if (thisOctal%diffusionApprox(subcell)) then
+                     write(lunit,*)  1.
+                  else
+                     write(lunit,*) 0.
+                  endif
+
 
                case DEFAULT
-                  write(*,*) "Cannot write vtk type A",trim(valueType)
+                  write(*,*) "Cannot write ascii vtk type ",trim(valueType)
              end select
           enddo
 
