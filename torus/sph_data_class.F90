@@ -47,7 +47,7 @@ module sph_data_class
      real(double) :: codeVelocitytoTORUS    ! Conversion from SPH code velocity units to Torus units
      real(double) :: codeEnergytoTemperature    ! Conversion from SPH code velocity units to Torus units
      !                                          ! (umass is M_sol, udist=0.1 pc)
-     integer          :: npart                  ! Total number of gas particles (field+disc)
+     integer      :: npart                  ! Total number of gas particles (field+disc)
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
@@ -295,7 +295,29 @@ contains
 
   end subroutine init_sphtorus
 
-  
+! Wrapper subroutine which calls the appropriate read subroutine 
+! according to the string inputFileFormat
+! D. Acreman, June 2012
+  subroutine read_sph_data_wrapper
+    use inputs_mod, only: inputFileFormat, sphdatafilename
+
+    select case (inputFileFormat)
+    case("binarywithChem","galaxy")
+       call read_sph_data_withChem(sphdatafilename)
+       
+    case("mpi")
+       call read_sph_data_mpi(sphdatafilename)
+             
+    case("ascii")
+       call new_read_sph_data(sphdatafilename)
+
+    case default
+       call writeFatal("Unrecognised file format "//inputFileFormat)
+
+    end select
+
+  end subroutine read_sph_data_wrapper
+
   !
   !
   ! Read in the data from a file, allocate the array memory, and store the
@@ -670,8 +692,290 @@ contains
 
   end subroutine new_read_sph_data
 
-! Read in SPH data from galaxy dump file. Errors reading from file could be due to incorrect endian. 
-  subroutine read_galaxy_sph_data(filename)
+! Read in SPH data from an MPI dump file
+! D. Acreman, June 2012
+  subroutine read_sph_data_mpi(filename)
+
+    implicit none
+    
+    character(len=*), intent(in) :: filename
+    character(LEN=150) :: message
+
+    integer(kind=8) :: iiigas, irejected, irequired, i, j
+    integer :: iblock ! MPI block number
+    integer :: nums(8), numssink(8)
+
+    real(double) :: udist, umass, utime
+    real(double) :: time
+    integer, parameter :: nptmass=0
+
+    INTEGER(kind=4)  :: int1, int2, i1
+    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
+    REAL(kind=8)     :: r1
+    REAL(kind=4)     :: r4
+    integer(kind=8)  :: blocknpart, blocknptmass, blocksum_npart
+    CHARACTER(len=100) ::  fileident
+
+    integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
+
+    integer(kind=1), allocatable :: iphase(:)
+    integer, allocatable         :: isteps(:)
+    real(kind=8), allocatable    :: xyzmh(:,:)
+    real(kind=8), allocatable    :: vxyzu(:,:)
+    real(kind=4), allocatable    :: rho(:)
+
+    integer,allocatable :: listpm(:)
+    real(kind=8),allocatable    :: spinx(:)
+
+    integer :: thisNumGas
+    integer :: nlistinactive, listinactive(1)
+
+! Mean molecular weight, used for calculating temperature from internal energy.
+! This assumes a 10:1 H:He ratio by number
+    real(double), parameter :: gmw = 14.0/11.0 
+
+!
+! Part 1: Read in the dump
+!
+
+    write(message,*) "Reading SPH data from "//trim(filename)
+    call writeinfo(message, FORINFO)
+
+    open(unit=LUIN, file=filename, form='unformatted', status='old')
+
+    read(LUIN) int1, r1, int2, i1, int1
+    read(LUIN) fileident
+    write(message,*) "fileident=", fileident
+    call writeinfo(message, TRIVIAL)
+    
+    read(LUIN) number
+    IF (number==6) THEN
+       READ (LUIN) npart,n1,n2,nreassign,naccrete,nkill
+       nblocks = 1
+    ELSE
+       read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
+    ENDIF       
+    write(message,*) "Total number of particles= ", npart
+    call writeInfo(message,TRIVIAL)
+    write(message,*) "Number of MPI blocks= ", nblocks
+    call writeInfo(message,TRIVIAL)
+
+! Allocate storage for data read from dump file
+    allocate( isteps(npart) )
+    allocate( iphase(npart) )
+    allocate( xyzmh(5,npart))
+    allocate( vxyzu(4,npart))
+    allocate( rho(npart)    )
+
+    do i=1,6
+       read(LUIN)
+    end do
+
+    read(LUIN) time 
+    write(message,*) "Dump time=", time
+    call writeInfo(message,TRIVIAL)
+
+    read(LUIN)
+    read(LUIN)
+    read(LUIN) udist, umass, utime
+    read(LUIN) number
+
+    write(message,*) "SPH code units (dist, mass, time): ", udist, umass, utime
+    call writeInfo(message,TRIVIAL)
+
+    iiigas = 0
+    blocksum_npart = 0
+    mpi_blocks: do iblock=1, nblocks
+
+       write(message,*) "Reading MPI block ", iblock
+       call writeInfo(message,TRIVIAL)
+
+       read(LUIN) blocknpart, (nums(i), i=1,8)
+       write(message,*) "This block has npart=", blocknpart
+       call writeInfo(message,TRIVIAL)
+       blocksum_npart = blocksum_npart + blocknpart
+
+       read(LUIN) blocknptmass, (numssink(i), i=1,8)
+       write(message,*) "This block has nptmass=", blocknptmass
+       call writeInfo(message,TRIVIAL)
+
+       READ (LUIN) (isteps(i), i=iiigas+1, iiigas+blocknpart)
+
+       IF (nums(1).GE.2) THEN
+          READ (LUIN) (nlistinactive, listinactive(i), i=1,1)
+       END IF
+       READ (LUIN) (iphase(i), i=iiigas+1, iiigas+blocknpart)
+
+       thisNumGas = 0
+       do i=iiigas+1, iiigas+blocknpart
+          if (iphase(i)==0) thisNumGas = thisNumGas+1
+       end do
+       write (message,*) "There are ", thisNumGas, " active gas particles"
+       call writeInfo(message,TRIVIAL)
+
+       read(LUIN) 
+
+       do j=1,5
+          read(LUIN) ( xyzmh(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+
+       do j=1,4
+          read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+
+       read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
+
+       do j=1,nums(7)-2
+          READ (LUIN)
+       end do
+       read (LUIN) (r4, i=iiigas+1,iiigas+blocknpart)
+
+       iiigas = iiigas+blocknpart
+
+       allocate(listpm(blocknptmass), spinx(blocknptmass))
+       READ (LUIN) (listpm(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       deallocate(listpm, spinx)
+
+       DO i = 1, numssink(6)-9
+          READ (LUIN)
+       END DO
+       DO i = 1, numssink(8)
+          READ (LUIN)
+       END DO
+
+    end do mpi_blocks
+
+    close(LUIN)
+
+    if (blocksum_npart == npart ) then 
+       write(message,*) "Read ", npart, " particles"
+       call writeInfo(message, TRIVIAL)
+    else
+       write(message,*) "Read ",blocksum_npart, "particles but expected ", npart
+       call writeWarning(message)
+    endif
+
+!
+! Part 2: Set up SPH data structure
+!
+
+! Work out how many particles we actually need
+    irequired=0
+    irejected=0
+    do i=1, npart
+       if (iphase(i) == 0) then
+          if ( particleRequired(xyzmh(:,i),uDist)) then 
+             irequired = irequired + 1
+          else
+             irejected = irejected + 1
+          endif
+       end if
+    end do
+
+! irequired is the number of particles we are going to store in sphData
+! int is explicit convertion from kind=8 to default integer to avoid compiler warning
+    npart = int(irequired)
+
+    call init_sph_data(udist, umass, utime, time, nptmass)
+    sphData%useSphTem = .true. 
+    sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
+    sphdata%codeEnergytoTemperature = (2.0/3.0) * (gmw / Rgas) * ( (udist**2)/(utime**2) )
+
+    iiigas=0
+! This loop needs to be over all the particles read in
+    do i=1, blocksum_npart
+       if (iphase(i) == 0) then
+          if ( particleRequired(xyzmh(:,i),uDist)) then 
+
+             iiigas=iiigas+1
+
+             sphData%rhon(iiigas)  = rho(i)
+
+             sphdata%vxn(iiigas)         = vxyzu(1,i)
+             sphdata%vyn(iiigas)         = vxyzu(2,i)
+             sphdata%vzn(iiigas)         = vxyzu(3,i)
+             sphData%temperature(iiigas) = vxyzu(4,i)
+          
+             sphData%xn(iiigas)          = xyzmh(1,i)
+             sphData%yn(iiigas)          = xyzmh(2,i)
+             sphData%zn(iiigas)          = xyzmh(3,i)
+             sphData%gasmass(iiigas)     = xyzmh(4,i)
+             sphData%hn(iiigas)          = xyzmh(5,i)
+
+          endif
+       end if
+    end do
+
+    write(message,*) "Stored ", irequired, " gas particles which are required"
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Rejected ", irejected, " gas particles which do not influence the grid"
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Total number of gas partcles is ", irequired+irejected
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Minimum x=", minval(xyzmh(1,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum x=", maxval(xyzmh(1,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Minimum y=", minval(xyzmh(2,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum y=", maxval(xyzmh(2,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Minimum z=", minval(xyzmh(3,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum z=", maxval(xyzmh(3,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    deallocate(rho)
+    deallocate(vxyzu)
+    deallocate(xyzmh)
+    deallocate(iphase)
+    deallocate(isteps)
+
+  end subroutine read_sph_data_mpi
+
+  logical function particleRequired(positionArray, uDist)
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize
+    real(kind=8) :: positionArray(5)
+    real(db) :: x, y, z, h
+    real(db) :: distFromGridCentre, maxDist
+    real(db), intent(in) :: uDist
+
+    ! Particle position in Torus units
+    x = positionArray(1) * uDist / 1.0e10
+    y = positionArray(2) * uDist / 1.0e10
+    z = positionArray(3) * uDist / 1.0e10
+    h = positionArray(5) * uDist / 1.0e10
+
+    distFromGridCentre = sqrt ( (x-amrgridcentrex)**2 + (y-amrgridcentrey)**2 + (z-amrgridcentrez)**2)
+
+! Maximum distance at which a particle can influence the grid. This is taken to be the distance from the 
+! grid centre to a grid corner (in 3D) plus 3 particle smoothing lengths
+    maxDist = sqrt(3.0)*(amrgridsize/2.0) + 3.0 * h
+
+    if (distFromGridCentre < maxDist) then 
+       particleRequired = .true.
+    else
+       particleRequired = .false.
+    endif
+
+  end function particleRequired
+
+! Read in SPH data from dump file with Chemistry. Errors reading from file could be due to incorrect endian. 
+  subroutine read_sph_data_withChem(filename)
     use inputs_mod, only: internalView, galaxyPositionAngle, galaxyInclination
 
     implicit none
@@ -888,7 +1192,8 @@ contains
     deallocate(iphase)
     deallocate(isteps)
 
-  end subroutine read_galaxy_sph_data
+  end subroutine read_sph_data_withChem
+
 
   !
   !
@@ -1455,7 +1760,9 @@ contains
 !       enddo
 
        do i=100,1,-1
-          write(49,*) i,"%",array(nint((npart*i/100.)))
+! Using an explcit conversion to real prevents calculation of 
+! npart * i which can overflow for large particle numbers
+          write(49,*) i,"%",array(nint (npart*real(i/100.)) )
        enddo
     
        write(message,*) "Maximum Value",array(npart)

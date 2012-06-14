@@ -806,7 +806,7 @@ module angularImage
 
     use inputs_mod, only: sphdatafilename, galaxyPositionAngle, galaxyInclination, &
          inputFileFormat
-    use sph_data_class, only: sphdata, read_galaxy_sph_data, new_read_sph_data
+    use sph_data_class, only: sphdata, read_sph_data_wrapper
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD
     use vtk_mod, only: writeVtkFile
@@ -836,17 +836,7 @@ module angularImage
     call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI      ", "galLon  ", "galLat  ", "crossing"/) )
 
 ! Re-read particle data which has been deleted to save memory
-    select case (inputFileFormat)
-    case("binary")
-       call read_galaxy_sph_data(sphdatafilename)
-
-    case("ascii")
-       call new_read_sph_data(sphdatafilename)
-
-    case default
-       call writeWarning("Unrecognised file format "//inputFileFormat)
-
-    end select
+    call read_sph_data_wrapper
 
 #ifdef MPI
      write(char_my_rank, '(i3)') myRankGlobal

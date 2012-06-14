@@ -256,7 +256,7 @@ contains
        if ( internalView ) then 
           call make_angular_image(grid)
 #ifdef SPH
-          call map_dI_to_particles(grid)
+!!          call map_dI_to_particles(grid)
 #endif
        else
           call make_h21cm_image(grid)

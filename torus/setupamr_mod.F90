@@ -30,7 +30,7 @@ contains
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename, inputFileFormat
+    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics
     use disc_class, only:  new
@@ -42,7 +42,7 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: new_read_sph_data, read_galaxy_sph_data, sphdata
+    use sph_data_class, only: new_read_sph_data, read_sph_data_wrapper, sphdata
     use wr104_mod, only : readwr104particles  
 #endif
 #ifdef MPI 
@@ -165,17 +165,7 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("theGalaxy")
-          select case (inputFileFormat)
-          case("binary")
-             call read_galaxy_sph_data(sphdatafilename)
-
-          case("ascii")
-             call new_read_sph_data(sphdatafilename)
-
-          case default
-             call writeFatal("Unrecognised file format "//inputFileFormat)
-
-          end select
+          call read_sph_data_wrapper
 
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
@@ -2104,12 +2094,14 @@ recursive subroutine quickSublimate(thisOctal)
           end do
        else
 
+          if (associated(thisOctal%dustTypeFraction)) then 
+             if (thisOctal%temperature(subcell) > 1500.) then
+                thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+             else
+                thisOctal%dustTypeFraction(subcell,:) = 1.d0
+             endif
+          end if
 
-          if (thisOctal%temperature(subcell) > 1500.) then
-             thisOctal%dustTypeFraction(subcell,:) = 1.d-20
-          else
-             thisOctal%dustTypeFraction(subcell,:) = 1.d0
-          endif
     endif
     enddo
   end subroutine quickSublimate
