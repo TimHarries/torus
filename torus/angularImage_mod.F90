@@ -822,7 +822,7 @@ module angularImage
 
     real(double) :: dI, n_sample
     real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
-    real(double) :: H2_frac
+    real(double) :: H2_frac, temperature
 
 #ifdef MPI
     character(len=3)    :: char_my_rank
@@ -873,9 +873,12 @@ module angularImage
               H2_frac = 0.0
            end if
 
+! Convert internal energy to temperature
+           temperature = sphdata%temperature(ipart) * sphdata%codeEnergytoTemperature
+
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
            if ( n_sample > 0.99 ) write(LUIN,'(10(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
-                sphdata%rhon(ipart), dI, n_sample, H2_frac, sphdata%temperature(ipart), ipart
+                sphdata%rhon(ipart), dI, n_sample, H2_frac, temperature, ipart
 
         end if
 
