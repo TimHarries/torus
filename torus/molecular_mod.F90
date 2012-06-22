@@ -1021,10 +1021,10 @@ module molecular_mod
 
 ! dumpresults if in LTE
       nRay = 1
-      if(writeoutput .and. (.not. restart) .and. isinlte .and. outputconvergence) then
-         call writeinfo("Writing LTE levels", TRIVIAL)
-         call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
-      endif
+!      if(writeoutput .and. (.not. restart) .and. isinlte .and. outputconvergence) then
+!         call writeinfo("Writing LTE levels", TRIVIAL)
+!         call dumpresults(grid, thisMolecule)!, convtestarray) ! find radial pops on final grid     
+!      endif
 ! set number of rays used to estimate jnu and determine level pops 
       nRay = initnray
 ! initialise random seed for AMC method
@@ -1415,10 +1415,10 @@ module molecular_mod
            endif
         endif
         
-        if(writeoutput .and. outputconvergence) then
-           call writeinfo("Dumping results", FORINFO)
-           call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
-        endif
+!        if(writeoutput .and. outputconvergence) then
+!           call writeinfo("Dumping results", FORINFO)
+!           call dumpresults(grid, thisMolecule) ! find radial pops on final grid     
+!        endif
 
         if(myrankiszero .and. plotlevels .and. .not.(amr1d)) then
            write(filename, '(a,i3.3,a)') "./plots/data",grand_iter,".vtk"
