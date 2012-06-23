@@ -1709,12 +1709,12 @@ end subroutine molecularLoop
              (thisOctal%molecularLevel(ilower(1:maxtrans),subcell) * thisMolecule%einsteinBlu(1:maxtrans) - &
              thisOctal%molecularLevel(iupper(1:maxtrans),subcell) * thisMolecule%einsteinBul(1:maxtrans))
 ! Emission by gas per length        
-        if(.not. thisOctal%ghostcell(subcell)) then
-           spontaneous(1:maxtrans) = (hCgsOverfourPi * nmol) * &
-                thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(1:maxtrans),subcell)
-        else
-           spontaneous(1:maxtrans) = 0.d0
-        end if
+!        if(.not. thisOctal%ghostcell(subcell)) then
+        spontaneous(1:maxtrans) = (hCgsOverfourPi * nmol) * &
+             thisMolecule%einsteinA(1:maxtrans) * thisOctal%molecularLevel(iupper(1:maxtrans),subcell)
+!        else
+!           spontaneous(1:maxtrans) = 0.d0
+!        end if
 ! Source function 
         where (balance /= 0.d0)
            snu(1:maxtrans) = spontaneous(1:maxtrans) / balance(1:maxtrans)

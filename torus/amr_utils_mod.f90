@@ -1998,9 +1998,7 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
         thisOctal%cornerRho(j) = SUM(rhoPoints(1:nPoints))/dble(nPoints)
         thisOctal%cornerVelocity(j)%x = SUM(rhouPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))
         thisOctal%cornerVelocity(j)%y = SUM(rhovPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))
-        thisOctal%cornerVelocity(j)%z = SUM(rhowPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))
-
-    
+        thisOctal%cornerVelocity(j)%z = SUM(rhowPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))    
 
      end do
      
