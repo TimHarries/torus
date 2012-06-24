@@ -1992,16 +1992,36 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
                  rhowPoints(k) = probeOctal%rhow(probeSubcell)                            
                  nPoints = nPoints + 1
               end if
+!           else
+!              rhoPoints(k) = 0.d0
+!              rhouPoints(k) = 0.d0
+!              rhovPoints(k) = 0.d0
+!              rhowPoints(k) = 0.d0
+!              nPoints = nPoints + 1
            end if
         enddo
            
-        thisOctal%cornerRho(j) = SUM(rhoPoints(1:nPoints))/dble(nPoints)
-        thisOctal%cornerVelocity(j)%x = SUM(rhouPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))
-        thisOctal%cornerVelocity(j)%y = SUM(rhovPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))
-        thisOctal%cornerVelocity(j)%z = SUM(rhowPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j))    
+        if(nPoints /= 0) then
+           thisOctal%cornerRho(j) = SUM(rhoPoints(1:nPoints))/dble(nPoints)
+           thisOctal%cornerVelocity(j)%x = SUM(rhouPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j)*cspeed)
+           thisOctal%cornerVelocity(j)%y = SUM(rhovPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j)*cspeed)
+           thisOctal%cornerVelocity(j)%z = SUM(rhowPoints(1:nPoints))/(dble(nPoints)*thisOctal%cornerRho(j)*cspeed)               
+        else
+           thisOctal%cornerRho(j) = 0.d0
+           thisOctal%cornerVelocity(j)%x = 0.d0
+           thisOctal%cornerVelocity(j)%y = 0.d0
+           thisOctal%cornerVelocity(j)%z = 0.d0
 
+!           print *, "zero cells surrounding points ", position
+!           call torus_abort("aborting...")
+        end if
+
+!        print *, "rhoPoints", rhoPoints
+!        print *, "vel ", thisOctal%cornervelocity(j)
+!        print *, "dble(nPoints)", dble(nPoints)
+!        print *, "thisOctal%cornerRho(j)", thisOctal%cornerRho(j)
      end do
-     
+!     stop
   else 
      call torus_abort("Corner velocities only available in 3D calculations at present")
 

@@ -902,6 +902,7 @@ contains
 
        iTot = 2
        allocate(community(iTot))
+       allocate(communitySubset(2))
        allocate(xpos(iTot))
        allocate(f(iTot))
 
