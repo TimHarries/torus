@@ -574,6 +574,13 @@ module molecular_mod
                  call photoionChemistry(grid, thisOctal, subcell)
               endif
 
+
+#ifdef MPI
+              if(thisOctal%ghostcell(subcell)) then
+                 thisOctal%molAbundance(subcell) = 1.d-30
+              end if
+#endif
+
 ! Fill cells with LTE data to determine departure coefficents if required
               if(getdepartcoeffs) then
                  if (.not.associated(thisOctal%departcoeff)) &
@@ -765,7 +772,7 @@ module molecular_mod
    recursive subroutine  deallocateUnused(grid, thisOctal, upperlev, everything)
 
      use inputs_mod, only : densitysubsample, debug, lowmemory
-
+ 
      type(GRIDTYPE) :: grid
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
@@ -844,6 +851,7 @@ module molecular_mod
 
 #ifdef MPI
      use mpi
+     use hydrodynamics_mod, only : setupedges, setupghosts
 #endif
 
      type(GRIDTYPE) :: grid
@@ -974,6 +982,12 @@ module molecular_mod
 !        call writeinfo("Successfully read in Lucy Grid file", FORINFO)
 !        call writeinfo("Plotting Temperatures...",TRIVIAL)
 !     endif
+
+#ifdef MPI
+     call setupedges(grid%octreeRoot, grid)
+     call setupghosts(grid%octreeRoot, grid)
+#endif
+
 
 ! IMPORTANT - Here's where molecular levels and other critical data get allocated.     
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
@@ -3325,6 +3339,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 !Calculate emissivity weighted by phi
            jnu = etaLine * phiProfVal
+
+           
 
            if(useDust) jnu = jnu + dustjnu
 
