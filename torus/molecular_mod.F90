@@ -855,7 +855,9 @@ module molecular_mod
 
 #ifdef MPI
      use mpi
+#ifdef HYDRO
      use hydrodynamics_mod, only : setupedges, setupghosts
+#endif
 #endif
 
      type(GRIDTYPE) :: grid
@@ -988,8 +990,10 @@ module molecular_mod
 !     endif
 
 #ifdef MPI
+#ifdef HYDRO
      call setupedges(grid%octreeRoot, grid)
      call setupghosts(grid%octreeRoot, grid)
+#endif
 #endif
 
 
