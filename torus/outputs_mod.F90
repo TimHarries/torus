@@ -20,6 +20,7 @@ contains
     use inputs_mod, only : mie, gridDistance, nLambda, nv
     use inputs_mod, only : lineEmission, postsublimate
     use inputs_mod, only : monteCarloRT, dowriteradialfile, radialfilename
+    use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use image_utils_mod, only: getImageWavelength, getnImage
 #ifdef MPI
@@ -141,13 +142,19 @@ contains
           !       gridDistance = 140.d0* pctocm/1.d10
           ang = twoPi * dble(i-1)/50.d0
           viewVec =  rotatez(viewVec, ang)
-          globalSourceArray(1)%limbDark(1) = +1.05395E+00
-          globalSourceArray(1)%limbDark(2) = -1.64891E-01
-          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+!          globalSourceArray(1)%limbDark(1) = +1.05395E+00
+!          globalSourceArray(1)%limbDark(2) = -1.64891E-01
+          globalSourceArray(1)%limbDark(1) = sourcelimbaB
+          globalSourceArray(1)%limbDark(2) = sourcelimbbB 
+         call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
                globalSourceArray, globalnsource, 1, bflux, forceLambda=4400.d0, occultingDisc=.true.)
-          globalSourceArray(1)%limbDark(1) = +8.29919E-01
-          globalSourceArray(1)%limbDark(2) = +1.62937E-02
+!          globalSourceArray(1)%limbDark(1) = +8.29919E-01
+!          globalSourceArray(1)%limbDark(2) = +1.62937E-02
+         globalSourceArray(1)%limbDark(1) = sourcelimbaV
+         globalSourceArray(1)%limbDark(2) = sourcelimbbV
+
+
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
                globalSourceArray, globalnsource, 1, vflux, forceLambda=5500.d0, occultingDisc=.true.)

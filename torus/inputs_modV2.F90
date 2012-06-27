@@ -1375,6 +1375,20 @@ contains
              write(keyword, '(a,i1)') "pointsource",i
              call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
                   "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
+
+          !   write(keyword, '(a,i1)') "limbaB", i
+          !   call getDouble(keyword, sourcelimbaB(i), 1.d0, cLine, fLine, nLines, &
+          !        "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
+          !   write(keyword,'(a,i1)') "limbbB", i
+          !   call getDouble(keyword, sourcelimbbB(i), 1.d0, cLine, fLine, nLines, &
+          !        "Limb darkening b coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
+          !   write(keyword, '(a,i1)') "limbaV", i
+          !   call getDouble(keyword, sourcelimbaV(i), 1.d0, cLine, fLine, nLines, &
+          !        "Limb darkening a coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)
+          !   write(keyword, '(a,i1)') "limbbV", i
+          !   call getDouble(keyword, sourcelimbbV(i), 1.d0, cLine, fLine, nLines, &
+          !        "Limb darkening b coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)
+
           else
              write(keyword, '(a,i1)') "diffusetype",i
              call getString(keyword, diffuseType(i), cLine, fLine, nLines, &
@@ -1851,6 +1865,16 @@ contains
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+    
+    call getDouble("limbaB", sourcelimbaB, 1.d0, cLine, fLine, nLines, &                                         
+         "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)                                      
+    call getDouble("limbbB", sourcelimbbB, 1.d0, cLine, fLine, nLines, &                                         
+         "Limb darkening b coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)                                      
+    call getDouble("limbaV", sourcelimbaV, 1.d0, cLine, fLine, nLines, &                                         
+         "Limb darkening a coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)                                      
+    call getDouble("limbbV", sourcelimbbV, 1.d0, cLine, fLine, nLines, &                                         
+         "Limb darkening b coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)               
+
   end subroutine readPhotometryParameters
 
 #ifdef FITSCUBE

@@ -401,6 +401,9 @@
   real :: maxHartTemp        ! maximum temperature of hartmann distribution                             
   logical :: isoTherm        ! use isothermal T Tauri accretion stream 
 
+!limb darkening:
+  real(double) :: sourcelimbaB, sourcelimbbB, sourcelimbaV, sourcelimbbV
+
   ! pp disk stuff
   real :: rSmooth, rHeight, sigmaPower
   real :: flaringPower, gapViscAlpha

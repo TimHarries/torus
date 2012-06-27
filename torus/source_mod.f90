@@ -839,6 +839,8 @@ module source_mod
        i_nu = fnu / pi
     endif
 
+    i_nu = i_nu * (1.d0 - source%limbDark(1)*(1.d0 - mu) - source%limbDark(2) * (1.d0-mu)**2)
+
     if (isHot(source%surface,ielement)) then
        tAccretion = source%surface%element(ielement)%temperature
        !================CHECK UNITS HERE!! ===========================
@@ -848,7 +850,7 @@ module source_mod
        i_nu  = I_nu + ic_hot
     endif
 
-    i_nu = i_nu * (1.d0 - source%limbDark(1)*(1.d0 - mu) - source%limbDark(2) * (1.d0-mu)**2)
+
 
   end function I_nu
 
