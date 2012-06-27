@@ -57,6 +57,7 @@ contains
        if (myrankWorldGlobal == 0) then
           write(*,*) " "
           write(*,*) "Parallel info:"
+          write(*,*) "nThreadsGlobal: ",nThreadsGlobal
           write(*,*) "nHydrothreads: ",nHydroThreadsGlobal
           write(*,*) "nHydroSetsGlobal: ",nHydroSetsGlobal
           write(*,*) " "

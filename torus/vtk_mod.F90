@@ -660,7 +660,7 @@ contains
 
 
     select case (valueType)
-       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
+       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
           scalarvalue = .false.
           vectorvalue = .true.
        case DEFAULT
@@ -2508,7 +2508,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
   do ivalues = 1, nValueType
      select case (valueType(iValues))
-     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
+     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -2644,7 +2644,7 @@ end subroutine writeXMLVtkFileAMR
       real :: rArray(:,:)
       integer :: i, subcell, n, iVal, nVal
       integer, save ::  iLambda
-      real(double) :: ksca, kabs, value
+      real(double) :: ksca, kabs, value, v
       type(VECTOR) :: rVec, vel
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
@@ -2855,9 +2855,16 @@ end subroutine writeXMLVtkFileAMR
                   endif
 
                case("radmom")
-                     rArray(1, n) = real(real(thisOctal%radiationMomentum(subcell)%x/1.d20))
-                     rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%y/1.d20)
-                     rArray(3, n) = real(thisOctal%radiationMomentum(subcell)%z/1.d20)
+                     rArray(1, n) = real(thisOctal%radiationMomentum(subcell)%x)
+                     rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%y)
+                     rArray(3, n) = real(thisOctal%radiationMomentum(subcell)%z)
+
+               case("radforce")
+                     v = cellVolume(thisOctal, subcell)*1.d30
+                     rArray(1, n) = real(thisOctal%kappaTimesFlux(subcell)%x*v/cSpeed)
+                     rArray(2, n) = real(thisOctal%kappaTimesFlux(subcell)%y*v/cSpeed)
+                     rArray(3, n) = real(thisOctal%kappaTimesFlux(subcell)%z*v/cSpeed)
+
                case("velocity")
                      ! stop vectors from showing up in visit if too big
                      if(thisoctal%velocity(subcell)%x .ge. 1.d0) then
@@ -3078,7 +3085,7 @@ end subroutine writeXMLVtkFileAMR
 
 
      select case (valueType)
-     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
+     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -3405,7 +3412,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      write(lunit) '    <PCellData Scalars="scalars">'//lf
      do i = 1, nValueType
         select case (valueType(i))
-        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
+        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
            scalarvalue = .false.
            vectorvalue = .true.
         case DEFAULT
@@ -3577,7 +3584,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
   do ivalues = 1, nValueType
      select case (valueType(iValues))
-     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom")
+     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT

@@ -807,7 +807,7 @@ module source_mod
     type(SOURCETYPE) :: source
     real(double) :: nu, fnu, mu !, flambda, lam
     integer :: i, iElement
-    real(double) :: tAccretion, ic_hot
+    real(double) :: tAccretion, ic_hot, fac
 
 !    lam = 1.d8 * cSpeed/ nu ! angs
 !    if (lam < source%spectrum%lambda(1)) then
@@ -839,7 +839,9 @@ module source_mod
        i_nu = fnu / pi
     endif
 
-    i_nu = i_nu * (1.d0 - source%limbDark(1)*(1.d0 - mu) - source%limbDark(2) * (1.d0-mu)**2)
+    fac = (2.d0/12.d0)*(6.d0 - 2.d0*source%limbDark(1) - source%limbDark(2))
+
+    i_nu = i_nu * (1.d0 - source%limbDark(1)*(1.d0 - mu) - source%limbDark(2) * (1.d0-mu)**2)/fac
 
     if (isHot(source%surface,ielement)) then
        tAccretion = source%surface%element(ielement)%temperature

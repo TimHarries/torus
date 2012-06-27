@@ -711,6 +711,7 @@ contains
           call writeAttributePointerFlexi(20, "boundaryPartner", thisOctal%boundaryPartner, fileFormatted)
           call writeAttributePointerFlexi(20, "boundaryCell", thisOctal%boundaryCell, fileFormatted)
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
+          call writeAttributePointerFlexi(20, "kappaTimesFlux", thisOctal%kappaTimesFlux, fileFormatted)
 
           call writeAttributePointerFlexi(20, "gravboundaryPartner", thisOctal%GravboundaryPartner, fileFormatted)
           call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
@@ -4207,6 +4208,8 @@ contains
 
          case("radiationMomentum")
             call readPointerFlexi(20, thisOctal%radiationMomentum, fileFormatted)
+         case("kappaTimesFlux")
+            call readPointerFlexi(20, thisOctal%kappaTimesFlux, fileFormatted)
          case("gravboundaryPartner")
             call readPointerFlexi(20, thisOctal%gravboundaryPartner, fileFormatted)
          case("changed")
@@ -4520,6 +4523,8 @@ contains
             call receivePointerFlexi(thisOctal%gravboundaryPartner)
          case("radiationMomentum")
             call receivePointerFlexi(thisOctal%radiationMomentum)
+         case("kappaTimesFlux")
+            call receivePointerFlexi(thisOctal%kappaTimesFlux)
          case("changed")
             call receivePointerFlexi(thisOctal%changed)
          case("rLimit")
@@ -4714,6 +4719,7 @@ contains
 
       call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
       call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
+      call sendAttributePointerFlexi(iThread, "kappaTimesFlux", thisOctal%kappaTimesFlux)
       call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)
       call sendAttributePointerFlexi(iThread, "rLimit", thisOctal%rLimit)
 

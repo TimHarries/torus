@@ -2604,7 +2604,7 @@ contains
 
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
-       nFreq, freqArray, forceFreq, occultingDisc) result (i0)
+       nFreq, freqArray,forceFreq, occultingDisc) result (i0)
     use inputs_mod, only : lineOff,  mie, ttauriRinner
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
@@ -2971,7 +2971,6 @@ contains
     if (endLoopAtPhotosphere) then
 
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
-
        i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
     endif
 666 continue 

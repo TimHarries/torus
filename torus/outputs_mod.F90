@@ -142,6 +142,7 @@ contains
           !       gridDistance = 140.d0* pctocm/1.d10
           ang = twoPi * dble(i-1)/50.d0
           viewVec =  rotatez(viewVec, ang)
+
 !          globalSourceArray(1)%limbDark(1) = +1.05395E+00
 !          globalSourceArray(1)%limbDark(2) = -1.64891E-01
           globalSourceArray(1)%limbDark(1) = sourcelimbaB

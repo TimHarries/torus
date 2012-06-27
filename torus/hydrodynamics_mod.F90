@@ -1928,8 +1928,10 @@ contains
 !                  thisoctal%phi_i_minus_1(subcell)) / dx
 
              if (radiationPressure) then
+
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                     dt * thisOctal%radiationMomentum(subcell)%x/dv
+                     dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+
                 if (thisOctal%iequationOfState(subcell) /= 1) then
                    thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) + dt * & 
                          thisOctal%radiationMomentum(subcell)%x/dv
@@ -2068,8 +2070,11 @@ contains
 
 
              if (radiationPressure) then
+
                 thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-                     dt * thisOctal%radiationMomentum(subcell)%y/dv
+                     dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
+
+
                 if (thisOctal%iequationOfState(subcell) /= 1) then
                    thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) + dt * &
                          thisOctal%radiationMomentum(subcell)%y/dv
@@ -2188,7 +2193,8 @@ contains
 
              if (radiationPressure) then
                 thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                     dt * thisOctal%radiationMomentum(subcell)%z / dv
+                     dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+
                 if (thisOctal%iequationOfState(subcell) /= 1) then
                    thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) + dt * &
                         thisOctal%radiationMomentum(subcell)%z/dv
@@ -2224,18 +2230,18 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
-         speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
-               thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          speed = sqrt(speed)
-          if (speed > 0.d0) then
-             fac = min(speed, 1d5)/speed
-          else
-             fac = 1.d0
-          endif
+!         speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+!               thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+!          speed = sqrt(speed)
+!          if (speed > 0.d0) then
+!             fac = min(speed, 1d5)/speed
+!          else
+!             fac = 1.d0
+!          endif
 
-          thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
-          thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
-          thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
+!          thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
+!          thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
+!          thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
           if (thisOctal%rho(subcell) < 1.d-24) then
              thisoctal%rhou(subcell) = 1.d-25
              thisoctal%rhov(subcell) = 1.d-25
@@ -2836,14 +2842,17 @@ contains
 
     call setupx(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupqx(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call fluxlimiter(grid%octreeroot)
     call constructflux(grid%octreeroot, dt)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupflux(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup) 
+!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup) 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call updatecellq(grid%octreeroot, dt)
 
   end subroutine advectq
@@ -9637,7 +9646,7 @@ end subroutine minMaxDepth
 !          if (createSink) write(*,*) "Source creating passed accretion radius test "
 
           if (createSink) then
-             if (MINVAL(phi(1:nPoints)) < phi(1)) then
+             if (MINVAL(phi(2:nPoints)) < phi(1)) then
                 createSink = .false.
 !                write(*,*) "not phi minumum ",phi(1),minval(phi(1:nPoints))
                 cycle
@@ -9651,7 +9660,7 @@ end subroutine minMaxDepth
                 rVec = position(iPoint) - position(1)
                 r = modulus(rVec)
                 call normalize(rVec)
-                if (r < smallestCellSize*1.01d0) then
+                if (r < smallestCellSize*2.5d0) then
                    if ((rVec.dot.(vel(iPoint)-vel(1))) > 0.d0) then
                       createSink = .false.
                       write(*,*) "not converging ",rVec.dot.((vel(ipoint)-vel(1)))

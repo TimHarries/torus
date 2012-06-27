@@ -9782,6 +9782,8 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%radiationMomentum, source%radiationMomentum)
 
+    call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
+
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
       ALLOCATE(dest%mpiboundaryStorage( SIZE(source%mpiboundaryStorage,1),       &
@@ -13656,6 +13658,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
@@ -13755,6 +13758,7 @@ end function readparameterfrom2dmap
 
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
 
     endif
   end  subroutine allocateOctalAttributes
@@ -13880,6 +13884,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%boundaryPartner)
     call deallocateAttribute(thisOctal%gravboundaryPartner)
     call deallocateAttribute(thisOctal%radiationMomentum)
+    call deallocateAttribute(thisOctal%kappaTimesFlux)
     call deallocateAttribute(thisOctal%phi_i)
     call deallocateAttribute(thisOctal%phi_i_plus_1)
     call deallocateAttribute(thisOctal%phi_i_minus_1)

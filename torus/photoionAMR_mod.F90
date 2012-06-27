@@ -725,7 +725,7 @@ contains
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     ","radmom       ", &
+               "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         "/))
 
 
@@ -1837,7 +1837,6 @@ end subroutine radiationHydro
                       if(.not. finished) then
                          if (noDiffuseField) escaped = .true.
                          
-                         if (radPressureTest) escaped = .true.
 
                          if (escaped) then
                             !$OMP CRITICAL (update_escaped)
@@ -1918,9 +1917,12 @@ end subroutine radiationHydro
                                endif
                                thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                                uHat = randomUnitVector() ! isotropic emission
+                               if (radpressuretest) thisFreq = freq(1)
+
                             endif
                                                        
                                nScat = nScat + 1
+
                                if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
                                if (smallPhotonPacket) nScatSmallPacket = nScatSmallPacket + 1
                                nTotScat = nTotScat + 1
@@ -1943,7 +1945,7 @@ end subroutine radiationHydro
                                endif
                                
                                
-                         endif
+                            endif
                          if (nScat > 100000) then
                             write(*,*) "Nscat exceeded 10000, forcing escape"
                             write(*,*) 1.e8*cspeed/thisFreq
@@ -2303,6 +2305,9 @@ end subroutine radiationHydro
 
     !deallocate(octalArray)
     call adjustChiline(grid%octreeRoot)
+    
+    call calculateKappaTimesFlux(grid%octreeRoot, epsOverDeltaT)
+
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     if (writeoutput) &
@@ -2927,13 +2932,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     else
        thisTau = 1.0e-28
     end if
-    if (radPressureTest) then
-       if (thisOctal%rho(subcell) < 1.d-24) then
-          thisTau = 1.d-30
-       else
-          thisTau = 1.d30
-       endif
-    endif
        
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
@@ -3048,7 +3046,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! update the distance grid
 
        if (.not.outOfTime)  then
-          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, sourcePhoton)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat)
        endif
          
        if (stillinGrid) then
@@ -3089,15 +3087,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           else
              thisTau = 1.0e-28
           end if
-
-          if (radPressureTest) then
-!             thisTau = 1.d20 * thisOctal%rho(subcell)
-             if (thisOctal%rho(subcell) < 1.d-24) then
-                thisTau = 1.d-30
-             else
-                thisTau = 1.d30
-             endif
-          endif
 
           if (tVal == 0.0d0) then
              escaped = .true.
@@ -3151,7 +3140,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then 
              call updateGrid(grid, thisOctal, subcell, thisFreq, &
-                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton)
+                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat)
           endif
 
           oldOctal => thisOctal
@@ -3593,6 +3582,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           thisOctal%distanceGrid(subcell) = 0.d0
           thisOctal%chiline(subcell) = 0.d0
           thisOctal%radiationMomentum(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          if (.not.associated(thisOctal%kappaTimesFlux)) then
+             allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
+          endif
+          thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -4428,14 +4421,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq, sourcePhoton)
-    use inputs_mod,only : dustOnly
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat)
+    use inputs_mod,only : dustOnly, radPressureTest
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
+    type(VECTOR) :: uHat
     integer :: nFreq, iFreq
     real(double) :: freq(:)
     integer :: subcell
-    real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust
+    real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust, kappaSca, kappaExt
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
@@ -4500,10 +4494,16 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        enddo
     endif
 
-    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs)
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca)
+    kappaExt = kappaAbs + kappaSca
 
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
          + dble(distance) * dble(kappaabsdust) * photonPacketWeight
+
+    thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
+         + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHat
+
+    if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
   end subroutine updategrid
 
@@ -5918,7 +5918,7 @@ subroutine readHeIIrecombination()
   close(40)
 end subroutine readHeIIrecombination
 
-recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
+recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -5927,6 +5927,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
   type(VECTOR) :: radMomVec(:)
+  type(VECTOR) :: kappaTimesFlux(:)
   
   integer :: nIndex
   integer :: subcell, i
@@ -5937,7 +5938,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
+              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
               exit
            end if
         end do
@@ -5950,11 +5951,12 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         heHeating(nIndex) = thisOctal%heHeating(subcell)
         distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
         radMomVec(nIndex) = thisOctal%radiationMomentum(subcell)
+        kappaTimesFlux(nIndex) = thisOctal%kappaTimesFlux(subcell)
      endif
   enddo
 end subroutine packvalues
 
-recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
+recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -5963,6 +5965,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
   type(VECTOR) :: radMomVec(:)
+  type(VECTOR) :: kappaTimesFlux(:)
 
   integer :: nIndex
   integer :: subcell, i
@@ -5973,7 +5976,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
+                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
                 exit
              end if
           end do
@@ -5986,6 +5989,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           thisOctal%heHeating(subcell) = heHeating(nIndex) 
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex) 
           thisOctal%radiationMomentum(subcell) = radMomVec(nIndex)
+          thisOctal%kappaTimesFlux(subcell) = kappaTimesFlux(nIndex)
        endif
     enddo
   end subroutine unpackvalues
@@ -6231,6 +6235,31 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
     enddo
   end subroutine calculateEnergyFromTemperature
+
+  recursive subroutine calculateKappaTimesFlux(thisOctal, epsOverDeltaT)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: v, epsOverDeltaT
+
+    do subcell = 1, thisOctal%maxChildren
+       if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateKappaTimesFlux(child, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          V = cellVolume(thisOctal, subcell)*1.d30
+          thisOctal%kappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%kappaTimesFlux(subcell) / V
+!          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
+       endif
+    enddo
+  end subroutine calculateKappaTimesFlux
 
   subroutine createImageSplitGrid(grid, nSource, source, imageNum)
     use inputs_mod, only: nPhotons, gridDistance
@@ -6977,6 +7006,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     real(double), allocatable :: tempDoubleArray(:)
     real(double), allocatable :: distanceGrid(:)
     type(VECTOR), allocatable :: radMomVec(:)
+    type(VECTOR), allocatable :: kappaTimesFlux(:)
     integer :: ierr, nIndex
 
     ! FOR MPI IMPLEMENTATION=======================================================
@@ -6989,9 +7019,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     allocate(distanceGrid(1:nVoxels))
     allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
     allocate(radMomVec(1:nVoxels))
+    allocate(kappaTimesFlux(1:nVoxels))
 
     nIndex = 0
-    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
+    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
 
 !    write(*,*) myrankWorldGlobal, " packed ",nVoxels, " data"
     allocate(tempDoubleArray(nVoxels))
@@ -7039,6 +7070,21 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
          MPI_SUM, amrParComm, ierr)
     radMomVec(1:nVoxels)%z = tempDoubleArray 
 
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    kappaTimesFlux(1:nVoxels)%x = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    kappaTimesFlux(1:nVoxels)%y = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    kappaTimesFlux(1:nVoxels)%z = tempDoubleArray 
+
 
 
 
@@ -7048,8 +7094,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_BARRIER(amrParComm, ierr) 
     
     nIndex = 0
-    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec)
-    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec)
+    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec, kappaTimesFlux)
 
   end subroutine updateGridMPIphoto
 
@@ -7100,6 +7146,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
        mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
        thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
+       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHat
        rVec = rVec + uHat * r0
        uHat = randomUnitVector()
        call distanceToNearestWall(rVec, r0, thisOctal, subcell)
@@ -7141,9 +7188,9 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
              dv = cellVolume(thisOctal, subcell)*1.d30
              dx = thisoctal%subcellsize * griddistancescale 
-             acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%radiationMomentum(subcell))/dv
+             acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%kappaTimesFlux(subcell)/cSpeed)
              acc = max(1.d-30, acc)
-             dt = min(dt, sqrt(dx/acc))
+             dt = min(dt, sqrt(2.d0*dx/acc))
           endif
        endif
     enddo
