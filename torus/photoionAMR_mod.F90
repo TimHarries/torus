@@ -5918,7 +5918,8 @@ subroutine readHeIIrecombination()
   close(40)
 end subroutine readHeIIrecombination
 
-recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
+     kappaTimesFlux)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -5956,7 +5957,8 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
   enddo
 end subroutine packvalues
 
-recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
+     kappaTimesFlux)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -5976,7 +5978,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
+                     kappaTimesFlux)
                 exit
              end if
           end do
@@ -7094,7 +7097,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_BARRIER(amrParComm, ierr) 
     
     nIndex = 0
-    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
+         kappaTimesFlux)
     deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec, kappaTimesFlux)
 
   end subroutine updateGridMPIphoto

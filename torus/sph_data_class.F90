@@ -516,7 +516,8 @@ contains
        sphdata%codeEnergytoTemperature = 1.0
     else
        sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
-       write(message,*) "Conversion factor between u and temperature (assumes molecular weight of 2.46): ", sphdata%codeEnergytoTemperature
+       write(message,*) "Conversion factor between u and temperature (assumes molecular weight of 2.46): ", &
+            sphdata%codeEnergytoTemperature
        call writeInfo(message, FORINFO)
     end if
 
