@@ -384,7 +384,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
-    use inputs_mod, only: internalView, convertRhoToHI, ih2frac
+    use inputs_mod, only: internalView, convertRhoToHI, ih2frac, sphwithchem
     use inputs_mod, only : iModel, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
 
@@ -413,15 +413,23 @@ contains
 !
 ! CO fraction. The column will not be labelled by splash
 ! so need to specify which column to use.
-    logical, parameter :: useCO = .false.
+    logical :: useCO
     integer, parameter :: iCO = 15
     real(double)       :: COfrac
 ! Do we need particle H2?
-    logical, parameter :: useH2=.false.
+    logical :: useH2
 
 ! Account for time in Galactic plane surveys
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
+
+    if (sphwithchem) then 
+       useCO = .true.
+       useH2 = .true.
+    else
+       useCO = .false.
+       useH2 = .false.
+    endif
 
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
@@ -496,6 +504,7 @@ contains
        haveUandUoverT = .false.
     end if
 
+! Decide how to convert between internal energy and temperature
     if (convertRhoToHI) then
        write (message,'(a,i2)') "Converting density to HI density using H2 fraction from column ", ih2frac
        call writeInfo(message,FORINFO)
@@ -507,6 +516,8 @@ contains
        sphdata%codeEnergytoTemperature = 1.0
     else
        sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
+       write(message,*) "Conversion factor between u and temperature (assumes molecular weight of 2.46): ", sphdata%codeEnergytoTemperature
+       call writeInfo(message, FORINFO)
     end if
 
     if (useCO) then
@@ -516,7 +527,7 @@ contains
     end if
 
     if (useH2) then 
-       write (message,'(a,i2)') "Will store particle H2 density"
+       write (message,'(a,i2)') "Will store particle H2 density. H2 fraction is from column ", ih2frac
        call writeInfo(message,FORINFO)
        allocate(sphdata%rhoH2(npart))
     end if

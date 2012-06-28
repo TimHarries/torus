@@ -882,6 +882,15 @@ contains
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
 
+! Conversion from total density to HI density when chemistry is included
+! and grid needs to be loaded with HI density
+          call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
+               "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
+          call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
+               "Column containing H2 fraction ","(a,i2,a)", 11, ok, .false.)
+          call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
+               "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
+
           if ( geometry == "cluster" ) then 
              call getReal("removeradius", rCore, 1.0, cLine, fLine, nLines, &
                   "Clearing radius (Torus units): ","(a,f7.3,a)", 2000.0, ok, .false.)
@@ -1444,6 +1453,9 @@ contains
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, fLine, nLines, &
             "Maximum molecular level to be considered:","(a,i2,1x,a)", 0, ok, .false.)
+       call getReal("setmaxleveltemp", setmaxleveltemp, 1.0, cLine, fLine, nLines, &
+            "Temperature of maximum molecular level to be considered:","(a,f8.3,1x,a)", &
+            1.0e30, ok, .false.)
        call getLogical("constantabundance", constantAbundance, cLine, fLine, nLines, &
             "Use a constant abundance: ", "(a,1l,1x,a)", .false., ok, .true.)
        call getReal("molAbundance", molAbundance, 1., cLine, fLine, nLines, &
@@ -1985,13 +1997,6 @@ contains
     end if
 
     if ( h21cm ) then 
-
-! Conversion from total density to HI density when chemistry is included
-! The grid needs to be loaded with HI density
-       call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
-            "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
-       call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
-            "Column containing H2 fraction ","(a,i2,a)", 11, ok, .false.)
 
        call getInteger("nSubpixels", nSubpixels, cLine, fLine, nLines, &
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)

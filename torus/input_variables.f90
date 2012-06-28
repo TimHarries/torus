@@ -190,7 +190,8 @@
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   integer :: initnray ! number of rays to use in fixed ray case (stage 1)
   real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
-  integer :: setmaxlevel ! Subsonic turbulent velocity
+  integer :: setmaxlevel ! Maximum level to be converged
+  real    :: setmaxleveltemp ! Temperature of maximum level to be converged
   logical :: lineimage
   logical :: maxrhocalc
   logical :: quasi ! use quasirandom numbers
@@ -720,6 +721,7 @@
   logical :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   logical :: convertRhoToHI ! Convert density to HI
   integer :: ih2frac        ! column of SPH file which contains H2 fraction
+  logical :: sphwithchem    ! SPH has chemistry data which needs to be read
 
 
 !------------------

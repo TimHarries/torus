@@ -3897,6 +3897,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !  Simply find 1st level populated at greater than 10^-8 in LTE
 ! Also only works for linear molecules
    recursive subroutine  findmaxlevel(grid, thisOctal, thisMolecule, maxinterestinglevel, nlevels, nVoxel, lte)
+     use inputs_mod, only: setmaxleveltemp
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3943,6 +3944,13 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         call writeinfo(message, FORINFO)
         write(message, *)  "Minumum Global Temperature", mintemp
         call writeinfo(message, FORINFO)
+
+! Apply the maximum temperature specified in the parameters file.
+        if (maxtemp > setmaxleveltemp ) then
+           write(message,*) "Resetting maximum temperature to ", setmaxleveltemp
+           call writeinfo(message, FORINFO)
+           maxtemp = setmaxleveltemp
+        endif
 
         if (lte) call LTEpops(thisMolecule, maxtemp, mollevels(1:thisMolecule%nlevels))
                 
