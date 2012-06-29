@@ -2020,9 +2020,10 @@ contains
                "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
           call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
                "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
+! In molecular_mod the observer is looking along the y-axis
           rotateViewAboutX = 90.0 - galaxyInclination
-          rotateViewAboutY = 0.0
-          rotateViewAboutZ = 90.0 + galaxyPositionAngle
+          rotateViewAboutY = galaxyPositionAngle - 90.0
+          rotateViewAboutZ = 0.0
        end if
        
     end if

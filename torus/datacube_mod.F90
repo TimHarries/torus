@@ -411,26 +411,32 @@ contains
 
       subroutine writeWeightedVelocity
 
-        real, allocatable :: firstMoment(:,:), secondMoment(:,:)
+        real, allocatable :: zeroMoment(:,:), firstMoment(:,:), secondMoment(:,:)
         real, allocatable :: S(:) ! background subtracted intensity
         real, allocatable :: vAxis_sp(:)
         real :: intensitySum, background
         integer :: i, j
         character(len=80) :: message
 
+        logical, parameter :: useFixedBg=.true.
+        real, parameter    :: fixedBg = 5.0
+
+        allocate ( zeroMoment(thisCube%nx, thisCube%ny) )
         allocate ( firstMoment(thisCube%nx, thisCube%ny) )
         allocate ( secondMoment(thisCube%nx, thisCube%ny) )
         allocate ( S(thisCube%nv) )
         allocate ( vAxis_sp(thisCube%nv) )
         vAxis_sp(:) = real(thisCube%vAxis(:))
 
-!        background = minVal(thisCube%intensity(:,:,:))
-!        write(message,*) "Taking background as minimum value in cube: ", background
-!        call writeInfo(message,FORINFO)
-
-        background = 5.0
-        write(message,*) "Using fixed background of: ", background
-        call writeInfo(message,FORINFO)
+        if (useFixedBg) then 
+           background = fixedBg
+           write(message,*) "Using fixed background of: ", background
+           call writeInfo(message,FORINFO)
+        else
+           background = minVal(thisCube%intensity(:,:,:))
+           write(message,*) "Taking background as minimum value in cube: ", background
+           call writeInfo(message,FORINFO)
+        endif
 
         ! Calculate emission weighted velocity
         do j=1, thisCube%ny
@@ -439,6 +445,8 @@ contains
               S = thisCube%intensity(i,j,:) - background
               where (S<0.0) S=0.0
               intensitySum     = sum( S(:) )
+
+              zeroMoment(i,j) = intensitySum
 
               firstMoment(i,j) = sum( S(:)*vAxis_sp(:) )
               if (intensitySum /= 0.0 ) then 
@@ -463,6 +471,20 @@ contains
         naxes(1)=thisCube%nx
         naxes(2)=thisCube%ny
         nelements=naxes(1)*naxes(2)
+
+! Zero moment 
+        call FTCRHD(unit, status)
+        
+        ! Write the required header keywords.
+        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+        call ftpkys(unit,'BUNIT',"km/s","Velocity unit",status)
+
+        call addScalingKeywords(maxval(zeroMoment), minval(zeroMoment), unit, FitsBitpix)
+        call addWCSinfo
+
+       !  Write the array to the FITS file.
+        call ftppre(unit,group,fpixel,nelements,zeroMoment,status)
+        call printFitsError(status)
 
 ! First moment 
         call FTCRHD(unit, status)
@@ -492,6 +514,7 @@ contains
         call ftppre(unit,group,fpixel,nelements,secondMoment,status)
         call printFitsError(status)
 
+        deallocate (zeroMoment)
         deallocate (firstMoment)
         deallocate (secondMoment)
         deallocate (S)
@@ -698,6 +721,16 @@ contains
        cube%vAxis(1) = vmin
     endif
   end subroutine addVelocityAxis
+
+  subroutine convertIntensityToBrightnessTemperature(cube, thisWavelength)
+    use constants_mod, only: kErg
+    
+    type(DATACUBE) :: cube
+    real(double), intent(in) :: thisWavelength
+
+    cube%intensity(:,:,:) = real(cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg))
+
+  end subroutine convertIntensityToBrightnessTemperature
 
 subroutine TranslateCubeIntensity(cube,constant)
 

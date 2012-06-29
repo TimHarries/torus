@@ -4757,6 +4757,7 @@ END SUBROUTINE sobseq
 #ifdef USECFITSIO
    use datacube_mod, only : datacubeFilename
 #endif
+   use datacube_mod, only : dumpCubeToSpectrum, convertIntensityToBrightnessTemperature
 
    implicit none
 
@@ -4764,7 +4765,6 @@ END SUBROUTINE sobseq
    type(VECTOR)    :: observervec, viewvec, imagebasis(2)
    type(DATACUBE) ::  cube
    type(MOLECULETYPE) :: thisMolecule
-   real, parameter :: thisWavelength=21.0
 
    itrans           = 1
    lineImage        = .true.
@@ -4787,8 +4787,7 @@ END SUBROUTINE sobseq
 
    call convertSpatialAxes(cube,'kpc')
 
-! Output as brightness temperature
-   cube%intensity(:,:,:) = real(cube%intensity(:,:,:) * (thisWavelength**2) / (2.0 * kErg))
+   call convertIntensityToBrightnessTemperature(cube, h21cm_lambda)
 
 #if USECFITSIO
    if(writeoutput) then 
@@ -4809,6 +4808,9 @@ END SUBROUTINE sobseq
 #else
    call writeWarning("TORUS was built without FITS. Cubes will not be written.")
 #endif
+
+! Write out global line profile to ASCII file
+   call dumpCubeToSpectrum(cube, "globalLineProfile.dat")
 
  end subroutine make_h21cm_image
 
