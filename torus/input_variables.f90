@@ -181,6 +181,7 @@
   logical :: addnewmoldata
   logical :: dongstep ! controls Ng Acceleration
   logical :: modelwashydro
+  logical :: zeroghosts
   logical :: plotlevels   
   logical :: writetempfits
   logical :: doCOchemistry

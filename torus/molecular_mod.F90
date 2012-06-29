@@ -267,7 +267,7 @@ module molecular_mod
  ! Same routine for benchmark molecule (slightly different file format)
    subroutine readBenchmarkMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
-     use inputs_mod, only : molAbundance
+     use inputs_mod, only : molAbundance, zeroGhosts
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=200):: dataDirectory, filename
@@ -362,7 +362,7 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use inputs_mod, only : vturb, restart, isinLTE, &
           addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, &
-          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics
+          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts
 
 !         plotlevels
 !     type(VECTOR) :: pos
@@ -577,9 +577,11 @@ module molecular_mod
 
 #ifdef MPI
 #ifdef HYDRO
+              if(zeroghosts) then
                  if(thisOctal%ghostcell(subcell)) then
                     thisOctal%molAbundance(subcell) = 1.d-30
                  end if
+              end if
 #endif
 #endif
 
@@ -850,7 +852,8 @@ module molecular_mod
 
      use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
-          debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune
+          debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
+          zeroGhosts
      use messages_mod, only : myRankIsZero
      use dust_mod
      use parallel_mod
@@ -993,8 +996,10 @@ module molecular_mod
 
 #ifdef MPI
 #ifdef HYDRO
-     call setupedges(grid%octreeRoot, grid)
-     call setupghosts(grid%octreeRoot, grid)
+     if(zeroGhosts) then
+        call setupedges(grid%octreeRoot, grid)
+        call setupghosts(grid%octreeRoot, grid)
+     end if
 #endif
 #endif
 
