@@ -576,9 +576,11 @@ module molecular_mod
 
 
 #ifdef MPI
-              if(thisOctal%ghostcell(subcell)) then
-                 thisOctal%molAbundance(subcell) = 1.d-30
-              end if
+#ifdef HYDRO
+                 if(thisOctal%ghostcell(subcell)) then
+                    thisOctal%molAbundance(subcell) = 1.d-30
+                 end if
+#endif
 #endif
 
               if(thisOctal%temperature(subcell) > 100.d0) then
@@ -1041,7 +1043,7 @@ module molecular_mod
          call locate(lamArray, size(lamArray), lambda(maxtrans/2), ilambda)
       endif
 
-! dumpresults if in LTE
+! dump results if in LTE
       nRay = 1
       if(writeoutput .and. (.not. restart) .and. isinlte .and. outputconvergence) then
          call writeinfo("Writing LTE levels", TRIVIAL)
