@@ -584,6 +584,11 @@ contains
           sphdata%vyn(igas) = vy
           sphdata%vzn(igas) = vz
 
+! For SPH simulations with chemistry we need to set up H2
+          if ( convertRhoToHI .or. useH2 ) then
+             h2ratio = junkArray(ih2frac)
+          endif
+
           if (convertRhoToHI) then 
              gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
              sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
@@ -602,11 +607,6 @@ contains
           endif
 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
-
-! For SPH simulations with chemistry we may need to set up H2 and CO
-          if ( convertRhoToHI .or. useH2 ) then
-             h2ratio = junkArray(ih2frac)
-          endif
 
           if ( convertRhoToHI ) then
              sphdata%rhon(igas) = (1.0-2.0*h2ratio)*rhon*5.0/7.0
