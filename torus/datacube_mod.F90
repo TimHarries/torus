@@ -610,21 +610,31 @@ contains
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax, griddistance)
-    use constants_mod, only: auTocm, pi, rSol
+    use constants_mod
     type(DATACUBE) :: cube
-    real(double) :: xMin, xMax, yMax, yMin, dx, dy
+    real(double) :: xMin, xMax, yMax, yMin, dx, dy, dxInCm
     integer :: i
     character(len=100) :: message
     real, intent(in) :: gridDistance
 
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
+    dxInCm = dx*1e10
 
-    write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dx*1e10/autocm, " AU"
+! Smallest grid cell (in AU) is reported by createimage, so report pixel size in AU for comparison.
+    write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dxInCm/autocm, " AU"
     call writeinfo(message,TRIVIAL)
-    write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dx*1e10/rSol, " Rsol"
-    call writeinfo(message,TRIVIAL)
-    write(message,*) "Angular pixel resolution : ", (dx*1e10/griddistance)*(180./pi)*60.*60., " arcseconds"
+
+! Report the linear pixel size in suitable units
+    if (dxInCm < pcToCm) then 
+       write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dxInCm/rSol, " Rsol"
+       call writeinfo(message,TRIVIAL)
+    else
+       write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dxInCm/pcToCm, " pc"
+       call writeinfo(message,TRIVIAL)
+    endif
+
+    write(message,*) "Angular pixel resolution : ", (dxInCm/griddistance)*radiansToArcSec, " arcseconds"
     call writeinfo(message,TRIVIAL)
 
     do i = 1, cube%nx
@@ -654,8 +664,8 @@ contains
        cube%xUnit    = "pc"
 
     case ('kpc')
-       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / (1000.0_db * pctocm)
-       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / (1000.0_db * pctocm)
+       cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / kpctocm
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / kpctocm
        cube%xUnit    = "kpc"
 
     case('au')

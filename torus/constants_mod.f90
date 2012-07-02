@@ -54,6 +54,7 @@ module constants_mod
   real(double), parameter :: rSol = 6.96d10              ! cm
   real(double), parameter :: auToCm = 1.495979d13
   real(double), parameter :: pcToCm = 3.0856776d18
+  real(double), parameter :: kpcToCm = pcToCm * 1000.0_db
 
   ! atomic
 
