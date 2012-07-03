@@ -213,6 +213,9 @@ CONTAINS
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell)
 
+    CASE("bowshock")
+       call calcBowShock(thisOctal, subcell)
+
     CASE("fluxTest")
        call assign_gaussian(thisOctal,subcell)
 
@@ -6618,6 +6621,61 @@ endif
     xminusbound = 1
 
   end subroutine calcHydro1DDensity
+
+  subroutine calcBowshock(thisOctal,subcell)
+
+    use inputs_mod
+    TYPE(octal) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: r, x, z, eKinetic
+    
+    rVec = subcellCentre(thisOctal, subcell)
+    x = rVec%x
+    z = rVec%z
+
+    r = sqrt((x-0.75d0)**2 + z**2)
+
+    if (r < 0.0625d0) then
+       thisOctal%rho(subcell) = 100.d0
+    else
+       thisOctal%rho(subcell) = 0.01d0
+    endif
+    thisOctal%pressure_i(subcell) = 0.0015d0
+    thisOctal%phi_i(subcell) = 0.d0
+    thisOctal%boundaryCondition(subcell) = 1
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+    thisOctal%iEquationOfState(subcell) = 0
+
+    thisOctal%velocity(subcell) = VECTOR(1.d0,0.d0,0.d0)
+    if ((abs(z) < 0.0625d0).and.(x > 0.75d0)) then
+       thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
+    endif
+    if (r < 0.0625d0) thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
+
+    thisOctal%velocity(subcell) = thisOctal%velocity(subcell)/cSpeed
+    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
+
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0)*thisOctal%rho(subcell))
+    eKinetic = 0.5d0 * &
+         (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOCtal%rhow(subcell)**2) &
+         /thisOctal%rho(subcell)**2
+    thisOctal%energy(subcell) = thisOctal%energy(subcell) + eKinetic
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+    inflowRho = 0.01d0
+    inflowSpeed = 1.d0
+    inflowMomentum = inflowSpeed * inflowRho
+    inflowPressure = 0.0015d0
+    inflowEnergy = (inflowPressure / ((5.d0/3.d0-1.d0)*inflowRho) + 0.5d0*inflowMomentum**2/inflowRho**2)
+    inflowRhoe = inflowEnergy * inflowRho
+
+
+
+  end subroutine calcBowshock
 
   subroutine calcKelvinDensity(thisOctal,subcell)
     use inputs_mod  
