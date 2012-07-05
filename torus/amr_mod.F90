@@ -3883,38 +3883,33 @@ CONTAINS
           
        case("diagSod")
 
- !         if(dorefine .or. dounrefine) then
-             rVec = subcellCentre(thisOctal, subcell)
-                                       
-             if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          
+          if(cornerCell(grid, thisOctal, subcell) .and. &
+               thisOctal%nDepth < maxDepthAMR) split = .true.             
+          
+          if(.not. dorefine .or. .not. dounrefine) then
              if(thisOctal%twoD) then
-                if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
-                     (thisOctal%nDepth < maxDepthAMR)) split = .true.
-             else if(thisoctal%threeD) then 
-                if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
-                     (thisOctal%nDepth < maxDepthAMR)) split = .true.
-             else
-                print *, "1D diag sod doesn't work"
-                stop
+                if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+                
+             else if (thisOctal%threeD) then
+                if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
              end if
-             
-             if(cornerCell(grid, thisOctal, subcell) .and. &
-                  thisOctal%nDepth < maxDepthAMR) split = .true.             
-!          else
-          !   rVec = subcellCentre(thisOctal, subcell)
-          !   if (thisOctal%nDepth < minDepthAMR) split = .true.
-             !Coarse to fine             
-             !         if((rvec%x < 0.6d0) .and. (rvec%x > 0.4d0) .and. (rvec%z < 0.4d0) .and.  &
-             !         if((rvec%z < 0.1d0) .and.  &
-             !           (rvec%z > 0.2d0) .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-             
+          end if
+          
+!         if(dorefine .or. dounrefine) then
+!             rVec = subcellCentre(thisOctal, subcell)
+!                                       
 !             if(thisOctal%twoD) then
-!                if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
-!                
-!             else if (thisOctal%threeD) then
-!                if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
+!                if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
+!                     (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!             else if(thisoctal%threeD) then 
+!                if ( ((rVec%x+rvec%z) > 0.03).and. (((rVec%x+rvec%z) < 0.07)) .and. &
+!                     (thisOctal%nDepth < maxDepthAMR)) split = .true.
+!             else
+!                print *, "1D diag sod doesn't work"
+!                stop
 !             end if
-  !        end if
           
        case("bonnor", "empty", "planar")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
