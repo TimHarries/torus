@@ -3888,7 +3888,7 @@ CONTAINS
           if(cornerCell(grid, thisOctal, subcell) .and. &
                thisOctal%nDepth < maxDepthAMR) split = .true.             
           
-          if(.not. dorefine .or. .not. dounrefine) then
+          if(.not. dorefine .and. .not. dounrefine) then
              if(thisOctal%twoD) then
                 if(((rVec%x-0.5)**2 + rvec%z**2) < 0.05 .and. thisOctal%nDepth < maxDepthAMR) split=.true.
                 
