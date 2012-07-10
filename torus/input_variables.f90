@@ -174,6 +174,7 @@
 
   logical :: molecular
   logical :: constantAbundance
+  logical :: removeHotMolecular
   real :: molAbundance
   character(len=80) :: molFilename
   character(len=80) :: moleculefile

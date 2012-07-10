@@ -361,7 +361,7 @@ module molecular_mod
 
      use grid_mod, only: freeGrid
      use inputs_mod, only : vturb, restart, isinLTE, &
-          addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, &
+          addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts
 
 !         plotlevels
@@ -570,7 +570,8 @@ module molecular_mod
                     firstAbundanceWarning = .false.
                  endif
               endif
-              if (photoionPhysics) then
+              if (photoionPhysics.or.removeHotMolecular) then
+                 call writeInfo("Applying photoion chemistry")
                  call photoionChemistry(grid, thisOctal, subcell)
               endif
 
@@ -584,10 +585,6 @@ module molecular_mod
               end if
 #endif
 #endif
-
-              if(thisOctal%temperature(subcell) > 100.d0) then
-                 thisOctal%molAbundance(subcell) = 1.d-30
-              end if
 
 ! Fill cells with LTE data to determine departure coefficents if required
               if(getdepartcoeffs) then

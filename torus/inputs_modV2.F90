@@ -1466,6 +1466,8 @@ contains
             "Use a constant abundance: ", "(a,1l,1x,a)", .false., ok, .true.)
        call getReal("molAbundance", molAbundance, 1., cLine, fLine, nLines, &
             "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .false.)
+       call getLogical("removehotmolecular", removeHotMolecular, cLine, fLine, nLines, &
+            "Remove molecular material above 100K: ", "(a,1l,1x,a)", .false., ok, .true.)
        call getLogical("isinlte", isinlte, cLine, fLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &
