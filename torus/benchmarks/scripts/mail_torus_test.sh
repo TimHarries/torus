@@ -32,17 +32,19 @@ done
 
 tar cf torus_test_output.tar ${attach_list}
 
-subject_line=" " 
 suite_status="PASSED"
+
+echo "Summary of test results: " > header
+echo " " >> header
 
 # Test for success of disc benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc/check_log_gfortran_disc.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
-    subject_line="${subject_line} Disc benchmark successful."
+    echo "Disc benchmark successful" >> header 
 else
-    subject_line="${subject_line} Disc benchmark failed."
+    echo "!! Disc benchmark FAILED !!" >> header
     suite_status="FAILED"
 fi
 
@@ -51,18 +53,18 @@ num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/b
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_gfortran_molebench.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
-    subject_line="${subject_line} Molecular benchmark successful."
+    echo "Molecular benchmark successful." >> header
 else
-    subject_line="${subject_line} Molecular benchmark failed."
+    echo "!! Molecular benchmark FAILED !!" >> header
     suite_status="FAILED"
 fi
 
 # Test for success of hydro benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/hydro/check_log_ompiosx_hydro.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
-    subject_line="${subject_line} Hydro benchmark successful. "
+    echo "Hydro benchmark successful." >> header
 else
-    subject_line="${subject_line} Hydro benchmark failed. "
+    echo "!! Hydro benchmark FAILED !!" >> header
     suite_status="FAILED"
 fi
 
@@ -71,50 +73,49 @@ num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx-openmp/be
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/HII_region/check_log_gfortran_hII.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/HII_region/check_log_ompiosx_hII.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
-    subject_line="${subject_line} HII region benchmark successful. "
+    echo "HII region benchmark successful." >> header
 else
-    subject_line="${subject_line} HII region benchmark failed. "
+    echo "!! HII region benchmark FAILED !!" >> header
     suite_status="FAILED"
 fi
 
 # Test for success of domain decomposed hII region benchmark                                                                  
 num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/HII_regionMPI/check_log_ompiosx_hII_MPI.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
-    subject_line="${subject_line} MPI HII region benchmark successful. "
+    echo "MPI HII region benchmark successful." >> header
 else
-    subject_line="${subject_line} MPI HII region benchmark failed. "
+    echo "!! MPI HII region benchmark FAILED !!" >> header
     suite_status="FAILED"
 fi
 
 # Test for success of imaging benchmark
 num_success=`/usr/bin/grep "Test Successful" benchmarks_ompiosx/benchmarks/cylinder_image_test/check_log_ompiosx_image.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
-    subject_line="${subject_line} Image benchmark successful. "
+    echo "Image benchmark successful. " >> header
 else
-    subject_line="${subject_line} Image benchmark failed. "
+    echo "!! Image benchmark FAILED !!" >> header
     suite_status="FAILED"
 fi
 
 # Test for success of gravity solver test
 num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest/check_log_ompiosx_gravtest.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
-    subject_line="${subject_line} Gravity test successful. "
+    echo "Gravity test successful. " >> header
 else
-    subject_line="${subject_line} Gravity test failed. "
+    echo "!! Gravity test FAILED !!" >> header
     suite_status="FAILED"
 fi
 
 # Test for success of nbody test
 num_success=`/usr/bin/grep "Torus nbody test successful" benchmarks_gfortran/benchmarks/nbody/check_log_gfortran_nbody.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
-    subject_line="${subject_line} N body test successful. "
+    echo "N body test successful. " >> header
 else
-    subject_line="${subject_line} N body test failed. "
+    echo "!! N body test FAILED !!" >> header
     suite_status="FAILED"
 fi
 
 # Set up the message body 
-echo $subject_line > header
 echo  >> header
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log~
 cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ > ${TORUS_TEST_DIR}/torus_daily_test_log 
