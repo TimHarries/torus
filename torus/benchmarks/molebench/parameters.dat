@@ -13,6 +13,7 @@ stateq T
 ! molecular stuff
 constantabundance T 
 molAbundance 1.d-8      % Abundance of HCO+ : H2 - use
+removehotmolecular F
 vturb 0.3
 tolerance 0.005
 distance 250.0
