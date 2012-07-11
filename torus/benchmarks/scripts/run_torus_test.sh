@@ -140,6 +140,18 @@ ${TORUS_FC} -o check check.f90
 ./check
 }
 
+# Check that Torus completed OK. For some tests the results file can be written 
+# even if Torus has bugged out. 
+check_completion()
+{
+    grep "Torus completed" run_log_${SYSTEM}_${THIS_BENCH}.txt > /dev/null
+    if [[ $? -eq 0 ]]; then
+	echo "Torus completed OK"
+    else
+	echo "WARNING: Torus did not complete"
+    fi
+}
+
 prepare_run()
 {
 if [[ -e ${TEST_DIR} ]]; then
@@ -311,6 +323,7 @@ for sys in ${SYS_TO_TEST}; do
     if [[ ${SYSTEM} != "nagfor" ]]; then
 	check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
 	tail check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
+	check_completion
     fi
     echo
 
@@ -344,6 +357,7 @@ for sys in ${SYS_TO_TEST}; do
 	cd ${WORKING_DIR}/benchmarks/molebench
 	check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
 	tail check_log_${SYSTEM}_${THIS_BENCH}.txt
+	check_completion
 	echo 
 
     fi
