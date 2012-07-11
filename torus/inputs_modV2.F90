@@ -1492,7 +1492,7 @@ contains
        if(doCOchemistry) then
 
           call getReal("fracCOdepletion", x_D, 1., cLine, fLine, nLines, &
-               "Fraction of CO depletion", "(a,1l,1x,a)", 0.1, ok, .true.)
+               "Fraction of CO depletion", "(a,f5.3,a)", 0.1, ok, .true.)
           
        endif
 

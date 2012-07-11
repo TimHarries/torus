@@ -7076,8 +7076,6 @@ endif
     real(double) :: rMod
 
 
-
-
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
     if ((rMod*1.d10) < 1.6d0*pcToCm) then
