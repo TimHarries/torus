@@ -826,6 +826,11 @@ contains
        if (nblocktypes.GE.3) then
           read(LUIN) blocknradtrans, (numsrt(i), i=1,8)
           write(message,*) "Found RT blocks ", blocknradtrans
+	  if (blocknradtrans.ne.blocknpart) then
+	     write (message,*) "blocknradtrans.ne.blocknpart ",blocknradtrans,blocknpart
+	     writeFatal(message)
+	     stop
+	  endif
           call writeInfo(message,TRIVIAL)
        endif
 
@@ -870,8 +875,6 @@ contains
        end do
        read (LUIN) (r4, i=iiigas+1,iiigas+blocknpart)
 
-       iiigas = iiigas+blocknpart
-
        allocate(listpm(blocknptmass), spinx(blocknptmass))
        READ (LUIN) (listpm(i),i=1,blocknptmass)
        READ (LUIN) (spinx(i),i=1,blocknptmass)
@@ -898,7 +901,7 @@ contains
           READ (LUIN)
 	  end do
 
-	  READ (LUIN) (uoverTarray(i),i=1,blocknradtrans)
+	  READ (LUIN) (uoverTarray(i),i=iiigas+1,iiigas+blocknpart)
 
 	  do j = 1, numsrt(6)-3
 	     READ (LUIN)
@@ -915,6 +918,8 @@ contains
           end do
           call writeInfo ("Read MHD data")
        endif
+
+       iiigas = iiigas+blocknpart
 
     end do mpi_blocks
 
