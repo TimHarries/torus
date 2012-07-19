@@ -1744,7 +1744,11 @@ contains
           if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
              qnext = tOctal%q_i(tSubcell)
           else
-             qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
+             if (associated(neighbourOctal%mpiBoundaryStorage)) then
+                qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
+             else
+                qNext = 0.d0
+             endif
           endif
        else
           qNext = 0.d0
@@ -3287,12 +3291,8 @@ end subroutine writeRadialFile
           thisOctal%rhou(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
                xmin, zmin, dx, dz, rmax, rsq, a)
 
-          call qshep2 (nPoints, xPoint, zPoint, rhovPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
 
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhov")
-          thisOctal%rhov(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhovPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
+          thisOctal%rhov(iSubcell) = 0.d0
 
           call qshep2 (nPoints, xPoint, zPoint, rhowPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
                dx, dz, rmax, rsq, a, ier )
@@ -3435,11 +3435,13 @@ end subroutine writeRadialFile
 !
 !    ! momentum (v)
 !
-    oldMom = abs(parent%rhov(parentSubcell))
-    newMom = SUM(abs(thisOctal%rhov(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
-    if (abs(newMom) > TINY(newMOM)) then
-       factor = oldMom / newMom
-       thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+    if (thisOctal%threed) then
+       oldMom = abs(parent%rhov(parentSubcell))
+       newMom = SUM(abs(thisOctal%rhov(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
+       if (abs(newMom) > TINY(newMOM)) then
+          factor = oldMom / newMom
+          thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+       endif
     endif
 !
     ! momentum (w)

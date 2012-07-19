@@ -190,6 +190,92 @@ contains
     out = (qb - qa) / (((cen2-cen).dot.dir(iDir))*gridDistanceScale)
   end function divQ
 
+  function divV(thisOctal, subcell, grid) result(out)
+    use inputs_mod, only : smallestCellSize,gridDistanceScale
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal, neighbourOctal
+    real(double) :: out
+    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,q11,q22,q33
+    real(double) :: speedPlus, speedMinus
+    integer :: subcell, neighbourSubcell
+    type(VECTOR) :: dir(3), cen, locator
+    integer :: iDir, nDir, nd
+    if (thisOctal%threed) then
+       ndir = 3
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (thisOctal%twoD) then
+       ndir = 2
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       ndir = 1
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+    endif
+
+    cen = subcellCentre(thisOctal,subcell)
+    out = 0.d0
+
+    if (.not.thisOctal%edgeCell(subcell)) then
+    do iDir = 1, nDir
+
+       locator = cen + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
+       neighbouroctal => thisoctal
+       call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+       call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
+            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+       if (thisOctal%threed) then
+          select case (iDir)
+          case(1)
+             speedplus = rhou/rho
+          case(2)
+             speedplus = rhov/rho
+          case(3)
+             speedplus = rhow/rho
+          end select
+       else if (thisOctal%twoD) then
+          select case (iDir)
+          case(1)
+             speedplus = rhou/rho
+          case(2)
+             speedplus = rhow/rho
+          end select
+       else
+          speedPlus = rhou/rho
+       endif
+
+       locator = cen - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
+       neighbouroctal => thisoctal
+       call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+       call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
+            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+       if (thisOctal%threed) then
+          select case (iDir)
+          case(1)
+             speedminus = rhou/rho
+          case(2)
+             speedminus = rhov/rho
+          case(3)
+             speedminus = rhow/rho
+          end select
+       else if (thisOctal%twoD) then
+          select case (iDir)
+          case(1)
+             speedminus = rhou/rho
+          case(2)
+             speedminus = rhow/rho
+          end select
+       else
+          speedPlus = rhou/rho
+       endif
+
+       out = out + (speedplus - speedminus) / (thisOctal%subcellSize*gridDistanceScale)
+    end do
+    endif
+  end function divV
+
+
   recursive subroutine setupViscosity(thisoctal, grid)
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal

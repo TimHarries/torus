@@ -664,6 +664,7 @@ contains
           call writeAttributePointerFlexi(20, "x_i_minus_2", thisOctal%x_i_minus_2, fileFormatted)
           
           call writeAttributePointerFlexi(20, "u_interface", thisOctal%u_interface, fileFormatted)
+          call writeAttributePointerFlexi(20, "u_i", thisOctal%u_i, fileFormatted)
           call writeAttributePointerFlexi(20, "u_i_plus_1", thisOctal%u_i_plus_1, fileFormatted)
           call writeAttributePointerFlexi(20, "u_i_minus_1", thisOctal%u_i_minus_1, fileFormatted)
 
@@ -4110,6 +4111,8 @@ contains
 
          case("u_interface")
             call readPointerFlexi(20, thisOctal%u_interface, fileFormatted)
+         case("u_i")
+            call readPointerFlexi(20, thisOctal%u_i, fileFormatted)
          case("u_i_plus_1")
             call readPointerFlexi(20, thisOctal%u_i_plus_1, fileFormatted)
          case("u_i_minus_1")
@@ -4442,6 +4445,8 @@ contains
 
          case("u_interface")
             call receivePointerFlexi(thisOctal%u_interface)
+         case("u_i")
+            call receivePointerFlexi(thisOctal%u_i)
          case("u_i_plus_1")
             call receivePointerFlexi(thisOctal%u_i_plus_1)
          case("u_i_minus_1")
@@ -4670,6 +4675,7 @@ contains
       call sendAttributePointerFlexi(iThread, "x_i_minus_2", thisOctal%x_i_minus_2)
 
       call sendAttributePointerFlexi(iThread, "u_interface", thisOctal%u_interface)
+      call sendAttributePointerFlexi(iThread, "u_i", thisOctal%u_i)
       call sendAttributePointerFlexi(iThread, "u_i_plus_1", thisOctal%u_i_plus_1)
       call sendAttributePointerFlexi(iThread, "u_i_minus_1", thisOctal%u_i_minus_1)
 

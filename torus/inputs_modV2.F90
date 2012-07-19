@@ -226,6 +226,9 @@ contains
        call getLogical("addsinks", addSinkParticles, cLine, fLine, nLines, &
             "Add sink particles: ", "(a,1l,1x,a)", .true., ok, .false.)
 
+       call getLogical("hosokawa", hosokawaTracks, cLine, fLine, nLines, &
+            "Use Hosokawa evolutionary tracks: ", "(a,1l,1x,a)", .true., ok, .false.)
+
        call getLogical("mergesinks", mergeBoundSinks, cLine, fLine, nLines, &
             "Merge bound sinks: ", "(a,1l,1x,a)", .true., ok, .false.)
 
@@ -246,6 +249,8 @@ contains
             "Check whether a photoionization loop is necessary:", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("dustonly", dustOnly, cLine, fLine, nLines, &
             "Use just dust opacities: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("packetsplitting", usePacketSplitting, cLine, fLine, nLines, &
+            "Use photon packet splitting: ", "(a,1l,1x,a)", .true., ok, .false.)
     end if
 
     if (molecularPhysics.and.atomicPhysics) then

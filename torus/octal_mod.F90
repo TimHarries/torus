@@ -168,6 +168,7 @@ MODULE octal_mod
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
     integer, pointer :: iEquationOfState(:)  => null()
     real(double), pointer :: gamma(:) => null()
+    real(double), pointer :: divV(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
 #ifdef PHOTOION
     real, DIMENSION(8)        :: TLastIter     !Temperature at last iteration thaw
@@ -302,7 +303,7 @@ MODULE octal_mod
     ! hydrodynamics
     real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()
     real(double), pointer :: x_i(:) => null(), x_i_plus_1(:) => null(), x_i_minus_1(:) => null(), x_i_minus_2(:) => null()
-    real(double), pointer :: u_interface(:) => null(), u_i_plus_1(:) => null(), u_i_minus_1(:) => null()
+    real(double), pointer :: u_interface(:) => null(), u_i_plus_1(:) => null(), u_i_minus_1(:) => null(), u_i(:) => null()
     real(double), pointer :: flux_i(:) => null(), flux_i_plus_1(:) => null(), flux_i_minus_1(:) => null()
     real(double), pointer :: phiLimit(:) => null(), rLimit(:) => null()
     logical, pointer :: ghostCell(:) => null(), feederCell(:) => null(), corner(:) => null()

@@ -362,7 +362,7 @@ contains
                 rVec = source(isource)%position - cen
                 r = modulus(rVec)
                 source(iSource)%force = source(iSource)%force - &
-                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * dV / (1.d20*r**2 + eps**2)) * (rVec/r)
+                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * r * 1.d10 * dV / (1.d20*r**2 + eps**2)**1.5d0) * (rVec/r)
                 
              else
                 massSub  = (thisOctal%rho(subcell)*dv)/dble(nSub**3)
@@ -375,7 +375,7 @@ contains
                          rVec = source(isource)%position - pos
                          r = modulus(rVec)
                          source(iSource)%force = source(iSource)%force - &
-                              (bigG*source(isource)%mass*massSub / (1.d20*r**2 + eps**2)) * (rVec/r)
+                              (bigG*source(isource)%mass*massSub * r * 1.d10 / (1.d20*r**2 + eps**2)**1.5d0) * (rVec/r)
                       enddo
                    enddo
                 enddo
@@ -468,11 +468,8 @@ contains
           do iSource = 1, nSource
              rVec = cen - source(isource)%position
              r = modulus(rVec)
-!             thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) - &
-!                  (bigG*source(isource)%mass/ (max(r*1.d10,eps*1.d10)))
-             thisPhi = bigG*source(isource)%mass*(1.d0/(eps*1.d10)) * (atan(r/eps) - piby2)
+             thisPhi =  -(bigG*source(isource)%mass/ (1.d10*sqrt(r**2 + eps**2)))
              thisOctal%phi_stars(subcell) = thisOctal%phi_stars(subcell) + thisPhi
-!             write(*,*) thisPhi, -(bigG*source(isource)%mass/ (max(r*1.d10,eps*1.d10)))
           enddo
        endif
     enddo
@@ -515,9 +512,9 @@ contains
              if (r /= 0.d0) then
                 rHat = rVec/r
                 if (donBodyOnly) then
-                   source(i)%force = source(i)%force + (source(i)%mass*source(j)%mass / (r**2 + eps**2)) * rHat
+                   source(i)%force = source(i)%force + (source(i)%mass*source(j)%mass*r/ (r**2 + eps**2)**1.5d0) * rHat
                 else
-                   source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass / ( 1.d20*r**2 + eps**2)) * rHat
+                   source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass * r *1.d10 / ( 1.d20*r**2 + eps**2)**1.5d0) * rHat
                 endif
 !                if ((r/eps < 10.0).and.(writeoutput)) write(*,*) "Gravity softening becoming important"
              endif

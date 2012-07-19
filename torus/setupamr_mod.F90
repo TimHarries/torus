@@ -1491,6 +1491,9 @@ contains
     call findTotalMass(grid%octreeRoot, actualMass)
 
     fac = abs(actualMass-massWanted)/massWanted
+    write(message,'(a,f9.5,a)') "Grid mass is ",actualMass/msol, " solar masses"
+    call writeINFO(message,TRIVIAL)
+
     if (fac > 0.01d0) then
        write(message,'(a,f7.1,a)') "Grid mass differs from required mass by: ",100.d0*fac, " %"
        call writeWarning(message)

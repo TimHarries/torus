@@ -726,7 +726,7 @@ contains
     integer(kind=4)  :: nblocktypes
     REAL(kind=8)     :: r1
     REAL(kind=4)     :: r4
-    integer(kind=8)  :: blocknpart, blocknptmass, blocksum_npart
+    integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
     CHARACTER(len=100) ::  fileident
 
     integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -755,9 +755,10 @@ contains
     write(message,*) "Reading SPH data from "//trim(filename)
     call writeinfo(message, FORINFO)
 
-    open(unit=LUIN, file=filename, form='unformatted', status='old')
+    open(unit=LUIN, file=filename, form='unformatted', status='old', convert="BIG_ENDIAN")
 
     read(LUIN) int1, r1, int2, i1, int1
+    write(*,*) int1,r1,int2,i1,int1
     read(LUIN) fileident
     write(message,*) "fileident=", fileident
     call writeinfo(message, TRIVIAL)
@@ -799,7 +800,8 @@ contains
 
     if (number.ne.nblocktypes*nblocks) then
        write(message,*) "Error in number of block types", number, nblocktypes, nblocks
-       call writeInfo(message,FATAL)
+       call writeFatal(message)
+       stop
     endif
 
     write(message,*) "SPH code units (dist, mass, time): ", udist, umass, utime
@@ -822,14 +824,14 @@ contains
        call writeInfo(message,TRIVIAL)
 
        if (nblocktypes.GE.3) then
-          read(LUIN) blocknptmass, (numsrt(i), i=1,8)
-          write(message,*) "Found RT blocks ", blocknptmass
+          read(LUIN) blocknradtrans, (numsrt(i), i=1,8)
+          write(message,*) "Found RT blocks ", blocknradtrans
           call writeInfo(message,TRIVIAL)
        endif
 
        if (nblocktypes.GE.4) then
-          read(LUIN) blocknptmass, (numsmhd(i), i=1,8)
-	  write(message,*) "Found MHD blocks ", blocknptmass
+          read(LUIN) blocknmhd, (numsmhd(i), i=1,8)
+	  write(message,*) "Found MHD blocks ", blocknmhd
 	  call writeInfo(message,TRIVIAL)
        endif
 
@@ -837,7 +839,7 @@ contains
 
        do j=1,nums(1)-1
           READ (LUIN) (nlistinactive, listinactive(i), i=1,1)
-       END IF
+       END DO
        READ (LUIN) (iphase(i), i=iiigas+1, iiigas+blocknpart)
 
        thisNumGas = 0
@@ -896,7 +898,7 @@ contains
           READ (LUIN)
 	  end do
 
-	  READ (LUIN) (uoverTarray(i),i=1,blocknptmass)
+	  READ (LUIN) (uoverTarray(i),i=1,blocknradtrans)
 
 	  do j = 1, numsrt(6)-3
 	     READ (LUIN)
@@ -975,7 +977,9 @@ contains
 ! If the radiative transfer block exists, set temperatures as u / (u/T)
 	     if (nblocktypes.GE.3) then
 	        if (uoverTarray(i).le.0.0) then
-		   writeInfo("u over T is <=0",FATAL)
+		   call writeFatal("u over T is <=0")
+                   write(*,*) "u over t ",i,uOverTarray(i)
+                   stop
 		endif
 		sphData%temperature(iiigas) = sphData%temperature(iiigas) / uoverTarray(i)
 	     endif

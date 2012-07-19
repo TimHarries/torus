@@ -352,6 +352,8 @@
   real(double) :: lXOverLbol ! ??? Sources for Ttauri geometry
   real(double) :: maxCellMass ! ??? Refinement control for Ttauri geometry
   real(double) :: mStarburst, clusterRadius ! ??? for starburst geometry
+  logical :: hosokawaTracks ! use Hosokawa tracks for protostellar properties
+  logical :: usePacketSplitting ! use photon packet splitting method
   character(len=80) :: intextFilename, outtextFilename ! ??? Fogel geometry
   logical :: doSpiral ! For a Shakara Sunyaev Disc
   type(VECTOR) :: sphereVelocity, spherePosition ! unisphere geometry

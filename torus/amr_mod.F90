@@ -112,6 +112,7 @@ CONTAINS
        if (associated(thisOctal%nh)) thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
        if (associated(thisOctal%ne)) thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
 
+       if (associated(thisOctal%divV)) thisOctal%divV(subcell) = parentOctal%divV(parentSubcell)
        if (associated(thisOctal%rhou)) thisOctal%rhou(subcell) = parentOctal%rhou(parentSubcell)
        if (associated(thisOctal%rhov)) thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
        if (associated(thisOctal%rhow)) thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
@@ -3964,7 +3965,9 @@ CONTAINS
           if ( (abs(thisOctal%zMin) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("gaussian")
-          if (thisOctal%nDepth < maxDepthAMR) split = .true.
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          rVec = subcellCentre(thisOctal, subcell)
+	  if ((abs(rVec%x) < 0.25d0).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("sedov")
           rInner = 0.02d0
@@ -7633,7 +7636,8 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     real(double) :: gamma, ethermal, soundSpeed
-    real(double) :: rho0, r0, n
+    real(double) :: rho0, r0, n, mdot, lambda, r
+    logical, save :: firstTime = .true.
 
     gamma = 7.d0/5.d0
     rho0 = 1.0d0
@@ -7644,7 +7648,7 @@ endif
     rVec = subcellCentre(thisOctal, subcell)
 
     thisOctal%temperature(subcell) = 10.d0
-    thisOCtal%rho(subcell) = 1.d-25
+    thisOCtal%rho(subcell) = 1.d-23
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
 
     soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
@@ -7656,10 +7660,21 @@ endif
     thisOctal%iEquationOfState(subcell) = 1
 
     inflowPressure = thisOctal%pressure_i(subcell)
-    inflowRho = 1.d-25
+    inflowRho = 1.d-23
     inflowMomentum = inflowRho * inflowSpeed
     inflowEnergy = thisOctal%energy(subcell)
     inflowRhoE = inflowEnergy * inflowRho
+    if (firstTime) then
+       if (writeoutput) then
+          mdot = fourpi * bigG**2 * msol**2 * Inflowrho
+          lambda = 1.12d0
+          mdot = mdot * ((lambda**2 * soundSpeed**2 + inflowSpeed**2)/(soundspeed**2 + inflowSpeed**2)**4)**0.5d0
+          write(*,*) "Expected mass accretion rate is ",(mDot/msol)*365.25d0*24.d0*3600.d0, " solar masses/year"
+          r = bigG * msol / (soundSpeed**2)
+          write(*,*) "Bondi radius is ",r
+       endif
+       firstTime = .false.
+    endif
 
   end subroutine calcBondiHoyleDensity
 
@@ -8761,7 +8776,7 @@ end function readparameterfrom2dmap
     rVec = subcellCentre(thisOctal, subcell)
     x = rVec%x
     z = rVec%z
-    gd = 0.5d0
+    gd = 0.1d0
     if(thisOctal%twoD) then
        thisOctal%rho(subcell) =1.d0 + 0.3d0 * exp(-(((x-0.5d0)**2 + (z-0.5d0)**2))/gd**2)
     else if (thisOctal%oneD) then
@@ -9003,7 +9018,7 @@ end function readparameterfrom2dmap
  !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
  !      endif
     else
-       thisOctal%velocity = VECTOR(0.,0.,0.)
+       thisOctal%velocity(Subcell) = VECTOR(0.,0.,0.)
     endif
 
     if (molecular) then
@@ -9012,8 +9027,13 @@ end function readparameterfrom2dmap
     endif
 
     if (hydrodynamics) then
+       r = sqrt(rVec%x**2 + rVec%y**2)
+       if (r > rOuter*0.9d0) then
+          thisOctal%rho(subcell) = thisOctal%rho(subcell) * exp(-(r-rOuter*0.9d0)/(0.01d0*rOuter))
+       endif
+
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
-       thisOctal%temperature(subcell) = real((1.d-15*10.d0)/thisOCtal%rho(subcell))
+       thisOctal%temperature(subcell) = 10. !real((1.d-15*10.d0)/thisOCtal%rho(subcell))
        thisOctal%velocity(subcell) = keplerianVelocity(rvec)
        thisOctal%boundaryCondition(subcell) = 4
        thisOctal%iEquationOfState(subcell) = 1
@@ -9785,6 +9805,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%pressure_i_plus_1, source%pressure_i_plus_1)
 
     call copyAttribute(dest%u_interface, source%u_interface)
+    call copyAttribute(dest%u_i, source%u_i)
     call copyAttribute(dest%u_i_plus_1, source%u_i_plus_1)
     call copyAttribute(dest%u_i_minus_1, source%u_i_minus_1)
     call copyAttribute(dest%rLimit, source%rLimit)
@@ -9794,6 +9815,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%edgeCell, source%edgeCell)
     call copyAttribute(dest%feederCell, source%feederCell)
     call copyAttribute(dest%energy, source%energy)
+    call copyAttribute(dest%divV, source%divV)
     call copyAttribute(dest%rhou, source%rhou)
     call copyAttribute(dest%rhov, source%rhov)
     call copyAttribute(dest%rhow, source%rhow)
@@ -13759,6 +13781,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%x_i_minus_2,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_minus_1,thisOctal%maxchildren)
 
@@ -13780,6 +13803,8 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%pressure_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%pressure_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%pressure_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%divV,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%rhou,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%rhov,thisOctal%maxchildren)
@@ -13911,6 +13936,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%x_i_minus_1)
     call deallocateAttribute(thisOctal%x_i_minus_2)
     call deallocateAttribute(thisOctal%u_interface)
+    call deallocateAttribute(thisOctal%u_i)
     call deallocateAttribute(thisOctal%u_i_plus_1)
     call deallocateAttribute(thisOctal%u_i_minus_1)
     call deallocateAttribute(thisOctal%flux_i)
@@ -13923,6 +13949,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%corner)
     call deallocateAttribute(thisOctal%edgeCell)
     call deallocateAttribute(thisOctal%refinedLastTime)
+    call deallocateAttribute(thisOctal%divV)
     call deallocateAttribute(thisOctal%rhou)
     call deallocateAttribute(thisOctal%rhov)
     call deallocateAttribute(thisOctal%rhow)

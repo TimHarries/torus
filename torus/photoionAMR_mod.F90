@@ -10,6 +10,7 @@ use messages_mod
 use parallel_mod
 use photoion_utils_mod
 use gridio_mod
+use viscosity_mod
 use source_mod
 use timing
 use image_mod
@@ -59,6 +60,7 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
+    use inputs_mod, only : addSinkParticles
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -67,10 +69,10 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource
+         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity
+    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -301,7 +303,7 @@ contains
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call resetnh(grid%octreeRoot)
-                if (nbodyPhysics) then
+                if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
@@ -310,7 +312,7 @@ contains
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
-                if (nbodyPhysics) then
+                if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
@@ -455,7 +457,9 @@ contains
           if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, &
                globalsourceArray, gasSourceDt)
           if (radiationPressure) call radpressureTimeStep(grid%octreeRoot, raddt)
-          call pressureGradientTimeStep(grid, pressureDt)
+          call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+          call computeDivV(grid%octreeRoot, grid)
+          call pressureGradientTimeStep(grid, pressureDt, nPairs, thread1, thread2, nBound, group, nGroup)
           if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
           endif
@@ -570,7 +574,7 @@ contains
 !          if (grid%geometry == "sphere") &
 !               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
-                if (nbodyPhysics) then
+                if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
@@ -640,7 +644,7 @@ contains
 
 !add/merge sink particles where necessary
        if (myrankGlobal /= 0) then
-          if (nbodyPhysics) call addSinks(grid, globalsourceArray, globalnSource)       
+          if (nbodyPhysics.and.addSinkParticles) call addSinks(grid, globalsourceArray, globalnSource)       
           if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
           do i = 1, globalnSource
              call emptySurface(globalsourceArray(i)%surface)
@@ -772,7 +776,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest
-    use inputs_mod, only : resetDiffusion
+    use inputs_mod, only : resetDiffusion, usePacketSplitting
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
@@ -1287,7 +1291,7 @@ end subroutine radiationHydro
 
     call mpi_allreduce(sourceInThickCell, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
     sourceInThickCell = tempLogical
-    if (sourceInThickCell) then
+    if (sourceInThickCell.and.usePacketSplitting) then
        nSmallPackets = 100
        smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
     endif
@@ -1361,8 +1365,12 @@ end subroutine radiationHydro
              mainloop: do iMonte = iMonte_beg, iMonte_end
                    if ((myHydroSetGlobal == 0).and.&
                         (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
+!                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
+!                   write(*,*) myHydroSetGlobal, " imonte ",imonte
+!                endif
                    if (iMonte == nThreadMonte) then
                       lastPhoton = .true.
+!                      write(*,*) myrankGlobal, " doing last photon"
                    else
                       lastPhoton = .false.
                    endif
@@ -2501,7 +2509,7 @@ end subroutine radiationHydro
      maxDeltaT = -1.d30
      undersampled = .false.
      if (myRankGlobal /=0 ) then
-        call findMaxFracTempChangeAndUndersampled(thisOctal, maxDeltaT, undersampled)
+        call findMaxFracTempChangeAndUndersampled(grid%octreeRoot, maxDeltaT, undersampled)
      endif
      call MPI_ALLREDUCE(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
      maxDeltaT = tempDouble
@@ -2744,7 +2752,7 @@ end subroutine radiationHydro
         deallocate(buffer)
      endif
   enddo
-
+!  write(*,*) "set ",myHydroSetGlobal, " has converged ",niter,maxiter, maxdeltaT
 
  call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -3272,7 +3280,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-
           frac = max(abs(dble(thisOctal%temperature(subcell)) - &
                thisOctal%TlastIter(subcell))/dble(thisOctal%temperature(subcell)), frac)
           thisOctal%tLastIter(subcell) = thisOctal%temperature(subcell)
@@ -7191,7 +7198,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           if (.not.thisoctal%ghostcell(subcell)) then
 
              dv = cellVolume(thisOctal, subcell)*1.d30
-             dx = thisoctal%subcellsize * griddistancescale 
+             dx = thisoctal%subcellsize * griddistancescale
+             if (.not.associated(thisOctal%kappaTimesFlux)) then
+                allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
+                thisOctal%kappaTimesFlux = VECTOR(0.d0,0.d0,0.d0)
+             endif
              acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%kappaTimesFlux(subcell)/cSpeed)
              acc = max(1.d-30, acc)
              dt = min(dt, sqrt(2.d0*dx/acc))

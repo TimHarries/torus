@@ -44,7 +44,7 @@ contains
     use blob_mod, only : blobtype
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
-    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename
+    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -299,6 +299,7 @@ contains
           do i = 1, nImage
              nlambda = 1
              lambdaImage = getImageWavelength(i)
+             lambdatau = lambdaimage
              call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
