@@ -755,7 +755,11 @@ contains
     write(message,*) "Reading SPH data from "//trim(filename)
     call writeinfo(message, FORINFO)
 
-    open(unit=LUIN, file=filename, form='unformatted', status='old', convert="BIG_ENDIAN")
+! ifort and gfortran can specify endian conversion in the open statment e.g.
+!    open(unit=LUIN, file=filename, form='unformatted', status='old', convert="BIG_ENDIAN")
+! but this is not standard and not supported by some compilers so use the appropriate 
+! environement variable instead (F_UFMTENDIAN for ifort)
+    open(unit=LUIN, file=filename, form='unformatted', status='old')
 
     read(LUIN) int1, r1, int2, i1, int1
     write(*,*) int1,r1,int2,i1,int1
@@ -826,18 +830,18 @@ contains
        if (nblocktypes.GE.3) then
           read(LUIN) blocknradtrans, (numsrt(i), i=1,8)
           write(message,*) "Found RT blocks ", blocknradtrans
-	  if (blocknradtrans.ne.blocknpart) then
-	     write (message,*) "blocknradtrans.ne.blocknpart ",blocknradtrans,blocknpart
-	     call writeFatal(message)
-	     stop
-	  endif
+          if (blocknradtrans.ne.blocknpart) then
+             write (message,*) "blocknradtrans.ne.blocknpart ",blocknradtrans,blocknpart
+             call writeFatal(message)
+             stop
+          endif
           call writeInfo(message,TRIVIAL)
        endif
 
        if (nblocktypes.GE.4) then
           read(LUIN) blocknmhd, (numsmhd(i), i=1,8)
-	  write(message,*) "Found MHD blocks ", blocknmhd
-	  call writeInfo(message,TRIVIAL)
+          write(message,*) "Found MHD blocks ", blocknmhd
+          call writeInfo(message,TRIVIAL)
        endif
 
        READ (LUIN) (isteps(i), i=iiigas+1, iiigas+blocknpart)
@@ -897,24 +901,24 @@ contains
 
        if (nblocktypes.GE.3) then
           call writeInfo ("Reading RT data")
-	  do j=1,2
-          READ (LUIN)
-	  end do
+          do j=1,2
+             READ (LUIN)
+          end do
 
-	  READ (LUIN) (uoverTarray(i),i=iiigas+1,iiigas+blocknpart)
+          READ (LUIN) (uoverTarray(i),i=iiigas+1,iiigas+blocknpart)
 
-	  do j = 1, numsrt(6)-3
-	     READ (LUIN)
-	  end do
+          do j = 1, numsrt(6)-3
+             READ (LUIN)
+          end do
           call writeInfo ("Read RT data")
        endif
 
        if (nblocktypes.GE.4) then
           call writeInfo ("Reading MHD data")
-       	  do i=1,8
-	     do j=1,nums(i)
-	     	READ (LUIN)
-	     end do
+          do i=1,8
+             do j=1,nums(i)
+                READ (LUIN)
+             end do
           end do
           call writeInfo ("Read MHD data")
        endif
@@ -977,17 +981,17 @@ contains
              sphdata%vxn(iiigas)         = vxyzu(1,i)
              sphdata%vyn(iiigas)         = vxyzu(2,i)
              sphdata%vzn(iiigas)         = vxyzu(3,i)
-	     sphData%temperature(iiigas) = vxyzu(4,i)
+             sphData%temperature(iiigas) = vxyzu(4,i)
 
 ! If the radiative transfer block exists, set temperatures as u / (u/T)
-	     if (nblocktypes.GE.3) then
-	        if (uoverTarray(i).le.0.0) then
-		   call writeFatal("u over T is <=0")
+             if (nblocktypes.GE.3) then
+                if (uoverTarray(i).le.0.0) then
+                   call writeFatal("u over T is <=0")
                    write(*,*) "u over t ",i,uOverTarray(i)
                    stop
-		endif
-		sphData%temperature(iiigas) = sphData%temperature(iiigas) / uoverTarray(i)
-	     endif
+                endif
+                sphData%temperature(iiigas) = sphData%temperature(iiigas) / uoverTarray(i)
+             endif
 
              sphData%xn(iiigas)          = xyzmh(1,i)
              sphData%yn(iiigas)          = xyzmh(2,i)
