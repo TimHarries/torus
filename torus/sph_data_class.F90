@@ -828,7 +828,7 @@ contains
           write(message,*) "Found RT blocks ", blocknradtrans
 	  if (blocknradtrans.ne.blocknpart) then
 	     write (message,*) "blocknradtrans.ne.blocknpart ",blocknradtrans,blocknpart
-	     writeFatal(message)
+	     call writeFatal(message)
 	     stop
 	  endif
           call writeInfo(message,TRIVIAL)
