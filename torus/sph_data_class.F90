@@ -715,7 +715,7 @@ contains
 
     integer(kind=8) :: iiigas, irejected, irequired, i, j
     integer :: iblock ! MPI block number
-    integer :: nums(8), numssink(8)
+    integer :: nums(8), numssink(8), numsrt(8), numsmhd(8)
 
     real(double) :: udist, umass, utime
     real(double) :: time
@@ -723,6 +723,7 @@ contains
 
     INTEGER(kind=4)  :: int1, int2, i1
     integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
+    integer(kind=4)  :: nblocktypes
     REAL(kind=8)     :: r1
     REAL(kind=4)     :: r4
     integer(kind=8)  :: blocknpart, blocknptmass, blocksum_npart
@@ -734,6 +735,7 @@ contains
     integer, allocatable         :: isteps(:)
     real(kind=8), allocatable    :: xyzmh(:,:)
     real(kind=8), allocatable    :: vxyzu(:,:)
+    real(kind=8), allocatable    :: uoverTarray(:)
     real(kind=4), allocatable    :: rho(:)
 
     integer,allocatable :: listpm(:)
@@ -777,6 +779,7 @@ contains
     allocate( iphase(npart) )
     allocate( xyzmh(5,npart))
     allocate( vxyzu(4,npart))
+    allocate( uoverTarray(npart))
     allocate( rho(npart)    )
 
     do i=1,6
@@ -791,6 +794,13 @@ contains
     read(LUIN)
     read(LUIN) udist, umass, utime
     read(LUIN) number
+
+    nblocktypes = number/nblocks
+
+    if (number.ne.nblocktypes*nblocks) then
+       write(message,*) "Error in number of block types", number, nblocktypes, nblocks
+       call writeInfo(message,FATAL)
+    endif
 
     write(message,*) "SPH code units (dist, mass, time): ", udist, umass, utime
     call writeInfo(message,TRIVIAL)
@@ -811,9 +821,21 @@ contains
        write(message,*) "This block has nptmass=", blocknptmass
        call writeInfo(message,TRIVIAL)
 
+       if (nblocktypes.GE.3) then
+          read(LUIN) blocknptmass, (numsrt(i), i=1,8)
+          write(message,*) "Found RT blocks ", blocknptmass
+          call writeInfo(message,TRIVIAL)
+       endif
+
+       if (nblocktypes.GE.4) then
+          read(LUIN) blocknptmass, (numsmhd(i), i=1,8)
+	  write(message,*) "Found MHD blocks ", blocknptmass
+	  call writeInfo(message,TRIVIAL)
+       endif
+
        READ (LUIN) (isteps(i), i=iiigas+1, iiigas+blocknpart)
 
-       IF (nums(1).GE.2) THEN
+       do j=1,nums(1)-1
           READ (LUIN) (nlistinactive, listinactive(i), i=1,1)
        END IF
        READ (LUIN) (iphase(i), i=iiigas+1, iiigas+blocknpart)
@@ -833,6 +855,10 @@ contains
 
        do j=1,4
           read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+
+       do j=1,nums(6)-9
+          READ (LUIN)
        end do
 
        read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
@@ -863,6 +889,30 @@ contains
        DO i = 1, numssink(8)
           READ (LUIN)
        END DO
+
+       if (nblocktypes.GE.3) then
+          call writeInfo ("Reading RT data")
+	  do j=1,2
+          READ (LUIN)
+	  end do
+
+	  READ (LUIN) (uoverTarray(i),i=1,blocknptmass)
+
+	  do j = 1, numsrt(6)-3
+	     READ (LUIN)
+	  end do
+          call writeInfo ("Read RT data")
+       endif
+
+       if (nblocktypes.GE.4) then
+          call writeInfo ("Reading MHD data")
+       	  do i=1,8
+	     do j=1,nums(i)
+	     	READ (LUIN)
+	     end do
+          end do
+          call writeInfo ("Read MHD data")
+       endif
 
     end do mpi_blocks
 
@@ -900,7 +950,12 @@ contains
     call init_sph_data(udist, umass, utime, time, nptmass)
     sphData%useSphTem = .true. 
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
-    sphdata%codeEnergytoTemperature = (2.0/3.0) * (gmw / Rgas) * ( (udist**2)/(utime**2) )
+
+    if (nblocktypes.GE.3) then
+       sphdata%codeEnergytoTemperature = 1.0
+    else
+       sphdata%codeEnergytoTemperature = (2.0/3.0) * (gmw / Rgas) * ( (udist**2)/(utime**2) )
+    endif
 
     iiigas=0
 ! This loop needs to be over all the particles read in
@@ -915,8 +970,16 @@ contains
              sphdata%vxn(iiigas)         = vxyzu(1,i)
              sphdata%vyn(iiigas)         = vxyzu(2,i)
              sphdata%vzn(iiigas)         = vxyzu(3,i)
-             sphData%temperature(iiigas) = vxyzu(4,i)
-          
+	     sphData%temperature(iiigas) = vxyzu(4,i)
+
+! If the radiative transfer block exists, set temperatures as u / (u/T)
+	     if (nblocktypes.GE.3) then
+	        if (uoverTarray(i).le.0.0) then
+		   writeInfo("u over T is <=0",FATAL)
+		endif
+		sphData%temperature(iiigas) = sphData%temperature(iiigas) / uoverTarray(i)
+	     endif
+
              sphData%xn(iiigas)          = xyzmh(1,i)
              sphData%yn(iiigas)          = xyzmh(2,i)
              sphData%zn(iiigas)          = xyzmh(3,i)
@@ -954,6 +1017,7 @@ contains
     deallocate(rho)
     deallocate(vxyzu)
     deallocate(xyzmh)
+    deallocate(uoverTarray)
     deallocate(iphase)
     deallocate(isteps)
 
