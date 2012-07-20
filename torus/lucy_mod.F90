@@ -505,7 +505,7 @@ contains
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
                       If (escaped) then
-		      !$OMP ATOMIC
+                         !$OMP ATOMIC
                          nInf = nInf + 1
                       endif
 
