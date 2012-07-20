@@ -3967,7 +3967,7 @@ CONTAINS
        case("gaussian")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           rVec = subcellCentre(thisOctal, subcell)
-	  if ((abs(rVec%x) < 0.25d0).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          if ((abs(rVec%x) < 0.25d0).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("sedov")
           rInner = 0.02d0
@@ -8945,7 +8945,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, h, rd, ethermal
+    real(double) :: r, h, rd, ethermal
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum

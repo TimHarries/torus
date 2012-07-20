@@ -331,7 +331,6 @@ contains
 
 
   recursive subroutine recursiveForceFromGas(thisOctal, source, nSource, eps)
-    use amr_utils_mod, only : inSubcell
     type(OCTAL), pointer :: thisOctal, child
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -357,7 +356,6 @@ contains
           cen = subcellCentre(thisOctal, subcell)
           dv = cellVolume(thisOctal, subcell)*1.d30
           do iSource = 1, nSource
-!             if (.not.inSubcell(thisOctal, subcell, source(isource)%position)) then
              if (modulus(cen - source(iSource)%position) > 2.d0*thisOctal%subcellSize) then
                 rVec = source(isource)%position - cen
                 r = modulus(rVec)
