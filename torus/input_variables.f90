@@ -334,6 +334,7 @@
   logical :: freefreeSed   !include free-free emission in SED
   logical :: recombinationSed   !include recombination line emission in SED
   logical :: forbiddenSed   !include forbidden line emission in SED
+  logical :: resolveSilicateFeature ! add points to SED to full resolve silicate feature
 
 !--------------------------------
 ! Image and data cube parameters 

@@ -278,6 +278,9 @@ contains
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
+          do i =1 , nLambda
+             write(*,*) i,xArray(i)
+          enddo
 #ifdef PHOTOION
           if(postsublimate) then
              call writeInfo("Sublimating dust")

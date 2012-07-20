@@ -937,7 +937,7 @@ contains
           end do
        else
 
-          thisOctal%DustTypeFraction(subcell,:) = 1.d-30
+          thisOctal%DustTypeFraction(subcell,:) = 1.d-10
           rVec = subcellCentre(thisOctal, subcell)
           r = sqrt(rVec%x**2+rVec%y**2)
           z = rVec%z

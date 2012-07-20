@@ -2409,6 +2409,8 @@ contains
             "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
+    call getLogical("resolvesilicate", resolveSilicateFeature, cLine, fLine, nLines, &
+         "Add wavelength points to resolve silicate feature in SED: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("freefreesed", freefreeSED, cLine, fLine, nLines, &
          "Include free-free emission in SED: ","(a,1l,1x,a)", .false., ok, .false.)

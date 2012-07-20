@@ -505,6 +505,7 @@ contains
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
                       If (escaped) then
+		      !$OMP ATOMIC
                          nInf = nInf + 1
                       endif
 
@@ -1202,8 +1203,10 @@ contains
           do while(.not.escaped)
 
              call toNextEvent(grid, rVec, uHat, packetWeight, escaped, distanceGrid, thisFreq, nLambda, lamArray)
-             if (escaped) nInf = nInf + 1
-
+             if (escaped) then
+!$OMP ATOMIC
+                nInf = nInf + 1
+             endif
              if (.not. escaped) then
 
                 thisLam = (cSpeed / thisFreq) * 1.e8

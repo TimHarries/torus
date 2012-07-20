@@ -527,7 +527,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
-     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv
+     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
@@ -554,8 +554,11 @@ contains
               nLambda = 200
            end if
 
-
-           allocate(xarray(1:nLambda))
+           if (.not.resolveSilicateFeature) then
+              allocate(xarray(1:nLambda))
+           else
+              allocate(xarray(1:nLambda+40))
+           endif
            
            if ( present(lamMin) ) then 
               lamStart = lamMin
@@ -581,6 +584,20 @@ contains
            if (lamFile) then
               call setupLamFile
            endif
+           
+           if (resolveSilicateFeature) then
+              nt = 20
+              do i = 1, nt
+                 xArray(i+nLambda) = (7.d0 + 7.d0*(dble(i-1)/dble(nt-1)))*1.d4
+              enddo
+              nLambda = nLambda + nt
+              do i = 1, nt
+                 xArray(i+nlambda) = (15.d0 + 20.d0*(dble(i-1)/dble(nt-1)))*1.d4
+              enddo
+              nLambda = nLambda + nt
+              call sort(nLambda, xArray)
+           endif
+
         endif
      endif
      
