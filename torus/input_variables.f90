@@ -322,6 +322,8 @@
   real :: qDist(maxDustTypes)   !  q exponet in the equation above.
   real :: a0(maxDustTypes)      !  scale length in the equation above.
   real :: pDist(maxDustTypes)   !  p exponent in the equation above.
+  real(double) :: dustHeight(maxDustTypes)   !  p exponent in the equation above.
+  real(double) :: dustBeta(maxDustTypes)   !  p exponent in the equation above.
 
 !------------------------------
 ! Inclinations for SEDs/images 

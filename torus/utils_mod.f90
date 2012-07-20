@@ -719,7 +719,7 @@ contains
   SUBROUTINE SPLINE_SINGLE(X,Y,N,YP1,YPN,Y2)
     INTEGER NMAX,N, I, K
     REAL SIG, P, QN, UN
-    PARAMETER (NMAX=1000)
+    PARAMETER (NMAX=10000)
     REAL X(:),Y(:),Y2(:),U(NMAX),YP1,YPN
     IF (YP1.GT..99E30) THEN
        Y2(1)=0.
@@ -780,7 +780,7 @@ contains
   subroutine spline_double(x,y,n,yp1,ypn,y2)
     integer :: n
     real(double) :: yp1, ypn, x(:), y(:), y2(:)
-    integer, parameter :: nmax=500
+    integer, parameter :: nmax=5000
     integer :: i, k
     real(double) :: p, qn, sig, un, u(nmax)
 

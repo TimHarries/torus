@@ -4,7 +4,7 @@ module dust_mod
   use messages_mod
   use vector_mod
   use gridtype_mod, only: GRIDTYPE
-  use utils_mod, only: locate
+  use utils_mod, only: locate, spline, splint
   use octal_mod, only: OCTAL, subcellCentre
   use amr_mod, only: amrGridValues, returnKappa
   use mpi_global_mod
@@ -260,11 +260,12 @@ contains
     integer :: nLambda, nRef
     real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
     real(double) :: dydx
-    integer :: i,j 
-    real :: t
+    integer :: i, n, j
     character(len=*), intent(in) :: graintype
     character(len=200) :: filename, dataDirectory
-    real :: mReal(:), mImg(:)
+    character(len=100) :: textline
+    real :: mReal(:), mImg(:), y2a(5000), x(5000), y1(5000,3), y2(5000,3)
+    logical :: firstTime = .true.
     dataDirectory = " "
     select case(graintype)
     case("sil_ow")
@@ -358,6 +359,123 @@ contains
        enddo
        close(20)
 
+    case("am_olivine")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"am_olivine.txt"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+31     continue
+       read(20,'(a)',end=32) textline
+       if (textLine(1:1) == "#") goto 31
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 31
+32     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
+
+
+    case("am_pyroxene")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"am_pyroxene.txt"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+41     continue
+       read(20,'(a)',end=42) textline
+       if (textLine(1:1) == "#") goto 41
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 41
+42     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
+
+    case("forsterite")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       do j = 1, 3
+          write(filename,'(a,i1.1,a)') trim(dataDirectory)//"/"//"forsterite",j,".txt"
+          if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+          open(20,file=filename,status="old",form="formatted")
+          n = 0
+51        continue
+          read(20,'(a)',end=52) textline
+          if (textLine(1:1) == "#") goto 51
+          n = n + 1
+          read(textline,*) x(n),y1(n,j), y2(n,j)
+          goto 51
+52        continue
+          nRef = n
+          close(20)
+       enddo
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = (y1(1:n,1)+y1(1:n,2)+y1(1:n,3))/3.d0
+       tempIm(1:nRef) =  (y2(1:n,1)+y2(1:n,2)+y2(1:n,3))/3.d0
+
+    case("enstatite")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       do j = 1, 3
+          write(filename,'(a,i1.1,a)') trim(dataDirectory)//"/"//"enstatite",j,".txt"
+          if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+          open(20,file=filename,status="old",form="formatted")
+          n = 0
+61        continue
+          read(20,'(a)',end=62) textline
+          if (textLine(1:1) == "#") goto 61
+          n = n + 1
+          read(textline,*) x(n),y1(n,j), y2(n,j)
+          goto 61
+62        continue
+          nRef = n
+          close(20)
+       enddo
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = (y1(1:n,1)+y1(1:n,2)+y1(1:n,3))/3.d0
+       tempIm(1:nRef) =  (y2(1:n,1)+y2(1:n,2)+y2(1:n,3))/3.d0
+
+    case("sio2")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"sio2.txt"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+71     continue
+       read(20,'(a)',end=72) textline
+       if (textLine(1:1) == "#") goto 71
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 71
+72     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
+
+
+
     case("pinteISM")
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        filename = trim(dataDirectory)//"/"//"pinteISM.dust"
@@ -377,18 +495,31 @@ contains
        stop
     end select
 
+    firstTime = .true.
     do i = 1, nLambda 
        if (lambda(i)*real(angsToMicrons) < lamRef(1)) then
           mReal(i) = tempReal(1)
           mImg(i) = tempIm(1)
        elseif (((lambda(i)*real(angsToMicrons)) >= lamRef(1)) .and. &
             (lambda(i)*real(angsToMicrons) <= lamRef(nRef))) then
-          call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
-          t = real((lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j)))
-          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
-          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+
+
+          call spline(lamRef, tempReal, nRef, 1.e30, 1.e30, y2a)
+          call splint(lamRef, tempReal, y2a, nRef, real(lambda(i)*angsToMicrons), mReal(i))
+
+          call spline(lamRef, tempIm, nRef, 1.e30, 1.e30, y2a)
+          call splint(lamRef, tempIm, y2a, nRef, real(lambda(i)*angsToMicrons), mImg(i))
+
+
+!          call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
+!          t = real((lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j)))
+!          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
+!          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
        else
-          call writeWarning("Extrapolating grain properties")
+          if (firstTime) then
+             call writeWarning("Extrapolating grain properties")
+             firstTime = .false.
+          endif
           dydx = (log10(tempReal(nref)) - log10(tempReal(nRef-1))) / &
                (log10(lamRef(nref))-log10(lamRef(nRef-1)))
           mReal(i) = real(log10(tempReal(nref)) + dydx * &
@@ -735,47 +866,6 @@ contains
 
   end subroutine dustPropertiesfromFile
 
-  recursive subroutine fillDustShakara(grid, thisOctal)
-
-    use inputs_mod, only : rInner, rOuter
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    type(VECTOR) :: rVec
-    real :: x, z
-    real :: height
-    real(double) :: fac
-    integer :: subcell, i
-    height = 0.d0
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call fillDustShakara(grid, child)
-                exit
-             end if
-          end do
-       else
-
-          thisOctal%DustTypeFraction(subcell,1:2) = 0.d0
-          thisOctal%DustTypeFraction(subcell,1) = 1.d0
-          rVec = subcellCentre(thisOctal, subcell)
-          x = real(rVec%x)
-          z = real(rVec%z)
-          if ( (x > rInner).and.(x < rOuter)) then
-             call returnScaleHeight(grid, x, height)
-             fac = exp(-abs(z/height))
-             thisOctal%dustTypeFraction(subcell,1) = 1.d0 - fac
-             thisOctal%dustTypeFraction(subcell,2) = fac
-          endif
-
-       end if
-    end do
-
-  end subroutine fillDustShakara
 
   recursive subroutine fillDustUniform(grid, thisOctal)
 
@@ -817,6 +907,114 @@ contains
     end do
 
   end subroutine fillDustUniform
+
+  recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
+
+    use inputs_mod, only : rInner, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, betaDisc
+    use octal_mod, only : cellVolume
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rVec
+    real(double) :: r, z
+    real(double) :: thisheight, gasHeight, dustMass, cellMass
+    real(double) :: fac, tot
+    integer :: subcell, i, iDust
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustShakara(grid, child, dustMass)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%DustTypeFraction(subcell,:) = 1.d-30
+          rVec = subcellCentre(thisOctal, subcell)
+          r = sqrt(rVec%x**2+rVec%y**2)
+          z = rVec%z
+          if ( (r > rInner).and.(r < rOuter)) then
+             tot = 0.d0
+             do iDust = 1, nDustType
+                thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+                gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
+                thisOctal%dustTypeFraction(subcell, iDust) = fac
+                tot = tot + fac
+             enddo
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
+                  grainFrac(1:nDustType)
+             cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+             dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
+
+          endif
+
+       end if
+    end do
+
+  end subroutine fillDustShakara
+
+  recursive subroutine findDustMass(grid, thisOctal, dustmass)
+
+    use inputs_mod, only : nDustType
+    use octal_mod, only : cellVolume
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: dustMass, cellMass
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findDustMass(grid, child, dustMass)
+                exit
+             end if
+          end do
+       else
+
+          cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+          dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
+          
+       endif
+
+    end do
+
+  end subroutine findDustMass
+
+  recursive subroutine normalizeDustFractions(grid, thisOctal, thisDustMass, requiredDustMass)
+
+    use inputs_mod, only : nDustType
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: thisDustMass, requiredDustMass
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call normalizeDustFractions(grid, child, thisDustMass, requiredDustMass)
+                exit
+             end if
+          end do
+       else
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
+               requiredDustMass / thisDustMass
+       end if
+    end do
+
+  end subroutine normalizeDustFractions
 
   recursive subroutine emptyDustCavity(thisOctal, position, radius)
 
@@ -1214,7 +1412,6 @@ contains
 
   subroutine writeDust(dustfile, iDustType, grid, xArray, nLambda, miePhase, nMuMie) 
     use phasematrix_mod, only : phasematrix
-    use inputs_mod, only : dustTogas
     character(len=*) :: dustFile
     type(GRIDTYPE) :: grid
     real :: xarray(:)
@@ -1226,8 +1423,8 @@ contains
        open(22, file=dustfile,status="unknown", form="unformatted")
        write(22) nLambda
        write(22) xArray(1:nLambda)
-       write(22) grid%oneKappaAbs(iDustType, 1:nLambda)/dustTogas
-       write(22) grid%oneKappaSca(iDustType, 1:nLambda)/dustTogas
+       write(22) grid%oneKappaAbs(iDustType, 1:nLambda)
+       write(22) grid%oneKappaSca(iDustType, 1:nLambda)
        write(22) miePhase(iDustType,1:nLambda, 1:nMuMie)
        close(22)
     endif
@@ -1236,7 +1433,6 @@ contains
 
   subroutine readDust(dustfile, iDustType, grid, xArray, nLambda, miePhase, nMuMie)
     use phasematrix_mod, only : phasematrix
-    use inputs_mod, only : dustTogas
     character(len=*) :: dustFile
     type(GRIDTYPE) :: grid
     real :: xarray(:)
@@ -1253,8 +1449,8 @@ contains
 
     read(22) miePhase(iDustType,1:nLambda, 1:nMuMie)
     close(22)
-    grid%oneKappaAbs(iDustType, 1:nLambda) = grid%oneKappaAbs(iDustType, 1:nLambda) * dustTogas    
-    grid%oneKappaSca(iDustType, 1:nLambda) = grid%oneKappaSca(iDustType, 1:nLambda) * dustTogas    
+!    grid%oneKappaAbs(iDustType, 1:nLambda) = grid%oneKappaAbs(iDustType, 1:nLambda) * dustTogas    
+!    grid%oneKappaSca(iDustType, 1:nLambda) = grid%oneKappaSca(iDustType, 1:nLambda) * dustTogas    
 
   end subroutine readDust
 
@@ -1265,7 +1461,7 @@ contains
     use mieDistPhaseMatrix_mod
     use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
-         grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
+         grainname, x_grain, amin, amax, a0, qdist, pdist, scale, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
          ttau_disc_on, grainFrac
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
@@ -1306,15 +1502,11 @@ contains
        allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
 
        if (.not.dustfile) then
-          write(message,'(a,f7.4)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
           call writeInfo(message, FORINFO)
           do i = 1, nDustType
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
              call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                   ngrain, X_grain, grainname, i)
-
-             grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
-             grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
           enddo
        else
           do i = 1, nDustType
@@ -1323,18 +1515,16 @@ contains
           enddo
        endif
        if (writeoutput) then
-          if (dustToGas /= 0.) then
-             open(20, file="albedo.dat", status="unknown", form="formatted")
-             write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
-                  &  kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
-             write(20,*) "# Note that the opacities are per gram of dust"
-             do i = 1, nLambda
-                kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
-                kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10/dusttogas
-                write(20,*) xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
-             enddo
-             close(20)
-          endif
+          open(20, file="albedo.dat", status="unknown", form="formatted")
+          write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
+               &  kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
+          write(20,*) "# Note that the opacities are per gram of dust"
+          do i = 1, nLambda
+             kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10
+             kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10
+             write(20,*) xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
+          enddo
+          close(20)
        endif
 
 
@@ -1557,6 +1747,14 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   real :: density
 
   select case(grainType)
+  case("am_olivine", "am_pyroxene")
+     density = 3.71
+  case("forsterite")
+     density = 3.33
+  case("enstatite")
+     density = 2.8
+  case("sio2")
+     density = 2.21
   case("sil_dl")
      density = 3.6
   case("draine_sil")

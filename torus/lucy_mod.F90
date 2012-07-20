@@ -27,12 +27,13 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
-    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings
+    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings, mDisc, dusttogas
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
-    use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104
+    use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, normalizeDustFractions, &
+         findDustMass
     use random_mod
     use gas_opacity_mod, only: atomhydrogenRayXsection
     use gridio_mod, only: writeAMRgrid
@@ -124,10 +125,11 @@ contains
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
     real(double) :: packetWeight, wavelengthWeight
-    real(double) :: subRadius
+    real(double) :: subRadius, dustMass
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
     integer(bigInt) :: totMem
+    character(len=10) :: stringArray(10)
 #ifdef USEMKL
     integer :: oldmode
     real(oct) :: hrecip_ktarray(nlambda)
@@ -235,7 +237,14 @@ contains
     call writeInfo(message, TRIVIAL)
 
     if (grid%geometry == "shakara") then
-       call fillDustUniform(grid, grid%octreeRoot)
+       dustMass = 0.d0
+       call fillDustShakara(grid, grid%octreeRoot, dustMass)
+       call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
+       dustMass = 0.d0
+       call findDustMass(grid, grid%octreeRoot, dustMass)
+       if (writeOutput) then
+          write(*,*) "Mass of dust in disc (solar masses): ",dustMass/msol
+       endif
     endif
 
 
@@ -268,8 +277,11 @@ contains
        call stripDustAway(grid%octreeRoot, 1.d-7, 1.d30)
     endif
 
-    if (nDustType > 1) then 
-       call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust1","dust2"/))
+    if (nDustType >= 1) then
+       do i = 1, nDustType
+          write(stringArray(i),'(a,i1.1)') "dust",i
+       enddo
+       call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
     endif
 
     nCellsInDiffusion = 0

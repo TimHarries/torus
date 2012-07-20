@@ -452,6 +452,8 @@ contains
     logical :: fLine(:)
     logical :: ok
     logical :: setSubRadius
+    character(len=20) :: heightLabel, betaLabel
+    integer :: i
 
     select case(geometry)
 
@@ -1013,6 +1015,20 @@ contains
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
 
+       call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
+
+       do i = 1, nDustType
+
+
+          write(heightLabel, '(a,i1.1)') "dustheight",i
+          call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
+       
+          write(betaLabel, '(a,i1.1)') "dustbeta",i
+          call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
+               "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
+
+       enddo
 
 !       rCore = rCore * rSol / 1.e10
 !       rinner = (rinner * (rCore * 1e10)) / autocm
@@ -1181,6 +1197,12 @@ contains
 
        oneKappa = .true.
 
+       call writeBanner("Dust parameters","#",TRIVIAL)
+
+
+       call writeBanner("NOTE THAT DUST TO GAS RATIO INFORMATION SHOULD BE PLACED IN GRAINFRAC. ","!",TRIVIAL)
+       call writeBanner("DUSTTOGAS IS NOW USED TO DENOTE THE TOTAL DUST MASS IN THE SYSTEM.","!",TRIVIAL)
+
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
 
@@ -1248,6 +1270,10 @@ contains
              if (.not. readDustFromFile) &
           call getReal(pdistLabel, pdist(i), 1., cLine, fLine, nLines, &
           "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
+
+
+
+
              if (writeoutput) write(*,*)
           enddo
           if (.not. readDustFromFile) &
@@ -1676,7 +1702,7 @@ contains
 
     call getReal("lucy_undersampled", lucy_undersampled, 1., cLine, fLine, nLines, &
          "Minimum percentage of undersampled cell in lucy iteration: ", &
-         "(a,f4.2,a)",0.0,ok,.false.)
+         "(a,f6.1,a)",0.0,ok,.false.)
 
     call getLogical("convergeonundersampled", convergeOnUndersampled, cLine, fLine, nLines, &
          "Prevent convergence when too many cells undersampled: ", "(a,1l,1x,a)", .true., ok, .false.)
@@ -2724,7 +2750,7 @@ endif
     ival = idef
     default = " (default)"
   endif
-  if (musthave.or.(ival /= idef)) then
+  if (ok) then
      write(output,format) trim(message),ival,default
      call writeInfo(output, TRIVIAL)
   endif
@@ -2754,7 +2780,7 @@ endif
     ival = idef
     default = " (default)"
   endif
-  if (musthave.or.(ival /= idef)) then
+  if (ok) then
      write(output,format) trim(message),ival,default
      call writeInfo(output, TRIVIAL)
   endif
@@ -2785,7 +2811,7 @@ end subroutine getBigInteger
     rval = rdef
     default = " (default)"
  endif
- if (musthave) then
+ if (ok) then
    write(output,format) trim(message)//" ",rval,default
     call writeInfo(output, TRIVIAL)
  endif
@@ -2832,7 +2858,7 @@ end subroutine getBigInteger
     dval = ddef
     default = " (default)"
  endif
- if (musthave) then
+ if (ok) then
     write(output,format) trim(message),dval,default
     call writeInfo(output, TRIVIAL)
  endif
@@ -2870,7 +2896,7 @@ end subroutine getBigInteger
     default = " (default)"
  endif
  call convertToTorusUnits(unitString, unitType,  dval)
- if (musthave) then
+ if (ok) then
     write(output,format) trim(message),dval,default
     call writeInfo(output, TRIVIAL)
  endif
@@ -2900,7 +2926,7 @@ end subroutine getBigInteger
     dval = ddef
     default = " (default)"
  endif
- if (musthave) then
+ if (ok) then
     write(output,format) trim(message),dval,default
     call writeInfo(output, TRIVIAL)
  endif
@@ -2932,8 +2958,10 @@ end subroutine getVector
     rval = rdef
     default = " (default)"
   endif
-  write(output,format) trim(message)//" ",trim(rval),default
-  call writeInfo(output, TRIVIAL)
+  if (ok) then
+     write(output,format) trim(message)//" ",trim(rval),default
+     call writeInfo(output, TRIVIAL)
+  endif
  end subroutine getString
 
 
