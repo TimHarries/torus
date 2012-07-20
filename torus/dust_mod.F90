@@ -425,8 +425,8 @@ contains
        allocate(tempIm(1:nRef))
        allocate(tempReal(1:nRef))
        lamRef(1:nRef) = x(1:n)
-       tempReal(1:nRef) = (y1(1:n,1)+y1(1:n,2)+y1(1:n,3))/3.d0
-       tempIm(1:nRef) =  (y2(1:n,1)+y2(1:n,2)+y2(1:n,3))/3.d0
+       tempReal(1:nRef) = (y1(1:n,1)+y1(1:n,2)+y1(1:n,3))/3.0
+       tempIm(1:nRef) =  (y2(1:n,1)+y2(1:n,2)+y2(1:n,3))/3.0
 
     case("enstatite")
        call unixGetenv("TORUS_DATA", dataDirectory, i)
@@ -449,8 +449,8 @@ contains
        allocate(tempIm(1:nRef))
        allocate(tempReal(1:nRef))
        lamRef(1:nRef) = x(1:n)
-       tempReal(1:nRef) = (y1(1:n,1)+y1(1:n,2)+y1(1:n,3))/3.d0
-       tempIm(1:nRef) =  (y2(1:n,1)+y2(1:n,2)+y2(1:n,3))/3.d0
+       tempReal(1:nRef) = (y1(1:n,1)+y1(1:n,2)+y1(1:n,3))/3.0
+       tempIm(1:nRef) =  (y2(1:n,1)+y2(1:n,2)+y2(1:n,3))/3.0
 
     case("sio2")
        call unixGetenv("TORUS_DATA", dataDirectory, i)

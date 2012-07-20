@@ -1839,7 +1839,8 @@ contains
                       biggamma2 = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
                            * thisoctal%rho(subcell)
 
-                      bigGamma = eta**2 * (thisOctal%subcellSize*gridDistancescale)**2 * thisOctal%rho(subcell) * thisOctal%divV(subcell)**2
+                      bigGamma = eta**2 * (thisOctal%subcellSize*gridDistancescale)**2 * &
+                           thisOctal%rho(subcell) * thisOctal%divV(subcell)**2
                    else
                       biggamma = 0.d0
                    endif

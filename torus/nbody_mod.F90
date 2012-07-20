@@ -512,7 +512,8 @@ contains
                 if (donBodyOnly) then
                    source(i)%force = source(i)%force + (source(i)%mass*source(j)%mass*r/ (r**2 + eps**2)**1.5d0) * rHat
                 else
-                   source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass * r *1.d10 / ( 1.d20*r**2 + eps**2)**1.5d0) * rHat
+                   source(i)%force = source(i)%force + (bigG * source(i)%mass*source(j)%mass * r *1.d10 / &
+                        ( 1.d20*r**2 + eps**2)**1.5d0) * rHat
                 endif
 !                if ((r/eps < 10.0).and.(writeoutput)) write(*,*) "Gravity softening becoming important"
              endif
