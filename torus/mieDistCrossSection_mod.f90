@@ -2,7 +2,7 @@ MODULE  mieDistCrossSection_mod
 
   IMPLICIT NONE
 
-  PUBLIC :: mieDistCrossSection, PowerInt
+  PUBLIC :: mieDistCrossSection, PowerInt, mieSingleCrossSection
   PRIVATE
 
   CONTAINS
@@ -88,6 +88,46 @@ MODULE  mieDistCrossSection_mod
 
         kappaabs = kappaext-kappasca                     
       END subroutine mieDistCrossSection
+
+      subroutine mieSingleCrossSection(aMin, lambda, cmr, cmi,               &
+       kappaExt, kappaSca, kappaAbs, gsca)
+
+      use bhmie_mod, only: MXNANG, bhmie
+
+      implicit none
+      real  cmr, cmi, x, kappaExt, kappaAbs, kappaSca
+      real aMin, lambda
+      real, parameter :: pi = 3.14159265358979
+      real qsca, qext, qback, gsca
+      real, parameter :: micronsToCm=1.e-4
+      complex cm
+      real a
+      complex refrel
+      complex s1(2*MXNANG-1),s2(2*MXNANG-1)
+      integer :: nang=2
+      
+!     .........................................
+!     .  set the complex index of refraction  .
+!     .    for an exp(-iwt) time variation    .
+!     .........................................
+      cm = cmplx(cmr,cmi)
+        
+      a = aMin
+      x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
+      x = max(x, 1.e-5)
+      refrel = cmplx(cmr, cmi)
+
+      call BHMIE(X,REFREL,NANG ,S1,S2,QEXT,QSCA,QBACK, GSCA)
+
+      kappaExt = qExt * pi * (a * micronsToCm)**2
+      kappaSca = qSca * pi * (a * micronsToCm)**2
+
+!     ..........................................
+!     .   calculate the absorption efficiency  .
+!     ..........................................
+
+        kappaabs = kappaext-kappasca                     
+      END subroutine mieSingleCrossSection
 
       SUBROUTINE PowerInt(N,N1,N2,x,y,integral)
 ! =======================================================================       

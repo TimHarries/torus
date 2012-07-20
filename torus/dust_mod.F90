@@ -4,7 +4,7 @@ module dust_mod
   use messages_mod
   use vector_mod
   use gridtype_mod, only: GRIDTYPE
-  use utils_mod, only: locate, spline, splint
+  use utils_mod, only: locate!, spline, splint
   use octal_mod, only: OCTAL, subcellCentre
   use amr_mod, only: amrGridValues, returnKappa
   use mpi_global_mod
@@ -264,7 +264,7 @@ contains
     character(len=*), intent(in) :: graintype
     character(len=200) :: filename, dataDirectory
     character(len=100) :: textline
-    real :: mReal(:), mImg(:), y2a(5000), x(5000), y1(5000,3), y2(5000,3)
+    real :: mReal(:), mImg(:), t,  x(5000), y1(5000,3), y2(5000,3)
     logical :: firstTime = .true.
     dataDirectory = " "
     select case(graintype)
@@ -504,17 +504,17 @@ contains
             (lambda(i)*real(angsToMicrons) <= lamRef(nRef))) then
 
 
-          call spline(lamRef, tempReal, nRef, 1.e30, 1.e30, y2a)
-          call splint(lamRef, tempReal, y2a, nRef, real(lambda(i)*angsToMicrons), mReal(i))
+!          call spline(lamRef, tempReal, nRef, 1.e30, 1.e30, y2a)
+!          call splint(lamRef, tempReal, y2a, nRef, real(lambda(i)*angsToMicrons), mReal(i))
 
-          call spline(lamRef, tempIm, nRef, 1.e30, 1.e30, y2a)
-          call splint(lamRef, tempIm, y2a, nRef, real(lambda(i)*angsToMicrons), mImg(i))
+!          call spline(lamRef, tempIm, nRef, 1.e30, 1.e30, y2a)
+!          call splint(lamRef, tempIm, y2a, nRef, real(lambda(i)*angsToMicrons), mImg(i))
 
 
-!          call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
-!          t = real((lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j)))
-!          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
-!          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+          call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
+          t = real((lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j)))
+          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
+          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
        else
           if (firstTime) then
              call writeWarning("Extrapolating grain properties")
@@ -540,7 +540,7 @@ contains
 !DEC$ NOOPTIMIZE
 ! This compiler directive disables optimisation in this subroutine, as  
 ! ifort 12 was incorrectly setting up grid%oneKappaAbs and grid%oneKappaSca. 
-    use mieDistCrossSection_mod, only: mieDistCrossSection
+    use mieDistCrossSection_mod, only: mieDistCrossSection, mieSingleCrossSection
 #ifdef MPI
     use mpi
 #endif
@@ -649,9 +649,13 @@ contains
     !$OMP DO SCHEDULE(DYNAMIC)
     do i = ilam_beg, ilam_end
        do j = 1, ngrain
-          call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
-               mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
-
+          if (aMin /= aMax) then
+             call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+                  mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+          else
+             call mieSingleCrossSection(aMin, grid%lamArray(i), &
+                  mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+          endif
           ! Weighting the cross section according to their abundance...            
           sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
           sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
@@ -1774,31 +1778,36 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   end select
 
 
-  a1 = log(aMin)
-  a2 = log(aMax)
-  !
-  ! setting up the grain sizes
-  do i = 1, n
-     a(i) = (a1 + (a2 - a1) * real(i-1)/real(n-1))
-     a(i) = exp(a(i))
-     f(i) = a(i)**(-qDist) * exp(-(a(i)/a0)**pDist) 
-  end do
-  
-  !
-  ! normalize the dist function
-  call PowerInt(n, 1, n, a, f, normFac)
-  f(:) = f(:)/normFac
-
-  !
-  ! Finding the mean mass now.
-  do i = 1, n
-     vol = real((4./3.)* pi * (a(i)*microntocm)**3)
-     mass(i) = vol * density * f(i)    ! weighted by dist function
-  end do
-  
-  call PowerInt(n, 1, n, a, mass, fac)
-
-  getMeanMass2 = fac
+  if (aMin == aMax) then
+     vol = real((4./3.)* pi * (aMin*microntocm)**3)
+     getMeanMass2 = vol * density 
+  else
+     a1 = log(aMin)
+     a2 = log(aMax)
+     !
+     ! setting up the grain sizes
+     do i = 1, n
+        a(i) = (a1 + (a2 - a1) * real(i-1)/real(n-1))
+        a(i) = exp(a(i))
+        f(i) = a(i)**(-qDist) * exp(-(a(i)/a0)**pDist) 
+     end do
+     
+     !
+     ! normalize the dist function
+     call PowerInt(n, 1, n, a, f, normFac)
+     f(:) = f(:)/normFac
+     
+     !
+     ! Finding the mean mass now.
+     do i = 1, n
+        vol = real((4./3.)* pi * (a(i)*microntocm)**3)
+        mass(i) = vol * density * f(i)    ! weighted by dist function
+     end do
+     
+     call PowerInt(n, 1, n, a, mass, fac)
+     
+     getMeanMass2 = fac
+  endif
 
   !  !
   !  !  For debug

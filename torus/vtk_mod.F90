@@ -2818,6 +2818,15 @@ end subroutine writeXMLVtkFileAMR
                case("dust2")
                   rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,2)))
 
+               case("dust3")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,3)))
+
+               case("dust4")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,4)))
+
+               case("dust5")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,5)))
+
 
                case("q11")
                   rArray(1, n) = real(thisOctal%qViscosity(subcell,1,1))

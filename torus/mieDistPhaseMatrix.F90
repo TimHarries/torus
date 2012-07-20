@@ -195,9 +195,14 @@ contains
       real :: a1, a2
       real :: p
 
+      if (aMin == aMax) then
+         logAmin = log(aMin)
+         logAmax = log(aMax*1.01)
+      else
+         logAmin = log(aMin)
+         logAmax = log(aMax)
+      endif
       aFac = 0.d0
-      logAmin = log(aMin)
-      logAmax = log(aMax)
       p = (logAmax-logAmin)/real(nDist-1)
       do i = 1, nDist-1
 !         a1 = exp(logAmin + p*real(i-1))
