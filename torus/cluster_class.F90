@@ -410,11 +410,11 @@ contains
           ! quick check to see if this gas particle
           ! belongs to this child cell.
           if ( within_subcell(thisOctal, subcell, x, y, z) ) then
-             !$OMP ATOMIC
+!             !$OMP ATOMIC
              k = k+1
              ! add this particle index to this child using
              ! a routine in linked_list_class.f90
-             !$OMP ATOMIC
+!             !$OMP ATOMIC
              thisOctal%child(newChildIndex)%gas_particle_list(k) = j
           end if
        end do
