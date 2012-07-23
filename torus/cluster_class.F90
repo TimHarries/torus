@@ -389,10 +389,10 @@ contains
        udist = get_udist() / 1.0d10  ! [10^10cm]
        
        k=0
-       !$OMP PARALLEL DEFAULT(NONE) &
-       !$OMP PRIVATE(i, j, x, y, z) &
-       !$OMP SHARED(thisOctal, subcell, k, udist, np, newChildindex)
-       !$OMP DO SCHEDULE(DYNAMIC,10)
+!       !$OMP PARALLEL DEFAULT(NONE) &
+!       !$OMP PRIVATE(i, j, x, y, z) &
+!       !$OMP SHARED(thisOctal, subcell, k, udist, np, newChildindex)
+!       !$OMP DO SCHEDULE(DYNAMIC,10)
        do i = 1, np
           ! extract the SPH index of particles in the parent cell.
           j = thisOctal%gas_particle_list(i)
@@ -418,8 +418,8 @@ contains
              thisOctal%child(newChildIndex)%gas_particle_list(k) = j
           end if
        end do
-       !$OMP END DO
-       !$OMP END PARALLEL
+!       !$OMP END DO
+!       !$OMP END PARALLEL
 
     endif
     
@@ -486,11 +486,11 @@ contains
        if ( present(v_min) ) v_min = VECTOR(9.9d99,9.d99,9.d99)
        if ( present(v_max) ) v_max = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
-       !$OMP PARALLEL DEFAULT(NONE) &
-       !$OMP PRIVATE(i, j, x, y, z, this_rho, this_v) &
-       !$OMP SHARED(node, subcell, udist, npart, counter, rho_ave, rho_min, rho_max) &
-       !$OMP SHARED(v_min, v_max, vxmin, vymin, vzmin, vxmax, vymax, vzmax)
-       !$OMP DO SCHEDULE(DYNAMIC,10)
+!       !$OMP PARALLEL DEFAULT(NONE) &
+!       !$OMP PRIVATE(i, j, x, y, z, this_rho, this_v) &
+!       !$OMP SHARED(node, subcell, udist, npart, counter, rho_ave, rho_min, rho_max) &
+!       !$OMP SHARED(v_min, v_max, vxmin, vymin, vzmin, vxmax, vymax, vzmax)
+!       !$OMP DO SCHEDULE(DYNAMIC,10)
        do i=1, npart
           ! Retriving the sph data index for this particle
           j = node%gas_particle_list(i)
@@ -508,7 +508,7 @@ contains
 
           if ( within_subcell(node, subcell, x, y, z) ) then
            
-             !$OMP ATOMIC
+!             !$OMP ATOMIC
              counter = counter + 1
 
              this_rho = get_rhon(j)
@@ -516,10 +516,10 @@ contains
                 this_v =  get_vel(j)
              end if
 
-             !$OMP ATOMIC
+!             !$OMP ATOMIC
              rho_ave = rho_ave + this_rho
 
-             !$OMP CRITICAL
+!             !$OMP CRITICAL
              if ( present(rho_min) ) rho_min = min(this_rho, rho_min)
              if ( present(rho_max) ) rho_max = max(this_rho, rho_max)
              if ( present(v_min) ) then
@@ -532,12 +532,12 @@ contains
                 vymax = max(this_v%y, vymax)
                 vzmax = max(this_v%z, vzmax)
              endif
-             !$OMP END CRITICAL
+!             !$OMP END CRITICAL
           end if
           
        end do
-       !$OMP END DO
-       !$OMP END PARALLEL
+!       !$OMP END DO
+!       !$OMP END PARALLEL
        n = counter
     else
        n = 0
