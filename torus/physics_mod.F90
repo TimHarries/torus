@@ -588,11 +588,11 @@ contains
            if (resolveSilicateFeature) then
               nt = 20
               do i = 1, nt
-                 xArray(i+nLambda) = (7.d0 + 7.d0*(dble(i-1)/dble(nt-1)))*1.d4
+                 xArray(i+nLambda) = real((7.d0 + 7.d0*(dble(i-1)/dble(nt-1)))*1.d4)
               enddo
               nLambda = nLambda + nt
               do i = 1, nt
-                 xArray(i+nlambda) = (15.d0 + 20.d0*(dble(i-1)/dble(nt-1)))*1.d4
+                 xArray(i+nlambda) = real((15.d0 + 20.d0*(dble(i-1)/dble(nt-1)))*1.d4)
               enddo
               nLambda = nLambda + nt
               call sort(nLambda, xArray)
