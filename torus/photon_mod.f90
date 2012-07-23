@@ -406,7 +406,8 @@ contains
           enddo
 
           outPhoton%stokes = applyMean(miePhaseTemp(1:nDustType), &
-               thisOctal%dustTypeFraction(subcell,1:nDustType), nDustType, outPhoton%stokes)
+               thisOctal%dustTypeFraction(subcell,1:nDustType), &
+               nDustType, outPhoton%stokes)
           
        endif
     else

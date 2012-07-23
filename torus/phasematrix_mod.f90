@@ -121,13 +121,19 @@ contains
     type(STOKESVECTOR), intent(in) :: b
     type(STOKESVECTOR) :: c
     integer :: i
+    real(double), allocatable :: normf(:)
     type(PHASEMATRIX)  :: mean
-
+    allocate(normf(1:n))
     mean%element = 0.
+    normf(1:n) = f(1:n)/SUM(f)
+    if (ANY(normf > 1.d0)) then
+       write(*,*) "f ",f(1:n)
+       write(*,*) "normf ",normf(1:n)
+       write(*,*) "sum f ",sum(f)
+    endif
     do i = 1 , n
-       mean%element = real(mean%element + f(i) * a(i)%element)
+       mean%element = real(mean%element + normf(i) * a(i)%element)
     enddo
-!    write(*,*) "mean element(1,1): ",mean%element(1,1)
 
     ! perform the matrix multiplication
     
@@ -153,7 +159,7 @@ contains
          mean%element(4,2) * b%q + &
          mean%element(4,3) * b%u + &
          mean%element(4,4) * b%v 
-
+    deallocate(normf)
   end function applyMean
 
 
@@ -325,9 +331,11 @@ contains
     real(double) :: theta, phi
     real :: r
     real, intent(in) :: lamArray(:)
+    real(double) :: normfac(100)
     type(VECTOR) :: tVec, perpVec, newVec
     type(PHASEMATRIX) :: miePhase(:,:,:)
     
+    normfac(1:nDustType) = dustTypeFraction(1:nDustType)/SUM(dustTypeFraction(1:nDusttype))
 
     call locate(lamArray, nLambda, wavelength, ilam)
     if (ilam < 1) ilam = 1
@@ -344,7 +352,7 @@ contains
        do m = 1, nLambda
           do i = 2, nMuMie
              do k = 1, nDustType
-                prob(i,m) = prob(i,m) + real(max(1.d-20,dustTypeFraction(k))*miePhase(k,m,i)%element(1,1))
+                prob(i,m) = prob(i,m) + real(max(1.d-20,normfac(k))*miePhase(k,m,i)%element(1,1))
              enddo
           enddo
           do i = 2, nMuMie
@@ -364,9 +372,9 @@ contains
          (cosArray(j+1)-cosArray(j))*(r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam))
 
     if (present(weight)) then
-       weight = real(SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) + & 
-            (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
-             SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) ) * &
+       weight = real(SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*normfac(1:nDustType)) + & 
+            (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*normfac(1:nDustType)) - &
+             SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*normfac(1:nDustType)) ) * &
             (r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam)))
        if (weight < 0.d0) then
           write(*,*) "weight ", weight, " ilam ", ilam, " j ",j

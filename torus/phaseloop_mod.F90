@@ -2453,7 +2453,6 @@ CONTAINS
                  albedo = linePhotonAlbedo(j)
               endif
               if (noScattering) albedo = 0.
-
               if (grid%resonanceLine) albedo = 1.
 
               if (hitCore) then
@@ -2501,10 +2500,11 @@ CONTAINS
               if (.not.absorbed) then
 
                  tempPhoton = thisPhoton
-                 
+                 write(*,*) "tempPhoton ", tempPhoton%stokes%i
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
                        miePhase, nDustType, nLambda, grid%lamArray, nMuMie, ttau_disc_on, ttauri_disc, &
                        currentOctal, currentSubcell)
+                 write(*,*) "obsPhoton ", obsPhoton%stokes%i
 
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
 

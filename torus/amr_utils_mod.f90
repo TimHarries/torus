@@ -1356,7 +1356,7 @@ module amr_utils_mod
           call normalize(xHat)
           rDirection = VECTOR(direction%x, direction%y,0.d0)
           compX = modulus(rDirection)
-          call normalize(rDirection)
+          if (compX /= 0.d0) call normalize(rDirection)
 
           if (compX /= 0.d0) then
              cosmu =((-1.d0)*xHat).dot.rdirection

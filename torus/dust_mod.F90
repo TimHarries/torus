@@ -752,7 +752,7 @@ contains
                aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3)
           rayleigh = rayleigh / meanParticleMass
           if (writeoutput) &
-               write(20,*) grid%lamArray(i)*angstomicrons,&
+               write(20,'(1p,5e13.4)') grid%lamArray(i)*angstomicrons,&
                (grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
                grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
                grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))
@@ -1526,7 +1526,7 @@ contains
           do i = 1, nLambda
              kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10
              kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10
-             write(20,*) xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
+             write(20,'(1p,5e13.4)') xArray(i)*angstomicrons, kAbs+kSca, kAbs, kSca, kSca/(kAbs+kSca)
           enddo
           close(20)
        endif

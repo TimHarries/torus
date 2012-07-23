@@ -13584,11 +13584,12 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, h21cm, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
+    use inputs_mod, only : grainFrac
     use gridtype_mod, only: statEqMaxLevels
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10
-
+    integer :: i
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
@@ -13615,7 +13616,10 @@ end function readparameterfrom2dmap
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
        thisOctal%dustTypeFraction = 0.d0
-       thisOctal%dustTypeFraction(:,:) = 1.d0
+
+       do i = 1, thisOctal%maxChildren
+          thisOctal%dustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+       enddo
        thisOctal%inflow = .true.
 
 !       if (storescattered) allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
