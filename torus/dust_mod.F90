@@ -1054,7 +1054,7 @@ contains
 
 
   recursive subroutine sublimateDustWR104(thisOctal)
-    use inputs_mod, only : tThresh
+    use inputs_mod, only : tThresh, grainFrac
     type(OCTAL), pointer :: thisOctal, child
     integer :: subcell, i
     real(double) :: temperature
@@ -1077,13 +1077,14 @@ contains
           if (temperature > tThresh) then
              frac = exp(-dble((temperature-tThresh)/subRange))
           endif
-          thisOctal%dustTypeFraction(subcell,1) = max(1.d-20, frac)
+          thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)*max(1.d-20, frac)
        endif
     end do
   end subroutine sublimateDustWR104
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
+    use inputs_mod, only : grainFrac
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1092,7 +1093,7 @@ contains
     real(double), optional :: subTemp, minLevel
     real(double) :: smallVal
     integer :: nFrac
-    real(double) :: frac, newFrac, deltaFrac, normFac, thistau
+    real(double) :: frac, newFrac, deltaFrac, thistau
     real ::  temperature, sublimationTemp, subrange
     real :: underCorrect = 1.
     integer :: ilambda
@@ -1140,15 +1141,8 @@ contains
 
           frac = max(frac, smallVal)
 
-          normfac = SUM(thisOctal%dustTypeFraction(subcell,:))
 
-
-          if (normFac /= 0.d0) then
-             thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac /normFac
-          else
-             thisOctal%dustTypeFraction(subcell,:) = 0.d0
-             thisOctal%dustTypeFraction(subcell,1) = frac
-          end if
+          thisOctal%dustTypeFraction(subcell,:) = grainFrac(:) * frac
 
 
           call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
@@ -1156,9 +1150,8 @@ contains
 
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
           if (thisTau > tauMax) then
-             frac = frac *tauMax / thisTau 
-             normfac = SUM(thisOctal%dustTypeFraction(subcell,:))
-             thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac /normFac
+             frac = tauMax / thisTau 
+             thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac
           endif
 
 
@@ -1506,7 +1499,7 @@ contains
        allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
 
        if (.not.dustfile) then
-          call writeInfo(message, FORINFO)
+!          call writeInfo(message, FORINFO)
           do i = 1, nDustType
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
              call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &

@@ -878,7 +878,7 @@ contains
                "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
 
           call getReal("sphNormLimit", sph_norm_limit, 1., cLine, fLine, nLines, &
-               "Limit for SPH normalisation: ", "(a,f10.4,1x,f10.4)", 0.5, ok, .false.)
+               "Limit for SPH normalisation: ", "(a,f10.4,a)", 0.5, ok, .false.)
 
           call getInteger("kerneltype", kerneltype, cLine, fLine, nLines, &
                "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
