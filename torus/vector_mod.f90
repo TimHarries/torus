@@ -155,7 +155,6 @@ contains
        if (firstTime) then
           write(*,'(a)') "! Attempt to normalize the zero vector"
           firstTime = .false.
-          m = sqrt(-1.d0)
        endif
        a = VECTOR(1.d0,0.d0,0.d0)
     else
