@@ -35,16 +35,16 @@ datacube = no
 # Run script to get subversion version number
 getsvnver = yes
 
-PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
-GUANINE_HOME = /Network/Guanine
-
 KNOWN_SYSTEM = no
 MPIFLAG = 
 #
 # Set system-dependent variables
 #
 
-# NAG Fortran compiler
+########################
+# NAG Fortran compiler #
+########################
+
 ifeq ($(SYSTEM), nagfor)
     F95COMP  = nagfor
     F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN -DUSEUNIXENV
@@ -56,6 +56,97 @@ ifeq ($(SYSTEM), nagfor)
     KNOWN_SYSTEM = yes
     memcheck = no
 endif
+
+####################
+# g95 based builds #
+####################
+
+ifeq ($(SYSTEM), g95)
+    F95COMP  = g95
+    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
+#    FASTFLAG = -O3 -mcpu=G5
+    FASTFLAG = -O3
+#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
+    CFITSIOLIBS = -lcfitsio
+    ZLIBLIBS = -lz	
+    EXE = torus.g95
+    KNOWN_SYSTEM = yes
+endif
+
+ifeq ($(SYSTEM), macmpi)
+    F95COMP  = g95
+    F95FLAG  = -fno-second-underscore
+    DEBUGFLAG= -g
+    STATICFLAG = -static
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MPI_INC  = -I/Users/th/macmpi
+    EXE = torus.macmpi
+    MPIFLAG = -DMPI
+    KNOWN_SYSTEM = yes
+endif
+
+ifeq ($(SYSTEM), ompi)
+    F95COMP  = mpif90
+    F95FLAG  = -Wno=155
+    DEBUGFLAG= -g3 -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
+    FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
+    CFITSIOLIBS = -lcfitsio
+    ZLIBLIBS = -lz
+    EXE = torus.ompi
+    MPIFLAG = -DMPI
+    KNOWN_SYSTEM = yes
+endif
+
+#########################
+# gfortran based builds #
+#########################
+
+ifeq ($(SYSTEM), gfortran)
+    ifeq ($(mpi), yes)
+        F95COMP = mpif90
+        MPIFLAG = -DMPI
+    else
+        F95COMP = gfortran
+    endif
+     ZLIBLIBS = -lz
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    FASTFLAG = -O3
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    EXE = torus.gfortran
+    KNOWN_SYSTEM = yes
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
+endif
+
+# MPI build with the gfortran compiler
+ifeq ($(SYSTEM), ompiosx)
+    F95COMP  = mpif90 
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    FASTFLAG = -O3
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
+    EXE = torus.ompiosx
+    ZLIBLIBS = -lz	
+    MPIFLAG = -DMPI
+    KNOWN_SYSTEM = yes
+endif
+
+######################
+# ifort based builds #
+######################
+
+ifeq ($(SYSTEM), linuxintel)
+    F95COMP  = ifort 
+    DEBUGFLAG= -g
+#    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+#    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+#    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
+    CFITSIOLIBS = -lcfitsio
+    EXE = torus.linuxintel
+    KNOWN_SYSTEM = yes
+endif
+
+###########################
+# Machine specific builds #
+###########################
 
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
@@ -75,201 +166,6 @@ ifeq ($(SYSTEM), davesmac)
 #    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
 #    STARLIBS = -limf                                                                   
     EXE = torus.intelmac
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), g95)
-    F95COMP  = g95
-    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
-#    FASTFLAG = -O3 -mcpu=G5
-    FASTFLAG = -O3
-#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
-    CFITSIOLIBS = -lcfitsio
-    ZLIBLIBS = -lz	
-#    F2CLIB   = -L$(PATH2G2C) -lg2c
-    EXE = torus.g95
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), sun)
-    F95COMP  = sunf95
-    DEBUGFLAG= -g
-    FASTFLAG = -O3
-#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    F2CLIB   = -L$(PATH2G2C) -lg2c
-    EXE = torus.sun
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), osx)
-    F95COMP  = g95
-    DEBUGFLAG= -g
-    FASTFLAG =
-#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    F2CLIB   = -L/usr/local/lib -lg2c
-    EXE = torus.osx
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), gfortran)
-    ifeq ($(mpi), yes)
-        F95COMP = mpif90
-        MPIFLAG = -DMPI
-    else
-        F95COMP = gfortran
-    endif
-     ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-    FASTFLAG = -O3
-#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-#    F2CLIB   = -L/usr/local/lib -lg2c
-    EXE = torus.gfortran
-    KNOWN_SYSTEM = yes
-    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
-endif
-
-ifeq ($(SYSTEM), macmpi)
-    F95COMP  = g95
-    F95FLAG  = -fno-second-underscore
-    DEBUGFLAG= -g
-    STATICFLAG = -static
-#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    MPI_INC  = -I/Users/th/macmpi
-    EXE = torus.macmpi
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), gfort)
-    F95COMP  = gfc
-    DEBUGFLAG= -g 
-#    FASTFLAG = -O3
-    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
-    F2CLIB   = -L$(PATH2G2C) -lg2c
-    EXE = torus.g95
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq  ($(SYSTEM), linux)
-    F95COMP  = f95
-    #F95FLAG  = -maxcontin=2500
-    DEBUGFLAG= -g -C=all
-    #DEBUGFLAG= -g
-    STATICFLAG = -Bstatic
-    FASTFLAG = -w 
-    MATHTRAP = -ieee=stop
-    F2CLIB   = -lg2c
-    STATICLIBS = -lpthread
-    EXE = torus.linux
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), alpha)
-    F95COMP  = f90
-    DEBUGFLAG= -g
-    FASTFLAG = -fast
-    MATHTRAP = -fpe3
-    EXE = torus
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), lamosx)
-    F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
-    DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O0
-    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
-    EXE = torus.lamosx
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), lamosx-intel)
-    F95COMP  = ${GUANINE_HOME}/csr201/local-i386/bin/mpif77
-    F95FLAG  = -fno-pic -read_only_relocs suppress
-    DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O0
-    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
-    EXE = torus.lamosx-intel
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-# MPI build with the gfortran compiler
-ifeq ($(SYSTEM), ompiosx)
-    F95COMP  = mpif90 
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-    FASTFLAG = -O3
-    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
-    EXE = torus.ompiosx
-    ZLIBLIBS = -lz	
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), ompi)
-    F95COMP  = mpif90
-    F95FLAG  = -Wno=155
-    DEBUGFLAG= -g3 -ftrace=full -fbounds-check -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wno=140,141,112 -Werror
-    FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
-    CFITSIOLIBS = -lcfitsio
-    ZLIBLIBS = -lz
-    EXE = torus.ompi
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), ompiosx-intel)
-    F95COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
-    F95FLAG  = -fno-pic -read_only_relocs suppress -w
-    DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O0
-    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
-    STARLIBS =  -L/usr/lib -lSystemStubs 
-    EXE = torus.ompiosx-intel
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), mpilam)
-    TOP  = /h/rk/mpi_nag
-    TOP2 = /h/rk/mpi_g77
-    F95COMP  = ${TOP}/bin/mpif95
-    F95FLAG  = -mismatch
-    DEBUGFLAG= -g -C=all -dcfuns 
-    STATICFLAG = -Bstatic
-    FASTFLAG = -dcfuns -w 
-#    MATHTRAP = -ieee=stop
-    MPI_INC  = -I${TOP}/include
-    F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
-    EXE = torus.mpilam
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), mpich)
-    TOP  = /h/th/mpich
-    TOP2 = /h/th/mpich_g77
-    F95COMP  = ${TOP}/bin/mpif90
-    F95FLAG  = -mismatch
-    DEBUGFLAG= -g -dcfuns
-    FASTFLAG = -O3 -dcfuns -w
-#    MATHTRAP = -ieee=stop
-    MPI_INC  = -I${TOP}/include
-    F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
-    EXE = torus.mpich
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), linuxintel)
-    F95COMP  = ifort 
-    DEBUGFLAG= -g
-#    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-#    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-#    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
-    CFITSIOLIBS = -lcfitsio
-    F2CLIB   = -L/usr/lib -lg2c
-    EXE = torus.linuxintel
     KNOWN_SYSTEM = yes
 endif
 
@@ -300,7 +196,6 @@ ifeq ($(SYSTEM), zen)
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zen
-    F2CLIB=
     STATICLIBS= -Bstatic
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     ZLIBLIBS = -lz	
@@ -316,60 +211,12 @@ ifeq ($(SYSTEM), zensingle)
     STATICFLAG=
     MATHTRAP=
     EXE=torus.zensingle
-    F2CLIB=
     STATICLIBS= -Bstatic
     STARLIBS= 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     ZLIBLIBS = -lz
     MPIFLAG = 
     KNOWN_SYSTEM=yes
-endif
-
-ifeq ($(SYSTEM), mpiintel)
-    TOP  = $(HOME)/mpi_intel
-    TOP2 = $(HOME)/mpi_g77
-    F95COMP  = ${TOP}/bin/mpif77
-    F95FLAG  = -mp
-    DEBUGFLAG= -g -O0 -CA -CV -CS -CB -mp
-#    FASTFLAG = -O2 -I/usr/include/nptl -L/usr/lib/nptl -mp
-    FASTFLAG = -O -mp
-    MPI_INC  = -I${TOP}/include
-    F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
-    EXE = torus.mpiintel
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), openmpi)
-    TOP = /h/chris/local/opt/openmpi
-    F95COMP  = ${TOP}/bin/mpif77
-    F95FLAG  = -w
-    DEBUGFLAG= -g -ftrace=full
-#    FASTFLAG = -O3
-    MPI_INC  = -I${TOP}/include
-    CFITSIOLIBS = -lcfitsio
-    F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
-    EXE = torus.openmpi
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), openmpi-nocona)
-    TOP = /home/chris/local
-    F95COMP  = ${TOP}/bin/mpif77
-    F95FLAG  = -w
-    DEBUGFLAG= -g -ftrace=full
-#    FASTFLAG = -O0
-#    FASTFLAG = -O3
-    FASTFLAG = -march=pentium4 -O0
-#    FASTFLAG = -march=pentium4 -O3
-#    FASTFLAG = -march=nocona -O1
-    MPI_INC  = -I${TOP}/include
-    CFITSIOLIBS = -lcfitsio
-    F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
-    EXE = torus.openmpi-nocona
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), miracle)
@@ -393,6 +240,7 @@ ifeq ($(SYSTEM), ukaff1a)
     KNOWN_SYSTEM = yes
 endif
 
+# xlf90 is the IBM compiler
 ifeq ($(SYSTEM), omp)
     F95COMP  = xlf90_r
     F95FLAG  = -qsuffix=f=f90 -q64 -qsmp=omp -qnoipa
@@ -411,42 +259,6 @@ ifeq ($(SYSTEM), ceres)
     ZLIBLIBS = -lz
     MPIFLAG = -DMPI
     EXE = torus.ceres
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), mpig95)
-    TOP = /h/chris/local
-    F95COMP  = ${TOP}/bin/mpif77
-    F95FLAG  = -w
-    DEBUGFLAG= -g -ftrace=full
-#    FASTFLAG = -O3
-    MPI_INC  = -I${TOP}/include
-    CFITSIOLIBS = -lcfitsio
-    F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
-    EXE = torus.mpig95
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), darwin)
-    F95COMP  = g95
-    DEBUGFLAG= -g -fbounds-check -Wall
-    FASTFLAG = -O3
-    ZLIBLIBS = -lz	
-    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
-    STARLIBS =  -L/usr/lib -lSystemStubs
-    EXE = torus.darwin
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), mpidarwin)
-    TOP = ${HOME}/mpi_g95
-    F95COMP  = ${TOP}/bin/mpif77 
-    DEBUGFLAG= -g  
-    FASTFLAG = -O3
-    STARLIBS =  -L/usr/lib -lSystemStubs 
-    EXE = latticeQED
-    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -636,7 +448,7 @@ all: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS)
+	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS)
     else
 	    @echo ""
 	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
@@ -697,7 +509,7 @@ link: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS)
 	    @echo "...done"
     else
 	    @echo ""
