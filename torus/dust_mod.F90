@@ -1468,7 +1468,6 @@ contains
     real :: mu, total_dust_abundance
     real :: kAbs, kSca
     integer :: i, j, k
-    character(len=80) :: message
 
 
     type(GRIDTYPE) :: grid

@@ -1568,7 +1568,7 @@ contains
     call getLogical("biasToLyman", biasToLyman, cLine, fLine, nLines, &
          "Variance reduction, higher sampling of Lyman photons: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getLogical("binPhotons", biasToLyman, cLine, fLine, nLines, &
+    call getLogical("binPhotons", binPhotons, cLine, fLine, nLines, &
          "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &

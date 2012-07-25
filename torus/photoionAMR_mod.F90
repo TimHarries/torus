@@ -107,6 +107,7 @@ contains
 
     dumpThisTime = .false.
 
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
 
 
     if (nbodyPhysics) then
@@ -1363,11 +1364,13 @@ end subroutine radiationHydro
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRankGlobal == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
-                   if ((myHydroSetGlobal == 0).and.&
-                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
-!                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
-!                   write(*,*) myHydroSetGlobal, " imonte ",imonte
-!                endif
+!                   if ((myHydroSetGlobal == 0).and.&
+!                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
+!                   if ((myHydroSetGlobal == 1).and.&
+!                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte1 ",imonte
+                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
+                   write(*,*) myHydroSetGlobal, " imonte ",imonte
+                endif
                    if (iMonte == nThreadMonte) then
                       lastPhoton = .true.
 !                      write(*,*) myrankGlobal, " doing last photon"
@@ -1512,7 +1515,6 @@ end subroutine radiationHydro
              do i = 1, max(nSmallPackets,1)
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
                      finaltag, localWorldCommunicator, status, ierr)
-!                write(*,*) "zeroth thread received final photon signal from ",j
              enddo
 
              if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
@@ -1536,6 +1538,7 @@ end subroutine radiationHydro
                 nEscaped = SUM(nEscapedArray(1:nHydroThreadsGlobal))
              
                 nEscapedGlobal = nEscaped
+                if (myRankWorldGlobal ==1) write(*,*) "nEscaped ",nEscaped
                 if (nEscaped == nThreadMonte*max(nSmallPackets,1)) then
                    photonsStillProcessing = .false.
                 else if(nEscaped > nThreadMonte*max(1,nSmallPackets)) then
@@ -2107,7 +2110,7 @@ end subroutine radiationHydro
           call MPI_RECV(stackLimit, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
        end if
 
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(localWorldCommunicator, ierr)
 !       epsOverDeltaT = (lCore) / dble(nMonte)
        if(monochromatic) then
           if (source(1)%outsidegrid) then
@@ -2157,7 +2160,7 @@ end subroutine radiationHydro
 
 
 ! now we need to reduce the estimators across all the hydro sets.
-
+    if (myrankWorldGlobal == 1) call tune(6, "Update MPI grid")  ! start a stopwatch
     if (nHydroSetsGlobal > 1) then
        do iThread = 1, nHydroThreadsGlobal
           if (myRankGlobal == iThread) then
@@ -2167,6 +2170,7 @@ end subroutine radiationHydro
           call mpi_barrier(MPI_COMM_WORLD, ierr)
        enddo
     endif
+    if (myrankWorldGlobal == 1) call tune(6, "Update MPI grid")  ! stop a stopwatch
 
     call  identifyUndersampled(grid%octreeRoot)
 
@@ -3495,11 +3499,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
 
   RECURSIVE subroutine allocatePhotoionAttributes(thisOctal, grid)
-    use inputs_mod, only : nDustType
+    use inputs_mod, only : nDustType, grainFrac
     type(GRIDTYPE) :: grid
     TYPE(OCTAL), POINTER  :: thisOctal 
     TYPE(OCTAL), POINTER  :: child
-    INTEGER :: i
+    INTEGER :: i, j
 
     IF ( thisOctal%nChildren > 0 ) THEN
        ! call this subroutine recursively on each of its children
@@ -3515,7 +3519,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
       thisOctal%dustType = 1
       call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
       thisOctal%dustTypeFraction = 0.d0
-      thisOctal%dustTypeFraction(:,:) = 1.d0
+      do j = 1, ndustType
+         thisOctal%dustTypeFraction(:,j) = grainFrac(j)
+      enddo
 
       call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
