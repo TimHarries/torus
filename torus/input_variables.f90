@@ -182,6 +182,7 @@
   logical :: addnewmoldata
   logical :: dongstep ! controls Ng Acceleration
   logical :: modelwashydro
+  logical :: forceIniRay
   logical :: zeroghosts
   logical :: plotlevels   
   logical :: writetempfits

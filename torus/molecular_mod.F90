@@ -850,7 +850,7 @@ module molecular_mod
      use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
-          zeroGhosts
+          zeroGhosts, forceIniRay
      use messages_mod, only : myRankIsZero
      use dust_mod
      use parallel_mod
@@ -876,7 +876,7 @@ module molecular_mod
      integer :: iStage
      real(double), allocatable :: oldpops1(:), oldpops2(:), oldpops3(:), oldpops4(:)
      real(double) :: fac
-     real(double), allocatable :: ds(:), phi(:), i0(:,:), i0temp(:)
+     real(double), allocatable :: ds(:), phi(:), i0(:,:), i0temp(:), dirWeight(:)
 
 #ifdef MPI
      ! For MPI implementations
@@ -1204,17 +1204,19 @@ module molecular_mod
 ! iterate over all octals, all rays, solving the system self-consistently
 
                 !$OMP PARALLEL DEFAULT(NONE) &
-                !$OMP PRIVATE(iOctal, thisOctal, iray, warned_neg_dtau) &
+                !$OMP PRIVATE(iOctal, thisOctal, iray, warned_neg_dtau, dirweight) &
 		!$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix, subcell) &
 		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
 		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
 		!$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
-		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed, myRankGlobal)
-
+		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed, myRankGlobal) &
+                !$OMP SHARED(forceIniRay)
+            
 
 ! Allocate the main working arrays for i0, ds and phi
             allocate(ds(1:maxray))
             allocate(phi(1:maxray))
+            allocate(dirWeight(1:maxray))
             allocate(i0temp(1:maxtrans))
             allocate(i0(1:maxray,1:maxtrans))
 ! set-up temporary arrays for ngstep
@@ -1250,18 +1252,34 @@ module molecular_mod
                   ctot(1:maxlevel))
 
 ! First populate ds, phi and i0 so that they can be passed on to calculatejbar             
-             do iRay = 1, nRay
-!                print *, "RAY ", iRay
+
+! thaw - the first ray is optionally forced towards a star
+! this is done outside of the main getray loop to reduce slow down.
+!             print *, "getting forced ray"
+             if(forceIniRay) then
+                call getRay(grid, thisOctal, subcell, position, direction, &
+                     ds(1), phi(1), i0temp(1:maxtrans), &
+                     thisMolecule,dirweight, fixedrays, warned_neg_dtau,tostar=.true.) ! does the hard work - populates i0 etc
+                i0(1,1:maxtrans) = i0temp(1:maxtrans)
+             else
+                
+              call getRay(grid, thisOctal, subcell, position, direction, &
+                     ds(1), phi(1), i0temp(1:maxtrans), &
+                     thisMolecule,dirweight, fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
+                i0(1,1:maxtrans) = i0temp(1:maxtrans)
+             end if
+ !            print *, "getting main rays"
+
+! main getray loop
+             do iRay = 2, nRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &
-                     thisMolecule,fixedrays, warned_neg_dtau) ! does the hard work - populates i0 etc
-!                print *, "RAY ", iRay, "midpoint"
+                     thisMolecule,dirweight, fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
                 i0(iray,1:maxtrans) = i0temp(1:maxtrans)
-!                print *, "RAY ", iRay, "done"
-                !                write(*,*) i0temp(1)
-                !                write(*,*) thisoctal%molecularlevel(1:2,subcell)
              enddo
-!             print *, "DONE RAYS"
+
+!             print *, "got main rays"
+
              if(debug) where(isnan(i0)) i0 = 0.d0
 ! set iteration within subcell to 0
              iter = 0
@@ -1280,12 +1298,15 @@ module molecular_mod
                 endif
 ! calculate the average radiation field, jnu in this cell given ds, phi and i0.
 ! This feeds into and affects solvelevels which in turns affect calculatejbar
+
                 call calculateJbar(nray, grid, thisOctal, subcell, thisMolecule, ds(1:nRay), & 
                      phi(1:nRay), i0(1:nray,1:maxtrans), thisOctal%newMolecularLevel(1:maxlevel,subcell), &
-                     thisOctal%jnu(1:maxtrans,subcell)) ! calculate updated Jbar
+                     thisOctal%jnu(1:maxtrans,subcell), dirweight) ! calculate updated Jbar
+
 !                write(*,*) "a",thisOctal%newMolecularLevel(1:3,subcell)
                 if(debug) where(isnan(thisOctal%jnu(1:maxtrans,subcell))) thisOctal%jnu(1:maxtrans,subcell) = 0.d0
 ! use updated jnu and collision matrix to determine updated level populations
+!                print *, "solving levels"
                 call solveLevels(thisOctal%newMolecularLevel(1:maxlevel,subcell), &
                      thisOctal%jnu(1:maxtrans,subcell), dble(thisOctal%temperature(subcell)), &
                      thisMolecule, thisOctal%nh2(subcell), collmatrix(1:maxlevel,1:maxlevel), &
@@ -1512,18 +1533,21 @@ module molecular_mod
 end subroutine molecularLoop
 
 !!! find the radiation incident at a point in a cell from a pencil beam along a particular direction
-   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, fixedrays, warned_neg_dtau)
+   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule, dirweight, fixedrays, &
+        warned_neg_dtau, tostar)
 !   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, thisMolecule, fixedrays)
 
-     use inputs_mod, only : useDust, realdust, quasi
+     use inputs_mod, only : useDust, realdust, quasi, sourcePos, sourceRadius, sourceTeff
+
 
      type(MOLECULETYPE), intent(in) :: thisMolecule
      type(GRIDTYPE), intent(in) :: grid
      type(OCTAL), pointer :: thisOctal, fromOctal
      integer :: fromSubcell
      logical, optional :: fixedrays
+     logical, optional :: tostar
      logical :: stage1
-     real(double) :: di0(maxtrans)
+     real(double) :: di0(maxtrans), dirWeight(:)
      real(double), intent(out) :: ds, phi, i0(:)
 	 	 
      integer, parameter :: maxSamplePoints = 100
@@ -1563,8 +1587,9 @@ end subroutine molecularLoop
 
 !Set/initialise runtime parameters
      if(firsttime) then
-
-        allocate(OneArray(maxtrans))
+        if(.not. allocated(onearray)) then
+           allocate(OneArray(maxtrans))
+        end if
         OneArray = 1.0d0
        
         do itrans = 1, maxtrans
@@ -1577,6 +1602,13 @@ end subroutine molecularLoop
         
         firsttime =.false.
     endif
+
+    if(tostar) then       
+        do itrans = 1, maxtrans
+           BnuBckGrnd(itrans) = Bnu(thisMolecule%transfreq(itrans), sourceTeff(1))
+        enddo        
+        firsttime=.true.
+    end if
 
 
 !Set up antithetic variates to improve convergence
@@ -1606,6 +1638,7 @@ end subroutine molecularLoop
 
 
 !Generate random direction and frequency using quasi/pseudo random number generators
+     dirWeight = 1.d0
      if(quasi) then     
         call sobseq(r1)    
         direction = specificUnitVector(r1(1),r1(2))
@@ -1631,9 +1664,17 @@ end subroutine molecularLoop
               if(s > 0.5) deltaV = deltaV * (-1.d0)
            endif
         else ! pseudorandom
-           call randomNumberGenerator(getDouble=r)
-           direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
-           deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+           !thaw - force a ray to a source
+           if(tostar) then
+              call randomNumberGenerator(getDouble=r)
+              direction = sourcePos(1)              
+              deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+              dirWeight = stellarRayWeight(sourcePos(1), position, sourceRadius(1))
+           else
+              call randomNumberGenerator(getDouble=r)
+              direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
+              deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+           end if
         endif
         conj = .not. conj
      endif
@@ -1802,8 +1843,30 @@ end subroutine molecularLoop
         i0(1:maxtrans) = i0(1:maxtrans) + BnuBckGrnd(1:maxtrans) * attenuation(1:maxtrans)
      endif
    end subroutine getRay
+
+
+!thaw - return the directional weight associated with a ray towards a star
+   
+   real(double) function stellarRayWeight(sourcePos, position, rstar)
+     type(VECTOR) :: sourcePos
+     type(VECTOR) :: position
+     real(double) :: distance, rstar, theta, omega_star
+     
+     distance = (sourcePos%x-position%x)**2 + (sourcePos%y-position%y)**2 + (sourcePos%z-position%z)**2
+     distance = sqrt(distance)
+     
+     theta = tan((rstar*rsol)/distance)
+     
+!solid angle subtended by star
+     omega_star = 2.d0*pi*(1.d0-cos(theta))
+     
+     stellarRayWeight = omega_star/fourpi
+
+   end function stellarRayWeight
+
+
 ! This subroutine calculates the average local radiation field in a cell, Jbar. So the SE can be worked out
-   subroutine calculateJbar(nr, grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar)
+   subroutine calculateJbar(nr, grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar, dirweight)
 
      use inputs_mod, only : useDust, realdust, debug
 
@@ -1812,7 +1875,7 @@ end subroutine molecularLoop
      integer :: subcell
      type(MOLECULETYPE) :: thisMolecule
      integer :: nr
-     real(double), intent(in) :: tempds(:), tempphi(:), i0(:,:), nPops(:)
+     real(double), intent(in) :: tempds(:), tempphi(:), i0(:,:), nPops(:), dirweight(:)
      real(double), intent(out) :: jbar(:)
      real(double), allocatable :: phids(:), temptauArray(:), opticaldepthArray(:), otp(:), &
           jbarinternalArray(:), jbarExternalArray(:)
@@ -1900,7 +1963,8 @@ end subroutine molecularLoop
 ! internal jbar inside cell
            jBarInternalArray(1:nRay) = snu(1:nray) * (tempphi(1:nray) - otp(1:nray))
 ! jbar weighted average of int + ext        
-           jbar(itrans) = (sum(jBarExternalArray(1:nRay)+jBarInternalArray(1:nRay))) / sumPhi
+!thaw - multpilied by a direction weighting (should be 1 by default unless forcing towards stars)
+           jbar(itrans) = (sum(jBarExternalArray(1:nRay)*dirWeight(1:nRay)+jBarInternalArray(1:nRay)*dirWeight(1:nRay))) / sumPhi
         enddo
      else
 ! vecorised jbar calculation

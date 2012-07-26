@@ -1476,12 +1476,20 @@ contains
                "Use Quasirandom numbers: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("modelwashydro", modelwashydro, cLine, fLine, nLines, &
                "Grid is based on hydro or radiation hydro calculation: ","(a,1l,a)", .false., ok, .false.)
+!thaw -        
        if(modelWasHydro) then
           call getLogical("zeroghosts", zeroghosts, cLine, fLine, nLines, &
                "Zero the contriubtion from ghost cells to molecular line calc: ","(a,1l,a)", .false., ok, .false.)
        else
           zeroghosts=.false.
        end if
+  
+       call getLogical("forceiniray", forceIniRay, cLine, fLine, nLines, &
+               "Force the first ray towards star in stateq calculations: ","(a,1l,a)", .false., ok, .false.)
+       if(forceIniRay) then
+          call readSourceParameters(cLine, fLine, nLines)
+       end if
+!-     
        call getReal("tolerance", tolerance, 1., cLine, fLine, nLines, &
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
