@@ -299,7 +299,6 @@ contains
 ! according to the string inputFileFormat
 ! D. Acreman, June 2012
   subroutine read_sph_data_wrapper
-    use mpi
     use inputs_mod, only: inputFileFormat, sphdatafilename
 
     select case (inputFileFormat)
@@ -844,7 +843,7 @@ contains
        read(LUIN) blocknptmass, (numssink(i), i=1,8)
        write(message,*) "This block has nptmass=", blocknptmass
        call writeInfo(message,TRIVIAL)
-       blocksum_nptmass = blocksum_nptmass + blocknptmass
+       blocksum_nptmass = blocksum_nptmass + int(blocknptmass)
 
        if (nblocktypes.GE.3) then
           read(LUIN) blocknradtrans, (numsrt(i), i=1,8)
@@ -1061,7 +1060,7 @@ contains
           endif
        endif
     end do
-    sphdata%nptmass = iiisink
+    sphdata%nptmass = int(iiisink)
 
     write(message,*) "Stored ", irequired, " gas particles which are required"
     call writeinfo(message, TRIVIAL)    
