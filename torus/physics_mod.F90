@@ -700,7 +700,9 @@ contains
      use parallel_mod
      use sph_data_class
      use starburst_mod
+#ifdef MPI
      use hydrodynamics_mod, only : gatherSinks
+#endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI
 #ifdef MPI
@@ -735,7 +737,9 @@ contains
            globalSourceArray(i)%position = get_pt_position(i) * (get_udist()/1.d10)
            globalSourceArray(i)%velocity = get_pt_velocity(i) * get_udist() / get_utime()
         enddo
+#ifdef MPI
         if (splitOverMPI) call gatherSinks()
+#endif
         call setSourceArrayProperties(globalsourceArray, globalnSource)
         call writeSourceList(globalsourceArray, globalnSource)
      endif
