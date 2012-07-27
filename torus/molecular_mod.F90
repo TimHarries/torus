@@ -24,7 +24,6 @@ module molecular_mod
    use gridio_mod, only: readamrgrid, writeamrgrid
    use atom_mod, only: bnu
    use vtk_mod, only: writeVtkFile
-   use mpi_amr_mod, only : octalOnThread
    use mpi_global_mod
 #ifdef USEMKL
    use mkl95_lapack

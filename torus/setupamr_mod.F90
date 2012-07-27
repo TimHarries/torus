@@ -955,7 +955,6 @@ contains
 !routine to read in the velocity field produced by the generating code of M. R. Bate.
       subroutine readgridTurbulence(grid)
       use mpi
-      use mpi_amr_mod, only: octalOnThread
       use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
       type(GRIDTYPE) :: grid
       type(OCTAL), pointer :: thisOctal

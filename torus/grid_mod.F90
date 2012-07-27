@@ -21,11 +21,11 @@ module grid_mod
   use constants_mod                   ! physical constants
   use messages_mod
   use vector_mod                      ! vector math
-  use amr_mod, only: deleteOctreeBranch, deleteOctal, deallocateOctalDynamicAttributes
+  use amr_mod, only: deleteOctreeBranch, deleteOctal, deallocateOctalDynamicAttributes, &
+       octalOnThread
   use octal_mod, only: OCTAL
   use gridtype_mod, only: GRIDTYPE    ! type definition for the 3-d grid
   use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
-  use mpi_amr_mod, only: octalOnThread
   use utils_mod, only: locate
 
   implicit none
