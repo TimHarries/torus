@@ -110,7 +110,7 @@ contains
        do i = 0, nThreadsGlobal-1
           call mpi_barrier(MPI_COMM_WORLD, ierr)
           if (myRankWorldGlobal == i) then
-             write(*,'(a,i,a,a)') "Thread ",i, " is running on ",trim(proc)
+             write(*,*) "Thread ",i, " is running on ",trim(proc)
           endif
           call mpi_barrier(MPI_COMM_WORLD, ierr)
        enddo
@@ -4696,20 +4696,19 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
 
 end subroutine labelSingleSubcellMPI
 
-#endif
 
-    function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
+function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
+  
+  real(double) :: xi(:), yi(:), zi(:), fi(:)
+  real(double) :: x, y, z, out
+  integer :: n, i
+  real(double), allocatable :: w(:), h(:)
+  real(double) :: R
 
-      real(double) :: xi(:), yi(:), zi(:), fi(:)
-      real(double) :: x, y, z, out
-      integer :: n, i
-      real(double), allocatable :: w(:), h(:)
-      real(double) :: R
 
-
-      allocate(w(1:n), h(1:n))
+  allocate(w(1:n), h(1:n))
       
-      do i = 1, n
+  do i = 1, n
          h(i) = max(1.d-3,sqrt( (x-xi(i))**2 + (y-yi(i))**2 + (z-zi(i))**2))
       enddo
       R = maxval(h(1:n))
@@ -4722,7 +4721,8 @@ end subroutine labelSingleSubcellMPI
          out = out + w(i) * fi(i)
       enddo
       deallocate(w, h)
-
+      
     end function shepardsMethod
+#endif
 
   end module mpi_amr_mod
