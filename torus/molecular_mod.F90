@@ -1259,13 +1259,13 @@ module molecular_mod
              if(forceIniRay) then
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(1), phi(1), i0temp(1:maxtrans), &
-                     thisMolecule,dirweight, fixedrays, warned_neg_dtau,tostar=.true.) ! does the hard work - populates i0 etc
+                     thisMolecule,dirweight(1), fixedrays, warned_neg_dtau,tostar=.true.) ! does the hard work - populates i0 etc
                 i0(1,1:maxtrans) = i0temp(1:maxtrans)
              else
                 
               call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(1), phi(1), i0temp(1:maxtrans), &
-                     thisMolecule,dirweight, fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
+                     thisMolecule,dirweight(1), fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
                 i0(1,1:maxtrans) = i0temp(1:maxtrans)
              end if
  !            print *, "getting main rays"
@@ -1274,7 +1274,7 @@ module molecular_mod
              do iRay = 2, nRay
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &
-                     thisMolecule,dirweight, fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
+                     thisMolecule,dirweight(iRay), fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
                 i0(iray,1:maxtrans) = i0temp(1:maxtrans)
              enddo
 
@@ -1547,7 +1547,7 @@ end subroutine molecularLoop
      logical, optional :: fixedrays
      logical, optional :: tostar
      logical :: stage1
-     real(double) :: di0(maxtrans), dirWeight(:)
+     real(double) :: di0(maxtrans), dirWeight
      real(double), intent(out) :: ds, phi, i0(:)
 	 	 
      integer, parameter :: maxSamplePoints = 100
