@@ -1319,7 +1319,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
     
-    USE inputs_mod, ONLY : cylindrical, amr3d, modelwashydro !, useHartmannTemp
+    USE inputs_mod, ONLY : cylindrical, amr3d, modelwashydro, splitOverMPI !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -1339,10 +1339,10 @@ CONTAINS
     logical, save :: firstTIme=.true.
     INTEGER :: subcell, iChild
 
+    if (splitOverMPI.and.(myrankGlobal == 0)) goto 666
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren
    
-       if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
        SELECT CASE (grid%geometry)
 

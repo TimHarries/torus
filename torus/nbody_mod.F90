@@ -7,6 +7,7 @@ module nbody_mod
   use source_mod
   use mpi_global_mod
   use mpi_amr_mod
+  use amr_mod, only : octalOnThread
   implicit none
 
 contains
