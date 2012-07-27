@@ -155,11 +155,15 @@ check_completion()
 prepare_run()
 {
 if [[ -e ${TEST_DIR} ]]; then
+    if [[ -e ${TEST_DIR}/lock ]]; then
+	echo "Found lock file. Aborting"
+	exit 1
+    fi
     if [[ ${CLOBBEROK} == yes ]]; then
 	echo "Removing old ${TEST_DIR}"
 	rm -rf ${TEST_DIR}
     else
-	echo "${TEST_DIR} already exisits. Aborting"
+	echo "${TEST_DIR} already exists. Aborting"
 	exit 1
     fi
 fi
@@ -167,6 +171,7 @@ fi
 echo "Working directory is ${TEST_DIR}"
 mkdir -p ${TEST_DIR}
 cd ${TEST_DIR}
+touch lock
 
 echo Checking out torus from SVN archive...
 /usr/bin/svn checkout https://repository.astro.ex.ac.uk/torus/trunk/torus/ torus > svn_log.txt 2>&1 
@@ -535,6 +540,8 @@ for opt in ${DEBUG_OPTS}; do
     run_torus_test_suite
 
 done
+
+rm ${TEST_DIR}/lock
 
 exit ${RETURN_CODE}
 
