@@ -4,14 +4,14 @@
 
 module diffusion_mod
 
-use mpi_amr_mod, only : octalOnThread
 use constants_mod
 use vector_mod
 use messages_mod
 use gridtype_mod, only: GRIDTYPE
 use vtk_mod, only: writeVTKfile
 use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, returndPhi
-use amr_mod, only: returnKappa, tauAlongPath, inOctal, amrGridValues, countVoxels, getOctalArray
+use amr_mod, only: returnKappa, tauAlongPath, inOctal, amrGridValues, &	
+     countVoxels, getOctalArray, octalOnThread
 implicit none
 
 

@@ -1060,7 +1060,7 @@ CONTAINS
        setChanged, romData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
-
+    use inputs_mod, only : splitOverMPI
     IMPLICIT NONE
 
 
@@ -1071,7 +1071,6 @@ CONTAINS
       !   decide whether or not to split cell.
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
                                           !   routines that this subroutine calls
-
     LOGICAL, INTENT(IN) :: wvars !refinegrid on hydro variables
     LOGICAL, INTENT(IN), OPTIONAL :: setChanged
     !
@@ -1083,8 +1082,10 @@ CONTAINS
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
+    if ((splitOverMPI).and.(myrankGlobal == 0)) goto 666
+
     DO iSubcell = 1, thisOctal%maxChildren
-      
+
       IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid, wvars,&
             splitInAzimuth, &
             romData=romData)) THEN
@@ -1148,7 +1149,7 @@ CONTAINS
                      setChanged, romData=romData)
       
    END DO
-
+666  continue
   END SUBROUTINE splitGrid
   
   

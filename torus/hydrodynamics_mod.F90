@@ -10297,25 +10297,40 @@ end subroutine minMaxDepth
        allocate(globalSourceArray(1:globalnSource))
        iSink = 1
        do iThread = 1, nHydroThreadsGlobal
-          call MPI_RECV(j, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%mass, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%x, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%y, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%z, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%x, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%y, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%z, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(j, 1, MPI_INTEGER, iThread, tag, &
+               localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%mass, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%x, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%y, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%z, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%x, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%y, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%z, j, MPI_DOUBLE_PRECISION, &
+               iThread, tag, localWorldCommunicator, status, ierr)
           iSink = iSink + j
         enddo
      else
         call MPI_SEND(globalnSource, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%mass, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%mass, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%position%x, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%position%y, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%position%z, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%x, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%y, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%z, globalnSource, &
+             MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
      endif
      if (myrankGlobal /= 0) then
         call freeGlobalSourceArray()
@@ -10324,13 +10339,20 @@ end subroutine minMaxDepth
      if (myrankGlobal /= 0) then
         allocate(globalSourceArray(1:globalnSource))
      endif
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%mass, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%mass, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%x, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%y, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%z, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%x, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%y, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%z, globalnSource, &
+          MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
         
 
    end subroutine gatherSinks
