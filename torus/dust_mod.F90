@@ -6,9 +6,8 @@ module dust_mod
   use gridtype_mod, only: GRIDTYPE
   use utils_mod, only: locate!, spline, splint
   use octal_mod, only: OCTAL, subcellCentre
-  use amr_mod, only: amrGridValues, returnKappa
+  use amr_mod, only: amrGridValues, returnKappa, octalOnThread
   use mpi_global_mod
-  use mpi_amr_mod, only : octalOnThread
   use mieDistCrossSection_mod, only: mieDistCrossSection
 
   implicit none

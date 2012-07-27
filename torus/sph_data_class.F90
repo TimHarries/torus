@@ -2167,6 +2167,12 @@ contains
 
 
        PositionArray = 0.d0; hArray = 0.d0; ind = 0; q2array = 0.d0; etaarray = 0.d0
+       if (.not.associated(sphdata%xn)) then
+          write(*,*) "sphdata not associated"
+          write(*,*) "rank ",myrankGlobal
+          write(*,*) "npart ",sphData%npart
+          write(*,*) "ptmass ",sphData%nptmass
+       endif
 
        Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
        xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
