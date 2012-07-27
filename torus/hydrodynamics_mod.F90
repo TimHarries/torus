@@ -10273,7 +10273,67 @@ end subroutine minMaxDepth
     source%velocity = (1.d0/source%mass) * sourceMomentum
   end subroutine correctMomentumOfSink
 
+  subroutine gatherSinks()
+    use mpi
+    integer :: iThread
+    integer :: iSink, j
+    integer, parameter :: tag = 34
+    integer :: status(MPI_STATUS_SIZE)
+    integer :: ierr
 
+    iSink = 0 
+    if (myrankGlobal == 0) then
+       do iThread = 1, nHydroThreadsGlobal
+          call MPI_RECV(j, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
+           iSink = iSink + j
+        enddo
+        write(*,*) "Total number of sinks over all threads ",iSink
+     else
+        call MPI_SEND(globalnSource, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
+     endif
+    if (myrankGlobal == 0) then
+       globalnSource = iSink
+       call freeGlobalSourceArray()
+       allocate(globalSourceArray(1:globalnSource))
+       iSink = 1
+       do iThread = 1, nHydroThreadsGlobal
+          call MPI_RECV(j, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%mass, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%x, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%y, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%position%z, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%x, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%y, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          call MPI_RECV(globalSourceArray(iSink:iSink+j-1)%velocity%z, j, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          iSink = iSink + j
+        enddo
+     else
+        call MPI_SEND(globalnSource, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%mass, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        call MPI_SEND(globalSourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+     endif
+     if (myrankGlobal /= 0) then
+        call freeGlobalSourceArray()
+     endif
+     call MPI_BCAST(globalnSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal /= 0) then
+        allocate(globalSourceArray(1:globalnSource))
+     endif
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%mass, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     call MPI_BCAST(globalSourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+        
+
+   end subroutine gatherSinks
 
   subroutine doMyAccretion(grid, sourceArray, nSource, timeStep)
     use mpi
@@ -11087,6 +11147,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
     ffunc = (u**(4.d0/(gamma+1.d0)))*(0.5d0 + (1.d0/(gamma-1.d0)) * (1.d0/u**2))
   end function ffunc
+
+
+
 
 #endif
 

@@ -1323,6 +1323,7 @@ end subroutine radiationHydro
        if (myrankWorldGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
        if (myrankWorldGlobal == 1) write(*,*) "nhydrosetsglobal ",nHydroSetsGlobal
 
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (myrankWorldGlobal == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        !Thaw - stack optimization
@@ -1361,7 +1362,6 @@ end subroutine radiationHydro
           write(*,*) "stack limit array: ", stacklimitarray
           iniCustomTime=.false.
        end if
-          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if (myRankGlobal == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
 !                   if ((myHydroSetGlobal == 0).and.&

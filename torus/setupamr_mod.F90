@@ -172,6 +172,7 @@ contains
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+
        case("molcluster")
           if (.not.grid%splitOverMPI) then
              call new_read_sph_data(sphdatafilename)
@@ -338,6 +339,8 @@ contains
        end select
 
 
+
+
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
         grid%nOctals = nOctals
         call howmanysplits()
@@ -373,6 +376,7 @@ contains
            call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
            call finishGrid(grid%octreeRoot, grid, romData=romData)
         end if
+
 
 
        select case (geometry)

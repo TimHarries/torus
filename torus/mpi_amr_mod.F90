@@ -11,10 +11,16 @@ contains
   subroutine setupAMRCOMMUNICATOR
     use mpi
     use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr2d
-    integer :: ierr, i, j
+    integer :: ierr, i, j, iset
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
     integer :: amrParallelGroup, zeroThreadGroup
+    integer, parameter :: tag = 22
+    character(len=20) :: proc, thisProc
+    logical :: optimized
+    integer :: status(MPI_STATUS_SIZE)
+    character(len=80) :: message
+
 
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreadsGlobal, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRankWorldGlobal, ierr)
@@ -100,6 +106,46 @@ contains
        deallocate(ranks)
 
 
+       call mpi_get_processor_name(proc, j, ierr)
+       do i = 0, nThreadsGlobal-1
+          call mpi_barrier(MPI_COMM_WORLD, ierr)
+          if (myRankWorldGlobal == i) then
+             write(*,'(a,i,a,a)') "Thread ",i, " is running on ",trim(proc)
+          endif
+          call mpi_barrier(MPI_COMM_WORLD, ierr)
+       enddo
+
+       if (nHydroThreadsGlobal == 8) then
+          optimized = .true.
+          do iSet = 1, nHydroSetsGlobal
+
+             if (myHydroSetGlobal == (iSet-1)) then
+                if (myRankGlobal == 0) then
+                   call mpi_get_processor_name(proc, j, ierr)
+                   do i = 1, nHydroThreadsGlobal
+                      call mpi_recv(j, 1, MPI_INTEGER, i, tag, localWorldcommunicator, status, ierr)
+                      call mpi_recv(thisProc, j, MPI_CHARACTER, i, tag, localWorldcommunicator, status, ierr)
+                      if (thisProc(1:j) /= proc(1:j)) then
+                         optimized = .false.
+                      endif
+                   enddo
+                else
+                   call mpi_get_processor_name(proc, j, ierr)
+                   call mpi_send(j, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
+                   call mpi_send(proc, j, MPI_CHARACTER, 0, tag, localWorldCommunicator, ierr)
+                endif
+             endif
+          enddo
+
+
+          call mpi_barrier(MPI_COMM_WORLD, ierr)
+          if (.not.optimized) then
+             write(message,'(a)') "!!! Eight-way domain decomposition not optimized."
+             if (myrankGlobal ==0) write(*,*) trim(message)
+          endif
+       endif
+
+
 !       if ((nHydroThreadsGlobal == 8).and.(nHydroSetsGlobal > nHydroThreadsGlobal)) then
 !          allocate(ranks(1:nhydroThreadsGlobal**2))
 !          n = 1
@@ -116,11 +162,47 @@ contains
 !       endif
           
           
-
+       call testMPIspeeds()
     else
        myrankGlobal = myrankWorldGlobal
     endif
   end subroutine setupAMRCOMMUNICATOR
+
+  subroutine testMPIspeeds()
+    use timing, only : tune
+    use mpi
+    integer, parameter :: ndata = 100000
+    real(double) :: rdata(ndata)
+    real(double) :: sdata(ndata)
+    integer :: i, j, iThread, iset
+    integer :: ierr
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 54
+
+    do i = 1, nData
+       rData(i) = dble(i)
+    enddo
+    do iset = 1, nHydroSetsGlobal
+
+       call mpi_barrier(MPI_COMM_WORLD, ierr)
+       if (myrankWorldGlobal == 0) call tune(6, "Local send/receive test")  ! start a stopwatch
+       if (myHydroSetGlobal == (iset-1)) then
+          call mpi_barrier(localWorldCommunicator, ierr)
+          do j = 1, 1000
+             if (myrankGlobal == 0) then
+                do iThread = 1, nHydroThreadsGlobal
+                   call MPI_SEND(rData, nData, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                enddo
+             else
+                call MPI_RECV(sData, nData, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+             endif
+             call mpi_barrier(localWorldCommunicator, ierr)
+          enddo
+       endif
+       call mpi_barrier(MPI_COMM_WORLD, ierr)
+       if (myrankWorldGlobal == 0) call tune(6, "Local send/receive test")  ! stop a stopwatch
+    enddo
+  end subroutine testMPIspeeds
 
 ! Free communicator created by setupAMRCOMMUNICATOR
   subroutine freeAMRCOMMUNICATOR
@@ -2143,125 +2225,6 @@ contains
       end SUBROUTINE countVoxelsPrivate
 
   END SUBROUTINE countVoxelsMPI
-
-  function octalOnThread(thisOctal, subcell, myRank) result(check)
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    integer :: myRank
-    logical :: check
-    integer :: nFirstLevel
-
-    check = .true.
-
-    if (thisOctal%twoD) then
-       if (nHydroThreadsGlobal == 4) then
-          if (thisOctal%mpiThread(subcell) == myRank) then
-             check = .true.
-          else
-             check = .false.
-          endif
-       endif
-       if (nHydroThreadsGlobal == 16) then
-          nFirstLevel = (myRank-1) / 4 + 1
-          if (thisOctal%nDepth == 1) then
-             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          else
-             if (thisOctal%mpiThread(subcell) == myRank) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          endif
-       endif
-    endif
-
-    if (thisOctal%threeD) then
-       if (nHydroThreadsGlobal == 8) then
-
-          if (thisOctal%mpiThread(subcell) == myRank) then
-             check = .true.
-          else
-             check = .false.
-          endif
-       endif
-       if (nHydroThreadsGlobal == 64) then
-          nFirstLevel = (myRank-1) / 8 + 1
-          if (thisOctal%nDepth == 1) then
-             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          else
-             if (thisOctal%mpiThread(subcell) == myRank) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          endif
-!          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
-       endif
-
-       if (nHydroThreadsGlobal == 512) then
-          nFirstLevel = (myRank-1) / 64 + 1
-          if (thisOctal%nDepth == 1) then
-             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          else if (thisOctal%nDepth == 2) then
-             nFirstLevel = (myRank-1) / 8  + 1
-             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          else
-             if (thisOctal%mpiThread(subcell) == myRank) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          endif
-!          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
-       endif
-
-
-
-    endif
-
-    if (thisOctal%oned) then
-       if (nHydroThreadsGlobal == 2) then
-          if (thisOctal%mpiThread(subcell) == myRank) then
-             check = .true.
-          else
-             check = .false.
-          endif
-       endif
-       if (nHydroThreadsGlobal == 4) then
-          nFirstLevel = (myRank-1) / 2 + 1
-          if (thisOctal%nDepth == 1) then
-             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          else
-             if (thisOctal%mpiThread(subcell) == myRank) then
-                check = .true.
-             else
-                check = .false.
-             endif
-          endif
-       endif
-    endif
-
-  end function octalOnThread
 
   subroutine periodBoundary(grid, justGrav)
     use mpi
@@ -4733,35 +4696,8 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
 
 end subroutine labelSingleSubcellMPI
 
-
-#else
-
-    use messages_mod
-    use octal_mod
-
-    implicit none
-
-  contains
-
-    ! Stubbed version to allow non-MPI code to compile
-    function octalOnThread(thisOctal, subcell, myRank) result(check)
-      type(OCTAL), pointer :: thisOctal
-      integer :: subcell
-      integer :: myRank
-      logical :: check
-      integer :: i
-      i = thisOctal%nchildren
-      i = subcell
-      i = myrank
-      ! Set return value of function to prevent a compiler warning. 
-      check = .true.
-!      check=.false.
-!      call writefatal("octalOnThread called in non-MPI code")
-!      STOP
-
-    end function octalOnThread
-
 #endif
+
     function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
 
       real(double) :: xi(:), yi(:), zi(:), fi(:)

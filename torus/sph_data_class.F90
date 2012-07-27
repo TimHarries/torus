@@ -152,19 +152,19 @@ contains
 
     ! allocate arrays
     ! -- for gas particles
-    ALLOCATE(sphdata%xn(npart))
-    ALLOCATE(sphdata%yn(npart))
-    ALLOCATE(sphdata%zn(npart))
+    ALLOCATE(sphdata%xn(sphdata%npart))
+    ALLOCATE(sphdata%yn(sphdata%npart))
+    ALLOCATE(sphdata%zn(sphdata%npart))
 
 
-    ALLOCATE(sphdata%vxn(npart))
-    ALLOCATE(sphdata%vyn(npart))
-    ALLOCATE(sphdata%vzn(npart))
+    ALLOCATE(sphdata%vxn(sphdata%npart))
+    ALLOCATE(sphdata%vyn(sphdata%npart))
+    ALLOCATE(sphdata%vzn(sphdata%npart))
 
-    Allocate(sphdata%rhon(npart))
-    ALLOCATE(sphdata%temperature(npart))
-    ALLOCATE(sphdata%gasmass(npart))
-    ALLOCATE(sphdata%hn(npart))
+    Allocate(sphdata%rhon(sphdata%npart))
+    ALLOCATE(sphdata%temperature(sphdata%npart))
+    ALLOCATE(sphdata%gasmass(sphdata%npart))
+    ALLOCATE(sphdata%hn(sphdata%npart))
 
     ! -- for star positions
     ALLOCATE(sphdata%x(nptmass))
@@ -299,6 +299,7 @@ contains
 ! according to the string inputFileFormat
 ! D. Acreman, June 2012
   subroutine read_sph_data_wrapper
+    use mpi
     use inputs_mod, only: inputFileFormat, sphdatafilename
 
     select case (inputFileFormat)
@@ -307,7 +308,7 @@ contains
        
     case("mpi")
        call read_sph_data_mpi(sphdatafilename)
-             
+
     case("ascii")
        call new_read_sph_data(sphdatafilename)
 
@@ -681,6 +682,7 @@ contains
 
    end subroutine rotate_particles
 
+
    subroutine rotateForTime
      implicit none
      real(double), parameter :: refTime = 5.3010001E+00 * 4.7165268E+07
@@ -707,13 +709,17 @@ contains
 ! Read in SPH data from an MPI dump file
 ! D. Acreman, June 2012
   subroutine read_sph_data_mpi(filename)
-
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi
+#ifdef MPI
+    use mpi
+#endif
     implicit none
+
     
     character(len=*), intent(in) :: filename
     character(LEN=150) :: message
 
-    integer(kind=8) :: iiigas, irejected, irequired, i, j
+    integer(kind=8) :: iiigas, irejected, irequired, i, j, iiisink
     integer :: iblock ! MPI block number
     integer :: nums(8), numssink(8), numsrt(8), numsmhd(8)
 
@@ -727,6 +733,7 @@ contains
     REAL(kind=8)     :: r1
     REAL(kind=4)     :: r4
     integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
+    integer  :: blocksum_nptmass, i_pt_mass
     CHARACTER(len=100) ::  fileident
 
     integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -740,13 +747,24 @@ contains
 
     integer,allocatable :: listpm(:)
     real(kind=8),allocatable    :: spinx(:)
+    type(VECTOR) :: centre
+    real(double) :: halfSize
 
     integer :: thisNumGas
     integer :: nlistinactive, listinactive(1)
-
+    integer :: iThread
+#ifdef MPI
+    integer :: ierr
+    integer, parameter :: tag = 33
+    integer :: status(MPI_STATUS_SIZE)
+#endif
 ! Mean molecular weight, used for calculating temperature from internal energy.
 ! This assumes a 10:1 H:He ratio by number
     real(double), parameter :: gmw = 14.0/11.0 
+
+#ifdef MPI
+    if (myrankWorldGlobal == 0) then
+#endif
 
 !
 ! Part 1: Read in the dump
@@ -762,7 +780,6 @@ contains
     open(unit=LUIN, file=filename, form='unformatted', status='old')
 
     read(LUIN) int1, r1, int2, i1, int1
-    write(*,*) int1,r1,int2,i1,int1
     read(LUIN) fileident
     write(message,*) "fileident=", fileident
     call writeinfo(message, TRIVIAL)
@@ -813,6 +830,7 @@ contains
 
     iiigas = 0
     blocksum_npart = 0
+    blocksum_nptmass = 0 
     mpi_blocks: do iblock=1, nblocks
 
        write(message,*) "Reading MPI block ", iblock
@@ -826,6 +844,7 @@ contains
        read(LUIN) blocknptmass, (numssink(i), i=1,8)
        write(message,*) "This block has nptmass=", blocknptmass
        call writeInfo(message,TRIVIAL)
+       blocksum_nptmass = blocksum_nptmass + blocknptmass
 
        if (nblocktypes.GE.3) then
           read(LUIN) blocknradtrans, (numsrt(i), i=1,8)
@@ -930,23 +949,44 @@ contains
     close(LUIN)
 
     if (blocksum_npart == npart ) then 
-       write(message,*) "Read ", npart, " particles"
-       call writeInfo(message, TRIVIAL)
+       write(*,*) "Read ", npart, " particles"
+!       call writeInfo(message, TRIVIAL)
     else
        write(message,*) "Read ",blocksum_npart, "particles but expected ", npart
        call writeWarning(message)
     endif
 
+
+#ifdef MPI
+    do iThread = 1, nHydroThreadsGlobal
+#endif
+
+
 !
 ! Part 2: Set up SPH data structure
+
+    centre = VECTOR(amrgridcentrex, amrgridcentrey, amrgridcentrez)
+    halfSize = amrgridSize / 2.d0
+    if (splitOverMpi) then
+       call  domainCentreAndSize(iThread, centre, halfsize)
+    endif
+    
 !
 
 ! Work out how many particles we actually need
     irequired=0
     irejected=0
-    do i=1, npart
+    i_pt_mass =0 
+    do i=1, blocksum_npart
+       if (iphase(i) > 0) then
+          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize)) then 
+             i_pt_mass = i_pt_mass + 1
+          endif
+       endif
+
+
        if (iphase(i) == 0) then
-          if ( particleRequired(xyzmh(:,i),uDist)) then 
+          if ( particleRequired(xyzmh(:,i),uDist, centre, halfSize)) then 
              irequired = irequired + 1
           else
              irejected = irejected + 1
@@ -958,7 +998,8 @@ contains
 ! int is explicit convertion from kind=8 to default integer to avoid compiler warning
     npart = int(irequired)
 
-    call init_sph_data(udist, umass, utime, time, nptmass)
+    write(*,*) myrankGlobal, "nptmass ", i_pt_mass, npart
+    call init_sph_data(udist, umass, utime, time, i_pt_mass)
     sphData%useSphTem = .true. 
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
 
@@ -969,10 +1010,14 @@ contains
     endif
 
     iiigas=0
+    iiisink = 0 
+
+
+
 ! This loop needs to be over all the particles read in
     do i=1, blocksum_npart
        if (iphase(i) == 0) then
-          if ( particleRequired(xyzmh(:,i),uDist)) then 
+          if ( particleRequired(xyzmh(:,i),uDist, centre, halfSize)) then 
 
              iiigas=iiigas+1
 
@@ -1000,8 +1045,23 @@ contains
              sphData%hn(iiigas)          = xyzmh(5,i)
 
           endif
-       end if
+       else if(iphase(i) > 0) then
+          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize)) then 
+       
+             iiisink=iiisink+1
+
+
+             sphdata%x(iiisink)         = xyzmh(1,i)
+             sphdata%y(iiisink)         = xyzmh(2,i)
+             sphdata%z(iiisink)         = xyzmh(3,i)
+             sphData%ptmass(iiisink)    = xyzmh(4,i)
+             sphdata%vx(iiisink)         = vxyzu(1,i)
+             sphdata%vy(iiisink)         = vxyzu(2,i)
+             sphdata%vz(iiisink)         = vxyzu(3,i)
+          endif
+       endif
     end do
+    sphdata%nptmass = iiisink
 
     write(message,*) "Stored ", irequired, " gas particles which are required"
     call writeinfo(message, TRIVIAL)    
@@ -1009,7 +1069,10 @@ contains
     write(message,*) "Rejected ", irejected, " gas particles which do not influence the grid"
     call writeinfo(message, TRIVIAL)    
 
-    write(message,*) "Total number of gas partcles is ", irequired+irejected
+    write(message,*) "Total number of gas particles is ", irequired+irejected
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Total number of required sink particles is ", iiisink
     call writeinfo(message, TRIVIAL)    
 
     write(message,*) "Minimum x=", minval(xyzmh(1,:)) * udist
@@ -1027,6 +1090,44 @@ contains
     write(message,*) "Maximum z=", maxval(xyzmh(3,:)) * udist
     call writeinfo(message, TRIVIAL)
 
+#ifdef MPI
+
+    call mpi_send(uDist, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(uMass, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(uTime, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphData%codeVelocityToTorus, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+
+    call mpi_send(sphdata%nPart, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%rhon, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%vxn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vyn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vzn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%temperature, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%xn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%yn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%zn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%gasmass, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%hn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%nptmass, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%ptmass, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%x, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%y, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%z, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%vx, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vy, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vz, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+
+    call kill_sph_data()
+ enddo
     deallocate(rho)
     deallocate(vxyzu)
     deallocate(xyzmh)
@@ -1034,10 +1135,77 @@ contains
     deallocate(iphase)
     deallocate(isteps)
 
+
+    else
+
+       call mpi_recv(sphData%uDist, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%uMass, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%uTime, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%codeVelocitytoTorus, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       call mpi_recv(sphData%nPart, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+       npart = sphData%nPart
+       allocate(sphdata%rhon(1:sphData%nPart))
+       call mpi_recv(sphData%rhon, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%vxn(1:sphData%nPart))
+       allocate(sphdata%vyn(1:sphData%nPart))
+       allocate(sphdata%vzn(1:sphData%nPart))
+       call mpi_recv(sphData%vxn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%vyn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%vzn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%temperature(1:sphData%nPart))
+       call mpi_recv(sphData%temperature, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%xn(1:sphData%nPart))
+       allocate(sphdata%yn(1:sphData%nPart))
+       allocate(sphdata%zn(1:sphData%nPart))
+       call mpi_recv(sphData%xn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%yn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%zn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+
+       allocate(sphdata%gasmass(1:sphData%nPart))
+       call mpi_recv(sphData%gasmass, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%hn(1:sphData%nPart))
+       call mpi_recv(sphData%hn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       write(*,*) myrankglobal, " received ", sphData%npart
+
+       call mpi_recv(sphData%nptmass, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%ptmass(1:sphData%nptmass))
+       call mpi_recv(sphData%ptmass, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%x(1:sphData%nptmass))
+       call mpi_recv(sphData%x, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%y(1:sphData%nptmass))
+       call mpi_recv(sphData%y, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%z(1:sphData%nptmass))
+       call mpi_recv(sphData%z, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%vx(1:sphData%nptmass))
+       call mpi_recv(sphData%vx, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%vy(1:sphData%nptmass))
+       call mpi_recv(sphData%vy, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%vz(1:sphData%nptmass))
+       call mpi_recv(sphData%vz, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+
+    endif
+    call mpi_barrier(MPI_COMM_WORLD, ierr)
+#endif
+
+
+
+
+
   end subroutine read_sph_data_mpi
 
-  logical function particleRequired(positionArray, uDist)
-    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize
+  logical function particleRequired(positionArray, uDist, cen, halfsize)
+    type(VECTOR) :: cen
+    real(double) :: halfSize
     real(kind=8) :: positionArray(5)
     real(db) :: x, y, z, h
     real(db) :: distFromGridCentre, maxDist
@@ -1049,11 +1217,11 @@ contains
     z = positionArray(3) * uDist / 1.0e10
     h = positionArray(5) * uDist / 1.0e10
 
-    distFromGridCentre = sqrt ( (x-amrgridcentrex)**2 + (y-amrgridcentrey)**2 + (z-amrgridcentrez)**2)
+    distFromGridCentre = sqrt ( (x-cen%x)**2 + (y-cen%y)**2 + (z-cen%z)**2)
 
 ! Maximum distance at which a particle can influence the grid. This is taken to be the distance from the 
 ! grid centre to a grid corner (in 3D) plus 3 particle smoothing lengths
-    maxDist = sqrt(3.0)*(amrgridsize/2.0) + 3.0 * h
+    maxDist = sqrt(3.0)*halfSize + 3.0 * h
 
     if (distFromGridCentre < maxDist) then 
        particleRequired = .true.
@@ -1062,6 +1230,35 @@ contains
     endif
 
   end function particleRequired
+
+  logical function particleInBox(positionArray, uDist, cen, halfsize)
+    type(VECTOR) :: cen
+    real(double) :: halfSize
+    real(kind=8) :: positionArray(5)
+    real(db) :: x, y, z
+    real(db), intent(in) :: uDist
+
+    ! Particle position in Torus units
+    x = positionArray(1) * uDist / 1.0e10
+    y = positionArray(2) * uDist / 1.0e10
+    z = positionArray(3) * uDist / 1.0e10
+
+    particleInBox = .true.
+    if (x > (cen%x+halfSize)) then
+       particleInBox = .false.
+    else if (y > (cen%y+halfSize)) then
+       particleInBox = .false.
+    else if (z > (cen%z+halfSize)) then
+       particleInBox = .false.
+    else if (x < (cen%x-halfSize)) then
+       particleInBox = .false.
+    else if (y < (cen%y-halfSize)) then
+       particleInBox = .false.
+    else if (z < (cen%z-halfSize)) then
+       particleInBox = .false.
+    endif
+
+  end function particleInBox
 
 ! Read in SPH data from dump file with Chemistry. Errors reading from file could be due to incorrect endian. 
   subroutine read_sph_data_withChem(filename)
@@ -1517,6 +1714,32 @@ contains
     out = sphdata%ptmass(i)  !in program units [umass]. See above.
 
   end function get_pt_mass
+
+  !
+  ! Returns the position of the point mass (star) in
+  ! the i-th position of data.
+  !
+  function get_pt_position(i) RESULT(out)
+    implicit none
+    type(vector)  :: out 
+    integer, intent(in):: i
+
+    out = VECTOR(sphdata%x(i),sphdata%y(i),sphdata%z(i))  !in program units [umass]. See above.
+
+  end function get_pt_position
+
+  !
+  ! Returns the velocity of the point mass (star) in
+  ! the i-th position of data.
+  !
+  function get_pt_velocity(i) RESULT(out)
+    implicit none
+    type(vector)  :: out 
+    integer, intent(in):: i
+
+    out = VECTOR(sphdata%vx(i),sphdata%vy(i),sphdata%vz(i))  !in program units [umass]. See above.
+
+  end function get_pt_velocity
   
   
   
@@ -2563,6 +2786,82 @@ contains
    sph_mass_within_grid = sph_mass_within_grid * sphData%umass / mSol 
 
  end function sph_mass_within_grid
+   subroutine domainCentreAndSize(iThread, domainCentre, halfdomainSize)
+     use gridtype_mod, only : gridtype
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize
+     type(VECTOR) :: centre, domainCentre
+     real(double) :: halfdomainSize, d
+     integer :: j
+     integer :: iThread
+
+     centre = VECTOR(amrgridcentrex, amrgridcentrey, amrgridcentrez)
+     d = 0.5d0 * amrgridsize
+     if (nHydroThreadsGlobal == 8) then
+        halfdomainSize = d
+        select case (iThread)
+          CASE (1)    
+             domainCentre = centre + d * VECTOR(-1.d0,-1.d0,-1.d0)
+          CASE (2)    
+             domainCentre = centre + d * VECTOR(1.d0,-1.d0,-1.d0)
+          CASE (3)    
+             domainCentre = centre + d * VECTOR(-1.d0,1.d0,-1.d0)
+          CASE (4)    
+             domainCentre = centre + d * VECTOR(1.d0,1.d0,-1.d0)
+          CASE (5)    
+             domainCentre = centre + d * VECTOR(-1.d0,-1.d0,1.d0)
+          CASE (6)    
+             domainCentre = centre + d * VECTOR(1.d0,-1.d0,1.d0)
+          CASE (7)    
+             domainCentre = centre + d * VECTOR(-1.d0,1.d0,1.d0)
+          CASE (8)    
+             domainCentre = centre + d * VECTOR(1.d0,1.d0,1.d0)
+          end select
+       endif
+
+     if (nHydroThreadsGlobal == 64) then
+        d = 0.5d0 * amrgridsize
+        j =  (iThread-1)/8 + 1
+        select case (j)
+          CASE (1)    
+             domainCentre = centre + d * VECTOR(-1.d0,-1.d0,-1.d0)
+          CASE (2)    
+             domainCentre = centre + d * VECTOR(1.d0,-1.d0,-1.d0)
+          CASE (3)    
+             domainCentre = centre + d * VECTOR(-1.d0,1.d0,-1.d0)
+          CASE (4)    
+             domainCentre = centre + d * VECTOR(1.d0,1.d0,-1.d0)
+          CASE (5)    
+             domainCentre = centre + d * VECTOR(-1.d0,-1.d0,1.d0)
+          CASE (6)    
+             domainCentre = centre + d * VECTOR(1.d0,-1.d0,1.d0)
+          CASE (7)    
+             domainCentre = centre + d * VECTOR(-1.d0,1.d0,1.d0)
+          CASE (8)    
+             domainCentre = centre + d * VECTOR(1.d0,1.d0,1.d0)
+          end select
+        j =  iThread - (j-1)*8
+        d = d / 2.d0
+        halfdomainSize = d
+        select case (j)
+          CASE (1)    
+             domainCentre = domaincentre + d * VECTOR(-1.d0,-1.d0,-1.d0)
+          CASE (2)    
+             domainCentre = domaincentre + d * VECTOR(1.d0,-1.d0,-1.d0)
+          CASE (3)    
+             domainCentre = domaincentre + d * VECTOR(-1.d0,1.d0,-1.d0)
+          CASE (4)    
+             domainCentre = domaincentre + d * VECTOR(1.d0,1.d0,-1.d0)
+          CASE (5)    
+             domainCentre = domaincentre + d * VECTOR(-1.d0,-1.d0,1.d0)
+          CASE (6)    
+             domainCentre = domaincentre + d * VECTOR(1.d0,-1.d0,1.d0)
+          CASE (7)    
+             domainCentre = domaincentre + d * VECTOR(-1.d0,1.d0,1.d0)
+          CASE (8)    
+             domainCentre = domaincentre + d * VECTOR(1.d0,1.d0,1.d0)
+          end select
+       endif
+     end subroutine domainCentreAndSize
 
 end module sph_data_class
 

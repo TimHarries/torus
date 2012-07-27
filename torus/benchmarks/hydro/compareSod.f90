@@ -1,7 +1,7 @@
 program compareSod
   implicit none
 
-  character(len=*), parameter :: torus_file="sod.dat"
+  character(len=*), parameter :: torus_file="sod_0040.dat"
   character(len=*), parameter :: ref_file  ="sod_analytical.dat"
   character(len=*), parameter :: conservation_file="conservation.dat"
   integer, parameter :: nSodA = 19

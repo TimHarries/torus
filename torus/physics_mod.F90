@@ -698,15 +698,18 @@ contains
 
    subroutine setupGlobalSources(grid)     
      use parallel_mod
+     use sph_data_class
      use starburst_mod
+     use hydrodynamics_mod, only : gatherSinks
      use source_mod, only : globalNsource, globalSourceArray
-     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources
+     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI
 #ifdef MPI
      use mpi
 #endif
 
      integer, parameter :: maxSources =1000
      integer(bigInt) :: itest
+     integer :: i
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
      real :: fAccretion
@@ -723,6 +726,20 @@ contains
         globalnSource = inputNSource
         call setupSources(globalnSource, globalsourceArray, grid)
      endif
+
+     if (grid%geometry == "theGalaxy") then
+        globalnSource = get_nptmass()
+        do i = 1, globalnSource
+           globalSourceArray(i)%stellar = .true.
+           globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()
+           globalSourceArray(i)%position = get_pt_position(i) * (get_udist()/1.d10)
+           globalSourceArray(i)%velocity = get_pt_velocity(i) * get_udist() / get_utime()
+        enddo
+        if (splitOverMPI) call gatherSinks()
+        call setSourceArrayProperties(globalsourceArray, globalnSource)
+        call writeSourceList(globalsourceArray, globalnSource)
+     endif
+
 
      if (grid%geometry == "starburst") then
 #ifdef MPI

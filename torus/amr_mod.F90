@@ -1341,6 +1341,8 @@ CONTAINS
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren
    
+       if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
        SELECT CASE (grid%geometry)
 
        CASE ("ttauri")
@@ -1368,6 +1370,8 @@ CONTAINS
           
        CASE ("molcluster", "theGalaxy")
           if( .not. thisoctal%haschild(subcell)) then 
+
+             if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
              if (.not. associated(thisoctal%cornervelocity)) then 
                 allocate(thisoctal%cornervelocity(27))
                 thisoctal%cornervelocity(:) = VECTOR(-9.9d99,-9.9d99,-9.9d99)
@@ -1379,6 +1383,7 @@ CONTAINS
                 thisOctal%velocity = thisoctal%cornervelocity(14)
              endif
              call assign_grid_values(thisOctal,subcell)
+!             write(*,*) "Assigned grid value ",thisOctal%rho(subcell)
           end if
 #endif
 
@@ -3222,6 +3227,7 @@ CONTAINS
     use magnetic_mod, only : accretingAreaMahdavi
     use romanova_class, only:  romanova_density
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
+    use sph_data_class, only : get_npart
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1
     use density_mod, only: density
@@ -3233,6 +3239,7 @@ CONTAINS
     IMPLICIT NONE
 
     TYPE(octal), target, intent(inout) :: thisOctal
+    type(OCTAL), pointer :: pOctal
     type(octal), pointer :: neighbourOctal
     integer :: neighbourSubcell
 !    TYPE(octal), POINTER       :: thisOctal
@@ -4194,159 +4201,160 @@ CONTAINS
           
 #ifdef SPH
        case ("cluster","molcluster","theGalaxy")
-          
-          ! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
-          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine )) then
-             split = .true.
-             splitInAzimuth = .true.
-          endif
-          
-          ! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
-          if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
-          
-          if ( doVelocitySplit ) then 
-             call find_n_particle_in_subcell(nparticle, ave_density, &
-                  thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell, v_min=minV, v_max=maxV)
-          else
-             call find_n_particle_in_subcell(nparticle, ave_density, &
-                  thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
-          end if
-          
-          total_mass = cellVolume(thisOctal, subcell)  * 1.d30
+          pOctal => thisOctal
+          if (octalOnThread(pOctal, subcell, myrankGlobal).and.(get_npart() > 0)) then
 
-          if ( thisOctal%cylindrical ) then
-             n_bin_az = nint(twoPi / thisOctal%dPhi)
-             massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * &
-                  ( amrlimitscalar**(2.0/3.0) )
-          else if ( amr2d ) then
-             cellCentre = subcellCentre(thisOctal,subCell)
-             massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * &
-                  ( amrlimitscalar**(2.0/3.0) )
-          else
-             massPerCell = amrlimitscalar
-          end if
-          
-          ! placeholder for maximum expected smoothing length
-          thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0)
-          
-          total_mass = ave_density * total_mass
-          
-          if (total_mass > massPerCell) then
-             split = .true.
-             mass_split = mass_split + 1
-          endif
-          
-          ! Split in order to capture density gradients. 
-          
-          ! Use sign of amrlimitscalar2 to determine which condition to use.
-          ! This allows testing of the grid generation method without recompiling the code
-          
-          if ( amrlimitscalar2 > 0.0 ) then 
-             if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) then 
-                if(split) then
-                   both_split = both_split + 1
-                else
-                   density_split = density_split + 1
-                   split = .true.
-                endif
-             end if
-          elseif (amrlimitscalar2 < 0.0 ) then
-             if (  (maxDensity / minDensity) > abs(amrlimitscalar2) ) then 
-                if(split) then
-                   both_split = both_split + 1
-                else
-                   density_split = density_split + 1
-                   split = .true.
-                endif
-             end if
-          endif
-          
-          !      if(maxdensity .gt. 1d-13 .and. nparticle .gt. 1) then
-          !         split = .true.
-          !         maxdensity_split = maxdensity_split + 1
-          !      endif
-          
-          
-          if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
-             if(ave_density .gt. 1d-13) then
-                T = 10.d0 * (ave_density * 1d13)**(0.4d0)
-                ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO
-                Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5)
-                Vturb = sqrt(5.938e-4 * T + 0.09) / (cspeed * 1d-5)
-             else
-                Vturb = 1.03246E-06 ! above calculation with T = 10
-             endif
-             
-             vgradx = maxV%x - minV%x
-             vgrady = maxV%y - minV%y
-             vgradz = maxV%z - minV%z
-             
-             vgrad = max(vgradx,max(vgrady,vgradz))
-             
-             if(vgrad .gt. vturbmultiplier * vturb) then
-                velocity_split = velocity_split + 1
+             ! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
+             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine )) then
                 split = .true.
+                splitInAzimuth = .true.
              endif
-          endif
-          
-          
-          !Jeans mass condition
-          !      if(.not. split .and. )then
-          !         split = .true.
-          !         mass_split2 = mass_split2 + 1
-          !      endif
-      
-          ! Additional refinement at the grid centre used for SPH-Torus discs. 
-          if ( refineCentre ) then 
              
-             cellSize   = thisOctal%subcellSize
-             cellCentre = subcellCentre(thisOctal,subCell)
+             ! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
+             if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
              
-             if ( thisOctal%cylindrical ) then 
-                
-                if ( abs(thisOctal%r) < 1.0e4 .and.  abs(cellCentre%z) < 1.0e4 ) then 
-                   if ( cellSize > 1.0e3 ) split = .true.
-                end if
-                
-                if ( abs(thisOctal%r) < 4.0e3 .and.  abs(cellCentre%z) < 4.0e3 ) then 
-                   if ( cellSize > 4.0e2 ) split = .true.
-                end if
-                
+             if ( doVelocitySplit ) then 
+                call find_n_particle_in_subcell(nparticle, ave_density, &
+                     thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell, v_min=minV, v_max=maxV)
              else
-                
-                if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
-                     < 40.0*grid%rCore ) then 
-                   if ( cellSize > grid%rCore ) split = .true. 
-                end if
-                
-                if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
-                     abs(cellCentre%z) < 20.0*grid%rCore ) then 
-                   if ( cellSize > 0.5*grid%rCore ) split = .true. 
-                end if
-
+                call find_n_particle_in_subcell(nparticle, ave_density, &
+                     thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
              end if
              
-          end if
-          
-          if ( grid%geometry == "theGalaxy" .and. internalView ) then 
+             total_mass = cellVolume(thisOctal, subcell)  * 1.d30
              
-! Find this point on the unmodified grid
-             cellCentre  = subcellCentre(thisOctal,subCell)
-             cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
-             cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
-             
-             ! Limit refinement outside the region of interest and either output number of 
-             ! SPH particles per grid cell or split if >1 particle per cell
-             if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
-                split = .false.
-             elseif (nparticle > 1 .and. SphOnePerCell) then
-                split = .true. 
-             elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero )then
-                write(113,*) nparticle
+             if ( thisOctal%cylindrical ) then
+                n_bin_az = nint(twoPi / thisOctal%dPhi)
+                massPerCell = ( (twoPi * thisOctal%r * 1.0e10) / n_bin_az ) * ( ave_density ** (1.0/3.0) ) * &
+                     ( amrlimitscalar**(2.0/3.0) )
+             else if ( amr2d ) then
+                cellCentre = subcellCentre(thisOctal,subCell)
+                massPerCell = ( (twoPi * cellCentre%x * 1.0e10) ) * ( ave_density ** (1.0/3.0) ) * &
+                     ( amrlimitscalar**(2.0/3.0) )
+             else
+                massPerCell = amrlimitscalar
              end if
              
-          end if
+             ! placeholder for maximum expected smoothing length
+             thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0)
+             
+             total_mass = ave_density * total_mass
+             if (total_mass > massPerCell) then
+                split = .true.
+                mass_split = mass_split + 1
+             endif
+             
+             ! Split in order to capture density gradients. 
+             
+             ! Use sign of amrlimitscalar2 to determine which condition to use.
+             ! This allows testing of the grid generation method without recompiling the code
+             
+             if ( amrlimitscalar2 > 0.0 ) then 
+                if ( ( (maxDensity-minDensity) / (maxDensity+minDensity) )  > amrlimitscalar2 ) then 
+                   if(split) then
+                      both_split = both_split + 1
+                   else
+                      density_split = density_split + 1
+                      split = .true.
+                   endif
+                end if
+             elseif (amrlimitscalar2 < 0.0 ) then
+                if (  (maxDensity / minDensity) > abs(amrlimitscalar2) ) then 
+                   if(split) then
+                      both_split = both_split + 1
+                   else
+                      density_split = density_split + 1
+                      split = .true.
+                   endif
+                end if
+             endif
+             
+             !      if(maxdensity .gt. 1d-13 .and. nparticle .gt. 1) then
+             !         split = .true.
+             !         maxdensity_split = maxdensity_split + 1
+             !      endif
+             
+             
+             if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
+                if(ave_density .gt. 1d-13) then
+                   T = 10.d0 * (ave_density * 1d13)**(0.4d0)
+                   ! 5 is fudge factor to make sure condition isn't too strigent ! 28 is mass of CO
+                   Vturb = 5.d0 * sqrt(2d-10 * kerg * T / (28.d0 * amu) + 0.3**2) / (cspeed * 1d-5)
+                   Vturb = sqrt(5.938e-4 * T + 0.09) / (cspeed * 1d-5)
+                else
+                   Vturb = 1.03246E-06 ! above calculation with T = 10
+                endif
+                
+                vgradx = maxV%x - minV%x
+                vgrady = maxV%y - minV%y
+                vgradz = maxV%z - minV%z
+                
+                vgrad = max(vgradx,max(vgrady,vgradz))
+                
+                if(vgrad .gt. vturbmultiplier * vturb) then
+                   velocity_split = velocity_split + 1
+                   split = .true.
+                endif
+             endif
+             
+             
+             !Jeans mass condition
+             !      if(.not. split .and. )then
+             !         split = .true.
+             !         mass_split2 = mass_split2 + 1
+             !      endif
+             
+             ! Additional refinement at the grid centre used for SPH-Torus discs. 
+             if ( refineCentre ) then 
+                
+                cellSize   = thisOctal%subcellSize
+                cellCentre = subcellCentre(thisOctal,subCell)
+                
+                if ( thisOctal%cylindrical ) then 
+                   
+                   if ( abs(thisOctal%r) < 1.0e4 .and.  abs(cellCentre%z) < 1.0e4 ) then 
+                      if ( cellSize > 1.0e3 ) split = .true.
+                   end if
+                
+                   if ( abs(thisOctal%r) < 4.0e3 .and.  abs(cellCentre%z) < 4.0e3 ) then 
+                      if ( cellSize > 4.0e2 ) split = .true.
+                   end if
+                   
+                else
+                   
+                   if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
+                        < 40.0*grid%rCore ) then 
+                      if ( cellSize > grid%rCore ) split = .true. 
+                   end if
+                   
+                   if ( abs(cellCentre%x) < 2.5*grid%rCore .and.  abs(cellCentre%y) < 2.5*grid%rCore .and.  & 
+                        abs(cellCentre%z) < 20.0*grid%rCore ) then 
+                      if ( cellSize > 0.5*grid%rCore ) split = .true. 
+                   end if
+                   
+                end if
+                
+             end if
           
+             if ( grid%geometry == "theGalaxy" .and. internalView ) then 
+                
+                ! Find this point on the unmodified grid
+                cellCentre  = subcellCentre(thisOctal,subCell)
+                cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
+                cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
+                
+                ! Limit refinement outside the region of interest and either output number of 
+                ! SPH particles per grid cell or split if >1 particle per cell
+                if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
+                   split = .false.
+                elseif (nparticle > 1 .and. SphOnePerCell) then
+                   split = .true. 
+                elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero )then
+                   write(113,*) nparticle
+                end if
+                
+             end if
+             
           ! The stellar disc code is retained in case this functionality needs to be used in future 
 !!$
 !!$      if (include_disc(stellar_cluster)) then
@@ -4376,7 +4384,7 @@ CONTAINS
 !!$         end if
 !!$
 !!$      end if
-
+          endif
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
           limit = nint(amrLimitScalar)
@@ -13699,7 +13707,9 @@ end function readparameterfrom2dmap
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
        thisOctal%dustTypeFraction = 0.d0
-       thisOctal%dustTypeFraction(:,:) = 1.d0
+       do i = 1, thisOctal%maxChildren
+          thisOctal%dustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+       enddo
 
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%changed, thisOctal%maxChildren)
@@ -15394,5 +15404,127 @@ end function readparameterfrom2dmap
     height = hOverR * abs(cos(phiShift/2.d0))
   end function discHeightFunc
     
+  function octalOnThread(thisOctal, subcell, myRank) result(check)
+    use inputs_mod, only : splitOverMPI
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: myRank
+    logical :: check
+    integer :: nFirstLevel
+
+    check = .true.
+
+    if (splitOverMPI) then
+
+    if (thisOctal%twoD) then
+       if (nHydroThreadsGlobal == 4) then
+          if (thisOctal%mpiThread(subcell) == myRank) then
+             check = .true.
+          else
+             check = .false.
+          endif
+       endif
+       if (nHydroThreadsGlobal == 16) then
+          nFirstLevel = (myRank-1) / 4 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+       endif
+    endif
+
+    if (thisOctal%threeD) then
+       if (nHydroThreadsGlobal == 8) then
+
+          if (thisOctal%mpiThread(subcell) == myRank) then
+             check = .true.
+          else
+             check = .false.
+          endif
+       endif
+       if (nHydroThreadsGlobal == 64) then
+          nFirstLevel = (myRank-1) / 8 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+!          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
+       endif
+
+       if (nHydroThreadsGlobal == 512) then
+          nFirstLevel = (myRank-1) / 64 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else if (thisOctal%nDepth == 2) then
+             nFirstLevel = (myRank-1) / 8  + 1
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+!          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
+       endif
+
+
+
+    endif
+
+    if (thisOctal%oned) then
+       if (nHydroThreadsGlobal == 2) then
+          if (thisOctal%mpiThread(subcell) == myRank) then
+             check = .true.
+          else
+             check = .false.
+          endif
+       endif
+       if (nHydroThreadsGlobal == 4) then
+          nFirstLevel = (myRank-1) / 2 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+       endif
+    endif
+ endif
+  end function octalOnThread
+
 
 END MODULE amr_mod

@@ -47,8 +47,8 @@ photoioneq   T
 ! Dust parameters
 !
 
-dusttogas 1.e-20
 graintype1 sil_dl
+grainfrac1 1.d-20
 amin1 0.1
 amax1 0.11
 qdist1 0.0
