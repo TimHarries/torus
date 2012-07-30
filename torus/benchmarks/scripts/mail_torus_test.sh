@@ -1,9 +1,18 @@
 #!/bin/ksh
 
+mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk tjh202@exeter.ac.uk claire@astro.ex.ac.uk"
+
 export BASE_DIR=/Users/acreman
 export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
 export LOG_FILE=${BASE_DIR}/torus_daily_test_log
 export PATH=/Users/acreman/bin:${PATH}
+
+if [[ -e ${TORUS_TEST_DIR}/lock ]]; then
+  for user in ${mail_to}; do
+     /sw/bin/mutt -s "Torus test suite: FAILED (did not complete)" ${user} < ${LOG_FILE}
+    exit 1
+  done
+fi
 
 # Process output from coverage analysis
 echo "Processing coverage output" >> ${LOG_FILE}
@@ -122,7 +131,6 @@ cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ > ${TORUS_TEST_DIR}/torus_dai
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
-mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk tjh202@exeter.ac.uk claire@astro.ex.ac.uk"
 for user in ${mail_to}; do
     /sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar ${user} < ${LOG_FILE}
 done
