@@ -698,7 +698,9 @@ contains
 
    subroutine setupGlobalSources(grid)     
      use parallel_mod
+#ifdef SPH
      use sph_data_class
+#endif
      use starburst_mod
 #ifdef MPI
      use hydrodynamics_mod, only : gatherSinks
@@ -730,6 +732,7 @@ contains
      endif
 
      if (grid%geometry == "theGalaxy") then
+#ifdef SPH
         globalnSource = get_nptmass()
         do i = 1, globalnSource
            globalSourceArray(i)%stellar = .true.
@@ -737,6 +740,9 @@ contains
            globalSourceArray(i)%position = get_pt_position(i) * (get_udist()/1.d10)
            globalSourceArray(i)%velocity = get_pt_velocity(i) * get_udist() / get_utime()
         enddo
+#else
+        call writeFatal("This geometry requires SPH functionality which is not built.")
+#endif
 #ifdef MPI
         if (splitOverMPI) call gatherSinks()
 #endif

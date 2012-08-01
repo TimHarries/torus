@@ -13,7 +13,7 @@ infile=$1
 outfile=$2
 new_units=$3
 
-num_lines_header=5
+num_lines_header=10
 
 # Set up the numerical conversion factor for the new units
 case ${new_units} in

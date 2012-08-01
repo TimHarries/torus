@@ -3228,13 +3228,12 @@ CONTAINS
     use magnetic_mod, only : accretingAreaMahdavi
     use romanova_class, only:  romanova_density
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
-    use sph_data_class, only : get_npart
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1
     use density_mod, only: density
 #ifdef SPH
     USE cluster_class, only:   find_n_particle_in_subcell
-    use sph_data_class, only:  sphVelocityPresent
+    use sph_data_class, only:  sphVelocityPresent, get_npart
 #endif
 
     IMPLICIT NONE
