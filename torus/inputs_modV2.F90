@@ -1993,11 +1993,11 @@ contains
             "(a,e10.4,1x,a)", 0.d0, ok, .false.)
           
        call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s)", &
-            "(a,f8.2x,a)", 0.d0, ok, .false.)
+            "(a,f8.2,1x,a)", 0.d0, ok, .false.)
        call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s)", &
-            "(a,f8.2x,a)", 0.d0, ok, .false.)
+            "(a,f8.2,1x,a)", 0.d0, ok, .false.)
        call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
-               "(a,f8.2x,a)", 0.d0, ok, .false.)
+               "(a,f8.2,1x,a)", 0.d0, ok, .false.)
 
        call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
             "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
