@@ -703,7 +703,9 @@ contains
 #endif
      use starburst_mod
 #ifdef MPI
+#ifdef HYDRO
      use hydrodynamics_mod, only : gatherSinks
+#endif
 #endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI
@@ -744,7 +746,9 @@ contains
         call writeFatal("This geometry requires SPH functionality which is not built.")
 #endif
 #ifdef MPI
+#ifdef HYDRO
         if (splitOverMPI) call gatherSinks()
+#endif 
 #endif
         call setSourceArrayProperties(globalsourceArray, globalnSource)
         call writeSourceList(globalsourceArray, globalnSource)
