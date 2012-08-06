@@ -2045,6 +2045,8 @@ contains
 
     if ( h21cm ) then 
 
+       call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
+            "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
        call getInteger("nSubpixels", nSubpixels, cLine, fLine, nLines, &
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, fLine, nLines, &
