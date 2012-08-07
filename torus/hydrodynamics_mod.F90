@@ -158,7 +158,8 @@ contains
 
       !    if (.not.thisoctal%ghostcell(subcell)) then
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
-             if (dq /= 0.d0) then
+! When dq is very small there could be a floating point overflow in thisoctal%rlimit so check size of dq
+             if (dq > 1.d-99) then
                 if (thisoctal%u_interface(subcell) .ge. 0.d0) then
                    thisoctal%rlimit(subcell) = (thisoctal%q_i_minus_1(subcell) - thisoctal%q_i_minus_2(subcell)) / dq
                 else

@@ -267,7 +267,7 @@ contains
              speedminus = rhow/rho
           end select
        else
-          speedPlus = rhou/rho
+          speedminus = rhou/rho
        endif
 
        out = out + (speedplus - speedminus) / (thisOctal%subcellSize*gridDistanceScale)

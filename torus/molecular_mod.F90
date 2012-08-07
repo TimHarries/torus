@@ -1377,7 +1377,7 @@ module molecular_mod
 !#endif
 
 
- deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4)
+ deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4, dirweight)
  !$OMP BARRIER
  !$OMP END PARALLEL
            
