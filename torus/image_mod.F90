@@ -609,14 +609,14 @@ module image_mod
        call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
        call ftpkyd(unit,'CDELT1',dx,10,' ',status)
        call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
-       call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
+       call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
 
        ! write y-axis keywords
        call ftpkys(unit,'CTYPE2',"DEC--SIN","y axis", status)
        call ftpkyd(unit,'CRPIX2',dble(image%ny/2.d0),-3,'reference pixel',status)
        call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
        call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
-       call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
+       call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
 
        call ftpkyd(unit,'CD1_1',dx,10,' ',status)
        call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
