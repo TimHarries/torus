@@ -7028,10 +7028,12 @@ real(double) :: rho
                       speed1 = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                       + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
                       speed2 = sqrt(rhou**2 + rhov**2 + rhow**2)/rho
-                   else
+                   else if(thisOctal%twoD) then
                      speed1 = sqrt(thisOctal%rhou(subcell)**2  &
                       + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)
                       speed2 = sqrt(rhou**2 + rhow**2)/rho
+                   else
+                      speed1 = sqrt(thisOctal%rhou(subcell)**2)/thisOctal%rho(subcell)
                    end if
 
                    if (Speed1 > 1.d-10 .and. speed2 > 1.d-10) then
