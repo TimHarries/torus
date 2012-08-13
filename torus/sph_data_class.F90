@@ -2685,7 +2685,7 @@ contains
           endif
        endif
     enddo
-666 continue
+!666 continue
   end subroutine findnearestparticles
 
   Subroutine doWeights(sumweight)
