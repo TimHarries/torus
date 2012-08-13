@@ -2144,171 +2144,185 @@ contains
 
     if(firsttime .and. .not. done) then
 
-       udist = get_udist()
-       utime = get_utime()
-       umass = get_umass()
-       codeLengthtoTORUS = udist * 1d-10
-       codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
-       codeDensitytoTORUS = umass / ((udist) ** 3)
-
-       allocate(PositionArray(3,npart)) ! allocate memory
-       allocate(xArray(npart))
-       allocate(q2Array(npart))
-       allocate(etaArray(npart)) ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
-       allocate(RhoArray(npart))
-       allocate(TemArray(npart))
-       allocate(RhoH2Array(npart))
-       allocate(Harray(npart))
-       allocate(ind(npart))
-       allocate(OneOverHsquared(npart))
-       if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
-
-       allocate(HullArray(npart))
-
-
-       PositionArray = 0.d0; hArray = 0.d0; ind = 0; q2array = 0.d0; etaarray = 0.d0
-       if (.not.associated(sphdata%xn)) then
-          write(*,*) "sphdata not associated"
-          write(*,*) "rank ",myrankGlobal
-          write(*,*) "npart ",sphData%npart
-          write(*,*) "ptmass ",sphData%nptmass
-       endif
-
-       Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
-       xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
-
-       call sortbyx(xarray(:),ind(:)) ! sort the x's and recall their indices
-
-       PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
-       PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
-
-! Decide if we need to set velocities for this configuration
-       if ( associated(sphData%vxn) ) then 
-
-          allocate(VelocityArray(3,npart))
-          VelocityArray(:,:) = 0.d0
-          VelocityArray(1,:) = sphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
-
-          if ( associated(sphData%vyn) ) then 
-             VelocityArray(2,:) = sphdata%vyn(ind(:)) * codeVelocitytoTORUS 
-          else
-             STOP
-!             call torus_abort("Error in function Clusterparameter: vxn is associated but vyn is not")
+       if (get_npart() > 0) then
+          udist = get_udist()
+          utime = get_utime()
+          umass = get_umass()
+          codeLengthtoTORUS = udist * 1d-10
+          codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
+          codeDensitytoTORUS = umass / ((udist) ** 3)
+          
+          allocate(PositionArray(3,npart)) ! allocate memory
+          allocate(xArray(npart))
+          allocate(q2Array(npart))
+          allocate(etaArray(npart)) ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
+          allocate(RhoArray(npart))
+          allocate(TemArray(npart))
+          allocate(RhoH2Array(npart))
+          allocate(Harray(npart))
+          allocate(ind(npart))
+          allocate(OneOverHsquared(npart))
+          if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
+          
+          allocate(HullArray(npart))
+          
+          
+          PositionArray = 0.d0; hArray = 0.d0; ind = 0; q2array = 0.d0; etaarray = 0.d0
+          if (.not.associated(sphdata%xn)) then
+             write(*,*) "sphdata not associated"
+             write(*,*) "rank ",myrankGlobal
+             write(*,*) "npart ",sphData%npart
+             write(*,*) "ptmass ",sphData%nptmass
+          endif
+          
+          Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+          xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
+          
+          call sortbyx(xarray(:),ind(:)) ! sort the x's and recall their indices
+          
+          PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
+          PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
+          
+          ! Decide if we need to set velocities for this configuration
+          if ( associated(sphData%vxn) ) then 
+             
+             allocate(VelocityArray(3,npart))
+             VelocityArray(:,:) = 0.d0
+             VelocityArray(1,:) = sphdata%vxn(ind(:)) * codeVelocitytoTORUS ! velocities
+             
+             if ( associated(sphData%vyn) ) then 
+                VelocityArray(2,:) = sphdata%vyn(ind(:)) * codeVelocitytoTORUS 
+             else
+                STOP
+                !             call torus_abort("Error in function Clusterparameter: vxn is associated but vyn is not")
+             end if
+             
+             if ( associated(sphData%vzn) ) then 
+                VelocityArray(3,:) = sphdata%vzn(ind(:)) * codeVelocitytoTORUS
+             else
+                STOP
+                !             call torus_abort("Error in function Clusterparameter: vxn is associated but vzn is not")
+             end if
+             
+             write(message, *) "Max/min Vx", maxval(VelocityArray(1,:)), minval(VelocityArray(1,:))          
+             call writeinfo(message, TRIVIAL)
+             write(message, *) "Max/min Vy", maxval(VelocityArray(2,:)), minval(VelocityArray(2,:))
+             call writeinfo(message, TRIVIAL)
+             write(message, *) "Max/min Vz", maxval(VelocityArray(3,:)), minval(VelocityArray(3,:))
+             call writeinfo(message, TRIVIAL)
+          
           end if
+          
+          maxx = max(maxval(PositionArray(1,:)), abs(minval(PositionArray(1,:))))
+          maxy = max(maxval(PositionArray(2,:)), abs(minval(PositionArray(2,:))))
 
-          if ( associated(sphData%vzn) ) then 
-             VelocityArray(3,:) = sphdata%vzn(ind(:)) * codeVelocitytoTORUS
-          else
-             STOP
-!             call torus_abort("Error in function Clusterparameter: vxn is associated but vzn is not")
-          end if
+          maxz = max(maxval(PositionArray(3,:)), abs(minval(PositionArray(3,:))))
+          maxr2 = maxx**2 + maxy**2 + maxz**2
 
-          write(message, *) "Max/min Vx", maxval(VelocityArray(1,:)), minval(VelocityArray(1,:))          
+          write(message, *) "Max/min x", maxval(PositionArray(1,:)), minval(PositionArray(1,:)) 
           call writeinfo(message, TRIVIAL)
-          write(message, *) "Max/min Vy", maxval(VelocityArray(2,:)), minval(VelocityArray(2,:))
+          write(message, *) "Max/min y", maxval(PositionArray(2,:)), minval(PositionArray(2,:)) 
           call writeinfo(message, TRIVIAL)
-          write(message, *) "Max/min Vz", maxval(VelocityArray(3,:)), minval(VelocityArray(3,:))
+          write(message, *) "Max/min z", maxval(PositionArray(3,:)), minval(PositionArray(3,:))
           call writeinfo(message, TRIVIAL)
           
-       end if
-
-       maxx = max(maxval(PositionArray(1,:)), abs(minval(PositionArray(1,:))))
-       maxy = max(maxval(PositionArray(2,:)), abs(minval(PositionArray(2,:))))
-
-       maxz = max(maxval(PositionArray(3,:)), abs(minval(PositionArray(3,:))))
-       maxr2 = maxx**2 + maxy**2 + maxz**2
-
-       write(message, *) "Max/min x", maxval(PositionArray(1,:)), minval(PositionArray(1,:)) 
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Max/min y", maxval(PositionArray(2,:)), minval(PositionArray(2,:)) 
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Max/min z", maxval(PositionArray(3,:)), minval(PositionArray(3,:))
-       call writeinfo(message, TRIVIAL)
-
-       Harray(:) = sphdata%hn(ind(:)) ! fill h array
-
-       call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .true.) ! find hcrit as percentile of total h
-       call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
-       Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
-       RhoArray(:) = sphdata%rhon(ind(:))
-       etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
-!       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
-!            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
-
-       write(message, *) "Critical smoothing Length in code units", hcrit
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Maximum smoothing Length in code units", hmax
-       Call writeinfo(message, TRIVIAL)
-
-       RhoArray(:) = Rhoarray(:) * codeDensitytoTORUS
-       TemArray(:) = sphdata%temperature(ind(:)) * sphdata%codeEnergytoTemperature
-
-       write(message, *) "Max/min rho", maxval(RhoArray(:)), minval(RhoArray(:))
-       call writeinfo(message, TRIVIAL)
-       write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))
-       call writeinfo(message, TRIVIAL)
-       
-       ! Set to H2 density from particles if available or flag as missing data otherwise. 
-       if ( associated(sphData%rhoH2) ) then 
-          RhoH2Array(:) = sphdata%rhoH2(ind(:)) * codeDensitytoTORUS
-       else
-          RhoH2Array(:) = -1.0e-30_db
-       end if
-
-       if (associated (rhoCOarray) .and. associated(sphdata%rhoCO) ) then 
-          rhoCOarray(:) = sphdata%rhoCO(ind(:)) * codeDensityToTorus
-       end if
-
-       hcrit = hcrit * codeLengthtoTORUS
-       OneOverHcrit = 1.d0 / hcrit
-
-       hmax = hmax * codeLengthtoTORUS
-       OneOverHmax = 1.d0 / hmax
-
-       Harray(:) = Harray(:) * codeLengthtoTORUS  ! fill h array
-
-       bigx = maxval(PositionArray(1,:)) - minval(PositionArray(1,:))
-       bigy = maxval(PositionArray(2,:)) - minval(PositionArray(2,:))
-       bigz = maxval(PositionArray(3,:)) - minval(PositionArray(3,:))
-
-       Hedge = ((bigX * bigY * bigZ / npart) ** (1.d0/3.d0))
-
-       do i=1, npart
-          if(Harray(i) .ge. Hedge) then
-             HullArray(i) = .true.
+          Harray(:) = sphdata%hn(ind(:)) ! fill h array
+          
+          call FindCriticalValue(harray, hcrit, real(hcritPercentile,kind=db), output = .true.) ! find hcrit as percentile of total h
+          call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
+          Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
+          RhoArray(:) = sphdata%rhon(ind(:))
+          etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
+          !       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
+          !            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
+          
+          write(message, *) "Critical smoothing Length in code units", hcrit
+          call writeinfo(message, TRIVIAL)
+          write(message, *) "Maximum smoothing Length in code units", hmax
+          Call writeinfo(message, TRIVIAL)
+          
+          RhoArray(:) = Rhoarray(:) * codeDensitytoTORUS
+          TemArray(:) = sphdata%temperature(ind(:)) * sphdata%codeEnergytoTemperature
+          
+          write(message, *) "Max/min rho", maxval(RhoArray(:)), minval(RhoArray(:))
+          call writeinfo(message, TRIVIAL)
+          write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))
+          call writeinfo(message, TRIVIAL)
+          
+          ! Set to H2 density from particles if available or flag as missing data otherwise. 
+          if ( associated(sphData%rhoH2) ) then 
+             RhoH2Array(:) = sphdata%rhoH2(ind(:)) * codeDensitytoTORUS
           else
-             HullArray(i) = .false.
+             RhoH2Array(:) = -1.0e-30_db
+          end if
+          
+          if (associated (rhoCOarray) .and. associated(sphdata%rhoCO) ) then 
+             rhoCOarray(:) = sphdata%rhoCO(ind(:)) * codeDensityToTorus
+          end if
+          
+          hcrit = hcrit * codeLengthtoTORUS
+          OneOverHcrit = 1.d0 / hcrit
+          
+          hmax = hmax * codeLengthtoTORUS
+          OneOverHmax = 1.d0 / hmax
+          
+          Harray(:) = Harray(:) * codeLengthtoTORUS  ! fill h array
+          
+          bigx = maxval(PositionArray(1,:)) - minval(PositionArray(1,:))
+          bigy = maxval(PositionArray(2,:)) - minval(PositionArray(2,:))
+          bigz = maxval(PositionArray(3,:)) - minval(PositionArray(3,:))
+          
+          Hedge = ((bigX * bigY * bigZ / npart) ** (1.d0/3.d0))
+          
+          do i=1, npart
+             if(Harray(i) .ge. Hedge) then
+                HullArray(i) = .true.
+             else
+                HullArray(i) = .false.
+             endif
+          enddo
+          
+          if (useHull) then 
+             write(message,*) "Hull smoothing Length in 10^10cm ", Hedge
+             call writeinfo(message, TRIVIAL)
+             
+             write(message,*) "Percentage of Hull particles ", 100. * real(count(HullArray)) / real(npart)
+             call writeinfo(message, TRIVIAL)
           endif
-       enddo
+          
+          OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
 
-       if (useHull) then 
-          write(message,*) "Hull smoothing Length in 10^10cm ", Hedge
+          write(message,*) "Critical smoothing Length in 10^10cm", hcrit
           call writeinfo(message, TRIVIAL)
-
-          write(message,*) "Percentage of Hull particles ", 100. * real(count(HullArray)) / real(npart)
+          write(message,*) "Maximum smoothing Length in 10^10cm", hmax
           call writeinfo(message, TRIVIAL)
-       endif
-
-       OneOverHsquared(:) = 1.d0 / (Harray(:)**2)
-
-       write(message,*) "Critical smoothing Length in 10^10cm", hcrit
-       call writeinfo(message, TRIVIAL)
-       write(message,*) "Maximum smoothing Length in 10^10cm", hmax
-       call writeinfo(message, TRIVIAL)
-
-       rcrit = 2.d0 * hcrit ! edge of smoothing sphere
-       rmax = 2.d0 * hmax ! edge of smoothing sphere
+          
+          rcrit = 2.d0 * hcrit ! edge of smoothing sphere
+          rmax = 2.d0 * hmax ! edge of smoothing sphere
        
-       allocate(partarray(npart), indexarray(npart))
-
-       firsttime = .false.
+          allocate(partarray(npart), indexarray(npart))
+          
+          firsttime = .false.
+       endif
     endif
- 
+       
+    if (get_npart() == 0) then
+       if(param .eq. 1) then
+          Clusterparameter = VECTOR(0.d0,0.d0,0.d0)
+       elseif(param .eq. 2) then
+          Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density ! stays as vector for moment
+       elseif(param .eq. 3) then 
+          Clusterparameter = VECTOR(1d-99, 0.d0, 0.d0)
+       endif
+       goto 666
+    endif
+
+
     if(done) then
        if (allocated(PositionArray)) then
           deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, &
                q2Array, HullArray, etaarray, RhoH2Array)
-
+          
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
 
@@ -2365,6 +2379,12 @@ contains
     nparticles = 0
     rcounter = 0
     sumweight = 0.d0
+
+    if (npart == 0) then
+       write(*,*) "Error npart is zero"
+       write(*,*) "rank ",myrankGlobal
+       write(*,*) "sph ",sphdata%npart
+    endif
 
     if(reuse) then
        notfound = .false.
@@ -2518,10 +2538,23 @@ contains
     y = pos%y
     z = pos%z
 
+
+    if (npart < 50) then
+       partcount = npart
+       do i = 1, partcount
+          indexArray(i) = i
+       enddo
+       nlower = 1
+       nupper = partcount
+       closestXindex = 0
+       goto 1001
+    endif
+
     if(reuse) then
 !       rtest = max(2.d0 * maxval(harray(closestXindex+nlower:closestXindex+nupper)),rmax)
        goto 1001
     endif
+
 
     call locate_double_f90(xarray, x, closestXindex) ! find the nearest particle to your point
   
@@ -2539,6 +2572,13 @@ contains
     prevtest = .true.
 
     do while (stepsize .ge. 1)
+       if (min(npart,closestXindex+nUpper) < 1) then
+          write(*,*) "rank ",myrankGlobal
+          write(*,*) "npart ",npart,sphData%nPart
+          write(*,*) "size(xarray) ",size(xArray)
+          write(*,*) "closestXindex ",closestXindex
+          write(*,*) "nUpper ",nUpper
+       endif
        test = abs(xArray(min(npart,closestXindex + nupper)) - x) .le. r
  
        if(test .and. (nupper .eq. npart - closestXindex)) exit
@@ -2645,6 +2685,7 @@ contains
           endif
        endif
     enddo
+666 continue
   end subroutine findnearestparticles
 
   Subroutine doWeights(sumweight)

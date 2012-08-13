@@ -73,6 +73,7 @@ program torus
   outputinfo     = .true.
   myRankIsZero   = .true.
 
+  
   if (TorusMpi) then 
      if (myRankGlobal/=1) writeoutput  = .false.
      if (myRankGlobal/=1) doTuning     = .false.

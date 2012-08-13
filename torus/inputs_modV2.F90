@@ -1410,7 +1410,7 @@ contains
 
              write(keyword, '(a,i1)') "probsource",i
              call getDouble(keyword, SourceProb(i), 1.d0, cLine, fLine, nLines, &
-                  "Probability of photon packet from source: ","(a,f3.0,a)",0.d0, ok, .false.)
+                  "Probability of photon packet from source: ","(a,f4.2,a)",0.d0, ok, .false.)
 
              write(keyword, '(a,i1)') "pointsource",i
              call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &

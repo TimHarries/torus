@@ -470,6 +470,7 @@ contains
                    call randomSource(source, nSource, iSource, packetWeight)
                    call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
                    packetWeight = packetWeight * weight
+!                   write(*,*) isource, rVec%x*1.d10/rsol, rVec%y*1.d10/rsol, rvec%z*1.d10/rsol,packetweight
 !                   write(*,*) "pos ",rVec,packetweight
                    thermalphoton = .true.
                    directPhoton = .true.

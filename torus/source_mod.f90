@@ -717,7 +717,7 @@ module source_mod
    else
       call getIsotropicPositionDirection(position, direction, grid)
    endif
-
+        
     end subroutine getPhotonPositionDirection
 
   function distanceToSphere(rVec, uHat, centre, radius) result (distance)
