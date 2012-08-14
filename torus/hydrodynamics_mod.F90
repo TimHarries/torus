@@ -2073,7 +2073,7 @@ contains
                   (p_i_plus_half - p_i_minus_half) / dx
 
              if (useTensorViscosity) then
-                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 2, grid)*dt
              endif
 
 
@@ -2110,9 +2110,6 @@ contains
                   rhov  * (phi_i_plus_half - phi_i_minus_half) / dx
 
 
-                if (useTensorviscosity) then
-                   thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt*thisOctal%chiline(subcell)
-                endif
 
              endif
            
@@ -2200,7 +2197,11 @@ contains
                   (p_i_plus_half - p_i_minus_half) / dx
 
              if (useTensorViscosity) then
-                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+                if (thisOctal%threed) then
+                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 3, grid)*dt
+                else
+                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 2, grid)*dt
+                endif
              endif
 
 
@@ -2237,9 +2238,6 @@ contains
                   rhow  * (phi_i_plus_half - phi_i_minus_half) / dx
 
 
-                if (useTensorviscosity) then
-                   thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt*thisOctal%chiline(subcell)
-                endif
 
              endif
            
@@ -4700,6 +4698,8 @@ end subroutine sumFluxes
 !          call writeInfo("Done", TRIVIAL)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
     !      if(doRefine) then
     !         call setAllUnchanged(grid%octreeRoot)
     !         call writeInfo("Refining", TRIVIAL)
@@ -4913,11 +4913,14 @@ end subroutine sumFluxes
                valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
                "u_i          ", &
                "hydrovelocity", &
+               "chiline      ", &
                "rhou         ", &
                "rhov         ", &
                "rhow         ", &
                "phi          ", &
                "pressure     ", &
+               "q11          ", &
+               "q22          ", &
                "q_i          "/))
                
           if (grid%geometry == "sedov") &

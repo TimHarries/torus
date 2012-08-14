@@ -1752,6 +1752,8 @@ contains
 
     if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
        write(*,*) "Bonndary error for twod: ",nbound
+       x = -2.d0
+       x = sqrt(x)
     endif
     if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
 

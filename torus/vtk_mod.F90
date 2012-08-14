@@ -2958,7 +2958,11 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
                case("chiline")
-                  rArray(1, n) = real(max( real(thisOctal%chiline(subcell)), min_single_prec ))
+                  if (.not.associated(thisOctal%chiline)) then
+                     rArray(1, n) = 0.d0
+                  else
+                     rArray(1, n) = real(max( real(thisOctal%chiline(subcell)), min_single_prec ))
+                  endif
 
 
                case("microturb")

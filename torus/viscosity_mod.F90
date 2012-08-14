@@ -15,26 +15,32 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     integer :: subcell, neighbourSubcell
-    real(double) :: u_i, u_i_plus_1
-    type(VECTOR) :: cen, cen2
+    real(double) :: u_i_minus_1, u_i_plus_1
+    type(VECTOR) :: cen
     type(VECTOR) :: dir_u, dir_x, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, q11,q22,q33
     integer :: nd
     
     cen = subcellCentre(thisOctal, subcell)
 
-    u_i = (dir_u.dot.(VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))))/thisOctal%rho(subcell)
+    
+    locator = cen - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir_x
+    neighbouroctal => thisoctal
+    call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir_x, q, rho, rhoe, &
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+    u_i_minus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
+
 
     locator = cen + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir_x
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir_x, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
-    cen2 = VECTOR(px,py,pz)
     u_i_plus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
 
 
-    dudx = (u_i_plus_1 - u_i) / (thisOctal%subcellSize*gridDistanceScale)
+    dudx = (u_i_plus_1 - u_i_minus_1) / (2.d0*thisOctal%subcellSize*gridDistanceScale)
   end function dudx
 
   real(double) function div_u(thisOctal, subcell, grid)
@@ -138,7 +144,7 @@ contains
              (symVelGrad(2,2)-symVelGrad(3,3))**2)/3.d0
     else
        out = lengthScale**2 * thisOctal%rho(subcell) * divV * &
-            ((symVelGrad(1,1)-symVelGrad(2,2))**2)/3.d0
+            ((symVelGrad(1,1)-symVelGrad(2,2))**2)/2.d0
     endif
 
   end function qColonDelV
@@ -152,7 +158,7 @@ contains
     real(double) :: out
     real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,q11,q22,q33
     integer :: subcell, neighbourSubcell
-    type(VECTOR) :: dir(3), cen, cen2, locator
+    type(VECTOR) :: dir(3), cen2, locator
     real(double) :: qa, qb
     integer :: nd, iDir, nDim
     if (thisOctal%threed) then
@@ -166,17 +172,15 @@ contains
        dir(2) = VECTOR(0.d0, 0.d0, 1.d0)
     endif
 
-    qb = thisOctal%qViscosity(subcell,iDir,iDir)
-    cen2 = subcellCentre(thisOctal,subcell)
     out = 0.d0
-    locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
 
-    
+    cen2 = subcellCentre(thisOctal,subcell)
+
+    locator = cen2 + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
+    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
-    cen = VECTOR(px,py,pz)
 
     select case(iDir)
     case(1)
@@ -187,7 +191,22 @@ contains
        qa = q33
     end select
 
-    out = (qb - qa) / (((cen2-cen).dot.dir(iDir))*gridDistanceScale)
+    locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
+    neighbouroctal => thisoctal
+    call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+
+    select case(iDir)
+    case(1)
+       qb = q11
+    case(2)
+       qb = q22
+    case(3)
+       qb = q33
+    end select
+
+    out = (qa - qb) / (2.d0*thisOctal%subcellSize*gridDistanceScale)
   end function divQ
 
   function divV(thisOctal, subcell, grid) result(out)
@@ -293,13 +312,16 @@ contains
              end if
           end do
        else
+
+          if (.not.associated(thisOctal%chiline)) then
+             allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+             thisOctal%chiline = 1.d-30
+          endif
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           thisoctal%qViscosity(subcell,1:3,1:3) = 0.d0
+
           if (.not.thisOctal%edgeCell(subcell)) then
              thisoctal%qViscosity(subcell,1:3,1:3) = viscosityQ(thisOctal, subcell, grid)
-             if (.not.associated(thisOctal%chiline)) then
-                allocate(thisOctal%chiline(1:thisOctal%maxChildren))
-             endif
              thisOctal%chiLine(subcell) = qColonDelV(thisOctal, subcell, grid)
           endif
        endif

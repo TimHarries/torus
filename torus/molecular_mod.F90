@@ -1271,9 +1271,10 @@ module molecular_mod
 
 ! main getray loop
              do iRay = 2, nRay
+! does the hard work - populates i0 etc
                 call getRay(grid, thisOctal, subcell, position, direction, &
                      ds(iRay), phi(iRay), i0temp(1:maxtrans), &
-                     thisMolecule,dirweight(iRay), fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
+                     thisMolecule,dirweight(iRay), fixedrays, warned_neg_dtau, tostar=.false.) 
                 i0(iray,1:maxtrans) = i0temp(1:maxtrans)
              enddo
 
