@@ -159,7 +159,7 @@ contains
       !    if (.not.thisoctal%ghostcell(subcell)) then
              dq = thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)
 ! When dq is very small there could be a floating point overflow in thisoctal%rlimit so check size of dq
-             if (dq > 1.d-99) then
+             if (dq /= 0.d0) then
                 if (thisoctal%u_interface(subcell) .ge. 0.d0) then
                    thisoctal%rlimit(subcell) = (thisoctal%q_i_minus_1(subcell) - thisoctal%q_i_minus_2(subcell)) / dq
                 else
@@ -695,8 +695,8 @@ contains
 
              x_interface = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
              weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
-             
-          
+
+
              if ((rho_i_minus_1 == 0.d0).or.(thisOctal%rho(subcell) == 0.d0)) then
                 write(*,*) "bug in setupui ",rho_i_minus_1, thisOctal%rho(subcell)
              endif
@@ -1833,15 +1833,15 @@ contains
              if(withViscosity) then
                 if (.not.thisoctal%edgecell(subcell)) then
                    useviscosity = .false.
-!                   if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
-                   if (thisOctal%divV(subcell) < 0.d0) useViscosity = .true.
+                   if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
+!                   if (thisOctal%divV(subcell) < 0.d0) useViscosity = .true.
                    if (useviscosity) then
                       
-                      biggamma2 = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
+                      biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
                            * thisoctal%rho(subcell)
 
-                      bigGamma = eta**2 * (thisOctal%subcellSize*gridDistancescale)**2 * &
-                           thisOctal%rho(subcell) * thisOctal%divV(subcell)**2
+!                      bigGamma = eta**2 * (thisOctal%subcellSize*gridDistancescale)**2 * &
+!                           thisOctal%rho(subcell) * thisOctal%divV(subcell)**2
                    else
                       biggamma = 0.d0
                    endif
@@ -1939,11 +1939,15 @@ contains
              phi_i_plus_half = thisOctal%phi_i(subcell) + (thisOctal%phi_i_plus_1(subcell) - &
                   thisOctal%phi_i(subcell)) * fac2
 
-
              dx = x_i_plus_half - x_i_minus_half
 
              thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                   (p_i_plus_half - p_i_minus_half) / dx
+
+!             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) - dt * &
+!                  (thisOctal%pressure_i_plus_1(subcell) - thisOctal%pressure_i_minus_1(subcell)) / &
+!                  (2.d0*dx)
+
 
              if (useTensorViscosity) then
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
@@ -1977,6 +1981,12 @@ contains
 
                 thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt * &
                   (p_i_plus_half * u_i_plus_half - p_i_minus_half * u_i_minus_half) / dx
+
+
+!                thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt * &
+!                     (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
+!                      thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / (2.d0*dx)
+
 
                 thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - dt* & !gravity
                   rhou  * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2917,10 +2927,8 @@ contains
    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call fluxlimiter(grid%octreeroot)
     call constructflux(grid%octreeroot, dt)
-!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupflux(grid%octreeroot, grid, direction)
-!    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call updatecellq(grid%octreeroot, dt)
 
@@ -2996,6 +3004,7 @@ end subroutine sumFluxes
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call setupui(grid%octreeroot, grid, direction)
     call setupupm(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
