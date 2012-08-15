@@ -1802,7 +1802,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child
     integer :: subcell, i
-    real(double) :: biggamma,eta,bigGamma2
+    real(double) :: biggamma,eta
     logical :: withViscosity
 !    logical :: useviscosity                                                                                                                                                                                             
 
