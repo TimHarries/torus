@@ -19,6 +19,7 @@ contains
     type(VECTOR) :: cen
     type(VECTOR) :: dir_u, dir_x, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, q11,q22,q33
+    real(double) :: rm1, um1, pm1
     integer :: nd
     
     cen = subcellCentre(thisOctal, subcell)
@@ -28,7 +29,7 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir_x, q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
     u_i_minus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
 
 
@@ -36,7 +37,7 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir_x, q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
     u_i_plus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
 
 
@@ -160,6 +161,7 @@ contains
     integer :: subcell, neighbourSubcell
     type(VECTOR) :: dir(3), cen2, locator
     real(double) :: qa, qb
+    real(double) :: rm1, um1, pm1
     integer :: nd, iDir, nDim
     if (thisOctal%threed) then
        ndim = 3
@@ -180,7 +182,7 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
 
     select case(iDir)
     case(1)
@@ -195,7 +197,7 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
 
     select case(iDir)
     case(1)
@@ -219,6 +221,7 @@ contains
     integer :: subcell, neighbourSubcell
     type(VECTOR) :: dir(3), cen, locator
     integer :: iDir, nDir, nd
+    real(double) :: rm1, um1, pm1
     if (thisOctal%threed) then
        ndir = 3
        dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
@@ -243,7 +246,7 @@ contains
        neighbouroctal => thisoctal
        call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
        call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
-            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
        if (thisOctal%threed) then
           select case (iDir)
           case(1)
@@ -268,7 +271,7 @@ contains
        neighbouroctal => thisoctal
        call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
        call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
-            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
        if (thisOctal%threed) then
           select case (iDir)
           case(1)

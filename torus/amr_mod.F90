@@ -13818,6 +13818,8 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%pressure_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%pressure_i_minus_1,thisOctal%maxchildren)
 
+       call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
+
        call allocateAttribute(thisOctal%divV,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%rhou,thisOctal%maxchildren)
@@ -13972,6 +13974,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%pressure_i)
     call deallocateAttribute(thisOctal%pressure_i_plus_1)
     call deallocateAttribute(thisOctal%pressure_i_minus_1)
+    call deallocateAttribute(thisOctal%rho_i_minus_1)
     call deallocateAttribute(thisOctal%tempStorage)
     call deallocateAttribute(thisOctal%boundaryPartner)
     call deallocateAttribute(thisOctal%gravboundaryPartner)

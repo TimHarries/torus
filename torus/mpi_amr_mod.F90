@@ -1,3 +1,4 @@
+
 module mpi_amr_mod
 #ifdef MPI
 
@@ -623,7 +624,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 20
+    integer, parameter :: nStorage = 23
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
@@ -635,6 +636,7 @@ contains
     integer :: nDepth
     integer :: ierr
     real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas, q11, q22, q33
+    real(double) :: rm1, rum1, pm1
 
     select case(boundaryType)
     case("left")
@@ -807,13 +809,19 @@ contains
                    tempStorage(19) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
                    tempStorage(20) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
                 endif
+
+                tempStorage(21) = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+                tempStorage(22) = neighbourOctal%u_i_minus_1(neighbourSubcell)
+                tempStorage(23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
 !                write(*,*) myrank," set up tempstorage with ", &
+
 !                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
 !                     neighbourOctal%edgeCell(neighbourSubcell)
 
              else ! need to average
                 call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-                     flux, phi, phigas, q11, q22, q33)
+                     flux, phi, phigas, q11, q22, q33, rm1, rum1, pm1)
                 tempStorage(1) = q
                 tempStorage(2) = rho
                 tempStorage(3) = rhoe
@@ -837,6 +845,10 @@ contains
                 tempstorage(18) = q11
                 tempstorage(19) = q22
                 tempstorage(20) = q33
+                tempStorage(21) = rm1
+                tempStorage(22) = rum1
+                tempStorage(23) = pm1
+
              endif
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
@@ -1151,7 +1163,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 20
+    integer, parameter :: nStorage = 23
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
@@ -1319,6 +1331,12 @@ contains
                    tempStorage(19) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
                    tempStorage(20) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
                 endif
+
+                tempStorage(21) = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+                tempStorage(22) = neighbourOctal%u_i_minus_1(neighbourSubcell)
+                tempStorage(23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
 !                          write(*,*) myRank, " temp storage sent"
@@ -1733,7 +1751,7 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, q11, q22, q33)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, q11, q22, q33, rm1, rum1, pm1)
     use mpi
     use inputs_mod, only : useTensorViscosity
 
@@ -1745,7 +1763,7 @@ contains
     integer, intent(out) :: nd
 
     real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
-    real(double), intent(out) :: xplus, px, py, pz, q11, q22, q33
+    real(double), intent(out) :: xplus, px, py, pz, q11, q22, q33, rm1, rum1, pm1
 
 
     nbound = getNboundFromDirection(direction)
@@ -1755,7 +1773,8 @@ contains
        x = -2.d0
        x = sqrt(x)
     endif
-    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
+    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then ! .or. &
+!         thisOctal%mpiThread(subcell) == neighbourOctal%mpiThread(neighboursubcell)) then
 
        nd = neighbourOctal%nDepth
 
@@ -1785,6 +1804,10 @@ contains
              q33 = neighbourOctal%qViscosity(neighbourSubcell,3,3)
           endif
 
+          rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
        else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
           q   = neighbourOctal%q_i(neighbourSubcell)
           rho = neighbourOctal%rho(neighbourSubcell)
@@ -1802,6 +1825,10 @@ contains
              q33 = neighbourOctal%qViscosity(neighbourSubcell,3,3)
           endif
 
+          rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
           if (thisOctal%oneD) then
              flux = neighbourOctal%flux_i(neighbourSubcell)
           else if (thisOctal%twoD) then
@@ -1812,7 +1839,7 @@ contains
           endif
        else
           call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-               flux, phi, phigas, q11, q22, q33) ! fine to coarse
+               flux, phi, phigas, q11, q22, q33, rm1, rum1, pm1) ! fine to coarse
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           
        endif
@@ -1877,20 +1904,22 @@ contains
        q11 = thisOctal%mpiBoundaryStorage(subcell, nBound, 18)
        q22 = thisOctal%mpiBoundaryStorage(subcell, nBound, 19)
        q33 = thisOctal%mpiBoundaryStorage(subcell, nBound, 20)
-
+       rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
+       rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
+       pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
     endif
   end subroutine getNeighbourValues
 
 
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
-       rhoe, pressure, flux, phi, phigas, q11, q22, q33)
+       rhoe, pressure, flux, phi, phigas, q11, q22, q33, rm1, rum1, pm1)
     use inputs_mod, only : useTensorViscosity
 
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
     real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi, phigas,q11,q22,q33
-    real(double) :: fac
+    real(double) :: fac, rm1, rum1, pm1
     type(VECTOR) :: direction
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
@@ -1917,6 +1946,10 @@ contains
           q22 = neighbourOctal%qViscosity(neighbourSubcell, 2, 2)
           q33 = neighbourOctal%qViscosity(neighbourSubcell, 3, 3)
        endif
+       rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+       rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+       pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+       
      else if (neighbourOctal%twoD) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1
@@ -1941,7 +1974,9 @@ contains
        flux = 0.5d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)))
        phi = 0.5d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)))
        phigas = 0.5d0*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)))
-
+       rm1 = 0.5d0*(neighbourOctal%rho_i_minus_1(nSubcell(1)) + neighbourOctal%rho_i_minus_1(nSubcell(2)))
+       rum1 = 0.5d0*(neighbourOctal%u_i_minus_1(nSubcell(1)) + neighbourOctal%u_i_minus_1(nSubcell(2)))
+       pm1 = 0.5d0*(neighbourOctal%pressure_i_minus_1(nSubcell(1)) + neighbourOctal%pressure_i_minus_1(nSubcell(2)))
 
        if (useTensorViscosity) then
           q11 = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),1,1) + neighbourOctal%qViscosity(nSubcell(2),1,1))
@@ -2013,6 +2048,14 @@ contains
        phigas = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
+       rm1 = fac*(neighbourOctal%rho_i_minus_1(nSubcell(1)) + neighbourOctal%rho_i_minus_1(nSubcell(2)) + & 
+            neighbourOctal%rho_i_minus_1(nSubcell(3)) + neighbourOctal%rho_i_minus_1(nSubcell(4)))
+
+       rum1 = fac*(neighbourOctal%u_i_minus_1(nSubcell(1)) + neighbourOctal%u_i_minus_1(nSubcell(2)) + & 
+            neighbourOctal%u_i_minus_1(nSubcell(3)) + neighbourOctal%u_i_minus_1(nSubcell(4)))
+
+       pm1 = fac*(neighbourOctal%pressure_i_minus_1(nSubcell(1)) + neighbourOctal%pressure_i_minus_1(nSubcell(2)) + & 
+            neighbourOctal%pressure_i_minus_1(nSubcell(3)) + neighbourOctal%pressure_i_minus_1(nSubcell(4)))
 
        if (useTensorViscosity) then
           q11 = fac*(neighbourOctal%qViscosity(nSubcell(1),1,1) + neighbourOctal%qViscosity(nSubcell(2),1,1) + & 

@@ -12,7 +12,7 @@ captureshocks F
 nhydrothreads 2
 
 mindepthamr 4
-maxdepthamr 12
+maxdepthamr 10
 cfl 0.3
 
 amr3d F
