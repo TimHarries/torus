@@ -743,17 +743,31 @@ contains
 !                     (0.5d0*(rhou_i_plus_1+rhou_i_minus_1)) /= 0.d0 .and. &
 !                     (0.5d0*(rhou_i+(rho_i_minus_2*u_i_minus_2)))/= 0.d0) then
 
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                        ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
-                  
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                        0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
-                        dt/(x_i_plus_1-x_i_minus_1)
-                   
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                        0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
-                        dt/(x_i-x_i_minus_2)
 
+!                print *, "BEG ", thisOctal%u_i(subcell)
+!                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+!                     ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
+!                
+!                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+!                     0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
+!                     dt/(x_i_plus_1-x_i_minus_1)
+!                
+!                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+!                     0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
+!                     dt/(x_i-x_i_minus_2)
+
+                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
+                     ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
+                
+                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+                     0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
+                     dt/(x_i_plus_1-x_i_minus_1)
+                
+                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+                     0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
+                     dt/(x_i-x_i_minus_2)
+                
+!                print *, "end ", thisOctal%u_i(subcell)
 !                end if
                 
              endif
@@ -848,7 +862,7 @@ contains
                 x_i_plus_1 = py
 
 
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
                         ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
                   
                    thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
@@ -956,11 +970,11 @@ contains
                 thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
                      ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
                 
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
                      0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
                      dt/(x_i_plus_1-x_i_minus_1)
                 
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
+                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
                      0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
                      dt/(x_i-x_i_minus_2)
 
@@ -5002,6 +5016,11 @@ end subroutine sumFluxes
 !       call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
 !       call writeInfo("Done", TRIVIAL)
 
+       call writeVTKfile(grid, "start1.vtk")
+       call writeVtkFile(grid, "start1.vtk", &
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+            ,"mpithread    ", "pressure     " /))
+
 !set up initial values
        if (it == 0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -5034,7 +5053,7 @@ end subroutine sumFluxes
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
-          call computepressureGeneral(grid, grid%octreeroot, .false.)
+!          call computepressureGeneral(grid, grid%octreeroot, .false.)
           
           call writeInfo("Checking Boundary Partner Vectors", TRIVIAL)
           call checkBoundaryPartners(grid%octreeRoot, grid)
@@ -5049,10 +5068,10 @@ end subroutine sumFluxes
             valueTypeString=(/"rho          ","hydrovelocity","rhoe         " /))
     end if
 
-       call writeVTKfile(grid, "start.vtk")
-       call writeVtkFile(grid, "start.vtk", &
+       call writeVTKfile(grid, "start2.vtk")
+       call writeVtkFile(grid, "start2.vtk", &
             valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-            ,"mpithread    ", "ghosts       " /))
+            ,"mpithread    ", "pressure     " /))
 
 !calculate largest timestep that each cell on the grid can take without advecting a quantity further than their
 !nearest neighbour

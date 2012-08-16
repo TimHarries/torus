@@ -6738,8 +6738,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-!    real :: u1 !, u2
-    real(double) :: eKinetic
+    real(double) :: ekinetic
 
 
     rVec = subcellCentre(thisOctal, subcell)
@@ -6751,11 +6750,14 @@ endif
     end if
 
     thisOctal%rho(subcell) = 1.d0
-    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
-    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
-    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
-    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)/cspeed
+
+    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*thisOctal%rho(subcell)*cspeed
+    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*thisOctal%rho(subcell)*cspeed
+    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*Thisoctal%rho(subcell)*cspeed
+
+    thisOctal%temperature(subcell) = 1.d0
 
     thisOctal%gamma(subcell) = 5.d0/3.d0
     thisOctal%iEquationOfState(subcell) = 0
