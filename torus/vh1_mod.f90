@@ -159,7 +159,7 @@ contains
 ! No dust in outflow
           thisOctal%dustTypeFraction(subcell,:) = 0.0
        else
-          thisOctal%dustTypeFraction(subcell,:) = 1.0
+          thisOctal%dustTypeFraction(subcell,:) = 0.01
        endif
 
     end if
