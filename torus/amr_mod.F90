@@ -6738,7 +6738,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real :: u1 !, u2
+!    real :: u1 !, u2
     real(double) :: eKinetic
 
 
@@ -6751,7 +6751,7 @@ endif
     end if
 
     thisOctal%rho(subcell) = 1.d0
-    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
     thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
