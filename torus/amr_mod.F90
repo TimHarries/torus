@@ -226,6 +226,9 @@ CONTAINS
     CASE("kelvin")
        call calcKelvinDensity(thisOctal, subcell)
 
+    CASE("rcTest")
+       call calcRCTestDensity(thisOctal, subcell)
+
     CASE("rtaylor")
        call calcRTaylorDensity(thisOctal, subcell)
 
@@ -3966,6 +3969,9 @@ CONTAINS
           if ( (abs(thisOctal%zMin+0.25d0) < 1.d-5).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
           if(cornerCell(grid, thisOctal, subcell) .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           
+       case("rcTest")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.          
+
        case("rtaylor")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if ( (abs(thisOctal%zMax) < 1.d-10).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
@@ -6726,6 +6732,41 @@ endif
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
 
   end subroutine Calckelvindensity
+
+  subroutine calcRCTestDensity(thisOctal,subcell)
+    use inputs_mod  
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real :: u1 !, u2
+    real(double) :: eKinetic
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+    !1,4,6,7
+    if(subcell == 1 .or. subcell == 4 .or. subcell == 6 .or. subcell == 7) then
+       thisOctal%pressure_i(subcell) = 0.1
+    else
+       thisOctal%pressure_i(subcell) = 0.2
+    end if
+
+    thisOctal%rho(subcell) = 1.d0
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, u1)
+
+    thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y*cspeed*thisOctal%rho(subcell)
+    thisOctal%rhow(subcell) = thisOctal%velocity(subcell)%z*cspeed*thisOctal%rho(subcell)
+
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (thisOctal%gamma(subcell)-1.d0) * thisOctal%rho(subcell))
+    eKinetic = 0.5d0 * &
+         (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOCtal%rhow(subcell)**2) &
+         /thisOctal%rho(subcell)**2
+    thisOctal%energy(subcell) = thisOctal%energy(subcell) + eKinetic
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+
+  end subroutine CalcRCTestDensity
 
   subroutine calcRTaylorDensity(thisOctal,subcell)
     use inputs_mod

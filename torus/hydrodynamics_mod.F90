@@ -725,7 +725,8 @@ contains
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
              if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
 
-                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
+                     grid%halfsmallestsubcell)
                 neighbouroctal => thisoctal
                 call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
                 call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
@@ -834,7 +835,8 @@ contains
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
              if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
 
-                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
+                     grid%halfsmallestsubcell)
                 neighbouroctal => thisoctal
                 call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
                 call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
@@ -938,7 +940,8 @@ contains
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
              if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
 
-                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
+                     grid%halfsmallestsubcell)
                 neighbouroctal => thisoctal
                 call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
                 call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
@@ -1403,7 +1406,8 @@ contains
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
       
                    call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
-                   rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, &
+                        q22, q33, rm1,um1, pm1)
                    ID(i) = 2
 
                 else
@@ -1465,7 +1469,8 @@ contains
 
 !                   if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                       call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, direction, q, rho, &
-                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, &
+                           q22, q33, rm1,um1, pm1)
 !                   else
 !                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, community(i), q, rho, &
 !                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
@@ -1477,7 +1482,8 @@ contains
 
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
                    call getneighbourvalues(grid, faceoctal, facesubcell, communityoctal, communitysubcell, direction, q, rho, &
-                   rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, &
+                        q33, rm1,um1, pm1)
                    
                    cvec = VECTOR(px, py, pz)
                 
