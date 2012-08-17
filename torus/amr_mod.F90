@@ -6749,6 +6749,12 @@ endif
        thisOctal%pressure_i(subcell) = 0.2
     end if
 
+!    if (rVec%x < 0.5d0) then
+!       thisOctal%pressure_i(subcell) = 0.1
+!    else
+!       thisOctal%pressure_i(subcell) = 0.2
+!    end if
+       
     thisOctal%rho(subcell) = 1.d0
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)/cspeed

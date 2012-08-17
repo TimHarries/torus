@@ -671,6 +671,9 @@ contains
     real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1
     real(double) :: rm1, um1, pm1
     real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
+    real(double) :: dx, p_i_minus_1_and_a_half, p_i_minus_a_half 
+    real(double) :: p_i_plus_a_half, u_i, u_i_minus_1
+    real(double) :: dpdx_i, dpdx_i_minus_half, dpdx_i_minus_1, thisRhou
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -695,7 +698,7 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
 
              rho_i_minus_1 = rho
-             rhou_i_minus_1 = rhou
+             rhou_i_minus_1 = direction.dot.VECTOR(rhou,rhov,rhow)
              pressure_i_minus_1 = pressure             
              x_i_minus_1 = px
 
@@ -716,11 +719,13 @@ contains
                 write(*,*) "bug in setupui ",rho_i_minus_1, thisOctal%rho(subcell)
              endif
              !This is the velocity for the i'th cell at i-1/2
+             thisRhou = direction.dot.VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))
              thisoctal%u_interface(subcell) = &
-                  weight*thisoctal%rhou(subcell)/thisoctal%rho(subcell) + &
+                  weight*thisRhou/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
              if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
-             thisOctal%u_i(subcell) = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
+             thisOctal%u_i(subcell) = thisRhou / thisOctal%rho(subcell)
+
 
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
              if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
@@ -739,37 +744,22 @@ contains
 
                 !now we have i,i+1,i-1 and i-2 can apply rhie-chow
                 !you basically subtract the local pressure gradient and add the average ambient one
-!                if((0.5d0*(rhou_i+rhou_i_minus_1)) /= 0.d0 .and. &
-!                     (0.5d0*(rhou_i_plus_1+rhou_i_minus_1)) /= 0.d0 .and. &
-!                     (0.5d0*(rhou_i+(rho_i_minus_2*u_i_minus_2)))/= 0.d0) then
+
+                u_i = thisRhou / thisOctal%rho(subcell)
+                u_i_minus_1 = rhou_i_minus_1 / rho_i_minus_1
+
+                dx = thisOctal%subcellSize * gridDistanceScale
+
+                dpdx_i_minus_half = (pressure_i - pressure_i_minus_1) / dx
+                dpdx_i = (pressure_i_plus_1 - pressure_i_minus_1) / (2.d0*dx)
+                dpdx_i_minus_1 = (pressure_i - pressure_i_minus_2) / (2.d0*dx)
 
 
-!                print *, "BEG ", thisOctal%u_i(subcell)
-!                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-!                     ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
-!                
-!                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-!                     0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
-!                     dt/(x_i_plus_1-x_i_minus_1)
-!                
-!                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-!                     0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
-!                     dt/(x_i-x_i_minus_2)
+                thisOctal%u_interface(subcell) = 0.5d0*(u_i + u_i_minus_1) - &
+                     (dt/(0.5d0*(rho_i_minus_1 + rho_i)))*dpdx_i_minus_half + &
+                     0.5d0 * ((dt/rho_i)*dpdx_i + (dt/rho_i_minus_1)*dpdx_i_minus_1)
 
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
-                     ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
-                
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                     0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
-                     dt/(x_i_plus_1-x_i_minus_1)
-                
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                     0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
-                     dt/(x_i-x_i_minus_2)
-                
-!                print *, "end ", thisOctal%u_i(subcell)
-!                end if
-                
+
              endif
 
              
@@ -779,215 +769,6 @@ contains
 
   end subroutine setupui
 
-!set up neighbour densities and cell interface advecting velocities - v direction
-  recursive subroutine setupvi(thisoctal, grid, direction, dt)
-    use mpi
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisoctal
-    type(octal), pointer   :: neighbouroctal
-    type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas, q11, q22, q33
-    integer :: subcell, i, neighboursubcell, nd
-    type(vector) :: direction, locator!, rotator
-    real(double) :: rhov_i_minus_1, rho_i_minus_1, dt
-    real(double) :: xnext, weight, px, py, pz, x_interface, rm1, um1, pm1
-    real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
-    real(double) :: pressure_i_plus_1, pressure_i, pressure_i_minus_1, pressure_i_minus_2
-    real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1
-
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call setupvi(child, grid, direction, dt)
-                exit
-             end if
-          end do
-       else
-          
-          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-
-          !thaw - edgecell is correct.
-          if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
-             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-             neighbouroctal => thisoctal
-             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-            
-             rho_i_minus_1 = rho
-             rhov_i_minus_1 = rhov
-             pressure_i_minus_1 = pressure             
-             x_i_minus_1 = py
-
-             rho_i = thisOctal%rho(subcell)
-             pressure_i = thisOctal%pressure_i(subcell)
-             x_i = thisOctal%x_i(subcell)
-
-             rho_i_minus_2 = rm1
-             pressure_i_minus_2 = pm1
-             x_i_minus_2 = xnext
-
-
-             x_interface = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
-             weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
-          
-             if ((rho_i_minus_1 == 0.d0).or.(thisOctal%rho(subcell) == 0.d0)) then
-                write(*,*) "bug in setupvi ",rho_i_minus_1, thisOctal%rho(subcell)
-             endif
-             !This is the velocity for the i'th cell at i-1/2
-             thisoctal%u_interface(subcell) = &
-                  weight*thisoctal%rhov(subcell)/thisoctal%rho(subcell) + &
-                  (1.d0-weight)*rhov_i_minus_1/rho_i_minus_1
-             if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
-             thisOctal%u_i(subcell) = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
-
-
-             ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
-             if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
-
-                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
-                     grid%halfsmallestsubcell)
-                neighbouroctal => thisoctal
-                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
-                     xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
-
-                rho_i_plus_1 = rho               
-                pressure_i_plus_1 = pressure
-                x_i_plus_1 = py
-
-
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
-                        ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
-                  
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                        0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
-                        dt/(x_i_plus_1-x_i_minus_1)
-                   
-                   thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                        0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
-                        dt/(x_i-x_i_minus_2)
-
-!                end if
-                
-             endif
-
-
-     
-          endif
-       endif
-    enddo
-
-  end subroutine setupvi
-
-!set up neighbour densities and cell interface advecting velocities - y direction
-  recursive subroutine setupwi(thisoctal, grid, direction, dt)
-    use mpi
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisoctal
-    type(octal), pointer   :: neighbouroctal
-    type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas, q11, q22, q33
-    integer :: subcell, i, neighboursubcell, nd
-    type(vector) :: direction, locator!, rotator
-    real(double) :: rhow_i_minus_1, rho_i_minus_1
-    real(double) :: xnext, weight, px, py, pz, x_interface, rm1, um1, pm1, dt
-    real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
-    real(double) :: pressure_i_plus_1, pressure_i, pressure_i_minus_1, pressure_i_minus_2
-    real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1
-
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call setupwi(child, grid, direction, dt)
-                exit
-             end if
-          end do
-       else
-          
-          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-
-          !thaw - edgecell is correct.
-          if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
-             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-             neighbouroctal => thisoctal
-             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-            
-             rho_i_minus_1 = rho
-             rhow_i_minus_1 = rhow
-             pressure_i_minus_1 = pressure             
-             x_i_minus_1 = pz
-
-             rho_i = thisOctal%rho(subcell)
-             pressure_i = thisOctal%pressure_i(subcell)
-             x_i = thisOctal%x_i(subcell)
-
-             rho_i_minus_2 = rm1
-             pressure_i_minus_2 = pm1
-             x_i_minus_2 = xnext
-
-
-             x_interface = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
-             weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
-          
-             if ((rho_i_minus_1 == 0.d0).or.(thisOctal%rho(subcell) == 0.d0)) then
-                write(*,*) "bug in setupwi ",rho_i_minus_1, thisOctal%rho(subcell)
-             endif
-             !This is the velocity for the i'th cell at i-1/2
-             thisoctal%u_interface(subcell) = &
-                  weight*thisoctal%rhow(subcell)/thisoctal%rho(subcell) + &
-                  (1.d0-weight)*rhow_i_minus_1/rho_i_minus_1
-             if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
-             thisOctal%u_i(subcell) = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
-     
-             ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
-             if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
-
-                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
-                     grid%halfsmallestsubcell)
-                neighbouroctal => thisoctal
-                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
-                     xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
-
-                rho_i_plus_1 = rho
-                pressure_i_plus_1 = pressure
-                x_i_plus_1 = pz
-
-
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) + &
-                     ((pressure_i - pressure_i_minus_1)/(0.5d0*(rho_i+rho_i_minus_1)))*(dt/(x_i-x_i_plus_1))
-                
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
-                     0.5d0*(((pressure_i_plus_1 - pressure_i_minus_1)/((0.5d0*(rho_i_plus_1+rho_i_minus_1)))))*&
-                     dt/(x_i_plus_1-x_i_minus_1)
-                
-                thisOctal%u_i(subcell) = thisOctal%u_i(subcell) - &
-                     0.5d0*(((pressure_i - pressure_i_minus_2)/(0.5d0*(rho_i+(rho_i_minus_2)))))*&
-                     dt/(x_i-x_i_minus_2)
-
-
-                
-             endif
-
-
-          endif
-       endif
-    enddo
-
-  end subroutine setupwi
 
 !setup the flux at i+1/2 and if necessary modify flux at i-1/2
 !note that thisOctal%flux_i is the flux at i-1/2
@@ -1800,14 +1581,14 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-             thisoctal%u_i_plus_1(subcell) = rhou/rho
+             thisoctal%u_i_plus_1(subcell) = (direction.dot.VECTOR(rhou, rhov, rhow))/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-             thisoctal%u_i_minus_1(subcell) = rhou/rho
+             thisoctal%u_i_minus_1(subcell) =  (direction.dot.VECTOR(rhou, rhov, rhow))/rho
              thisOctal%rho_i_minus_1(subcell) = rho
           endif
        endif
@@ -1862,150 +1643,6 @@ contains
 !    enddo
 !  end subroutine setupupm
 
-!set up i±1 neighbour central velocities (u_i)   - y direction
-!note these are not advecting velocities (u_i-1/2) 
-  recursive subroutine setupvpm(thisoctal, grid, direction)
-    use mpi
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisoctal
-    type(octal), pointer   :: neighbouroctal
-    type(octal), pointer  :: child 
-    integer :: subcell, i, neighboursubcell
-    type(vector) :: direction, locator
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas,q11,q22,q33
-    integer :: nd
-    real(double) :: xnext, px, py, pz, rm1, um1, pm1
-
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call setupvpm(child, grid, direction)
-                exit
-             end if
-          end do
-       else
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-
-          if (.not.thisoctal%edgecell(subcell)) then
-             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-             neighbouroctal =>thisoctal
-             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-             thisoctal%u_i_plus_1(subcell) = rhov/rho
-             
-             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-             neighbouroctal => thisoctal
-             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-             thisoctal%u_i_minus_1(subcell) = rhov/rho
-             thisOctal%rho_i_minus_1(subcell) = rho
-          endif
-       endif
-    enddo
-  end subroutine setupvpm
-
-!set up i±1 neighbour central velocities (u_i)   - z direction
-!note these are not advecting velocities (u_i-1/2) 
-  recursive subroutine setupwpm(thisoctal, grid, direction)
-    use mpi
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisoctal
-    type(octal), pointer   :: neighbouroctal
-    type(octal), pointer  :: child 
-    integer :: subcell, i, neighboursubcell
-    type(vector) :: direction, locator
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas,q11,q22,q33
-    integer :: nd
-    real(double) :: xnext, px, py, pz, rm1, um1, pm1
-
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call setupwpm(child, grid, direction)
-                exit
-             end if
-          end do
-       else
-!          if (thisoctal%mpithread(subcell) /= myrank) cycle
-          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-
-          if (.not.thisoctal%edgecell(subcell)) then
-             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-             neighbouroctal => thisoctal
-             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
-             thisoctal%u_i_plus_1(subcell) = rhow/rho
-             
-             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
-             neighbouroctal => thisoctal
-             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11,q22,q33, rm1,um1, pm1)
-             thisoctal%u_i_minus_1(subcell) = rhow/rho
-             thisOctal%rho_i_minus_1(subcell) = rho
-          endif
-       endif
-    enddo
-  end subroutine setupwpm
-
-
-!!!Rhie-Chow interpolation 
-!!!Modifies cell interface velocities to avoid odd-even decoupling 
-!  recursive subroutine rhiechowui(thisoctal, grid, direction, dt)
-!    use mpi
-!    type(gridtype) :: grid
-!    type(octal), pointer   :: thisoctal
-!    type(octal), pointer  :: child
-!    integer :: subcell, i
-!    type(vector) :: direction
-!    real(double) :: dt, dx
-!    !
-!
-!    do subcell = 1, thisoctal%maxchildren
-!       if (thisoctal%haschild(subcell)) then
-!          ! find the child
-!!          do i = 1, thisoctal%nchildren, 1
-!             if (thisoctal%indexchild(i) == subcell) then
-!                child => thisoctal%child(i)
-!                call rhiechowui(child, grid, direction, dt)
-!                exit
-!             end if
-!          end do
-!       else
-!!
-!!      
-!!!          if (thisoctal%mpithread(subcell) /= myrank) cycle
-!          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-!          if (.not.thisoctal%ghostcell(subcell)) then
-!             !if (.not.thisoctal%edgecell(subcell)) then
-!             dx = returnCodeUnitLength(thisoctal%subcellsize*gridDistanceScale)
-!!       !      dx = (thisoctal%x_i(subcell) - thisoctal%x_i_minus_1(subcell))!
-!!!
-!!The interface velocity is modified to account for the pressure gradient due to its nearest neighbours
-!             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
-!                  ((thisoctal%pressure_i_plus_1(subcell) + thisoctal%pressure_i(subcell))/2.d0 -  &
-!                  (thisoctal%pressure_i(subcell) + thisoctal%pressure_i_minus_1(subcell))/2.d0)/dx!
-!!
-!             thisoctal%u_interface(subcell) = thisoctal%u_interface(subcell) - dt * &
-!                 (thisoctal%pressure_i(subcell) - thisoctal%pressure_i_minus_1(subcell))/dx
-!             ! write(*,*), "ui", thisoctal%u_interface(subcell)
-!          endif
-!       endif
-!    enddo!
-!
-!  end subroutine rhiechowui
 
 !Calculate cell pressures, including the optional effects of artificial viscosity
   recursive subroutine computepressureGeneral(grid, thisOctal, withViscosity)
@@ -2085,11 +1722,12 @@ contains
   end subroutine computepressureGeneral
 
 !Calculate the modification to cell velocity and energy due to the pressure gradient
-  recursive subroutine pressureforceu(thisoctal, dt, grid)
+  recursive subroutine pressureforce(thisoctal, dt, grid, direction)
     use mpi
     use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
+    type(VECTOR) :: direction
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
@@ -2106,7 +1744,7 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call pressureforceu(child, dt, grid)
+                call pressureforce(child, dt, grid, direction)
                 exit
              end if
           end do
@@ -2122,7 +1760,13 @@ contains
                 write(*,*) "thread ",thisoctal%mpithread(subcell)
              endif
 
-             rhou = thisoctal%rhou(subcell)
+             if (direction%x > 0.d0) then
+                rhou = thisoctal%rhou(subcell)
+             else if (direction%y > 0.d0) then
+                rhou = thisOctal%rhov(subcell)
+             else
+                rhou = thisOctal%rhow(subcell)
+             endif
 
              dx = thisoctal%subcellsize * griddistancescale
 
@@ -2154,40 +1798,46 @@ contains
 
              dx = x_i_plus_half - x_i_minus_half
 
-             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
-                  (p_i_plus_half - p_i_minus_half) / dx
+             if (direction%x > 0.d0) then
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
+                     (p_i_plus_half - p_i_minus_half) / dx
+                if (useTensorViscosity) then
+                   thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+                endif
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
+                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+                if (radiationPressure) then
+                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                endif
 
-!             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) - dt * &
-!                  (thisOctal%pressure_i_plus_1(subcell) - thisOctal%pressure_i_minus_1(subcell)) / &
-!                  (2.d0*dx)
+             else if (direction%y > 0.d0) then
+                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * &
+                     (p_i_plus_half - p_i_minus_half) / dx
+                if (useTensorViscosity) then
+                   thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+                endif
+                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
+                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+                if (radiationPressure) then
+                   thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+                        dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
+                endif
+             else
+                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
+                     (p_i_plus_half - p_i_minus_half) / dx
+                if (useTensorViscosity) then
+                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+                endif
+                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
+                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+                if (radiationPressure) then
+                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                endif
 
-
-             if (useTensorViscosity) then
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
              endif
 
-
-             thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
-                  thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
-
-!             if (abs(thisOctal%rhou(subcell)/thisOctal%rho(subcell)) > 2.d5) then
-!                write(*,*) "Fast moving cell u! ",abs(thisOctal%rhou(subcell)/thisOctal%rho(subcell))
-!                write(*,*) "pressure force ",(1.d0/thisOctal%rho(subcell))*(p_i_plus_half - p_i_minus_half) / dx
-!                write(*,*) "grav force ", (phi_i_plus_half - phi_i_minus_half) / dx
-!             endif
-
-
-             if (radiationPressure) then
-                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                     dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-             endif
-
-             if (isnan(thisoctal%rhou(subcell))) then
-                write(*,*) "rhou ",thisoctal%rhou(subcell)
-                write(*,*) "dt ",dt
-                write(*,*) "phi ",thisoctal%phi_i_plus_1(subcell), thisoctal%phi_i_minus_1(subcell)
-                write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
-             endif
 
 !Modify the cell rhoe due to pressure and gravitaitonal potential gradient
              if (thisoctal%iequationofstate(subcell) /= 1) then             
@@ -2205,274 +1855,16 @@ contains
                   rhou  * (phi_i_plus_half - phi_i_minus_half) / dx
 
 
-                if (useTensorviscosity) then
+                if (useTensorviscosity.and.(direction%x > 0.d0)) then
                    thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt*thisOctal%chiline(subcell)
                 endif
 
              endif
-           
-             if (isnan(thisoctal%rhou(subcell))) then
-                write(*,*) "bug",thisoctal%rhou(subcell), &
-                     thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
-                do;enddo
-                endif
-             endif
+          endif
        endif
     enddo
-  end subroutine pressureforceu
+  end subroutine pressureforce
 
-!Calculate the modification to cell velocity and energy due to the pressure gradient
-  recursive subroutine pressureforcev(thisoctal, dt, grid)
-    use mpi
-    use inputs_mod, only : radiationPressure, nBodyPhysics
-    type(octal), pointer   :: thisoctal
-    type(gridtype) :: grid
-    type(octal), pointer  :: child 
-    integer :: subcell, i
-    real(double) :: dt, rhov, dx, dv
-    real(double) :: eps
-    real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
-    real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
-
-    eps = smallestCellSize * 1.d10
-    
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call pressureforcev(child, dt, grid)
-                exit
-             end if
-          end do
-       else
-          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-          if (.not.thisoctal%ghostcell(subcell)) then
-
-             if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrankGlobal," error in setting up x_i values"
-                write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
-                write(*,*) thisoctal%ndepth
-                write(*,*) "centre ",subcellcentre(thisoctal,subcell)
-                write(*,*) "thread ",thisoctal%mpithread(subcell)
-             endif
-
-             rhov = thisoctal%rhov(subcell)
-
-             dx = thisoctal%subcellsize * griddistancescale
-
-             dv = cellVolume(thisOctal, subcell) * 1.d30
-  
-!modify the cell velocity due to the pressure gradient
-
-
-             x_i_plus_half = thisOctal%x_i(subcell) + thisOctal%subcellSize*gridDistanceScale/2.d0
-             x_i_minus_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistanceScale/2.d0
-
-             fac1 = (x_i_minus_half - thisOctal%x_i_minus_1(subcell)) / &
-                  (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
-             fac2 = (x_i_plus_half - thisOctal%x_i(subcell)) / &
-                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
-
-             p_i_minus_half = thisOctal%pressure_i_minus_1(subcell) + (thisOctal%pressure_i(subcell) - &
-                  thisOctal%pressure_i_minus_1(subcell)) * fac1
-             p_i_plus_half = thisOctal%pressure_i(subcell) + (thisOctal%pressure_i_plus_1(subcell) - &
-                  thisOctal%pressure_i(subcell)) * fac2
-             u_i_minus_half = thisOctal%u_i_minus_1(subcell) + (thisOctal%u_i(subcell) - &
-                  thisOctal%u_i_minus_1(subcell)) * fac1
-             u_i_plus_half = thisOctal%u_i(subcell) + (thisOctal%u_i_plus_1(subcell) - &
-                  thisOctal%u_i(subcell)) * fac2 
-             phi_i_minus_half = thisOctal%phi_i_minus_1(subcell) + (thisOctal%phi_i(subcell) - &
-                  thisOctal%phi_i_minus_1(subcell)) * fac1
-             phi_i_plus_half = thisOctal%phi_i(subcell) + (thisOctal%phi_i_plus_1(subcell) - &
-                  thisOctal%phi_i(subcell)) * fac2
-
-
-             dx = x_i_plus_half - x_i_minus_half
-
-             thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * &
-                  (p_i_plus_half - p_i_minus_half) / dx
-
-             if (useTensorViscosity) then
-                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 2, grid)*dt
-             endif
-
-
-             thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
-                  thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
-
-
-!             if (abs(thisOctal%rhov(subcell)/thisOctal%rho(subcell)) > 2.d5) then
-!                write(*,*) "Fast moving cell v! ",abs(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
-!                write(*,*) "pressure force ",(1.d0/thisOctal%rho(subcell))*(p_i_plus_half - p_i_minus_half) / dx
-!                write(*,*) "grav force ", (phi_i_plus_half - phi_i_minus_half) / dx
-!             endif
-
-
-             if (radiationPressure) then
-                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-                     dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-             endif
-
-             if (isnan(thisoctal%rhov(subcell))) then
-                write(*,*) "rhov ",thisoctal%rhov(subcell)
-                write(*,*) "dt ",dt
-                write(*,*) "phi ",thisoctal%phi_i_plus_1(subcell), thisoctal%phi_i_minus_1(subcell)
-                write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
-             endif
-
-!Modify the cell rhoe due to pressure and gravitaitonal potential gradient
-             if (thisoctal%iequationofstate(subcell) /= 1) then             
-
-                thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt * &
-                  (p_i_plus_half * u_i_plus_half - p_i_minus_half * u_i_minus_half) / dx
-
-                thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - dt* & !gravity
-                  rhov  * (phi_i_plus_half - phi_i_minus_half) / dx
-
-
-
-             endif
-           
-             if (isnan(thisoctal%rhov(subcell))) then
-                write(*,*) "bug",thisoctal%rhov(subcell), &
-                     thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
-                do;enddo
-                endif
-             endif
-       endif
-    enddo
-  end subroutine pressureforcev
-
-!Calculate the modification to cell velocity and energy due to the pressure gradient
-  recursive subroutine pressureforcew(thisoctal, dt, grid)
-    use mpi
-    use inputs_mod, only : radiationPressure, nBodyPhysics
-    type(octal), pointer   :: thisoctal
-    type(gridtype) :: grid
-    type(octal), pointer  :: child 
-    integer :: subcell, i
-    real(double) :: dt, rhow, dx, dv
-    real(double) :: eps
-    real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
-    real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
-
-    eps = smallestCellSize * 1.d10
-    
-
-    do subcell = 1, thisoctal%maxchildren
-       if (thisoctal%haschild(subcell)) then
-          ! find the child
-          do i = 1, thisoctal%nchildren, 1
-             if (thisoctal%indexchild(i) == subcell) then
-                child => thisoctal%child(i)
-                call pressureforcew(child, dt, grid)
-                exit
-             end if
-          end do
-       else
-          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-          if (.not.thisoctal%ghostcell(subcell)) then
-
-             if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrankGlobal," error in setting up x_i values"
-                write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
-                write(*,*) thisoctal%ndepth
-                write(*,*) "centre ",subcellcentre(thisoctal,subcell)
-                write(*,*) "thread ",thisoctal%mpithread(subcell)
-             endif
-
-             rhow = thisoctal%rhow(subcell)
-
-             dx = thisoctal%subcellsize * griddistancescale
-
-             dv = cellVolume(thisOctal, subcell) * 1.d30
-  
-!modify the cell velocity due to the pressure gradient
-
-
-             x_i_plus_half = thisOctal%x_i(subcell) + thisOctal%subcellSize*gridDistanceScale/2.d0
-             x_i_minus_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistanceScale/2.d0
-
-             fac1 = (x_i_minus_half - thisOctal%x_i_minus_1(subcell)) / &
-                  (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
-             fac2 = (x_i_plus_half - thisOctal%x_i(subcell)) / &
-                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
-
-             p_i_minus_half = thisOctal%pressure_i_minus_1(subcell) + (thisOctal%pressure_i(subcell) - &
-                  thisOctal%pressure_i_minus_1(subcell)) * fac1
-             p_i_plus_half = thisOctal%pressure_i(subcell) + (thisOctal%pressure_i_plus_1(subcell) - &
-                  thisOctal%pressure_i(subcell)) * fac2
-             u_i_minus_half = thisOctal%u_i_minus_1(subcell) + (thisOctal%u_i(subcell) - &
-                  thisOctal%u_i_minus_1(subcell)) * fac1
-             u_i_plus_half = thisOctal%u_i(subcell) + (thisOctal%u_i_plus_1(subcell) - &
-                  thisOctal%u_i(subcell)) * fac2 
-             phi_i_minus_half = thisOctal%phi_i_minus_1(subcell) + (thisOctal%phi_i(subcell) - &
-                  thisOctal%phi_i_minus_1(subcell)) * fac1
-             phi_i_plus_half = thisOctal%phi_i(subcell) + (thisOctal%phi_i_plus_1(subcell) - &
-                  thisOctal%phi_i(subcell)) * fac2
-
-             dx = x_i_plus_half - x_i_minus_half
-
-             thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
-                  (p_i_plus_half - p_i_minus_half) / dx
-
-             if (useTensorViscosity) then
-                if (thisOctal%threed) then
-                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 3, grid)*dt
-                else
-                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 2, grid)*dt
-                endif
-             endif
-
-
-             thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
-                  thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
-
-
-
-!             if (abs(thisOctal%rhow(subcell)/thisOctal%rho(subcell)) > 2.d5) then
-!                write(*,*) "Fast moving cell w! ",abs(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-!                write(*,*) "pressure force ",(1.d0/thisOctal%rho(subcell))*(p_i_plus_half - p_i_minus_half) / dx
-!                write(*,*) "grav force ", (phi_i_plus_half - phi_i_minus_half) / dx
-!             endif
-
-             if (radiationPressure) then
-                thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                     dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-             endif
-
-             if (isnan(thisOctal%rhow(subcell))) then
-                write(*,*) "rhow ",thisoctal%rhow(subcell)
-                write(*,*) "dt ",dt
-                write(*,*) "phi ",thisoctal%phi_i_plus_1(subcell), thisoctal%phi_i_minus_1(subcell)
-                write(*,*) "x ",thisoctal%x_i_plus_1(subcell), thisoctal%x_i_minus_1(subcell)
-             endif
-
-!Modify the cell rhoe due to pressure and gravitaitonal potential gradient
-             if (thisoctal%iequationofstate(subcell) /= 1) then             
-
-                thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt * &
-                  (p_i_plus_half * u_i_plus_half - p_i_minus_half * u_i_minus_half) / dx
-
-                thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - dt* & !gravity
-                  rhow  * (phi_i_plus_half - phi_i_minus_half) / dx
-
-
-
-             endif
-           
-             if (isnan(thisoctal%rhow(subcell))) then
-                write(*,*) "bug",thisoctal%rhow(subcell), &
-                     thisoctal%pressure_i_plus_1(subcell),thisoctal%pressure_i_minus_1(subcell)
-                do;enddo
-                endif
-             endif
-       endif
-    enddo
-  end subroutine pressureforcew
 
 !Use to damp oscillations/flow
   recursive subroutine damp(thisoctal)
@@ -3243,7 +2635,7 @@ end subroutine sumFluxes
  !   end if
 
 !update cell velocities and rhoe's due to pressure gradient
-    call pressureforceu(grid%octreeroot, dt, grid)
+    call pressureforce(grid%octreeroot, dt, grid, direction)
 
 !impose boundary conditions again
     call imposeboundary(grid%octreeroot, grid)
@@ -3253,28 +2645,8 @@ end subroutine sumFluxes
   end subroutine hydrostep1d
 
 
-  recursive subroutine fullstep3d(grid,timestep, npairs, thread1, thread2, &
-       nbound, group, ngroup, idepth, mindepth, maxdepth)
-    type(gridtype) :: grid
-    integer :: npairs, thread1(:), thread2(:), nbound(:)
-    integer :: group(:), ngroup
-    integer :: idepth
-    real(double) :: timestep, nexttimestep
-    integer :: mindepth, maxdepth, nextdepth
-
-    if (idepth /= maxdepth) then
-       nexttimestep = timestep / 2.d0
-       nextdepth = idepth + 1
-       call fullstep3d(grid,  nexttimestep, npairs, thread1, thread2, &
-            nbound, group, ngroup, nextdepth, mindepth, maxdepth)
-       call fullstep3d(grid, nexttimestep, npairs, thread1, thread2, &
-            nbound, group, ngroup, nextdepth, mindepth, maxdepth)
-    endif
-
-  end subroutine fullstep3d
-
 !Perform a single hydrodynamics step, in x, y and z directions, for the 3D case.     
-  subroutine hydrostep3d(grid, dt, nPairs, thread1, thread2, nBound, &
+  subroutine hydrostep3d(grid, timestep, nPairs, thread1, thread2, nBound, &
        group, nGroup,doSelfGrav)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
@@ -3284,9 +2656,9 @@ end subroutine sumFluxes
     logical, optional :: doSelfGrav
     logical :: selfGravity
     integer :: group(:), nGroup
-    real(double) :: dt
+    real(double) :: dt, timestep
     type(VECTOR) :: direction
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
+    integer :: iDir, thisBound
 
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
@@ -3320,623 +2692,228 @@ end subroutine sumFluxes
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
 
-!Half a step (i.e. dt/2) in the x-direction
-    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
-
-
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
-    call computeDivV(grid%octreeRoot, grid)
-
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-
-!set up the grid values
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupQX(grid%octreeRoot, grid, direction)
-
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-!perform any rhie-chow interpolation adjustments
-!    if(rhieChow) then
-!       call computepressureGeneral(grid, grid%octreeroot, .false.)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-!       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!    end if 
-
-!Advect rho, velocities and rhoe
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-!if running a radiation hydrodynamics calculation, advect the ion fraction
-    if(photoionPhysics .and. hydrodynamics) then
-       call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-       call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    end if
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-!boundary conditions
-    call imposeboundary(grid%octreeroot, grid)
-    call periodboundary(grid)
-    call transfertempstorage(grid%octreeroot)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-!set up the grid values
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .true.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-!make any necessary rhie-chow interpolation modifications
-!    if(rhieChow) then
-!       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-!    end if
-
-    if (useTensorViscosity) then
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call setupViscosity(grid%octreeRoot, grid)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    endif
-
-!modify rhou and rhoe due to pressure/graviational potential gradient
-    call pressureForceU(grid%octreeRoot, dt/2.d0, grid)
-
-
-    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
-
-!Full step (i.e. dt) in the y-direction
-    if (myrankWorldglobal == 1) call tune(6,"Y-direction step")
-    direction = VECTOR(0.d0, 1.d0, 0.d0)
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call setupQX(grid%octreeRoot, grid, direction)
-!set up grid values
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call setupVi(grid%octreeRoot, grid, direction, dt)
-    call setupVpm(grid%octreeRoot, grid, direction)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-
-!make any necessary rhie-chow interpolation modifications
-!    if(rhieChow) then
-!       call computepressureGeneral(grid, grid%octreeroot, .false.)
-!!       call computepressurev(grid, grid%octreeroot, direction) !Thaw
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-!       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt)
-!    end if
- 
-!advect rhoe, velocities and rhoe
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)   
-    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-
-!if running a radiation hydrodynamics calculation, advect the ionization fraction
-    if(photoionPhysics .and. hydrodynamics) then
-       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-       call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    end if
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-
-!boundary conditions
-    call imposeboundary(grid%octreeroot, grid)
-    call periodboundary(grid)
-    call transfertempstorage(grid%octreeroot)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-
-!calculate and set up pressures
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-
-    call setupVi(grid%octreeRoot, grid, direction, dt)
-    call setupVpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call computepressureGeneral(grid, grid%octreeroot, .true.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-    call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=5)
-!    if(rhieChow) then
-!       call rhiechowui(grid%octreeroot, grid, direction, dt)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-!    end if  
-
-!    if (useTensorViscosity) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!       call setupViscosity(grid%octreeRoot, grid)
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!    endif
-
-!modify velocities and rhoe due to pressure/graviational potential gradient
-   call pressureForceV(grid%octreeRoot, dt, grid)
-    if (myrankWorldglobal == 1) call tune(6,"Y-direction step")
-
-!Full step in the z-direction (dt)
-    if (myrankWorldglobal == 1) call tune(6,"Z-direction step")
-    direction = VECTOR(0.d0, 0.d0, 1.d0)
-
-!set up grid values
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call setupQX(grid%octreeRoot, grid, direction)
-
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-
-    call setupWi(grid%octreeRoot, grid, direction, dt)
-    call setupWpm(grid%octreeRoot, grid, direction)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-!make any necessary rhie-chow interpolation adjustments
-!    if(rhieChow) then
-!!       call computepressurew(grid, grid%octreeroot, direction) !Thaw
-!       call computepressureGeneral(grid, grid%octreeroot, .false.)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-!       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)   
-!    end if
-
-!advect rho, velocities and rhoe
-    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-!if running a radiation hydrodynamics calculation, advect the ionization fraction
-    if(photoionPhysics .and. hydrodynamics) then
-       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-       call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    end if
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-!boundary conditions
-    call imposeboundary(grid%octreeroot, grid)
-    call periodboundary(grid)
-    call transfertempstorage(grid%octreeroot)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-
-!calculate and set up pressures
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-
-    call setupWi(grid%octreeRoot, grid, direction, dt)
-    call setupWpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call computepressureGeneral(grid, grid%octreeroot, .true.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-!    if(rhieChow) then
-!       call rhiechowui(grid%octreeroot, grid, direction, dt)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-!    end if
-
-!    if (useTensorViscosity) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!       call setupViscosity(grid%octreeRoot, grid)
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!    endif
-
-!modify rhow and rhoe due to pressure/gravitational potential gradient
-    call pressureForceW(grid%octreeRoot, dt, grid)
-    if (myrankWorldglobal == 1) call tune(6,"Z-direction step")
-
-!another half step in the x-direction (dt/2) - convention
-!see above comments
-    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupQX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-
-    
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!    if(rhieChow) then
-!       call computepressureGeneral(grid, grid%octreeroot, .false.)
-!       !call computepressureu(grid, grid%octreeroot, direction) !Thaw 
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-!       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-!    end if
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    if(photoionPhysics .and. hydrodynamics) then
-      call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-      call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    end if
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-!boundary conditions
-    call imposeboundary(grid%octreeroot, grid)
-    call periodboundary(grid)
-    call transfertempstorage(grid%octreeroot)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    do iDir = 1, 4
+       select case (iDir)
+          case(1)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
+             if (myrankWorldglobal == 1) call tune(6,"X-direction step")
+          case(2)
+             direction = VECTOR(0.d0, 1.d0, 0.d0)
+             dt = timeStep
+             thisBound = 5
+             if (myrankWorldglobal == 1) call tune(6,"Y-direction step")
+          case(3)
+             direction = VECTOR(0.d0, 0.d0, 1.d0)
+             dt = timeStep 
+             thisBound = 3
+             if (myrankWorldglobal == 1) call tune(6,"Z-direction step")
+          case(4)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
+             if (myrankWorldglobal == 1) call tune(6,"X-direction step")
+       end select
 
 
 
-!calculate and set up pressures
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+       !set up the grid values
+       call setupX(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupQX(grid%octreeRoot, grid, direction)
+       
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       
+       call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call setupRhoPhi(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
 
-    call setupUi(grid%octreeRoot, grid, direction, dt)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!    call computePressureU(grid, grid%octreeRoot, direction)
-    call computepressureGeneral(grid, grid%octreeroot, .false.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupPressure(grid%octreeRoot, grid, direction)
-!    if(rhieChow) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!    end if
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-   
+       !Advect rho, velocities and rhoe
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
-!    if (useTensorViscosity) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!       call setupViscosity(grid%octreeRoot, grid)
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!    endif
+       !if running a radiation hydrodynamics calculation, advect the ion fraction
+       if(photoionPhysics .and. hydrodynamics) then
+          call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+          call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       end if
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
-    call pressureForceU(grid%octreeRoot, dt/2.d0, grid)
-    if (myrankWorldglobal == 1) call tune(6,"X-direction step")
+       !boundary conditions
+       call imposeboundary(grid%octreeroot, grid)
+       call periodboundary(grid)
+       call transfertempstorage(grid%octreeroot)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-    if (severeDamping) call damp(grid%octreeRoot)
-    if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
-    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
-    call periodBoundary(grid)
-    call imposeBoundary(grid%octreeRoot, grid)
-    call transferTempStorage(grid%octreeRoot)
+       !set up the grid values
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-    !periodic self gravity boundary conditions
-    if (selfGravity .and. .not. dirichlet) then
-       call periodBoundary(grid, justGrav = .true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-    endif
 
-    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
-       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
-    endif
+       call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .true.)
+       call setupRhoPhi(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupPressure(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
-    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
-       call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
-    else
-       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
-    endif
-
-    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
-
-    if (selfGravity) then
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call zeroSourcepotential(grid%octreeRoot)
-       if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+       if (useTensorViscosity) then
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call setupViscosity(grid%octreeRoot, grid)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        endif
-       call sumGasStarGravity(grid%octreeRoot)
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-    endif
 
-  end subroutine hydroStep3d
+       !modify rhou and rhoe due to pressure/graviational potential gradient
+       call pressureForce(grid%octreeRoot, dt/2.d0, grid, direction)
+
+       select case(idir)
+         case(1)
+            if (myrankWorldglobal == 1) call tune(6,"X-direction step")
+         case(2)
+            if (myrankWorldglobal == 1) call tune(6,"Y-direction step")
+         case(3)
+            if (myrankWorldglobal == 1) call tune(6,"Z-direction step")
+         case(4)
+            if (myrankWorldglobal == 1) call tune(6,"X-direction step")
+      end select
+
+   enddo
+   if (severeDamping) call damp(grid%octreeRoot)
+   if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
+   if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
+   call periodBoundary(grid)
+   call imposeBoundary(grid%octreeRoot, grid)
+   call transferTempStorage(grid%octreeRoot)
+
+   !periodic self gravity boundary conditions
+   if (selfGravity .and. .not. dirichlet) then
+      call periodBoundary(grid, justGrav = .true.)
+      call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+   endif
+
+   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
+      call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+   endif
+
+   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
+      call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+   else
+      globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
+   endif
+   
+   if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
+
+   if (selfGravity) then
+      if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+      call zeroSourcepotential(grid%octreeRoot)
+      if (globalnSource > 0) then
+         call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+      endif
+      call sumGasStarGravity(grid%octreeRoot)
+      if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+   endif
+
+ end subroutine hydroStep3d
 
 !Perform a single hydrodynamics step, in x and z directions, for the 2D case.     
-  subroutine hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)!, nCornerPairs, cornerThread1, cornerThread2)
-!, &
-!      nCornerBound, cornerGroup, nCornerGroup)
+  subroutine hydroStep2d(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup
-!    integer :: nCornerPairs, cornerThread1(:), cornerThread2(:), nCornerBound(:)
-!    integer :: cornerGroup(:), nCornerGroup
-    real(double) :: dt
+    real(double) :: timeStep, dt
     type(VECTOR) :: direction
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
+    integer :: idir, thisBound
 
-!boundary conditions
-    call imposeBoundary(grid%octreeRoot, grid)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
+    do iDir = 1, 3
+       select case (iDir)
+          case(1)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
+          case(2)
+             direction = VECTOR(0.d0, 0.d0, 1.d0)
+             dt = timeStep
+             thisBound = 3
+          case(3)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
+       end select
+       
+       !boundary conditions
+       call imposeBoundary(grid%octreeRoot, grid)
+       call periodBoundary(grid)
+       call transferTempStorage(grid%octreeRoot)
 
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-    call computeDivV(grid%octreeRoot, grid)
+       call setupX(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupQX(grid%octreeRoot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
+       !set up grid values
+       call computepressureGeneral(grid, grid%octreeroot, .true.) 
+       call setupupm(grid%octreeroot, grid, direction)
+!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-!half a step in the x-direction - (dt/2)
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupQX(grid%octreeRoot, grid, direction)
+       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
 
-!set up grid values
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-!    if(rhieChow) then
-!     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!!     call computepressureu(grid, grid%octreeroot, direction) !Thaw
-!     call computepressureGeneral(grid, grid%octreeroot, .false.)
-!     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!    
-!     call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!     call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!    end if
-
-!advect rho, velocities and rhoe
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
-!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
+       !advect rho, velocities and rhoe
+       call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
 
-!calculate and set up pressures   
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+       !calculate and set up pressures   
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .true.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupPressure(grid%octreeRoot, grid, direction)
-!    if(rhieChow) then
-!     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!     call rhiechowui(grid%octreeroot, grid, direction, dt)
-!    end if
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .true.)
+       call setupRhoPhi(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupPressure(grid%octreeRoot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-    if (useTensorViscosity) then
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call setupViscosity(grid%octreeRoot, grid)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    endif
+       if (useTensorViscosity) then
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call setupViscosity(grid%octreeRoot, grid)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       endif
 
-!modify rhou and rhoe due to pressure/gravitational potential gradient
-    call pressureForceU(grid%octreeRoot, dt/2.d0, grid)
-
-!boundary conditions
-    call imposeBoundary(grid%octreeRoot, grid)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-
-!full step in the z-direction
-    direction = VECTOR(0.d0, 0.d0, 1.d0)
-
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call setupQX(grid%octreeRoot, grid, direction)
-!set up grid values
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-
-    call setupWi(grid%octreeRoot, grid, direction, dt)
-    call setupWpm(grid%octreeRoot, grid, direction)
-
-!perform any necessary rhie-chow interpolation modifications
-!    if(rhieChow) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-!!       call computepressurew(grid, grid%octreeroot, direction) !Thaw
-!       call computepressureGeneral(grid, grid%octreeroot, .false.)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt)
-!    end if
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
-
-!advect rho, velocities and rhoe
-    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-
-    call setupWi(grid%octreeRoot, grid, direction, dt)
-    call setupWpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-    call computepressureGeneral(grid, grid%octreeroot, .true.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-    call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=3)
-
-!    if(rhieChow) then
-!       call rhiechowui(grid%octreeroot, grid, direction, dt)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-!    end if
-
-    if (useTensorViscosity) then
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call setupViscosity(grid%octreeRoot, grid)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    endif
-
-!modify rhow, rhoe due to pressure/gravitational potential gradient
-    call pressureForceW(grid%octreeRoot, dt, grid)
-
-!boundary conditions
-    call imposeBoundary(grid%octreeRoot, grid)
-    call periodBoundary(grid)
-    call transferTempStorage(grid%octreeRoot)
-
-!half a step in the x-direction (convention, dt/2)
-    direction = VECTOR(1.d0, 0.d0, 0.d0)
-
-    call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupQX(grid%octreeRoot, grid, direction)
-
-!set up grid values
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-!make any necessary rhie-chow adjustments
-!    if(rhieChow) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!       call computepressureGeneral(grid, grid%octreeroot, .false.)
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!       call setuppressure(grid%octreeroot, grid, direction) !Thaw
-!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!    end if
-!advect rho, velocities and rhoe
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-!    call exchangeAcrossMPICorner(grid, nCornerPairs, cornerThread1, cornerThread2, nCornerBound, cornerGroup, nCornerGroup)
-    Call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    
-    !calculate and setup pressures
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call setupupm(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-    call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call computepressureGeneral(grid, grid%octreeroot, .false.)
-    call setupRhoPhi(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call setupPressure(grid%octreeRoot, grid, direction)
-!    if(rhieChow) then
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-!       call rhiechowui(grid%octreeroot, grid, direction, dt/2.d0)
-!    end if
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-
-
-    if (useTensorViscosity) then
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call setupViscosity(grid%octreeRoot, grid)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    endif
-
-!modify rhou, rhoe due to pressure/gravitational potential
-    call pressureForceU(grid%octreeRoot, dt/2.d0, grid)
-
-!boundary conditions
+       !modify rhou and rhoe due to pressure/gravitational potential gradient
+       call pressureForce(grid%octreeRoot, dt, grid, direction)
+    enddo
     call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
