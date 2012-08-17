@@ -671,8 +671,8 @@ contains
     real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1
     real(double) :: rm1, um1, pm1
     real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
-    real(double) :: dx, p_i_minus_1_and_a_half, p_i_minus_a_half 
-    real(double) :: p_i_plus_a_half, u_i, u_i_minus_1
+    real(double) :: dx
+    real(double) :: u_i, u_i_minus_1
     real(double) :: dpdx_i, dpdx_i_minus_half, dpdx_i_minus_1, thisRhou
 
     do subcell = 1, thisoctal%maxchildren
