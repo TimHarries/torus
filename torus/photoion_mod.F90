@@ -3295,8 +3295,10 @@ end subroutine readHeIIrecombination
     totalFlux = 0.d0
 
     call zeroEtaCont(grid%octreeRoot)
-    
-    call quickSublimate(grid%OctreeRoot)
+ 
+! Don't call quick sublimate. It sets dustfraction to 1.0 which is the old 
+! way of specifying dust
+!!    call quickSublimate(grid%OctreeRoot)
 
     thisImage = initImage(imageNum)
 
