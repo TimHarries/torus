@@ -2211,6 +2211,13 @@ contains
        if (photoionPhysics) then
           call getString("imagetype", outputimageType, cLine, fLine, nLines, &
                "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          ! Reset default wavelength to 20cm if this is a free-free image
+          if (outputimagetype == "freefree" .and. &
+               .not. checkPresent("lambdaimage", cline, nlines)) then
+             lambdaImage = 20.0e8 ! 20cm in Anstroms
+             call writeInfo("Setting default wavelength to 20cm for free-free image")
+          endif
+
        elseif(dustPhysics) then
           outputimageType(1:10) = "stokes    "
              call writeInfo("Type of output image: Stokes image (default for dust physics)")
@@ -2245,6 +2252,16 @@ contains
              write(keyword,'(a)') "imagetype"//iChar
              call getString(keyword, outputimageType, cLine, fLine, nLines, &
                   "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          ! Reset default wavelength to 20cm if this is a free-free image and
+          ! no wavelength has been specified in the parameters file
+             write(keyword,'(a)') "lambdaimage"//iChar
+             if ( outputimagetype == "freefree" .and. &
+                  .not. checkPresent(keyword, cline, nlines) .and. & 
+                  .not. checkPresent("lambdaimage", cline, nlines)) then
+                thisLambdaImage = 20.0e8 ! 20cm in Anstroms
+                call writeInfo("Setting default wavelength to 20cm for free-free image")
+             endif
+
           elseif(dustPhysics) then
              outputimageType(1:10) = "stokes    "
              call writeInfo("Type of output image: Stokes image (default for dust physics)")

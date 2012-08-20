@@ -752,12 +752,13 @@ end subroutine addRecombinationEmissionLine
 
 ! ??06 Continuum emission routines
 
-  recursive subroutine addRadioContinuumEmissivity(thisOctal)
+  recursive subroutine addRadioContinuumEmissivity(thisOctal,lambda)
 !Emissivity calculation based on the third term of equation 75.2, page 333 of 
 !"Foundations of radiation hydrodynamics", Mihalas and Mihalas 1999
 
     use stateq_mod, only : alpkk
     type(octal), pointer  :: thisOctal
+    real, intent(in)      :: lambda
     type(octal), pointer  :: child 
     integer               :: subcell
     integer               :: i
@@ -770,12 +771,12 @@ end subroutine addRecombinationEmissionLine
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call addRadioContinuumEmissivity(child)
+                call addRadioContinuumEmissivity(child,lambda)
                 exit
              end if
           end do            
        else
-          freq = cspeed / (20.d0) ! 20 cm radio free-free
+          freq = cspeed / (lambda*angstromToCm)
           eta =  thisOctal%Ne(subcell)**2 * &
                alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
                exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
@@ -859,8 +860,10 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
 
   case("freefree")
 
+     write(message,*) "Adding radio emissivity with lambda= ", lambdaImage*angstromToCm, " cm"
+     call writeInfo(message, FORINFO)
      ilambdaPhoton = grid%nLambda
-     call  addRadioContinuumEmissivity(grid%octreeRoot)
+     call  addRadioContinuumEmissivity(grid%octreeRoot,lambdaImage)
      lcore = tiny(lcore)
 
   case("forbidden")
