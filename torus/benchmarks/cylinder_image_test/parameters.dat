@@ -31,10 +31,12 @@ dustphysics      T
 image T
 nphotons 40000000
 distance 50.
-imagefile "testImage.fits"
+imagefile testImage.fits
 imagetype freefree
-lambdaimage 60000.
 npixels 201
+
+! lambdaimage is not defined as the default value of 20cm is correct. 
+! If the default changes then lambdaimage will need to be set. 
 
 inclination 90.0
 positionangle 90.0
