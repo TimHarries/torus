@@ -344,6 +344,7 @@
   logical :: monteCarloRT
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
+  integer :: ncubes ! number of data cubes
   integer :: nv ! number of velocity channels
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 

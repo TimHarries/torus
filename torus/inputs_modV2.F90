@@ -1416,19 +1416,6 @@ contains
              call getLogical(keyword, pointsourcearray(i), cLine, fLine, nLines, &
                   "Point source: ","(a,1l,1x,a)", .false., ok, .false.)
 
-          !   write(keyword, '(a,i1)') "limbaB", i
-          !   call getDouble(keyword, sourcelimbaB(i), 1.d0, cLine, fLine, nLines, &
-          !        "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
-          !   write(keyword,'(a,i1)') "limbbB", i
-          !   call getDouble(keyword, sourcelimbbB(i), 1.d0, cLine, fLine, nLines, &
-          !        "Limb darkening b coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
-          !   write(keyword, '(a,i1)') "limbaV", i
-          !   call getDouble(keyword, sourcelimbaV(i), 1.d0, cLine, fLine, nLines, &
-          !        "Limb darkening a coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)
-          !   write(keyword, '(a,i1)') "limbbV", i
-          !   call getDouble(keyword, sourcelimbbV(i), 1.d0, cLine, fLine, nLines, &
-          !        "Limb darkening b coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)
-
           else
              write(keyword, '(a,i1)') "diffusetype",i
              call getString(keyword, diffuseType(i), cLine, fLine, nLines, &
@@ -1958,6 +1945,8 @@ contains
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)
+    call getInteger("ncubes", ncubes, cLine, fLine, nLines, &
+         "Number of data cubes ","(a,i4,a)", 2, ok, .false.)
     call getInteger("nv", nv, cLine, fLine, nLines, &
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &

@@ -17,7 +17,7 @@ contains
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-    use inputs_mod, only : mie, gridDistance, nLambda, nv
+    use inputs_mod, only : mie, gridDistance, nLambda, nv, ncubes
     use inputs_mod, only : lineEmission, postsublimate
     use inputs_mod, only : monteCarloRT, dowriteradialfile, radialfilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
@@ -120,10 +120,10 @@ contains
     if (atomicPhysics.and.calcDataCube) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-       do i = 1, 2
+       do i = 1, ncubes
           viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
           !       gridDistance = 140.d0* pctocm/1.d10
-          ang = pi * dble(i-1)
+          ang = 2.*pi * dble(i-1)/dble(ncubes)
           viewVec =  rotatez(viewVec, ang)
           !       gridDistance = 140.d0* pctocm/1.d10
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
