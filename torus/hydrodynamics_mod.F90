@@ -5113,7 +5113,7 @@ real(double) :: rho
     integer :: nProbeOutside
     logical :: corner
     logical, optional :: flag
-
+    logical, save :: firsttime=.true.
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -5284,10 +5284,13 @@ real(double) :: rho
                       endif
 
                    case DEFAULT
-                      write(*,*) "unknown boundary condition in setupghostcells1: ",thisOCtal%boundaryCondition(subcell)
-                      write(*,*) "rank ",myRankGlobal, " mpi thread ", thisOctal%mpithread(subcell)
-                      write(*,*) "subcell ",subcell
-                      write(*,*) "all ", thisOctal%boundaryCondition(subcell)
+                      if(firsttime) then
+                         write(*,*) "unknown boundary condition in setupghostcells1: ",thisOCtal%boundaryCondition(subcell)
+                         write(*,*) "rank ",myRankGlobal, " mpi thread ", thisOctal%mpithread(subcell)
+                         write(*,*) "subcell ",subcell
+                         write(*,*) "all ", thisOctal%boundaryCondition(subcell)
+                         firsttime = .false.
+                      end if
                    end select
 
 
@@ -5675,7 +5678,7 @@ real(double) :: rho
     integer :: nProbes, iProbe
     type(VECTOR) :: probe(6), currentDirection
     integer :: nProbeOutside
-
+    logical, save :: firsttime=.true.
 
     if (myrankGlobal ==0 ) goto 666
     do subcell = 1, thisOctal%maxChildren
@@ -5850,7 +5853,10 @@ real(double) :: rho
 
                    
                 case DEFAULT
-                   write(*,*) "Unknown boundary condition in setupghostcells2 B: ",thisOctal%boundaryCondition(subcell)
+                   if(firsttime) then
+                      write(*,*) "Unknown boundary condition in setupghostcells2 B: ",thisOctal%boundaryCondition(subcell)
+                      firsttime = .false.
+                   end if
              end select
 
 
@@ -5909,6 +5915,7 @@ real(double) :: rho
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
     logical :: trigger
+    logical, save :: firsttime=.true.
 
     if (myrankGlobal ==0 ) goto 666
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
@@ -6064,7 +6071,10 @@ real(double) :: rho
 
                    
                 case DEFAULT
-                   write(*,*) "Unknown boundary condition in setupghostcells2 C: ",thisOctal%boundaryCondition(subcell)
+                   if(firsttime) then
+                      write(*,*) "Unknown boundary condition in setupghostcells2 C: ",thisOctal%boundaryCondition(subcell)
+                      firsttime=.false.
+                   end if
              end select
 
 

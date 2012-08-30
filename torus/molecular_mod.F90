@@ -378,7 +378,7 @@ module molecular_mod
      logical, save :: firsttime2 = .true.
      logical :: inlte
      logical, save :: firstAbundanceWarning = .true.
-
+     logical, save :: photoionmessage=.true.
      real(double) :: nupper(200), nlower(200)
      real(double) :: levelpops(200), alphanubase(200), nmol
 
@@ -569,9 +569,10 @@ module molecular_mod
                     firstAbundanceWarning = .false.
                  endif
               endif
-              if (photoionPhysics.or.removeHotMolecular) then
+              if (photoionPhysics.or.removeHotMolecular .and. photoionmessage) then
                  call writeInfo("Applying photoion chemistry")
                  call photoionChemistry(grid, thisOctal, subcell)
+                 photoionmessage = .false.
               endif
 
 
@@ -1267,7 +1268,7 @@ module molecular_mod
                      thisMolecule,dirweight(1), fixedrays, warned_neg_dtau, tostar=.false.) ! does the hard work - populates i0 etc
                 i0(1,1:maxtrans) = i0temp(1:maxtrans)
              end if
- !            print *, "getting main rays"
+!            print *, "getting main rays"
 
 ! main getray loop
              do iRay = 2, nRay
@@ -1582,7 +1583,7 @@ end subroutine molecularLoop
      logical :: warned_neg_dtau
 
 !$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
-     antithetic = .true.
+     antithetic = .false.
 
 
 !Set/initialise runtime parameters
@@ -1646,12 +1647,40 @@ end subroutine molecularLoop
         deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line centre
      else
         if(antithetic) then
-           if(conj) then
+
+           if(tostar) then
+              call randomNumberGenerator(getDouble=r)
+              direction%x = sourcePos(1)%x - position%x
+              direction%x = sourcePos(1)%y - position%y
+              direction%x = sourcePos(1)%z - position%z
+              call normalize(direction)
+              deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak.
+              dirWeight = stellarRayWeight(sourcePos(1), position, sourceRadius(1))
+!           if(tostar .and. conj) then
+!              r = 1. - rsave
+!              direction = (-1.d0) * dirsave
+!              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak. 
+!              dirWeight = stellarRayWeight(sourcePos(1), position, sourceRadius(1))
+!              call randomNumberGenerator(getdouble=s)
+!              if(s > 0.5) deltaV = deltaV * (-1.d0)
+!
+!           else if (tostar .and. .not. conj) then
+!              call randomNumberGenerator(getDouble=r)
+!              rsave = r
+!              direction = sourcePos(1)              
+!              dirsave = direction
+!              deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak. 
+!              dirWeight = stellarRayWeight(sourcePos(1), position, sourceRadius(1))
+!              call randomNumberGenerator(getdouble=s)
+!              if(s > 0.5) deltaV = deltaV * (-1.d0)
+
+           elseif(conj) then
               r = 1. - rsave
               direction = (-1.d0) * dirsave
   
               deltaV = 2.15 * thisOctal%microturb(subcell) * r ! random frequency near line spectrum peak.
-              if(s > 0.5) deltaV = deltaV * (-1.d0)
+              call randomNumberGenerator(getdouble=s)
+               if(s > 0.5) deltaV = deltaV * (-1.d0)
            else
               call randomNumberGenerator(getDouble=r)
               rsave = r
@@ -1667,7 +1696,10 @@ end subroutine molecularLoop
            !thaw - force a ray to a source
            if(tostar) then
               call randomNumberGenerator(getDouble=r)
-              direction = sourcePos(1)              
+              direction%x = sourcePos(1)%x - position%x
+              direction%y = sourcePos(1)%y - position%y
+              direction%z = sourcePos(1)%z - position%z
+              call normalize(direction)
               deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
               dirWeight = stellarRayWeight(sourcePos(1), position, sourceRadius(1))
            else
@@ -1685,7 +1717,7 @@ end subroutine molecularLoop
 !     projVel = deltaV - (rayVel .dot. direction) ! transform back to velocity relative to local flow
 
 !!! COMPUTATIONALLY QUICKER TO DO THIS
-
+!     print *, "direction ", direction 
      projvel = deltaV
      deltaV =  deltaV + (rayVel .dot. direction)
 
