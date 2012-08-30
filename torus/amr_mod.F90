@@ -11119,15 +11119,15 @@ end function readparameterfrom2dmap
 #endif
 
 
-!    if ( present(reset_kappa) ) then 
-!       if ( reset_kappa ) then 
-    if ( allocated(tgasArray)    ) deallocate ( tgasArray    )
-    if ( allocated(oneKappaAbsT) ) deallocate ( oneKappaAbsT )
-    if ( allocated(oneKappaScaT) ) deallocate ( oneKappaScaT )
-    firsttime = .true.
-    return
-!       end if
-!    end if
+    if ( present(reset_kappa) ) then 
+       if ( reset_kappa ) then 
+          if ( allocated(tgasArray)    ) deallocate ( tgasArray    )
+          if ( allocated(oneKappaAbsT) ) deallocate ( oneKappaAbsT )
+          if ( allocated(oneKappaScaT) ) deallocate ( oneKappaScaT )
+          firsttime = .true.
+          return
+       end if
+    end if
 
     !! Commented out by DAR 14/10/08 as I don't think this is doing anything here. Moved to
     !! a more relevant place - rosselandkappa and others
