@@ -1583,7 +1583,7 @@ end subroutine molecularLoop
      logical :: warned_neg_dtau
 
 !$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
-     antithetic = .false.
+     antithetic = .true.
 
 
 !Set/initialise runtime parameters
