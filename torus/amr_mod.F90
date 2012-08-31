@@ -11986,7 +11986,7 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesMahdavi
 
   recursive subroutine assignTemperaturesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
-    use inputs_mod, only : maxHartTemp
+    use inputs_mod, only : maxHartTemp, isotherm, isothermtemp
     use magnetic_mod, only : inflowMahdavi
     real(double) :: astar, mdot, thisR, minRho, minr
     real(double) :: requiredMaxHeating, thisHeating, localCooling
@@ -12020,12 +12020,16 @@ end function readparameterfrom2dmap
           cellCentre = subcellCentre(thisOctal, subcell)
           thisR = modulus(cellCentre)*1.d10
           if (thisOctal%inflow(subcell).and.inflowMahdavi(1.d10*cellcentre)) then
-             thisHeating = fac / thisR**3
-             localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
-             call locate(gamma, 8, localCooling, j)
-             thisOctal%temperature(subcell) = real(logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j)))
-             thisoctal%temperature(subcell) = max(3.30, min(5.0, thisOctal%temperature(subcell)))
-             thisOctal%temperature(subcell) = real(10.d0**thisOctal%temperature(subcell))
+             if (isoTherm) then
+                thisOctal%temperature(subcell) = isothermTemp
+             else
+                thisHeating = fac / thisR**3
+                localCooling = log10(thisHeating / (thisOctal%rho(subcell)/mHydrogen)**2)
+                call locate(gamma, 8, localCooling, j)
+                thisOctal%temperature(subcell) = real(logT(j) + (logT(j+1)-logT(j))*(localCooling - gamma(j))/(gamma(j+1)-gamma(j)))
+                thisoctal%temperature(subcell) = max(3.30, min(5.0, thisOctal%temperature(subcell)))
+                thisOctal%temperature(subcell) = real(10.d0**thisOctal%temperature(subcell))
+             endif
           endif
        endif
     enddo

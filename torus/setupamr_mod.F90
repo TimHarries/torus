@@ -301,7 +301,7 @@ contains
              call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                   minRho, minR)
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                  minRho, minR)
+                     minRho, minR)
           endif
           if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
