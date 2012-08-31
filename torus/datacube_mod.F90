@@ -927,7 +927,7 @@ subroutine freeDataCube(thiscube)
     type(DATACUBE) :: thisCube
     character(len=*) :: specFile
 
-    real(double), allocatable :: v(:),y(:)
+    real(double), allocatable :: v(:),y(:), f
     integer :: i
 
 
@@ -937,7 +937,8 @@ subroutine freeDataCube(thiscube)
        v(i) = thisCube%vAxis(i)
        y(i) = SUM(thisCube%intensity(:,:,i))
     enddo
-    y = y / y (1)
+    f = y(1)
+    y(1:thisCube%nv) = y(1:thisCube%nv) / f
     open(38, file=specfile, status="unknown",form="formatted")
     do i = 1, thisCube%nv
        write(38,*) v(i), y(i)
