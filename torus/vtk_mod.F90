@@ -3014,6 +3014,14 @@ end subroutine writeXMLVtkFileAMR
                      value = 0.d0
                   endif
                   rArray(1, n) = real(value)
+
+               case("mpistore")
+                  if (associated(thisOctal%mpiBoundaryStorage)) then
+                     value = 1.d0
+                  else
+                     value = 0.d0
+                  endif
+                  rArray(1, n) = real(value)
                   
                case("phi")
                   rArray(1, n) = real(thisOctal%phi_i(subcell))

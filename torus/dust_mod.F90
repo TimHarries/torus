@@ -1243,6 +1243,7 @@ contains
 
   recursive subroutine stripDustAway(thisOctal, fac, radius, sourcePos)
 
+    use inputs_mod, only : grainFrac, nDustType
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real(double) :: fac
@@ -1275,7 +1276,7 @@ contains
        else
           r = modulus(subcellCentre(thisOctal, subcell) - thisSourcePos)
           if (r < radius) then
-             thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * fac
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType) * fac
              thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
              if (.not.associated(thisOctal%oldFrac)) then
                 allocate(thisOctal%oldFrac(1:thisOctal%maxChildren))

@@ -10523,6 +10523,16 @@ end function readparameterfrom2dmap
        enddo
     endif
 
+    if (associated(childOctal%mpiBoundaryStorage)) then
+       if (.not.associated(parentOctal%mpiBoundaryStorage)) then
+          allocate(parentOctal%mpiBoundaryStorage( &
+               size(childOctal%mpiBoundaryStorage,1), &
+               size(childOctal%mpiBoundaryStorage,2), &
+               size(childOctal%mpiBoundaryStorage,3)))
+          parentOctal%mpiBoundaryStorage = childOctal%mpiBoundaryStorage
+       endif
+    endif
+
   END SUBROUTINE updateParentFromChild
   
   SUBROUTINE updateMaxDepth(grid,searchLimit,changeMade)
@@ -12001,10 +12011,12 @@ end function readparameterfrom2dmap
          -21.2d0, -21.1999d0/)
 
 
-    call locate(logT, 8, log10(dble(maxHartTemp)), j)
-    requiredmaxHeating = gamma(j) + (gamma(j+1)-gamma(j))*(log10(dble(maxHartTemp))-logT(j))/(logT(j+1)-logT(j))
-    requiredMaxHeating = 10.d0**requiredMaxHeating * (minRho/mhydrogen)**2
-    fac = requiredMaxHeating * minR**3
+    if (.not.isoTherm) then
+       call locate(logT, 8, log10(dble(maxHartTemp)), j)
+       requiredmaxHeating = gamma(j) + (gamma(j+1)-gamma(j))*(log10(dble(maxHartTemp))-logT(j))/(logT(j+1)-logT(j))
+       requiredMaxHeating = 10.d0**requiredMaxHeating * (minRho/mhydrogen)**2
+       fac = requiredMaxHeating * minR**3
+    endif
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

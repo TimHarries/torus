@@ -3533,11 +3533,12 @@ contains
      endif
 
     if (myRankIsZero) then
-       write(plotfile,'(a,i3.3,a)') "spec",nfile,".dat"
+       write(plotfile,'(a,i3.3,a)') "spec_from_rays",nfile,".dat"
        open(42, file=plotfile,status="unknown",form="formatted")
        do i = 1, nv
           transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
-          write(42, *) vArray(i)*cspeed/1.d5, spec(i)*(distance/1.d10)**2/(globalSourceArray(1)%radius**2)
+          write(42, *) vArray(i)*cspeed/1.d5, spec(i)/spec(1), &
+               spec(i)*(distance/1.d10)**2/(globalSourceArray(1)%radius**2)
        enddo
        close(42)
     endif

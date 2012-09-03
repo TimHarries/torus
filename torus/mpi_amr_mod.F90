@@ -615,7 +615,7 @@ contains
 
   subroutine receiveAcrossMpiBoundary(grid, boundaryType, receiveThread, sendThread)
     use mpi
-    use inputs_mod, only : useTensorViscosity
+    use inputs_mod, only : useTensorViscosity, smallestCellSize
 
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -684,7 +684,7 @@ contains
                 if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
                 
                 octVec = subcellCentre(thisOctal, subcell) + &
-                     (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
+                     (thisOctal%subcellSize/2.d0+0.01d0 * smallestCellSize) * direction
                 
                 if (.not.inOctal(grid%octreeRoot, octVec)) then
                    write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
@@ -788,7 +788,7 @@ contains
                 tempStorage(6) = neighbourOctal%rhow(neighbourSubcell)
                 tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
                 rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
-                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
                 tOctal => neighbourOctal
                 tSubcell = neighbourSubcell
                 call findSubcellLocal(rVec, tOctal, tSubcell)
@@ -830,7 +830,7 @@ contains
                 tempStorage(6) = rhow
                 tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
                 rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
-                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
                 tOctal => neighbourOctal
                 tSubcell = neighbourSubcell
                 call findSubcellLocal(rVec, tOctal, tSubcell)
@@ -1875,9 +1875,13 @@ contains
                neighbourOctal%mpiThread(neighboursubcell), &
                thisOctal%mpiThread(subcell)
           write(*,*) "direction",  direction,nBound
+          write(*,*) "depth ",thisOctal%nDepth
+          write(*,*) "nChildren ",thisOctal%nChildren
+          write(*,*) "rho ",thisOctal%rho(subcell)
           write(*,*) "this centre",subcellCentre(thisOctal, subcell)
           write(*,*) "neig centre",subcellCentre(neighbourOctal, neighboursubcell)
-          stop
+          x = -2.d0
+          x = sqrt(x)
        endif
 
        x = thisOctal%mpiBoundaryStorage(subcell, nBound, 7)
@@ -3832,6 +3836,11 @@ end subroutine writeRadialFile
     y = 0.d0
     z = 0.d0
     call getPointsInRadiusLocal(position, radius, thisOctal, npoints, rho, rhoe, rhou, rhov, rhow, energy, pressure, phi, x, y, z)
+!    if (abs(position%x-0.5d0)<0.05) then
+!       write(*,*) myrankGlobal, " got ",nPoints, " locally"
+!    endif
+
+
 !    do i = 1, nPoints
 !       do counter = 1, nPoints
 !          if( i /= counter) then
@@ -3871,6 +3880,11 @@ end subroutine writeRadialFile
     call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 
     call MPI_RECV(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr) 
+!    if (abs(position%x-0.5d0)<0.05) then
+!       write(*,*) myrankGlobal, " got ",nVals, " from ",ithread
+!    endif
+
+
     if (nVals > 0) then
        do counter = 1, nvals
           call MPI_RECV(storageArray, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
@@ -4241,7 +4255,7 @@ end subroutine writeRadialFile
     real(double) :: tempStorage(nStorage)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
-    integer :: ierr, j, k, m, counter, counter2
+    integer :: ierr, j, k, m, counter
     integer :: functionality
     integer :: endloop
     integer, parameter :: maxStorage = 1000
@@ -4301,37 +4315,30 @@ end subroutine writeRadialFile
                 call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, ierr)
              end if
           end do
-          cellRef=1
+          cellRef=0
           !Get the main serving thread's values within the request radius
           call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef, useTop)
+!          write(*,*) myrankGlobal, " called getallinradius and got ",cellref
 
           !send the order to the other serving threads to return values
-          nvals = 0
+          nvals = cellRef
           do m = 1, nHydroThreadsGlobal
              if (m /= myrankGlobal .and. .not. ANY(m == check(k,1:nHydroThreadsGlobal))) then 
                 !Will recv a 1D array and translate it into 2D later
 !                call MPI_RECV(tempStorageArray 12000, MPI_DOUBLE_PRECISION, m, tag, localWorldCommunicator, status, ierr)
+
+                call MPI_RECV(cellRef, 1, MPI_INTEGER, m, tag, &
+                     localWorldCommunicator, status, ierr)
                 call MPI_RECV(tempDoubleArray, SIZE(tempDoubleArray), MPI_DOUBLE_PRECISION, m, tag, &
                      localWorldCommunicator, status, ierr)
 
                 !Now convert it back to 2D
                 tempStorageArray = reshape(tempDoubleArray, shape(tempStorageArray))
 
-                do counter = 1, maxStorage
-                   if(tempstorageArray(counter,1) > 1.d0) then
-                      do counter2 = 1, maxStorage+1
-                         if(counter2 == maxStorage+1) then
-                            call torus_abort("Fetched too many variables")
-                         end if
-                         if(storageArray(counter2, 1) == 0.d0) then
-                            nVals = counter2
-                            storageArray(counter2,:) = tempStorageArray(counter,:)
-                            exit
 
-                         end if                         
-                      end do
-                    end if
-                end do
+                storageArray((nVals+1):(nVals+cellRef),:) = tempStorageArray(1:cellRef,:)
+                nVals = nVals + cellRef
+
                 tempStorageArray = 0.d0
                 tempDoubleArray = 0.d0
              end if
@@ -4346,12 +4353,14 @@ end subroutine writeRadialFile
           storageArray = 0.d0
        else if(functionality == 2)then
           !- responding to a request for values within the search radius
-          cellRef = 1
+          cellRef = 0
           storageArray = 0.d0
           call getAllInRadius(grid%octreeRoot, position, searchRadius, storageArray, cellRef, useTop)
+!          write(*,*) myrankGlobal, " called get all in radius ",cellRef
  
           !Don't want to send a 2D array
           tempDoubleArray = reshape(storageArray,(/SIZE(tempDoubleArray)/))
+          call MPI_SEND(cellRef, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
           call MPI_SEND(tempDoubleArray, 12000, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 !          call MPI_SEND(storageArray, 1200, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
 
@@ -4456,6 +4465,7 @@ end subroutine writeRadialFile
                    end do
 
                    if(check) then
+                      cellRef = cellRef + 1
                       storageArray(cellRef, 1)  = topOctal%nDepth
                       storageArray(cellRef, 2)  = topOctal%rho(topOctalsubcell)
                       storageArray(cellRef, 3)  = topOctal%rhoe(topOctalsubcell)             
@@ -4468,9 +4478,9 @@ end subroutine writeRadialFile
                       storageArray(cellRef, 10)  = rVec%y
                       storageArray(cellRef, 11)  = rVec%z
                       storageArray(cellRef, 12)  = topOctal%pressure_i(topOctalsubcell)
-                      cellRef = cellRef + 1
                    end if
                 else
+                   cellRef = cellRef + 1
                    storageArray(cellRef, 1)  = thisOctal%nDepth
                    storageArray(cellRef, 2)  = thisOctal%rho(subcell)
                    storageArray(cellRef, 3)  = thisOctal%rhoe(subcell)             
@@ -4483,7 +4493,6 @@ end subroutine writeRadialFile
                    storageArray(cellRef, 10)  = rVec%y
                    storageArray(cellRef, 11)  = rVec%z
                    storageArray(cellRef, 12)  = thisOctal%pressure_i(subcell)
-                   cellRef = cellRef + 1
                 end if
              end if
              if (changed) exit

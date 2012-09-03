@@ -63,6 +63,7 @@
 
   logical :: photoionization   !Perform a photoionization calculation
   logical :: hOnly             !Hydrogen only model (no Helium)
+  logical :: startFromNeutral  !Start photoionization loop from neutral
   logical :: usemetals         !Include species heavier than Helium
   logical :: checkForPhoto     !Check whether or not a photoionization loop is necessary
   logical :: monochromatic     !Use a monochromatic radiation field

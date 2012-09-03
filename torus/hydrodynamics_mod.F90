@@ -4150,6 +4150,7 @@ end subroutine sumFluxes
           call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)!, nCornerPairs, cornerThread1, cornerThread2, &
 !             nCornerBound, cornerGroup, nCornerGroup)
        end if
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !get total mass/energy on the grid, for diagnostics
        call findEnergyOverAllThreads(grid, totalenergy)
@@ -4157,10 +4158,17 @@ end subroutine sumFluxes
        call findMassOverAllThreads(grid, totalmass)
        if (writeoutput) write(*,*) "Total mass: ",totalMass
 
+
 !unrefine the grid where necessary
        if(doUnrefine) then
           iUnrefine = iUnrefine + 1
           if (iUnrefine == 5) then
+
+
+          call writeVtkFile(grid, "beforeunrefine.vtk", &
+               valueTypeString=(/"rho          ", &
+                                 "mpistore     "/))
+
              if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
              if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
@@ -4188,27 +4196,6 @@ end subroutine sumFluxes
        call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
        
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call setupX(grid%octreeRoot, grid, direction)
-       call setupQX(grid%octreeRoot, grid, direction)
-       call computepressureGeneral(grid, grid%octreeroot, .false.)
-       
-
-!       if(doUnrefine .and. grid%currentTime /= 0.d0.and) then
-!          if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
-!          call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
-!          call evenUpGridMPI(grid, .true., dorefine, evenUpArray) !, dumpfiles=jt)
-!          if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
-!          iUnrefine = 0
-!       end if
-
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-       direction = VECTOR(1.d0, 0.d0, 0.d0)
-       call setupX(grid%octreeRoot, grid, direction)
-       call setupQX(grid%octreeRoot, grid, direction)
-       call computepressureGeneral(grid, grid%octreeroot, .false.)
        
        currentTime = currentTime + dt
 
@@ -6767,20 +6754,26 @@ end subroutine refineGridGeneric2
     cornerCell = .false.
     nc = 0
     mass = 0.d0
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call unrefineCells(child, grid, nUnrefine, splitLimit)
-                exit
-             end if
-          end do
-       else
 
-          if (.not.octalonThread(thisOctal, subcell, myRankGlobal)) cycle
-          if (thisOctal%refinedLastTime(subcell)) cycle
+
+    
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       i = 1
+       DO while(i <= thisOctal%nChildren)
+          child => thisOctal%child(i)
+          CALL unrefineCells(child, grid, nUnrefine, splitLimit)
+          i = i + 1
+       END DO
+       goto 666
+    END IF
+
+    if (.not.octalonThread(thisOctal, 1, myRankGlobal)) goto 666
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%refinedLastTime(subcell)) cycle
+
           nc = nc + 1
           rho(nc) = max(thisOctal%rho(subcell),1.d-30)
           rhoe(nc) = max(thisOctal%rhoe(subcell),1.d-30)
@@ -6829,9 +6822,7 @@ end subroutine refineGridGeneric2
           endif
 
 
-       endif
-
-    enddo
+       enddo
 
 
     unrefine = .false.
@@ -6901,7 +6892,7 @@ end subroutine refineGridGeneric2
        
        do i = 1, nDir
           do subcell = 1, thisOctal%maxChildren
-             locator = subcellCentre(thisOctal, subcell)+ (thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*dirVec(i)
+             locator = subcellCentre(thisOctal, subcell) + (thisOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)*dirVec(i)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, Subcell, neighbourOctal, neighbourSubcell, dirVec(i), q, rhot, rhoet, &

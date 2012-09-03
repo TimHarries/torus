@@ -1572,6 +1572,9 @@ contains
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogen-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("startfromneutral", startFromNeutral, cLine, fline, nLines, &
+         "Start photoionization loop from neurtral: ", "(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("stellarwinds", stellarWinds, cLine, fline, nLines, &
          "Include stellar wind outflow feedback: ", "(a,1l,1x,a)", .false., ok, .false.)
 

@@ -72,7 +72,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks
+    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -93,7 +93,6 @@ contains
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
     integer :: iRefine, nUnrefine
-    logical :: startFromNeutral
     logical :: photoLoop, photoLoopGlobal=.false.
     integer :: i, status, tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep
@@ -209,7 +208,7 @@ contains
 !         valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont ", "mpithread  " /))
 
     iunrefine = 0
-    startFromNeutral = .false.
+
 
     if (readlucy) then
        write(mpiFilename,'(a, i4.4, a)') "dump_", iDump, ".grid"
@@ -290,7 +289,11 @@ contains
     end if
 
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
+       if (startFromNeutral) then
+          call neutralGrid(grid%octreeRoot) 
+       else
           call ionizeGrid(grid%octreeRoot)
+       endif
 !       if (grid%geometry(1:6) == "sphere") &
 !            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
@@ -1351,6 +1354,12 @@ end subroutine radiationHydro
 
        countArray = 0.d0
 
+!       call writeVtkFile(grid, "beforeloop.vtk", &
+!            valueTypeString=(/"rho          ","dust1        ", "HI           " , "temperature  ", &
+!            "hydrovelocity","sourceCont   ","pressure     ", &
+!            "crossings    "/))!
+
+
        if(optimizeStack .and. myRankGlobal == 0) then
           write(*,*) "DOING OPTIMIZATION"
           write(*,*) "StackLimit ", stacklimit
@@ -1364,13 +1373,13 @@ end subroutine radiationHydro
        end if
           if (myRankGlobal == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
-!                   if ((myHydroSetGlobal == 0).and.&
-!                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
+                   if ((myHydroSetGlobal == 0).and.&
+                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
 !                   if ((myHydroSetGlobal == 1).and.&
 !                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte1 ",imonte
-                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
-                   write(*,*) myHydroSetGlobal, " imonte ",imonte
-                endif
+!                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
+!                   write(*,*) myHydroSetGlobal, " imonte ",imonte
+!                endif
                    if (iMonte == nThreadMonte) then
                       lastPhoton = .true.
 !                      write(*,*) myrankGlobal, " doing last photon"

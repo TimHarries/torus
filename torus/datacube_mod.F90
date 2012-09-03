@@ -927,7 +927,8 @@ subroutine freeDataCube(thiscube)
     type(DATACUBE) :: thisCube
     character(len=*) :: specFile
 
-    real(double), allocatable :: v(:),y(:), f
+    real(double), allocatable :: v(:),y(:)
+    real(double) :: f
     integer :: i
 
 
