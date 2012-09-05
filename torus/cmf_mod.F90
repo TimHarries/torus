@@ -3564,10 +3564,10 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
-    nr1 = 1000
-    nr2 = 0
+    nr1 = 200
+    nr2 = 200
     nr = nr1 + nr2
-    nphi = 1000
+    nphi = 200
     nray = 0
     i = 0
 
