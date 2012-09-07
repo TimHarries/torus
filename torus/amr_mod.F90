@@ -3606,7 +3606,7 @@ CONTAINS
           r0 = modulus(cellCentre)
           
           if (inflowMahdavi(cellcentre*1.d10).and.&
-               cellVolume(thisOctal,subcell)*1.d30*thisOctal%rho(subcell) > maxCellMass) &
+               cellVolume(thisOctal,subcell)*1.d30*density(cellCentre,grid) > maxCellMass) &
                split=.true.
           
           !     if (thisOctal%threed) then
@@ -11799,6 +11799,7 @@ end function readparameterfrom2dmap
        else
 
           thisOctal%rho(subcell) = 1.e-25
+          thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
        endif
     enddo
@@ -11871,7 +11872,7 @@ end function readparameterfrom2dmap
 
   recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
-    use inputs_mod, only : rSublimation, alphaDiscTemp
+    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r, fac
     type(octal), pointer   :: thisOctal
@@ -11902,16 +11903,17 @@ end function readparameterfrom2dmap
              thisOctal%temperature(subcell) = 10.
              if (r < rSublimation*1.01d0) then
                 fac = ((rSublimation*1.01 - r)/(0.001*rSublimation))
-                thisOctal%dustTypeFraction(subcell,1) = exp(-fac)
+                thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)*exp(-fac)
              endif
           endif
           if ((thisRho > thisOctal%rho(subcell)).and.(r < rSublimation)) then
              thisOctal%temperature(subcell) = alphaDiscTemp
           endif
           thisOCtal%rho(subcell) = max(thisRho, thisOctal%rho(subcell))
-          thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)
-          CALL fillVelocityCorners(thisOctal,velocityAlphaDisc)
-                       
+          if ( (r > Rinner).and.(r < rOuter) ) then
+             thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)
+             CALL fillVelocityCorners(thisOctal,velocityAlphaDisc)
+          endif
        endif
     enddo
   end subroutine assignDensitiesAlphaDisc

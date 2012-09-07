@@ -583,7 +583,7 @@ contains
 
        call getLogical("ttaurimag", ttauriMagnetosphere, cLine, fLine, nLines, &
             "Include a T Tauri magnetosphere: ","(a,1l,1x,a)", .false., ok, .true.)
-!       if (ttauriMagnetosphere) then
+       if (ttauriMagnetosphere) then
           call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
                "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
           call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
@@ -591,7 +591,7 @@ contains
 
           call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
                "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
-!       endif
+       endif
 
        call getDouble("lxoverlbol", lxOverLBol, 1.d0, cLine, fLine, nLines, &
             "X-ray luminosity  (Bolometric luminosities): ","(a,f7.1,1x,a)", 0.d0, ok, .false.)
@@ -627,7 +627,7 @@ contains
                "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
           call getReal("disctemp", alphaDiscTemp, 1., cLine, fLine, nLines, &
-               "Disc temperature inside sub radius: ","(a,f5.3,a)", 1.25, ok, .true.)
+               "Disc temperature inside sub radius: ","(a,f8.1,a)", 10000., ok, .true.)
 
        endif
 
@@ -656,7 +656,7 @@ contains
        curtain_width =  curtain_width*real(Pi/180.0)
 
 
-!       if (tTauriMagnetosphere) then
+       if (tTauriMagnetosphere) then
        call getString("mdottype", mDotType, cLine, fLine, nLines, &
             "T Tauri accretion rate model: ","(a,a,1x,a)","constant", ok, .true.)
        call getReal("mdotpar1", MdotParameter1, 1., cLine, fLine, nLines, &
@@ -671,7 +671,7 @@ contains
             "5th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
        call getReal("mdotpar6", MdotParameter6, 1., cLine, fLine, nLines, &
             "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-!       endif
+       endif
        call getLogical("ttauriwarp", ttauriwarp, cLine, fLine, nLines, &
             "Include warped disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -699,7 +699,7 @@ contains
                "Disc wind:: Inner radius of the disc wind [magnetospheric radii]: ", &
                "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
           call getDouble("DW_Rmax", DW_Rmax, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Outer radius of the disc [disc wind inner radii]: ", &
+               "Disc wind:: Outer radius of the disc wind [disc wind inner radii]: ", &
                "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
           call getDouble("DW_Mdot", DW_Mdot, 1.d0,  cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [mass accretion rate]: ", &
@@ -720,6 +720,12 @@ contains
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
           stop
        end if
+
+       if (.not.(useHartmannTemp .or. isoTherm)) then 
+          if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
+          stop
+       end if
+
        if (useHartmannTemp) &
             call getReal("maxharttemp", maxHartTemp, 1., cLine, fLine, nLines, &
             "Maximum of Hartmann temperature: ","(a,f7.1,1x,a)", 7436., ok, .false.)
