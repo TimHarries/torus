@@ -854,6 +854,8 @@ module molecular_mod
      use messages_mod, only : myRankIsZero
      use dust_mod
      use parallel_mod
+     use vtk_mod
+     use photoion_utils_mod, only : quicksublimate
 
 #ifdef MPI
      use mpi
@@ -866,11 +868,11 @@ module molecular_mod
      type(MOLECULETYPE) :: thisMolecule
      type(VECTOR) :: position, direction
      integer :: nOctal, iOctal, subcell
-
+     character(len=80) :: mpiFilename
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
      integer, parameter :: maxIter = 50
-     logical :: popsConverged
+     logical :: popsConverged, renewinputrays
      character(len=200) :: message
      integer :: iRay, iter, i 
      integer :: iStage
@@ -918,6 +920,17 @@ module molecular_mod
      logical :: warned_neg_dtau
 
      call writeinfo("molecular_mod 20100428.1400",TRIVIAL)
+
+     if(usedust) then
+        call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
+     end if
+
+     write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"                                                                          
+     call writeVtkFile(grid, mpiFilename, &                                                                                     
+          valueTypeString=(/"rho          ", "dust1        " , "temperature  "/))
+
+!     print *, "WRITTEN FILE"                         
+
      
 ! logicals are quicker to access than strings 
      if(grid%geometry .eq. 'molebench') molebench = .true.
@@ -926,7 +939,7 @@ module molecular_mod
      if(grid%geometry .eq. 'ggtau') ggtau = .true.
      if(grid%geometry .eq. 'agbstar') agbstar = .true.
      if(grid%geometry .eq. 'h2obench2') hhobench = .true.
-     usedust = .false.
+!     usedust = .false.
      debug=.false.
 
 ! get pairs of radiative transitions stored in thismolecule. Re-assign for readability     
@@ -1088,6 +1101,11 @@ module molecular_mod
             close(95)
             ngcounter = 0
             juststarted = .false.
+
+            renewInputRays = .true.
+            if(renewInputRays) then
+               nRay = 1000
+            end if
             if(fixedrays) cycle
          endif
 
@@ -1327,12 +1345,12 @@ module molecular_mod
                               oldpops1(1:minlevel), oldpops2(1:minlevel), &
                               oldpops3(1:minlevel), oldpops4(1:minlevel), &
                               length = 2)
-                      else
-                         call ngStep(thisOctal%newMolecularLevel(1:minLevel, subcell), &
-                              oldpops1(1:minlevel), oldpops2(1:minlevel), &
-                              oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                              abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                              length = max(2,minlevel-1))
+!!                      else
+!                         call ngStep(thisOctal%newMolecularLevel(1:minLevel, subcell), &
+!                              oldpops1(1:minlevel), oldpops2(1:minlevel), &
+!                              oldpops3(1:minlevel), oldpops4(1:minlevel), &
+!                              abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+!                              length = max(2,minlevel-1))
                       endif
                    endif
                 endif
@@ -1504,7 +1522,7 @@ module molecular_mod
 !        if (.not.gridConvergedTest) then
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
-              if (.not.fixedRays) then
+              if (.not.fixedRays .and. nray < 5000) then
 !                 if(mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) then
                     nRay = nRay * 2 
 !                 endif
@@ -1583,7 +1601,7 @@ end subroutine molecularLoop
      logical :: warned_neg_dtau
 
 !$OMP THREADPRIVATE (firstTime, conj, possave, dirsave, rsave, s, oneArray, oneOVerNTauArray, BnuBckGrnd)
-     antithetic = .true.
+     antithetic = .false.
 
 
 !Set/initialise runtime parameters
@@ -1762,8 +1780,11 @@ end subroutine molecularLoop
        
            dvAcrossCell = ((startVel - endvel) .dot. direction) ! start - end
            dvAcrossCell = abs(dvAcrossCell * thisOctal%molmicroturb(subcell))
-
+           
            nTau = min(max(2, nint(dvAcrossCell * 5.d0)), maxSamplePoints) 
+
+           !THAW - TEMPORARY, USE ABOVE
+!           nTau = maxSamplePoints
            ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
 
            if(ntau .gt. 2) thisOctal%nsplit(subcell) = ntau
@@ -1779,27 +1800,29 @@ end subroutine molecularLoop
 ! Calculate absorption from (various types of) dust 		
         if(useDust) then     
            if(realdust) then
-              do itrans = 1, maxtrans
+              do itrans = 1, maxtrans               
                  call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
                  call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), &
                       kappaAbs = kappaAbs)
               enddo
+           else
+              if(grid%geometry .eq. 'agbstar') then
+                 do itrans = 1, maxtrans
+                    kappaAbs = 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d10 !multiplied by density !cm -> torus
+                 enddo
               else
-                 if(grid%geometry .eq. 'agbstar') then
-                    do itrans = 1, maxtrans
-                       kappaAbs = 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d10 !multiplied by density !cm -> torus
-                    enddo
-                 else
-                    do itrans = 1, maxtrans
-                       kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10
+                 do itrans = 1, maxtrans
+                    kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10
                     !multiplied by density !cm -> torus
-                    enddo
-                 endif
-                 kappaAbs = kappaAbs * thisOctal%rho(subcell)
+                 enddo
               endif
-              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
-			  !kappa already multiplied by density in amr_mod
+              kappaAbs = kappaAbs * thisOctal%rho(subcell)
            endif
+           do itrans = 1, maxtrans
+              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
+              !kappa already multiplied by density in amr_mod
+           end do
+        endif
 
 ! Calculate number density of molecules
         nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
@@ -1924,6 +1947,7 @@ end subroutine molecularLoop
      allocate(tempTauArray(1:nRay))
      allocate(opticalDepthArray(1:nray))
      allocate(otp(1:nray))
+     allocate(snu(1:nray)) !THAW
      allocate(jbarInternalArray(1:nray))
      allocate(jbarExternalArray(1:nray))
      allocate(alphanu(1:nray,1:2))
@@ -1931,7 +1955,6 @@ end subroutine molecularLoop
      allocate(jnu(1:nray))
 
      
-
 ! Get total number density of molecules in each level
      nMol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
      nLower(1:maxtrans) = nPops(iLower(1:maxtrans)) * nMol
@@ -1949,7 +1972,6 @@ end subroutine molecularLoop
 ! Calculate phids and sum(phi) as required by Jbar equation (for integral)
      phids(1:nr) = tempphi(1:nr) * tempds(1:nr)
      sumPhi = sum(tempphi(1:nray))
-
 
      alphanu(:,2) = 0.d0
      jnudust(:) = 0.d0
@@ -1976,17 +1998,21 @@ end subroutine molecularLoop
                                 bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
            endif
 
-
+           
            jnu(1:nray) = etaLine(itrans) * tempphi(1:nRay) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
 
            alphanu(1:nray,1) = alphanuBase(itrans) * tempphi(1:nray) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
            alpha(1:nray) = alphanu(1:nray,1) + alphanu(itrans,2)
 
+!           print *, "JAHOVA", alpha(1:nray)
+!           print *, "jnu(1:nray)", jnu(1:nray)
+!           print *, "jnudust(itrans)", jnudust(itrans)
            if(alpha(itrans) .ne. 0) then
               snu(1:nray) = (jnu(1:nray) + jnudust(itrans)) / alpha(1:nray)
            else
               snu = tiny(snu)
            endif
+!           print *, "INDIGO"
            temptauArray(1:nRay) = alpha(1:nray) * tempds(1:nRay)
            opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
            otp(1:nray) = opticaldepthArray(1:nRay) * tempphi(1:nRay) ! intermediate stage (weighted opt depth)
@@ -2378,20 +2404,20 @@ endif
                          oldpops1(1:minlevel), oldpops2(1:minlevel), &
                          oldpops3(1:minlevel), oldpops4(1:minlevel), &
                          length = 2)
-                 elseif(fixedrays) then
-                    call ngStep(&
-                         thisOctal%newmolecularLevel(1:minlevel,subcell), &
-                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
-                         oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                         abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                         length = max(2,minlevel-1), doubleweight = .false.)
-                 else
-                    call ngStep(&
-                         thisOctal%newmolecularLevel(1:minlevel,subcell), &
-                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
-                         oldpops3(1:minlevel), oldpops4(1:minlevel), &
-                         abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
-                         length = max(2,minlevel-1), doubleweight = .false.)
+!                 elseif(fixedrays) then
+!                    call ngStep(&
+!                         thisOctal%newmolecularLevel(1:minlevel,subcell), &
+!                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
+!                         oldpops3(1:minlevel), oldpops4(1:minlevel), &
+!                         abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+!                         length = max(2,minlevel-1), doubleweight = .false.)
+!                 else
+!                    call ngStep(&
+!                         thisOctal%newmolecularLevel(1:minlevel,subcell), &
+!                         oldpops1(1:minlevel), oldpops2(1:minlevel), &
+!                         oldpops3(1:minlevel), oldpops4(1:minlevel), &
+!                         abs(1.d-60 + (1.d0 / thisoctal%jnu(1:minlevel,subcell))), &
+!                         length = max(2,minlevel-1), doubleweight = .false.)
                  endif
               endif
            endif
@@ -3178,8 +3204,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !         write(*,*) "dv ",dv
          PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
 !         write(*,*) "phiprofval ",phiprofval
+!         print *, "ECHO"
          alphanu(1:maxtrans,1) = phiprofval * alphaTemp(1:maxtrans) ! Equation 8
 !         write(*,*) "alphanu ",alphanu(1:maxtrans,1)
+!         print *, "GOLF"
          alpha(1:maxtrans) = alphanu(1:maxtrans,1) !+ alphanu(1:maxtrans,2) !!!!!!!!!!!!!!!!!!!!!!!
 !         write(*,*) "alpha ",alpha
          dTau(:) = alpha(:) * dds * 1.d10 
