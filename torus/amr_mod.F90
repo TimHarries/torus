@@ -256,6 +256,10 @@ CONTAINS
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
 
+    CASE("unimed")
+       call calcUniMed(thisOctal, subcell)
+
+
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
 
@@ -3922,7 +3926,7 @@ CONTAINS
 !                stop
 !             end if
           
-       case("bonnor", "empty", "planar")
+       case("bonnor", "empty", "planar", "unimed")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
@@ -7416,6 +7420,31 @@ endif
        thisOctal%gamma(subcell) = 2.d0
     endif
   end subroutine calcUniformSphere
+
+
+  subroutine calcUnimed(thisOctal,subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+
+    thisOctal%rho(subcell) = 100.d0*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+    thisOctal%inFlow(subcell) = .true.
+
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+
+  end subroutine calcUnimed
+
+
 
   subroutine calcSphere(thisOctal,subcell)
 
