@@ -2039,7 +2039,7 @@ end subroutine molecularLoop
 ! internal jbar inside cell
            jBarInternalArray(1:nRay) = snugas(itrans) * (tempphi(1:nray) - otp(1:nray))
 ! jbar weighted average of int + ext        
-           jbar(itrans) = (sum(jBarExternalArray(1:nRay)+jBarInternalArray(1:nRay))) / sumPhi
+           jbar(itrans) = (sum(jBarExternalArray(1:nRay)*dirWeight(1:nRay)+jBarInternalArray(1:nRay)*dirWeight(1:nRay))) / sumPhi
         enddo
      endif
      if(debug) where(isnan(jbar)) jbar = 0.d0
