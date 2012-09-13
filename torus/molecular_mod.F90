@@ -1804,24 +1804,28 @@ end subroutine molecularLoop
                  call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
                  call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), &
                       kappaAbs = kappaAbs)
-              enddo
+                 alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right 
+             enddo
            else
               if(grid%geometry .eq. 'agbstar') then
                  do itrans = 1, maxtrans
                     kappaAbs = 0.1 * thisMolecule%transfreq(itrans) * 1e-12 * 1d10 !multiplied by density !cm -> torus
+                    kappaAbs = kappaAbs * thisOctal%rho(subcell)
+                    alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
                  enddo
               else
                  do itrans = 1, maxtrans
                     kappaAbs = thisOctal%rho(subcell) * DustModel1(thisMolecule%transfreq(itrans)) * 1d10
+                    kappaAbs = kappaAbs * thisOctal%rho(subcell)
                     !multiplied by density !cm -> torus
+                    alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
                  enddo
               endif
-              kappaAbs = kappaAbs * thisOctal%rho(subcell)
            endif
-           do itrans = 1, maxtrans
-              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
-              !kappa already multiplied by density in amr_mod
-           end do
+!           do itrans = 1, maxtrans
+!              alphanu(itrans,2) = kappaAbs * 1.d-10 !torus units -> cm !1d-10 is right
+!              !kappa already multiplied by density in amr_mod
+!           end do
         endif
 
 ! Calculate number density of molecules
