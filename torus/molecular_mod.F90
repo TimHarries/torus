@@ -2008,15 +2008,12 @@ end subroutine molecularLoop
            alphanu(1:nray,1) = alphanuBase(itrans) * tempphi(1:nray) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
            alpha(1:nray) = alphanu(1:nray,1) + alphanu(itrans,2)
 
-!           print *, "JAHOVA", alpha(1:nray)
-!           print *, "jnu(1:nray)", jnu(1:nray)
-!           print *, "jnudust(itrans)", jnudust(itrans)
            if(alpha(itrans) .ne. 0) then
               snu(1:nray) = (jnu(1:nray) + jnudust(itrans)) / alpha(1:nray)
            else
               snu = tiny(snu)
            endif
-!           print *, "INDIGO"
+
            temptauArray(1:nRay) = alpha(1:nray) * tempds(1:nRay)
            opticaldepthArray(1:nRay) = exp(-1.d0 * temptauArray(1:nRay))
            otp(1:nray) = opticaldepthArray(1:nRay) * tempphi(1:nRay) ! intermediate stage (weighted opt depth)
@@ -2032,7 +2029,7 @@ end subroutine molecularLoop
 ! vecorised jbar calculation
         do itrans = 1, maxtrans
            alpha(1:nray) = alphanuBase(itrans) * hCgsOverFourPi!/thisMolecule%transFreq(iTrans)
-!write(*,*) "alpha", alpha(1:nray), sum(alpha(1:nray))
+
 ! calculate optical depth within cell based on average over all rays       
            temptauArray(1:nRay) = alpha(1:nray) * phids(1:nRay)
 !write(*,*) "tta", temptauarray(1:nray), sum(temptauarray(1:nray))
@@ -3373,8 +3370,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !Calculate absorption from dust if reqd.
 
         if(usedust) then
-           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
-           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+!THAW
+!           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+!           dustjnu = nmol * thisOctal%molcellparam(8,subcell
+           alphanu2 = thisOctal%molcellparam(7,subcell)
+           dustjnu = thisOctal%molcellparam(8,subcell)
         else
            alphanu2 =  0.0
         endif
@@ -3457,8 +3457,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                      (2.d0 * mhydrogen))
 
               if(usedust) then
-                 alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
-                 dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
+!                 alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+!                 dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
+                 alphanu2 = thisOctal%molcellparam(7,subcell)
+                 dustjnu = thisOctal%molcellparam(8,subcell)
               else
                  alphanu2 = 0.0
               endif
@@ -5386,8 +5388,10 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         endif
 
         if(usedust) then
-           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
-           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+!           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+!           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+           alphanu2 = thisOctal%molcellparam(7,subcell)
+           dustjnu = thisOctal%molcellparam(8,subcell)
         else
            alphanu2 =  0.0
         endif
@@ -5893,8 +5897,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
         endif
 
         if(usedust) then
-           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
-           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+!           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+!           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
+           alphanu2 = thisOctal%molcellparam(7,subcell)
+           dustjnu = thisOctal%molcellparam(8,subcell)
         else
            alphanu2 =  0.0
         endif
@@ -5999,8 +6005,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                  alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
                  
                  if(usedust) then
-                    alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
-                    dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
+                    alphanu2 = thisOctal%molcellparam(7,subcell)
+                    dustjnu = thisOctal%molcellparam(8,subcell)
+!                    alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
+!                    dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
                  else
                     alphanu2 = 0.0
                  endif

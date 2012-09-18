@@ -7438,6 +7438,7 @@ endif
     thisOctal%inFlow(subcell) = .true.
 
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
