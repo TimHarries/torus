@@ -4032,18 +4032,22 @@ end subroutine writeRadialFile
        if((nHydrothreadsGlobal) == 4) then
           evenUpArray = (/1, 2, 3, 4/)
        else if((nHydrothreadsGlobal) == 16) then
-          evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
+!          evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
+!new version so as to not screw up shephard's method
+          evenUpArray = (/1, 2, 3, 4, 5, 1, 6, 3, 7, 8, 1, 2, 9, 7, 5, 1/)
        end if
     else if(grid%octreeRoot%threeD) then
        if((nHydrothreadsGlobal) == 8) then
           evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8/)
        else if((nHydrothreadsGlobal) == 64) then
-          evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2           
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3           
-               1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/)!pane 4             
-
+          !new version so as to not screw up shephard's method
+          evenUpArray = (/1, 2, 3, 4, 10, 11, 12, 13, 5, 1, 6, 3, 14, 10, 15, 12, & !pane 1
+               7, 8, 1, 2, 16, 17, 10, 11, 9, 7, 5, 1, 18, 16, 14, 10, & !pane 2           
+               1, 2, 3, 4, 10, 11, 12, 13, 5, 1, 6, 3, 14, 10, 15, 12, & !pane 3           
+               7, 8, 1, 2, 16, 17, 10, 11, 9, 7, 5, 1, 18, 16, 14, 10/) !pane 4      
+               
        else if(nHydroTHreadsGlobal==512) then
+          !not yet corrected for shephard's method - may have issues
             evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
                  1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1  
                  1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
