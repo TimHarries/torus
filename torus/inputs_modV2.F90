@@ -15,9 +15,15 @@ contains
   
   subroutine  inputs()
 
+#ifdef MPI
+    use mpi
+#endif
     implicit none
 
     integer :: nLines
+#ifdef MPI
+    integer :: ierr
+#endif 
     logical :: ok
     logical :: compresseddumpfiles
     character(len=80), allocatable :: cLine(:) 
@@ -29,9 +35,10 @@ contains
 
     character(len=80) :: dataDirectory
 
-    character(len=100) :: paramFile
+    character(len=100) :: paramFile, arg1
 
     integer :: error
+    logical :: parameterCheckMode
 
     datadirectory = " "
     done = .false.
@@ -56,9 +63,23 @@ contains
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
 !   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
 
-
+! Parse command line arguments. Currently these will be either the name of the parameters file
+! and/or the 'check' argument to run in parameter checking mode. 
+    parameterCheckMode = .false.
     if (command_argument_count() == 1) then
        call get_command_argument(1, paramFile)
+       if ( paramFile == "check" ) then 
+          parameterCheckMode = .true.
+          paramFile = trim(absolutePath)//"parameters.dat"
+       endif
+    else if (command_argument_count() == 2) then
+       call get_command_argument(1, arg1)
+       call get_command_argument(2, paramFile)
+       if (trim(arg1) == "check") then 
+          parameterCheckMode = .true.
+       else
+          call writeWarning("Unrecognised argument "//trim(arg1))
+       endif
     else
        paramFile = trim(absolutePath)//"parameters.dat"
     endif
@@ -424,6 +445,16 @@ contains
     close(32)
 
     deallocate (cLine)
+
+    if ( parameterCheckMode ) then 
+       call writeBanner("Parameter check mode: inputs read OK","-",IMPORTANT)
+#ifdef MPI
+       call mpi_abort(MPI_COMM_WORLD, 1, ierr)
+#else
+       STOP
+#endif
+
+    endif
 
   end subroutine inputs
 
