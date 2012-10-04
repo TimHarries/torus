@@ -12,7 +12,7 @@ contains
   subroutine setupAMRCOMMUNICATOR
     use mpi
     use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr2d
-    integer :: ierr, i, j, iset
+    integer :: ierr, i, j, iset, k
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
     integer :: amrParallelGroup, zeroThreadGroup
@@ -124,9 +124,9 @@ contains
                 if (myRankGlobal == 0) then
                    call mpi_get_processor_name(proc, j, ierr)
                    do i = 1, nHydroThreadsGlobal
-                      call mpi_recv(j, 1, MPI_INTEGER, i, tag, localWorldcommunicator, status, ierr)
-                      call mpi_recv(thisProc, j, MPI_CHARACTER, i, tag, localWorldcommunicator, status, ierr)
-                      if (thisProc(1:j) /= proc(1:j)) then
+                      call mpi_recv(k, 1, MPI_INTEGER, i, tag, localWorldcommunicator, status, ierr)
+                      call mpi_recv(thisProc, k, MPI_CHARACTER, i, tag, localWorldcommunicator, status, ierr)
+                      if (thisProc(1:k) /= proc(1:j)) then
                          optimized = .false.
                       endif
                    enddo

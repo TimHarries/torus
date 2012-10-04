@@ -593,8 +593,15 @@ contains
                "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
        endif
 
+       call getDouble("holeradius", holeRadius, dble(ttaurirstar), cLine, fLine, nLines, &
+            "Size of hole in geometrically thin, optically thick disc (in R_star): ","(a,f7.1,1x,a)", &
+            0.d0, ok, .true.)
+
+
+
        call getDouble("lxoverlbol", lxOverLBol, 1.d0, cLine, fLine, nLines, &
             "X-ray luminosity  (Bolometric luminosities): ","(a,f7.1,1x,a)", 0.d0, ok, .false.)
+
 
        call getDouble("maxcellmass", maxCellMass, 1.d0, cLine, fLine, nLines, &
             "Maximum cell mass after splitting (g): ","(a,e12.5,1x,a)", 1.d30, ok, .false.)
@@ -1955,7 +1962,7 @@ contains
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)
     call getInteger("ncubes", ncubes, cLine, fLine, nLines, &
-         "Number of data cubes ","(a,i4,a)", 2, ok, .false.)
+         "Number of data cubes ","(a,i4,a)", 1, ok, .false.)
     call getInteger("nv", nv, cLine, fLine, nLines, &
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &

@@ -732,12 +732,13 @@ contains
 
     if (mie) then
        call randomNumberGenerator(getReal=r)
-       if (r < probDust) then
+       if (r <= probDust) then
           photonFromEnvelope = .true.
           contWindPhoton = .true.
           thisPhoton%stokes = thisPhoton%stokes * weightDust
        else
           thisPhoton%stokes = thisPhoton%stokes * weightPhoto
+!          write(*,*) "bug photon created from photosphere ",r, probDust
        endif
     endif
 

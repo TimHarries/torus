@@ -84,6 +84,7 @@ CONTAINS
        parentOctal => thisOctal%parent
        parentSubcell = thisOctal%parentSubcell
 
+    if (inheritProps) then
        if (associated (thisOctal%boundaryCondition)) &
             thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
        if (associated (thisOctal%boundaryCell)) &
@@ -91,7 +92,6 @@ CONTAINS
        if (associated(thisOctal%gamma)) thisOctal%gamma(subcell)  = parentOctal%gamma(parentSubcell)
        if (associated(thisOctal%iEquationOfState)) &
             thisOctal%iEquationOfState(subcell)  = parentOctal%iEquationOfState(parentSubcell)
-    if (inheritProps) then
        thisOctal%rho(subcell) = parentOctal%rho(parentSubcell)
        thisOctal%temperature(subcell) = parentOctal%temperature(parentSubcell)
        if (associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
@@ -11927,7 +11927,7 @@ end function readparameterfrom2dmap
           thisOctal%dustTypeFraction(subcell,:) = 0.d0
           thisOctal%fixedTemperature(subcell) = .true.
           if ((r > rSublimation).and.(thisRho >= thisOctal%rho(subcell))) then
-             thisOctal%dustTypeFraction(subcell,1) = 1.d0
+             thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)
              thisOctal%fixedTemperature(subcell) = .false.
              thisOctal%inflow(subcell) = .true.
              thisOctal%temperature(subcell) = 10.

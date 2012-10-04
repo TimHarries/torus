@@ -1884,7 +1884,7 @@ contains
                                !                                     write(*,*) "oldpops 2",real(oldpops2(iatom, 1:6))
                                !                                     write(*,*) "oldpops 3",real(oldpops3(iatom, 1:6))
                                !                                     write(*,*) "oldpops 4",real(oldpops4(iatom, 1:6))
-                               !                                  endif
+                               !                                  endifwrite(
                                call ngStep(thisOctal%newAtomLevel(subcell, iAtom, :), &
                                     oldpops1(iAtom, :), oldpops2(iAtom, :), &
                                     oldpops3(iAtom, :), oldpops4(iAtom, :), length=thisAtom(iAtom)%nLevels)
@@ -2605,7 +2605,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray,forceFreq, occultingDisc) result (i0)
-    use inputs_mod, only : lineOff,  mie, ttauriRinner
+    use inputs_mod, only : lineOff,  mie, holeRadius
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -2960,7 +2960,7 @@ contains
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
                 if  (oldPosition%z*currentPosition%z < 0.d0) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > TTauriRinner/1.d10) then
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) then
                       goto 666
                    endif
                 endif
@@ -2980,7 +2980,7 @@ contains
 
   function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
       forceFreq, occultingDisc) result (i0)
-    use inputs_mod, only : lineOff,  mie, lamLine, ttauriRinner
+    use inputs_mod, only : lineOff,  mie, lamLine, holeRadius
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -3288,7 +3288,7 @@ contains
           if (PRESENT(occultingDisc)) then
              if (occultingDisc) then
                 if  (oldPosition%z*currentPosition%z < 0.d0) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > TTauriRinner/1.d10) goto 666
+                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) goto 666
                 endif
              endif
           endif
@@ -3765,7 +3765,7 @@ contains
 #endif
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
-             write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
+!             write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
           do iy = 1, cube%ny
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
                  nPoints,  nRay, xRay, yRay, area)

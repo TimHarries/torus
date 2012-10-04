@@ -907,8 +907,6 @@ end subroutine radiationHydro
     !Buffer send variables 
     integer :: bufferSize  !Send buffer size in bytes
     character, allocatable :: buffer(:)
-    integer :: request
-!    logical :: checkRequest
 !    logical :: ready = .true.
     real(double) :: fac, luminosity1, luminosity2, luminosity3
     real(double) :: zTemp, thisLum
@@ -942,8 +940,9 @@ end subroutine radiationHydro
     integer :: maxChild
     integer :: nScatBigPacket, j, nScatSmallPacket
     logical :: sourceInThickCell, tempLogical
-    logical :: undersampled
+    logical :: undersampled, flushBuffer, containsLastPacket
     real(double) :: maxDiffRadius
+    integer :: receivedStackSize, nToSend
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
@@ -1336,7 +1335,6 @@ end subroutine radiationHydro
 
        nThreadMonte = nMonte / nHydroSetsGlobal
        iMonte_beg = 1
-       iMonte_end = nMonte
        iMonte_end = nThreadMonte
 
 
@@ -1372,6 +1370,7 @@ end subroutine radiationHydro
           iniCustomTime=.false.
        end if
           if (myRankGlobal == 0) then
+             if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              mainloop: do iMonte = iMonte_beg, iMonte_end
                    if ((myHydroSetGlobal == 0).and.&
                         (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
@@ -1382,7 +1381,7 @@ end subroutine radiationHydro
 !                endif
                    if (iMonte == nThreadMonte) then
                       lastPhoton = .true.
-!                      write(*,*) myrankGlobal, " doing last photon"
+!                      write(*,*) myrankWorldGlobal, " doing last photon"
                    else
                       lastPhoton = .false.
                    endif
@@ -1466,6 +1465,9 @@ end subroutine radiationHydro
                                toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
                                toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
                                toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
+!                               if (toSendStack(thisPacket)%lastPhoton) then
+!                                  write(*,*) myrankWorldGlobal, " sending last packet ",thisPacket, imonte
+!                               endif
                                thisPacket = thisPacket + 1
                                nInf = nInf + 1
                                
@@ -1478,7 +1480,7 @@ end subroutine radiationHydro
                             end if
                          end do
 
-                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
+                         call MPI_SSEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
                               OptCounter, tag, localWorldCommunicator,  ierr)
 
                          !reset the counter for this thread's bundle recieve 
@@ -1515,39 +1517,51 @@ end subroutine radiationHydro
                 close(333)
              end if
 
-                do iThread = 1, nHydroThreadsGlobal
-                   toSendStack(1)%destination = 500
-                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
-                   call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
-                end do
 
              do i = 1, max(nSmallPackets,1)
+!               write(*,*) myHydroSetGlobal," looping from 1 to ",max(nsmallpackets,1), i
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
                      finaltag, localWorldCommunicator, status, ierr)
+!                write(*,*) myrankWorldglobal, " receiving from ",j
              enddo
 
+             do iThread = 1, nHydroThreadsGlobal
+                toSendStack(1)%destination = 500
+                call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+                call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
+!                write(*,*) myrankGlobal, " received donepanicking from ",ithread
+             end do
+
+
+
+             if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
                 
              photonsStillProcessing = .true.
              
              i = 0
              do while(photonsStillProcessing)                   
+
+!                do iThread = 1, nHydroThreadsGlobal
+!                   toSendStack(1)%destination = 600
+!                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+!                   write(*,*) myrankWorldGlobal, " sent buffer flush signal to  ",ithread
+!                end do
+
+
                 i = i + 1
                 toSendStack%freq = 0.d0
                 do iThread = 1, nHydroThreadsGlobal
                    toSendStack(1)%destination = 999
                    !toSendStack(1)%freq = 100.d0
-                   
-                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
-                   
+                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)                   
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
-                   
                 enddo
                 
                 nEscaped = SUM(nEscapedArray(1:nHydroThreadsGlobal))
              
                 nEscapedGlobal = nEscaped
-                if (myRankWorldGlobal ==1) write(*,*) "nEscaped ",nEscaped
+!                if (myRankGlobal == 0) write(*,*) myhydrosetglobal," nEscaped ",nEscaped
                 if (nEscaped == nThreadMonte*max(nSmallPackets,1)) then
                    photonsStillProcessing = .false.
                 else if(nEscaped > nThreadMonte*max(1,nSmallPackets)) then
@@ -1584,24 +1598,30 @@ end subroutine radiationHydro
              sendAllPhotons = .false.
              !needNewPhotonArray = .true.  
              do while(.not.endLoop) 
+
                 crossedMPIboundary = .false.
 
                 !Get a new photon stack
                 iSignal = -1
                 if(stackSize == 0) then
-                     
+                   flushBuffer = .true.
                    call MPI_RECV(toSendStack, maxStackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, &
                         tag, localWorldCommunicator, status, ierr)
                       currentStack = toSendStack
                       
 
                       !Check to see how many photons in stack are not null
+                      containsLastPacket = .false.
                       do p = 1, maxStackLimit
                          if(currentStack(p)%freq /= 0.d0) then                            
                             stackSize = stackSize + 1
+                            if (currentStack(p)%lastPhoton) containsLastPacket = .true.
                          end if
                       end do
+                      receivedStackSize = stackSize
+                      nToSend = 0
 
+!                      write(*,*) myrankWorldGlobal, " received a new stack of size ",stacksize,currentStack(1)%destination
                    !Check to see if a special action is required
                    escapeCheck = .false.
                    !Escape checking
@@ -1613,6 +1633,56 @@ end subroutine radiationHydro
                    else if (currentStack(1)%destination == 888) then
                       iSignal = 0                    
                       currentStack%destination = 0                      
+                   else if (currentStack(1)%destination == 600) then
+                      stackSize = 0
+                      !Evacuate everything currently in need of sending
+                      do optCounter = 1, nHydroThreadsGlobal
+                         if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
+                            thisPacket = 1
+                            
+                            toSendStack%freq = 0.d0
+                            do sendCounter = 1, (maxStackLimit*nHydroThreadsGlobal)
+                               if(photonPacketStack(sendCounter)%destination /= 0 .and. &
+                                    photonPacketStack(sendCounter)%destination == optCounter) then
+                                  
+                                  toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+                                  toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+                                  toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+                                  toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+                                  toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+                                  toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+                                  toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+                                  toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
+                                  toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
+                                  toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+                                  toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
+                                  thisPacket = thisPacket + 1
+                                  !nInf = nInf + 1
+                                     
+                                  !Reset the photon frequency so that this array entry can be overwritten
+                                  photonPacketStack(sendCounter)%freq = 0.d0
+                                  
+                                  !Reset the destination so that it doesnt get picked up in subsequent sweeps!
+                                  photonPacketStack(sendCounter)%destination = 0
+                                  
+                               end if
+                            end do
+!TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
+!                              call MPI_SEND(toSendStack, maxStackLimit, &
+!                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+                               write(*,*) myrankWorldGlobal," flushing  stack to ",optCounter, " size ",thisPacket-1
+                               call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
+                                    ierr)
+                              !reset the counter for this thread's bundle recieve
+                               nSaved(optCounter) = 0
+                               toSendStack%freq = 0.d0
+                               toSendStack%destination = 0
+                            end if
+                         end do
+                     
+                         goto 777
+                         Currentstack%destination = 0
+
                    else if(currentStack(1)%destination == 500 .and. .not. sendAllPhotons) then
                       sendAllPhotons = .true.
                       stackSize = 0
@@ -1649,10 +1719,11 @@ end subroutine radiationHydro
                                     
                                  end if
                               end do
-                              call MPI_SEND(toSendStack, maxStackLimit, &
-                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
-!                              call MPI_BSEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
-!                                   request, ierr)
+!TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
+!                              call MPI_SEND(toSendStack, maxStackLimit, &
+!                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+                              call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
+                                   ierr)
                               !reset the counter for this thread's bundle recieve
                               nSaved(optCounter) = 0
                               toSendStack%freq = 0.d0
@@ -1686,7 +1757,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
-               !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic, request, myrankworldglobal) &
+               !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
@@ -1797,11 +1868,16 @@ end subroutine radiationHydro
 
                          !Keep track of how many packets are destined for each thread
                          nSaved(newThread) = nSaved(newThread) + 1
-                         
+                         nToSend = nToSend + 1
+                         flushBuffer = containsLastPacket
+!                         if (flushBuffer) then
+!                            write(*,*) myrankWorldGlobal, " flushing buffer with ",nToSend
+!                         endif
+
                          !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
                          do optCounter = 1, nHydroThreadsGlobal
                             if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
-                               if(nSaved(optCounter) == (sendStackLimit) .or. sendAllPhotons) then
+                               if(nSaved(optCounter) == (sendStackLimit) .or. sendAllPhotons.or.flushBuffer) then
                                   thisPacket = 1
                                   toSendStack%freq = 0.d0
                                   do sendCounter = 1, (maxStackLimit*nHydroThreadsGlobal)
@@ -1835,7 +1911,7 @@ end subroutine radiationHydro
 !                                     call MPI_SEND(toSendStack, stackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
 !                                          ierr)
                                      call MPI_BSEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
-                                          localWorldCommunicator, request,ierr)
+                                          localWorldCommunicator, ierr)
 
                                      nSaved(optCounter) = 0
                                      toSendStack%freq = 0.d0
@@ -1863,11 +1939,11 @@ end subroutine radiationHydro
                             if (smallPhotonPacket) nEscaped = nEscaped + 1
                             if (bigPhotonPacket) nEscaped = nEscaped + max(nSmallPackets,1)
                             if (lastPhoton.and.smallPhotonPacket) then
-!                               write(*,*) myrankGlobal, " last small photon escaped"
+!                               write(*,*) myrankWorldGlobal, " last small photon escaped"
                                call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                             endif
                             if (lastPhoton.and.bigPhotonPacket) then
-!                               write(*,*) myrankGlobal, " last big photon escaped"
+!                               write(*,*) myrankWorldGlobal, " last big photon escaped"
                                do i = 1, max(1,nSmallPackets)
                                   call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                                enddo

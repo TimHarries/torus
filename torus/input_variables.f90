@@ -461,6 +461,7 @@
   real :: Thotspot
   logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere
   real :: TTauriRstar ! stellar radius (in R_sol units)
+  real(double) :: holeRadius ! radius of inner hole to geometrically thin, optically thick disc
   real :: TTauriMstar ! stellar mass   (in M_sol units)
   real :: TTauriDiskHeight ! (in R_star units)
   real :: TTauriDiskRin    ! (in R_star units)
