@@ -1671,8 +1671,8 @@ end subroutine radiationHydro
 !                              call MPI_SEND(toSendStack, maxStackLimit, &
 !                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
                                write(*,*) myrankWorldGlobal," flushing  stack to ",optCounter, " size ",thisPacket-1
-                               call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
-                                    ierr)
+                               call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
+                                    localWorldCommunicator, ierr)
                               !reset the counter for this thread's bundle recieve
                                nSaved(optCounter) = 0
                                toSendStack%freq = 0.d0
@@ -1722,7 +1722,8 @@ end subroutine radiationHydro
 !TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
 !                              call MPI_SEND(toSendStack, maxStackLimit, &
 !                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
-                              call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator, &
+                              call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
+                                   localWorldCommunicator, &
                                    ierr)
                               !reset the counter for this thread's bundle recieve
                               nSaved(optCounter) = 0
