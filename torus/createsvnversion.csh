@@ -1,4 +1,4 @@
-#/bin/csh
+#!/bin/csh
 
 # Check whether subversion is available
 which svnversion > /dev/null
