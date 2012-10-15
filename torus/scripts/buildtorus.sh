@@ -1,7 +1,12 @@
 #!/bin/ksh
 
-# This script builds Torus for MPI/OpenMP/hybrid configurations on Zen
-# D. Acreman, February 2012
+# This script builds Torus for MPI/OpenMP/hybrid configurations
+# Set up to work on Zen but will make an educated guess for other machines
+# The handling of MPI wrappers is basic and assumes that ifort is the back end 
+# compiler if it is available.
+#
+# Original: D. Acreman, February 2012
+# Updated: October 2012
 
 print_help(){
     echo 
@@ -27,9 +32,9 @@ openmp=no
 mpi=no
 hybrid=no
 
-#
-# Parse command line flags
-#
+############################
+# Parse command line flags #
+############################
 make_args=
 while [ $# -gt 0 ]
 do
@@ -47,9 +52,9 @@ do
 shift
 done
 
-#
-# Pre-build checks. 
-#
+#####################
+# Pre-build checks. #
+#####################
 
 # Is the Torus directory present? 
 if [[ -d torus ]]; then
@@ -84,6 +89,65 @@ cd torus
 ./createsvnversion.csh
 cd ..
 
+####################################
+# Choose suitable values of SYSTEM #
+####################################
+
+thisHost=`hostname`
+
+if [[ $thisHost == service0 || $thisHost == service2 ]]; then
+    echo "This looks like Zen"
+    system_mpi=zen
+    system_hybrid=zen
+    system_openmp=zensingle
+else
+
+# Look for compiler for OpenMP build 
+    torusFortranCompiler=none
+
+    echo "Looking for gfortran"
+    which gfortran > /dev/null
+    if [[ $? -eq 0 ]]; then
+	echo "Found gfortran"
+	torusFortranCompiler=gfortran
+	system_openmp=gfortran
+	system_mpi=ompiosx
+	system_hybrid=ompiosx
+    else
+	echo "gfortran not found"
+    fi
+
+    echo "Looking for ifort"
+    which ifort > /dev/null
+    if [[ $? -eq 0 ]]; then
+	echo "Found ifort"
+	torusFortranCompiler=ifort
+	system_openmp=zensingle
+	system_mpi=zen
+	system_hybrid=zen
+    else
+	echo "ifort not found"
+    fi
+
+    if [[ ${torusFortranCompiler} == none ]]; then
+	echo "No fortran compiler found."
+	echo "I'm expecting to find ifort or gfortran"
+	exit 1
+    fi
+
+# Look for mpif90
+    if [[ ${mpi} == yes || ${hybrid} == yes ]]; then
+	which mpif90 > /dev/null
+	if [[ $? -eq 0 ]]; then
+	    echo "Found mpif90"
+	else
+	    echo "mpif90 not found. Aborting ..."
+	    exit 1
+	fi 
+    fi 
+
+fi
+
 #
 # Do builds 
 #
@@ -101,8 +165,8 @@ if [[ $openmp == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=zensingle openmp=yes $make_args
-    cp torus.zensingle ../../bin/torus.openmp
+    make getsvnver=no SYSTEM=${system_openmp} openmp=yes $make_args
+    cp torus.${system_openmp} ../../bin/torus.openmp
     cd ../.. 
 fi
 
@@ -119,8 +183,8 @@ if [[ $mpi == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=zen $make_args
-    cp torus.zen ../../bin/torus.mpi
+    make getsvnver=no SYSTEM=${system_mpi} $make_args
+    cp torus.${system_mpi} ../../bin/torus.mpi
     cd ../..
 fi
 
@@ -137,8 +201,8 @@ if [[ $hybrid == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=zen openmp=yes $make_args
-    cp torus.zen ../../bin/torus.hybrid
+    make getsvnver=no SYSTEM=${system_hybrid} openmp=yes $make_args
+    cp torus.${system_hybrid} ../../bin/torus.hybrid
     cd ../..
 fi
 
