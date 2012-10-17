@@ -1872,16 +1872,18 @@ end subroutine molecularLoop
               enddo
            else
               alpha(1:maxtrans) = balance(1:maxtrans) * phiprofVal 
-              jnu(1:maxtrans) = spontaneous(1:maxtrans) * phiProfVal
-              
-              do itrans = 1,maxtrans
-                 if(alpha(itrans) .ne. 0.d0) then 
-                    snu(itrans) = jnu(itrans) / alpha(itrans)
-                 else
-                    snu(itrans) = tiny(snu)
-                    alpha(itrans) = tiny(alpha)
-                 endif
-              enddo
+
+!THAW - this stuff is unnecessary because it is handled prior to this do loop
+!              jnu(1:maxtrans) = spontaneous(1:maxtrans) * phiProfVal
+!              
+!              do itrans = 1,maxtrans
+!                 if(alpha(itrans) .ne. 0.d0) then 
+!                    snu(itrans) = jnu(itrans) / alpha(itrans)
+!                 else
+!                    snu(itrans) = tiny(snu)
+!                    alpha(itrans) = tiny(alpha)
+!                 endif
+!              enddo
 
            endif
 
