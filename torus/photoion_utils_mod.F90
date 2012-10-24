@@ -415,6 +415,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   integer :: n, iTrans, i, j
   real :: excitation, deexcitation, arateji
   logical, optional :: debug
+  logical :: luslvOK
   excitation  = 0.; deexcitation = 0.
   n = thisIon%nLevels
   allocate(matrixA(1:n, 1:n), matrixB(1:n), tempMatrix(1:n,1:n), qeff(1:n,1:n), rates(1:n))
@@ -468,7 +469,8 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
      endif
   endif
   
-  call luSlv(matrixA, matrixB)
+  call luSlv(matrixA, matrixB,luslvOK)
+  if (.not. luslvOK) call writeWarning ("Problem with luSlv called from photoion_utils_mod::solvePops")
 
   matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
 

@@ -2091,6 +2091,8 @@ end subroutine molecularLoop
 
      character(len=80) :: message
      logical :: dummy
+     logical :: luslvOK
+
 !     real(double) :: r(maxlevel,maxlevel)
 
 !     call randomNumberGenerator(getDouble=r)
@@ -2149,7 +2151,7 @@ end subroutine molecularLoop
      call gesv(matrixA, matrixB)
 #else
      if(maxlevel .gt. 2) then
-        call luSlv(matrixA, matrixB(:,1))
+        call luSlv(matrixA, matrixB(:,1),luslvOK)
      else
         call GAUSSJ(matrixA, maxlevel+1, maxlevel+1,matrixB(:,1), maxlevel+1, maxlevel+1,dummy)
      endif
@@ -2164,7 +2166,7 @@ end subroutine molecularLoop
 ! 3rd) setting npops = radiative solution if radiatively dominated
 
 
-     if(debug .and. any(isnan(matrixB))) then
+     if ( (debug .and. any(isnan(matrixB))) .or. (.not.luslvOK) ) then
         matrixAsave(minlevel+1,1:minlevel+1) = 1.d0 ! sum of all level populations
         matrixAsave(1:minlevel+1,minlevel+1) = 1.d-60 ! fix highest population to small non-zero value
         matrixBsave = 1.d-60 ! Solution vector - all components (except last) => equilibrium ! used to be 1d-10
@@ -2173,10 +2175,10 @@ end subroutine molecularLoop
 #ifdef USEMKL
         call gesv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1))
 #else
-        call luSlv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1))
+        call luSlv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1),luslvOK)
 #endif
 
-        if(debug .and. .not. any(isnan(matrixBsave))) then
+        if ( (debug .and. .not. any(isnan(matrixBsave))) .or. (.not.luslvOK) ) then
            nPops(1:minlevel) = matrixBsave(1:minlevel,1)
            npops(minlevel+1:maxlevel) = abs(1.d0 - sum(matrixBsave(1:minlevel,1)))
            npops = abs(npops / sum(npops))
@@ -2196,9 +2198,9 @@ end subroutine molecularLoop
 #ifdef USEMKL
               call gesv(matrixArad, matrixB)
 #else
-              call luSlv(matrixArad, matrixB(:,1))
+              call luSlv(matrixArad, matrixB(:,1),luslvOK)
 #endif        
-              if(debug .and. .not. any(isnan(matrixB))) then
+              if ( (debug .and. .not. any(isnan(matrixB))) .or. (.not.luslvOK) ) then
                  matrixB = abs(matrixB) ! stops negative level populations causing problems
                  write(66,*) "error fixed 3 ", npops(minlevel), npops(maxlevel), &
                       maxval(thismolecule%einsteinA(1:maxlevel) / ctot(1:maxlevel)), nh2 * 2.d0 * mhydrogen
@@ -5154,67 +5156,68 @@ end subroutine compare_molbench
    endif
  end subroutine DecideOctalOrder
 
- real function nextStep(cube, ivplusone) result (step)
-   
-   type(DATACUBE) :: cube
-   integer :: iv,i,j,ivplusone
-   real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
-   real(double) :: xquad(3),yquad(3),xa(3)
-   real(double) :: sumx(4),sumxy(4)
-   real(double) :: a(3,3),b(3)
-   real(double) :: fac
-   real(double), save :: alty2
-   real(double), save :: oldstep = 4.d0
-   !$OMP THREADPRIVATE (alty2, oldstep)
-
-   iv = ivplusone - 1
-   
-   allocate(x(iv))
-   allocate(y(iv))
-   allocate(y2(iv))
-   allocate(intensitysum(iv))
-   
-   do i = 1,iv
-      intensitysum(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
-   enddo
-   
-   fac = intensitysum(1)
-   x = cube%vAxis(1:iv)
-   y =  intensitysum / fac 
-   
-   call spline(x,y,iv,1.d31,1.d31,y2)
-   
-   xquad = x(iv-3:iv-1)
-   yquad = y2(iv-3:iv-1)
-   xa = xquad
-   
-   do i=1,4
-      sumx(i) = sum(xa)
-      sumxy(i) = sum(xa * yquad)
-      
-      xa = xa*xquad
-   enddo
-   
-   do i = 1,3
-      do j = 1,3
-         if(6-i-j .ne. 0) then 
-            a(i,j) = sumx(6-i-j)
-         else
-            a(i,j) = 3.d0
-         endif
-      enddo; enddo
-      
-      b = (/sumxy(2),sumxy(1),sum(yquad)/)
-      call luSlv(a,b)
-
-      write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
-      
-      alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
-      
-      step = real((oldstep + min(max(25.d0/abs(alty2),0.5_db),4.d0))/2.d0)
-      oldstep = step
-      
-    end function nextStep
+!! Not called. Commented out by DA, 24/10/12
+!!$ real function nextStep(cube, ivplusone) result (step)
+!!$   
+!!$   type(DATACUBE) :: cube
+!!$   integer :: iv,i,j,ivplusone
+!!$   real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
+!!$   real(double) :: xquad(3),yquad(3),xa(3)
+!!$   real(double) :: sumx(4),sumxy(4)
+!!$   real(double) :: a(3,3),b(3)
+!!$   real(double) :: fac
+!!$   real(double), save :: alty2
+!!$   real(double), save :: oldstep = 4.d0
+!!$   !$OMP THREADPRIVATE (alty2, oldstep)
+!!$
+!!$   iv = ivplusone - 1
+!!$   
+!!$   allocate(x(iv))
+!!$   allocate(y(iv))
+!!$   allocate(y2(iv))
+!!$   allocate(intensitysum(iv))
+!!$   
+!!$   do i = 1,iv
+!!$      intensitysum(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
+!!$   enddo
+!!$   
+!!$   fac = intensitysum(1)
+!!$   x = cube%vAxis(1:iv)
+!!$   y =  intensitysum / fac 
+!!$   
+!!$   call spline(x,y,iv,1.d31,1.d31,y2)
+!!$   
+!!$   xquad = x(iv-3:iv-1)
+!!$   yquad = y2(iv-3:iv-1)
+!!$   xa = xquad
+!!$   
+!!$   do i=1,4
+!!$      sumx(i) = sum(xa)
+!!$      sumxy(i) = sum(xa * yquad)
+!!$      
+!!$      xa = xa*xquad
+!!$   enddo
+!!$   
+!!$   do i = 1,3
+!!$      do j = 1,3
+!!$         if(6-i-j .ne. 0) then 
+!!$            a(i,j) = sumx(6-i-j)
+!!$         else
+!!$            a(i,j) = 3.d0
+!!$         endif
+!!$      enddo; enddo
+!!$      
+!!$      b = (/sumxy(2),sumxy(1),sum(yquad)/)
+!!$      call luSlv(a,b)
+!!$
+!!$      write(*,*) b(1)*x(iv)**2+b(2)*x(iv)+b(3)
+!!$      
+!!$      alty2 = b(1)*x(iv)**2+b(2)*x(iv)+b(3)
+!!$      
+!!$      step = real((oldstep + min(max(25.d0/abs(alty2),0.5_db),4.d0))/2.d0)
+!!$      oldstep = step
+!!$      
+!!$    end function nextStep
 
 subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity, startI0, startTau, lengthOfRay)

@@ -2235,11 +2235,25 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
 END SUBROUTINE GAUSSJ
 
   ! this procedure performs the solution of linear equations
-  subroutine luSlv(a, b)
+  subroutine luSlv(a, b, ok)
     implicit none
     
     real(double), intent(inout) :: a(:,:)
     real(double), intent(inout) :: b(:)    
+    logical, intent(out) :: ok
+    integer :: i, n
+
+! Check for zero elements on the diagonal. These cause a 
+! divide by zero error so return with ok=false if any 
+! are present
+    n = size(a,1)
+    do i=1,n
+       if ( a(i,i)==0.0 ) then 
+          ok=.false.
+          return
+       endif
+    end do
+    ok = .true.
 
     call lured(a)
     
