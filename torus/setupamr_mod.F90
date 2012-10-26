@@ -55,6 +55,7 @@ contains
 #endif
     use vh1_mod, only: read_vh1
     use memory_mod
+    use gridFromFitsFile
 
     implicit none
 
@@ -205,6 +206,14 @@ contains
              if (gridConverged) exit
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
+#endif
+
+#ifdef USECFITSIO
+       case("fitsfile")
+          call read_fits_file_for_grid()
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 #endif
 
        case("clumpyagb")
@@ -382,7 +391,7 @@ contains
        select case (geometry)
 
 
-          case("theGalaxy")
+          case("theGalaxy","fitsfile")
              call quickSublimate(grid%octreeRoot)
 
           case("ttauri")
@@ -508,6 +517,9 @@ contains
 !           else
 !              do; enddo
 !              endif
+#ifdef USECFITSIO
+        call deallocate_gridFromFitsFile
+#endif
 
         call delete_particle_lists(grid%octreeRoot)
   end subroutine setupamrgrid
@@ -1479,6 +1491,9 @@ contains
 ! Write a VTK file so we can check the SPH to grid conversion 
        call writeVTKfile(grid, "gridFromSph.vtk")
 #endif
+    case("fitsfile")
+       call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
+            valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
 
     case DEFAULT
     end select
@@ -2085,7 +2100,6 @@ contains
 recursive subroutine quickSublimate(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  ! Where dust is present set dustTypeFraction to this value. 
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -2104,7 +2118,7 @@ recursive subroutine quickSublimate(thisOctal)
              if (thisOctal%temperature(subcell) > 1500.) then
                 thisOctal%dustTypeFraction(subcell,:) = 1.d-20
              else
-                thisOctal%dustTypeFraction(subcell,:) = 1.d0
+                thisOctal%dustTypeFraction(subcell,:) = 1.d-2
              endif
           end if
 

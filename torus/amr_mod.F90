@@ -52,6 +52,7 @@ CONTAINS
     use jets_mod, only: calcJetsMassVelocity
     use romanova_class, only: calc_romanova_mass_velocity
     use vh1_mod, only: assign_from_vh1
+    use gridFromFitsFile, only: assign_from_fitsfile
 
     IMPLICIT NONE
 
@@ -401,6 +402,8 @@ CONTAINS
          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
       endif
 
+   CASE("fitsfile")
+      call assign_from_fitsfile(thisOctal, subcell)
 
     CASE ("magstream")
 

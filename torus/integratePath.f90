@@ -2469,7 +2469,12 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   allocate(lambda(maxTau), tauExt(maxTau), tauAbs(maxTau), tauSca(maxTau), linePhotonAlbedo(maxtau))
   
   nlambda = grid%nlambda
-  if (grid%lineEmission) allocate(tauCont(maxTau,nLambda))
+  if (grid%lineEmission) then
+     allocate(tauCont(maxTau,nLambda))
+  else
+! Allocate to zero size to avoid passing unallocated array through argument lists
+     allocate(tauCont(0,0))
+  endif
 
   ! chuck out some useful information to the user
     
