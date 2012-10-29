@@ -853,7 +853,6 @@ module source_mod
     endif
 
 
-
   end function I_nu
 
   logical function insideSource(thisOctal, subcell, nsource, source)

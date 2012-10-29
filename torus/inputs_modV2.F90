@@ -740,13 +740,13 @@ contains
                "Disc wind:: Outer radius of the disc wind [disc wind inner radii]: ", &
                "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
           call getDouble("DW_Mdot", DW_Mdot, 1.d0,  cLine, fLine, nLines, &
-               "Disc wind:: Total mass-loss rate from disc [mass accretion rate]: ", &
+               "Disc wind:: Total mass-loss rate from disc [solar masses per year]: ", &
                "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
           call getDouble("DW_theta", DW_theta, 1.d0, cLine, fLine, nLines, &
                "Disc wind:: Disc wind angle [degrees]: ", &
                "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
           call getDouble("DW_Twind", DW_temperature, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Isotherma temperature of disc wind [K]: ", &
+               "Disc wind:: Isothermal temperature of disc wind [K]: ", &
                "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
           DW_rMin = DW_rmin * ttauriRouter/1.d10
           DW_rMax = DW_rmax * DW_rMin
