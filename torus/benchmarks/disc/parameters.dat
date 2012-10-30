@@ -62,3 +62,9 @@ distance 2.25558e-8  ! Distance to observer
 sedlammin 0.12       ! minimum wavelength in SED file
 sedlammax 2000       ! maximum wavelength in SED file
 sedwavlin F          ! Linear spacing in SED file? 
+
+! Image parameters
+
+image T
+imagefile test_22um.fits
+lambdaimage  220000.0
