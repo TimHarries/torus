@@ -604,25 +604,40 @@ module image_mod
           call writeFatal("Unrecognised units for image axis")
        end select
 
-       ! write x-axis keywords
-       call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
-       call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT1',dx,10,' ',status)
-       call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
-       call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
+       if (getAxisUnits() == "arcsec") then 
+          ! write x-axis keywords
+          call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
+          call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+          call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
+          call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
 
-       ! write y-axis keywords
-       call ftpkys(unit,'CTYPE2',"DEC--SIN","y axis", status)
-       call ftpkyd(unit,'CRPIX2',dble(image%ny/2.d0),-3,'reference pixel',status)
-       call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
-       call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
-       call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
+          ! write y-axis keywords
+          call ftpkys(unit,'CTYPE2',"DEC--SIN","y axis", status)
+          call ftpkyd(unit,'CRPIX2',dble(image%ny/2.d0),-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+          call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
+          call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
 
-       call ftpkyd(unit,'CD1_1',dx,10,' ',status)
-       call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
-       call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
-       call ftpkyd(unit,'CD2_2',dy,10,' ',status)
+          call ftpkyd(unit,'CD1_1',dx,10,' ',status)
+          call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
+          call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
+          call ftpkyd(unit,'CD2_2',dy,10,' ',status)
 
+       else
+          ! write x-axis keywords
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+          call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
+
+          ! write y-axis keywords
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+          call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
+
+       endif
 
        !
        !  Close the file and free the unit number.
