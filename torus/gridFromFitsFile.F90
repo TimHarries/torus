@@ -12,7 +12,7 @@ module gridFromFitsFile
   implicit none
 
   public :: read_fits_file_for_grid, assign_from_fitsfile
-  private :: setup_axes
+  private :: setup_axes, read_lutable
 
 ! Filename
   character(len=*), parameter, private :: filename = "vh1.fits"
@@ -27,6 +27,14 @@ module gridFromFitsFile
   real(double), private, save :: zMin, zMax, dz
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
+
+! If true use the ideal gas EOS to calculate temperature
+  logical, parameter, private :: idealGas=.false.
+
+! File for look-up table for temperature conversion. 
+  character(len=*), parameter, private :: lu_table="tempdependent_mu_and_gamma.dat"
+  integer, parameter, private :: npd = 91
+  real, private, save :: pdlogt(npd), pd(npd)
 
   contains
 
@@ -47,9 +55,13 @@ module gridFromFitsFile
       integer, parameter :: readwrite=0 ! Open file read only 
       integer, parameter :: group=0
       integer :: naxis, nfound, npixels, hdutype
+      integer :: i, j, k, n
+      real :: grad1
       character(len=80) :: record, comment
       logical :: anynull
       real(single) :: maxdata, mindata
+
+      if (.not.idealGas) call read_lutable
 
       call writeInfo ("Initialising grid from a FITS file", IMPORTANT)
       call writeInfo ("Reading FITS file "//filename, FORINFO)
@@ -123,14 +135,40 @@ module gridFromFitsFile
       call writeInfo(message,FORINFO)
 
 ! Now convert pressure to temperature 
-      call writeInfo("Converting pressure to temperature",TRIVIAL)
-      temperature = temperature / (density * real(Rgas,si))
-      mindata = minval(temperature(:,:,:))
-      maxdata = maxval(temperature(:,:,:))
-      write(message,*) "Minimum data value= ", mindata, " K"
-      call writeInfo(message,FORINFO)
-      write(message,*) "Maximum data value= ", maxdata, " K"
-      call writeInfo(message,FORINFO)
+
+      if (idealGas) then 
+         call writeInfo("Converting pressure to temperature using ideal gas EOS",TRIVIAL)
+         temperature = temperature / (density * real(Rgas,si))
+         mindata = minval(temperature(:,:,:))
+         maxdata = maxval(temperature(:,:,:))
+         write(message,*) "Minimum data value= ", mindata, " K"
+         call writeInfo(message,FORINFO)
+         write(message,*) "Maximum data value= ", maxdata, " K"
+         call writeInfo(message,FORINFO)
+      else
+         call writeInfo("Converting pressure to temperature using look-up table",TRIVIAL)
+
+! Calculate temperature from p/rho (temperature array holds p at this point).
+         temperature(:,:,:) = temperature(:,:,:)/density(:,:,:)
+         do k=1, axis_size(3)
+            do j=1, axis_size(2)
+               do i=1, axis_size(1)
+                  if (temperature(i,j,k).lt.pd(1)) then 
+                     temperature(i,j,k) = 10**pdlogt(1)
+                  else if (temperature(i,j,k).gt.pd(npd)) then
+                     temperature(i,j,k) = 10**pdlogt(npd)
+                  else 
+                     do n=1,npd
+                        if(temperature(i,j,k).ge.pd(n) .AND. temperature(i,j,k).lt.pd(n+1)) then
+                           grad1 = (pdlogt(n+1)-pdlogt(n)) / (log10(pd(n+1))-log10(pd(n)))
+                           temperature(i,j,k)=10**(pdlogt(n)+grad1*(log10(temperature(i,j,k))-log10(pd(n))))
+                        end if
+                     end do
+                  endif
+               end do
+            end do
+         end do
+      end if
 
 ! Close the file and free the LUN
       call ftclos(unit, status)
@@ -143,6 +181,20 @@ module gridFromFitsFile
       call setup_axes()
 
     end subroutine read_fits_file_for_grid
+
+!-------------------------------------------------------------------------------
+    subroutine read_lutable
+      real :: dummy 
+      integer :: line
+
+      call writeInfo ("Reading look-up table from "//lu_table, FORINFO)
+      open(36,file=lu_table,status='old')
+      do line=1,npd
+         read(36,*) pdlogt(line),dummy, dummy, dummy, dummy, dummy, pd(line), dummy
+      end do
+      close(36) 
+      
+    end subroutine read_lutable
 
 !-------------------------------------------------------------------------------
 
