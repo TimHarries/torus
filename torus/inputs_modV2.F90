@@ -1291,7 +1291,7 @@ contains
                   "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
              call getReal(grainFracLabel, grainFrac(i), 1., cLine, fLine, nLines, &
-                  "Grain fractional abundance: ","(a,f8.5,1x,a)",1. , ok, .false.)
+                  "Grain fractional abundance: ","(a,f8.5,1x,a)",0.01 , ok, .false.)
              grainFracTotal = grainFracTotal + grainFrac(i)
              
              if (.not. readDustFromFile) &

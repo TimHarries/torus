@@ -990,7 +990,7 @@ end subroutine setupGridForImage
 !   pu09 Dust
 
 recursive subroutine quickSublimate(thisOctal, fraction)
-  use inputs_mod, only : hOnly
+  use inputs_mod, only : hOnly, grainFrac
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   ! Where dust is present set dustTypeFraction to this value. 
@@ -1020,7 +1020,7 @@ recursive subroutine quickSublimate(thisOctal, fraction)
              if (present(fraction)) then
                 thisOctal%dustTypeFraction(subcell,:) = fraction
              else
-                thisOctal%dustTypeFraction(subcell,:) = 1.d0
+                thisOctal%dustTypeFraction(subcell,:) = grainFrac(:)
              endif
           endif
 !
