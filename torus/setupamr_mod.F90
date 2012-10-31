@@ -55,7 +55,9 @@ contains
 #endif
     use vh1_mod, only: read_vh1
     use memory_mod
+#ifdef USECFITSIO
     use gridFromFitsFile
+#endif
 
     implicit none
 
