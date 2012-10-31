@@ -724,8 +724,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      call writeInfo("Some basic model parameters",TRIVIAL)
      call writeInfo("---------------------------",TRIVIAL)
      call writeInfo(" ", TRIVIAL)
+     call torus_mpi_barrier
 
-     call writeFormatted("(a,f7.1)","Inclination: ",real(radtodeg*acos(outVec%z)),TRIVIAL)
      ! THE FOLLOWING STATEMENT IS DANGEROUS. ACCORDING TO INPUT_MOD.F90 
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
@@ -733,23 +733,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (grid%geometry /= "cmfgen") then
         grid%rStar1 = rcore/1.e10
      end if
-     !
-     ! Performs various optical depth tests here...
-     !
 
-     if ( (.not. hydrodynamics) .and. (.not. formalsol)) then
-        call test_optical_depth(gridUsesAMR, VoigtProf, &
-             amrGridCentre, sphericityTest,  &
-             outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore,  &
-             thinLine, lineResAbs, nUpper, nLower, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
-      end if
-
-
-      call torus_mpi_barrier
 
 !      write(*,*) "calling scattering test"
 !      call testscatterPhoton(grid, miePhase, nDustType, nLambda, grid%lamArray, nMuMie)
-
 
      weightLinePhoton = 0.
      weightContPhoton = 1.
@@ -1097,7 +1084,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      end if
 
      nContPhotons = nint((probContPhoton * real(nPhotons) / real(nOuterLoop)))
-     if (writeoutput) write(*,*) "Number of continuum photons: ",nContPhotons
+     write(message,*) "Number of continuum photons: ",nContPhotons
+     call writeInfo(message,TRIVIAL)
 
 
      if (formalSol) then
@@ -1133,11 +1121,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         if (writeoutput) then
            write(message,*) " "
            call writeInfo(message, TRIVIAL)
-           write(message,*) "Inclination = ",inclination*radToDeg,' degrees'
+           write(message,'(a,f6.2,a)') "Inclination   = ",inclination*radToDeg,' degrees'
            call writeInfo(message, TRIVIAL)
-           write(message,*) "Postion Angle = ",imagePA*radToDeg,' degrees'
-           call writeInfo(message, TRIVIAL)
-           write(message,*) " "
+           write(message,'(a,f6.2,a)') "Postion Angle = ",imagePA*radToDeg,' degrees'
            call writeInfo(message, TRIVIAL)
         end if
 
@@ -1176,6 +1162,18 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Viewing vector: (",viewVec%x,",",viewVec%y,",", viewVec%z,")"
      call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+
+!
+! Performs various optical depth tests here, once viewing vector is set
+!
+     if ( (.not. hydrodynamics) .and. (.not. formalsol)) then
+        call test_optical_depth(gridUsesAMR, VoigtProf, &
+             amrGridCentre, sphericityTest,  &
+             outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore,  &
+             thinLine, lineResAbs, nUpper, nLower, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
+      end if
 
      ! zero the output arrays
 

@@ -158,12 +158,13 @@ module gridFromFitsFile
                   else if (temperature(i,j,k).gt.pd(npd)) then
                      temperature(i,j,k) = 10**pdlogt(npd)
                   else 
-                     do n=1,npd
+npd_loop:            do n=1,npd
                         if(temperature(i,j,k).ge.pd(n) .AND. temperature(i,j,k).lt.pd(n+1)) then
                            grad1 = (pdlogt(n+1)-pdlogt(n)) / (log10(pd(n+1))-log10(pd(n)))
                            temperature(i,j,k)=10**(pdlogt(n)+grad1*(log10(temperature(i,j,k))-log10(pd(n))))
+                           exit npd_loop
                         end if
-                     end do
+                     end do npd_loop
                   endif
                end do
             end do

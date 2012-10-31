@@ -2478,7 +2478,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
   ! chuck out some useful information to the user
     
-  write(message,'(a,f7.1,a)') "Cross-sections at ",wavelength, " angstroms"
+  write(message,'(a,f8.1,a)') "Cross-sections at ",wavelength, " angstroms"
   call writeInfo(message, TRIVIAL)
   write(message,'(a)') "------------------------------------------"
   call writeInfo(message, TRIVIAL)
