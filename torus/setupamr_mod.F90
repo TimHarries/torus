@@ -2098,7 +2098,7 @@ contains
   end subroutine findSigma
 
 recursive subroutine quickSublimate(thisOctal)
-  use inputs_mod, only: grainFrac
+  use inputs_mod, only: grainFrac, nDustType
 
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -2120,7 +2120,7 @@ recursive subroutine quickSublimate(thisOctal)
              if (thisOctal%temperature(subcell) > 1500.) then
                 thisOctal%dustTypeFraction(subcell,:) = 1.d-20
              else
-                thisOctal%dustTypeFraction(subcell,:) = grainFrac(:)
+                thisOctal%dustTypeFraction(subcell,nDustType) = grainFrac(nDustType)
              endif
           end if
 
