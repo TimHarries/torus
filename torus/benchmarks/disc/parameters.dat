@@ -65,6 +65,13 @@ sedwavlin F          ! Linear spacing in SED file?
 
 ! Image parameters
 
-image T
-imagefile test_22um.fits
-lambdaimage  220000.0
+image T                    ! Produce images
+lambdaimage  220000.0      ! at 22 microns
+nimage 2                   ! There will be two images
+
+imagefile1 test_22um.fits  ! Filename for the first image
+imagefile2 test2_22um.fits ! Filename for the second image
+
+inclination1 12.5          ! Inclination angle for first image 
+inclination2 77.5          ! Inclination angle for second image
+

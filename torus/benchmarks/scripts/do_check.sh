@@ -10,10 +10,10 @@ fi
 echo Comparing the 12.5 degree model...
 cp test_inc013.dat speca.dat
 cp sed100_125.dat specb.dat
-comparespec
+./comparespec
 
 echo Comparing the 77.5 degree model...
 cp test_inc077.dat speca.dat
 cp sed100_775.dat specb.dat
-comparespec
+./comparespec
 
