@@ -1,6 +1,7 @@
 #!/bin/ksh
 
 mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk tjh202@exeter.ac.uk claire@astro.ex.ac.uk"
+#mail_to="acreman@astro.ex.ac.uk"
 
 export BASE_DIR=/Users/acreman
 export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
@@ -50,7 +51,7 @@ echo " " >> header
 num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc/check_log_gfortran_disc.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
-if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
+if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
     echo "Disc benchmark successful" >> header 
 else
     echo "!! Disc benchmark FAILED !!" >> header

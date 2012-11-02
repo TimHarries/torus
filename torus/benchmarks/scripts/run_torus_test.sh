@@ -34,6 +34,11 @@ mkdir ${WORKING_DIR}/bin
 cd    ${WORKING_DIR}/bin
 cp ../benchmarks/disc/comparespec.f90 .
 ${TORUS_FC} -o comparespec comparespec.f90
+
+echo Compiling check_disc_image
+cp ../benchmarks/disc/check_disc_image.f90 . 
+${TORUS_FC} -o check_disc_image check_disc_image.f90 -lcfitsio -L${TORUS_FITSLIBS}
+
 echo
 }
 
@@ -91,15 +96,20 @@ if [[ ! -e sed100_775.dat ]]; then
     cp ../disc/sed100_775.dat .
 fi
 
+# Check first SED
 echo Comparing the 12.5 degree model...
 cp test_inc013.dat speca.dat
 cp sed100_125.dat specb.dat
 ${WORKING_DIR}/bin/comparespec
 
+# Check second SED
 echo Comparing the 77.5 degree model...
 cp test_inc077.dat speca.dat
 cp sed100_775.dat specb.dat
 ${WORKING_DIR}/bin/comparespec
+
+# Check image
+${WORKING_DIR}/bin/check_disc_image
 }
 
 check_molebench()
@@ -465,6 +475,7 @@ case ${MODE} in
            export BUILD_ONLY="nagfor"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="gfortran -g -fcheck=all"
+	   export TORUS_FITSLIBS="/Users/acreman/cfitsio"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS daily test suite started on `date`
@@ -475,6 +486,7 @@ case ${MODE} in
            export BUILD_ONLY="nagfor gfortran ompiosx ompiosx-openmp"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="gfortran -g -fcheck=all"
+	   export TORUS_FITSLIBS="/Users/acreman/cfitsio"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS build tests started on `date`
@@ -485,6 +497,7 @@ case ${MODE} in
 	    export BUILD_ONLY=""
             export DEBUG_OPTS="yes no"
 	    export TORUS_FC="gfortran -g -fcheck=all"
+	    export TORUS_FITSLIBS="/Users/acreman/cfitsio"
 	    export PATH=~/bin:/usr/local/bin:${PATH}
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
@@ -494,6 +507,7 @@ case ${MODE} in
          export BUILD_ONLY=""
 	 export DEBUG_OPTS="no yes"
 	 export TORUS_FC="ifort"
+	 export TORUS_FITSLIBS="/home/tjharrie/cfitsio"
 	 echo TORUS zen tests started on `date`
 	 echo -------------------------------------------------------------------
 	 echo;;
