@@ -2257,6 +2257,16 @@ END SUBROUTINE GAUSSJ
 
     call lured(a)
     
+! Check diagonals again as lured changes values in array a
+    n = size(a,1)
+    do i=1,n
+       if ( a(i,i)==0.0 ) then 
+          ok=.false.
+          return
+       endif
+    end do
+    ok = .true.
+
     call reslv(a,b)
 
   end subroutine luSlv
