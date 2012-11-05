@@ -734,10 +734,10 @@ contains
 
        if (ttauriwind) then
           call getDouble("DW_Rmin", DW_Rmin, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Inner radius of the disc wind [10^10cm]: ", &
+               "Disc wind:: Inner radius of the disc wind [magnetosphere radii]: ", &
                "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
           call getDouble("DW_Rmax", DW_Rmax, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Outer radius of the disc wind [10^10cm]: ", &
+               "Disc wind:: Outer radius of the disc wind [magnetosphere radii]: ", &
                "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
           call getDouble("DW_Mdot", DW_Mdot, 1.d0,  cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [solar masses per year]: ", &
@@ -774,10 +774,10 @@ contains
                "Disc wind:: Wind soudce displacement [10^10cm]: ", &
                "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
           call getDouble("DW_Rmin", DW_Rmin,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Inner radius of the disc [10^10cm]: ", &
+               "Disc wind:: Inner radius of the disc [magnetosphere radii]: ", &
                "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
           call getDouble("DW_Rmax", DW_Rmax,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Outer radius of the disc [10^10cm]: ", &
+               "Disc wind:: Outer radius of the disc [magnetosphere radii]: ", &
                "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
           call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Temperature of disc at inner radius [K]: ", &
