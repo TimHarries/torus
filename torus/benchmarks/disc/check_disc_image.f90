@@ -8,8 +8,8 @@ program check_disc_image
   integer, parameter :: nimages=2
   character(len=*), parameter :: image_file(nimages)=(/"test_22um.fits ","test2_22um.fits"/)
   logical :: found_file
-  real, parameter :: expectedVal(nimages)  = (/5.6e6, 2.1e6/) ! Expected values for sum of pixels
-  real, parameter :: tolerance = 1.0 ! Fractional tolerance - set high to begin with
+  real, parameter :: expectedVal(nimages)  = (/5.60e6, 2.14e6/) ! Expected values for sum of pixels
+  real, parameter :: tolerance = 0.5 ! Fractional tolerance - set high to begin with
   real :: diff
 
 ! FITS file parameters and variables
