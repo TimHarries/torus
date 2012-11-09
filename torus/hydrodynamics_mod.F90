@@ -9510,7 +9510,8 @@ end subroutine refineGridGeneric2
                 else
                    select case(n)
                    case(1, 2)
-                      g(n) = gridDistanceScale * (x2 * phigas - x1 * thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+                      g(n) = gridDistanceScale * (x2 * phigas - x1 * thisOctal%phi_gas(subcell)) / &
+                           (returnCodeUnitLength(dx*gridDistanceScale))
                    case(3,4)
                       g(n) = (phigas - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
                    end select
@@ -9697,7 +9698,8 @@ end subroutine refineGridGeneric2
                 else
                    select case(n)
                    case(1, 2)
-                      g(n) = gridDistanceScale * (x2 * phigas - x1 * thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+                      g(n) = gridDistanceScale * (x2 * phigas - x1 * thisOctal%phi_gas(subcell)) / &
+                           (returnCodeUnitLength(dx*gridDistanceScale))
                    case(3,4)
                       g(n) = (phigas - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
                    end select

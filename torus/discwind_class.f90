@@ -751,8 +751,6 @@ contains
        child => thisOctal%child(iIndex)
        CALL add_discwind(child,grid,this,limitscalar)      
    END DO
-666  continue
-
     
   END SUBROUTINE add_discwind
 
