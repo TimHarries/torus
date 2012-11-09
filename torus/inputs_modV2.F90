@@ -1879,7 +1879,7 @@ contains
 
     if (cylindricalHydro) then
        dx = amrgridSize/dble(2**maxDepthAMR-4)
-       amrGridSize = amrGridsize + 4.0d0*dx
+       amrGridSize = amrGridsize + real(4.0d0*dx)
     endif
 
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &
