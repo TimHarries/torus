@@ -952,123 +952,6 @@ CONTAINS
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
   END SUBROUTINE addNewChild
   
-  SUBROUTINE growChildArray(parent, nNewChildren, grid)
-    ! adds storage space for new children to an octal.
-    ! 
-    ! some of the bookkeeping must be done by the routine that calls
-    !   this one (e.g. making sure the new children are indexed).
-
-    IMPLICIT NONE
-    
-    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
-    INTEGER, INTENT(IN) :: nNewChildren ! number of children to add
-    TYPE(GRIDTYPE), INTENT(INOUT) :: grid
-    
-    TYPE(wrapperArray):: tempChildStorage 
-      ! holder for existing children, while we shuffle them around to 
-      !   make room for new ones.
-                                       
-    INTEGER       :: iChild            ! loop counter
-    INTEGER       :: nChildren         ! number of children the parent octal has
-    INTEGER       :: error
-   
-    ! store the number of children that already exist
-    nChildren = parent%nChildren
-
-    IF ( nChildren == 0 ) THEN
-      ! if there are no existing children, we can just allocate
-      ! the 'child' array with the new size
-      ALLOCATE(parent%child(nNewChildren), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed in growChildArray.(A)'
-        STOP
-      END IF
-
-    ELSE ! there are existing children
-     
-      ! check that there is not a full quota of children
-      IF ( (nChildren + nNewChildren) > parent%maxChildren ) THEN
-        PRINT *, 'Panic: in growChildArray, attempted to have too ',&
-                 '       many children: ',(nChildren + nNewChildren) 
-        STOP
-      ENDIF
-      
-      ! if there are existing children, we must enlarge the allocated   
-      ! array. we need to use temporary octals[1] and copy the  
-      ! existing children into them[2]; then increase the 'child' array size 
-      ! [3]; then copy the children back in[4]. 
-
-      ! [1]
-      ALLOCATE(tempChildStorage%wrappers(nChildren), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed in growChildArray. (B)'
-        STOP
-      END IF     
-
-      ! [2]
-      DO iChild = 1, nChildren, 1
-        
-        ALLOCATE(tempChildStorage%wrappers(iChild)%content, STAT=error)
-        IF ( error /= 0 ) THEN
-          PRINT *, 'Panic: allocation failed in growChildArray. (C)'
-          STOP
-        END IF           
-        tempChildStorage%wrappers(iChild)%inUse = .TRUE.
-               
-        CALL deleteOctreeBranch(parent%child(iChild),                   &
-               onlyChildren=.FALSE.,                                    &
-               deletedBranch=tempChildStorage%wrappers(iChild)%content, &
-               adjustParent=.FALSE., grid=grid, adjustGridInfo=.FALSE. )
-      END DO
-
-      ! [3]
-      IF ( ASSOCIATED(parent%child) ) THEN
-        DEALLOCATE(parent%child)
-        NULLIFY(parent%child)
-        ALLOCATE(parent%child( nChildren + nNewChildren ), STAT=error)
-        IF ( error /= 0 ) THEN
-          PRINT *, 'Panic: allocation failed in growChildArray. (D)'
-          STOP
-        END IF
-      ELSE
-        PRINT *, "Error in growChildArray:"
-        PRINT *, "  parent%child not associated."
-        STOP
-      END IF
-
-      ! [4]
-      DO iChild = 1, nChildren, 1
-        
-        CALL insertOctreeBranch(parent%child(iChild),               &
-               branch=tempChildStorage%wrappers(iChild)%content,    &
-               onlyChildren=.FALSE.)
-
-        parent%child(iChild)%parent => parent       
-               
-        if (associated(tempChildStorage%wrappers(iChild)%content)) then
-           DEALLOCATE(tempChildStorage%wrappers(iChild)%content, STAT=error)
-           if (error /= 0) then
-              write(*,*) "error",error
-              write(*,*) ichild
-              write(*,*) tempChildStorage%wrappers(ichild)%content%ndepth
-              parent%child(iChild)%rho = 1.d30
-!              do;enddo
-           endif
-        endif
-
-        NULLIFY(tempChildStorage%wrappers(iChild)%content)
-        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
-
-      END DO
-      
-      ! can now clean up the temporary storage
-      DEALLOCATE(tempChildStorage%wrappers)
-      NULLIFY(tempChildStorage%wrappers)
-      
-    END IF ! ( nChildren == 0 )
-
-  END SUBROUTINE growChildArray
-
 
   RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, wvars,&
        setChanged, romData)
@@ -7457,7 +7340,7 @@ endif
   subroutine calcSphere(thisOctal,subcell)
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
-    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold
+    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -7476,10 +7359,15 @@ endif
     
 
     rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
+    thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
     if (rMod < sphereRadius) then
        thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
+       if (cylindricalHydro) then
+          thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
+!          thisOctal%rhov(subcell) = 2.d0*(rMod/sphereRadius)*sqrt(bigG * mSol / (rDash*1.d10))*(rDash*1.d10)*thisOctal%rho(subcell)
+       endif
     else
        thisOctal%rho(subcell) = 1.d-1 * rhoSphere
        thisOctal%temperature(subcell) = 20.d0
@@ -7799,11 +7687,11 @@ endif
        thisOctal%temperature(subcell) = 1000.d0
     endif
 
-
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
 
     soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
     thisOctal%velocity(subcell) = vVec
+    thisOctal%rhoV(subcell) = thisOctal%rho(subcell) * v * (r * 1.d10)
 
     eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
@@ -9704,7 +9592,123 @@ end function readparameterfrom2dmap
   END SUBROUTINE deleteOctal
 
 
-  
+    SUBROUTINE growChildArray(parent, nNewChildren, grid)
+    ! adds storage space for new children to an octal.
+    ! 
+    ! some of the bookkeeping must be done by the routine that calls
+    !   this one (e.g. making sure the new children are indexed).
+
+    IMPLICIT NONE
+    
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    INTEGER, INTENT(IN) :: nNewChildren ! number of children to add
+    TYPE(GRIDTYPE), INTENT(INOUT) :: grid
+    
+    TYPE(wrapperArray):: tempChildStorage 
+      ! holder for existing children, while we shuffle them around to 
+      !   make room for new ones.
+                                       
+    INTEGER       :: iChild            ! loop counter
+    INTEGER       :: nChildren         ! number of children the parent octal has
+    INTEGER       :: error
+   
+    ! store the number of children that already exist
+    nChildren = parent%nChildren
+
+    IF ( nChildren == 0 ) THEN
+      ! if there are no existing children, we can just allocate
+      ! the 'child' array with the new size
+      ALLOCATE(parent%child(nNewChildren), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in growChildArray.(A)'
+        STOP
+      END IF
+
+    ELSE ! there are existing children
+     
+      ! check that there is not a full quota of children
+      IF ( (nChildren + nNewChildren) > parent%maxChildren ) THEN
+        PRINT *, 'Panic: in growChildArray, attempted to have too ',&
+                 '       many children: ',(nChildren + nNewChildren) 
+        STOP
+      ENDIF
+      
+      ! if there are existing children, we must enlarge the allocated   
+      ! array. we need to use temporary octals[1] and copy the  
+      ! existing children into them[2]; then increase the 'child' array size 
+      ! [3]; then copy the children back in[4]. 
+
+      ! [1]
+      ALLOCATE(tempChildStorage%wrappers(nChildren), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in growChildArray. (B)'
+        STOP
+      END IF     
+
+      ! [2]
+      DO iChild = 1, nChildren, 1
+        
+        ALLOCATE(tempChildStorage%wrappers(iChild)%content, STAT=error)
+        IF ( error /= 0 ) THEN
+          PRINT *, 'Panic: allocation failed in growChildArray. (C)'
+          STOP
+        END IF           
+        tempChildStorage%wrappers(iChild)%inUse = .TRUE.
+               
+        CALL deleteOctreeBranch(parent%child(iChild),                   &
+               onlyChildren=.FALSE.,                                    &
+               deletedBranch=tempChildStorage%wrappers(iChild)%content, &
+               adjustParent=.FALSE., grid=grid, adjustGridInfo=.FALSE. )
+      END DO
+
+      ! [3]
+      IF ( ASSOCIATED(parent%child) ) THEN
+        DEALLOCATE(parent%child)
+        NULLIFY(parent%child)
+        ALLOCATE(parent%child( nChildren + nNewChildren ), STAT=error)
+        IF ( error /= 0 ) THEN
+          PRINT *, 'Panic: allocation failed in growChildArray. (D)'
+          STOP
+        END IF
+      ELSE
+        PRINT *, "Error in growChildArray:"
+        PRINT *, "  parent%child not associated."
+        STOP
+      END IF
+
+      ! [4]
+      DO iChild = 1, nChildren, 1
+        
+        CALL insertOctreeBranch(parent%child(iChild),               &
+               branch=tempChildStorage%wrappers(iChild)%content,    &
+               onlyChildren=.FALSE.)
+
+        parent%child(iChild)%parent => parent       
+               
+        if (associated(tempChildStorage%wrappers(iChild)%content)) then
+           DEALLOCATE(tempChildStorage%wrappers(iChild)%content, STAT=error)
+           if (error /= 0) then
+              write(*,*) "error",error
+              write(*,*) ichild
+              write(*,*) tempChildStorage%wrappers(ichild)%content%ndepth
+              parent%child(iChild)%rho = 1.d30
+!              do;enddo
+           endif
+        endif
+
+        NULLIFY(tempChildStorage%wrappers(iChild)%content)
+        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
+
+      END DO
+      
+      ! can now clean up the temporary storage
+      DEALLOCATE(tempChildStorage%wrappers)
+      NULLIFY(tempChildStorage%wrappers)
+      
+    END IF ! ( nChildren == 0 )
+
+  END SUBROUTINE growChildArray
+
   SUBROUTINE insertOctreeBranch(thisOctal,branch,onlyChildren)
     ! adds one octree into another.
     ! use with care, it's not sensible to insert a tree anywhere - this 
@@ -9869,8 +9873,10 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%molmicroturb, source%molmicroturb)
 
     call copyAttribute(dest%rho_i_minus_1, source%rho_i_minus_1)
-
     call copyAttribute(dest%rho_i_plus_1, source%rho_i_plus_1)
+
+    call copyAttribute(dest%rhorv_i_minus_1, source%rhorv_i_minus_1)
+    call copyAttribute(dest%rhorv_i_plus_1, source%rhorv_i_plus_1)
 
 
     call copyAttribute(dest%x_i_minus_1, source%x_i_minus_1)
@@ -13942,6 +13948,9 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%rho_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
 
+       call allocateAttribute(thisOctal%rhorv_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhorv_i_minus_1,thisOctal%maxchildren)
+
        call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
@@ -14091,6 +14100,8 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%phi_gas)
     call deallocateAttribute(thisOctal%rho_i_minus_1)
     call deallocateAttribute(thisOctal%rho_i_plus_1)
+    call deallocateAttribute(thisOctal%rhorv_i_minus_1)
+    call deallocateAttribute(thisOctal%rhorv_i_plus_1)
     call deallocateAttribute(thisOctal%boundaryCondition)
     call deallocateAttribute(thisOctal%boundaryCell)
 
@@ -15633,5 +15644,8 @@ end function readparameterfrom2dmap
  endif
   end function octalOnThread
 
+  !
+  !
+  !
 
 END MODULE amr_mod

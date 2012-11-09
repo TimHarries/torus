@@ -122,6 +122,9 @@ contains
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
          "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("vtkincludeghosts", vtkIncludeGhosts, cLine, fLine, nLines, &
+         "Include ghost cells in XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
+
     call getLogical("compressdumps", compressedDumpFiles, cLine, fLine, nLines, &
          "Use compressed dump files: ","(a,1l,1x,a)", .false., ok, .false.)
     uncompressedDumpFiles = .not.compressedDumpFiles
@@ -733,24 +736,40 @@ contains
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
        if (ttauriwind) then
-          call getDouble("DW_Rmin", DW_Rmin, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Inner radius of the disc wind [magnetosphere radii]: ", &
-               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
-          call getDouble("DW_Rmax", DW_Rmax, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Outer radius of the disc wind [magnetosphere radii]: ", &
-               "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
-          call getDouble("DW_Mdot", DW_Mdot, 1.d0,  cLine, fLine, nLines, &
-               "Disc wind:: Total mass-loss rate from disc [solar masses per year]: ", &
-               "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
-          call getDouble("DW_theta", DW_theta, 1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Disc wind angle [degrees]: ", &
-               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
-          call getDouble("DW_Twind", DW_temperature, 1.d0, cLine, fLine, nLines, &
+          ! --- parameters for ttauri wind
+          call getDouble("DW_Rmin", DW_Rmin, ttaurirOuter/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Rmax", DW_rMax, ttaurirOuter/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+          call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
+               "Disc wind:: Wind source displacement [inner wind radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Temperature of disc at inner radius [K]: ", &
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+          call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+               "(a,1p,e9.3,1x,a)", -0.5d0, ok, .true.) 
+          call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+          call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+          call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
+               "Disc wind:: Effective acceleration length [inner wind radii]: ", &
+               "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
+          call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Scaling on the terminal velocity [-]: ", &
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+          call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Isothermal temperature of disc wind [K]: ", &
-               "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
-          DW_rMin = DW_rmin * ttauriRouter/1.d10
-          DW_rMax = DW_rmax * DW_rMin
-          DW_theta = DW_theta * degtoRad
+               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
        endif
 
 
@@ -772,72 +791,72 @@ contains
           ! --- parameters for ttauri wind
           call getDouble("DW_d", DW_d, 1.d0, cLine, fLine, nLines, &
                "Disc wind:: Wind soudce displacement [10^10cm]: ", &
-               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
           call getDouble("DW_Rmin", DW_Rmin,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the disc [magnetosphere radii]: ", &
-               "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
           call getDouble("DW_Rmax", DW_Rmax,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Outer radius of the disc [magnetosphere radii]: ", &
-               "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
           call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Temperature of disc at inner radius [K]: ", &
-               "(a,es9.3,1x,a)", 2000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
           call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-               "(a,es9.3,1x,a)", -0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", -0.5d0, ok, .true.) 
           call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-               "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
           call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
           call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
           call getDouble("DW_Rs", DW_Rs,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Effective accerelation length [10^10cm]: ", &
-               "(a,es9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.) 
           call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Scaling on the terminal velocity [-]: ", &
-               "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
           call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Isotherma temperature of disc wind [K]: ", &
-               "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
        endif
        if (ttau_jet_on) then  ! commented out here to make ttaur_turn_off_jet to work
           ! --- parameters for ttauri wind
           call getDouble("JET_Rmin", JET_Rmin,  1.d0, cLine, fLine, nLines, &
                "Minmium radius of Jet [10^10 cm]: ", &
-               "(a,es9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
+               "(a,1p,e9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
           call getDouble("JET_theta_j", JET_theta_j,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [deg]  jet opening angle: ", &
-               "(a,es9.3,1x,a)", 80.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 80.0d0, ok, .true.) 
           JET_theta_j = JET_theta_j * (Pi/180.0)  ! converting [deg] to [radians]
 
           call getDouble("JET_Mdot", JET_Mdot,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [Msun/yr] mass loss rate in the jets: ", &
-               "(a,es9.3,1x,a)", 1.0d-9, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-9, ok, .true.) 
           call getDouble("JET_a_param", JET_a_param,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] a parameter in density function: ", &
-               "(a,es9.3,1x,a)", 0.8d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.8d0, ok, .true.) 
           call getDouble("JET_b_param", JET_b_param,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] b parameter in density function: ", &
-               "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
           call getDouble("JET_Vbase", JET_Vbase,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [km/s] Base velocity of jets: ", &
-               "(a,es9.3,1x,a)", 20.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 20.0d0, ok, .true.) 
           call getDouble("JET_Vinf", JET_Vinf,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [km/s] Terminal velocity of jets: ", &
-               "(a,es9.3,1x,a)", 200.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 200.0d0, ok, .true.) 
           call getDouble("JET_beta", JET_beta,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] a parameter in velocity function: ", &
-               "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
           call getDouble("JET_gamma", JET_gamma,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] a parameter in velocity function: ", &
-               "(a,es9.3,1x,a)", 0.05d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.05d0, ok, .true.) 
           call getDouble("JET_T", JET_T,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [K]  Isothermal temperature of jets: ", &
-               "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d4, ok, .true.) 
        endif
 
        case("wind")
@@ -1153,7 +1172,7 @@ contains
          "Refine grid using local jeans mass?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getUnitDouble("masstol", masstol, "mass" , cLine, fLine, nLines, &
-         "Cell mass tolerance: ","(a,es9.3,1x,a)", 1.d-5*mSol, ok, .false.)
+         "Cell mass tolerance: ","(a,1p,e9.3,1x,a)", 1.d-5*mSol, ok, .false.)
 
     call getLogical("refineontemperature", refineontemperature, cLine, fLine, nLines, &
          "Refine grid using temperature gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1171,39 +1190,39 @@ contains
          "Captue shocks?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
-         "Maximum gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 5.d-2, ok, .false.) 
+         "Maximum gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.) 
 
     call getDouble("unreftol", amrUnrefinetolerance, 1.d0 , cLine, fLine, nLines, &
-         "Minimum gradient allowed before AMR grid unrefines: ","(a,es9.3,1x,a)", 5.d-2, ok, .false.) 
+         "Minimum gradient allowed before AMR grid unrefines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.) 
 
     if(refineontemperature) then
        call getDouble("amrtemperaturetol", amrTemperatureTol, 1.d0 , cLine, fLine, nLines, &
-            "Maximum temperature gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-1, ok, .false.)
+            "Maximum temperature gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
 
     if(refineonspeed) then
        call getDouble("amrspeedtol", amrSpeedTol, 1.d0 , cLine, fLine, nLines, &
-            "Maximum speed gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-1, ok, .false.)
+            "Maximum speed gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
     
     if(refineonionization) then
        call getDouble("amrionfractol", amrIonFracTol, 1.d0 , cLine, fLine, nLines, &
-            "Maximum ionization fraction gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-1, ok, .false.)
+            "Maximum ionization fraction gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
 
     if(refineonrhoe) then
        call getDouble("amrrhoetol", amrRhoeTol, 1.d0 , cLine, fLine, nLines, &
-            "Maximum rhoe gradient allowed before AMR grid refines: ","(a,es9.3,1x,a)", 1.d-1, ok, .false.)
+            "Maximum rhoe gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
   
     call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
     call getUnitDouble("amrgridcentrex", amrGridCentreX, "distance" , cLine, fLine, nLines, &
-         "Grid centre X-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre X-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
     call getUnitDouble("amrgridcentrey", amrGridCentreY, "distance" , cLine, fLine, nLines, &
-         "Grid centre Y-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre Y-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
     call getUnitDouble("amrgridcentrez", amrGridCentreZ, "distance", cLine, fLine, nLines, &
-         "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre Z-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
 
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
@@ -1215,11 +1234,14 @@ contains
          amrGridCentrex = amrGridSize/2.d0
 
 
+
+
+
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
-         "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .false.) 
+         "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.) 
 
     call getDouble("limittwo", limitScalar2, 1.d0, cLine, fLine, nLines, &
-         "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
+         "Second scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 0._db, ok, .false.) 
 
     call getLogical("doVelocitySplit", doVelocitySplit, cLine, fLine, nLines, &
          "Use velocity splitting condition for SPH to grid: ","(a,1l,1x,a)",.false., ok, .false.)
@@ -1611,7 +1633,7 @@ contains
          "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
-            "Variance reduction, extent of bias: ", "(a,es9.3,1x,a)", 100.d0, ok, .false.)
+            "Variance reduction, extent of bias: ", "(a,1p,e9.3,1x,a)", 100.d0, ok, .false.)
 
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogen-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
@@ -1833,6 +1855,7 @@ contains
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
+    real(double) :: dx
     logical :: ok
 
     call getReal("cfl", cflNumber, 1., cLine, fLine, nLines, &
@@ -1844,8 +1867,20 @@ contains
     call getDouble("etaviscosity", etaViscosity, 1.d0, cLine, fLine, nLines, &
          "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
 
+
+    call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
+         "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
+
     call getLogical("tensorviscosity", useTensorViscosity, cLine, fLine, nLines, &
          "Use tensor form for artificial viscosity: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
+         "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (cylindricalHydro) then
+       dx = amrgridSize/dble(2**maxDepthAMR-4)
+       amrGridSize = amrGridsize + 4.0d0*dx
+    endif
 
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &
          "Distance grid scale: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
@@ -1987,7 +2022,7 @@ contains
     call getString("datacubefile", datacubeFilename, cLine, fLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
-         "Image size (x10^10cm):","(a,es9.3,1x,a)", 5e7, ok, .true.)
+         "Image size (x10^10cm):","(a,1p,e9.3,1x,a)", 5e7, ok, .true.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &

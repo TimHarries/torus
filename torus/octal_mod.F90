@@ -310,7 +310,6 @@ MODULE octal_mod
     logical, pointer :: edgeCell(:) => null(), refinedLastTime(:) => null()
     real(double), pointer :: rhou(:) => null(),  rhov(:) => null(), rhow(:) => null(), rhoE(:) => null(), energy(:) => null()
     real(double), pointer :: pressure_i(:) => null(), pressure_i_plus_1(:) => null(), pressure_i_minus_1(:) => null()
-!    real(double), pointer :: rho_i_minus_1(:) => null()
     real(double), pointer :: tempStorage(:,:) => null()
     type(vECTOR), pointer :: boundaryPartner(:) => null()
     type(vECTOR), pointer :: gravboundaryPartner(:) => null()
@@ -319,6 +318,7 @@ MODULE octal_mod
     real(double), pointer :: phi_i(:) => null(), phi_i_plus_1(:) => null(), phi_i_minus_1(:) => null()
     real(double), pointer :: phi_stars(:) => null(), phi_gas(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
+    real(double),pointer :: rhorv_i_minus_1(:) => null(), rhorv_i_plus_1(:) => null()
     integer, pointer :: boundaryCondition(:) => null()
     logical, pointer :: boundaryCell(:) => null()
 

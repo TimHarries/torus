@@ -5,6 +5,7 @@ module setupamr_mod
   use vtk_mod, only: writeVTKFile, writeVTKFileSource
   use vector_mod
   use magnetic_mod
+  use discwind_class
   use messages_mod
   USE constants_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
@@ -34,7 +35,6 @@ contains
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics
     use disc_class, only:  new
-    use discwind_class, only:  new
     use inputs_mod, only : xplusbound, yplusbound, zplusbound
     use inputs_mod, only : xminusbound, yminusbound, zminusbound
 #ifdef STATEQ
@@ -285,7 +285,6 @@ contains
        case("ttauri")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
-!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false., romData=romData)
           if (doSmoothGrid) then
           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
@@ -304,8 +303,6 @@ contains
            ! wrapper subroutine in amr_mod.f90.
           call zeroDensity(grid%octreeRoot)
           astar = accretingAreaMahdavi()
-!          ttauriwind = .false.
-!          ttauridisc = .false.
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
           minRho = 1.d30
           if (ttauriMagnetosphere) then
@@ -314,7 +311,10 @@ contains
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                      minRho, minR)
           endif
-          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+!          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+          if (ttauriwind) call addDiscWind(grid)
+          call checkAMRgrid(grid, .false.)
+
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
           ! Finding the total mass in the accretion flow

@@ -14,6 +14,7 @@ module amr_utils_mod
 
   contains
 
+
     real(double) function gridArea(grid)
       use inputs_mod, only : cylindrical
       type(GRIDTYPE) :: grid
@@ -301,8 +302,8 @@ module amr_utils_mod
   !   only searches in downwards direction (TD = top-down) , so
   !   probably best to start from root of tree
 
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
     IMPLICIT NONE
-
     TYPE(vector), INTENT(IN) :: point
     type(vector) :: point_local
     TYPE(octal), POINTER :: currentOctal
@@ -312,7 +313,11 @@ module amr_utils_mod
     if (currentoctal%threeD) then
        point_local = point
     elseif (currentoctal%twoD) then
-       point_local = projectToXZ(point)
+       if (.not.cylindricalHydro) then
+          point_local = projectToXZ(point)
+       else
+          point_local = point
+       endif
     else !oneD
        point_local = VECTOR(modulus(point), 0.d0, 0.d0)
     end if
@@ -393,7 +398,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use inputs_mod, only : hydrodynamics, suppresswarnings
+    use inputs_mod, only : hydrodynamics, suppresswarnings, cylindricalHydro
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     TYPE(vector) :: point_local
@@ -412,7 +417,7 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       if (.not.hydrodynamics) then
+       if (.not.cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -449,7 +454,7 @@ module amr_utils_mod
       use inputs_mod, only : suppressWarnings
       TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
-      real(double) :: phi, phimax, phimin
+      real(double) :: phi, phimax, phimin,r
       INTEGER, INTENT(OUT)   :: subcell
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
@@ -509,6 +514,8 @@ module amr_utils_mod
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
        endif
           if(.not. suppresswarnings) then
+             r = -2.d0
+             r = sqrt(r)
                 STOP
           endif
           boundaryProblem = .TRUE.
@@ -572,7 +579,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use inputs_mod, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
     IMPLICIT NONE
     integer :: nDepth
     TYPE(vector), INTENT(IN) :: point
@@ -592,7 +599,7 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       if (.not.hydrodynamics) then
+       if (.not.cylindricalhydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -864,7 +871,7 @@ module amr_utils_mod
   FUNCTION inOctal(thisOctal,point,alreadyRotated) 
     ! true if the point lies within the boundaries of the current octal
   
-    use inputs_mod, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
@@ -909,7 +916,7 @@ module amr_utils_mod
           ENDIF
        endif
     else ! twoD case
-       if (.not.hydrodynamics) then
+       if (.not.cylindricalHydro) then
           if (doRotate) then
              octVec2D = projectToXZ(point)
           else
@@ -928,7 +935,7 @@ module amr_utils_mod
     endif
 
     if (thisOctal%oneD) then
-       if (.not.hydrodynamics) then
+       if (.not.hydroDynamics) then
           r = modulus(point)
           if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
@@ -1444,16 +1451,16 @@ module amr_utils_mod
      end subroutine distanceToCellBoundary
 
   subroutine distanceToNearestWall(posVec, tVal, sOctal, sSubcell)
-    use inputs_mod, only : amr1d,amr3d, cylindrical
+    use inputs_mod, only : amr1d, amr2d, amr3d, cylindrical
     implicit none
     type(VECTOR), intent(in) :: posVec
     type(OCTAL), pointer :: sOctal
     integer :: sSubcell
     real(double), intent(out) :: tval
-    real(double) :: d, p
+    real(double) :: d, p, r
     type(VECTOR) :: cen
     
-    if ((.not.(amr3d).or.(amr3d.and.cylindrical)).and.(.not.amr1d)) then
+    if (amr3d.and.cylindrical) then
        write(*,*) "distanceToNearestWall not implemented for this geometry"
        stop
     endif
@@ -1468,6 +1475,13 @@ module amr_utils_mod
        
        tVal = min(posVec%x - (cen%x - d), tVal)
        tVal = min(posVec%y - (cen%y - d), tVal)
+       tVal = min(posVec%z - (cen%z - d), tVal)
+    else if (amr2d) then
+       r = sqrt(posVec%x**2 + posVec%y**2)
+       tVal = min((cen%x + d) - r, tVal)
+       tVal = min((cen%z + d) - posVec%z, tVal)
+       
+       tVal = min(r - (cen%x - d), tVal)
        tVal = min(posVec%z - (cen%z - d), tVal)
     else if (amr1d) then
        p = modulus(posVec)

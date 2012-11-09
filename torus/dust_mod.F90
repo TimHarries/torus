@@ -1514,7 +1514,7 @@ contains
           open(20, file="albedo.dat", status="unknown", form="formatted")
           write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
                &  kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1), albedo"
-          write(20,*) "# Note that the opacities are per gram of dust"
+          write(20,*) "# Note that the opacities are per gram of gas"
           do i = 1, nLambda
              kAbs = SUM(grid%oneKappaAbs(1:nDustType,i)*grainFrac(1:nDustType))/1.e10
              kSca = SUM(grid%oneKappaSca(1:nDustType,i)*grainFrac(1:nDustType))/1.e10

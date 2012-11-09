@@ -1,5 +1,5 @@
 module discwind_class
-  
+   
   use kind_mod
   use vector_mod
   use constants_mod
@@ -16,9 +16,11 @@ module discwind_class
  
   public::  &
        &   new, &
+       &   adddiscwind, &
        &   get_parameters, &
        &   component, &
        &   in_discwind, &
+       &   all_in_discwind, &
        &   discwind_density, &
        &   discwind_Vr, &
        &   discwind_Vphi, &
@@ -31,9 +33,9 @@ module discwind_class
        &   int_discwind, &
        &   need_to_split, &
        &   need_to_split2, &
-       &   add_new_children, &
        &   fill_velocity_corners, &
        &   speed_of_sound, &
+       &   add_new_children_discwind, &
        &   escape_velocity,&
        &   temperature_disc, &
        &   mdot_on_disc,&
@@ -537,6 +539,31 @@ contains
   end function in_discwind
 
 
+  logical function all_in_discwind(thisOctal, subcell, this)
+    type(DISCWIND) :: this
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: x, y, z, d
+    type(VECTOR) :: cVec
+
+    all_in_discwind = .true.
+    cVec = subcellCentre(thisOctal,subcell)
+    d = thisOctal%subcellSize/2.d0
+
+    x = cvec%x+d; y = 0.d0; z = cvec%z+d
+    all_in_discwind = all_in_discwind.and.in_discwind(this, x, y, z)
+
+    x = cvec%x+d; y = 0.d0; z = cvec%z-d
+    all_in_discwind = all_in_discwind.and.in_discwind(this, x, y, z)
+
+    x = cvec%x-d; y = 0.d0; z = cvec%z+d
+    all_in_discwind = all_in_discwind.and.in_discwind(this, x, y, z)
+
+    x = cvec%x-d; y = 0.d0; z = cvec%z-d
+    all_in_discwind = all_in_discwind.and.in_discwind(this, x, y, z)
+
+  end function all_in_discwind
+
   !
   !
   ! Mass loss rate per unit are on the disc surface [g/s/cm^2]
@@ -635,10 +662,28 @@ contains
   !  
 
 
+  subroutine addDiscWind(grid)
+    use inputs_mod, only : DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, limitscalar, ttauriMstar
+    real(double) :: DW_Hdisc
+    type(GRIDTYPE) :: grid
+    type(DISCWIND) :: myDiscWind
+
+    call new(mydiscWind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, dble(ttauriMstar)/msol, DW_Hdisc)
+
+    call add_discwind(grid%octreeRoot, grid, myDiscWind, limitscalar)
+
+
+  end subroutine addDiscWind
+
+
+
   RECURSIVE SUBROUTINE add_discwind(thisOctal,grid,this, limitscalar)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
+    use inputs_mod, only : maxDepthAMR
     IMPLICIT NONE
 
     TYPE(OCTAL), POINTER :: thisOctal
@@ -648,53 +693,66 @@ contains
     real(double), intent(in) :: limitscalar 
     !
     !
-    TYPE(OCTAL), POINTER :: childPointer  
-    INTEGER              :: subcell, i    ! loop counters
-    logical :: splitThis
-    TYPE(VECTOR)     :: cellCentre 
-    integer :: n
+    TYPE(OCTAL), POINTER :: child
+    INTEGER              :: i, j, k    ! loop counters
+    integer :: iindex
+    integer :: isubcell
 
-    splitThis = .false.
-    subcell = 1
 
-    if (thisOctal%threeD) then
-       n = 8
-    else
-       n = 4
-    endif
 
-    
-    if (thisOctal%hasChild(subcell)) then
-       ! find the index of the new child and decend the tree
-       do i = 1, n
-          childPointer => thisOctal%child(i)
-          CALL add_discwind(childPointer,grid,this, limitscalar)
-       end do
-    else   
-       
-       ! get the size and the position of the centre of the current cell
-       cellCentre = subcellCentre(thisOctal, subcell)
-       
-       if (modulus(cellCentre) > this%Rmin) then 
-          do while ((.not.splitThis).and.(subcell <= n))
-!             IF (need_to_split(thisOctal,subcell,this, limitscalar)) then
-             IF (need_to_split2(thisOctal,subcell,this)) then
-                splitThis = .true. 
-             end IF
-             subcell = subcell + 1
-          end do
+
+    DO iSubcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%hasChild(isubcell)) cycle
+       IF (need_to_split2(thisOctal,isubcell,this).and.(thisOctal%nDepth < maxDepthAMR)) then
+
+          CALL add_new_children_discwind(thisOctal, isubcell, grid, this)
+
+          if (.not.thisOctal%hasChild(isubcell)) then
+             write(*,*) "add child failed in splitGrid"
+             do
+             enddo
+          endif
           
-          if (splitThis) then
-             ! using a routine in this module
-             CALL add_new_children(thisOctal, grid, this)
-             ! find the index of the new child and decend the tree
-             do i = 1, n
-                childPointer => thisOctal%child(i)
-                CALL add_discwind(childPointer,grid,this,limitscalar)
-             end do
-          end if
-       end if
-    end IF
+       END IF
+       
+    END DO
+
+  do i = 1, thisOctal%nChildren
+     if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
+        write(*,*) "octal children messed up"
+        do ; enddo
+        endif
+     enddo
+
+    do i = 1, thisOctal%maxChildren
+      k = -99
+      if (thisOctal%hasChild(i)) then
+        do j = 1, thisOctal%nChildren
+          if (thisOctal%indexChild(j) == i) then
+            k = j
+            exit
+          endif
+       enddo
+       if (k==-99) then
+          write(*,*) "subcell screwup"
+          do
+          enddo
+       endif
+    endif
+ enddo
+
+   if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
+      write(*,*) "nchildren screw up"
+      do;enddo
+      endif
+    
+    DO iIndex = 1, thisOctal%nChildren
+       child => thisOctal%child(iIndex)
+       CALL add_discwind(child,grid,this,limitscalar)      
+   END DO
+666  continue
+
     
   END SUBROUTINE add_discwind
 
@@ -800,132 +858,6 @@ contains
 
 
   
-  !
-  !
-  !
-  SUBROUTINE add_new_children(parent, grid, this)
-    ! adds all eight new children to an octal
-    
-    IMPLICIT NONE
-    
-    TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
-    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
-                                          !   calculate the variables stored in
-                                          !   the tree.
-    TYPE(discwind), INTENT(IN)  :: this
-    INTEGER       :: subcell           ! loop counter
-    INTEGER, SAVE :: counter = 9       ! keeps track of the current subcell label
-                                       ! - this isn't very clever. might change it. 
-    INTEGER       :: newChildIndex     ! the storage location for the new child
-    INTEGER       :: error
-
-    real(double) :: rho, x, y, z
-    TYPE(OCTAL), POINTER :: childPointer      
-
-
-    if (any(parent%hasChild(1:8))) &
-         write(*,*) "parent already has a child  [discwind_class::add_new_children]"
-
-    if (parent%threeD) then
-       parent%nChildren = 8
-       parent%maxChildren = 8
-    else
-       parent%nChildren = 4
-       parent%maxChildren = 4
-    endif
-
-    if (parent%threed) then
-       ALLOCATE(parent%child(1:8), STAT=error)
-    else
-       ALLOCATE(parent%child(1:4), STAT=error)
-    endif
-    IF ( error /= 0 ) THEN
-       PRINT *, 'Error: Allocation failed in [discwind_class::add_new_children].'
-       STOP
-    END IF
-
-    ! update the parent octal
-    
-    parent%hasChild(1:8) = .TRUE.
-    parent%indexChild(1) = 1
-    parent%indexChild(2) = 2
-    parent%indexChild(3) = 3
-    parent%indexChild(4) = 4
-    if (parent%threeD) then
-       parent%indexChild(5) = 5
-       parent%indexChild(6) = 6
-       parent%indexChild(7) = 7
-       parent%indexChild(8) = 8
-    end if
-
-    do newChildIndex = 1, parent%maxChildren
-
-       ! allocate any variables that need to be  
-       if (.not.grid%oneKappa) then
-          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nOpacity))
-          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nOpacity))
-          parent%child(newChildIndex)%kappaAbs(:,:) = 1.0e-30
-          parent%child(newChildIndex)%kappaSca(:,:) = 1.0e-30
-       end if
-
-       ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
-       NULLIFY(parent%child(newChildIndex)%child)
-
-       ! set up the new child's variables
-       parent%child(newChildIndex)%threed = parent%threed
-       parent%child(newChildIndex)%twoD = parent%twod
-       parent%child(newChildIndex)%maxChildren = parent%maxChildren
-       parent%child(newChildIndex)%parent => parent
-       parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
-       parent%child(newChildIndex)%hasChild = .false.
-       parent%child(newChildIndex)%nChildren = 0
-       parent%child(newChildIndex)%indexChild = -999 ! values are undefined
-       parent%child(newChildIndex)%nDepth = parent%nDepth + 1
-       parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
-       parent%child(newChildIndex)%probDistLine = 0.0
-       parent%child(newChildIndex)%probDistCont = 0.0
-       parent%child(newChildIndex)%biasLine3D = 1.0 
-       parent%child(newChildIndex)%biasCont3D = 1.0 
-       parent%child(newChildIndex)%chiLine = 1.e-30
-       parent%child(newChildIndex)%etaLine = 1.e-30
-       parent%child(newChildIndex)%etaCont = 1.e-30
-       parent%child(newChildIndex)%N = 1.e-10
-       parent%child(newChildIndex)%Ne = 1.e-10
-       parent%child(newChildIndex)%changed = .false.
-!       parent%child(newChildIndex)%inFlow = .true.
-       x = parent%child(newChildIndex)%centre%x
-       y = parent%child(newChildIndex)%centre%y
-       z = parent%child(newChildIndex)%centre%z
-       parent%child(newChildIndex)%inFlow = in_discwind(this, x, y, z, parent%subcellSize / 2.0_oc)
-       parent%child(newChildIndex)%temperature = real(this%Twind)
-
-
-       ! put some data in the eight subcells of the new child
-       DO subcell = 1, parent%maxChildren
-          childPointer => parent%child(newChildIndex)
-          rho =ave_discwind_density(childPointer, subcell, this)
-          parent%child(newChildIndex)%rho(subcell) = rho 
-          parent%child(newChildIndex)%velocity(subcell)  &
-               = discwind_velocity(this, childPointer%Centre)
-          if (subcell == parent%maxChildren) call fill_velocity_corners(this, childPointer)
-          parent%child(newChildIndex)%label(subcell) = counter
-          counter = counter + 1
-
-       END DO
- 
-    enddo
-
-    ! check for a new maximum depth 
-    IF (parent%child(1)%nDepth > grid%maxDepth) THEN
-       grid%maxDepth = parent%child(1)%nDepth
-       grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-            2.0_oc**REAL(grid%maxDepth,kind=oct)
-       ! we store the value which is half the size of the 
-       !   smallest subcell because this is more useful for later
-       !   calculations.
-    END IF
-    
-  end SUBROUTINE add_new_children
 
   real(double) function ave_discwind_density_slow(thisOctal,subcell, this)
 
@@ -1260,6 +1192,122 @@ contains
 
 
   END SUBROUTINE fill_velocity_corners
+
+  SUBROUTINE add_new_children_discwind(parent, ichild, grid, this)
+    use memory_mod
+    use amr_mod, only : growChildArray, allocateOctalAttributes
+    ! adds all eight new children to an octal
+    
+    IMPLICIT NONE
+    type(VECTOR) :: rVec
+    TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
+    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
+                                          !   calculate the variables stored in
+                                          !   the tree.
+    TYPE(discwind), INTENT(IN)  :: this
+    INTEGER       :: subcell           ! loop counter
+                                       ! - this isn't very clever. might change it. 
+    INTEGER       :: newChildIndex     ! the storage location for the new child
+    INTEGER       :: iChild
+    integer :: parentSubcell
+    real(double) :: x, y, z
+    integer :: nChildren
+    TYPE(OCTAL), POINTER :: thisOctal
+
+    nChildren = parent%nChildren
+
+    parentSubcell = iChild
+
+    ! safety checks of child array
+    IF ( ASSOCIATED(parent%child) ) THEN
+      IF ( ( nChildren == 0 ) .OR.                  &
+           ( nChildren /= SIZE(parent%child) ) ) THEN
+        PRINT *, 'Panic: in addNewChild, %child array wrong size'
+        PRINT *, 'nChildren:',nChildren,' SIZE %child:', SIZE(parent%child)
+        STOP
+      END IF
+    END IF
+    IF ( (.NOT. ASSOCIATED(parent%child)) .AND. (nChildren > 0) ) THEN
+      PRINT *, 'Panic: in addNewChild, %child array wrong size'
+      PRINT *, 'nChildren:',nChildren,' ASSOCIATED %child:', ASSOCIATED(parent%child)
+      STOP
+    END IF
+
+    ! check that new child does not already exist
+    IF ( parent%hasChild(iChild) .EQV. .TRUE. ) THEN
+      PRINT *, 'Panic: in addNewChild, attempted to add a child ',&
+               '       that already exists'
+      STOP
+    ENDIF
+
+!    call interpFromParent(subcellCentre(parent, iChild, parent%subcellSize, &
+!         grid, temperature, density, dusttypeFraction)
+
+    CALL growChildArray(parent, nNewChildren=1, grid=grid )
+
+    ! update the bookkeeping
+    nChildren = nChildren + 1
+    newChildIndex = nChildren
+
+    ! update the parent octal
+    parent%nChildren = nChildren
+    parent%hasChild(iChild) = .TRUE.
+    parent%indexChild(newChildIndex) = iChild
+
+    NULLIFY(parent%child(newChildIndex)%child)
+
+    parent%child(newChildIndex)%nDepth = parent%nDepth + 1
+    ! set up the new child's variables
+    parent%child(newChildIndex)%threeD = parent%threeD
+    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%oneD = parent%oneD
+    parent%child(newChildIndex)%maxChildren = parent%maxChildren
+    parent%child(newChildIndex)%cylindrical = parent%cylindrical
+    
+
+    parent%child(newChildIndex)%inFlow = parent%inFlow
+    parent%child(newChildIndex)%parent => parent
+    parent%child(newChildIndex)%parentSubcell = iChild
+    parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
+    parent%child(newChildIndex)%hasChild = .false.
+    parent%child(newChildIndex)%nChildren = 0
+    parent%child(newChildIndex)%indexChild = -999 ! values are undefined
+    parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
+
+    parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
+
+    parent%child(newChildIndex)%xMax = parent%child(newChildIndex)%centre%x + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMax = parent%child(newChildIndex)%centre%y + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMax = parent%child(newChildIndex)%centre%z + parent%child(newChildIndex)%subcellSize
+
+
+    thisOctal => parent%child(newChildIndex)
+    call allocateOctalAttributes(grid, thisOctal)
+
+    globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
+
+    call fill_velocity_corners(this, thisOctal)
+
+
+    do subcell = 1, parent%maxChildren
+       thisOctal%temperature(subcell) = parent%temperature(parentSubcell)
+       thisOctal%rho(subcell) = parent%rho(parentSubcell)
+       thisOctal%velocity(subcell) = parent%velocity(parentSubcell)
+
+       rVec = subcellCentre(thisOctal, subcell)
+       x = rVec%x
+       y = rVec%y
+       z = rVec%z
+       thisOctal%inFlow(subcell) = all_in_discwind(thisOctal, subcell, this)
+       if (thisOctal%inflow(subcell)) then
+          thisOctal%temperature(subcell) = real(this%Twind)
+          thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, this)
+          thisOctal%velocity(subcell) = discwind_velocity(this, vector(x,y,z))
+       endif
+    enddo
+  end SUBROUTINE add_new_children_discwind
 
 
 

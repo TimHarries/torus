@@ -104,8 +104,10 @@
   logical :: dumpRadial               ! write a text radial cut each dump
   logical :: radiationPressure        ! use radiation pressure terms
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
+  real(double) :: rhoFloor            !min density in grid
   real(double) :: etaViscosity        !Artificial viscosity parameter
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
+  logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
@@ -753,6 +755,7 @@
   logical           :: debug
   logical           :: suppressWarnings
   logical           :: useBinaryXMLVTKfiles
+  logical           :: vtkIncludeGhosts ! include ghosts in VTK output
   logical           :: parallelVTUFiles
   character(len=80) :: absolutePath
   integer(bigInt)   :: maxMemoryAvailable

@@ -249,7 +249,7 @@ contains
   end subroutine findMassOverAllThreads
     
   recursive subroutine findTotalMassMPI(thisOctal, totalMass, minRho, maxRho)
-    use inputs_mod, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: totalMass
@@ -275,7 +275,12 @@ contains
 
                 if (hydrodynamics) then
                    if (thisOctal%twoD) then
-                      dv = thisOctal%subcellSize**2
+                      if (cylindricalHydro) then
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                      else
+                         dv = thisOctal%subcellSize**2
+                      endif
                    else if (thisOctal%oned) then
                       dv = thisOctal%subcellSize                      
 
@@ -365,6 +370,7 @@ contains
 
   subroutine findEnergyOverAllThreads(grid, energy)
     use mpi
+    use inputs_mod, only : cylindricalHydro
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: energy
     real(double), allocatable :: energyOnThreads(:), temp(:)
@@ -388,6 +394,7 @@ contains
   end subroutine findEnergyOverAllThreads
     
   recursive subroutine findTotalEnergyMPI(thisOctal, totalEnergy)
+    use inputs_mod, only : cylindricalHydro
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: totalEnergy
@@ -411,7 +418,11 @@ contains
 !                   dv = cellVolume(thisOctal, subcell) * 1.d30
                    dv = thisOctal%subcellSize**3
                 else if (thisOctal%twoD) then
-                   dv = thisOctal%subcellSize**2
+                   if (cylindricalhydro) then
+                      dv = cellVolume(thisOctal, subcell) * 1.d30
+                   else
+                      dv = thisOctal%subcellSize**2
+                   endif
                 else if (thisOctal%oneD) then
                    dv = thisOctal%subcellSize
                 endif
@@ -2183,7 +2194,7 @@ contains
     end do
   end subroutine columnAlongPathAMR
 
-  subroutine countSubcellsMPI(grid, nSubcells, nSubcellArray)
+  subroutine countSubcellsMPI(grid, nSubcells, nSubcellArray, includeGhosts)
     use mpi
     type(GRIDTYPE) :: grid
     integer :: nSubcells
@@ -2194,16 +2205,20 @@ contains
     integer :: myRank, nThreads
     integer :: tag = 81
     integer :: status(MPI_STATUS_SIZE)
-
+    logical, optional :: includeGhosts
+    logical :: doIncludeGhosts
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     call MPI_COMM_RANK(amrCOMMUNICATOR, myRank, ierr)
     call MPI_COMM_SIZE(amrCOMMUNICATOR, nThreads, ierr)
 
     allocate(iArray(1:nThreads))
 
+    doIncludeGhosts = .true.
+    if (present(IncludeGhosts)) doIncludeGhosts = includeGhosts
+
     nSubcells = 0
     if (myrank == 0) then
-       call countVoxelsMPI(grid%octreeRoot,nVoxels)
+       call countVoxelsMPI(grid%octreeRoot,nVoxels, doIncludeGhosts)
        nSubcells = nSubcells + nVoxels
        iArray(1) = nSubcells
        do iThread = 1, nThreads - 1
@@ -2212,7 +2227,7 @@ contains
           nSubcells = nSubcells + n
        end do
     else
-       call countVoxelsMPI(grid%octreeRoot,nVoxels)
+       call countVoxelsMPI(grid%octreeRoot,nVoxels, doIncludeGhosts)
        call MPI_SEND(nVoxels, 1, MPI_INTEGER, 0, tag, amrCOMMUNICATOR, ierr)
     endif
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -2227,7 +2242,7 @@ contains
 
   end subroutine countSubcellsMPI
 
-  SUBROUTINE countVoxelsMPI(thisOctal, nVoxels)  
+  SUBROUTINE countVoxelsMPI(thisOctal, nVoxels, includeGhosts)  
     ! count the number of octals in the current section of the grid.
     ! also counts the number of unique volume elements (voxels) i.e.
     !   those subcells that are not subdivided
@@ -2236,19 +2251,21 @@ contains
 
     TYPE(OCTAL), POINTER  :: thisOctal 
     INTEGER,INTENT(INOUT) :: nVoxels   ! number of childless subcells
-    
+    logical :: includeGhosts
     nVoxels = 0
-    CALL countVoxelsPrivate(thisOctal, nVoxels)
+    CALL countVoxelsPrivate(thisOctal, nVoxels, includeGhosts)
     
     CONTAINS
     
-      RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal, nVoxels)
+      RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal, nVoxels, includeGhosts)
         use mpi
+        use inputs_mod, only : hydrodynamics
         integer :: nVoxels
         integer :: subcell
         TYPE(OCTAL), POINTER  :: thisOctal 
         TYPE(OCTAL), POINTER  :: child
         INTEGER :: i
+        logical :: includeGhosts
 
 
 
@@ -2258,14 +2275,16 @@ contains
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call countVoxelsPrivate(child, nVoxels)
+                  call countVoxelsPrivate(child, nVoxels, includeGhosts)
                   exit
                end if
             end do
          else
 
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-
+            if (hydrodynamics) then
+               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts)) cycle
+            endif
             nVoxels = nVoxels + 1
          endif
       enddo

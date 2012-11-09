@@ -125,6 +125,7 @@ contains
   end function inFlowMahdaviSingle
 
 
+
   type (VECTOR) function velocityMahdavi(point)
     use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar

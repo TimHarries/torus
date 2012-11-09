@@ -72,7 +72,7 @@ contains
 #ifdef MPI
       use mpi
 #endif
-
+      use inputs_mod, only : vtkIncludeGhosts
       type(OCTAL), pointer :: thisOctal, child
       type(GRIDTYPE) :: grid
       integer :: lunit
@@ -95,6 +95,7 @@ contains
 
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
+            if (thisOctal%ghostCell(subcell).and.(.not.vtkincludeGhosts)) cycle
 #endif
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then
@@ -180,25 +181,27 @@ contains
     end subroutine recursiveWritePoints
   end subroutine writePoints
 
-  subroutine getPoints(grid, nPoints, points)
+  subroutine getPoints(grid, nPoints, points, includeGhosts)
     type(GRIDTYPE) :: grid
     real :: points(:,:)
     integer(bigint) :: nPoints
+    logical :: includeGhosts
 
     nPoints = 0
 
-    call recursiveGetPoints(grid, grid%octreeRoot, nPoints, Points)
+    call recursiveGetPoints(grid, grid%octreeRoot, nPoints, Points, includeGhosts)
 
   contains
 
-    recursive subroutine recursiveGetPoints(grid, thisOctal,nPoints, points)
+    recursive subroutine recursiveGetPoints(grid, thisOctal,nPoints, points, includeGhosts)
       use octal_mod, only: returndPhi
+      use inputs_mod, only : hydrodynamics
 #ifdef MPI
       use mpi
 #endif
 
       type(OCTAL), pointer :: thisOctal, child
-
+      logical :: includeGhosts
       type(GRIDTYPE) :: grid
       real :: points(:,:)
       integer(bigint) :: nPoints
@@ -213,7 +216,7 @@ contains
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call recursiveGetPoints(grid, child, nPoints, points)
+                  call recursiveGetPoints(grid, child, nPoints, points, includeGhosts)
                   exit
                end if
             end do
@@ -221,6 +224,9 @@ contains
 
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
+            if (hydrodynamics) then
+               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts))cycle
+            endif
 #endif
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then
@@ -402,7 +408,7 @@ contains
 #ifdef MPI
       use mpi
 #endif
-
+      use inputs_mod, only : vtkIncludeGhosts, hydrodynamics
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
       type(GRIDTYPE) :: grid
@@ -424,6 +430,10 @@ contains
 
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
+
+            if (hydrodynamics) then
+               if (thisOctal%ghostCell(subcell).and.(.not.vtkincludeGhosts))cycle
+            endif
 #endif
 
             if (.not.xml) then
@@ -535,7 +545,7 @@ contains
 #ifdef MPI
       use mpi
 #endif
-
+      use inputs_mod, only : vtkIncludeGhosts, hydrodynamics
       type(OCTAL), pointer :: thisOctal, child
 
       type(GRIDTYPE) :: grid
@@ -557,6 +567,10 @@ contains
 
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
+            if (hydrodynamics) then
+               if (thisOctal%ghostCell(subcell).and.(.not.vtkincludeGhosts))cycle
+            endif
+
 #endif
 
 
@@ -922,7 +936,7 @@ contains
                   else
                      write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
                           real(thisOctal%rhow(subcell)/thisOctal%rho(subcell)), &
-                          real(thisOctal%rhov(subcell)/thisOctal%rho(subcell))
+                          0.
                   endif
 
                case("radmom")
@@ -2187,6 +2201,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef MPI
   use mpi
 #endif
+  use inputs_mod, only : vtkIncludeGhosts
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
   integer :: nValueType
@@ -2293,7 +2308,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   endif
 
 
-  call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
+  call countVoxels(grid%octreeRoot, nOctals, nVoxels)
   if (grid%octreeRoot%cylindrical) then
      nVoxels = 0
      call countVoxelsCylindrical(grid%octreeRoot, nVoxels)
@@ -2305,7 +2320,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   if (grid%splitOverMpi) then
      allocate(nSubcellArray(1:nHydroThreadsGlobal))
      if (myrankGlobal /= 0) then
-        call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray)
+        call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray, includeGhosts=vtkIncludeGhosts)
         ncells = nSubcellArray(myRankGlobal)
      endif
      deallocate(nSubcellArray)
@@ -2359,7 +2374,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
   if (writeheader.and.(.not.grid%splitoverMPI)) then
      allocate(points(1:3,1:nPoints))
-     call getPoints(grid, nPoints, points)
+     call getPoints(grid, nPoints, points, vtkincludeGhosts)
      allocate(float32(1:(nPointsGlobal*3)))
      float32 = RESHAPE(points, (/SIZE(float32)/))
 !     call base64encode(writeheader, pstring, nString, float32=float32)
@@ -2379,7 +2394,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      close(lunit)
   else if (grid%splitOverMPI) then
 #ifdef MPI
-     call writePointsDecomposed(grid, vtkFilename, lunit, nPoints)
+     call writePointsDecomposed(grid, vtkFilename, lunit, nPoints, vtkincludeGhosts)
 #endif
   endif
 
@@ -2527,7 +2542,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
         if (writeheader.and.(.not.grid%splitOverMPI)) then
            allocate(rArray(1:1, 1:nCellsGlobal))
-           call getValues(grid, valueType(iValues), rarray)
+           call getValues(grid, valueType(iValues), rarray, includeGhosts=vtkIncludeGhosts)
            allocate(float32(1:nCellsGlobal))
            float32 = rarray(1,1:nCellsGlobal)
 !           call base64encode(writeheader, pstring, nString, float32=float32)
@@ -2570,7 +2585,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
         if (writeheader.and.(.not.grid%splitOverMPI)) then
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType(iValues), rarray)
+           call getValues(grid, valueType(iValues), rarray, includeGhosts=vtkIncludeGhosts)
            allocate(float32(1:nCellsGlobal*3))
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
 !           call base64encode(writeheader,pstring, nString, float32=float32)
@@ -2624,21 +2639,23 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 end subroutine writeXMLVtkFileAMR
 
 
-  subroutine getValues(grid, valuetype, rarray)
+  subroutine getValues(grid, valuetype, rarray, includeGhosts)
     type(GRIDTYPE) :: grid
     character(len=*) :: valueType
     real :: rArray(:,:)
     integer :: n
+    logical :: includeGhosts
 
     n = 0 
 
-    call getValuesRecursive(grid, grid%octreeRoot, valueType, rArray, n)
+    call getValuesRecursive(grid, grid%octreeRoot, valueType, rArray, n, includeGhosts)
 
   end subroutine getValues
 
-    recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n)
-      use inputs_mod, only : lambdaSmooth
+    recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n, includeGhosts)
+      use inputs_mod, only : lambdaSmooth, hydrodynamics
       type(OCTAL), pointer :: thisOctal, child
+      logical :: includeGhosts
       type(GRIDTYPE) :: grid
       character(len=*) :: valueType
       real :: rArray(:,:)
@@ -2657,7 +2674,7 @@ end subroutine writeXMLVtkFileAMR
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call getValuesRecursive(grid, child, valueType, rArray, n)
+                  call getValuesRecursive(grid, child, valueType, rArray, n, includeGhosts)
                   exit
                end if
             end do
@@ -2665,6 +2682,9 @@ end subroutine writeXMLVtkFileAMR
 
 #ifdef MPI
             if ( (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) .and. grid%splitOverMPI ) cycle
+            if (hydrodynamics) then
+               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts)) cycle
+            endif
 #endif
 
 
@@ -2860,7 +2880,7 @@ end subroutine writeXMLVtkFileAMR
                   else
                      rArray(1, n) = real(real(returnPhysicalUnitSpeed(thisOctal%rhou(subcell)/thisOctal%rho(subcell))/1.e5))
                      rArray(2, n) = real(returnPhysicalUnitSpeed(thisOctal%rhow(subcell)/thisOctal%rho(subcell))/1.e5)
-                     rArray(3, n) = real(returnPhysicalUnitSpeed(thisOctal%rhov(subcell)/thisOctal%rho(subcell))/1.e5)
+                     rArray(3, n) = 0.
                   endif
 
                case("radmom")
@@ -3084,6 +3104,7 @@ end subroutine writeXMLVtkFileAMR
 #ifdef MPI
   subroutine writeDomainDecomposed(valueType, grid, vtkFilename, lunit, nCells)
     use mpi
+    use inputs_mod, only : vtkIncludeGhosts
     character(len=*) :: valueType, vtkFilename
     type(GRIDTYPE) :: grid
     integer :: nCells
@@ -3119,12 +3140,12 @@ end subroutine writeXMLVtkFileAMR
         if (scalarValue) then
            allocate(float32(1:nCells))
            allocate(rArray(1:1, 1:nCells))
-           call getValues(grid, valueType, rarray(1:1,1:nCells))
+           call getValues(grid, valueType, rarray(1:1,1:nCells), includeGhosts=vtkIncludeGhosts)
            float32(1:nCells) = RESHAPE(rArray(1:1, 1:nCells),(/ncells/))
         else
            allocate(float32(1:nCells*3))
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType, rarray)
+           call getValues(grid, valueType, rarray, includeGhosts=vtkIncludeGhosts)
            float32(1:nCells*3) = RESHAPE(rarray, (/SIZE(float32(1:ncells*3))/))
         endif
         call convertandcompressInSections(iBytes, iHeader, farray32=float32, firstTime=.true.)
@@ -3179,13 +3200,13 @@ end subroutine writeXMLVtkFileAMR
         if (scalarValue) then
            allocate(float32(1:nCells))
            allocate(rArray(1:1, 1:nCells))
-           call getValues(grid, valueType, rarray(1:1,1:nCells))
+           call getValues(grid, valueType, rarray(1:1,1:nCells), includeGhosts=vtkIncludeghosts)
            float32(1:nCells) = reshape(rArray(1:1, 1:nCells),(/ncells/))
            j = nCells
         else
            allocate(float32(1:nCells*3))
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType, rarray)
+           call getValues(grid, valueType, rarray, vtkIncludeGhosts)
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
            j = ncells*3
         endif
@@ -3197,10 +3218,11 @@ end subroutine writeXMLVtkFileAMR
      call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writeDomainDecomposed
 
-  subroutine writePointsDecomposed(grid, vtkFilename, lunit, nPoints)
+  subroutine writePointsDecomposed(grid, vtkFilename, lunit, nPoints, includeGhosts)
     use mpi
     use timing
     character(len=*) ::vtkFilename
+    logical :: includeGhosts
     type(GRIDTYPE) :: grid
     integer(bigint) :: nPoints
     integer :: lunit
@@ -3223,7 +3245,7 @@ end subroutine writeXMLVtkFileAMR
 
         allocate(float32(1:nPoints*3))
         allocate(rArray(1:3, 1:nPoints))
-        call getPoints(grid, nPoints, rarray)
+        call getPoints(grid, nPoints, rarray, includeGhosts)
         float32(1:nPoints*3) = RESHAPE(rarray(1:3,1:nPoints), (/SIZE(float32(1:nPoints*3))/))
         call convertandcompressInSections(iBytes, iHeader, farray32=float32,firstTime=.true.)
         deallocate(float32, rArray)
@@ -3278,7 +3300,7 @@ end subroutine writeXMLVtkFileAMR
         allocate(float32(1:int(nPoints,kind=bigint)*3))
         allocate(rArray(1:3, 1:int(nPoints,kind=bigint)))
 
-        call getPoints(grid, nPoints, rarray)
+        call getPoints(grid, nPoints, rarray, includeGhosts)
         float32 = RESHAPE(rarray, (/SIZE(float32)/))
         j = int(nPoints,kind=bigint)*3
         call MPI_SEND(j, 1, MPI_INTEGER8, 1, tag, MPI_COMM_WORLD, ierr)
@@ -3296,6 +3318,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 #ifdef MPI
   use mpi
 #endif
+  use inputs_mod, only : vtkIncludeGhosts
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
   integer :: nValueType
@@ -3412,7 +3435,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   if (grid%splitOverMpi) then
      allocate(nSubcellArray(1:nHydroThreadsGlobal))
      if (myrankGlobal /= 0) then
-        call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray)
+        call countSubcellsMPI(grid, nVoxels, nSubcellArray=nSubcellArray, includeGhosts=vtkIncludeGhosts)
         ncells = nSubcellArray(myRankGlobal)
         deallocate(nSubcellArray)
      endif
@@ -3483,7 +3506,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   allocate(points(1:3, 1:nPoints))
   allocate(connectivity(1:nPoints))
 
-  call getUniquePoints(grid, nPoints, points, connectivity, nUniquePoints)
+  call getUniquePoints(grid, nPoints, points, connectivity, nUniquePoints, includeGhosts=vtkIncludeGhosts)
 
 
   if (writeheader) then
@@ -3624,7 +3647,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
         if (writeheader) then
            allocate(rArray(1:1, 1:nCells))
-           call getValues(grid, valueType(iValues), rarray)
+           call getValues(grid, valueType(iValues), rarray, vtkIncludeGhosts)
            allocate(float32(1:nCells))
            float32 = rarray(1,1:nCells)
 !           call base64encode(writeheader, pstring, nString, float32=float32)
@@ -3663,7 +3686,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
         if (writeheader) then
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType(iValues), rarray)
+           call getValues(grid, valueType(iValues), rarray, includeGhosts=vtkIncludeGhosts)
            allocate(float32(1:nCells*3))
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
 !           call base64encode(writeheader,pstring, nString, float32=float32)
@@ -3713,24 +3736,26 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 end subroutine writeParallelXMLVtkFileAMR
 
 
-  subroutine getUniquePoints(grid, nPoints, points, connectivity, nUniquePoints)
+  subroutine getUniquePoints(grid, nPoints, points, connectivity, nUniquePoints,includeGhosts)
     type(GRIDTYPE) :: grid
     real :: points(:,:)
     integer(bigint) :: connectivity(:)
     integer(bigint) :: nPoints, nUniquePoints
+    logical :: includeGhosts
 
     nPoints = 0
     nUniquePoints = 0
 
-    call recursiveGetUniquePoints(grid, grid%octreeRoot, nPoints, Points, connectivity, nUniquePoints)
+    call recursiveGetUniquePoints(grid, grid%octreeRoot, nPoints, Points, connectivity, nUniquePoints, includeGhosts)
 
   contains
 
-    recursive subroutine recursiveGetUniquePoints(grid, thisOctal, nPoints, points, connectivity, nUniquePoints)
+    recursive subroutine recursiveGetUniquePoints(grid, thisOctal, nPoints, points, connectivity, nUniquePoints, includeGhosts)
       use octal_mod, only: returndPhi
 #ifdef MPI
       use mpi
 #endif
+      use inputs_mod, only : hydrodynamics
 
       type(OCTAL), pointer :: thisOctal, child
       integer(bigint) :: connectivity(:), nUniquePoints
@@ -3743,6 +3768,8 @@ end subroutine writeParallelXMLVtkFileAMR
       integer :: npointsInCell
       real :: pointCell(3, 8)
       integer :: nPhi, iPhi
+      logical :: includeGhosts
+
       type(VECTOR) :: rVec
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
@@ -3750,7 +3777,7 @@ end subroutine writeParallelXMLVtkFileAMR
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call recursiveGetUniquePoints(grid, child, nPoints, points, connectivity, nUniquePoints)
+                  call recursiveGetUniquePoints(grid, child, nPoints, points, connectivity, nUniquePoints, includeGhosts)
                   exit
                end if
             end do
@@ -3758,6 +3785,9 @@ end subroutine writeParallelXMLVtkFileAMR
 
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
+            if (hydrodynamics) then
+               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts)) cycle
+            endif
 #endif
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then

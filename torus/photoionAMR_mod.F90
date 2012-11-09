@@ -60,7 +60,7 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles
+    use inputs_mod, only : addSinkParticles, cylindricalHydro
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -69,7 +69,7 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV
+         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
@@ -98,11 +98,13 @@ contains
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
-    logical :: noPhoto=.false.
+    logical :: noPhoto=.false., tmpCylindricalHydro
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
     integer :: optID
+
+    tmpCylindricalHydro = cylindricalHydro
 
     dumpThisTime = .false.
 
@@ -310,8 +312,10 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
+                cylindricalHydro = .false.
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
+                cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
@@ -319,8 +323,10 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
+                cylindricalHydro = .false.
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
+                cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
              endif
              
@@ -583,9 +589,12 @@ contains
                 endif
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
+                cylindricalHydro = .false.
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
-               looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
-          call writeInfo("Done",TRIVIAL)
+               looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack) 
+          cylindricalHydro = tmpCylindricalHydro
+
+         call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
        else
           timeSinceLastRecomb = timeSinceLastRecomb + dt
@@ -622,7 +631,13 @@ contains
 !            "hydrovelocity","sourceCont   ","pressure     ", &
 !            "mpithread    "/))
 
-       if (myrankGlobal /= 0) call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+       if (myrankGlobal /= 0) then
+          if (cylindricalHydro) then
+             call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          else
+             call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+          endif
+       endif
 
 
 !       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
@@ -734,7 +749,7 @@ contains
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         "/))
+               "diff         ", "phi         "/))
 
 
 
@@ -2385,7 +2400,7 @@ end subroutine radiationHydro
           call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
           tempCell = RESHAPE(temp2,SHAPE(tempCell))
           do iOctal = 1, nOctal
-             octalArray(iOctal)%content%temperature(:) = tempCell(iOctal,:)
+             octalArray(iOctal)%content%temperature(1:maxChild) = tempCell(iOctal,1:maxChild)
           enddo
           deallocate(temp1, temp2, tempCell)
           allocate(temp1(1:(nOctal*maxChild*grid%nIon)), temp2(1:nOctal*maxChild*grid%nion))
@@ -2393,7 +2408,7 @@ end subroutine radiationHydro
           call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
           tempIon = RESHAPE(temp2,SHAPE(tempIon))
           do iOctal = 1, nOctal
-             octalArray(iOctal)%content%ionFrac(:,:) = tempIon(iOctal,:,:)
+             octalArray(iOctal)%content%ionFrac(1:maxChild,:) = tempIon(iOctal,1:maxChild,:)
           enddo
           deallocate(temp1, temp2, tempIon)
           call resetNe(grid%octreeRoot)
@@ -2931,7 +2946,7 @@ end subroutine setDiffusionZoneOnRadius
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, &
      bigPhotonPacket)
-  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest
+  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -2992,7 +3007,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     call randomNumberGenerator(getDouble=r)
     tau = -log(1.0-r)
 
-!    write(*,*) "calling distancetocellboundary with "
+!    write(*,*) "calling distancetocellboundary with ",cylindricalHydro
 !    write(*,*) "rVec ",rVec
 !    write(*,*) "uHat ",uHat
     call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
@@ -3144,7 +3159,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! update the distance grid
 
        if (.not.outOfTime)  then
-          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, octVec)
        endif
          
        if (stillinGrid) then
@@ -3238,7 +3253,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then 
              call updateGrid(grid, thisOctal, subcell, thisFreq, &
-                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat)
+                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, octVec)
           endif
 
           oldOctal => thisOctal
@@ -4520,11 +4535,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat)
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
     use inputs_mod,only : dustOnly, radPressureTest
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
-    type(VECTOR) :: uHat
+    type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat
     integer :: nFreq, iFreq
     real(double) :: freq(:)
     integer :: subcell
@@ -4599,9 +4614,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
          + dble(distance) * dble(kappaabsdust) * photonPacketWeight
 
+    uHatDash = uHat
+    if (thisOctal%twoD) then
+       rHat = VECTOR(rVec%x, rVec%y, 0.d0)
+       call normalize(rHat)
+       zHat = VECTOR(0.d0, 0.d0, 1.d0)
+       uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+    endif
     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
-         + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHat
-
+         + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
     if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
   end subroutine updategrid

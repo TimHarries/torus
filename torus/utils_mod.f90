@@ -168,6 +168,7 @@ contains
        ok = .false.
        x1 = -b/(2.d0*a)
        x2 = -b/(2.d0*a)
+       y = sqrt(y)
        stop
     endif
 
