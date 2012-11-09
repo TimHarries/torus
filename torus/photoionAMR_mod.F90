@@ -3159,7 +3159,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! update the distance grid
 
        if (.not.outOfTime)  then
-          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, octVec)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, &sourcePhoton, uHat, octVec)
        endif
          
        if (stillinGrid) then
@@ -4535,7 +4535,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, &
+       photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
     use inputs_mod,only : dustOnly, radPressureTest
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
