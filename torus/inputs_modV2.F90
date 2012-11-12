@@ -2207,10 +2207,10 @@ contains
     real :: aspectRatio, thisAspectRatio
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
-         "Number of photons in image: ","(a,i8,a)", 10000, ok, .true.)
+         "Number of photons in image: ","(a,i9,a)", 10000, ok, .true.)
 
     call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
-         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+         "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
@@ -2272,7 +2272,7 @@ contains
          "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
-         "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", 6562.8, ok, .false.)
+         "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", 6562.8, ok, .false.)
 
     if (nimage == 1) then
 
@@ -2317,7 +2317,7 @@ contains
                "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
           write(keyword,'(a)') "lambdaimage"//iChar
           call getReal(keyword, thisLambdaImage, 1., cLine, fLine, nLines, &
-               "Wavelength for monochromatic image (A):","(a,f8.1,1x,a)", lambdaImage, ok, .false.)
+               "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", lambdaImage, ok, .false.)
 
           if (photoionPhysics) then
              write(keyword,'(a)') "imagetype"//iChar
@@ -2458,7 +2458,7 @@ contains
          "Number of velocity bins: ", "(a,i3,1x,a)", 1, ok, .false.)
 
     call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
-         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+         "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nphase", nPhase, cLine, fLine, nLines, &
          "Number of phases: ", "(a,i3,1x,a)", 1, ok, .false.)

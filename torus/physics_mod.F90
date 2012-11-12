@@ -708,7 +708,8 @@ contains
 #endif
 #endif
      use source_mod, only : globalNsource, globalSourceArray
-     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI
+     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI, &
+          hosokawaTracks, nbodyPhysics
 #ifdef MPI
      use mpi
 #endif
@@ -750,7 +751,7 @@ contains
         if (splitOverMPI) call gatherSinks()
 #endif 
 #endif
-        call setSourceArrayProperties(globalsourceArray, globalnSource)
+        if (nbodyPhysics.and.hosokawaTracks) call setSourceArrayProperties(globalsourceArray, globalnSource)
         call writeSourceList(globalsourceArray, globalnSource)
      endif
 
