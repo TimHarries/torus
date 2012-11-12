@@ -45,13 +45,13 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
 
 ! Variables used when linking to sph code
   integer, intent(in)   :: b_idim, b_npart, b_nptmass
-  integer*1, intent(in) :: b_iphase(b_idim)
-  real*8, intent(in)    :: b_xyzmh(5,b_idim)
-  real*4, intent(in)    :: b_rho(b_idim)
-  real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time
+  integer(kind=1), intent(in) :: b_iphase(b_idim)
+  real(kind=8), intent(in)    :: b_xyzmh(5,b_idim)
+  real(kind=4), intent(in)    :: b_rho(b_idim)
+  real(kind=8), intent(in)    :: b_udist, b_umass, b_utime, b_time
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
-  real*8, intent(inout) :: b_temp(b_idim)   ! Temperature of gas particles
-  real*8, intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
+  real(kind=8), intent(inout) :: b_temp(b_idim)   ! Temperature of gas particles
+  real(kind=8), intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
   character(len=11), intent(in) :: file_tag
 
 #ifdef MPI
@@ -165,15 +165,15 @@ end subroutine torus
 
 ! Arguments 
     integer, intent(in)   :: b_idim, b_npart
-    integer*1, intent(in) :: b_iphase(b_idim)
-    real*8, intent(in)    :: b_xyzmh(5,b_idim)
-    real*8, intent(inout) :: b_temp(b_idim)
+    integer(kind=1), intent(in) :: b_iphase(b_idim)
+    real(kind=8), intent(in)    :: b_xyzmh(5,b_idim)
+    real(kind=8), intent(inout) :: b_temp(b_idim)
     type(GRIDTYPE), intent(in) :: grid
 
 ! Local variables
     character(len=80) :: message
     integer      :: iiigas, i
-    real*8       :: xgas, ygas, zgas
+    real(kind=8)       :: xgas, ygas, zgas
     real(double) :: sphDistFac
     real         :: tgas
     real         :: deltaT, sum_deltaT, mean_deltaT, max_deltaT
@@ -199,7 +199,7 @@ end subroutine torus
              positionVec = VECTOR(xgas,ygas,zgas)
              call amrGridValues(grid%octreeRoot, positionVec, temperature=tgas, grid=grid)
 ! 2.2 Calculate statistics of temperature change
-             deltaT     = tgas - b_temp(i)
+             deltaT     = tgas - real(b_temp(i),kind=si)
              sum_deltaT = sum_deltaT + deltaT
              max_deltaT = MAX(max_deltaT, deltaT)
 ! 2.3 Update the gas particle temperature to pass back to sph code
