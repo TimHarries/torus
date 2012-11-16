@@ -558,7 +558,7 @@ module amr_utils_mod
 !           write(*,*) rVec%y-thisOctal%subcellSize/2.
 !           write(*,*) rVec%z+thisOctal%subcellSize/2.
 !           write(*,*) rVec%z-thisOctal%subcellSize/2.
-!           do ; enddo
+           do ; enddo
 !           STOP
            return
         endif

@@ -377,14 +377,18 @@ contains
   end subroutine constructflux
 
 !Set up the i-1/2 flux for each cell on the grid
-  recursive subroutine constructfluxCylindrical(thisoctal, dt, direction)
+  recursive subroutine constructfluxCylindrical(grid, thisoctal, dt, direction)
     use mpi
-    type(octal), pointer   :: thisoctal
-    type(VECTOR) :: direction, rvec
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisoctal, neighbourOctal
+    type(VECTOR) :: direction, rvec, locator
     type(octal), pointer  :: child 
-    integer :: subcell, i
+    integer :: subcell, i, neighbourSubcell
     real(double) :: dt, area, dx
     logical :: radial
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz
+    real(double) :: q11, q22, q33, rm1, um1, pm1
+    integer :: nd
 
   
     do subcell = 1, thisoctal%maxchildren
@@ -393,14 +397,14 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call constructfluxCYlindrical(child, dt, direction)
+                call constructfluxCYlindrical(grid, child, dt, direction)
                 exit
              end if
           end do
        else
 
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-
+          if (thisOctal%edgeCell(subcell)) cycle
           radial = .true. 
           if (direction%x < 0.1d0) then
              radial = .false.
@@ -413,6 +417,13 @@ contains
                   (rVec%x*gridDistanceScale-thisOctal%subcellSize*gridDistanceScale/2.d0)**2)
           endif
                 
+          locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*smallestCellsize)
+          neighbouroctal => thisoctal
+          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+          call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+
+          ! need to construct flux correctly at this point
           if (.not.thisoctal%edgecell(subcell)) then
              if (thisoctal%u_interface(subcell).ge.0.d0) then
                 thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i_minus_1(subcell) * area
@@ -3106,7 +3117,7 @@ contains
     call setupqx(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call fluxlimiter(grid%octreeroot)
-    call constructfluxCylindrical(grid%octreeroot, dt, direction)
+    call constructfluxCylindrical(grid, grid%octreeroot, dt, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call setupfluxCylindrical(grid%octreeroot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
@@ -8885,6 +8896,24 @@ end subroutine refineGridGeneric2
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
 
+
+          if (cylindricalHydro) then
+             if (thisOctal%edgeCell(subcell).and.(.not.inOctal(grid%octreeRoot, centre - VECTOR(r, 0.d0, 0.d0)))) then
+                if (thisOctal%nDepth < maxDepthAMR) then 
+                   call addNewChildWithInterp(thisOctal, subcell, grid)
+                   converged = .false.
+                   exit
+                endif
+             endif
+!             if (thisOctal%ghostcell(subcell)) then
+!                if (thisOctal%nDepth < maxDepthAMR) then 
+!                   call addNewChildWithInterp(thisOctal, subcell, grid)
+!                   converged = .false.
+!                   exit
+!                endif
+!             endif
+          endif
+
           !Thaw - force ghostcells to match their partner refinement
           if(thisOctal%ghostcell(subcell)) then
              locator = thisOctal%boundaryPartner(subcell)
@@ -10049,7 +10078,7 @@ end subroutine refineGridGeneric2
 
 
 
-!       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
     if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
@@ -12083,7 +12112,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                      thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
              else
-                r = cellCentre%x
+                r = cellCentre%x*1.d10
                 rv = thisOctal%rhov(subcell) / (r * thisOctal%rho(subcell))
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      rv, &
@@ -12096,7 +12125,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-             if ((eKinetic + eThermal + eGrav > 0.d0).and.(rho > rhoThreshold)) then
+             if ((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold)) then
                 write(*,*) "Cell in accretion radius but not bound ",eKinetic+eThermal+eGrav
                 write(*,*) "eGrav ",eGrav
                 write(*,*) "ethermal ",eThermal

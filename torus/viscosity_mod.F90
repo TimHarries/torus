@@ -353,7 +353,7 @@ contains
        else
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           if (.not.thisOctal%ghostCell(subcell)) then
-             lengthScale = etaViscosity * smallestCellSize * gridDistanceScale
+             lengthScale = max(1.d-20,etaViscosity * smallestCellSize * gridDistanceScale)
              divV = div_u(thisOctal, subcell, grid)
              thisTime = (smallestCellSize*gridDistanceScale)**2 /(4.d0* max(abs(divV),1.d-20) * lengthScale**2)
              dt = min(thisTime, dt)

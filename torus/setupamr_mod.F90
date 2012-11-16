@@ -312,7 +312,8 @@ contains
                      minRho, minR)
           endif
 !          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
-          if (ttauriwind) call addDiscWind(grid)
+          if (ttauriwind)  call addDiscWind(grid)
+             
           call checkAMRgrid(grid, .false.)
 
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)

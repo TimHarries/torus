@@ -737,6 +737,9 @@ contains
 
        if (ttauriwind) then
           ! --- parameters for ttauri wind
+          call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
+               "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
+
           call getDouble("DW_Rmin", DW_Rmin, ttaurirOuter/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 

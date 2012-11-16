@@ -385,7 +385,11 @@ contains
 !                ,"phi          " /))
                 
                 call zeroPhiGas(grid%octreeRoot)
-                call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+                if (.not.cylindricalHydro) then
+                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+                else
+                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+                endif
                 
                 if(.not. dirichlet) then
                    call periodBoundary(grid, justGrav = .true.)

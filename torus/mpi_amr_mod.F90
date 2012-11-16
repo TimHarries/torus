@@ -1929,7 +1929,7 @@ contains
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
        rhoe, pressure, flux, phi, phigas, q11, q22, q33, rm1, rum1, pm1)
-    use inputs_mod, only : useTensorViscosity
+    use inputs_mod, only : useTensorViscosity, cylindricalHydro
 
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
@@ -2259,7 +2259,8 @@ contains
     
       RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal, nVoxels, includeGhosts)
         use mpi
-        use inputs_mod, only : hydrodynamics
+        use inputs_mod, only : hydrodynamics, cylindricalHydro
+        type(VECTOR) :: rVec
         integer :: nVoxels
         integer :: subcell
         TYPE(OCTAL), POINTER  :: thisOctal 
@@ -2283,7 +2284,16 @@ contains
 
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
             if (hydrodynamics) then
-               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts)) cycle
+               rVec = subcellCentre(thisOctal, subcell)
+               if (.not.includeGhosts) then
+                  if (thisOctal%ghostCell(subcell)) then
+                     if (cylindricalHydro) then
+                        if (rVec%x < 0.d0) cycle
+                     else
+                        cycle
+                     endif
+                  endif
+               endif
             endif
             nVoxels = nVoxels + 1
          endif
@@ -3323,7 +3333,13 @@ end subroutine writeRadialFile
                xmin, zmin, dx, dz, rmax, rsq, a)
 
 
-          thisOctal%rhov(iSubcell) = 0.d0
+          call qshep2 (nPoints, xPoint, zPoint, rhovPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+               dx, dz, rmax, rsq, a, ier )
+
+          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
+          thisOctal%rhov(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhovPoint, nr, lcell2d, lnext, &
+               xmin, zmin, dx, dz, rmax, rsq, a)
+
 
           call qshep2 (nPoints, xPoint, zPoint, rhowPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
                dx, dz, rmax, rsq, a, ier )
@@ -3451,7 +3467,10 @@ end subroutine writeRadialFile
        endif
         newEnergy = newEnergy + thisOctal%rhoe(isubcell) * dv
     enddo
-    factor = oldEnergy/newEnergy
+    factor = 1.d0
+    if (newEnergy /= 0.d0) then
+       factor = oldEnergy/newEnergy
+    endif
     thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
 
 !

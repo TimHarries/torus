@@ -225,7 +225,7 @@ contains
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
             if (hydrodynamics) then
-               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts))cycle
+               if (checkGhost(thisOctal, subcell).and.(.not.includeGhosts))cycle
             endif
 #endif
             if (thisOctal%threed) then
@@ -568,7 +568,7 @@ contains
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
             if (hydrodynamics) then
-               if (thisOctal%ghostCell(subcell).and.(.not.vtkincludeGhosts))cycle
+               if (checkGhost(thisOctal, subcell).and.(.not.vtkincludeGhosts))cycle
             endif
 
 #endif
@@ -2683,7 +2683,7 @@ end subroutine writeXMLVtkFileAMR
 #ifdef MPI
             if ( (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) .and. grid%splitOverMPI ) cycle
             if (hydrodynamics) then
-               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts)) cycle
+               if (checkGhost(thisOctal, subcell).and.(.not.includeGhosts)) cycle
             endif
 #endif
 
@@ -3786,7 +3786,7 @@ end subroutine writeParallelXMLVtkFileAMR
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
             if (hydrodynamics) then
-               if (thisOctal%ghostCell(subcell).and.(.not.includeGhosts)) cycle
+               if (checkGhost(thisOctal, subcell).and.(.not.includeGhosts)) cycle
             endif
 #endif
             if (thisOctal%threed) then
@@ -3977,7 +3977,22 @@ end subroutine writeParallelXMLVtkFileAMR
     endif
   end function theSamePoint
     
+  logical function checkGhost(thisOctal, subcell)
+    use inputs_mod, only : cylindricalHydro
+    type(VECTOR) :: rVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
 
+    checkGhost = .false.
+    
+    if (thisOctal%ghostCell(subcell)) checkGhost = .true.
+
+
+    if (cylindricalHydro) then
+       rVec = subcellCentre(thisOctal, subcell)
+       if (rVec%x > 0.d0) checkGhost = .false.
+    endif
+  end function checkGhost
 
 end module vtk_mod
 
