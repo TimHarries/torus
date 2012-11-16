@@ -1,62 +1,39 @@
-! Torus V2 SPH benchmark
+! Parameters file for generating HI cubes 
+! Written by generate_feedback.sh
+
+geometry theGalaxy
 
 readgrid F
 writegrid F
-dustphysics T
-radeq T
+dosmoothgrid F
+maxmemory 16000
 
-nsource 1
-radius1 1.0
-teff1 5800.0
-mass1 1.0
-contflux1 blackbody
-sourcepos1 0.0 0.0 0.0
+!!
+!! readGridInitparamerers
+!!
 
-! Suppress splitting on velocity as there is no velocity information
-doVelocitySplit F
-
-! AMR grid stuff 
-cylindrical T 
-amr2d F
 amr3d T
+
+amrgridsize 3.0e6
 amrgridcentrex 0.0
 amrgridcentrey 0.0
 amrgridcentrez 0.0
-amrgridsize 5.0e6
 
-! Maximum mass per cell for AMR grid generation. 
-limitscalar 5.e26
-limittwo 0.3
+limitscalar 0.22E+27
 
-sphdatafilename none
+! Do we split the grid based on particle velocity difference?
+doVelocitySplit F 
+
+! Convert density to HI density
+convertrhotohi F
+
+!!
+!!  readGeometrySpecificParameters
+!!
+
+sphdatafilename sph_test.dat
 sphNormLimit 0.5
 kerneltype 0
 useHull F
+inputFileFormat ascii
 
-! Geometry flag. 
-geometry cluster
-
-! minimum temperature on AMR grid
-tminglobal 3.0
-
-! Scattering parameters. 
-iso_scatter T
-
-! Dust grain properties
-graintype1 sil_dl
-amin1 0.12
-amax1 0.1201
-qdist1 0.01
-
-! SED parameters
-spectrum T
-ninc 2               ! number of inclinations
-firstinc 12.5        ! the first inclination (degrees)
-lastinc 77.5         ! the last inclination (degrees)
-nphotons 500000      ! the number of photon packets in each SED
-filename test        ! the root of the output filename
-sised T              ! Write spectrum as lambda vs F lambda in SI units
-distance 2.25558e-8  ! Distance to observer
-sedlammin 0.12       ! minimum wavelength in SED file
-sedlammax 2000       ! maximum wavelength in SED file
-sedwavlin F          ! Linear spacing in SED file? 

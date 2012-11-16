@@ -1,0 +1,12 @@
+# Created by TORUS test suite
+#
+# time:             time unit ( yrs)
+#   5.2950001E+00   4.7165268E+07
+#
+# npart:          gas        ghost         sink         star unknown/dead
+#              100000            0            0            0            0
+# units:
+#  1.0000000E+00   1.0000000E+00   1.0000002E+00   1.0000000E+00   1.0000000E+00   1.0000000E+00   1.0000000E+00   1.0000000E+00   1.0000000E+00   1.0000000E+00
+#  [cm]            [cm]            [cm]            [g]             [cm]            [g/cm\u3\d]     [cm/s]          [cm/s]          [cm/s]                                                                                            
+#
+# x               y               z               particle mass   h               density         u               v\dx            v\dy            v\dz            itype

@@ -1,0 +1,13 @@
+echo "Building write_sph_file"
+gfortran -c -o particle_pos.o particle_pos.f90
+gfortran -c -o write_sph_file.o write_sph_file.f90
+gfortran -o write_sph_file write_sph_file.o particle_pos.o
+
+echo "Running  write_sph_file"
+./write_sph_file
+
+echo "Adding header"
+cat header part_out.dat > sph_test.dat
+
+echo "Setup finished"
+
