@@ -406,7 +406,7 @@ contains
              endif
              call testVelocity(grid%octreeRoot,grid)
        
-             if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
+             if (ttauriwind)  call addDiscWind(grid)
              if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
              if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
 

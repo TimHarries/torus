@@ -1420,6 +1420,8 @@ contains
 
     call writeBanner("Photon source data","#",TRIVIAL)
 
+    call getInteger("nspheresurface", nSphereSurface, cLine, fLine, nLines, &
+         "Number of points on sphere surface: ","(a,i2,a)",1000,ok,.false.)
 
 
     call getInteger("nsource", inputNSource, cLine, fLine, nLines, &

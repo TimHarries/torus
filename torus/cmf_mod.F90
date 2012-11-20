@@ -3471,7 +3471,7 @@ contains
 
 
     do iv = iv1, iv2
-!       write(*,*) iv,varray(iv)*cspeed/1.d5
+       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1

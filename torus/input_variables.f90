@@ -367,6 +367,7 @@
   type(VECTOR) :: sphereVelocity, spherePosition ! unisphere geometry
   real(double) :: sphereMass, sphereRadius       ! unisphere geometry
   real(double) :: omega
+  integer :: nSphereSurface ! number of points on spherical surface
   real :: rpower ! radial density power  r^-rpower. For proto geometry
 
   ! whitney stuff

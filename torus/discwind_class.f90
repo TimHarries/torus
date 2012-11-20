@@ -1464,7 +1464,7 @@ contains
        x = rVec%x
        y = rVec%y
        z = rVec%z
-       thisOctal%inFlow(subcell) = .true. !all_in_discwind(thisOctal, subcell, this)
+       thisOctal%inFlow(subcell) = all_in_discwind(thisOctal, subcell, this)
        if (thisOctal%inflow(subcell)) then
           thisOctal%temperature(subcell) = real(this%Twind)
           thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, this)

@@ -709,7 +709,7 @@ contains
 #endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI, &
-          hosokawaTracks, nbodyPhysics
+          hosokawaTracks, nbodyPhysics, nSphereSurface
 #ifdef MPI
      use mpi
 #endif
@@ -780,7 +780,7 @@ contains
             xRayFlux*fourPi*globalSourceArray(1)%radius**2*1.d20
 
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
-            globalsourcearray(1)%surface, 1000, &
+            globalsourcearray(1)%surface, nSphereSurface, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
        call genericAccretionSurface(globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
        call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
