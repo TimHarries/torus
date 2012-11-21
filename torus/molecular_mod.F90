@@ -2364,16 +2364,17 @@ endif
    end subroutine getCollMatrix
 
 ! This subroutine calculates the maximum fractional change in the first 6 energy levels
+! 
+! The compiler directive prevents O3 level optimisation with ifort due to a run time 
+! segmentation fault (seen with ifort 12.1.0) D. Acreman 21/11/12
    recursive subroutine  swapPops(thisOctal, maxFracChangePerLevel, avgFracChange, counter, &
-                          iter, nVoxels,fixedrays)
-
+                          fixedrays)
+!DEC$ OPTIMIZE:2
      use inputs_mod, only : tolerance, dongstep
 
      type(octal), pointer   :: thisOctal
      real(double) :: maxFracChangePerLevel(:),  avgFracChange(:,:)
      integer :: counter(:,:)
-     integer :: iter
-     integer :: nVoxels
 
      logical :: fixedrays
 
@@ -2394,8 +2395,8 @@ endif
            do i = 1, thisOctal%nChildren
               if (thisOctal%indexChild(i) == subcell) then
                  child => thisOctal%child(i)
-                 call swapPops(child, maxFracChangePerLevel, avgFracChange, counter, iter, &
-                      nVoxels, fixedrays)
+                 call swapPops(child, maxFracChangePerLevel, avgFracChange, counter, &
+                      fixedrays)
                  exit
               end if
            end do
@@ -4680,7 +4681,7 @@ end subroutine plotdiscValues
 ! Compares level populations between this and previous iterations
 ! This actually swaps the level populations as well as returning convergence data
     call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
-         convergenceCounter, grand_iter, nVoxels, fixedrays) 
+         convergenceCounter, fixedrays) 
 
 !! Advise that ng acceleration has occured during this iteration
 !! Ng acceleration occurs after 4 iterations when using random rays by which time initray has grown by 2^4 times

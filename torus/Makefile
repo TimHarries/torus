@@ -207,6 +207,8 @@ endif
 ifeq ($(SYSTEM), zensingle)
     F95COMP= ifort
     FASTFLAG= -O3 
+# For debugging with optimisations enabled use
+#    FASTFLAG= -O3 -g -debug extended
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
