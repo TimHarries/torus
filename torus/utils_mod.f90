@@ -2244,56 +2244,57 @@ END SUBROUTINE GAUSSJ
     logical, intent(out) :: ok
     integer :: i, n
 
-! Check for zero elements on the diagonal. These cause a 
-! divide by zero error so return with ok=false if any 
-! are present
-    n = size(a,1)
-    do i=1,n
-       if ( a(i,i)==0.0 ) then 
-          ok=.false.
-          return
-       endif
-    end do
-    ok = .true.
+! lured can change diagonal terms in a so check for 
+! zeros in the subroutine iteslf
+    call lured(a,ok)
+    if (.not. ok) then
+       write(*,*) "LU solver: lured not ok"
+       return
+    endif
 
-    call lured(a)
-    
-! Check diagonals again as lured changes values in array a
+! reslv only modifies b so check for zeros here
     n = size(a,1)
     do i=1,n
-       if ( a(i,i)==0.0 ) then 
+       if (a(i,i)==0.0) then
           ok=.false.
+          write(*,*) "LU solver: zeros after lured"
           return
        endif
     end do
-    ok = .true.
 
     call reslv(a,b)
 
   end subroutine luSlv
   
-  subroutine lured(a)
+  subroutine lured(a,ok)
     implicit none
     
     real(double), intent(inout)  :: a(:,:)
-    
+    logical, intent(out) :: ok
+
     ! local variables
     integer          :: i, j, k, n                    ! counters
     
     real(double) :: factor                     ! general calculation factor
 
+    ok = .true.
     n = size(a,1)
 
     if (n == 1) return
     
-    do i = 1, n-1
+i_loop: do i = 1, n-1
        do k = i+1, n
+          if (a(i,i)==0.0) then 
+             ok=.false.
+             exit i_loop
+          endif
           factor = a(k,i)/a(i,i)
           do j = i+1, n
              a(k, j) = a(k, j) - a(i, j) * factor
           end do
        end do
-    end do
+    end do i_loop
+
   end subroutine lured
   
   subroutine reslv(a,b)
