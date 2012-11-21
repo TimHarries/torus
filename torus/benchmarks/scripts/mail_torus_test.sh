@@ -118,7 +118,9 @@ fi
 
 # Test for success of nbody test
 num_success=`/usr/bin/grep "Torus nbody test successful" benchmarks_gfortran/benchmarks/nbody/check_log_gfortran_nbody.txt | /usr/bin/wc -l`
-if [[ ${num_success} -eq 1 ]]; then
+num_success2=`/usr/bin/grep "Torus nbody test successful" benchmarks_ompiosx-openmp/benchmarks/nbody/check_log_ompiosx_nbody.txt | /usr/bin/wc -l`
+num_success3=`/usr/bin/grep "Torus nbody test successful" benchmarks_ompiosx/benchmarks/nbody/check_log_ompiosx_nbody.txt | /usr/bin/wc -l`
+if [[  ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     echo "N body test successful. " >> header
 else
     echo "!! N body test FAILED !!" >> header
