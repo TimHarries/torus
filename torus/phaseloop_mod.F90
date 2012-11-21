@@ -58,7 +58,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
   use sed_mod
-  use vtk_mod
+  use vtk_mod, only: writeVtkFile
   use physics_mod, only : setupdust
   use fillGridTio_mod
   use fillGridRayleigh_mod
