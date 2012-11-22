@@ -70,19 +70,10 @@ mpirun -np $1 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
 mv tune.dat tune_${THIS_BENCH}.txt
 }
 
-run_sphbench()
+setup_sphbench()
 {
 cd ${WORKING_DIR}/benchmarks/sphbench
-ln -s ${WORKING_DIR}/lib/libtorus.a 
-ln -s ${WORKING_DIR}/lib/torus_mod.mod 
-ln -s ${TEST_DIR}/torus/isochrones/iso* .
-./compile
-
-case ${SYSTEM} in
-    ompi) mpirun -np 4 sphbench > run_log_sphbench.txt 2>&1;; 
-    zen) mpirun -np 8 sphbench > run_log_sphbench.txt 2>&1 ;;
-    *) echo "Unrecognised SYSTEM type. Skipping this test.";;
-esac
+./setup_write_sph_file
 }
 
 check_benchmark()
@@ -335,6 +326,12 @@ for sys in ${SYS_TO_TEST}; do
 	tail check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
 	check_completion
     fi
+    echo
+
+    echo "Running SPH to grid test"
+    export THIS_BENCH=sphbench
+    setup_sphbench
+    run_bench
     echo
 
 # Only run this test for MPI systems and not in the daily test
