@@ -2089,13 +2089,8 @@ end subroutine molecularLoop
 
      integer :: l, k, itrans
 
-     character(len=80) :: message
      logical :: dummy
      logical :: luslvOK
-
-!     real(double) :: r(maxlevel,maxlevel)
-
-!     call randomNumberGenerator(getDouble=r)
 
      matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero
      matrixB = 0.d0 ! Solution vector - all components (except last) => equilibrium
@@ -2178,7 +2173,7 @@ end subroutine molecularLoop
         call luSlv(matrixAsave(1:minlevel+1,1:minlevel+1), matrixBsave(1:minlevel+1,1),luslvOK)
 #endif
 
-        if ( (debug .and. .not. any(isnan(matrixBsave))) .or. (.not.luslvOK) ) then
+        if ( (debug .and. .not. any(isnan(matrixBsave))) .or. luslvOK ) then
            nPops(1:minlevel) = matrixBsave(1:minlevel,1)
            npops(minlevel+1:maxlevel) = abs(1.d0 - sum(matrixBsave(1:minlevel,1)))
            npops = abs(npops / sum(npops))
@@ -2200,7 +2195,7 @@ end subroutine molecularLoop
 #else
               call luSlv(matrixArad, matrixB(:,1),luslvOK)
 #endif        
-              if ( (debug .and. .not. any(isnan(matrixB))) .or. (.not.luslvOK) ) then
+              if ( (debug .and. .not. any(isnan(matrixB))) .or. luslvOK ) then
                  matrixB = abs(matrixB) ! stops negative level populations causing problems
                  write(66,*) "error fixed 3 ", npops(minlevel), npops(maxlevel), &
                       maxval(thismolecule%einsteinA(1:maxlevel) / ctot(1:maxlevel)), nh2 * 2.d0 * mhydrogen
@@ -2210,10 +2205,9 @@ end subroutine molecularLoop
 ! level populations out
               nPops(1:maxlevel) = matrixB(1:maxLevel,1)
            endif
-
-           call writeinfo(message, IMPORTANT)
         endif
-     else ! standard case
+
+     else ! standard case i.e. no problem with the first call to luSlv 
         matrixB = abs(matrixB) ! stops negative level populations causing problems
 ! level populations out
         nPops(1:maxlevel) = matrixB(1:maxLevel,1)
