@@ -30,3 +30,15 @@ amrgridsize 9.2d7
 amrgridcentrex 4.6d7
 amrgridcentrey 0d0
 amrgridcentrez 0d0
+
+! Data cube parameters
+datacube T
+datacubefile molebench.fits
+imageside 9.2d7
+npixels 200
+nv 21
+maxVel 1.0
+itrans 1
+centrevecx 0.0
+centrevecy 0.0 
+centrevecz 0.0
