@@ -459,7 +459,7 @@ contains
 #endif
 
 #ifdef PHOTOION
-     if (photoionPhysics.and.photoionEquilibrium) then 
+     if (photoionPhysics.and.photoionEquilibrium.and. .not. hydrodynamics) then 
         sign = 1
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
