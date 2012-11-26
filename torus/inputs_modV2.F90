@@ -316,6 +316,8 @@ contains
     call getLogical("nbody", donBodyOnly, cLine, fLine, nLines, &
          "Perform an n-body (bigG=1) calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if(photoionEquilibrium .and. hydrodynamics) radiationhydrodynamics=.true.
+
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
