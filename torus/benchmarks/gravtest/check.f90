@@ -26,6 +26,12 @@ program check
   30 continue
   n = n - 1
   close(20)
+
+  if ( n == 0 ) then
+     write(*,*) "Torus test failed: file radial0001.dat is empty"
+     STOP
+  endif
+
   r(1:n) = r(1:n)*1.d10
   maxFrac_Gas = 0.d0
   maxFrac_tot = 0.d0
@@ -61,6 +67,7 @@ program check
   else
      write(*,*) "Torus test passed on phi_i"
   endif
+
   if (passed) then
      write(*,*) "Torus gravity solver test successful."
   else
