@@ -108,6 +108,10 @@ check_molebench()
 echo Compiling compare_molbench code
 ${TORUS_FC} -o compare_molbench compare_molbench.f90
 ./compare_molbench
+
+echo Compiling check_cube code
+${TORUS_FC} -o check_cube check_cube.f90 -lcfitsio -L${TORUS_FITSLIBS}
+./check_cube
 }
 
 check_hydro()
@@ -323,7 +327,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     if [[ ${SYSTEM} != "nagfor" ]]; then
 	check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-	tail check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
+	tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
 	check_completion
     fi
     echo
@@ -332,6 +336,8 @@ for sys in ${SYS_TO_TEST}; do
     export THIS_BENCH=sphbench
     setup_sphbench
     run_bench
+    ./checkSphToGrid.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
     echo
 
 # Only run this test for MPI systems and not in the daily test

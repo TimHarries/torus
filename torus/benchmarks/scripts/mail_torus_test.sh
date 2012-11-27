@@ -62,7 +62,7 @@ fi
 num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_gfortran_molebench.txt | /usr/bin/wc -l`
 num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
-if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]]; then
     echo "Molecular benchmark successful." >> header
 else
     echo "!! Molecular benchmark FAILED !!" >> header
@@ -124,6 +124,17 @@ if [[  ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]
     echo "N body test successful. " >> header
 else
     echo "!! N body test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of SPH to grid test
+num_success=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx-openmp/benchmarks/sphbench/check_log_ompiosx_sphbench.txt | /usr/bin/wc -l`
+num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/sphbench/check_log_gfortran_sphbench.txt | /usr/bin/wc -l`
+num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/sphbench/check_log_ompiosx_sphbench.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+    echo "SPH to grid test successful." >> header
+else
+    echo "!! SPH to grid test FAILED !!" >> header
     suite_status="FAILED"
 fi
 
