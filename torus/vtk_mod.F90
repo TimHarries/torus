@@ -2890,9 +2890,15 @@ end subroutine writeXMLVtkFileAMR
 
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30
-                     rArray(1, n) = real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
-                     rArray(2, n) = real(thisOctal%kappaTimesFlux(subcell)%y/cSpeed)
-                     rArray(3, n) = real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                     if (thisOctal%threed) then
+                        rArray(1, n) = real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(thisOctal%kappaTimesFlux(subcell)%y/cSpeed)
+                        rArray(3, n) = real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                     else
+                        rArray(1, n) = real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(3, n) = 0.
+                     endif
 
                case("velocity")
                      ! stop vectors from showing up in visit if too big

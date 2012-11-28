@@ -673,7 +673,7 @@ contains
     call new(mydiscWind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
        DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, dble(ttauriMstar)/msol, DW_Hdisc)
     call add_discwind(grid%octreeRoot, grid, myDiscWind, limitscalar)
-
+    call assignDensitiesDiscwind(grid, grid%octreeRoot, myDiscWind)
 
   end subroutine addDiscWind
 
@@ -1298,7 +1298,7 @@ contains
 
   SUBROUTINE add_new_children_discwind(parent, ichild, grid, this, splitAzimuthally)
     use memory_mod
-    use inputs_mod, only : cylindrical
+    use inputs_mod, only : cylindrical, vturb
     use amr_mod, only : growChildArray, allocateOctalAttributes, setSmallestSubcell
     ! adds all eight new children to an octal
     IMPLICIT NONE
@@ -1314,7 +1314,6 @@ contains
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: iChild
     integer :: parentSubcell
-    real(double) :: x, y, z
     integer :: nChildren
     TYPE(OCTAL), POINTER :: thisOctal
 
@@ -1460,20 +1459,55 @@ contains
        thisOctal%rho(subcell) = parent%rho(parentSubcell)
        thisOctal%velocity(subcell) = parent%velocity(parentSubcell)
 
-       rVec = subcellCentre(thisOctal, subcell)
-       x = rVec%x
-       y = rVec%y
-       z = rVec%z
-       thisOctal%inFlow(subcell) = all_in_discwind(thisOctal, subcell, this)
-       if (thisOctal%inflow(subcell)) then
-          thisOctal%temperature(subcell) = real(this%Twind)
-          thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, this)
-          thisOctal%velocity(subcell) = discwind_velocity(this, vector(x,y,z))
-       endif
+!       rVec = subcellCentre(thisOctal, subcell)
+!       x = rVec%x
+!       y = rVec%y
+!       z = rVec%z
+!       if (all_in_discwind(thisOctal, subcell, this)) then
+!          thisOctal%inFlow(subcell) = .true.
+!          thisOctal%temperature(subcell) = real(this%Twind)
+!          thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, this)
+!          thisOctal%velocity(subcell) = discwind_velocity(this, vector(x,y,z))
+!          if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+!       endif
     enddo
   end SUBROUTINE add_new_children_discwind
 
 
+  recursive subroutine assignDensitiesDiscwind(grid, thisOctal, thisWind)
+    use inputs_mod, only : vturb
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    TYPE(discwind), INTENT(IN)  :: thisWind
+    type(VECTOR) :: rVec
+    real(double) :: x, y, z
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child =>thisOctal%child(i)
+                call assignDensitiesDiscwind(grid, child, thisWind)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal, subcell)
+          x = rVec%x
+          y = rVec%y
+          z = rVec%z
+          if (all_in_discwind(thisOctal, subcell, thisWind)) then
+             thisOctal%inFlow(subcell) = .true.
+             thisOctal%temperature(subcell) = real(thisWind%Twind)
+             thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, thisWind)
+             thisOctal%velocity(subcell) = discwind_velocity(thisWind, vector(x,y,z))
+             if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+          endif
+       endif
+    enddo
+  end subroutine assignDensitiesDiscwind
 
 
 

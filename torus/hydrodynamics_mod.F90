@@ -2219,8 +2219,8 @@ contains
 
                 ! now centrifugal term
 
-                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * 0.25d0 * (thisOctal%rhov(subcell) + &
-                     thisOctal%rhorv_i_minus_1(subcell))**2 / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
+                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
+                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 
 
                 if (radiationPressure) then
@@ -11243,8 +11243,7 @@ end subroutine minMaxDepth
 
           if (SUM(eKinetic) + SUM(eGrav) + SUM(eThermal) > 0.d0) then
              createSink = .false.
-!             write(*,*) "bound test failed ",SUM(eKinetic)+SUM(eGrav)+SUM(eThermal),SUM(eKinetic), &
-!                  SUM(eGrav),SUM(eThermal)
+             write(*,*) "bound test failed ",SUM(eKinetic)+SUM(eGrav)+SUM(eThermal),SUM(eKinetic), SUM(eGrav), SUM(eThermal)
              if (SUM(eKinetic)+SUM(eGrav)+SUM(eThermal) > 1.d60) then
                 do iPoint = 1, nPoints
                    write(*,*) iPoint, " pos ",position(iPoint), " vel ",vel(iPoint), " mass ",mass(ipoint), &
@@ -12076,7 +12075,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(SOURCETYPE) :: source(:)
     real(double) :: accretedMass(:)
     type(VECTOR) :: accretedLinMomentum(:), accretedAngMomentum(:), cellCentre, cellVelocity
-    real(double) :: eGrav, eThermal, eKinetic, cellMass, rhoLocal, localAccretedMass, r, rv
+    real(double) :: eGrav, eThermal, eKinetic, cellMass, rhoLocal, localAccretedMass, r, rv, localAccretedAngMom
     type(VECTOR) :: gasMom, localAccretedMom, localAngMom
     integer :: nSource
     type(octal), pointer   :: thisoctal
@@ -12138,7 +12137,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 if (rhoLocal > rhoThreshold) then
                    
                    localaccretedMass = (rhoLocal - rhoThreshold) * cellVolume(thisOctal,Subcell)*1.d30
-                   write(*,*) myrankGlobal, " localaccretedmass ",localaccretedmass
+!                   write(*,*) myrankGlobal, " localaccretedmass ",localaccretedmass
                    accretedMass(isource) = accretedMass(isource) + localAccretedMass
 
                    if (thisOctal%threed) then
@@ -12159,12 +12158,15 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
                    if (thisOctal%threed) then
                       localAngMom =  ((cellCentre - source(isource)%position)*1.d10) .cross. localAccretedMom
+                      localAccretedAngMom = modulus(localAngMom)
                    else
                       localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell)/ thisOctal%rho(subcell))
+                      localAccretedAngMom = modulus(localAngMom) * &
+                           localAccretedMass/(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell) * 1.d30)
                    endif
 
                    accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
-                   accretedAngMomentum(isource) = accretedAngMomentum(isource) + localAngMom
+                   accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
                    
                    if (thisOctal%threed) then
                       gasMom = gasMom - localaccretedMom
@@ -12181,7 +12183,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       cellVelocity = gasMom / cellMass
                       thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
                       thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
-                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - localAngMom%z*thisOctal%rho(subcell) ! need to check
+                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - localAccretedAngMom/(cellVolume(thisOctal, subcell)*1.d30)
                    endif
                 endif
              endif
@@ -12442,7 +12444,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(GRIDTYPE) :: grid
     integer :: nPoints
     type(VECTOR) :: position(:), vel(:)
-    real(double) :: mass(:), phi(:), cs(:)
+    real(double) :: mass(:), phi(:), cs(:), r
     type(OCTAL), pointer :: thisOctal, child
     type(VECTOR) :: cen
     integer :: subcell, i
@@ -12460,6 +12462,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        else
 
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%ghostCell(subcell)) cycle
 
           if (inSubcell(thisOctal, subcell, thisPoint)) cycle
 
@@ -12467,9 +12470,16 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           if (modulus(cen - thisPoint) < radius) then
              nPoints = npoints + 1
              position(nPoints) = subcellCentre(thisOctal, subcell)
-             vel(nPoints) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                  thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
-                  thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             if (.not.cylindricalHydro) then
+                vel(nPoints) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             else
+                r = sqrt(cen%x**2+cen%y**2)*gridDistanceScale
+                vel(nPoints) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhov(subcell)/(thisOctal%rho(subcell)*r), &
+                     thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             endif
              mass(nPoints) = cellVolume(thisOctal, subcell)*1.d30*thisOctal%rho(subcell)
              phi(nPoints) = thisOctal%phi_i(subcell)
              cs(nPoints) = soundSpeed(thisOctal, subcell)

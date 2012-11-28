@@ -689,6 +689,10 @@ contains
           call writeAttributePointerFlexi(20, "rhou", thisOctal%rhou, fileFormatted)
           call writeAttributePointerFlexi(20, "rhov", thisOctal%rhov, fileFormatted)
           call writeAttributePointerFlexi(20, "rhow", thisOctal%rhow, fileFormatted)
+
+          call writeAttributePointerFlexi(20, "rhorv_i_plus_1", thisOctal%rhorv_i_plus_1, fileFormatted)
+          call writeAttributePointerFlexi(20, "rhorv_i_minus_1", thisOctal%rhorv_i_minus_1, fileFormatted)
+
           
           call writeAttributePointerFlexi(20, "rhoe", thisOctal%rhoe, fileFormatted)
           call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
@@ -4158,6 +4162,13 @@ contains
          case("rhow")
             call readPointerFlexi(20, thisOctal%rhow, fileFormatted)
 
+         case("rhorv_i_plus_1")
+            call readPointerFlexi(20, thisOctal%rhorv_i_plus_1, fileFormatted)
+
+         case("rhorv_i_minus_1")
+            call readPointerFlexi(20, thisOctal%rhorv_i_minus_1, fileFormatted)
+
+
          case("rhoe")
             call readPointerFlexi(20, thisOctal%rhoe, fileFormatted)
          case("energy")
@@ -4491,6 +4502,13 @@ contains
          case("rhow")
             call receivePointerFlexi(thisOctal%rhow)
 
+         case("rhorv_i_plus_1")
+            call receivePointerFlexi(thisOctal%rhorv_i_plus_1)
+         case("rhorv_i_minus_1")
+            call receivePointerFlexi(thisOctal%rhorv_i_minus_1)
+
+
+
          case("rhoe")
             call receivePointerFlexi(thisOctal%rhoe)
          case("energy")
@@ -4699,6 +4717,10 @@ contains
       call sendAttributePointerFlexi(iThread, "rhou", thisOctal%rhou)
       call sendAttributePointerFlexi(iThread, "rhov", thisOctal%rhov)
       call sendAttributePointerFlexi(iThread, "rhow", thisOctal%rhow)
+
+      call sendAttributePointerFlexi(iThread, "rhorv_i_minus_1", thisOctal%rhorv_i_minus_1)
+      call sendAttributePointerFlexi(iThread, "rhorv_i_plus_1", thisOctal%rhorv_i_plus_1)
+
 
       call sendAttributePointerFlexi(iThread, "rhoe", thisOctal%rhoe)
       call sendAttributePointerFlexi(iThread, "energy", thisOctal%energy)

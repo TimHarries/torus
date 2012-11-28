@@ -243,7 +243,9 @@ contains
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 1.d0, 0.d0)
-          call calculateRhoV(grid%octreeRoot, direction)
+          if (.not.cylindricalHydro) then
+             call calculateRhoV(grid%octreeRoot, direction)
+          endif
           direction = VECTOR(0.d0, 0.d0, 1.d0)
           call calculateRhoW(grid%octreeRoot, direction)
           
@@ -754,7 +756,7 @@ contains
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         ",  &
-               "phi          "/))
+               "phi          ","rhou         ","rhov         ","rhow         "/))
 
 
 
@@ -767,9 +769,11 @@ contains
              call writeSourceArray(mpifilename)
           endif
 
-          write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
-          call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
-               VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+          if (.not.CylindricalHydro) then
+             write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+          endif
 
 
           
@@ -7240,7 +7244,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     integer :: nFreq, nlambda
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: rVec, uHat
+    type(VECTOR) :: rVec, uHat, uHatDash, rHat, zHat
     real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist
     real :: kappaP
     logical, save :: firstTime = .true.
@@ -7277,7 +7281,14 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
        mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
        thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
-       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHat
+       uHatDash = uHat
+       if (thisOctal%twoD) then
+          rHat = VECTOR(rVec%x, rVec%y, 0.d0)
+          call normalize(rHat)
+          zHat = VECTOR(0.d0, 0.d0, 1.d0)
+          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+       endif
+       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
        rVec = rVec + uHat * r0
        uHat = randomUnitVector()
        call distanceToNearestWall(rVec, r0, thisOctal, subcell)

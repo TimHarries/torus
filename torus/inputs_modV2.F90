@@ -751,12 +751,12 @@ contains
           call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
                "Disc wind:: Wind source displacement [inner wind radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
-          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Temperature of disc at inner radius [K]: ", &
-               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+!          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+!               "Disc wind:: Temperature of disc at inner radius [K]: ", &
+!               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
           call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-               "(a,1p,e9.3,1x,a)", -0.5d0, ok, .true.) 
+               "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
           call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
                "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
