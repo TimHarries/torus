@@ -255,7 +255,11 @@ contains
        if (uncompressedDumpFiles) then
           open(unit=20,iostat=error, file=updatedfilename, form="unformatted", status="unknown", position=positionStatus)
        else
+#ifdef USEZLIB
           call openCompressedFile(20, updatedFilename, positionStatus=positionStatus)
+#else
+          call writeFatal("zlib is needed to read compressed files")
+#endif
        endif
     end if
     if (uncompressedDumpFiles) then
@@ -319,6 +323,7 @@ contains
     if (uncompressedDumpFiles) then
        close(unit=20)
     else
+#ifdef USEZLIB
        if (.not.grid%splitOverMpi) then
           call closeCompressedFile(20,flushBuffer=.true.)
        else
@@ -328,6 +333,9 @@ contains
              call closeCompressedFile(20,flushBuffer=.false.)
           endif
        endif
+#else
+       call writeFatal("zlib is needed for writing compressed files")
+#endif
     endif
     call writeInfo("File written and closed")
        
@@ -3779,8 +3787,12 @@ contains
             if (uncompressedDumpFiles) then
                open(unit=20, iostat=error, file=gridFilename, form="unformatted", status="old")
             else
+#ifdef USEZLIB
                error = 0
                call openCompressedFile(20, gridFilename)
+#else
+               call writeFatal("zlib is needed to read compressed files")
+#endif
             endif
             if (error /=0) then
                print *, 'Panic: file open error in readAMRgrid, file:',trim(gridFilename) ; stop
