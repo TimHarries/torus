@@ -138,6 +138,17 @@ else
     suite_status="FAILED"
 fi
 
+# Test for success of restart test
+num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/restart/check_log_ompiosx_restart.txt | /usr/bin/wc -l`
+num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/restart/check_log_gfortran_restart.txt | /usr/bin/wc -l`
+num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/restart/check_log_ompiosx_restart.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
+    echo "Restart test successful" >> header 
+else
+    echo "!! Restart test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
 # Set up the message body 
 echo  >> header
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log~

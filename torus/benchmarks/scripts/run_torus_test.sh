@@ -340,6 +340,15 @@ for sys in ${SYS_TO_TEST}; do
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
     echo
 
+    echo "Running restart test"
+    export THIS_BENCH=restart
+    cd ${WORKING_DIR}/benchmarks/restart
+    ln -s ../disc/lucy_grid_tmp.dat
+    run_bench
+    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    echo
+
 # Only run this test for MPI systems and not in the daily test
     if [[ ${MODE} != daily ]]; then
 	if [[ ${SYSTEM} != "nagfor" ]]; then 
