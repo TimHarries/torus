@@ -979,7 +979,8 @@ CONTAINS
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
-    if ((splitOverMPI).and.(myrankGlobal == 0)) goto 666
+!THAW - this line was causing cells to thing they were too big in distanceToCellBoundary at 64 way domain decomposition
+!    if ((splitOverMPI).and.(myrankGlobal == 0)) goto 666
 
     DO iSubcell = 1, thisOctal%maxChildren
 
