@@ -33,19 +33,54 @@ module mpi_global_mod
 
 contains
 
+! Report information about how Torus was built
   subroutine report_parallel_type
     use messages_mod
     implicit none
     
     if (TorusHybrid) then 
-       call  writeInfo('Using hybrid MPI/OpenMP', FORINFO)
+       call  writeInfo('Using hybrid MPI/OpenMP', TRIVIAL)
     elseif (TorusMpi) then 
-       call  writeInfo('Using MPI', FORINFO)
+       call  writeInfo('Using MPI', TRIVIAL)
     elseif (TorusOpenmp) then 
-       call  writeInfo('Using OpenMP', FORINFO)
+       call  writeInfo('Using OpenMP', TRIVIAL)
     elseif (TorusSerial) then
-       call  writeInfo('No parallelism is in use', FORINFO)
+       call  writeInfo('No parallelism is in use', TRIVIAL)
     end if
+
+    call  writeInfo('', TRIVIAL)
+    call writeInfo("Options used to build Torus were:", TRIVIAL)
+#ifdef HYDRO
+     call writeInfo("hydro=yes", TRIVIAL)
+#else
+     call writeInfo("hydro=no", TRIVIAL)
+#endif
+#ifdef PHOTOION
+     call writeInfo("photoion=yes", TRIVIAL)
+#else
+     call writeInfo("photoion=no", TRIVIAL)
+#endif
+#ifdef MOLECULAR
+     call writeInfo("molecular=yes", TRIVIAL)
+#else
+     call writeInfo("molecular=no", TRIVIAL)
+#endif
+#ifdef CMFATOM
+     call writeInfo("atomic=yes", TRIVIAL)
+#else
+     call writeInfo("atomic=no", TRIVIAL)
+#endif
+#ifdef SPH
+     call writeInfo("sph=yes", TRIVIAL)
+#else
+     call writeInfo("sph=no", TRIVIAL)
+#endif
+#ifdef USECFITSIO
+     call writeInfo("cfitsio=yes", TRIVIAL)
+#else
+     call writeInfo("cfitsio=no", TRIVIAL)
+#endif
+     call  writeInfo('', TRIVIAL)
 
   end subroutine report_parallel_type
 

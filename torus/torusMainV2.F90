@@ -88,7 +88,6 @@ program torus
   grid%version = torusVersion
   verbosityLevel = 5
   call writeBanner("TORUS "//trim(torusVersion)//" model","-",IMPORTANT)
-  call report_parallel_type
 
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
@@ -103,6 +102,9 @@ program torus
   call setupAMRCOMMUNICATOR
 !  write(*,*) myrankWorldGlobal, " para ",nHydroThreadsGlobal,NHydrosetsGlobal,myhydrosetglobal
 #endif
+
+! Report build options 
+  call report_parallel_type
 
   ! set up a random seed
   call run_random_test_suite
