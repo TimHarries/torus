@@ -1503,6 +1503,7 @@ contains
              thisOctal%temperature(subcell) = real(thisWind%Twind)
              thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, thisWind)
              thisOctal%velocity(subcell) = discwind_velocity(thisWind, vector(x,y,z))
+             thisOctal%fixedTemperature(subcell) = .true.
              if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
           endif
        endif

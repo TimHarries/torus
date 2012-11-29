@@ -12124,10 +12124,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-             if ((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold)) then
-                write(*,*) "Cell in accretion radius but not bound ",eKinetic+eThermal+eGrav
+             if ((eKinetic + eGrav > 0.d0).and.(rhoLocal > rhoThreshold)) then
+                write(*,*) "Cell in accretion radius but not bound ",eKinetic+eGrav
                 write(*,*) "eGrav ",eGrav
-                write(*,*) "ethermal ",eThermal
+!                write(*,*) "ethermal ",eThermal
                 write(*,*) "eKinetic ",eKinetic
              endif
              localAccretedMass = 0.d0
@@ -12374,8 +12374,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     real(double) :: radius
     type(GRIDTYPE) :: grid
     integer :: nPoints
-    type(VECTOR) :: position(:), vel(:)
-    real(double) :: mass(:), phi(:), cs(:)
+    type(VECTOR) :: position(:), vel(:), rVec
+    real(double) :: mass(:), phi(:), cs(:), r
     type(OCTAL), pointer :: thisOctal
     real(double) :: temp(13)
     integer :: iThread
@@ -12387,9 +12387,17 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
     npoints = 1
     position(1) = subcellCentre(thisOctal, subcell)
-    vel(1) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-         thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
-         thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+    if (.not.cylindricalHydro) then
+       vel(1) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+            thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+            thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+    else
+       rVec = subcellCentre(thisOctal, subcell)
+       r = sqrt(rVec%x**2 + rVec%y**2) * gridDistanceScale
+       vel(1) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+            thisOctal%rhov(subcell)/(thisOctal%rho(subcell)*r), &
+            thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+    endif
     mass(1) = cellVolume(thisOctal, subcell)*1.d30*thisOctal%rho(subcell)
     phi(1) = thisOctal%phi_i(subcell)
     cs(1) = soundSpeed(thisOctal, subcell)
