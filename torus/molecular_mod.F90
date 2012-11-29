@@ -855,8 +855,9 @@ module molecular_mod
      use dust_mod
      use parallel_mod
      use vtk_mod
+#ifdef PHOTOION
      use photoion_utils_mod, only : quicksublimate
-
+#endif
 #ifdef MPI
      use mpi
 #ifdef HYDRO
@@ -921,9 +922,11 @@ module molecular_mod
 
      call writeinfo("molecular_mod 20100428.1400",TRIVIAL)
 
+#ifdef PHOTOION
      if(usedust) then
         call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
      end if
+#endif
 
      write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"                                                                          
      call writeVtkFile(grid, mpiFilename, &                                                                                     

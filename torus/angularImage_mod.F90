@@ -31,6 +31,16 @@ module angularImage
   integer :: vel_chan_num
   logical, save :: nColOnly 
 
+! For storing density plot of CO vs H2 column density
+  integer, save, allocatable :: CO_H2_dist(:,:)
+  integer, parameter :: CO_H2_dist_size=100
+! Range of data values stored
+  real(double), parameter, private :: minCO = 10.0
+  real(double), parameter, private :: maxCO = 18.0
+  real(double), parameter, private :: minH2 = 17.0
+  real(double), parameter, private :: maxH2 = 22.0
+
+
 !$OMP THREADPRIVATE (vr_format)
 
   contains
@@ -59,6 +69,8 @@ module angularImage
       if (nv ==1) then
          nColOnly   = .true.
          splitCubes = .true.
+         allocate( CO_H2_dist(CO_H2_dist_size,CO_H2_dist_size) )
+         CO_H2_dist(:,:) = 0
       else
          nColOnly = .false.
       end if
@@ -159,6 +171,8 @@ module angularImage
       end if
 #endif
       call freeDataCube(cube)
+
+      if (nColOnly) call write_CO_vs_H2
      
     end subroutine make_angular_image
 
@@ -761,6 +775,8 @@ module angularImage
         
      enddo ingrid_loop
          
+     if (nColOnly) call CO_vs_H2
+
 666  continue
 
      contains
@@ -796,6 +812,37 @@ module angularImage
          end if
 
        end subroutine write_los_info
+
+       subroutine CO_vs_H2
+         implicit none
+
+         integer :: i_dist, j_dist
+         real(double) :: log_nCol_H2, log_nCol_CO
+         real(double) :: dx, dy 
+
+! Don't bother with tiny column densities
+         if (nCol_H2 < 1000.0 .or. nCol_CO < 1000.0 ) return
+
+! Will be working with log(column density)
+         log_nCol_H2 = log10(nCol_H2)
+         log_nCol_CO = log10(nCol_CO)
+
+! Calculate bin sizes
+         dx = ( maxH2 - minH2 ) / real(CO_H2_dist_size,db)
+         dy = ( maxCO - minCO ) / real(CO_H2_dist_size,db)
+
+! Work out which bin this point is in. 
+! The int function truncates towards zero so add 1
+         i_dist = int( (log_nCol_H2-minH2) / dx) + 1 
+         j_dist = int( (log_nCol_CO-minCO) / dy) + 1
+
+! Increment the array of point densities if this point lies within the range considered
+         if (i_dist > 0 .and. i_dist <= CO_H2_dist_size .and. &
+              j_dist > 0 .and. j_dist <= CO_H2_dist_size) then
+            CO_H2_dist(i_dist, j_dist) = CO_H2_dist(i_dist, j_dist) + 1
+         endif
+
+       end subroutine CO_vs_H2
 
    end subroutine intensityAlongRayRev
 
@@ -904,6 +951,32 @@ module angularImage
    end subroutine map_dI_to_particles
 #endif
 !-----------------------------------------------------------------------------------------
+
+subroutine write_CO_vs_H2
+  implicit none
+
+  integer :: i_dist, j_dist
+  real(double) :: dx, dy, x, y
+
+! Calculate bin sizes
+  dx = ( maxH2 - minH2 ) / real(CO_H2_dist_size,db)
+  dy = ( maxCO - minCO ) / real(CO_H2_dist_size,db)
+
+  open(unit=82, status="replace", file="CO_vs_H2.dat")
+
+  do j_dist = 1, CO_H2_dist_size
+     do i_dist = 1, CO_H2_dist_size
+        x = minH2 + (real(i_dist,db) - 0.5) * dx
+        y = minCO + (real(j_dist,db) - 0.5) * dy
+        write(82,*) x, y, CO_H2_dist(i_dist, j_dist) 
+     end do
+  end do
+
+  close(82)
+
+  deallocate (CO_H2_dist)
+
+end subroutine write_CO_vs_H2
 
 end module angularImage
 #endif

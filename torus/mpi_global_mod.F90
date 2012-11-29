@@ -38,6 +38,9 @@ contains
     use messages_mod
     implicit none
     
+    call writeBanner("Build options","%",TRIVIAL)
+
+
     if (TorusHybrid) then 
        call  writeInfo('Using hybrid MPI/OpenMP', TRIVIAL)
     elseif (TorusMpi) then 
@@ -80,7 +83,6 @@ contains
 #else
      call writeInfo("cfitsio=no", TRIVIAL)
 #endif
-     call  writeInfo('', TRIVIAL)
 
   end subroutine report_parallel_type
 
