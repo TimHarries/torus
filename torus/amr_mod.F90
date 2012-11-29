@@ -1047,7 +1047,7 @@ CONTAINS
                      setChanged, romData=romData)
       
    END DO
-666  continue
+!666  continue
   END SUBROUTINE splitGrid
   
   
