@@ -374,7 +374,7 @@ module image_mod
        nx = size(array(:,1))
        ny = size(array(1,:))
 
-       r = -((dx*201.)/2.d0) + (dx/2.d0)
+       r = -((dx*nx)/2.d0) + (dx/2.d0)
        
        if (cutType == "vertical") then
           if(firstTime) then
