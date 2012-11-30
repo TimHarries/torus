@@ -82,7 +82,7 @@ module source_mod
       real(double) :: tot
       integer :: i, j
 
-      
+      if ( nsource<1 ) return
 
       if (writeoutput) &
            write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "Ran ""N","M","R","L","L(spec)","x","y","z"

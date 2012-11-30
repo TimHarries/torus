@@ -31,7 +31,7 @@ contains
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, sphDataFilename
+    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics
     use disc_class, only:  new
@@ -42,8 +42,7 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: new_read_sph_data, read_sph_data_wrapper, sphdata
-    use wr104_mod, only : readwr104particles  
+    use sph_data_class, only: read_sph_data_wrapper, sphdata
 #endif
 #ifdef MPI 
     use mpi_amr_mod
@@ -178,11 +177,11 @@ contains
 
        case("molcluster")
           if (.not.grid%splitOverMPI) then
-             call new_read_sph_data(sphdatafilename)
+             call read_sph_data_wrapper
           else
 #ifdef MPI
              if (myrankGlobal == 0) then
-                call new_read_sph_data(sphdatafilename)
+                call read_sph_data_wrapper
              endif
              call distributeSphDataOverMPI()
 #endif
@@ -195,7 +194,7 @@ contains
 
        case("wr104")
           objectDistance = griddistance * pctocm
-          call readWR104Particles(sphdatafilename, sphdata , objectDistance)
+          call read_sph_data_wrapper
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)

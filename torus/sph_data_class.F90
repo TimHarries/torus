@@ -15,33 +15,39 @@ module sph_data_class
 
   public:: &
        kill, &
-       read_sph_data, &
        get_udist, &
        get_umass, &
        get_utime, &
        get_npart, &
        get_nptmass, &
        get_time, &
+       get_vel, &
        get_position_gas_particle, &
        Put_position_gas_particle, &
        get_rhon, &
        put_rhon, &
        get_position_pt_mass, &
+       get_pt_position, &
        get_pt_mass, &
+       get_pt_velocity, &
        get_rhon_min, &
        get_rhon_max, &
        get_spins, &
-       max_distance, &
-       info, &
        get_stellar_disc_parameters, &
        stellar_disc_exists, &
        find_inclinations, &
        ClusterParameter, &
-       isAlive
+       isAlive, &
+       sphData, &
+       sphVelocityPresent, &
+       read_sph_data_wrapper, & ! only the wrapper routine is public
+       sph_mass_within_grid
+
+! Default is private  
+  private
 
   ! At a given time (time)
   type sph_data
-!     private  ! Believe me. It's better to be private!    
      logical      :: inUse=.false.          ! Flag to indicate if this object is in use.
      real(double) :: udist, umass, utime, uvel, utemp    ! Units of distance, mass, time in cgs
      real(double) :: codeVelocitytoTORUS    ! Conversion from SPH code velocity units to Torus units
@@ -101,13 +107,7 @@ module sph_data_class
   type(VECTOR), save :: prevpos
 
   real(double) :: maxx, maxy, maxz, maxr2 ! maximum extents of particles
-  
-  private:: &
-       kill_sph_data
 
-
-  !
-  !
   interface kill
      module procedure kill_sph_data
   end interface
@@ -120,6 +120,7 @@ contains
   ! Initializes an object with parameters (if possible).
   ! 
   subroutine init_sph_data(udist, umass, utime,  time, nptmass, uvel, utemp)
+    use inputs_mod, only: discardSinks
     implicit none
 
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
@@ -147,7 +148,6 @@ contains
 
     sphdata%npart = npart
     sphdata%time = time
-    sphdata%nptmass = nptmass
 
 
     ! allocate arrays
@@ -166,16 +166,26 @@ contains
     ALLOCATE(sphdata%gasmass(sphdata%npart))
     ALLOCATE(sphdata%hn(sphdata%npart))
 
+! If sinks are discarded then the point mass arrays will be set to 
+! zero size rather than left unallocated
+    if (discardSinks) then
+       call writeInfo("Sink particles will be discarded", FORINFO)
+       sphdata%nptmass = 0
+    else
+       call writeInfo("Sink particles will be stored", FORINFO)
+       sphdata%nptmass = nptmass
+    endif
+
     ! -- for star positions
     ALLOCATE(sphdata%x(nptmass))
     ALLOCATE(sphdata%y(nptmass))
     ALLOCATE(sphdata%z(nptmass))
-
+       
     ALLOCATE(sphdata%vx(nptmass))
     ALLOCATE(sphdata%vy(nptmass))
     ALLOCATE(sphdata%vz(nptmass))
     ALLOCATE(sphdata%hpt(nptmass))
-    
+       
     ! -- for mass of stars
     ALLOCATE(sphdata%ptmass(nptmass))
 
@@ -318,74 +328,10 @@ contains
 
   end subroutine read_sph_data_wrapper
 
-  !
-  !
-  ! Read in the data from a file, allocate the array memory, and store the
-  ! the number of gas and stars in this object.
-  !
-  ! Note: This routine only works with the 'old' (unknown how old) dump file
-  ! format. Use new_read_sph_data to read in ASCII created by SPLASH.
-
-  subroutine read_sph_data(this, rootfilename)
-    use inputs_mod, only : iModel
-    use utils_mod, only : findMultiFilename
-    implicit none
-    type(sph_data), intent(inout) :: this
-    character(LEN=*), intent(in)  :: rootfilename
-    !   
-    character(len=80) :: filename
-    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-!    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
-!    integer*4 :: npart,  nsph, nptmass
-    real(double) :: udist, umass, utime
-    real(double) :: gaspartmass, time
-    integer :: nptmass, n1, n2
-    real(double), allocatable :: dummy(:)     
-
-
-    call findMultiFilename(rootfilename, iModel, filename)
-    open(unit=LUIN, file=TRIM(filename), form='unformatted')
-
-
-    ! reading in the first line
-    READ(LUIN) udist, umass, utime, npart, n1, n2, time, nptmass, gaspartmass
-
-    ! initilaizing the sph_data object (allocating arrays, saving parameters and so on....)
-    call init_sph_data(udist, umass, utime, time, nptmass)
-
-
-    ! reading the positions  of gas particles and stars,
-    ALLOCATE(dummy(npart))
-
-    write(*,*) ' '
-    write(*,*) 'Reading Matthew''s SPH data....'
-    write(*,*) ' '
-    READ(LUIN) this%xn
-    READ(LUIN) this%yn
-    READ(LUIN) this%zn
-
-    READ(LUIN) dummy   ! Vx
-    READ(LUIN) dummy   ! Vy
-    READ(LUIN) dummy   ! Vz
-
-    READ(LUIN) this%rhon
-    
-    READ(LUIN) this%x
-    READ(LUIN) this%y
-    READ(LUIN) this%z
-
-    READ(LUIN) this%ptmass
-   
-
-
-    DEALLOCATE(dummy)
-
-  end subroutine read_sph_data
-
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: internalView, convertRhoToHI, ih2frac, sphwithchem
-    use inputs_mod, only : iModel, galaxyPositionAngle, galaxyInclination
+    use inputs_mod, only : iModel, galaxyPositionAngle, galaxyInclination, discardSinks
     use utils_mod, only : findMultiFilename
 
     implicit none
@@ -488,8 +434,13 @@ contains
     ih = indexWord("h",word,nWord)
     iitype = indexWord("itype",word,nWord)
 
-    write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
+    if (discardSinks) then 
+       write(message,*) "Allocating ", npart-nptmass, " gas particles"
+    else
+       write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
+    endif
     call writeinfo(message, TRIVIAL)
+
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
     ! velocity unit is derived from distance and time unit (converted to seconds from years)
     sphdata%codeVelocitytoTORUS = uvel / cspeed 
@@ -546,7 +497,7 @@ contains
     igas = 0
     idead = 0
 
-    do ipart=1, nlines
+part_loop: do ipart=1, nlines
 
 !       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, junk, junk, junk, vx, vy, vz, u, junk, junk, junk, junk, junk, junk, junk, &
 !            junk, junk, junk,junk, junk,junk,junk,junk,itype
@@ -624,6 +575,8 @@ contains
 ! 3=sink, 4=star
        else if(itype .eq. 3 .or. itype .eq. 4) then
 
+          if (discardSinks) cycle part_loop
+
           iptmass = iptmass + 1
 
           sphdata%x(iptmass) = xn
@@ -650,7 +603,7 @@ contains
        
        endif
 
- enddo
+    enddo part_loop
 
  write(message,*) "Read ",icount, " lines"
  call writeinfo(message, TRIVIAL)
@@ -1479,63 +1432,6 @@ contains
 
   end subroutine read_sph_data_withChem
 
-
-  !
-  !
-  ! Read in the data from a file, allocate the array memory, and store the
-  ! the number of gas and stars in this object.
-  !
-  subroutine read_stellar_disc_data(this, filename)
-    implicit none
-    type(sph_data), intent(inout) :: this
-    character(LEN=*), intent(in)  :: filename
-    ! 
-    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-    integer :: nstar
-    integer :: i, dum_i
-    character(LEN=1) :: dum_a
-    real(double), parameter :: M_sun = 1.989e33 ! [grams]
-
-    open(unit=LUIN, file=TRIM(filename), status='old')
-
-    nstar = this%nptmass
-
-    ! reading in the header
-    do i = 1, 6
-       READ(LUIN, *) dum_a
-    end do
-
-
-    ! allocating arrays
-    ! --- for stellar discs
-    ALLOCATE(this%discrad(nstar))
-    ALLOCATE(this%discmass(nstar))
-    ALLOCATE(this%spinx(nstar))
-    ALLOCATE(this%spiny(nstar))
-    ALLOCATE(this%spinz(nstar))
-
-
-    write(*,*) ' '
-    write(*,*) 'Reading Matthew''s stellar disc data....'
-    write(*,*) ' '
-
-    
-    do i=1, nstar 
-       read(luin, *) dum_i, this%discrad(i), this%discmass(i), &
-            this%spinx(i), this%spiny(i), this%spinz(i)
-       ! convert the mass into grams
-       this%discmass(i) = this%discmass(i)*M_sun  ![g]
-    end do
-
-
-    this%have_stellar_disc = .true.    
-
-
-  end subroutine read_stellar_disc_data
-  
-
-    
-
   !
   !
   ! accessors
@@ -1819,35 +1715,6 @@ contains
     sphdata%inUse = .false.
 
   end subroutine kill_sph_data
-    
-
-
-
-
-  !
-  ! find the maximum distance between the pt masses
-  !
-
-  function max_distance() RESULT(out)
-    implicit none
-    real(double) :: out
-    !
-    real(double) :: d_max, d, x, y, z
-    integer :: i, j, n
-    
-    d_max= -1.0
-    n=get_nptmass() ! function in this moudle
-    
-    do i = 1, n-2
-       do j = i+1, n
-          call get_position_pt_mass(j, x, y, z)
-          d = (x*x+y*y+z*z)  ! omit SQRT here cus it costs too much.
-          d_max = MAX(d_max, d)
-       end do
-    end do 
-    d_max = SQRT(d_max)
-    out = d_max
-  end function max_distance
 
 
   !

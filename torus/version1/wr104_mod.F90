@@ -11,9 +11,9 @@ module wr104_mod
 
 contains
 
-  subroutine readWR104Particles(filename, sphdata, objectDistance)
+  subroutine readWR104Particles(sphdata, objectDistance)
+    use inputs_mod, only: sphdatafilename
     use constants_mod, only: degtorad
-    character(len=*), intent(in) :: filename
     type(sph_data), intent(inout) :: sphData
     real(double), intent(in) :: objectDistance
     !
@@ -27,8 +27,8 @@ contains
 
 
 
-    if (writeoutput) write(*,'(a,a)') "Reading particles from: ",trim(filename)
-    open(20,file=filename,status="old",form="unformatted")
+    if (writeoutput) write(*,'(a,a)') "Reading particles from: ",trim(sphdatafilename)
+    open(20,file=sphdatafilename,status="old",form="unformatted")
     read(20) npart
     if (writeoutput) write(*,*) "Reading ",npart," particles"
 ! assume that the units are 1 mil

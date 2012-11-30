@@ -548,7 +548,7 @@ CONTAINS
 
     select case (grid%geometry)
 #ifdef SPH
-       case("cluster","molcluster","theGalaxy")
+       case("cluster","molcluster","theGalaxy","wr104")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
           ! to the subcells if the particles are in the subcells.
@@ -573,17 +573,6 @@ CONTAINS
 
           write(message,*) "Done."
           call writeinfo(message, TRIVIAL)
-
-       case("wr104")
-          ! Using the routine in grid_mod.f90
-          call copy_sph_index_to_root(grid)
-          !
-          DO subcell = 1, grid%octreeRoot%maxChildren
-             ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
-             ! label the subcells
-             grid%octreeRoot%label(subcell) = subcell
-          END DO
 #endif
        case("romanova")
           ! just checking..
@@ -1224,7 +1213,6 @@ CONTAINS
     USE romanova_class, ONLY:   calc_romanova_temperature
 #ifdef SPH
     USE cluster_class, ONLY:    assign_grid_values 
-    use wr104_mod, only :       assign_grid_values_wr104
 #endif
 
     IMPLICIT NONE
@@ -1261,11 +1249,8 @@ CONTAINS
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
 
 #ifdef SPH
-       CASE ("cluster")
+       CASE ("cluster","wr104")
           call assign_grid_values(thisOctal,subcell)
-
-       CASE ("wr104")
-          call assign_grid_values_wr104(thisOctal,subcell)
           
        CASE ("molcluster", "theGalaxy")
           if( .not. thisoctal%haschild(subcell)) then 

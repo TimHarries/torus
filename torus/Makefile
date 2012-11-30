@@ -395,8 +395,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             integratePath.f90 fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 amr_utils_mod.f90  \
             jets_mod.f90 h21cm_mod.f90 \
-            source_mod.f90 spectrum_mod.f90 \
-            wr104_mod.f90 density_mod.f90 \
+            source_mod.f90 spectrum_mod.f90 density_mod.f90 \
             sph_data_class.f90 cluster_class.f90 vh1_mod.f90 \
             timing.f90  isochrone_class.f90 \
             filter_set_class.f90 ostar_mod.f90  \

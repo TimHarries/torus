@@ -739,6 +739,7 @@
   logical :: convertRhoToHI ! Convert density to HI
   integer :: ih2frac        ! column of SPH file which contains H2 fraction
   logical :: sphwithchem    ! SPH has chemistry data which needs to be read
+  logical :: discardSinks   ! Don't store sink particles
 
 
 !------------------

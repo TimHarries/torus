@@ -954,8 +954,11 @@ contains
           call getLogical("useHull", useHull, cLine, fLine, nLines, &
             "Use hull particle method: ","(a,1l,a)", .false., ok, .false.)
 
+          call getLogical("discardsinks", discardSinks, cLine, fLine, nLines, &
+            "Discard sink particles: ","(a,1l,a)", .false., ok, .false.)
+
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
-               "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
+               "Input file format: ","(a,a,1x,a)","ascii", ok, .false.)
 
 ! Conversion from total density to HI density when chemistry is included
 ! and grid needs to be loaded with HI density
