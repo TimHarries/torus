@@ -367,8 +367,12 @@ module image_mod
        character(len=*) :: cutType
        integer :: sliceIndex
        logical, save :: firstTime = .true.
+       integer :: nx, ny
 
        open (123, file="pixelFile.dat", status="unknown")
+
+       nx = size(array(:,1))
+       ny = size(array(1,:))
 
        r = -((dx*201.)/2.d0) + (dx/2.d0)
        
@@ -377,8 +381,8 @@ module image_mod
              print *, "Dumping horizontal cut through pixel ", sliceIndex
              firstTime = .false.
           end if
-          do i = 1, 201
-             do j = 1, 201
+          do i = 1, nx
+             do j = 1, ny
                 inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
                 if(j == sliceIndex) then
                    write(123, *) r, inImage, samplings(i,j)
@@ -391,8 +395,8 @@ module image_mod
              print *, "Dumping horizontal cut through pixel ", sliceIndex
              firstTime = .false.
           end if
-          do i = 1, 201
-             do j = 1, 201
+          do i = 1, nx
+             do j = 1, ny
                 inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
                 if(i == sliceIndex) then
                    write(123, *) r, inImage, samplings(i,j)
