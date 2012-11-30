@@ -366,26 +366,35 @@ module image_mod
        integer :: i, j
        character(len=*) :: cutType
        integer :: sliceIndex
+       logical, save :: firstTime = .true.
 
        open (123, file="pixelFile.dat", status="unknown")
 
        r = -((dx*201.)/2.d0) + (dx/2.d0)
        
        if (cutType == "vertical") then
+          if(firstTime) then
+             print *, "Dumping horizontal cut through pixel ", sliceIndex
+             firstTime = .false.
+          end if
           do i = 1, 201
              do j = 1, 201
                 inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
-                if(i == sliceIndex) then
+                if(j == sliceIndex) then
                    write(123, *) r, inImage, samplings(i,j)
                    r = r + dx
                 end if
              end do
           end do
        else if (cutType == "horizontal") then
+          if(firstTime) then
+             print *, "Dumping horizontal cut through pixel ", sliceIndex
+             firstTime = .false.
+          end if
           do i = 1, 201
              do j = 1, 201
                 inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
-                if(j == sliceIndex) then
+                if(i == sliceIndex) then
                    write(123, *) r, inImage, samplings(i,j)
                    r = r + dx
                 end if
