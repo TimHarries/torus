@@ -339,6 +339,9 @@
   logical :: recombinationSed   !include recombination line emission in SED
   logical :: forbiddenSed   !include forbidden line emission in SED
   logical :: resolveSilicateFeature ! add points to SED to full resolve silicate feature
+  logical :: dumpCut    !Dump pixel values in a cut across the image into a file
+  character(len=30) :: cutType    !direction of cut (horizontal or vertical)
+  integer :: sliceIndex !pixel through which the cut runs (x or y depends on cutType)
 
 !--------------------------------
 ! Image and data cube parameters 

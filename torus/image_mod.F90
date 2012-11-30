@@ -302,6 +302,7 @@ module image_mod
 ! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
 ! Note there is no distance dependance as this is per cm^2 AND per sr.
      subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, samplings, pointTest, cylinderTest)
+       use inputs_mod, only : dumpCut, cutType, sliceIndex
        real, intent(inout)      :: array(:,:)
        integer, intent(inout)      :: samplings(:,:)
 !       real, intent(in)         :: lambda
@@ -327,8 +328,10 @@ module image_mod
           call dumpPointTestData(array, strad, perAngstromToPerHz)
        end if
 
-       if(present(cylinderTesT)) then
-          call dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
+
+       if(present(cylinderTesT) .or. dumpCut) then
+          call dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings, sliceIndex, &
+               cutType)         
        end if
      end subroutine ConvertArrayToMJanskiesPerStr
 
@@ -351,7 +354,8 @@ module image_mod
      end subroutine ConvertArrayToJanskysPerPix
 
 
-     subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings)
+     subroutine dumpLine(array, strad, perAngstromToPerHz, dx, scale, samplings,sliceIndex, &
+          cutType)
 
        real, intent(inout)      :: array(:,:)       
        integer, intent(inout)      :: samplings(:,:)       
@@ -360,25 +364,42 @@ module image_mod
        real(double), parameter :: FluxToMegaJanskies = FluxToJanskies * 1.e-6_db
        real(double) :: dx, r
        integer :: i, j
-!       logical, save :: firstTime=.true.
+       character(len=*) :: cutType
+       integer :: sliceIndex
 
        open (123, file="pixelFile.dat", status="unknown")
 
        r = -((dx*201.)/2.d0) + (dx/2.d0)
-
-       do i = 1, 201
-          do j = 1, 201
-             inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
-             if(i == 101) then
-                write(123, *) r, inImage, samplings(i,j)
-                r = r + dx
-             end if
+       
+       if (cutType == "vertical") then
+          do i = 1, 201
+             do j = 1, 201
+                inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
+                if(i == sliceIndex) then
+                   write(123, *) r, inImage, samplings(i,j)
+                   r = r + dx
+                end if
+             end do
           end do
-       end do
+       else if (cutType == "horizontal") then
+          do i = 1, 201
+             do j = 1, 201
+                inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * scale)
+                if(j == sliceIndex) then
+                   write(123, *) r, inImage, samplings(i,j)
+                   r = r + dx
+                end if
+             end do
+          end do
+       else
+          print *, "Unrecognized cut type in dumpCut", cutType
+          stop
+       end if
 
        close(123)
-       
+
      end subroutine dumpLine
+
 
      subroutine dumpPointTestData(array, strad, perAngstromToPerHz)
 

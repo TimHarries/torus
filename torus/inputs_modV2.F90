@@ -2253,6 +2253,17 @@ contains
     call getString("imagefluxunits", fluxUnits, cLine, fLine, nLines,&
          "Flux units for image:", "(a,a,1x,a)", "MJy/str", ok, .false.)
 
+    !Thaw for image cut dumps
+    call getLogical("dumpCut", dumpCut, cLine, fLine, nLines, &
+         "Dump a file of pixel values in a cut across the image: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if(dumpCut) then
+       call getInteger("sliceIndex", sliceIndex, cLine, fLine, nLines, &
+            "Cell index axis of image cut","(a,i8,a)", 101, ok, .false.)
+
+       call getString("cutType", cutType, cLine, fLine, nLines, &
+            "Direction of cut: ","(a,a,1x,a)","vertical", ok, .false.)       
+    end if
 
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
