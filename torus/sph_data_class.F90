@@ -41,7 +41,8 @@ module sph_data_class
        sphData, &
        sphVelocityPresent, &
        read_sph_data_wrapper, & ! only the wrapper routine is public
-       sph_mass_within_grid
+       sph_mass_within_grid, &
+       npart, init_sph_data ! for distributeSphDataOverMPI
 
 ! Default is private  
   private
