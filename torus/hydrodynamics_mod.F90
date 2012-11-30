@@ -9607,6 +9607,7 @@ end subroutine refineGridGeneric2
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
 
 !             if (myrankglobal == 1) write(*,*) newphi,thisOctal%phi_gas(subcell),deltaT, sumd2phidx2, thisOctal%rho(subcell)
+             if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
                 frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                 thisOctal%chiline(subcell) = frac
@@ -9615,7 +9616,6 @@ end subroutine refineGridGeneric2
                 fracChange = 1.d30
 !                frac = fracChange
              endif
-             if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
 !             thisOctal%chiline(subcell) = frac
 
              thisOctal%phi_gas(subcell) = newPhi
