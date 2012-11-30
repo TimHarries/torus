@@ -2612,9 +2612,9 @@ end subroutine radiationHydro
         minCrossings = 1000
      else if(grid%geometry == "lexington") then
         minCrossings = 50000
-     else if(singleMegaPhoto) then
-        minCrossings = 50000 
-     else
+!     else if(singleMegaPhoto) then
+!        minCrossings = 50000 
+!     else
 !        minCrossings = 5000
 !        minCrossings = 1000
      end if
