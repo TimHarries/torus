@@ -48,6 +48,7 @@
   integer :: nModelStart, nModelEnd ! start and end numbers for multiple models
   integer :: iModel               ! current model number
   logical :: justDump             !Dump a vtk file for the read in grid and exit
+  logical :: dumpBisbas           !Dump the grid for use in the Bisbas+ 3D-PDR code
   logical :: singleMegaPhoto             !Do an extensive photoionization calculation
   character(len=80) :: gridInputFilename, gridOutputFilename ! File names for reading/writing AMR grid
 

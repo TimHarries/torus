@@ -188,6 +188,9 @@ contains
     if(readgrid) call getLogical("justdump", justDump, cLine, fLine, nLines, &
          "Dump a vtk file and abort: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if(readgrid) call getLogical("dumpBisbas", dumpBisbas, cLine, fLine, nLines, &
+         "Dump the grid for use in 3D-PDR: ","(a,1l,1x,a)", .false., ok, .false.)
+
     if (readgrid) call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
     

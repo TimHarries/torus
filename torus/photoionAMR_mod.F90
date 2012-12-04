@@ -60,7 +60,7 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles, cylindricalHydro
+    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -199,7 +199,13 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("vtk dump completed. Aborting...")
        end if
-       
+
+       if(dumpBisbas) then
+          call writeGridToBisbas(grid%octreeroot, grid)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          call torus_abort("3D-PDR grid dump completed. Aborting...")
+       end if
+
 !turn everything on and run a long calculation
        if(singleMegaPhoto) then
           maxPhotoionIter = 200

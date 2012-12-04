@@ -2733,6 +2733,43 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
  !print *, "Stromgren dump completed"
 end subroutine dumpStromgrenRadius
 
+!Dumps the grid to a file in a format that can be used in 3D-PDR (Bisbas et al. 2012)
+recursive subroutine writeGridToBisbas(thisOctal, grid)
+  type(OCTAL), pointer :: thisOctal, child
+  type(VECTOR) :: rVec
+  type(GRIDTYPE) :: grid
+  integer :: i, subcell
+  logical, save :: fileOpen=.false.
+
+  if (not (fileOpen)) then
+     open(123, file="forBisbas.txt", form="formatted", status="unknown")
+     fileOpen = .false.
+  end if
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  writeGridToBisbas(child, grid)
+                exit
+             end if
+          end do
+       else 
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             write(123, '(1p,7e14.5)') ((rVec%x+(grid%octreeRoot%subcellSize/2.d0))*1.d10/pctocm), &
+                  ((rVec%y+(grid%octreeRoot%subcellSize/2.d0))*1.d10/pctocm), &
+                  ((rVec%z+(grid%octreeRoot%subcellSize/2.d0))*1.d10/pctocm), &
+                  thisOctal%rho(subcell), thisOctal%temperature(subcell)
+          end if
+       end if
+    end do
+        
+
+  end subroutine writeGridToBisbas
+
 
 subroutine writeRadialFile(rootFilename, grid)
   use inputs_mod, only : iModel
