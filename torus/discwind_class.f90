@@ -809,7 +809,7 @@ contains
     !
     logical, save :: first_time = .true.
     real(double) , save:: rGrid(nr)
-    real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
+    real(double) :: Rmax = 1.5d3  ! [10^10cm] = 1 AU
     TYPE(VECTOR)     :: VecInnerEdge
     real(double) :: wi
 

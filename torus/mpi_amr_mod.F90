@@ -307,6 +307,7 @@ contains
     real(double) :: radius, localMass
     integer, parameter :: tag = 54
     integer :: ierr, iThread
+    integer :: status(MPI_STATUS_SIZE)
 
     mass = 0.d0
 
@@ -316,7 +317,7 @@ contains
           call findTotalMassWithinRMPI(grid%octreeRoot, radius, localMass)
        else
           call MPI_SEND(radius, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-          call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
        endif
        mass = mass + localMass
     enddo

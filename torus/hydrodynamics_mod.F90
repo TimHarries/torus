@@ -6,6 +6,7 @@ module hydrodynamics_mod
 #ifdef MPI
 
   use inputs_mod
+  use utils_mod
   use viscosity_mod
   use dimensionality_mod
   use kind_mod
@@ -326,36 +327,49 @@ contains
 
 
   subroutine setupAlphaViscosity(grid, alpha, HoverR)
+    use inputs_mod, only : amrGridSize, smallestCellSize
     use mpi
     type(GRIDTYPE) :: grid
     real(double) :: alpha, HOverR, r
-    integer :: iThread, j
+    integer :: j
     integer, parameter :: tag = 54
     integer :: ierr
+    real(double), allocatable :: rAxis(:), mr(:)
+    integer :: nr, i
 
-    do iThread = 1, nHydroThreadsGlobal
-       if (iThread /= myRankGlobal) then
-          call findTotalMassWithinRServer(grid, iThread)
-       else
-          call setupAlphaViscosityPrivate(grid, grid%octreeRoot, alpha, HOverR)
-          do j = 1, nHydroThreadsGlobal
-             if (j /= myRankGlobal) then
-                r = 1.d30
-                call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
-             endif
-          enddo
-       endif
+    nr  = amrGridSize/smallestCellsize
+    allocate(rAxis(1:nr),mr(1:nr))
+    do i = 1, nr
+       rAxis(i) = smallestCellSize/2.d0 + (amrGridSize-smallestCellSize)/dble(i-1)
     enddo
+    
+    if (myrankGlobal /= 1) then
+       call findTotalMassWithinRServer(grid, 1)
+    else
+       do j = 1, nr
+          call findMassOverAllThreadsWithinR(grid, mr(j), raxis(j))
+       enddo
+       do j = 1, nHydroThreadsGlobal
+          if (j /= myRankGlobal) then
+             r = 1.d30
+             call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
+          endif
+       enddo
+    endif
+    call MPI_BCAST(mr, nr, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
+    call setupAlphaViscosityPrivate(grid, grid%octreeRoot, alpha, HoverR, rAxis, mr, nr)
+    deallocate(mr, rAxis)
+
   end subroutine setupAlphaViscosity
 
 
-  recursive subroutine setupAlphaViscosityPrivate(grid, thisoctal, alpha, HoverR)
+  recursive subroutine setupAlphaViscosityPrivate(grid, thisoctal, alpha, HoverR, rAxis, mr, nr)
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i
+    integer :: subcell, i, nr
     type(GRIDTYPE) :: grid
-    real(double) :: alpha, HoverR, r, mass, omegaK
+    real(double) :: alpha, HoverR, r, mass, omegaK, rAxis(:), mr(:)
     type(VECTOR) :: rVec
     
 
@@ -366,7 +380,7 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call setupAlphaViscosityPrivate(grid, child, alpha, HoverR)
+                call setupAlphaViscosityPrivate(grid, child, alpha, HoverR, rAxis, mr, nr)
                 exit
              end if
           end do
@@ -377,13 +391,15 @@ contains
           if (.not.thisoctal%ghostCell(subcell)) then
              rVec = subcellCentre(thisOctal, subcell)
              r = modulus(rVec)
-             call findMassOverAllThreadsWithinR(grid, mass, r)
+             call locate(rAxis, nr, r, i)
+             mass = mr(i)
              mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
              if (.not.associated(thisOctal%etaline)) then
                 allocate(thisOctal%etaline(1:thisOctal%maxChildren))
              endif
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
              thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
+	     write(*,*) "eta ",thisOctal%etaLine(subcell), omegaK
 
           endif
        endif
@@ -4711,7 +4727,6 @@ end subroutine sumFluxes
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous
-    type(VECTOR) :: totalAngMom
     type(VECTOR) :: direction, viewVec
     integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: nGroup, group(512)
