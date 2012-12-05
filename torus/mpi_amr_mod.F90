@@ -326,7 +326,7 @@ contains
   subroutine findTotalMassWithinRServer(grid, receiveThread)
     use mpi
     type(GRIDTYPE) :: grid
-    real(double) :: loc, radius, totalMass
+    real(double) :: radius, totalMass
     integer :: ierr
     integer :: receiveThread
     integer, parameter :: tag = 54
