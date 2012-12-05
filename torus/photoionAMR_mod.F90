@@ -201,7 +201,16 @@ contains
        end if
 
        if(dumpBisbas) then
-          call writeGridToBisbas(grid%octreeroot, grid)
+          if(myrankglobal /= 0) then
+             print *, "rank ", myrankglobal, "dumping grid to bisbas"
+             call sendGridBisbas(grid%octreeroot, grid)
+             call MPI_BARRIER(amrCommunicator, ierr)
+             call terminateBisbas()
+          else
+          print *, "rank ", myrankglobal, "On writing duties"
+             call writeGridToBisbas(grid)
+          end if
+          print *, "rank ", myrankglobal, "is done dumping bisbas"
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("3D-PDR grid dump completed. Aborting...")
        end if

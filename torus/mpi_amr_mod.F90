@@ -2734,17 +2734,15 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
 end subroutine dumpStromgrenRadius
 
 !Dumps the grid to a file in a format that can be used in 3D-PDR (Bisbas et al. 2012)
-recursive subroutine writeGridToBisbas(thisOctal, grid)
+recursive subroutine SendGridBisbas(thisOctal, grid)
+  use mpi
   type(OCTAL), pointer :: thisOctal, child
   type(VECTOR) :: rVec
   type(GRIDTYPE) :: grid
-  integer :: i, subcell
-  logical, save :: fileOpen=.false.
-
-  if (not (fileOpen)) then
-     open(123, file="forBisbas.txt", form="formatted", status="unknown")
-     fileOpen = .false.
-  end if
+  integer :: i, subcell,  ierr, nStorage
+  integer, parameter :: tag = 10
+  real(double) :: tempstorage(5)
+  nStorage = 5
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2752,22 +2750,80 @@ recursive subroutine writeGridToBisbas(thisOctal, grid)
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call  writeGridToBisbas(child, grid)
+                call  SendGridBisbas(child, grid)
                 exit
              end if
           end do
        else 
-          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-             rVec = subcellCentre(thisOctal, subcell)
-             write(123, '(1p,7e14.5)') ((rVec%x+(grid%octreeRoot%subcellSize/2.d0))*1.d10/pctocm), &
-                  ((rVec%y+(grid%octreeRoot%subcellSize/2.d0))*1.d10/pctocm), &
-                  ((rVec%z+(grid%octreeRoot%subcellSize/2.d0))*1.d10/pctocm), &
-                  thisOctal%rho(subcell), thisOctal%temperature(subcell)
+!          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
+          if(octalonthread(thisoctal, subcell, myrankglobal)) then
+             rVec= subcellCentre(thisOctal, subcell)               
+             tempStorage(1) = rVec%x
+             tempStorage(2) = rVec%y
+             tempStorage(3) = rVec%z
+             tempStorage(4) = thisOctal%rho(subcell)
+             tempStorage(5) = thisOctal%temperature(subcell)
+
+             print *, "RANK ", myrankglobal, "SENDING TO 0"
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          end if
+       endif
+    end do
+
+  end subroutine SendGridBisbas
+
+  subroutine terminateBisbas()
+  use mpi
+  integer :: ierr, nStorage
+  integer, parameter :: tag = 10
+  real(double) :: tempstorage(5)
+  nStorage = 5
+
+  tempStorage = 0.d0
+  tempStorage(5) = 2.d30
+  print *, "RANK ", myrankglobal, "SENDING TERMINATE ORDER TO 0"
+  call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+  
+end subroutine terminateBisbas
+
+  subroutine writeGridToBisbas(grid)
+    use mpi
+    integer, parameter :: nstorage=5
+    type(GRIDTYPE) :: grid
+    integer :: numStillSending
+    type(VECTOR) :: position
+    real(double) :: rho, temperature, tempstorage(nstorage)
+    integer :: status, ierr
+    integer, parameter :: tag = 10
+    logical :: stillRecving
+    open(123, file="forBisbas.txt", form="formatted", status="unknown")
+    stillRecving = .true.
+    numStillSending = nHydroThreadsGlobal
+    do while (stillRecving)
+       
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+       print *, "RANK 0 has recvd"
+       if(tempStorage(5) > 1.d30) then
+          numStillSending = numstillSending - 1
+          if(numStillSEnding == 0) then
+             stillRecving = .false.
+             print *, "TIME TO STOP"
           end if
        end if
-    end do
-        
 
+       position%x = tempStorage(1)
+       position%y = tempStorage(2)
+       position%z = tempStorage(3)
+       rho = tempStorage(4)
+       temperature = tempStorage(5)
+
+       if(stillRecving) then
+          write(123, '(1p,7e14.5)') ((position%x+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
+               ((position%y+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
+               ((position%z+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
+               rho, temperature
+       end if
+    end do
   end subroutine writeGridToBisbas
 
 
