@@ -2764,7 +2764,6 @@ recursive subroutine SendGridBisbas(thisOctal, grid)
              tempStorage(4) = thisOctal%rho(subcell)
              tempStorage(5) = thisOctal%temperature(subcell)
 
-             print *, "RANK ", myrankglobal, "SENDING TO 0"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           end if
        endif
@@ -2774,16 +2773,19 @@ recursive subroutine SendGridBisbas(thisOctal, grid)
 
   subroutine terminateBisbas()
   use mpi
-  integer :: ierr, nStorage
+  integer :: ierr, nStorage, i
   integer, parameter :: tag = 10
   real(double) :: tempstorage(5)
   nStorage = 5
 
-  tempStorage = 0.d0
-  tempStorage(5) = 2.d30
-  print *, "RANK ", myrankglobal, "SENDING TERMINATE ORDER TO 0"
-  call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
-  
+  do i = 1, nhydrothreadsglobal
+     if(i == myrankglobal) then
+        tempStorage = 0.d0
+        tempStorage(5) = 2.d30
+        call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+     end if
+  end do
+
 end subroutine terminateBisbas
 
   subroutine writeGridToBisbas(grid)
@@ -2799,17 +2801,18 @@ end subroutine terminateBisbas
     open(123, file="forBisbas.txt", form="formatted", status="unknown")
     stillRecving = .true.
     numStillSending = nHydroThreadsGlobal
+    print *, "num still sending: ", numstillsending
     do while (stillRecving)
        
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
-       print *, "RANK 0 has recvd"
-       if(tempStorage(5) > 1.d30) then
+       if(tempStorage(5) > 1.d30) then          
           numStillSending = numstillSending - 1
+          print *, "num still sending: ", numstillsending
           if(numStillSEnding == 0) then
              stillRecving = .false.
              print *, "TIME TO STOP"
           end if
-       end if
+       else
 
        position%x = tempStorage(1)
        position%y = tempStorage(2)
@@ -2817,12 +2820,11 @@ end subroutine terminateBisbas
        rho = tempStorage(4)
        temperature = tempStorage(5)
 
-       if(stillRecving) then
-          write(123, '(1p,7e14.5)') ((position%x+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
-               ((position%y+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
-               ((position%z+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
-               rho, temperature
-       end if
+       write(123, '(1p,7e14.5)') ((position%x+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
+            ((position%y+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
+            ((position%z+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
+            rho, temperature
+    end if
     end do
   end subroutine writeGridToBisbas
 

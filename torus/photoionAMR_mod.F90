@@ -199,8 +199,9 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("vtk dump completed. Aborting...")
        end if
-
+       
        if(dumpBisbas) then
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if(myrankglobal /= 0) then
              print *, "rank ", myrankglobal, "dumping grid to bisbas"
              call sendGridBisbas(grid%octreeroot, grid)
