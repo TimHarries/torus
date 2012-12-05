@@ -324,6 +324,73 @@ contains
 
   end subroutine updatephitree
 
+
+  subroutine setupAlphaViscosity(grid, alpha, HoverR)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double) :: alpha, HOverR, r
+    integer :: iThread, j
+    integer, parameter :: tag = 54
+    integer :: ierr
+
+    do iThread = 1, nHydroThreadsGlobal
+       if (iThread /= myRankGlobal) then
+          call findTotalMassWithinRServer(grid, iThread)
+       else
+          call setupAlphaViscosityPrivate(grid, grid%octreeRoot, alpha, HOverR)
+          do j = 1, nHydroThreadsGlobal
+             if (j /= myRankGlobal) then
+                r = 1.d30
+                call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
+             endif
+          enddo
+       endif
+    enddo
+  end subroutine setupAlphaViscosity
+
+
+  recursive subroutine setupAlphaViscosityPrivate(grid, thisoctal, alpha, HoverR)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(GRIDTYPE) :: grid
+    real(double) :: alpha, HoverR, r, mass, omegaK
+    type(VECTOR) :: rVec
+    
+
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setupAlphaViscosityPrivate(grid, child, alpha, HoverR)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          if (.not.thisoctal%ghostCell(subcell)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             r = modulus(rVec)
+             call findMassOverAllThreadsWithinR(grid, mass, r)
+             mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
+             if (.not.associated(thisOctal%etaline)) then
+                allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+             endif
+             omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
+             thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
+
+          endif
+       endif
+    enddo
+  end subroutine setupAlphaViscosityPrivate
+
+
 !Set up the i-1/2 flux for each cell on the grid
   recursive subroutine constructflux(thisoctal, dt)
     use mpi
@@ -3535,6 +3602,8 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
+    call setupAlphaViscosity(grid, 0.3d0, 0.1d0)
+    call setupCylindricalViscosity(grid%octreeRoot, grid)
 
     do iDir = 1, 3
        select case (iDir)
@@ -4642,6 +4711,7 @@ end subroutine sumFluxes
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous
+    type(VECTOR) :: totalAngMom
     type(VECTOR) :: direction, viewVec
     integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: nGroup, group(512)
@@ -4956,7 +5026,8 @@ end subroutine sumFluxes
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous
-    type(VECTOR) :: direction, viewVec
+    
+    type(VECTOR) :: direction, viewVec, totalAngMom
     integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: nGroup, group(512)
 !    integer :: cornerthread1(100), cornerthread2(100), ncornerBound(100), ncornerPairs
@@ -5076,7 +5147,7 @@ end subroutine sumFluxes
              if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)!, multigrid=.true.)
              call zeroSourcepotential(grid%octreeRoot)
              if (globalnSource > 0) then
-                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 0.1d0*smallestCellSize)
              endif
              call sumGasStarGravity(grid%octreeRoot)
              if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -5203,6 +5274,10 @@ end subroutine sumFluxes
        if (writeoutput) write(*,*) "Total energy: ",totalEnergy
        call findMassOverAllThreads(grid, totalmass)
        if (writeoutput) write(*,*) "Total mass: ",totalMass
+       if (cylindricalHydro) then
+          call findAngMomOverAllThreads(grid, totalAngMom, VECTOR(0.d0, 0.d0, 0.d0))
+          if (writeoutput) write(*,*) "Total angular momentum: ",totalAngMom%z+globalSourceArray(1)%angMomentum%z
+       endif
 
 
 !unrefine the grid where necessary
@@ -10078,7 +10153,7 @@ end subroutine refineGridGeneric2
 
 
 
-       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+!       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
     if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
@@ -12124,10 +12199,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-             if ((eKinetic + eGrav > 0.d0).and.(rhoLocal > rhoThreshold)) then
-                write(*,*) "Cell in accretion radius but not bound ",eKinetic+eGrav
+             if ((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold)) then
+                write(*,*) "Cell in accretion radius but not bound ",eKinetic+eGrav+eThermal
                 write(*,*) "eGrav ",eGrav
-!                write(*,*) "ethermal ",eThermal
+                write(*,*) "ethermal ",eThermal
                 write(*,*) "eKinetic ",eKinetic
              endif
              localAccretedMass = 0.d0

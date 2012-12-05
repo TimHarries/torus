@@ -300,6 +300,105 @@ contains
     enddo
   end subroutine findTotalMassMPI
 
+  subroutine findMassOverAllThreadsWithinR(grid, mass, radius)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: mass
+    real(double) :: radius, localMass
+    integer, parameter :: tag = 54
+    integer :: ierr, iThread
+
+    mass = 0.d0
+
+    do iThread = 1, nHydroThreadsGlobal
+       if (myRankGlobal == iThread) then
+          localMass = 0.d0
+          call findTotalMassWithinRMPI(grid%octreeRoot, radius, localMass)
+       else
+          call MPI_SEND(radius, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       endif
+       mass = mass + localMass
+    enddo
+  end subroutine findMassOverAllThreadsWithinR
+    
+
+  subroutine findTotalMassWithinRServer(grid, receiveThread)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double) :: loc, radius, totalMass
+    integer :: ierr
+    integer :: receiveThread
+    integer, parameter :: tag = 54
+    logical :: stillServing
+    integer :: status(MPI_STATUS_SIZE)
+
+    stillServing = .true.
+
+    do while(stillServing)
+
+       call MPI_RECV(radius, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
+
+       if (radius > 1.d29) then
+          stillServing = .false.
+       else
+          totalmass = 0.d0
+          call findTotalMassWithinRMPI(grid%octreeRoot, radius, totalMass)
+          call MPI_SEND(totalMass, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine findTotalMassWithinRServer
+
+
+
+
+  recursive subroutine findTotalMassWithinRMPI(thisOctal, radius, totalMass)
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: totalMass, radius
+  real(double) :: dv
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalMassWithinRMPI(child, radius,totalMass)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                rVec = subcellCentre(thisOctal, subcell)
+                if (modulus(rVec) < radius) then
+                   dv = cellVolume(thisOctal, subcell)*1.d30
+                   
+                   if (hydrodynamics) then
+                      if (thisOctal%twoD) then
+                         if (cylindricalHydro) then
+                            dv = cellVolume(thisOctal, subcell) * 1.d30
+                            if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                         else
+                            dv = thisOctal%subcellSize**2
+                         endif
+                      else if (thisOctal%oned) then
+                         dv = thisOctal%subcellSize                      
+                         
+                      endif
+                   endif
+                   totalMass = totalMass + thisOctal%rho(subcell) * dv
+                endif
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findTotalMassWithinRMPI
+
   subroutine findAngMomOverAllThreads(grid, angMom, centre)
     use mpi
     type(GRIDTYPE) :: grid
@@ -354,14 +453,18 @@ contains
        else
           if(.not. thisoctal%ghostcell(subcell)) then
              if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-                cellCentre = subcellCentre(thisOctal, subcell)
-                vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                     thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
-                     thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-                dv = cellVolume(thisOctal, subcell)*1.d30
-                dm = thisOctal%rho(subcell) * dv
-                rVec = 1.d10*(centre-cellCentre)
-                angMom = angMom + (rVec.cross.(dm*vel))
+                if (thisOctal%threed) then
+                   cellCentre = subcellCentre(thisOctal, subcell)
+                   vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                   dv = cellVolume(thisOctal, subcell)*1.d30
+                   dm = thisOctal%rho(subcell) * dv
+                   rVec = 1.d10*(centre-cellCentre)
+                   angMom = angMom + (rVec.cross.(dm*vel))
+                else
+                   angMom = angMom + VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell) * cellVolume(thisOctal, subcell)*1.d30)
+                endif
              endif
           endif
        end if

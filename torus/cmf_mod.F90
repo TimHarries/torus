@@ -1028,7 +1028,7 @@ contains
     a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
-!    write(*,*) "stark ",dv*cspeed/1.d5,a/1.d5, n_hi, cspeed/nu*1.d8, c_rad
+!    write(*,*) "stark ",dv*cspeed/1.d5, phiProfStark,a/1.d5, n_hi
   end function phiProfStark
 
 

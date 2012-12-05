@@ -250,6 +250,9 @@ contains
        call getDouble("eps", inputEps, 1.d0, cLine, fLine, nLines, &
             "Gravity softening length (cm): ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
+       call getDouble("accradius", accretionRadius, 1.d0, cLine, fLine, nLines, &
+            "Accretion radius of sinks (smallest cel): ","(a,e12.3,1x,a)", 2.5d0, ok, .false.)
+
        call getLogical("addsinks", addSinkParticles, cLine, fLine, nLines, &
             "Add sink particles: ", "(a,1l,1x,a)", .true., ok, .false.)
 
@@ -1405,11 +1408,11 @@ contains
     ! Voigt profile prameters
     !
     call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
-         "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+         "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 8.16e-3, ok, .false.)
     call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &
-         "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+         "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 5.53e-3, ok, .false.)
     call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
-         "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 0.0, ok, .false.)
+         "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 1.47e-2, ok, .false.)
     call setVoigtParams(C_rad, C_vdw, C_stark)
 
   end subroutine readAtomicPhysicsParameters
