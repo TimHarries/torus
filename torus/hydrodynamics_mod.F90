@@ -337,7 +337,7 @@ contains
     real(double), allocatable :: rAxis(:), mr(:)
     integer :: nr, i
 
-    nr  = amrGridSize/smallestCellsize
+    nr  = int(amrGridSize/smallestCellsize)
     allocate(rAxis(1:nr),mr(1:nr))
     do i = 1, nr
        rAxis(i) = smallestCellSize/2.d0 + (amrGridSize-smallestCellSize)/dble(i-1)
@@ -399,7 +399,7 @@ contains
              endif
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
              thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
-	     write(*,*) "eta ",thisOctal%etaLine(subcell), omegaK
+             write(*,*) "eta ",thisOctal%etaLine(subcell), omegaK
 
           endif
        endif
