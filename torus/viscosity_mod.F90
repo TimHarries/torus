@@ -52,6 +52,7 @@ contains
     dudx = (u_i_plus_1 - u_i_minus_1) / (2.d0*thisOctal%subcellSize*gridDistanceScale)
   end function dudx
 
+
   real(double) function div_u(thisOctal, subcell, grid)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -160,63 +161,53 @@ contains
     
 
 
-  function divQ(thisOctal, subcell, iDir, grid) result(out)
+  function divQ(thisOctal, subcell,  grid) result(out)
     use inputs_mod, only : smallestCellSize,gridDistanceScale
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal, neighbourOctal
-    real(double) :: out
-    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,qViscosity(3,3)
+    type(VECTOR) :: out
+    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz
+    real(double) :: qViscosity1(3,3), qViscosity2(3,3)
     integer :: subcell, neighbourSubcell
     type(VECTOR) :: dir(3), cen2, locator
-    real(double) :: qa, qb
-    real(double) :: rm1, um1, pm1
-    integer :: nd, iDir, nDim
-    if (thisOctal%threed) then
-       ndim = 3
-       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
-       dir(2) = VECTOR(0.d0, 1.d0, 0.d0)
-       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
-    else
-       ndim = 2
-       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
-       dir(2) = VECTOR(0.d0, 0.d0, 1.d0)
-    endif
+    real(double) :: tmp(3,3), tmp2(3)
+    real(double) :: rm1, um1, pm1, r
+    integer :: nd, iDir
+    dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+    dir(2) = VECTOR(0.d0, 1.d0, 0.d0)
+    dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
 
-    out = 0.d0
 
-    cen2 = subcellCentre(thisOctal,subcell)
+    do iDir = 1, 3
 
-    locator = cen2 + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
-    neighbouroctal => thisoctal
-    call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+       if (iDir /= 2) then
+          cen2 = subcellCentre(thisOctal,subcell)
+          r = sqrt(cen2%x**2 + cen2%y**2) * gridDistanceScale
+          locator = cen2 + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
+          neighbouroctal => thisoctal
+          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+          call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity1)
+          
+          
+          locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
+          neighbouroctal => thisoctal
+          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+          call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity2)
+          
+          tmp = (qviscosity2 - qviscosity1)/(2.d0*thisOctal%subcellSize*gridDistanceScale)
+       else
+          tmp = 0.d0
+       endif
 
-    select case(iDir)
-    case(1)
-       qa = qViscosity(1,1)
-    case(2)
-       qa = qViscosity(2,2)
-    case(3)
-       qa = qViscosity(3,3)
-    end select
+       tmp2(iDir) = SUM(tmp(iDir,1:3))
 
-    locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(iDir)
-    neighbouroctal => thisoctal
-    call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-    call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
-
-    select case(iDir)
-    case(1)
-       qb = qViscosity(1,1)
-    case(2)
-       qb = qViscosity(2,2)
-    case(3)
-       qb = qViscosity(3,3)
-    end select
-
-    out = (qa - qb) / (2.d0*thisOctal%subcellSize*gridDistanceScale)
+    enddo
+        
+    out%x = tmp2(1)
+    out%y = tmp2(2)
+    out%z = tmp2(3)
   end function divQ
 
   function divV(thisOctal, subcell, grid) result(out)

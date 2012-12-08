@@ -2140,7 +2140,7 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
                 if (useTensorViscosity) then
-                   thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+!                   thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
                 endif
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2153,7 +2153,7 @@ contains
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
                 if (useTensorViscosity) then
-                   thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+!                   thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
                 endif
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2165,7 +2165,7 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
                 if (useTensorViscosity) then
-                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
+!                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
                 endif
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2209,7 +2209,7 @@ contains
     use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
-    type(VECTOR) :: direction
+    type(VECTOR) :: direction, fVisc
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
@@ -2284,6 +2284,7 @@ contains
              rhorv_i_plus_half = thisOctal%rhov(subcell) + (thisOctal%rhorv_i_plus_1(subcell) - &
                   thisOctal%rhov(subcell)) * fac2
 
+             fVisc =  divQ(thisOctal, subcell,  grid)
 
 
              dx = x_i_plus_half - x_i_minus_half
@@ -2291,9 +2292,10 @@ contains
              if (direction%x > 0.d0) then
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
-                if (useTensorViscosity) then
-                   thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
-                endif
+
+! alpha viscosity
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%x
+
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
@@ -2311,9 +2313,10 @@ contains
              else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
-                if (useTensorViscosity) then
-                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
-                endif
+
+! alpha viscosity
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%z
+
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
