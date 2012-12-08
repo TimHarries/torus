@@ -750,7 +750,7 @@ contains
     logical :: sendLoop
     integer :: nDepth
     integer :: ierr
-    real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas, qVisocity(3,3)
+    real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
     real(double) :: rm1, rum1, pm1, qViscosity(3,3)
 
     select case(boundaryType)

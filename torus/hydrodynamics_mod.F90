@@ -1539,7 +1539,8 @@ contains
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
       
                    call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
-                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, &
+                        pm1, qViscosity)
                    ID(i) = 2
 
                 else
@@ -1601,7 +1602,8 @@ contains
 
 !                   if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                       call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, direction, q, rho, &
-                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, &
+                           qViscosity)
 !                   else
 !                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, community(i), q, rho, &
 !                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
@@ -1613,7 +1615,8 @@ contains
 
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
                    call getneighbourvalues(grid, faceoctal, facesubcell, communityoctal, communitysubcell, direction, q, rho, &
-                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, &
+                        qViscosity)
                    
                    cvec = VECTOR(px, py, pz)
                 

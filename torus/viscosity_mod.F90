@@ -348,7 +348,7 @@ contains
     integer :: subcell, i, neighbourSubcell, nd
     type(VECTOR) :: rVec, locator, cen, dir_x
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext
-    real(double) :: px, py, pz, q11, q22, q33, rm1, um1, pm1, u_i_minus_1, u_i_plus_1, drvrdr, qViscosity(3,3)
+    real(double) :: px, py, pz, rm1, um1, pm1, u_i_minus_1, u_i_plus_1, drvrdr, qViscosity(3,3)
   
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -372,7 +372,7 @@ contains
              divV = -9999.d0
              rVec = subcellCentre(thisOctal, subcell)
              r = sqrt(rVec%x**2+rVec%y**2)*gridDistanceScale
-	     dir_x = VECTOR(1.d0, 0.d0, 0.d0)
+             dir_x = VECTOR(1.d0, 0.d0, 0.d0)
              cen = subcellCentre(thisOctal, subcell)    
              locator = cen - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir_x
              neighbouroctal => thisoctal
