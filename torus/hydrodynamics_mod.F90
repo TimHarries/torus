@@ -340,7 +340,7 @@ contains
     nr  = int(amrGridSize/smallestCellsize)
     allocate(rAxis(1:nr),mr(1:nr))
     do i = 1, nr
-       rAxis(i) = smallestCellSize/2.d0 + (amrGridSize-smallestCellSize)/dble(i-1)
+       rAxis(i) = smallestCellSize/2.d0 + dble(i-1)*(amrGridSize-smallestCellSize)/dble(nr-1)
     enddo
     
     if (myrankGlobal /= 1) then
@@ -349,11 +349,9 @@ contains
        do j = 1, nr
           call findMassOverAllThreadsWithinR(grid, mr(j), raxis(j))
        enddo
-       do j = 1, nHydroThreadsGlobal
-          if (j /= myRankGlobal) then
-             r = 1.d30
-             call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
-          endif
+       do j = 2, nHydroThreadsGlobal
+          r = 1.d30
+          call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
        enddo
     endif
     call MPI_BCAST(mr, nr, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
@@ -399,7 +397,6 @@ contains
              endif
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
              thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
-             write(*,*) "eta ",thisOctal%etaLine(subcell), omegaK
 
           endif
        endif
@@ -470,7 +467,7 @@ contains
     real(double) :: dt, area, dx
     logical :: radial
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz
-    real(double) :: q11, q22, q33, rm1, um1, pm1
+    real(double) :: qViscosity(3,3), rm1, um1, pm1
     integer :: nd
 
   
@@ -504,7 +501,7 @@ contains
           neighbouroctal => thisoctal
           call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
           call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
           ! need to construct flux correctly at this point
           if (.not.thisoctal%edgecell(subcell)) then
@@ -765,7 +762,7 @@ contains
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas
-    real(double) :: xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1
+    real(double) :: xnext, px, py, pz, qViscosity(3,3), rm1, um1, pm1
     integer :: subcell, i, neighboursubcell
     integer :: nd
     type(vector) :: direction, locator, reversedirection
@@ -795,7 +792,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              thisoctal%x_i_plus_1(subcell) = x
              thisoctal%q_i_plus_1(subcell) = q
@@ -806,7 +803,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%x_i_minus_1(subcell) = x
 !             thisoctal%x_i_minus_2(subcell) = xnext
              thisoctal%q_i_minus_1(subcell) = q
@@ -829,7 +826,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas, q11, q22, q33
+    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator, reversedirection
     integer :: nd
@@ -854,7 +851,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              thisoctal%rho_i_plus_1(subcell) = rho
              thisoctal%phi_i_plus_1(subcell) = phi
@@ -865,7 +862,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%rho_i_minus_1(subcell) = rho
              thisoctal%phi_i_minus_1(subcell) = phi
 
@@ -881,7 +878,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas, q11, q22, q33
+    real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator, reversedirection
     integer :: nd
@@ -908,7 +905,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              thisoctal%rhorv_i_plus_1(subcell) = rhov
              reversedirection = (-1.d0) * direction
@@ -917,7 +914,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%rhorv_i_minus_1(subcell) = rhov
 
           endif
@@ -932,7 +929,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas, q11, q22, q33
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas, qViscosity(3,3)
     integer :: subcell, i, neighboursubcell, nd
     type(vector) :: direction, locator!, rotator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, dt
@@ -965,7 +962,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
 
              rho_i_minus_1 = rho
              rhou_i_minus_1 = direction.dot.VECTOR(rhou,rhov,rhow)
@@ -1010,7 +1007,7 @@ contains
                 call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
                 call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
                      rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
-                     xnext, px, py, pz, q11, q22, q33, rm1, um1, pm1)
+                     xnext, px, py, pz, rm1, um1, pm1, qViscosity)
 
                 rho_i_plus_1 = rho
                 pressure_i_plus_1 = pressure
@@ -1054,7 +1051,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,q11,q22,q33
+    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: nd
     real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
 
@@ -1078,7 +1075,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
    
              thisoctal%flux_i_plus_1(subcell) = flux
@@ -1087,7 +1084,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%flux_i_minus_1(subcell) = flux
              
 
@@ -1121,7 +1118,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,q11,q22,q33
+    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: nd
     real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
 
@@ -1145,7 +1142,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
    
              thisoctal%flux_i_plus_1(subcell) = flux
@@ -1154,7 +1151,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1, um1, pm1, qViscosity)
              thisoctal%flux_i_minus_1(subcell) = flux
              
 
@@ -1371,7 +1368,7 @@ contains
     type(vector) :: nVec
     real(double) ::  xpos(:), f(:)
     integer :: nCornerBound
-    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,q11,q22,q33
+    real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
     
     integer :: nd, i, ID(2)
     real(double) :: xnext, dx, px, py, pz, rm1, um1, pm1
@@ -1381,7 +1378,7 @@ contains
     ID = 0
 
     call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, &
-         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1 ,qViscosity)
          
     nVec = VECTOR(px, py, pz)
 
@@ -1402,11 +1399,11 @@ contains
                 if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
                         direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, &
-                        px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                        px, py, pz, rm1,um1, pm1, qViscosity)
                 else
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
                         community(i), q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
-                        xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                        xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
                 end if
                 
                 ID(i) = 1
@@ -1420,11 +1417,11 @@ contains
                 if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
-                        q11,q22,q33, rm1,um1, pm1)
+                        rm1,um1, pm1, qViscosity)
                 else
                    call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, community(i), q, &
                         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
-                        q11, q22, q33, rm1,um1, pm1)
+                        rm1,um1, pm1, qViscosity)
                 end if
                 
                 rVec = VECTOR(px, py , pz)
@@ -1446,11 +1443,11 @@ contains
                    if(octalOnTHread(mirrorOctal, mirrorSubcell, myRankGlobal)) then
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                           nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                           nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                    else
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, community(i), &
                            q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                           nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                           nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                    end if
                    
                    mVec = VECTOR(px, py, pz)
@@ -1475,11 +1472,11 @@ contains
                       if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, direction, q, &
                               rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                              nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                              nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                       else
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), &
                               q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                              nd, xnext, px, py, pz,q11,q22,q33, rm1,um1, pm1)
+                              nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                       end if
                       
                       ID(i) = 2
@@ -1492,7 +1489,7 @@ contains
                       
                       call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitysubcell, direction, q, &
                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
-                           q11, q22, q33, rm1,um1, pm1)
+                           rm1,um1, pm1, qViscosity)
                       ID(i) = 3
                    end if
                 else
@@ -1542,8 +1539,7 @@ contains
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
       
                    call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
-                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, &
-                        q22, q33, rm1,um1, pm1)
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                    ID(i) = 2
 
                 else
@@ -1605,8 +1601,7 @@ contains
 
 !                   if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                       call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, direction, q, rho, &
-                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, &
-                           q22, q33, rm1,um1, pm1)
+                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 !                   else
 !                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, community(i), q, rho, &
 !                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
@@ -1618,8 +1613,7 @@ contains
 
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
                    call getneighbourvalues(grid, faceoctal, facesubcell, communityoctal, communitysubcell, direction, q, rho, &
-                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, &
-                        q33, rm1,um1, pm1)
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                    
                    cvec = VECTOR(px, py, pz)
                 
@@ -1840,7 +1834,7 @@ contains
   recursive subroutine setuppressure(thisoctal, grid, direction)
     use mpi
     type(gridtype) :: grid
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, q11, q22, q33
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
@@ -1871,7 +1865,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%pressure_i_plus_1(subcell) = pressure
 
              
@@ -1879,7 +1873,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
              thisoctal%pressure_i_minus_1(subcell) = pressure
 
           endif
@@ -1897,7 +1891,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, q11,q22,q33
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
     integer :: nd
     real(double) :: xnext, px, py, pz, rm1, um1, pm1
 
@@ -1921,14 +1915,14 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%u_i_plus_1(subcell) = (direction.dot.VECTOR(rhou, rhov, rhow))/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%u_i_minus_1(subcell) =  (direction.dot.VECTOR(rhou, rhov, rhow))/rho
              thisOctal%rho_i_minus_1(subcell) = rho
           endif
@@ -8366,7 +8360,7 @@ end subroutine refineGridGeneric2
     real(double) :: splitLimit, dv
     integer :: ndir, isource
     logical :: debug, cornerCell
-    real(double) :: x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz, q11, q22, q33, q
+    real(double) :: x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz, qViscosity(3,3), q
     real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
     integer :: nd
     type(VECTOR) :: dirvec(6), locator, centre
@@ -8523,7 +8517,7 @@ end subroutine refineGridGeneric2
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, Subcell, neighbourOctal, neighbourSubcell, dirVec(i), q, rhot, rhoet, &
-                  rhout, rhovt, rhowt, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11,q22,q33, rm1,um1, pm1)
+                  rhout, rhovt, rhowt, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
              if (thisOctal%nDepth < nd) then
                 unrefine = .false.
                 goto 666
@@ -9431,7 +9425,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,q11,q22,q33
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
     integer :: n, ndir, nd
@@ -9483,7 +9477,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11,q22,q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
@@ -9532,7 +9526,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,q11,q22,q33
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
@@ -9597,7 +9591,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
@@ -9721,7 +9715,7 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,q11,q22,q33
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: nDepth
@@ -9785,7 +9779,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
@@ -9918,7 +9912,7 @@ end subroutine refineGridGeneric2
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
     real(double) :: sorFactor, deltaPhi
-    real(double) :: xnext, px, py, pz,q11,q22,q33, rm1, um1, pm1
+    real(double) :: xnext, px, py, pz,qViscosity(3,3), rm1, um1, pm1
     sorFactor = 1.2d0
 
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
@@ -9958,7 +9952,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,q11,q22,q33, rm1,um1, pm1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)

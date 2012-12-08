@@ -4124,6 +4124,7 @@ contains
 
 
   subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
+    use inputs_mod, only : amrGridSize
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
@@ -4141,7 +4142,7 @@ contains
     enhanced = .true.
 
     nphi = 100
-    nr = 100
+    nr = 200
     npoints = 0
 !    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
 
@@ -4180,7 +4181,7 @@ contains
        do iSource = 1, globalnSource
           do i = 1, nr2
              r = log10(sourceArray(iSource)%radius) + &
-                  (log10(10.d0*sourceArray(iSource)%radius)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
+                  (log10(amrGridSize)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
              r = 10.d0**r
              call randomNumberGenerator(getDouble=dphi)
              dphi = dphi * twoPi
