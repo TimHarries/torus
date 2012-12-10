@@ -3552,6 +3552,7 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+    use inputs_mod, only : amrGridSize
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     integer :: nRay

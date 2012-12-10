@@ -7666,15 +7666,17 @@ endif
     thisOctal%temperature(subcell) = 10.d0
     sigma = 0.1d0 * 2d5/min(r,2d5)
 
+    sigma = 100.d0 * 2d5/min(r,2d5)
+
     if ((abs(rVec%z - thisOctal%subcellsize/2.d0) < thisOctal%subcellSize/10.d0).and.(r<2d5)) then
        thisOctal%rho(subcell) = sigma / (thisOctal%subcellSize*1.d10)
     else
        thisOctal%rho(subcell) = (sigma / (thisOctal%subcellSize*1.d10))/100.d0
     endif
 
-    thisOctal%pressure_i(subcell) = 1.e-4
+    thisOctal%pressure_i(subcell) = 1.d-4
 
-    thisOctal%temperature(subcell) =  thisOctal%pressure_i(subcell) / ((thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg )
+    thisOctal%temperature(subcell) =  real(thisOctal%pressure_i(subcell) / ((thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg ))
 
     soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
     thisOctal%velocity(subcell) = vVec
