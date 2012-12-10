@@ -7666,7 +7666,7 @@ endif
     thisOctal%temperature(subcell) = 10.d0
     sigma = 0.1d0 * 2d5/min(r,2d5)
 
-    sigma = 100.d0 * 2d5/min(r,2d5)
+    sigma = 1000.d0 * 2d5/min(r,2d5)
 
     if ((abs(rVec%z - thisOctal%subcellsize/2.d0) < thisOctal%subcellSize/10.d0).and.(r<2d5)) then
        thisOctal%rho(subcell) = sigma / (thisOctal%subcellSize*1.d10)

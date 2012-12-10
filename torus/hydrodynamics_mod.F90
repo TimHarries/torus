@@ -2234,7 +2234,7 @@ contains
        else
           if (.not.associated(thisOctal%fViscosity)) then
              allocate(thisOctal%fViscosity(1:thisOctal%maxChildren))
-	     thisoctal%fViscosity = VECTOR(0.d0, 0.d0, 0.d0)
+             thisoctal%fViscosity = VECTOR(0.d0, 0.d0, 0.d0)
           endif
 
 
