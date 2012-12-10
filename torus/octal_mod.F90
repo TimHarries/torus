@@ -319,6 +319,7 @@ MODULE octal_mod
     real(double), pointer :: phi_stars(:) => null(), phi_gas(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
     real(double),pointer :: rhorv_i_minus_1(:) => null(), rhorv_i_plus_1(:) => null()
+    type(VECTOR), pointer :: fViscosity(:) => null()
     integer, pointer :: boundaryCondition(:) => null()
     logical, pointer :: boundaryCell(:) => null()
 

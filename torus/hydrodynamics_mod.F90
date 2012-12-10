@@ -2209,11 +2209,11 @@ contains
     use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
-    type(VECTOR) :: direction, fVisc
+    type(VECTOR) :: direction, fVisc, rVec
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
-    real(double) :: eps
+    real(double) :: eps, r
     real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
     real(double) :: rhorv_i_plus_half, rhorv_i_minus_half
     real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
@@ -2232,6 +2232,12 @@ contains
              end if
           end do
        else
+          if (.not.associated(thisOctal%fViscosity)) then
+             allocate(thisOctal%fViscosity(1:thisOctal%maxChildren))
+	     thisoctal%fViscosity = VECTOR(0.d0, 0.d0, 0.d0)
+          endif
+
+
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 
@@ -2284,8 +2290,13 @@ contains
              rhorv_i_plus_half = thisOctal%rhov(subcell) + (thisOctal%rhorv_i_plus_1(subcell) - &
                   thisOctal%rhov(subcell)) * fac2
 
-             fVisc =  divQ(thisOctal, subcell,  grid)
+             fVisc =  divQ(thisOctal, subcell,  grid) *  thisOctal%rho(subcell)
 
+
+!             fVisc = VECTOR(0.d0, 0.d0, 0.d0)
+
+             thisOctal%fViscosity(subcell) = fVisc * 1.d20
+!             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
 
              dx = x_i_plus_half - x_i_minus_half
 
@@ -2294,10 +2305,16 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%x
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
+
+                rVec = subcellCentre(thisOctal, subcell)
+                r = sqrt(rVec%x**2 + rVec%y**2) * gridDistanceScale
+                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + r * fVisc%y * dt
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+
+!                write(*,*) "fvisc ",fVisc%x, " phi ",thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
                 ! now centrifugal term
 
@@ -2315,7 +2332,7 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%z
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%z
 
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -3618,7 +3635,7 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
-    call setupAlphaViscosity(grid, 0.3d0, 0.1d0)
+    call setupAlphaViscosity(grid, 1.d0, 0.1d0)
     call setupCylindricalViscosity(grid%octreeRoot, grid)
 
     do iDir = 1, 3
@@ -5364,6 +5381,7 @@ end subroutine sumFluxes
                "rhow         ", &
                "phi          ", &
                "pressure     ", &
+               "fvisc        ", &
                "q11          ", &
                "q22          ", &
                "q_i          "/))

@@ -925,17 +925,15 @@ contains
                 tempStorage(23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
 
 
-                if (useTensorViscosity) then
-                   tempStorage(24) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
-                   tempStorage(25) = neighbourOctal%qViscosity(neighbourSubcell,1,2)
-                   tempStorage(26) = neighbourOctal%qViscosity(neighbourSubcell,1,3)
-                   tempStorage(27) = neighbourOctal%qViscosity(neighbourSubcell,2,1)
-                   tempStorage(28) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
-                   tempStorage(29) = neighbourOctal%qViscosity(neighbourSubcell,2,3)
-                   tempStorage(30) = neighbourOctal%qViscosity(neighbourSubcell,3,1)
-                   tempStorage(31) = neighbourOctal%qViscosity(neighbourSubcell,3,2)
-                   tempStorage(32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
-                endif
+                tempStorage(24) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
+                tempStorage(25) = neighbourOctal%qViscosity(neighbourSubcell,1,2)
+                tempStorage(26) = neighbourOctal%qViscosity(neighbourSubcell,1,3)
+                tempStorage(27) = neighbourOctal%qViscosity(neighbourSubcell,2,1)
+                tempStorage(28) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
+                tempStorage(29) = neighbourOctal%qViscosity(neighbourSubcell,2,3)
+                tempStorage(30) = neighbourOctal%qViscosity(neighbourSubcell,3,1)
+                tempStorage(31) = neighbourOctal%qViscosity(neighbourSubcell,3,2)
+                tempStorage(32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
 
 
 !                write(*,*) myrank," set up tempstorage with ", &
@@ -1934,9 +1932,7 @@ contains
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
-          if (usetensorviscosity) then
-             qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
-          endif
+          qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
 
           rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
           rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
@@ -1953,9 +1949,7 @@ contains
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
-          if (usetensorviscosity) then
-             qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
-          endif
+          qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
 
           rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
           rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
@@ -2040,6 +2034,19 @@ contains
        rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
        rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
        pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
+
+
+       qViscosity(1,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
+       qViscosity(1,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
+       qViscosity(1,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
+       qViscosity(2,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
+       qViscosity(2,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
+       qViscosity(2,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
+       qViscosity(3,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
+       qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
+       qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
+
+
     endif
   end subroutine getNeighbourValues
 
@@ -2074,9 +2081,7 @@ contains
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
-       if (useTensorViscosity) then
-          qViscosity = neighbourOctal%qViscosity(neighbourSubcell, 1, 1)
-       endif
+       qViscosity = neighbourOctal%qViscosity(neighbourSubcell, 1, 1)
        rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
        rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
        pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
@@ -2109,9 +2114,7 @@ contains
        rum1 = 0.5d0*(neighbourOctal%u_i_minus_1(nSubcell(1)) + neighbourOctal%u_i_minus_1(nSubcell(2)))
        pm1 = 0.5d0*(neighbourOctal%pressure_i_minus_1(nSubcell(1)) + neighbourOctal%pressure_i_minus_1(nSubcell(2)))
 
-       if (useTensorViscosity) then
-          qViscosity = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),:,:) + neighbourOctal%qViscosity(nSubcell(2),:,:))
-       endif
+       qViscosity = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),:,:) + neighbourOctal%qViscosity(nSubcell(2),:,:))
 
     else if (neighbourOctal%threed) then
        if (direction%x > 0.9d0) then
@@ -2186,10 +2189,8 @@ contains
        pm1 = fac*(neighbourOctal%pressure_i_minus_1(nSubcell(1)) + neighbourOctal%pressure_i_minus_1(nSubcell(2)) + & 
             neighbourOctal%pressure_i_minus_1(nSubcell(3)) + neighbourOctal%pressure_i_minus_1(nSubcell(4)))
 
-       if (useTensorViscosity) then
-          qViscosity = fac*(neighbourOctal%qViscosity(nSubcell(1),:,:) + neighbourOctal%qViscosity(nSubcell(2),:,:) + & 
-               neighbourOctal%qViscosity(nSubcell(3),:,:) + neighbourOctal%qViscosity(nSubcell(4),:,:))
-       endif
+       qViscosity = fac*(neighbourOctal%qViscosity(nSubcell(1),:,:) + neighbourOctal%qViscosity(nSubcell(2),:,:) + & 
+            neighbourOctal%qViscosity(nSubcell(3),:,:) + neighbourOctal%qViscosity(nSubcell(4),:,:))
 
     endif
     

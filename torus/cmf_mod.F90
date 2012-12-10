@@ -3573,7 +3573,7 @@ contains
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = globalSourceArray(1)%radius 
-    rMax = grid%octreeRoot%subcellSize
+    rMax = amrGridSize
 !    rMax = 5.d0*rmin
 
     do ir = 1, nr1
@@ -4141,8 +4141,8 @@ contains
     logical :: enhanced 
     enhanced = .true.
 
-    nphi = 100
-    nr = 200
+    nphi = 200
+    nr = 400
     npoints = 0
 !    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
 
@@ -4163,7 +4163,7 @@ contains
     if (enhanced) then
 !       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
     
-       nr1 = 50
+       nr1 = 200
        nr2 = nr - nr1
        do iSource = 1, globalnSource
           do i = 1, nr1
