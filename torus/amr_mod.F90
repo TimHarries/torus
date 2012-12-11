@@ -13654,7 +13654,7 @@ end function readparameterfrom2dmap
           totalLum = totalLum + power
           
           
-          T = (flux/stefanBoltz)**0.25d0
+          T = max((flux/stefanBoltz)**0.25d0,3.d0)
 
 
           surface%element(i)%hot = .true.

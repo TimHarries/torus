@@ -3471,7 +3471,7 @@ contains
 
 
     do iv = iv1, iv2
-!       write(*,*) iv,varray(iv)*cspeed/1.d5
+       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
@@ -3552,7 +3552,7 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-    use inputs_mod, only : amrGridSize
+    use inputs_mod, only : amrGridSize, ttaurimagnetosphere, ttauriwind, ttauriRouter, dw_rmin, dw_rmax
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     integer :: nRay
@@ -3563,11 +3563,21 @@ contains
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
     real(double) :: xPos, yPos, zPos
-    integer :: nr1, nr2, i
+    integer :: nr1, nr2, nr3, i
 
-    nr1 = 200
-    nr2 = 200
-    nr = nr1 + nr2
+    nr1 = 100
+    nr2 = 0
+    nr3 = 0
+
+    if (ttaurimagnetosphere) then
+       nr2 = 100
+    endif
+
+    if (ttauriwind) then
+       nr3 = 100
+    endif
+    
+    nr = nr1 + nr2 + nr3
     nphi = 200
     nray = 0
     i = 0
@@ -3575,7 +3585,6 @@ contains
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = globalSourceArray(1)%radius 
     rMax = amrGridSize
-!    rMax = 5.d0*rmin
 
     do ir = 1, nr1
        r1 = rMin * dble(ir-1)/dble(nr1)
@@ -3586,21 +3595,41 @@ contains
 !       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
     enddo
     
+    if (nr2 > 0) then
+       rmin = globalSourceArray(1)%radius 
+       rMax = ttaurirouter/1.d10
+    
 
-    do ir = 1, nr2
-       r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr2))**3
-       r2 = rMin + (rmax-rMin) * (dble(ir)/dble(nr2))**3
-       i = i + 1
-       rgrid(i) = 0.5d0 * (r1 + r2)
-       dr(i) = r2 - r1
-!       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
-    enddo
-    do iphi = 1, nPhi
-       phi1 = twoPi * dble(iphi-1)/dble(nPhi)
-       phi2 = twoPi * dble(iphi)/dble(nPhi)
-       phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
-       dphi(iPhi) = phi2 - phi1
-    enddo
+       do ir = 1, nr2
+          r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr2))**3
+          r2 = rMin + (rmax-rMin) * (dble(ir)/dble(nr2))**3
+          i = i + 1
+          rgrid(i) = 0.5d0 * (r1 + r2)
+          dr(i) = r2 - r1
+          !       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
+       enddo
+    endif
+
+    if (nr3 > 0) then
+       rmin = DW_Rmin
+       rMax = DW_Rmax
+       do ir = 1, nr3
+          r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr3))**3
+          r2 = rMin + (rmax-rMin) * (dble(ir)/dble(nr3))**3
+          i = i + 1
+          rgrid(i) = 0.5d0 * (r1 + r2)
+          dr(i) = r2 - r1
+          !       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
+       enddo
+    endif
+
+       
+       do iphi = 1, nPhi
+          phi1 = twoPi * dble(iphi-1)/dble(nPhi)
+          phi2 = twoPi * dble(iphi)/dble(nPhi)
+          phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
+          dphi(iPhi) = phi2 - phi1
+       enddo
 
     do ir = 1, nr
        r1 = rGrid(ir)
@@ -3753,6 +3782,7 @@ contains
     dy = cube%yAxis(2)-cube%yAxis(1)
 
     do iv = iv1, iv2
+       write(*,*) myrankglobal," iv ",iv
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
        !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
@@ -3766,11 +3796,11 @@ contains
 #endif
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
-!             write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
+          write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
           do iy = 1, cube%ny
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
                  nPoints,  nRay, xRay, yRay, area)
-
+!             write(*,*) myrankGlobal, iomp, " no of rays in pixel ",ix,iy, " is ",nray
 
              
              totArea = 0.d0
@@ -3854,6 +3884,8 @@ contains
     real(double) :: xRay(:), yRay(:)
     real(double) :: area(:)
     real(double) , allocatable:: xTmp(:), yTmp(:)
+
+
     nRay = 0
     do i = 1, nPoints
        if ((abs(xCen-xPoints(i)) < dx/2.d0).and. &
@@ -4143,18 +4175,18 @@ contains
     enhanced = .true.
 
     nphi = 200
-    nr = 400
+    nr = 100
     npoints = 0
-!    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
+    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
 
 
     if (enhanced) then
-       call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-       if ((grid%octreeRoot%oneD).or.(grid%octreeRoot%twoD)) then
-          nPoints = nPoints + nVoxels * 50
-       else
-          nPoints = nPoints + nVoxels
-       endif
+!       call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+!       if ((grid%octreeRoot%oneD).or.(grid%octreeRoot%twoD)) then
+!          nPoints = nPoints + nVoxels * 50
+!       else
+!          nPoints = nPoints + nVoxels
+!       endif
        nPoints = nPoints + globalnSource * nr * nphi
     endif
     nPoints = nPoints + 4*cube%nx*cube%ny
@@ -4162,9 +4194,9 @@ contains
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
     if (enhanced) then
-!       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
+       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
     
-       nr1 = 200
+       nr1 = 100
        nr2 = nr - nr1
        do iSource = 1, globalnSource
           do i = 1, nr1
@@ -4179,21 +4211,21 @@ contains
              enddo
           enddo
        enddo
-       do iSource = 1, globalnSource
-          do i = 1, nr2
-             r = log10(sourceArray(iSource)%radius) + &
-                  (log10(amrGridSize)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
-             r = 10.d0**r
-             call randomNumberGenerator(getDouble=dphi)
-             dphi = dphi * twoPi
-             do j = 1, nphi
-                phi = twoPi * dble(j)/dble(nPhi)+dphi
-                nPoints = nPoints + 1
-                xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
-                yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
-             enddo
-          enddo
-       enddo
+!       do iSource = 1, globalnSource
+!          do i = 1, nr2
+!             r = log10(sourceArray(iSource)%radius) + &
+!                  (log10(amrGridSize)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
+!             r = 10.d0**r
+!             call randomNumberGenerator(getDouble=dphi)
+!             dphi = dphi * twoPi
+!             do j = 1, nphi
+!                phi = twoPi * dble(j)/dble(nPhi)+dphi
+!                nPoints = nPoints + 1
+!                xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+!                yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+!             enddo
+!          enddo
+!       enddo
 
     endif
     dx = cube%xAxis(2) - cube%xAxis(1)
@@ -4303,37 +4335,39 @@ contains
              end if
           end do
        else
-          call randomNumberGenerator(getDouble=dphi)
-          dphi = dphi * twoPi
-          if (thisOctal%threeD) then
-             nPoints = nPoints + 1
-             if (addPoint) then
-                rVec = subcellCentre(thisOctal, subcell)
-                xPoints(nPoints) = xProj.dot.rVec
-                yPoints(nPoints) = yProj.dot.rVec
-             endif
-          else if (thisOctal%twoD) then
-             do j = 1, 50
-                phi = dble(j-1)/49.d0 * twoPi + dphi
-                rVec =  subcellCentre(thisOctal, subcell)
-                rVec = rotateZ(rVec, phi)
+          if (thisOctal%inflow(subcell)) then
+             call randomNumberGenerator(getDouble=dphi)
+             dphi = dphi * twoPi
+             if (thisOctal%threeD) then
                 nPoints = nPoints + 1
                 if (addPoint) then
+                   rVec = subcellCentre(thisOctal, subcell)
                    xPoints(nPoints) = xProj.dot.rVec
                    yPoints(nPoints) = yProj.dot.rVec
                 endif
-             enddo
-          else if (thisOctal%oneD) then
-             do j = 1, 50
-                phi = dble(j)/50.d0 * twoPi + dphi
-                rVec =  subcellCentre(thisOctal, subcell)
-                rVec = rotateZ(rVec, phi)
-                nPoints = nPoints + 1
-                if (addPoint) then
-                   xPoints(nPoints) = rVec%x
-                   yPoints(nPoints) = rVec%y
-                endif
-             enddo
+             else if (thisOctal%twoD) then
+                do j = 1, 50
+                   phi = dble(j-1)/49.d0 * twoPi + dphi
+                   rVec =  subcellCentre(thisOctal, subcell)
+                   rVec = rotateZ(rVec, phi)
+                   nPoints = nPoints + 1
+                   if (addPoint) then
+                      xPoints(nPoints) = xProj.dot.rVec
+                      yPoints(nPoints) = yProj.dot.rVec
+                   endif
+                enddo
+             else if (thisOctal%oneD) then
+                do j = 1, 50
+                   phi = dble(j)/50.d0 * twoPi + dphi
+                   rVec =  subcellCentre(thisOctal, subcell)
+                   rVec = rotateZ(rVec, phi)
+                   nPoints = nPoints + 1
+                   if (addPoint) then
+                      xPoints(nPoints) = rVec%x
+                      yPoints(nPoints) = rVec%y
+                   endif
+                enddo
+             endif
           endif
        endif
     enddo
