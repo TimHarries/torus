@@ -4166,7 +4166,6 @@ contains
     type(DATACUBE) :: cube
     type(VECTOR) :: xProj, yProj
     integer :: nPoints, i, j
-    integer :: nOctals, nVoxels
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nr, nphi
     real(double) :: r, phi, dphi, dx, dy
