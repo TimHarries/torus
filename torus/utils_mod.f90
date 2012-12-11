@@ -2841,7 +2841,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     !    *******************************************************************
 
     INTEGER     MAXN, MAXCAN, MAXVER
-    PARAMETER ( MAXN = 1080, MAXCAN = 2000, MAXVER = 500 )
+    PARAMETER ( MAXN = 10800, MAXCAN = 20000, MAXVER = 5000 )
     logical :: success
     REAL(double)        RX(:), RY(:), AREA(:)
 

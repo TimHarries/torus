@@ -2309,7 +2309,7 @@ contains
 
                 rVec = subcellCentre(thisOctal, subcell)
                 r = sqrt(rVec%x**2 + rVec%y**2) * gridDistanceScale
-                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + r * fVisc%y * dt
+                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - r * fVisc%y * dt
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -3635,7 +3635,7 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
-    call setupAlphaViscosity(grid, 1.d0, 0.1d0)
+    call setupAlphaViscosity(grid, 0.3d0, 0.1d0)
     call setupCylindricalViscosity(grid%octreeRoot, grid)
 
     do iDir = 1, 3
