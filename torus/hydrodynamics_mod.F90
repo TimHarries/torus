@@ -2209,11 +2209,11 @@ contains
     use inputs_mod, only : radiationPressure, nBodyPhysics
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
-    type(VECTOR) :: direction, fVisc, rVec
+    type(VECTOR) :: direction, fVisc
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
-    real(double) :: eps, r
+    real(double) :: eps
     real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
     real(double) :: rhorv_i_plus_half, rhorv_i_minus_half
     real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
