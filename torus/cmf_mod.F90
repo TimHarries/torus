@@ -3414,7 +3414,7 @@ contains
 
     if (myRankIsZero.and.(.not.PRESENT(forcelambda))) &
          write(*,*) "Calculating spectrum for: ",lamLine
-
+    docube = .false.
     if (doCube) then
 #ifdef USECFITSIO
        call createDataCube(cube, grid, viewVec, nSource, source, thisAtom(iAtom), iTrans)
@@ -3471,7 +3471,7 @@ contains
 
 
     do iv = iv1, iv2
-       write(*,*) iv,varray(iv)*cspeed/1.d5
+!       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
@@ -3566,17 +3566,10 @@ contains
     integer :: nr1, nr2, nr3, i
 
     nr1 = 100
-    nr2 = 0
-    nr3 = 0
+    nr2 = 100
+    nr3 = 100
 
-    if (ttaurimagnetosphere) then
-       nr2 = 100
-    endif
 
-    if (ttauriwind) then
-       nr3 = 100
-    endif
-    
     nr = nr1 + nr2 + nr3
     nphi = 200
     nray = 0
@@ -3782,7 +3775,7 @@ contains
     dy = cube%yAxis(2)-cube%yAxis(1)
 
     do iv = iv1, iv2
-       write(*,*) myrankglobal," iv ",iv
+!       write(*,*) myrankglobal," iv ",iv
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
        !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
@@ -3796,7 +3789,7 @@ contains
 #endif
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
-          write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
+!          write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
           do iy = 1, cube%ny
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
                  nPoints,  nRay, xRay, yRay, area)
