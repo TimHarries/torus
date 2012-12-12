@@ -427,9 +427,8 @@ contains
 
 #endif    
 
-#ifdef _OPENMP
-                 call testRandomOMP()
-#endif
+                 call test_random_hybrid()
+
                 !$OMP PARALLEL DEFAULT(NONE) &
                 !$OMP PRIVATE(iMonte, iSource, rVec, uHat, rHat) &
                 !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &

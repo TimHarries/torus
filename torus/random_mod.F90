@@ -360,42 +360,44 @@ contains
    end subroutine test_random_across_threads
 #endif
 
-#ifdef _OPENMP
-  subroutine testRandomOMP()
-    integer :: omp_get_num_threads, omp_get_thread_num
-    integer :: np
-    integer :: nTest = 100
-    real :: r
-    integer :: i, j 
-    integer, allocatable :: array(:,:)
-    logical :: allTheSame
-
-    allocate(array(1:nTest, 12))
-    !$OMP PARALLEL DEFAULT(NONE) &
-    !$OMP PRIVATE(r, i,j) &
-    !$OMP SHARED(array, np, ntest)
-    np =  omp_get_num_threads()
-    j = omp_get_thread_num()+1
-    do i = 1, nTest
-       call randomNumberGenerator(getReal=r)
-       array(i,j) = int(r*10000000.d0)
-    enddo
-    !$OMP END PARALLEL
-    !$OMP BARRIER
-    allTheSame = .true.
-    do i = 1, ntest
-       do j = 2, np
-          if (array(i,1) /= array(i,j)) then
-             allTheSame = .false.
-          endif
-       enddo
-    enddo
-    deallocate(array)
-    if (allTheSame) then
-       call writeFatal("OMP random sequences are the same")
-    endif
-  end subroutine testRandomOMP
-#endif
+! Don't use this subroutine as it can cause a crash in libc.
+! D. Acreman, December 2012
+!!$#ifdef _OPENMP
+!!$  subroutine testRandomOMP()
+!!$    integer :: omp_get_num_threads, omp_get_thread_num
+!!$    integer :: np
+!!$    integer :: nTest = 100
+!!$    real :: r
+!!$    integer :: i, j 
+!!$    integer, allocatable :: array(:,:)
+!!$    logical :: allTheSame
+!!$
+!!$    allocate(array(1:nTest, 12))
+!!$    !$OMP PARALLEL DEFAULT(NONE) &
+!!$    !$OMP PRIVATE(r, i,j) &
+!!$    !$OMP SHARED(array, np, ntest)
+!!$    np =  omp_get_num_threads()
+!!$    j = omp_get_thread_num()+1
+!!$    do i = 1, nTest
+!!$       call randomNumberGenerator(getReal=r)
+!!$       array(i,j) = int(r*10000000.d0)
+!!$    enddo
+!!$    !$OMP END PARALLEL
+!!$    !$OMP BARRIER
+!!$    allTheSame = .true.
+!!$    do i = 1, ntest
+!!$       do j = 2, np
+!!$          if (array(i,1) /= array(i,j)) then
+!!$             allTheSame = .false.
+!!$          endif
+!!$       enddo
+!!$    enddo
+!!$    deallocate(array)
+!!$    if (allTheSame) then
+!!$       call writeFatal("OMP random sequences are the same")
+!!$    endif
+!!$  end subroutine testRandomOMP
+!!$#endif
 
   SUBROUTINE seedFromClockTime(ibig)
     use mpi_global_mod, only: myRankWorldGlobal
