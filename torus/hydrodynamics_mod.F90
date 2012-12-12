@@ -2307,9 +2307,6 @@ contains
 ! alpha viscosity
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
-                rVec = subcellCentre(thisOctal, subcell)
-                r = sqrt(rVec%x**2 + rVec%y**2) * gridDistanceScale
-                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - r * fVisc%y * dt
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -5527,7 +5524,7 @@ end subroutine sumFluxes
                 thisOctal%rhow(subcell) = thisOctal%tempStorage(subcell,5)
                 thisOctal%energy(subcell) = thisOctal%tempStorage(subcell,6)
                 thisOctal%pressure_i(subcell) = thisOctal%tempStorage(subcell,7)
-                thisOctal%phi_i(subcell) =  thisOctal%tempStorage(subcell,8)
+!                thisOctal%phi_i(subcell) =  thisOctal%tempStorage(subcell,8)
              else
                 thisOctal%phi_gas(subcell) = thisOctal%tempStorage(subcell,1)
              endif
@@ -10029,7 +10026,7 @@ end subroutine refineGridGeneric2
     character(len=30) :: plotfile
 
     tol = 1.d-4
-    tol2 = 1.d-4
+    tol2 = 1.d-5
 
 
     nHydroThreads = nHydroThreadsGlobal
@@ -10398,22 +10395,22 @@ end subroutine minMaxDepth
 
 
   real(double) function  legendre(n, x)
-    integer :: n
+    integer :: n, i
     real(double) :: x
+    real(double) :: p(0:100)
 
-    select case(n)
+     select case(n)
        case(0)
           legendre = 1.d0
        case(1)
           legendre = x
-       case(2)
-          legendre = (3.d0*x**2 - 1.d0)/2.d0
-       case(3)
-          legendre = (5.d0*x**3 - 3.d0*x)/2.d0
-       case(4)
-          legendre = (35.d0*x**4 - 30.d0*x**2 +3)/8.d0
        case DEFAULT
-          write(*,*) "legendre: n not found ", n
+          p(0) = 1.d0
+          p(1) = x
+          do i = 1, n-1
+             p(i+1) = ((2.d0*dble(i)+1.d0)*x*p(i) - dble(i)*p(i-1))/dble(i+1)
+          enddo
+          legendre = p(n)
      end select
    end function legendre
 
@@ -10692,6 +10689,8 @@ end subroutine minMaxDepth
      call findCoM(grid, com)
      call updateDensityTree(grid%octreeRoot)
 
+     call recursApplyDirichletCylindrical(grid, grid%octreeRoot, com, reset = .true.)
+
 
      do iThread = 1, nHydroThreadsGlobal
         if (myRankGlobal == iThread) then
@@ -10793,22 +10792,31 @@ end subroutine minMaxDepth
    end subroutine recursApplyDirichlet
 
 
-   recursive subroutine recursApplyDirichletCylindrical(grid, thisOctal, com)
+   recursive subroutine recursApplyDirichletCylindrical(grid, thisOctal, com, reset)
      use mpi
      type(GRIDTYPE) :: grid
+     logical, optional :: reset
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, uHat
      real(double) :: mgrid, phiB
      real(double) :: temp(4),  muB, rB
      integer :: subcell, i
+     integer, parameter :: npole = 2
      integer :: ithread
      integer :: tag, ierr, ipole
      integer :: status(MPI_STATUS_SIZE)
      logical, save :: firstTime = .true.
-     real(double), save :: ml(0:4)
+     real(double), save :: ml(0:nPole)
 
      tag = 94
      
+     if (PRESENT(reset)) then
+        if (reset) then
+           firstTime = .true.
+        endif
+        goto 666
+     endif
+
      do subcell = 1, thisoctal%maxchildren
         if (thisoctal%haschild(subcell)) then
            ! find the child
@@ -10827,7 +10835,7 @@ end subroutine minMaxDepth
 
               if (thisOctal%threed.or.(thisOctal%twoD.and.(point%x > 0.d0))) then
                  if (firstTime) then
-                    do iPole = 0, 4
+                    do iPole = 0, npole
                        
                        Ml(ipole) = 0.d0
                        call multipoleExpansionCylindrical(grid%OctreeRoot, point, com, Ml(ipole), ipole)
@@ -10854,7 +10862,7 @@ end subroutine minMaxDepth
                  endif
 
                  PhiB = 0.d0
-                 do iPole = 0, 4
+                 do iPole = 0, npole
                     rB = modulus(point) * gridDistanceScale
                     uHat = point
                     call normalize(uHat)
@@ -10869,6 +10877,7 @@ end subroutine minMaxDepth
            endif
         endif
      enddo
+666 continue
    end subroutine recursApplyDirichletCylindrical
 
    recursive subroutine recursApplyDirichletlevel2d(grid, thisOctal, com, level)
@@ -12224,6 +12233,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      rv, &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
+!!!!!!!!!!!!!!!
+                cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
+                     0.d0, &
+                     thisOctal%rhow(subcell) / thisOctal%rho(subcell))
              endif
 
 
@@ -12269,7 +12282,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       localAccretedAngMom = modulus(localAngMom)
                    else
                       localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell)/ thisOctal%rho(subcell))
-                      localAccretedAngMom = modulus(localAngMom) * &
+                      localAccretedAngMom = (localAngMom.dot.VECTOR(0.d0, 0.d0, 1.d0)) * &
                            localAccretedMass/(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell) * 1.d30)
                    endif
 

@@ -3414,7 +3414,7 @@ contains
 
     if (myRankIsZero.and.(.not.PRESENT(forcelambda))) &
          write(*,*) "Calculating spectrum for: ",lamLine
-    docube = .false.
+
     if (doCube) then
 #ifdef USECFITSIO
        call createDataCube(cube, grid, viewVec, nSource, source, thisAtom(iAtom), iTrans)
