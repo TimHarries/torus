@@ -181,9 +181,11 @@ contains
     do iDir = 1, 3
        do jDir = 1, 3
 
+          cen2 = subcellCentre(thisOctal,subcell)
+          r = sqrt(cen2%x**2 + cen2%y**2) * gridDistanceScale
+
+
           if (jDir /= 2) then
-             cen2 = subcellCentre(thisOctal,subcell)
-             r = sqrt(cen2%x**2 + cen2%y**2) * gridDistanceScale
              locator = cen2 + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(jDir)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
@@ -199,7 +201,15 @@ contains
           
              tmp(iDir, jDir) = (qviscosity1(iDir, jDir) - qviscosity2(iDir, jDir))/(2.d0*thisOctal%subcellSize*gridDistanceScale)
           else
-             tmp(iDir, jDir) = 0.d0
+
+             select case(idir)
+                case(1)
+                   tmp(iDir, jDir) = (1.d0/r)*(thisOctal%qViscosity(subcell,1,1)-thisOctal%qViscosity(subcell,2,2))
+                case(2)
+                   tmp(iDir, jDir) = (1.d0/r)*(thisOctal%qViscosity(subcell,1,2)+thisOctal%qViscosity(subcell,2,1))
+                case(3)
+                   tmp(iDir, jDir) = (1.d0/r)*(thisOctal%qViscosity(subcell,1,3))
+             end select
           endif
 
        enddo

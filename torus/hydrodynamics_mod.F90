@@ -11285,7 +11285,7 @@ end subroutine minMaxDepth
 
   recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
     use mpi
-    use inputs_mod, only : rhoThreshold, smallestCellSize
+    use inputs_mod, only : rhoThreshold, smallestCellSize, accretionRadius
     type(OCTAL), pointer :: thisOctal, child
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
@@ -11431,7 +11431,7 @@ end subroutine minMaxDepth
              source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
              source(nsource)%mass = (thisOctal%rho(subcell) - rhoThreshold)*thisOctal%subcellSize**3*1.d30
              source(nsource)%radius = rsol/1.d10
-             source(nSource)%accretionRadius = 2.5d0 * smallestCellSize * 1.d10
+             source(nSource)%accretionRadius = accretionRadius * smallestCellSize * 1.d10
              source(nSource)%age = grid%currentTime
              source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)

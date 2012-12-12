@@ -251,7 +251,7 @@ contains
             "Gravity softening length (cm): ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
        call getDouble("accradius", accretionRadius, 1.d0, cLine, fLine, nLines, &
-            "Accretion radius of sinks (smallest cel): ","(a,e12.3,1x,a)", 2.5d0, ok, .false.)
+            "Accretion radius of sinks (smallest cell): ","(a,e12.3,1x,a)", 2.6d0, ok, .false.)
 
        call getLogical("addsinks", addSinkParticles, cLine, fLine, nLines, &
             "Add sink particles: ", "(a,1l,1x,a)", .true., ok, .false.)
