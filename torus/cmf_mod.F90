@@ -3782,8 +3782,9 @@ contains
        write(*,*) myrankglobal," iv ",iv
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
-       !$OMP SHARED (cube, viewVec, grid ) &
+       !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp, converged, nAdditionalRays) &
+       !$OMP PRIVATE (iter, r, thisIntensity, previousIntensity, frac) &
+       !$OMP SHARED (cube, viewVec, grid) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints, thisAtom, itrans)
        
