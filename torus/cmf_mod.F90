@@ -4201,14 +4201,14 @@ contains
     integer :: nr, nphi
     real(double) :: r, phi, dphi, dx, dy
     integer :: ix, iy, iSource, nr1, nr2
-    logical :: enhanced 
+    logical :: enhanced, test
     enhanced = .true.
 
     nphi = 200
     nr = 100
     npoints = 0
 !    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
-
+    test = grid%octreeroot%oned
 
     if (enhanced) then
 !       call countVoxels(grid%octreeRoot,nOctals,nVoxels)
