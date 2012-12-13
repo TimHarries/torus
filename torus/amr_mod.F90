@@ -3102,7 +3102,7 @@ CONTAINS
     use inputs_mod, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
     use inputs_mod, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          ttauriRinner, amr2d
-    use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
+    use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell, refineQ2Only
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
@@ -4221,24 +4221,26 @@ CONTAINS
                 end if
                 
              end if
-          
-             if ( grid%geometry == "theGalaxy" .and. internalView ) then 
-                
+
+! Split to one SPH particle per cell
+             if (nparticle > 1 .and. SphOnePerCell) then
+                split = .true. 
+! Uncomment these lines if you want to know how many SPH particles are in each cell
+!             elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero ) then
+!                write(113,*) nparticle
+             end if
+
+! Limit refinement to the second quadrant of a Galactic plane survey
+             if ( grid%geometry == "theGalaxy" .and. internalView .and. refineQ2Only) then                 
+
                 ! Find this point on the unmodified grid
                 cellCentre  = subcellCentre(thisOctal,subCell)
                 cellCentre  = rotateY( cellCentre, -1.0*galaxyInclination*degToRad   )
                 cellCentre  = rotateZ( cellCentre, -1.0*galaxyPositionAngle*degToRad )
                 
-                ! Limit refinement outside the region of interest and either output number of 
-                ! SPH particles per grid cell or split if >1 particle per cell
-                if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) then 
+                if ( cellCentre%x < (intPosX - 0.2e12) .or. cellCentre%y < (intPosY - 0.2e12) ) &
                    split = .false.
-                elseif (nparticle > 1 .and. SphOnePerCell) then
-                   split = .true. 
-                elseif ( (.not.split).and.(.not.SphOnePerCell) .and. myRankIsZero )then
-                   write(113,*) nparticle
-                end if
-                
+            
              end if
              
           ! The stellar disc code is retained in case this functionality needs to be used in future 

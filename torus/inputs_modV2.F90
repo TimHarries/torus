@@ -940,7 +940,7 @@ contains
           call getReal("router", rOuter, 1., cLine, fLine, nLines, &
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
-
+! Geometries which set up a grid from SPH particles
        case("molcluster", "theGalaxy", "cluster", "wr104")
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
@@ -962,6 +962,9 @@ contains
 
           call getLogical("discardsinks", discardSinks, cLine, fLine, nLines, &
             "Discard sink particles: ","(a,1l,a)", .false., ok, .false.)
+
+          call getLogical("sphonepercell", SphOnePerCell, cLine, fLine, nLines, &
+            "Split to one particle per cell:", "(a,1l,1x,a)", .false., ok, .false.)
 
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","ascii", ok, .false.)
@@ -2069,6 +2072,9 @@ contains
     ! Read parameters used by galactic plane survey 
     if ( internalView ) then 
 
+       call getLogical("refineQ2Only", refineQ2Only, cLine, fLine, nLines, &
+            "Limit refinement to 2nd quadrant:", "(a,1l,1x,a)", .false., ok, .false.)
+
        call getLogical("obsVelFromGrid", obsVelFromGrid, cLine, fLine, nLines, &
             "Set observer velocity from grid:", "(a,1l,1x,a)", .false., ok, .true.)
 
@@ -2122,10 +2128,6 @@ contains
           
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
-       else
-          ! Option for agressive splitting
-          call getLogical("sphonepercell", SphOnePerCell, cLine, fLine, nLines, &
-            "Split to one particle per cell:", "(a,1l,1x,a)", .false., ok, .false.)
        end if
 
     end if

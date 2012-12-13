@@ -221,6 +221,7 @@
 
   logical :: h21cm ! also used in molecular_mod
   logical :: internalView ! observer is internal to the galaxy
+  logical :: refineQ2Only ! Limit grid refinement to 2nd quadrant
   logical :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
   logical :: thermalLineWidth ! Use thermal line width? 
   real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
