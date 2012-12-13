@@ -3838,7 +3838,7 @@ contains
                 if ((frac < 1.d-2).or.(iter > maxIter)) then
                    if( iter  > maxIter) write(*,*) "aborted at iter ",iter,real(frac),ix,iy
                    converged = .true.
-                   cube%intensity(ix,iy,iv-iv1+1) = thisIntensity
+                   cube%intensity(ix,iy,iv-iv1+1) = real(thisIntensity)
 !                   write(*,*) "intensity converged after ",nAdditionalRays, " additional rays"
                 else
                    converged = .false.
