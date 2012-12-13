@@ -12190,7 +12190,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     use mpi
     use inputs_mod, only : rhoThreshold, geometry
     type(SOURCETYPE) :: source(:)
-    real(double) :: accretedMass(:)
+    real(double) :: accretedMass(:), thisCellVolume
     type(VECTOR) :: accretedLinMomentum(:), accretedAngMomentum(:), cellCentre, cellVelocity
     real(double) :: eGrav, eThermal, eKinetic, cellMass, rhoLocal, localAccretedMass, r, rv, localAccretedAngMom
     type(VECTOR) :: gasMom, localAccretedMom, localAngMom
@@ -12220,7 +12220,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              rhoLocal = thisOctal%rho(subcell)
              cellCentre = subcellCentre(thisOctal, subcell)
              
-             cellMass = cellVolume(thisOctal, subcell) * thisOctal%rho(subcell) * 1.d30
+             thisCellVolume = cellVolume(thisOctal, subcell) * 1.d30
+             cellMass = thisOctal%rho(subcell) * thisCellVolume
 
 
              if (thisOctal%threeD) then
@@ -12281,9 +12282,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       localAngMom =  ((cellCentre - source(isource)%position)*1.d10) .cross. localAccretedMom
                       localAccretedAngMom = modulus(localAngMom)
                    else
-                      localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell)/ thisOctal%rho(subcell))
+                      localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell) * thiscellVolume)
                       localAccretedAngMom = (localAngMom.dot.VECTOR(0.d0, 0.d0, 1.d0)) * &
-                           localAccretedMass/(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell) * 1.d30)
+                           localAccretedMass/CellMass
                    endif
 
                    accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
@@ -12304,7 +12305,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       cellVelocity = gasMom / cellMass
                       thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
                       thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
-                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - localAccretedAngMom/(cellVolume(thisOctal, subcell)*1.d30)
+                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - localAccretedAngMom/thisCellVolume
                    endif
                 endif
              endif

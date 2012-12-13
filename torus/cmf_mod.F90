@@ -3686,11 +3686,15 @@ contains
     real(double) :: area(maxray)
     real(double) :: totArea
     integer :: iRay
-    integer :: iomp
+    integer :: iomp, iter
     character(len=80) :: message
 
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
+    logical :: converged
+    real(double) :: thisIntensity, previousIntensity, r, frac
+    integer :: nAdditionalRays
+    integer, parameter :: maxIter = 6
 #ifdef MPI
     integer :: j
     integer       ::   np             ! The number of processes
@@ -3775,7 +3779,7 @@ contains
     dy = cube%yAxis(2)-cube%yAxis(1)
 
     do iv = iv1, iv2
-!       write(*,*) myrankglobal," iv ",iv
+       write(*,*) myrankglobal," iv ",iv
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
        !$OMP PARALLEL DEFAULT (NONE) &
        !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
@@ -3789,29 +3793,62 @@ contains
 #endif
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do ix = 1, cube%nx
-!          write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
+          write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
           do iy = 1, cube%ny
-             call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
-                 nPoints,  nRay, xRay, yRay, area)
-!             write(*,*) myrankGlobal, iomp, " no of rays in pixel ",ix,iy, " is ",nray
 
+
+             converged = .false.
+             nAdditionalRays = 2
+             previousIntensity = 0.d0
+             iter = 0
+             do while (.not.converged)
+                iter = iter + 1
+                do i = 1, nAdditionalRays
+                   call randomNumberGenerator(getDouble=r)
+                   xPoints(nPoints+i) = cube%xAxis(ix) + dx * (r-0.5d0)
+                   call randomNumberGenerator(getDouble=r)
+                   yPoints(nPoints+i) = cube%yAxis(iy) + dy * (r-0.5d0)
+                enddo
+
+                call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
+                     nPoints+nAdditionalrays,  nRay, xRay, yRay, area)
              
-             totArea = 0.d0
-             cube%intensity(ix,iy,iv-iv1+1) = 0.d0
-             do iRay = 1, nRay
+                totArea = 0.d0
+                cube%intensity(ix,iy,iv-iv1+1) = 0.d0
+                thisIntensity = 0.d0
+                do iRay = 1, nRay
                 
-                rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
-                raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
-                
-                cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
-                     + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
-                     -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
+                   rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
+                   raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
+
+                   thisIntensity = thisIntensity &
+                        + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+                        -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
+
+                   
+!                   cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
+!                        + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+!                        -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
 !                write(*,*) "intensity ",cube%intensity(ix,iy,iv-iv1+1)
-                totArea = totArea + Area(iray)
-             enddo
+                   totArea = totArea + Area(iray)
+                enddo
+                thisIntensity = thisIntensity / real(SUM(area(1:nray)))
+!                write(*,*) "iteration ",nAdditionalRays,abs(thisIntensity-previousIntensity)/thisIntensity
+                frac = abs(thisIntensity-previousIntensity)/thisIntensity
+                if ((frac < 1.d-2).or.(iter > maxIter)) then
+                   if( iter  > maxIter) write(*,*) "aborted at iter ",iter,real(frac),ix,iy
+                   converged = .true.
+                   cube%intensity(ix,iy,iv-iv1+1) = thisIntensity
+!                   write(*,*) "intensity converged after ",nAdditionalRays, " additional rays"
+                else
+                   converged = .false.
+                   nAdditionalRays = nAdditionalRays * 2
+                   previousIntensity = thisIntensity
+                endif
+
 !             write(*,*) "Pixel done with ",nRay, " rays. check on area ",totArea/(dx**2)
-             cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) / real(SUM(area(1:nRay)))
-             
+!             cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) / real(SUM(area(1:nRay)))
+          enddo
           enddo
        enddo
        !$OMP END DO
@@ -4169,7 +4206,7 @@ contains
     nphi = 200
     nr = 100
     npoints = 0
-    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
+!    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
 
 
     if (enhanced) then
@@ -4181,12 +4218,12 @@ contains
 !       endif
        nPoints = nPoints + globalnSource * nr * nphi
     endif
-    nPoints = nPoints + 4*cube%nx*cube%ny
+    nPoints = nPoints + 4*cube%nx*cube%ny + 10000
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
     if (enhanced) then
-       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
+!       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
     
        nr1 = 100
        nr2 = nr - nr1
@@ -4242,7 +4279,6 @@ contains
 
        enddo
     enddo
-
 
   end subroutine createRayGridGeneric
 
@@ -4300,6 +4336,7 @@ contains
   end subroutine getProjectedPoints
 
   recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal,  xProj, yProj, xPoints, yPoints, nPoints, count)
+    use inputs_mod, only : smallestCellSize
     type(octal), pointer   :: thisOctal
     type(GRIDTYPE) :: grid
     type(octal), pointer  :: child 
@@ -4309,6 +4346,7 @@ contains
     type(VECTOR) :: xProj, yProj, rVec
     real(double) :: xPoints(:), yPoints(:), phi, dphi
     logical :: addPoint
+    logical :: converged
   
     addPoint = .true.
     if (PRESENT(count)) then
@@ -4360,6 +4398,21 @@ contains
                    endif
                 enddo
              endif
+             if (addpoint) then
+                converged = .false.
+                do while(.not.converged)
+                   converged = .true.
+                   do i = 1, nPoints-1
+                      if (sqrt( (xpoints(nPoints)-xPoints(i))**2 +&
+                           (ypoints(nPoints)-yPoints(i))**2) < smallestCellSize) then
+                         nPoints = nPoints - 1
+                         converged = .false.
+                         exit
+                      endif
+                   enddo
+                enddo
+             endif
+
           endif
        endif
     enddo
