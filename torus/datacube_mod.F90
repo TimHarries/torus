@@ -46,10 +46,22 @@ module datacube_mod
   end type DATACUBE
 
   real, save :: cubePositionAngle
-  integer, save :: npixels ! number of spatial pixels, currently the same for x and y
   character(len=80), save :: datacubeFilename
+  integer, save          :: npixels  ! 
+  integer, save, private :: npixelsX ! number of spatial pixels in x-axis
+  integer, save, private :: npixelsY ! number of spatial pixels in y-axis
 
 contains
+
+  subroutine setCubeParams(npix_in, aspectratio)
+    implicit none 
+    integer, intent(in) :: npix_in
+    real, intent(in)    :: aspectRatio 
+
+    npixelsX = int(npix_in * aspectratio)
+    npixelsY = npixels
+    
+  end subroutine setCubeParams
 
 #ifdef USECFITSIO
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, &
@@ -536,8 +548,8 @@ contains
     integer :: nx, ny, nv
     logical, optional, intent(in) :: splitCubes, wantTau, galacticPlaneSurvey
 
-    nx = npixels
-    ny = npixels
+    nx = npixelsX
+    ny = npixelsY
 
     if(present(mytelescope)) then
        

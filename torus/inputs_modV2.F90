@@ -2026,13 +2026,14 @@ contains
 
 #ifdef FITSCUBE
   subroutine readDataCubeParameters(cLine, fLine, nLines)
-    use datacube_mod, only: cubePositionAngle, npixels, datacubeFilename
+    use datacube_mod, only: cubePositionAngle, datacubeFilename, setCubeParams, npixels
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
     TYPE(VECTOR) :: gridCentre
     character(len=100) :: message
+    real :: cubeAspectRatio ! Aspect ratio of spatial axes
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
@@ -2071,6 +2072,9 @@ contains
 
     ! Read parameters used by galactic plane survey 
     if ( internalView ) then 
+
+       call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
+            "Data cube spatial aspect ratio: ","(a,f4.1,1x,a)", 1.0, ok, .false.)
 
        call getLogical("refineQ2Only", refineQ2Only, cLine, fLine, nLines, &
             "Limit refinement to 2nd quadrant:", "(a,1l,1x,a)", .false., ok, .false.)
@@ -2129,6 +2133,10 @@ contains
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
        end if
+
+    else
+       ! Cubes other than angularimage_mod probably need to be square
+       cubeAspectRatio = 1.0
 
     end if
 
@@ -2201,6 +2209,9 @@ contains
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
        
+! Set up values in datacube_mod
+    call setCubeParams(npixels, cubeAspectRatio)
+
   end subroutine readDataCubeParameters
 #endif
 

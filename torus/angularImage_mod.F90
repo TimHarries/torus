@@ -7,7 +7,7 @@ module angularImage
   use messages_mod
   use gridtype_mod, only: GRIDTYPE
   use molecular_mod, only:  moleculetype
-  use datacube_mod, only: datacube, npixels
+  use datacube_mod, only: datacube
 
   use timing, only: tune
   
@@ -217,14 +217,14 @@ module angularImage
      ix2 = (myRankGlobal+1) * (cube%nx / (nThreadsGlobal))
      if (myRankGlobal == (nThreadsGlobal-1)) ix2 = cube%nx
 
-     n = (npixels*npixels)
+     n = (cube%nx*cube%ny)
      allocate(tempArray(1:n), tempArray2(1:n))
 #else
      ix1 = 1
-     ix2 = npixels
+     ix2 = cube%nx
 #endif
 
-     allocate(temp(npixels,npixels,temp_dim))
+     allocate(temp(cube%nx,cube%ny,temp_dim))
 
      open (unit=vr_file_lun, file="ray_info.dat", status="replace", form=vr_format)
      do iv = 1,nv
@@ -251,7 +251,7 @@ module angularImage
         do itemp = 1, temp_dim
            tempArray = reshape(temp(:,:,itemp), (/ n /))
            call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
-           temp(:,:,itemp) = reshape(tempArray2, (/ npixels, npixels /))
+           temp(:,:,itemp) = reshape(tempArray2, (/ cube%nx,cube%ny /))
         end do
 #endif        
 
@@ -270,7 +270,7 @@ module angularImage
            call tune(6, message)  ! stop a stopwatch
         endif
 
-        intensitysum = sum(temp(:,:,1)) / real(npixels**2)
+        intensitysum = sum(temp(:,:,1)) / real(cube%nx*cube%ny)
 
         if(iv .eq. 1) then
            background = Bnu(thisMolecule%transfreq(itrans), Tcbr)
@@ -318,7 +318,13 @@ module angularImage
       real :: theta_min
       real :: phi_min 
       real(double) :: delta_theta, delta_phi
-      real(double) :: theta_axis(npixels), phi_axis(npixels)
+      real(double) :: theta_axis(cube%ny), phi_axis(cube%nx)
+
+      real :: imagesideX, imagesideY
+
+! Allow for non-square spatial axes
+      imagesideX = imageside * (real(cube%nx)/real(cube%ny))
+      imagesideY = imageside
 
       if (nsubpixels .gt. 0) then ! if nsubpixels = 0 then use adaptive subpixel sampling
          subpixels = nsubpixels
@@ -326,21 +332,21 @@ module angularImage
          subpixels = 0
       endif
 
-      theta_min = real(( 90.0 - centrevecy ) - 0.5 * imageside )
-      phi_min   = real(( centrevecx - 90.0 ) - 0.5 * imageside)
+      theta_min = real(( 90.0 - centrevecy ) - 0.5 * imagesideY )
+      phi_min   = real(( centrevecx - 90.0 ) - 0.5 * imagesideX)
 
-      delta_theta = imageside / real(npixels)
-      delta_phi   = imageside / real(npixels)
+      delta_theta = imagesideY / real(cube%ny)
+      delta_phi   = imagesideX / real(cube%nx)
 
 ! Set up axis arrays
-      do jpixels=1, npixels
-         theta_axis(jpixels) = theta_min + ( real(npixels - jpixels + 1) * delta_theta )
+      do jpixels=1, cube%ny
+         theta_axis(jpixels) = theta_min + ( real(cube%ny - jpixels + 1) * delta_theta )
       end do
       theta_axis(:) = theta_axis(:) * degToRad
 
 ! Reverse the order in which the longitude bins are populated 
-      do ipixels=1, npixels
-         phi_axis(ipixels) = phi_min + ( real(npixels - ipixels + 1) * delta_phi )
+      do ipixels=1, cube%nx
+         phi_axis(ipixels) = phi_min + ( real(cube%nx - ipixels + 1) * delta_phi )
       end do
       phi_axis(:) = phi_axis(:) * degToRad
 
@@ -350,9 +356,9 @@ module angularImage
 
 !$OMP PARALLEL default(none), private(ipixels, jpixels, this_gal_lon, this_gal_lat, viewvec),  &
 !$OMP private(viewvec_x, viewvec_y, viewvec_z), &
-!$OMP shared(npixels, galaxyPositionAngle, galaxyInclination, grid, thisMolecule, ncolonly), &
+!$OMP shared(galaxyPositionAngle, galaxyInclination, grid, thisMolecule, ncolonly), &
 !$OMP shared(ix1, ix2, cube, theta_axis, phi_axis, iTrans, deltaV, subpixels, imagegrid, vel_chan_num, nv)
-      do jpixels = 1, npixels ! raster over image
+      do jpixels = 1, cube%ny ! raster over image
 !$OMP DO
          do ipixels = ix1, ix2
 
