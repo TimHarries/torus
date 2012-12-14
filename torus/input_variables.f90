@@ -763,6 +763,7 @@
   logical           :: debug
   logical           :: suppressWarnings
   logical           :: useBinaryXMLVTKfiles
+  logical           :: noVtkGrid        ! Don't write out VTK files of the grid 
   logical           :: vtkIncludeGhosts ! include ghosts in VTK output
   logical           :: parallelVTUFiles
   character(len=80) :: absolutePath

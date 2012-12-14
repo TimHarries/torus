@@ -122,6 +122,9 @@ contains
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
          "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("novtkgrid", noVtkGrid, cLine, fLine, nLines, &
+         "Suppress VTK grid files: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("vtkincludeghosts", vtkIncludeGhosts, cLine, fLine, nLines, &
          "Include ghost cells in XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 

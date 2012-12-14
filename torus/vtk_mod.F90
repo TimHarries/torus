@@ -1355,7 +1355,7 @@ contains
   end subroutine writeVTKfileNbody
 
   subroutine writeVtkFileAMR(grid, RootvtkFilename, valueTypeFilename, valueTypeString, xml)
-    use inputs_mod, only : cylindrical, usebinaryxmlvtkfiles, parallelVTUfiles
+    use inputs_mod, only : cylindrical, usebinaryxmlvtkfiles, parallelVTUfiles, noVtkGrid
     use inputs_mod, only : iModel
     use utils_mod, only : findMultiFilename
 
@@ -1383,6 +1383,8 @@ contains
     integer, allocatable :: iOffsetArray(:)
     integer :: iThread
 #endif
+
+    if(noVtkGrid) return
 
     call findMultiFilename(rootVTKFilename, iModel, vtkfilename)
 
