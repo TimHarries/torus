@@ -148,6 +148,30 @@ endif
 # Machine specific builds #
 ###########################
 
+# The Dirac system at Leicester AKA complexity cluster
+# Default is an MPI build, use mpi=no for openmp/serial
+ifeq ($(SYSTEM), complexity)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpif90
+       MPIFLAG= -DMPI
+    endif
+    FASTFLAG= -O3 -ipo
+# For debugging with optimisations enabled use
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.cmp
+    STATICLIBS= -Bstatic
+    STARLIBS= 
+    CFITSIOLIBS = -L/home/${USER}/cfitsio -lcfitsio
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
+
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
 #    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
