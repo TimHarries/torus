@@ -6331,7 +6331,12 @@ real(double) :: rho
                         if (dir%x > 0.9d0) then
                            thisOctal%tempStorage(subcell,1) = bOctal%phi_gas(bsubcell)
                         endif
+                        if (dir%z > 0.9d0) then
+                           thisOctal%tempStorage(subcell,1) = bOctal%phi_gas(bsubcell)
+                        endif
                       endif
+
+
 
                      if (abs(dir%x) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
