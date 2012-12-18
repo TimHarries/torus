@@ -150,6 +150,7 @@ endif
 
 # The Dirac system at Leicester AKA complexity cluster
 # Default is an MPI build, use mpi=no for openmp/serial
+# Use 'module load cfitsio' to make FITS library available
 ifeq ($(SYSTEM), complexity)
     ifeq ($(mpi), no)
        F95COMP= ifort
@@ -167,7 +168,7 @@ ifeq ($(SYSTEM), complexity)
     EXE=torus.cmp
     STATICLIBS= -Bstatic
     STARLIBS= 
-    CFITSIOLIBS = -L/home/${USER}/cfitsio -lcfitsio
+    CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
