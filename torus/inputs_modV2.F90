@@ -1900,7 +1900,6 @@ contains
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (cylindricalHydro) then
-       amrgridCentreY = amrGridSize/2.d0
        dx = amrgridSize/dble(2**maxDepthAMR-4)
        amrGridSize = amrGridsize + real(4.0d0*dx)
     endif
