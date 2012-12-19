@@ -10584,7 +10584,7 @@ end subroutine minMaxDepth
 
    recursive subroutine multipoleExpansionLevel(thisOctal, point, com, v, m, level)
      type(OCTAL), pointer :: thisOctal, child
-     type(VECTOR) :: com, point, xVec,rVec, zVec
+     type(VECTOR) :: com, point, xVec,rVec
      integer :: level
      real(double) :: v, r, x, cosTheta, dm, m
      integer :: subcell, i, ipole
@@ -10745,7 +10745,7 @@ end subroutine minMaxDepth
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point
      real(double) :: v, vgrid
-     real(double) :: temp(3), r,m
+     real(double) :: temp(3),m
      integer :: subcell, i
      integer :: ithread
      integer :: tag, ierr
