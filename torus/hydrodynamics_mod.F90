@@ -354,7 +354,7 @@ contains
           call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
        enddo
     endif
-    call MPI_BCAST(mr, nr, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
+    call MPI_BCAST(mr, nr, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
     call setupAlphaViscosityPrivate(grid, grid%octreeRoot, alpha, HoverR, rAxis, mr, nr)
     deallocate(mr, rAxis)
 
@@ -3632,8 +3632,10 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
+    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
     call setupAlphaViscosity(grid, 0.3d0, 0.1d0)
     call setupCylindricalViscosity(grid%octreeRoot, grid)
+    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
 
     do iDir = 1, 3
        select case (iDir)

@@ -159,7 +159,7 @@ ifeq ($(SYSTEM), complexity)
        F95COMP= mpif90
        MPIFLAG= -DMPI
     endif
-    FASTFLAG= -O3 -ipo
+    FASTFLAG= -O3 
 # For debugging with optimisations enabled use
 #    DEBUGFLAG= -O3 -g -debug extended
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
