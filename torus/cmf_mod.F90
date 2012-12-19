@@ -3686,16 +3686,11 @@ contains
     real(double) :: area(maxray)
     real(double) :: totArea
     integer :: iRay
-    integer :: iomp, iter
-    real(double), allocatable :: tx(:),ty(:)
-    character(len=80) :: message
+    integer :: iomp
 
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
-    logical :: converged
-    real(double) :: thisIntensity, previousIntensity, r, frac
-    integer :: nAdditionalRays
-    integer, parameter :: maxIter = 8
+    real(double) :: thisIntensity
 #ifdef MPI
     integer :: j
     integer       ::   np             ! The number of processes
@@ -3775,12 +3770,12 @@ contains
 
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
-       call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, xProj, yProj)
+       call createRayGridGeneric(cube, source, xPoints, yPoints, nPoints, xProj, yProj)
     
        do ix = 1, cube%nx
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (iy, rayPos, nRay, xRay, yRay, area,totArea,iomp, converged, nAdditionalRays, message) &
-       !$OMP PRIVATE (iter, r, thisIntensity, previousIntensity, frac,tx,ty) &
+       !$OMP PRIVATE (iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
+       !$OMP PRIVATE (thisIntensity) &
        !$OMP SHARED (cube, viewVec, grid, ix,  xPoints, yPoints, nPoints) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, thisAtom, itrans)
@@ -4146,21 +4141,20 @@ contains
   end subroutine testRays
 
 
-  subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
+  subroutine createRayGridGeneric(cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
     use inputs_mod, only : amrGridSize, ttaurirouter, dw_rmin, dw_rmax
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
-    type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: sourceArray(:)
     type(DATACUBE) :: cube
     type(VECTOR) :: xProj, yProj
     integer :: nPoints, i, j
     real(double), pointer :: xPoints(:), yPoints(:)
-    integer :: nr, nphi
+    integer :: nphi
     real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2
     integer :: ix, iy, iSource, nr1, nr2, nr3
-    logical :: enhanced, test
+    logical :: enhanced
     enhanced = .true.
 
     nphi = 200
