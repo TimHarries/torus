@@ -427,7 +427,7 @@ contains
 
 #endif    
 
-                 call test_random_hybrid()
+                 if (.not. TorusSerial) call test_random_hybrid()
 
                 !$OMP PARALLEL DEFAULT(NONE) &
                 !$OMP PRIVATE(iMonte, iSource, rVec, uHat, rHat) &
