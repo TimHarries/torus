@@ -465,6 +465,7 @@ contains
                 if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
                 call  torus_mpi_barrier
                 call findmassoverallthreads(grid, totalmass)
+		write(*,*) "total mass ",totalmass/msol
              endif
 #endif
           case DEFAULT

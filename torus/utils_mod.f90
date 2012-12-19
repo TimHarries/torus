@@ -2841,7 +2841,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     !    *******************************************************************
 
     INTEGER     MAXN, MAXCAN, MAXVER
-    PARAMETER ( MAXN = 10800, MAXCAN = 20000, MAXVER = 5000 )
+    PARAMETER ( MAXN = 2000, MAXCAN = 4000, MAXVER = 500 )
     logical :: success
     REAL(double)        RX(:), RY(:), AREA(:)
 
@@ -3230,7 +3230,10 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
                   IF ( OK ) THEN
 
                      V = V + 1
-                     IF ( V .GT. MAXV ) STOP 'TOO MANY VERTICES'
+                     IF ( V .GT. MAXV ) THEN
+                        WRITE(*,*) 'TOO MANY VERTICES'
+                        STOP
+                     ENDIF
                      IV(V)  = I
                      JV(V)  = J
                      VX(V) = 0.5 * VXIJ

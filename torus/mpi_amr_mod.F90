@@ -247,6 +247,7 @@ contains
     end if
 666 continue
   end subroutine findMassOverAllThreads
+
     
   recursive subroutine findTotalMassMPI(thisOctal, totalMass, minRho, maxRho)
     use inputs_mod, only : hydrodynamics, cylindricalHydro
@@ -299,6 +300,7 @@ contains
        end if
     enddo
   end subroutine findTotalMassMPI
+
 
   subroutine findMassOverAllThreadsWithinR(grid, mass, radius)
     use mpi

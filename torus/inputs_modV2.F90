@@ -2047,7 +2047,7 @@ contains
     call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
          "Image size (x10^10cm):","(a,1p,e9.3,1x,a)", 5e7, ok, .true.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
-         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+         "Grid distance (pc): ","(a,f9.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)
     call getInteger("ncubes", ncubes, cLine, fLine, nLines, &
@@ -2055,9 +2055,9 @@ contains
     call getInteger("nv", nv, cLine, fLine, nLines, &
          "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &
-         "Maximum Velocity Channel (km/s): ","(a,f6.1,1x,a)", 1.0d0, ok, .true.)
+         "Maximum Velocity Channel (km/s): ","(a,f8.1,1x,a)", 1.0d0, ok, .true.)
     call getDouble("minVel", minVel, 1.0_db, cLine, fLine, nLines, &
-         "Minimum Velocity Channel (km/s): ","(a,f6.1,1x,a)", -1.0d0*maxVel, ok, .false.)
+         "Minimum Velocity Channel (km/s): ","(a,f8.1,1x,a)", -1.0d0*maxVel, ok, .false.)
     call getLogical("h21cm", h21cm, cLine, fLine, nLines, &
          "Calculate data cube of 21cm emission: ","(a,1l,a)", .false., ok, .false.)
     call getLogical("splitCubes", splitCubes, cLine, fLine, nLines, &

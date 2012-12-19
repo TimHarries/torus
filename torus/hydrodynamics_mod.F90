@@ -10505,7 +10505,7 @@ end subroutine minMaxDepth
               r = r * 1.d10
               x = x * 1.d10
               dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
-              do iPole = 0, 4
+              do iPole = 0, 2
                  v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
               enddo
               
@@ -10582,17 +10582,17 @@ end subroutine minMaxDepth
      endif
    end subroutine multipoleExpansionCylindricalLevel
 
-   recursive subroutine multipoleExpansionLevel(thisOctal, point, com, v, level)
+   recursive subroutine multipoleExpansionLevel(thisOctal, point, com, v, m, level)
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, xVec,rVec, zVec
      integer :: level
-     real(double) :: v, r, x, cosTheta, dm
+     real(double) :: v, r, x, cosTheta, dm, m
      integer :: subcell, i, ipole
 
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < level)) then
        do i = 1, thisOctal%nChildren, 1
           child => thisOctal%child(i)
-          call  multipoleExpansionLevel(child, point, com, v, level)
+          call  multipoleExpansionLevel(child, point, com, v, m, level)
        end do
     else
        do subcell = 1, thisOctal%maxChildren
@@ -10600,19 +10600,17 @@ end subroutine minMaxDepth
 
            if (.not.thisOctal%ghostCell(subcell)) then
               xVec = point - com
-              if (thisOctal%threed) then
-                 rVec = subcellCentre(thisOctal, subcell) - com
-              else
-                 zVec = subcellCentre(thisOctal, subcell)
-                 rVec = VECTOR(0.d0, 0.d0, zVec%z)
-                 rVec = rVec - com
-              endif
+              rVec = subcellCentre(thisOctal, subcell) - com
+                 
               r = modulus(rVec)
               x = modulus(xVec)
               cosTheta = (xVec.dot.rVec) / (r*x)
+              r = r * 1.d10
+              x = x * 1.d10
               dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
-              do iPole = 0, 4
-                 v = v + (-bigG/(x*1.d10))*(r/x)**ipole * legendre(ipole, cosTheta) * dm
+              m = m + dm
+              do iPole = 0, 2
+                 v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
               enddo
               
            endif
@@ -10631,7 +10629,7 @@ end subroutine minMaxDepth
      logical :: stillReceiving
      integer :: status(MPI_STATUS_SIZE)
      integer :: ierr, j
-     real(double) :: v
+     real(double) :: v,m
 
      type(VECTOR) :: point
      tag = 94
@@ -10644,6 +10642,7 @@ end subroutine minMaxDepth
 
      do iThread = 1, nHydroThreadsGlobal
         if (myRankGlobal == iThread) then
+
            if (present(level)) then
               call recursApplyDirichletLevel(grid, grid%octreeRoot, com, level)
            else
@@ -10667,7 +10666,7 @@ end subroutine minMaxDepth
                  point%y = temp(2)
                  point%z = temp(3)
                  v = 0.d0
-                 call multipoleExpansionLevel(grid%octreeRoot, point, com, v, level=4)
+                 call multipoleExpansionLevel(grid%octreeRoot, point, com, v, m, level=6)
                  call mpi_send(v, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
               endif
            enddo
@@ -10746,7 +10745,7 @@ end subroutine minMaxDepth
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point
      real(double) :: v, vgrid
-     real(double) :: temp(3)
+     real(double) :: temp(3), r,m
      integer :: subcell, i
      integer :: ithread
      integer :: tag, ierr
@@ -10772,8 +10771,8 @@ end subroutine minMaxDepth
 
               if (thisOctal%threed.or.(thisOctal%twoD.and.(point%x > 0.d0))) then
                  v = 0.d0
-                 call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=4)
-                 
+                 m = 0.d0
+                 call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, m, level=6)
                  do iThread = 1, nHydroThreadsGlobal
                     
                     temp(1) = point%x
@@ -10792,6 +10791,7 @@ end subroutine minMaxDepth
                  
 !              write(*,*) "old/new phi gas boundary ",thisOctal%phi_gas(subcell), v
                  thisOctal%phi_gas(subcell) = v
+!                 write(*,*) "v ", v, " analytical ", -bigG*msol/r, v/(-bigG*mSol/r)
               endif
            endif
         endif
@@ -10976,7 +10976,7 @@ end subroutine minMaxDepth
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point
      real(double) :: v, vgrid
-     real(double) :: temp(3)
+     real(double) :: temp(3),r,m
      integer :: subcell, i
      integer :: ithread
      integer :: tag, ierr
@@ -10995,7 +10995,8 @@ end subroutine minMaxDepth
            if (thisOctal%ghostCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
               v = 0.d0
-              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, level=4)
+              m = 0.d0
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, m, level=6)
 
               do iThread = 1, nHydroThreadsGlobal
 
@@ -11013,6 +11014,8 @@ end subroutine minMaxDepth
                  endif
               enddo
               thisOctal%phi_gas(subcell) = v
+              r = modulus(subcellCentre(thisOctal,subcell))*gridDistanceScale
+!              write(*,*) "v ", v, " analytical level ", -bigG*msol/r, v/(-bigG*mSol/r)
            endif
         enddo
      endif

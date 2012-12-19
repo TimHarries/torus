@@ -3687,6 +3687,7 @@ contains
     real(double) :: totArea
     integer :: iRay
     integer :: iomp, iter
+    real(double), allocatable :: tx(:),ty(:)
     character(len=80) :: message
 
     ! For MPI implementations
@@ -3694,7 +3695,7 @@ contains
     logical :: converged
     real(double) :: thisIntensity, previousIntensity, r, frac
     integer :: nAdditionalRays
-    integer, parameter :: maxIter = 6
+    integer, parameter :: maxIter = 8
 #ifdef MPI
     integer :: j
     integer       ::   np             ! The number of processes
@@ -3768,98 +3769,56 @@ contains
     yProj =  xProj .cross.viewVec
     call normalize(yProj)
 
-    call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, xProj, yProj)
-    
-    write(message,*) "Total number of rays: ",nPoints
-    call writeInfo(message)
-!    do i = 1, npoints
-!       write(55,*) xpoints(i), ypoints(i)
-!    enddo
+
     dx = cube%xAxis(2)-cube%xAxis(1)
     dy = cube%yAxis(2)-cube%yAxis(1)
 
     do iv = iv1, iv2
-       write(*,*) myrankglobal," iv ",iv
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
+       call createRayGridGeneric(grid, cube, source, xPoints, yPoints, nPoints, xProj, yProj)
+    
+       do ix = 1, cube%nx
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (ix, iy, rayPos, nRay, xRay, yRay, area,totArea,iomp, converged, nAdditionalRays) &
-       !$OMP PRIVATE (iter, r, thisIntensity, previousIntensity, frac) &
-       !$OMP SHARED (cube, viewVec, grid) &
+       !$OMP PRIVATE (iy, rayPos, nRay, xRay, yRay, area,totArea,iomp, converged, nAdditionalRays, message) &
+       !$OMP PRIVATE (iter, r, thisIntensity, previousIntensity, frac,tx,ty) &
+       !$OMP SHARED (cube, viewVec, grid, ix,  xPoints, yPoints, nPoints) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
-       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, xPoints, yPoints, nPoints, thisAtom, itrans)
+       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, thisAtom, itrans)
        
        iomp = 0
 #ifdef _OPENMP
        iomp = omp_get_thread_num()
 #endif
-       !$OMP DO SCHEDULE(DYNAMIC,2)
-       do ix = 1, cube%nx
-          write(*,*) "rank, omp ",myrankGlobal, iomp," ix ",ix
+
+       !$OMP DO SCHEDULE(DYNAMIC,1)
           do iy = 1, cube%ny
+!          write(*,*) "rank, omp ",myrankGlobal, iomp," ix iy iv ",ix, iy, iv
 
 
-             converged = .false.
-             nAdditionalRays = 2
-             previousIntensity = 0.d0
-             iter = 0
-             do while (.not.converged)
-                iter = iter + 1
-                do i = 1, nAdditionalRays
-                   call randomNumberGenerator(getDouble=r)
-                   xPoints(nPoints+i) = cube%xAxis(ix) + dx * (r-0.5d0)
-                   call randomNumberGenerator(getDouble=r)
-                   yPoints(nPoints+i) = cube%yAxis(iy) + dy * (r-0.5d0)
-                enddo
-
-                call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy,xPoints, yPoints, &
-                     nPoints+nAdditionalrays,  nRay, xRay, yRay, area)
-             
-                totArea = 0.d0
-                cube%intensity(ix,iy,iv-iv1+1) = 0.d0
-                thisIntensity = 0.d0
-                do iRay = 1, nRay
-                
-                   rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
-                   raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
-
-                   thisIntensity = thisIntensity &
-                        + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+             call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy, xpoints, ypoints, &
+                  nPoints,  nRay, xRay, yRay, area)
+             thisIntensity = 0.
+             do iRay = 1, nRay
+                rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
+                raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
+                thisIntensity =  thisIntensity + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
                         -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
-
-                   
-!                   cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) &
-!                        + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
-!                        -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
-!                write(*,*) "intensity ",cube%intensity(ix,iy,iv-iv1+1)
                    totArea = totArea + Area(iray)
-                enddo
-                thisIntensity = thisIntensity / real(SUM(area(1:nray)))
-!                write(*,*) "iteration ",nAdditionalRays,abs(thisIntensity-previousIntensity)/thisIntensity
-                frac = abs(thisIntensity-previousIntensity)/thisIntensity
-                if ((frac < 1.d-2).or.(iter > maxIter)) then
-                   if( iter  > maxIter) write(*,*) "aborted at iter ",iter,real(frac),ix,iy
-                   converged = .true.
-                   cube%intensity(ix,iy,iv-iv1+1) = real(thisIntensity)
-!                   write(*,*) "intensity converged after ",nAdditionalRays, " additional rays"
-                else
-                   converged = .false.
-                   nAdditionalRays = nAdditionalRays * 2
-                   previousIntensity = thisIntensity
-                endif
-
-!             write(*,*) "Pixel done with ",nRay, " rays. check on area ",totArea/(dx**2)
-!             cube%intensity(ix,iy,iv-iv1+1) = cube%intensity(ix,iy,iv-iv1+1) / real(SUM(area(1:nRay)))
+             enddo
+             thisIntensity = thisIntensity / real(SUM(area(1:nray)))
+             cube%intensity(ix,iy,iv-iv1+1) = real(thisIntensity)
           enddo
-          enddo
-       enddo
        !$OMP END DO
+
+
        !$OMP BARRIER
        !$OMP END PARALLEL
+       enddo
        write(*,*) "Velocity bin ",iv, " done."
+       deallocate(xPoints, yPoints)
 
     enddo
 
-    deallocate(xPoints, yPoints)
 
 
 #ifdef MPI
@@ -4188,7 +4147,7 @@ contains
 
 
   subroutine createRayGridGeneric(grid, cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
-    use inputs_mod, only : amrGridSize
+    use inputs_mod, only : amrGridSize, ttaurirouter, dw_rmin, dw_rmax
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
@@ -4199,65 +4158,69 @@ contains
     integer :: nPoints, i, j
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nr, nphi
-    real(double) :: r, phi, dphi, dx, dy
-    integer :: ix, iy, iSource, nr1, nr2
+    real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2
+    integer :: ix, iy, iSource, nr1, nr2, nr3
     logical :: enhanced, test
     enhanced = .true.
 
     nphi = 200
-    nr = 100
-    npoints = 0
-!    call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints, count=.true.)
-    test = grid%octreeroot%oned
+    nr1 = 100
+    nr2 = 100
+    nr3 = 100
 
-    if (enhanced) then
-!       call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-!       if ((grid%octreeRoot%oneD).or.(grid%octreeRoot%twoD)) then
-!          nPoints = nPoints + nVoxels * 50
-!       else
-!          nPoints = nPoints + nVoxels
-!       endif
-       nPoints = nPoints + globalnSource * nr * nphi
-    endif
-    nPoints = nPoints + 4*cube%nx*cube%ny + 10000
+    nPoints = (nr1 + nr2 + nr3) * nphi +  globalnSource * nr1 * nphi
+    nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
-    if (enhanced) then
-!       call  getProjectedPoints(grid,  xProj, yProj, xPoints, yPoints, nPoints)
-    
-       nr1 = 100
-       nr2 = nr - nr1
-       do iSource = 1, globalnSource
-          do i = 1, nr1
-             r = (dble(i)/dble(nr1)) * sourceArray(iSource)%radius
-             call randomNumberGenerator(getDouble=dphi)
-             dphi = dphi * twoPi
-             do j = 1, nphi
-                phi = twoPi * dble(j)/dble(nPhi)+dphi
-                nPoints = nPoints + 1
-                xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
-                yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
-             enddo
+    do iSource = 1, globalnSource
+       do i = 1, nr1
+          r = (dble(i)/dble(nr1)) * sourceArray(iSource)%radius
+          call randomNumberGenerator(getDouble=dphi)
+          dphi = dphi * twoPi
+          do j = 1, nphi
+             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             nPoints = nPoints + 1
+             xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+             yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
           enddo
        enddo
-!       do iSource = 1, globalnSource
-!          do i = 1, nr2
-!             r = log10(sourceArray(iSource)%radius) + &
-!                  (log10(amrGridSize)-log10(sourceArray(iSource)%radius))*(dble(i)/dble(nr2))
-!             r = 10.d0**r
-!             call randomNumberGenerator(getDouble=dphi)
-!             dphi = dphi * twoPi
-!             do j = 1, nphi
-!                phi = twoPi * dble(j)/dble(nPhi)+dphi
-!                nPoints = nPoints + 1
-!                xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
-!                yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
-!             enddo
-!          enddo
-!       enddo
+    enddo
 
-    endif
+    rmin = sourceArray(1)%radius 
+    rMax = ttaurirouter/1.d10
+    do i = 1, nr2
+       r1 = rMin + (rmax-rMin) * (dble(i-1)/dble(nr2))**3
+       r2 = rMin + (rmax-rMin) * (dble(i)/dble(nr2))**3
+       r = 0.5d0*(r1+r2)
+       call randomNumberGenerator(getDouble=dphi)
+       dphi = dphi * twoPi
+       do j = 1, nphi
+          phi = twoPi * dble(j)/dble(nPhi)+dphi
+          nPoints = nPoints + 1
+          xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+          yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+       enddo   
+    enddo
+
+    rmin = dw_rmin
+    rMax = dw_rmax
+    do i = 1, nr3
+       r1 = rMin + (rmax-rMin) * (dble(i-1)/dble(nr3))**3
+       r2 = rMin + (rmax-rMin) * (dble(i)/dble(nr3))**3
+       r = 0.5d0*(r1+r2)
+       call randomNumberGenerator(getDouble=dphi)
+       dphi = dphi * twoPi
+       do j = 1, nphi
+          phi = twoPi * dble(j)/dble(nPhi)+dphi
+          nPoints = nPoints + 1
+          xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+          yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+       enddo   
+    enddo
+
+
+
     dx = cube%xAxis(2) - cube%xAxis(1)
     dy = cube%yAxis(2) - cube%yAxis(1)
     do ix = 1, cube%nx
