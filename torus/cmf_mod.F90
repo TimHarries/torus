@@ -3767,10 +3767,12 @@ contains
 
     dx = cube%xAxis(2)-cube%xAxis(1)
     dy = cube%yAxis(2)-cube%yAxis(1)
-
+#ifdef MPI
+  call randomNumberGenerator(syncIseed=.true.)
+#endif
+    call createRayGridGeneric(cube, source, xPoints, yPoints, nPoints, xProj, yProj)
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
-       call createRayGridGeneric(cube, source, xPoints, yPoints, nPoints, xProj, yProj)
     
        do ix = 1, cube%nx
        !$OMP PARALLEL DEFAULT (NONE) &
@@ -3810,9 +3812,9 @@ contains
        !$OMP END PARALLEL
        enddo
        write(*,*) "Velocity bin ",iv, " done."
-       deallocate(xPoints, yPoints)
 
     enddo
+    deallocate(xPoints, yPoints)
 
 
 
