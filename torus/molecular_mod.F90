@@ -2139,10 +2139,9 @@ end subroutine molecularLoop
 !        write(*,'(100(1pe9.2))') matrixA(i,1:maxLevel)
 !     enddo
      
-     if(debug) then
-        matrixAsave = matrixA
-        matrixBsave = matrixB
-     endif
+! Save matrices A and B for 1st fix if LU solver fails
+     matrixAsave = matrixA
+     matrixBsave = matrixB
 
 ! finished creating equation 10, now solve it to find new level populations using lu solver
 #ifdef USEMKL
