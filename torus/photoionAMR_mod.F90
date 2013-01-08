@@ -5241,9 +5241,9 @@ subroutine dumpWhalenNormanTest(grid)
   use mpi
   use inputs_mod, only : quickThermal
   type(gridtype) :: grid
-  integer :: ier, ierr, i
+  integer :: ier, ierr, i, j
   logical, save :: firstTime=.true.
-  real(double) :: tempStorage(9)
+  real(double) :: tempStorage(24), rhoBins(15), rhoDist(15)
   integer :: status
   integer :: tag = 50
   real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
@@ -5255,25 +5255,35 @@ subroutine dumpWhalenNormanTest(grid)
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
                 status="new", iostat=ier)
+           open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
+                status="new", iostat=ier)
         else
            open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
+                status="new", iostat=ier)
+           open(unit=66, file="WN08native_MassFn_torus_haworth.txt", &
                 status="new", iostat=ier)
         end if
         firstTime = .false.
         
-        write (65, *) "# time   r_min   r_mean   r_max   m_i   m_n   m_dens   K.E.   mom"
+        write (65, *) "time   r_min   r_mean   r_max   m_i   m_n   m_dens   K.E.   mom"
+        write(66, *) "time   0-10   10-20   20-40   40-80   80-160   160-320   320-640   640-1280", &
+             "   1280-2560   2560-5120   5120-10240   10240-20480   20480-40960   40960-81920   81920+" 
      else
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
                 status="old", position="append", iostat=ier)
+           open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
+                status="old", position="append", iostat=ier)
         else
            open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
+                status="old", position="append", iostat=ier)
+           open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
                 status="old", position="append", iostat=ier)
         end if
      end if
   end if
 
-
+  call  setupDensityBins(rhoBins)
   minR = 1.d30
   maxR = 0.d0
   meanR = 0.d0
@@ -5283,9 +5293,10 @@ subroutine dumpWhalenNormanTest(grid)
   KE = 0.d0
   mom = 0.d0
   nRadii = 0
+  rhoDist = 0.d0
   if(myRankGlobal /= 0) then
      call getWhalenNormanTestValues(grid%octreeRoot, minR, meanR, maxR, mIo, mNeu, &
-          Movd, KE, mom, nRadii)
+          Movd, KE, mom, nRadii, rhoBins, rhoDist)
      
      do i = 1, nhydrothreadsglobal
         if(i == myRankGlobal) then
@@ -5298,14 +5309,29 @@ subroutine dumpWhalenNormanTest(grid)
            tempStorage(7) = KE
            tempStorage(8) = mom
            tempStorage(9) = nRadii
-           call MPI_SEND(tempStorage, 9, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)        
+           tempStorage(10) = rhoDist(1)
+           tempStorage(11) = rhoDist(2)
+           tempStorage(12) = rhoDist(3)
+           tempStorage(13) = rhoDist(4)
+           tempStorage(14) = rhoDist(5)
+           tempStorage(15) = rhoDist(6)
+           tempStorage(16) = rhoDist(7)
+           tempStorage(17) = rhoDist(8)
+           tempStorage(18) = rhoDist(9)
+           tempStorage(19) = rhoDist(10)
+           tempStorage(20) = rhoDist(11)
+           tempStorage(21) = rhoDist(12)
+           tempStorage(22) = rhoDist(13)
+           tempStorage(23) = rhoDist(14)
+           tempStorage(24) = rhoDist(15)
+           call MPI_SEND(tempStorage, 24, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)        
         end if
      end do
-
   end if
+
   if(myRankGlobal == 0) then
      do i = 1, nhydrothreadsglobal
-        call MPI_RECV(tempStorage, 9, MPI_DOUBLE_PRECISION, i, &
+        call MPI_RECV(tempStorage, 24, MPI_DOUBLE_PRECISION, i, &
              tag, localWorldCommunicator, status, ierr)
         if(tempStorage(1) < minR) then
            minR = tempStorage(1)
@@ -5320,24 +5346,63 @@ subroutine dumpWhalenNormanTest(grid)
         mom = mom + tempStorage(8)
         meanR = meanR + tempStorage(2)
         nRadii = nRadii + int(tempStorage(9))
+        do j = 1, 15
+           rhoDist(j) = rhoDist(j) + tempStorage(j+9)
+        end do
      end do
      meanR = meanR /dble(nRadii)
 
      write(65, *) grid%currentTime, minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
      close(65)
+     write(66,*) grid%currentTime, rhoDist(1), rhoDist(2), rhoDist(3), rhoDist(4), rhoDist(5), &
+          rhoDist(6), rhoDist(7), rhoDist(8), rhoDist(9), rhoDist(10), rhoDist(11), rhoDist(12), &
+          rhoDist(13), rhoDist(14), rhoDist(15)
+     close(66)
   end if
 end subroutine dumpWhalenNormanTest
 
+subroutine setupDensityBins(rhoBins)
+  real(double) :: rhoBins(15)
+  integer :: i
+
+  rhoBins(1) = 0
+  rhoBins(2) = 10
+  do i = 3, 15
+     rhoBins(i) = rhoBins(i-1)*2.d0
+  end do
+
+end subroutine
+
+subroutine updateBins(rhoBins, rhoDist, rho, dv)
+  real(double) :: rho, rhoBins(15),  rhoDist(15), dv
+  integer :: i, j
+  logical :: found
+
+  found = .false.  
+
+  do i = 1, 14
+     if (rho > rhoBins(i) .and. rho < rhoBins(i+1)) then
+        rhoDist(i) = rhoDist(i) + rho*dV*mHydrogen
+        found = .true.
+     end if
+  end do
+  if(.not. found) then
+     rhoDist(15) =  rhoDist(15) + rho*dV*mHydrogen
+     found = .true.
+  end if
+
+end subroutine
 
 recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo, &
-     mNeu, Movd, KE, mom, nRadii)
+     mNeu, Movd, KE, mom, nRadii, rhoBins, rhoDist)
   use mpi
   type(octal), pointer :: thisOCtal, child
   integer :: subcell
   real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
   integer :: nRadii, i
-  real(double) :: u2, eKinetic, dv, thisR
+  real(double) :: u2, eKinetic, dv, thisR, rho
   type(VECTOR) :: thisRVec
+  real(double) :: rhoBins(15), rhoDist(15)
 
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
@@ -5346,7 +5411,7 @@ recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
               call getWhalenNormanTestValues(child, minR, meanR, maxR, mIo, mNeu, &
-                   Movd, KE, mom, nRadii)
+                   Movd, KE, mom, nRadii, rhoBins, rhoDist)
               exit
            end if
         end do
@@ -5376,6 +5441,9 @@ recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo
               nRadii = nRadii + 1
            end if
            
+           rho = thisOctal%rho(subcell)/mHydrogen
+           call updateBins(rhoBins, rhoDist, rho, dv)
+           
            if(thisOctal%ionFrac(subcell,2) > 0.9) then           
               !found ionized gas
               mIo = mIo + thisOctal%rho(subcell)*dv
@@ -5389,7 +5457,7 @@ recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo
               !found an overdense cell
               Movd = Movd + thisOctal%rho(subcell)
            end if
-
+           
 
            u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/&
                 thisOctal%rho(subcell)
