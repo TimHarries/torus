@@ -5319,7 +5319,7 @@ subroutine dumpWhalenNormanTest(grid)
         KE = KE + tempStorage(7)
         mom = mom + tempStorage(8)
         meanR = meanR + tempStorage(2)
-        nRadii = nRadii + tempStorage(9)
+        nRadii = nRadii + int(tempStorage(9))
      end do
      meanR = meanR /dble(nRadii)
 
