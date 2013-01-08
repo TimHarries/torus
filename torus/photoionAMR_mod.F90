@@ -266,9 +266,9 @@ contains
           endif
           direction = VECTOR(0.d0, 0.d0, 1.d0)
           call calculateRhoW(grid%octreeRoot, direction)
-          
+
+
           call calculateEnergyFromTemperature(grid%octreeRoot)
-          
           call calculateRhoE(grid%octreeRoot, direction)
 
 
@@ -362,10 +362,9 @@ contains
 
        if ((myrankglobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
           
-          if (myrankGlobal /= 0) then
-             call calculateEnergyFromTemperature(grid%octreeRoot)
-             call calculateRhoE(grid%octreeRoot, direction)
-          endif
+       call calculateEnergyFromTemperature(grid%octreeRoot)
+       call calculateRhoE(grid%octreeRoot, direction)
+
                     
           if (myrankGlobal/=0) then
              call writeInfo("Refining individual subgrids", TRIVIAL)
@@ -435,7 +434,11 @@ contains
           !       enddo
        
        if (myrankGlobal /= 0) then
-          call calculateEnergyFromTemperature(grid%octreeRoot)
+          if(grid%geometry == "SB_WNHII") then
+             call calculateEnergyFromTemperature(grid%octreeRoot, withNoise=.true.)
+          else
+             call calculateEnergyFromTemperature(grid%octreeRoot)
+          end if
           call calculateRhoE(grid%octreeRoot, direction)          
        endif
     end if
@@ -5254,20 +5257,20 @@ subroutine dumpWhalenNormanTest(grid)
      if(firstTime) then
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
-                status="new", iostat=ier)
+                status="replace", form="formatted",iostat=ier)
            open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
-                status="new", iostat=ier)
+                status="replace", form="formatted",iostat=ier)
         else
            open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
-                status="new", iostat=ier)
+                status="replace", form="formatted",iostat=ier)
            open(unit=66, file="WN08native_MassFn_torus_haworth.txt", &
-                status="new", iostat=ier)
+                status="replace", form="formatted", iostat=ier)
         end if
         firstTime = .false.
         
-        write (65, *) "time   r_min   r_mean   r_max   m_i   m_n   m_dens   K.E.   mom"
-        write(66, *) "time   0-10   10-20   20-40   40-80   80-160   160-320   320-640   640-1280", &
-             "   1280-2560   2560-5120   5120-10240   10240-20480   20480-40960   40960-81920   81920+" 
+        write (65, '(9(a7, 3x))') "time", "r_min", "r_mean", "r_max", "m_i", "m_n", "m_dens", "K.E.", "mom"
+        write(66, '(16(a12, 3x))') "time", "0-10", "10-20", "20-40", "40-80", "80-160", "160-320", "320-640", "640-1280", &
+              "1280-2560", "2560-5120","5120-10240", "10240-20480", "20480-40960" ,"40960-81920","81920+" 
      else
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
@@ -5350,11 +5353,14 @@ subroutine dumpWhalenNormanTest(grid)
            rhoDist(j) = rhoDist(j) + tempStorage(j+9)
         end do
      end do
-     meanR = meanR /dble(nRadii)
-
-     write(65, *) grid%currentTime, minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
+     if(nRadii /= 0) then
+        meanR = meanR /dble(nRadii)
+     else
+        meanR = 0.d0
+     end if
+     write(65, '(9(e12.3, 3x))') grid%currentTime, minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
      close(65)
-     write(66,*) grid%currentTime, rhoDist(1), rhoDist(2), rhoDist(3), rhoDist(4), rhoDist(5), &
+     write(66, '(16(e12.3, 3x))') grid%currentTime, rhoDist(1), rhoDist(2), rhoDist(3), rhoDist(4), rhoDist(5), &
           rhoDist(6), rhoDist(7), rhoDist(8), rhoDist(9), rhoDist(10), rhoDist(11), rhoDist(12), &
           rhoDist(13), rhoDist(14), rhoDist(15)
      close(66)
@@ -6597,12 +6603,13 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
   end function getRandomWavelengthPhotoion
 
 
-  recursive subroutine calculateEnergyFromTemperature(thisOctal)
+  recursive subroutine calculateEnergyFromTemperature(thisOctal, withNoise)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: eThermal
+    real(double) :: eThermal, rand
     real(double) :: mu
+    logical, optional :: withnoise
 
     do subcell = 1, thisOctal%maxChildren
        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
@@ -6626,7 +6633,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           eThermal = 1.5d0 * thisOctal%temperature(subcell)*kerg/(mu*mHydrogen)
           thisOctal%energy(subcell) =  eThermal
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-
+          if(present(withNoise)) then
+             call randomNumberGenerator(getDouble=rand)
+             rand = (2.d0*(rand - 0.5d0))/10.d0
+             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell)*(1.d0 + rand)
+          end if
        endif
     enddo
   end subroutine calculateEnergyFromTemperature

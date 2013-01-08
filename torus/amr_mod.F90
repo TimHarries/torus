@@ -7044,7 +7044,8 @@ endif
     rand = (2.d0*(rand - 0.5d0))/10.d0
     thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell)* (1. + rand)
 
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell)/thisOctal%rho(subcell) &
+         + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
 
     thisOctal%gamma(subcell) = 1.0
