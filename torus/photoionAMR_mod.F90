@@ -5375,7 +5375,7 @@ end subroutine
 
 subroutine updateBins(rhoBins, rhoDist, rho, dv)
   real(double) :: rho, rhoBins(15),  rhoDist(15), dv
-  integer :: i, j
+  integer :: i
   logical :: found
 
   found = .false.  
