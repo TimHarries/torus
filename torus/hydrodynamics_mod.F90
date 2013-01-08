@@ -100,7 +100,7 @@ contains
    type(octal), pointer :: thisOctal
    type(octal), pointer :: child
    type(octal), pointer :: neighbourOCtal
-   type(gridtype) :: grid
+   type(gridtype) :: grid   
    integer :: i, subcell, neighbourSubcell
    type(VECTOR) :: direction, rVec, locator
 
@@ -3330,7 +3330,7 @@ end subroutine sumFluxes
 
 !Perform a single hydrodynamics step, in x, y and z directions, for the 3D case.     
   subroutine hydrostep3d(grid, timestep, nPairs, thread1, thread2, nBound, &
-       group, nGroup,doSelfGrav)
+       group, nGroup,doSelfGrav, perturbPressure)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
          moveSources, hydroSpeedLimit
@@ -3342,6 +3342,7 @@ end subroutine sumFluxes
     real(double) :: dt, timestep
     type(VECTOR) :: direction
     integer :: iDir, thisBound
+    logical, optional :: perturbPressure
 
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
@@ -3408,6 +3409,9 @@ end subroutine sumFluxes
        
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       if(present(perturbPressure)) then
+          call PerturbPressureGrid(grid%octreeRoot)
+       end if 
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
@@ -3517,6 +3521,31 @@ end subroutine sumFluxes
 
  end subroutine hydroStep3d
 
+ recursive subroutine perturbPressureGrid(thisOctal)
+   use mpi
+   type(octal), pointer :: thisOctal, child
+   real(double) :: rand
+   integer :: i, subcell
+
+   do subcell = 1, thisOctal%maxChildren
+      if (thisOctal%hasChild(subcell)) then
+         ! find the child
+         do i = 1, thisOctal%nChildren, 1
+            if (thisOctal%indexChild(i) == subcell) then
+               child => thisOctal%child(i)
+               call perturbPressureGrid(child)
+               exit
+            end if
+         end do
+      else
+         if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+         call randomNumberGenerator(getDouble=rand)
+         rand = (2.d0*(rand - 0.5d0))/10.d0
+         thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell)*(1.d0+rand)
+      end if
+   end do
+ end subroutine perturbPressureGrid
+   
 !Perform a single hydrodynamics step, in x and z directions, for the 2D case.     
   subroutine hydroStep2d(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
     type(GRIDTYPE) :: grid

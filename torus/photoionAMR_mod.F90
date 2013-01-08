@@ -103,8 +103,8 @@ contains
     real :: iterTime(3)
     integer :: iterStack(3)
     integer :: optID
+    logical, save :: firstWN=.true.
 
-    tmpCylindricalHydro = cylindricalHydro
 
     dumpThisTime = .false.
 
@@ -434,11 +434,7 @@ contains
           !       enddo
        
        if (myrankGlobal /= 0) then
-          if(grid%geometry == "SB_WNHII") then
-             call calculateEnergyFromTemperature(grid%octreeRoot, withNoise=.true.)
-          else
-             call calculateEnergyFromTemperature(grid%octreeRoot)
-          end if
+          call calculateEnergyFromTemperature(grid%octreeRoot)
           call calculateRhoE(grid%octreeRoot, direction)          
        endif
     end if
@@ -662,7 +658,13 @@ contains
           if (cylindricalHydro) then
              call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           else
-             call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+             if(grid%currentTime==0.d0 .and. grid%geometry == "SB_WNHII")then
+                call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
+                     , perturbPressure=.true.)
+                firstWN = .false.
+             else
+                call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
+             end if
           endif
        endif
 
@@ -6603,13 +6605,12 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
   end function getRandomWavelengthPhotoion
 
 
-  recursive subroutine calculateEnergyFromTemperature(thisOctal, withNoise)
+  recursive subroutine calculateEnergyFromTemperature(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: eThermal, rand
     real(double) :: mu
-    logical, optional :: withnoise
 
     do subcell = 1, thisOctal%maxChildren
        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
@@ -6633,11 +6634,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           eThermal = 1.5d0 * thisOctal%temperature(subcell)*kerg/(mu*mHydrogen)
           thisOctal%energy(subcell) =  eThermal
           thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-          if(present(withNoise)) then
-             call randomNumberGenerator(getDouble=rand)
-             rand = (2.d0*(rand - 0.5d0))/10.d0
-             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell)*(1.d0 + rand)
-          end if
        endif
     enddo
   end subroutine calculateEnergyFromTemperature
