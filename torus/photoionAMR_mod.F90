@@ -161,7 +161,9 @@ contains
        if(grid%geometry == "starburst") deltaTforDump = tdump
        if(grid%geometry == "molefil") deltaTforDump = tdump
        if(grid%geometry == "sphere") deltaTforDump = tdump
+       if(grid%geometry == "SB_WNHII") deltaTforDump = tdump
        if(grid%geometry == "turbulence") then
+
 !turbulence phase
           deltaTforDump = 1.57d12 !50kyr
           tend = 3.14d13        !1Myr
@@ -737,6 +739,10 @@ contains
 !            "hydrovelocity","sourceCont   ", "pressure     "/))
 !       nPhase = nPhase + 1
        if (dumpThisTime) then
+
+          if(grid%geometry == "SB_WNHII") then
+             call dumpWhalenNormanTest(grid)
+          end if
 
           !Thaw to match time dumps of other codes
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d5)) then
@@ -5229,6 +5235,177 @@ function recombRate(thisIon, temperature) result (rate)
         rate  = 0.
   end select
 end function recombRate
+
+
+subroutine dumpWhalenNormanTest(grid)
+  use mpi
+  use inputs_mod, only : quickThermal
+  type(gridtype) :: grid
+  integer :: ier, ierr, i
+  logical, save :: firstTime=.true.
+  real(double) :: tempStorage(9)
+  integer :: status
+  integer :: tag = 50
+  real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
+  integer :: nRadii
+
+
+  if(myRankGlobal == 0) then
+     if(firstTime) then
+        if(quickThermal) then
+           open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
+                status="new", iostat=ier)
+        else
+           open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
+                status="new", iostat=ier)
+        end if
+        firstTime = .false.
+        
+        write (65, *) "# time   r_min   r_mean   r_max   m_i   m_n   m_dens   K.E.   mom"
+     else
+        if(quickThermal) then
+           open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
+                status="old", position="append", iostat=ier)
+        else
+           open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
+                status="old", position="append", iostat=ier)
+        end if
+     end if
+  end if
+
+
+  minR = 1.d30
+  maxR = 0.d0
+  meanR = 0.d0
+  mIo = 0.d0
+  mNeu = 0.d0
+  Movd = 0.d0
+  KE = 0.d0
+  mom = 0.d0
+  nRadii = 0
+  if(myRankGlobal /= 0) then
+     call getWhalenNormanTestValues(grid%octreeRoot, minR, meanR, maxR, mIo, mNeu, &
+          Movd, KE, mom, nRadii)
+     
+     do i = 1, nhydrothreadsglobal
+        if(i == myRankGlobal) then
+           tempStorage(1) = minR
+           tempStorage(2) = meanR
+           tempStorage(3) = maxR
+           tempStorage(4) = mIo
+           tempStorage(5) = mNeu
+           tempStorage(6) = Movd
+           tempStorage(7) = KE
+           tempStorage(8) = mom
+           tempStorage(9) = nRadii
+           call MPI_SEND(tempStorage, 9, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)        
+        end if
+     end do
+
+  end if
+  if(myRankGlobal == 0) then
+     do i = 1, nhydrothreadsglobal
+        call MPI_RECV(tempStorage, 9, MPI_DOUBLE_PRECISION, i, &
+             tag, localWorldCommunicator, status, ierr)
+        if(tempStorage(1) < minR) then
+           minR = tempStorage(1)
+        end if
+        if(tempStorage(3) > maxR) then
+           maxR = tempStorage(3)
+        end if
+        mIo = mIo + tempStorage(4)
+        mNeu = mNeu + tempStorage(5)
+        movd = movd + tempStorage(6)
+        KE = KE + tempStorage(7)
+        mom = mom + tempStorage(8)
+        meanR = meanR + tempStorage(2)
+        nRadii = nRadii + tempStorage(9)
+     end do
+     meanR = meanR /dble(nRadii)
+
+     write(65, *) grid%currentTime, minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
+     close(65)
+  end if
+end subroutine dumpWhalenNormanTest
+
+
+recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo, &
+     mNeu, Movd, KE, mom, nRadii)
+  use mpi
+  type(octal), pointer :: thisOCtal, child
+  integer :: subcell
+  real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
+  integer :: nRadii, i
+  real(double) :: u2, eKinetic, dv, thisR
+  type(VECTOR) :: thisRVec
+
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call getWhalenNormanTestValues(child, minR, meanR, maxR, mIo, mNeu, &
+                   Movd, KE, mom, nRadii)
+              exit
+           end if
+        end do
+     else
+        if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
+
+           dv = cellVolume(thisOctal, subcell)*1.d30
+
+           if(thisOctal%ionFrac(subcell,2) < 0.9 .and. &
+                thisOctal%ionFrac(subcell,2) > 0.1) then
+              !found the ionization front             
+              thisRVec = subcellCentre(thisOctal, subcell)
+              
+              thisR = modulus(thisRVec)
+
+              if(thisR < minR) then
+                 !update minimum I front radius
+                 minR = thisR
+              end if
+
+              if(thisR > maxR) then
+                 !update maximum I front radius
+                 maxR = thisR
+              end if
+              
+              meanR = meanR + thisR
+              nRadii = nRadii + 1
+           end if
+           
+           if(thisOctal%ionFrac(subcell,2) > 0.9) then           
+              !found ionized gas
+              mIo = mIo + thisOctal%rho(subcell)*dv
+
+           else if (thisOctal%ionFrac(subcell, 2) < 0.1) then
+              !found neutral gas
+              mNeu = mNeu + thisOctal%rho(subcell)*dv
+           end if
+
+           if(thisOctal%rho(subcell) > 2.338e-20) then
+              !found an overdense cell
+              Movd = Movd + thisOctal%rho(subcell)
+           end if
+
+
+           u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/&
+                thisOctal%rho(subcell)
+           
+           eKinetic = u2 / 2.d0
+
+           KE = KE + eKinetic
+
+           mom = mom + (thisOctal%rho(subcell)*dv*sqrt(u2))
+          
+        end if
+     end if
+  end do
+end subroutine getWhalenNormanTestValues
+
+
 
 !Thaw - dumpLexington is incompatiable with MPI - will possibly move this subroutine to mpi_amr_mod
 subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)

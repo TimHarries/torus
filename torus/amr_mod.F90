@@ -241,6 +241,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+    CASE("SB_WNHII")
+       call calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
+
     CASE("isosphere")
        call calcIsoSphereDensity(thisOctal, subcell)
 
@@ -3802,7 +3805,7 @@ CONTAINS
 !                stop
 !             end if
           
-       case("bonnor", "empty", "planar", "unimed")
+       case("bonnor", "empty", "planar", "unimed", "SB_WNHII")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
@@ -7010,6 +7013,61 @@ endif
     yplusbound = 2
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
+
+!for StarBench code comparison workshop
+  subroutine calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, rand
+    real(double), parameter :: rInner = 0.2*(pcTocm/1.d10)
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    if (rMod < rInner) then
+!       thisOctal%rho(subcell) = 1.d4*mHydrogen
+       thisOctal%rho(subcell) = 2.338d-20
+       thisOctal%temperature(subcell) = 100.d0
+    else
+       thisOctal%rho(subcell) = (2.338d-20) * (rMod/rInner)**(-2.0)
+       thisOctal%temperature(subcell) = 100.d0
+    endif
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    
+    call randomNumberGenerator(getDouble=rand)
+
+    rand = (2.d0*(rand - 0.5d0))/10.d0
+    thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell)* (1. + rand)
+
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+     
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+!    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+
+
+  end subroutine calcWhalenNormanHIIExpansionDensity
 
   subroutine calcIsoSphereDensity(thisOctal,subcell)
     TYPE(octal), INTENT(INOUT) :: thisOctal
