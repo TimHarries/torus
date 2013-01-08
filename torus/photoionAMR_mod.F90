@@ -6609,7 +6609,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: eThermal, rand
+    real(double) :: eThermal
     real(double) :: mu
 
     do subcell = 1, thisOctal%maxChildren
