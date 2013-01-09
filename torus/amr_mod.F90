@@ -6941,11 +6941,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, fac, centre
-    logical, save :: firstTime = .true.
-    integer, parameter :: nr = 1000
-    real(double), save :: r(nr), rho(nr)
-    integer :: i
+    real(double) :: eThermal
 
 !Parameters changed to agree with Gritschender et al. 2009 iVINE paper.
     thisOctal%rho(subcell) = 7.3d-23
