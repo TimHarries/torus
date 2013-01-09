@@ -749,6 +749,10 @@ contains
              call dumpWhalenNormanTest(grid)
           end if
 
+          if(grid%geometry == "SB_instblt") then
+             call dumpIfrontTest(grid)
+          end if
+
           !Thaw to match time dumps of other codes
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d5)) then
              deltaTForDump = 1.d5
@@ -1108,8 +1112,13 @@ end subroutine radiationHydro
 
        if(monochromatic) then
           nfreq = 2
-          nuStart = (13.60001*evtoerg/hcgs)
-          nuEnd =  (13.60001*evtoerg/hcgs)
+          if(grid%geometry == "SB_WNHII") then
+             nuStart = (18.60001*evtoerg/hcgs)
+             nuEnd =  (18.60001*evtoerg/hcgs)
+          else
+             nuStart = (13.60001*evtoerg/hcgs)
+             nuEnd =  (13.60001*evtoerg/hcgs)
+          end if
           do i = 1, nFreq
              freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
              freq(i) = 10.d0**freq(i)
@@ -5244,7 +5253,7 @@ end function recombRate
 
 subroutine dumpWhalenNormanTest(grid)
   use mpi
-  use inputs_mod, only : quickThermal
+  use inputs_mod, only : quickThermal, readgrid
   type(gridtype) :: grid
   integer :: ier, ierr, i, j
   logical, save :: firstTime=.true.
@@ -5256,7 +5265,7 @@ subroutine dumpWhalenNormanTest(grid)
 
 
   if(myRankGlobal == 0) then
-     if(firstTime) then
+     if(firstTime .and. .not. readGrid) then
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
                 status="replace", form="formatted",iostat=ier)
@@ -5300,7 +5309,7 @@ subroutine dumpWhalenNormanTest(grid)
   nRadii = 0
   rhoDist = 0.d0
   if(myRankGlobal /= 0) then
-     call getWhalenNormanTestValues(grid%octreeRoot, minR, meanR, maxR, mIo, mNeu, &
+     call getTestValues(grid%octreeRoot, minR, meanR, maxR, mIo, mNeu, &
           Movd, KE, mom, nRadii, rhoBins, rhoDist)
      
      do i = 1, nhydrothreadsglobal
@@ -5369,6 +5378,108 @@ subroutine dumpWhalenNormanTest(grid)
   end if
 end subroutine dumpWhalenNormanTest
 
+subroutine dumpIfrontTest(grid)
+  use mpi
+  use inputs_mod, only : quickThermal, readgrid
+  type(gridtype) :: grid
+  integer :: ier, ierr, i, j
+  logical, save :: firstTime=.true.
+  real(double) :: tempStorage(24), rhoBins(15), rhoDist(15)
+  integer :: status
+  integer :: tag = 50
+  real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
+  integer :: nRadii
+
+
+  if(myRankGlobal == 0) then
+     if(firstTime .and. .not. readGrid) then
+        open(unit=25, file="planarIfront_testA_torus.txt", &
+             status="replace", form="formatted",iostat=ier)
+        firstTime = .false.
+        write (25, '(3(a10, 3x))') "time", "m_ionized", "m_neutral"
+     else
+        open(unit=25, file="planarIfront_testA_torus.txt", &
+             status="old", position="append", iostat=ier)
+     end if
+  end if
+  
+  minR = 1.d30
+  maxR = 0.d0
+  meanR = 0.d0
+  mIo = 0.d0
+  mNeu = 0.d0
+  Movd = 0.d0
+  KE = 0.d0
+  mom = 0.d0
+  nRadii = 0
+  rhoDist = 0.d0
+  if(myRankGlobal /= 0) then
+     call getTestValues(grid%octreeRoot, minR, meanR, maxR, mIo, mNeu, &
+          Movd, KE, mom, nRadii, rhoBins, rhoDist)
+     
+     do i = 1, nhydrothreadsglobal
+        if(i == myRankGlobal) then
+           tempStorage(1) = minR
+           tempStorage(2) = meanR
+           tempStorage(3) = maxR
+           tempStorage(4) = mIo
+           tempStorage(5) = mNeu
+           tempStorage(6) = Movd
+           tempStorage(7) = KE
+           tempStorage(8) = mom
+           tempStorage(9) = nRadii
+           tempStorage(10) = rhoDist(1)
+           tempStorage(11) = rhoDist(2)
+           tempStorage(12) = rhoDist(3)
+           tempStorage(13) = rhoDist(4)
+           tempStorage(14) = rhoDist(5)
+           tempStorage(15) = rhoDist(6)
+           tempStorage(16) = rhoDist(7)
+           tempStorage(17) = rhoDist(8)
+           tempStorage(18) = rhoDist(9)
+           tempStorage(19) = rhoDist(10)
+           tempStorage(20) = rhoDist(11)
+           tempStorage(21) = rhoDist(12)
+           tempStorage(22) = rhoDist(13)
+           tempStorage(23) = rhoDist(14)
+           tempStorage(24) = rhoDist(15)
+           call MPI_SEND(tempStorage, 24, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)        
+        end if
+     end do
+  end if
+
+  if(myRankGlobal == 0) then
+     do i = 1, nhydrothreadsglobal
+        call MPI_RECV(tempStorage, 24, MPI_DOUBLE_PRECISION, i, &
+             tag, localWorldCommunicator, status, ierr)
+        if(tempStorage(1) < minR) then
+           minR = tempStorage(1)
+        end if
+        if(tempStorage(3) > maxR) then
+           maxR = tempStorage(3)
+        end if
+        mIo = mIo + tempStorage(4)
+        mNeu = mNeu + tempStorage(5)
+        movd = movd + tempStorage(6)
+        KE = KE + tempStorage(7)
+        mom = mom + tempStorage(8)
+        meanR = meanR + tempStorage(2)
+        nRadii = nRadii + int(tempStorage(9))
+        do j = 1, 15
+           rhoDist(j) = rhoDist(j) + tempStorage(j+9)
+        end do
+     end do
+     if(nRadii /= 0) then
+        meanR = meanR /dble(nRadii)
+     else
+        meanR = 0.d0
+     end if
+     write(25, '(3(e12.3, 3x))') grid%currentTime, mIo, mNeu
+     close(25)
+
+  end if
+end subroutine dumpIfrontTest
+
 subroutine setupDensityBins(rhoBins)
   real(double) :: rhoBins(15)
   integer :: i
@@ -5401,7 +5512,7 @@ subroutine updateBins(rhoBins, rhoDist, rho, dv)
 
 end subroutine
 
-recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo, &
+recursive subroutine getTestValues(thisOctal, minR, meanR, maxR, mIo, &
      mNeu, Movd, KE, mom, nRadii, rhoBins, rhoDist)
   use mpi
   type(octal), pointer :: thisOCtal, child
@@ -5418,7 +5529,7 @@ recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call getWhalenNormanTestValues(child, minR, meanR, maxR, mIo, mNeu, &
+              call getTestValues(child, minR, meanR, maxR, mIo, mNeu, &
                    Movd, KE, mom, nRadii, rhoBins, rhoDist)
               exit
            end if
@@ -5479,7 +5590,7 @@ recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo
         end if
      end if
   end do
-end subroutine getWhalenNormanTestValues
+end subroutine getTestValues
 
 
 
