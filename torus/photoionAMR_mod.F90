@@ -352,7 +352,7 @@ contains
              
              call writeInfo("Dumping post-photoionization data", TRIVIAL)
              call writeVtkFile(grid, "start.vtk", &
-             valueTypeString=(/"rho        ","HI         " ,"temperature", "sourceCont " /))
+             valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure   " /))
           end do
        end if
 
@@ -5454,25 +5454,25 @@ recursive subroutine getWhalenNormanTestValues(thisOctal, minR, meanR, maxR, mIo
            
            if(thisOctal%ionFrac(subcell,2) > 0.9) then           
               !found ionized gas
-              mIo = mIo + thisOctal%rho(subcell)*dv
+              mIo = mIo + (thisOctal%rho(subcell)*dv)
 
            else if (thisOctal%ionFrac(subcell, 2) < 0.1) then
               !found neutral gas
-              mNeu = mNeu + thisOctal%rho(subcell)*dv
+              mNeu = mNeu + (thisOctal%rho(subcell)*dv)
            end if
 
            if(thisOctal%rho(subcell) > 2.338e-20) then
               !found an overdense cell
-              Movd = Movd + thisOctal%rho(subcell)
+              Movd = Movd + (thisOctal%rho(subcell)*dv)
            end if
            
 
            u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/&
-                thisOctal%rho(subcell)
+                thisOctal%rho(subcell)**2
            
            eKinetic = u2 / 2.d0
 
-           KE = KE + eKinetic
+           KE = KE + (eKinetic*thisOctal%rho(subcell)*dv)
 
            mom = mom + (thisOctal%rho(subcell)*dv*sqrt(u2))
           
