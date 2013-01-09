@@ -6951,6 +6951,7 @@ endif
     thisOctal%rho(subcell) = 7.3d-23
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
     !Thaw - will probably want to change this to use returnMu
     ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal

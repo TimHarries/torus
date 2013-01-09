@@ -2972,7 +2972,7 @@ contains
   
           if (.not.thisoctal%ghostcell(subcell)) then
              thisoctal%rhou(subcell) = thisoctal%q_i(subcell)
-             if (isnan(thisoctal%rhou(subcell))) write(*,*) "nan in q to rhou"
+!             if (isnan(thisoctal%rhou(subcell))) write(*,*) "nan in q to rhou"
           endif
         
        endif
@@ -3457,7 +3457,9 @@ end subroutine sumFluxes
        call setupUpm(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .true.)
+
        call setupRhoPhi(grid%octreeRoot, grid, direction)
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupPressure(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -3526,6 +3528,11 @@ end subroutine sumFluxes
    type(octal), pointer :: thisOctal, child
    real(double) :: rand
    integer :: i, subcell
+   logical, save :: firsttime=.true.
+
+   if(firsttime) then
+      print *, "perturbing pressuregrid"
+   end if
 
    do subcell = 1, thisOctal%maxChildren
       if (thisOctal%hasChild(subcell)) then
@@ -3542,6 +3549,7 @@ end subroutine sumFluxes
          call randomNumberGenerator(getDouble=rand)
          rand = (2.d0*(rand - 0.5d0))/10.d0
          thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell)*(1.d0+rand)
+         
       end if
    end do
  end subroutine perturbPressureGrid
@@ -3724,7 +3732,7 @@ end subroutine sumFluxes
        call setupUpm(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .true.)
-       call setupRhoPhi(grid%octreeRoot, grid, direction)
+       call setupRhoPhi(grid%octreeRoot, grid, direction)       
        call setuprhorvplusminus1(grid%octreeRoot, grid)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupPressure(grid%octreeRoot, grid, direction)
@@ -3887,7 +3895,7 @@ end subroutine sumFluxes
   end subroutine computeCourantTime
 
   subroutine pressureGradientTimeStep(grid, dt, npairs,thread1,thread2,nbound,group,ngroup)
-    use inputs_mod, only : amr3d
+    use inputs_mod, only : amr3d, doselfgrav
     integer :: nPairs, thread1(:), thread2(:), group(:), nBound(:), ngroup
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -3897,7 +3905,7 @@ end subroutine sumFluxes
     call computepressureGeneral(grid, grid%octreeroot, .true.) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call setuppressure(grid%octreeroot, grid, direction)
-    call setuprhoPhi(grid%octreeroot, grid, direction)
+    call setuprhoPhi(grid%octreeroot, grid, direction)    
     call pressureTimeStep(grid%octreeRoot, dt)
 
     if (amr3d) then
@@ -3947,9 +3955,10 @@ end subroutine sumFluxes
              dx = thisoctal%subcellsize * griddistancescale
              acc =  (1.d0/thisOctal%rho(subcell)) * &
                   (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / (dx)
-
+                
              acc = acc + &
                   (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
+
              acc = max(1.d-30, abs(acc))
              dt = min(dt, sqrt(smallestCellSize*gridDistanceScale/acc))
 

@@ -360,6 +360,9 @@ contains
           call torus_abort("Finished single photo calculation, ending...")
        end if
 
+       write(mpiFilename,'(a, i4.4, a)') "start.grid"
+       call writeAmrGrid(mpiFilename, .false., grid)
+
        if ((myrankglobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
           
        call calculateEnergyFromTemperature(grid%octreeRoot)
