@@ -6940,7 +6940,6 @@ endif
   subroutine calcPlanarIfrontDensity(thisOctal, subcell)
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    type(VECTOR) :: rVec
     real(double) :: eThermal
 
 !Parameters changed to agree with Gritschender et al. 2009 iVINE paper.
