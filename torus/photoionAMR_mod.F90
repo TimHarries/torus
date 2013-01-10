@@ -332,6 +332,7 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
+                tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
@@ -616,6 +617,7 @@ contains
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
                 cylindricalHydro = .false.
+                tmpcylindricalhydro=cylindricalhydro
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
                looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack) 
           cylindricalHydro = tmpCylindricalHydro
@@ -5388,7 +5390,7 @@ subroutine dumpIfrontTest(grid)
   integer :: ier, ierr, i, j
   logical, save :: firstTime=.true.
   real(double) :: tempStorage(24), rhoBins(15), rhoDist(15)
-  integer :: status
+  integer :: stat
   integer :: tag = 50
   real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
   integer :: nRadii
@@ -5454,7 +5456,7 @@ subroutine dumpIfrontTest(grid)
   if(myRankGlobal == 0) then
      do i = 1, nhydrothreadsglobal
         call MPI_RECV(tempStorage, 24, MPI_DOUBLE_PRECISION, i, &
-             tag, localWorldCommunicator, status, ierr)
+             tag, localWorldCommunicator, stat, ierr)
         if(tempStorage(1) < minR) then
            minR = tempStorage(1)
         end if
