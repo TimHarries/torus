@@ -3932,7 +3932,6 @@ end subroutine sumFluxes
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dx, cs, vBulk, vSound, speed
-  
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

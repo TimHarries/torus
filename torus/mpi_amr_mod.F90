@@ -884,6 +884,7 @@ contains
 
              if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
                 write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
+                write(*,*) "rather is on ", neighbourOctal%mpiThread(neighboursubcell)
                 stop
              endif
 
@@ -3005,7 +3006,11 @@ end subroutine writeRadialFile
           p = tempStorage(8)
           phi_stars = tempStorage(9)
           phi_gas = tempStorage(10)
-          write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas
+          if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
+             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p
+          else
+             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas
+          end if
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
           !print *, "POSITION 2 ", position

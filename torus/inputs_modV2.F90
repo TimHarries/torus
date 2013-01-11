@@ -1890,7 +1890,7 @@ contains
          "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
 
     call getInteger("CD_version", CD_version, cLine, fLine, nLines, &
-         "Contact discontinuity test version: ","(a,1x,i4,a)", 1, ok, .true.)
+         "Contact discontinuity test version: ","(a,1x,i4,a)", 1, ok, .false.)
 
 
     call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &

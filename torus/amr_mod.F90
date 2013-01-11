@@ -3811,7 +3811,7 @@ CONTAINS
 !                stop
 !             end if
           
-       case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CDt1D")
+       case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
