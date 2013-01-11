@@ -628,8 +628,8 @@ contains
                 endif
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
-                cylindricalHydro = .false.
                 tmpcylindricalhydro=cylindricalhydro
+                cylindricalHydro = .false.
           call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
                looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack) 
           cylindricalHydro = tmpCylindricalHydro
