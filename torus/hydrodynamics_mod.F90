@@ -3931,7 +3931,7 @@ end subroutine sumFluxes
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: tc, dx, cs, vBulk, vSound, speed
+    real(double) :: dx, cs, vBulk, vSound, speed
   
 
     do subcell = 1, thisOctal%maxChildren
