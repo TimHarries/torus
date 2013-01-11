@@ -169,6 +169,7 @@ ifeq ($(SYSTEM), complexity)
     STATICLIBS= -Bstatic
     STARLIBS= 
     CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
+    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif

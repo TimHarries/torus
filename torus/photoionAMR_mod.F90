@@ -69,7 +69,8 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical
+         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical, &
+         computeCourantV
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
@@ -98,6 +99,7 @@ contains
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
+    real(double) :: vBulk, vSound
     logical :: noPhoto=.false., tmpCylindricalHydro
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
@@ -488,8 +490,11 @@ contains
        raddt = 1.d30
        pressuredt = 1.d30
        viscDt = 1.d30
+       vBulk = 0.d0
+       vSound = 0.d0
        if (myrankGlobal /= 0) then
           call computeCourantTime(grid, grid%octreeRoot, gasDt)
+          call computeCourantV(grid, grid%octreeRoot, vBulk, vSound)
           if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, sourceSourceDt)
           if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, &
                globalsourceArray, gasSourceDt)
@@ -502,6 +507,11 @@ contains
           endif
        endif
 
+
+       call MPI_ALLREDUCE(vBulk, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+       vBulk = tempDouble
+       call MPI_ALLREDUCE(vSound, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+       vSound = tempDouble
 
        call MPI_ALLREDUCE(gasdt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        gasDt = tempDouble
@@ -519,6 +529,8 @@ contains
 
        if (writeoutput) then
           write(*,"(a,1p,e12.3)") "Courant Time: ", dt* dble(cfl)
+          write(*,"(a,1p,e12.3)") "Max bulk velocity: ", vBulk/1.d5
+          write(*,"(a,1p,e12.3)") "Max sound speed: ", vSound/1.d5
           write(*,"(a,1p,e12.3)") "Std courant Time: ", gasdt
           write(*,"(a,1p,e12.3)") "Source-source courant Time: ", sourceSourceDT
           write(*,"(a,1p,e12.3)") "Gas-source courant Time: ", gasSourceDt

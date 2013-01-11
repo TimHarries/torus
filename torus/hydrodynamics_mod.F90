@@ -2459,18 +2459,33 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
-         speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
-               thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          speed = sqrt(speed)
-          if (speed > hydroSpeedLimit) then
-             fac = hydroSpeedLimit/speed
-          else
-             fac = 1.d0
-          endif
 
-          thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
-          thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
-          thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
+          if (.not.cylindricalHydro) then
+             speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+                  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+             speed = sqrt(speed)
+             if (speed > hydroSpeedLimit) then
+                fac = hydroSpeedLimit/speed
+             else
+                fac = 1.d0
+             endif
+             
+             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
+             thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
+             thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
+          else
+             speed = (thisOctal%rhou(subcell)**2 + &
+                  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+             speed = sqrt(speed)
+             if (speed > hydroSpeedLimit) then
+                fac = hydroSpeedLimit/speed
+             else
+                fac = 1.d0
+             endif
+             
+             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
+             thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
+          endif
 
        endif
     enddo
@@ -3747,6 +3762,7 @@ end subroutine sumFluxes
        !modify rhou and rhoe due to pressure/gravitational potential gradient
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
     enddo
+   if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
     call imposeBoundary(grid%octreeRoot, grid)
 !    call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
@@ -3893,6 +3909,49 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine computeCourantTime
+
+  recursive subroutine computeCourantV(grid, thisOctal, vbulk, vsound)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: tc, dx, cs, vBulk, vSound, speed
+  
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call computeCourantV(grid, child, vbulk, vsound)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          if (.not.thisOctal%ghostCell(subcell)) then
+
+             cs = soundSpeed(thisOctal, subcell)
+
+             dx= smallestCellSize * gridDistanceScale
+
+!Use max velocity not average
+             if (.not.cylindricalHydro) then
+                speed = thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2
+             else
+                speed = thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2
+             endif
+             speed = sqrt(speed)/thisOctal%rho(subcell)
+             if (speed > vBulk) vBulk = speed
+             if (cs > vSound) vSound = cs
+
+          endif
+ 
+       endif
+    enddo
+  end subroutine computeCourantV
 
   subroutine pressureGradientTimeStep(grid, dt, npairs,thread1,thread2,nbound,group,ngroup)
     use inputs_mod, only : amr3d, doselfgrav
@@ -5094,7 +5153,7 @@ end subroutine sumFluxes
     integer :: i, it, iUnrefine
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
-    real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous
+    real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous, vBulk, vSound
     
     type(VECTOR) :: direction, viewVec, totalAngMom
     integer :: thread1(512), thread2(512), nBound(512), nPairs
@@ -5293,12 +5352,22 @@ end subroutine sumFluxes
        tc = 0.d0
        dt_pressure = 1.d30
        dt_viscous = 1.d30
+       vBulk = 0.d0
+       vSound = 0.d0
        if (myrankGlobal /= 0) then
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
+          call computeCourantV(grid, grid%octreeRoot, vBulk, vSound)
           call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
        endif
+
+       call MPI_ALLREDUCE(vBulk, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+       vBulk = tempDouble
+       call MPI_ALLREDUCE(vSound, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
+       vSound = tempDouble
+
+
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
        call MPI_ALLREDUCE(dt_viscous, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
@@ -5311,6 +5380,8 @@ end subroutine sumFluxes
        dt = dt * dble(cflNumber)
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
+          write(*,*) "maximum bulk speed ",Vbulk/1.d5
+          write(*,*) "maximum sound speed ",Vsound/1.d5
           write(*,*) "Courant time from P ",dt_pressure
           write(*,*) "Courant time from visc ",dt_viscous
        endif

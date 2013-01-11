@@ -2896,6 +2896,9 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     !    *******************************************************************
 
     totArea = 0.
+
+!    if (writeoutput) open(33, file="plot.gnu",status="unknown",form="formatted")
+
     DO J = 1, N
 
        IF ( MOD ( J, 2 ) .EQ. 0 ) THEN
@@ -2945,7 +2948,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
           ENDIF
 
        enddo
-
+       
           CAN = CAN + 1
           PX(CAN) = -2.*RX(j)
           PY(CAN) = 0.d0
@@ -3000,6 +3003,8 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 !          WRITE(*,'(/1X,''NEIGHBOUR LIST '')')
 !          WRITE(*,10001)
 
+
+
           DO 800 CAN = 1, NCAN
 
              IF ( VERTS(CAN) .NE. 0 ) THEN
@@ -3028,19 +3033,26 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
                 yp(ver) = ry(j)+ryver(ver)
 
              enddo
+             
              call  sortConvex(nver, xp, yp, xc, yc)
-!                        write(33,*) "plot ""-"" using 1:2 w l"
-!             do ver = 1, nver
-!                write(33,*) xc(ver), yc(ver)
-!             enddo
-!             write(33,*) xc(1), yc(1)
-!             write(33,*) "end"
+!             if (writeoutput) then
+!                write(33,*) "plot ""-"" using 1:2 w l"
+!                do ver = 1, nver
+!                   write(33,*) xc(ver), yc(ver)
+!                enddo
+!                write(33,*) xc(1), yc(1)
+!                write(33,*) "end"
+!                write(33,*) " "
+!             endif
              call areaPolygon(nver,xc,yc,a)
              totArea = totArea + a
              area(j) = a
 
-!             write(33,*) " "
           enddo
+!          if (writeoutput) then
+!             close(33)
+!             stop
+!          endif
 
 !          write(*,*) "total area ", totArea
 

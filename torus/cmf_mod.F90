@@ -3415,6 +3415,7 @@ contains
     if (myRankIsZero.and.(.not.PRESENT(forcelambda))) &
          write(*,*) "Calculating spectrum for: ",lamLine
 
+    
     if (doCube) then
 #ifdef USECFITSIO
        call createDataCube(cube, grid, viewVec, nSource, source, thisAtom(iAtom), iTrans)
@@ -3428,9 +3429,9 @@ contains
           call writeDataCube(cube,tempfilename)
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
+          write(tempFilename,'(a,i3.3,a)') "spec",nFile,".dat"
+          call dumpCubeToSpectrum(cube, tempFilename)
        endif
-       write(tempFilename,'(a,i3.3,a)') "spec",nFile,".dat"
-       call dumpCubeToSpectrum(cube, tempFilename)
 !       write(tempFilename,'(a,i3.3)') "vis",nFile
 ! Import gridDistance from inputs_mod if this line needs to be reinstated. 
 !       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq, gridDistance)
@@ -3491,15 +3492,27 @@ contains
        do iRay = iray1, iray2
           if (PRESENT(occultingDisc)) then
              if (calcPhotometry) then
-                i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-                     nFreqArray, freqArray, occultingDisc=.true., forceFreq=broadBandFreq)
+!                i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+!                     nFreqArray, freqArray, occultingDisc=.true., forceFreq=broadBandFreq)
+
+                i0 = intensityAlongRayGeneric(rayposition(iray), viewVec, grid, -deltaV, source, nSource, thisAtom(iatom), itrans, &
+                     forceFreq=broadBandFreq, occultingDisc=.true.)
+
              else
-                i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-                     nFreqArray, freqArray, occultingDisc=.true.)
+!                i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+!                     nFreqArray, freqArray, occultingDisc=.true.)
+
+                i0 = intensityAlongRayGeneric(rayposition(iray), viewVec, grid, -deltaV, source, nSource, thisAtom(iAtom), itrans, &
+                      occultingDisc=.true.)
+
              endif
           else
-             i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
-                  nFreqArray, freqArray)
+!             i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+!                  nFreqArray, freqArray)
+
+                i0 = intensityAlongRayGeneric(rayposition(iray), viewVec, grid, -deltaV, source, nSource, thisAtom(iatom), itrans, &
+                      occultingDisc=.false.)
+
           endif
 !$OMP CRITICAL
           spec(iv) = spec(iv) + i0 * domega(iRay) 
@@ -3604,7 +3617,7 @@ contains
     endif
 
     if (nr3 > 0) then
-       rmin = DW_Rmin
+       rmin = ttauriRouter/1.d10 ! DW_Rmin
        rMax = DW_Rmax
        do ir = 1, nr3
           r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr3))**3
@@ -3684,7 +3697,7 @@ contains
     integer, parameter :: maxRay = 10000
     real(double) :: xRay(maxray), yRay(maxray)
     real(double) :: area(maxray)
-    real(double) :: totArea
+    real(double) :: totArea, tmp
     integer :: iRay
     integer :: iomp
 
@@ -3771,13 +3784,21 @@ contains
   call randomNumberGenerator(syncIseed=.true.)
 #endif
     call createRayGridGeneric(cube, source, xPoints, yPoints, nPoints, xProj, yProj)
+    if (writeoutput) then
+       open(22, file="points.dat",status="unknown",form="formatted")
+       do i = 1, nPoints
+          write(22,*) xPoints(i), yPoints(i)
+       enddo
+       close(22)
+    endif
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
     
        do ix = 1, cube%nx
+
+
        !$OMP PARALLEL DEFAULT (NONE) &
-       !$OMP PRIVATE (iy, rayPos, nRay, xRay, yRay, area,totArea,iomp) &
-       !$OMP PRIVATE (thisIntensity) &
+       !$OMP PRIVATE (iomp, iy, nRay, xRay, yRay, area, iRay, rayPos, tmp, thisIntensity, totArea) &
        !$OMP SHARED (cube, viewVec, grid, ix,  xPoints, yPoints, nPoints) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, thisAtom, itrans)
@@ -3787,29 +3808,38 @@ contains
        iomp = omp_get_thread_num()
 #endif
 
+
        !$OMP DO SCHEDULE(DYNAMIC,1)
           do iy = 1, cube%ny
-!          write(*,*) "rank, omp ",myrankGlobal, iomp," ix iy iv ",ix, iy, iv
-
 
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy, xpoints, ypoints, &
                   nPoints,  nRay, xRay, yRay, area)
+
+
+
+
              thisIntensity = 0.
+             totArea = 0.
              do iRay = 1, nRay
                 rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
-                thisIntensity =  thisIntensity + real(intensityAlongRayGeneric(rayPos, viewVec, grid,  &
-                        -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.) * area(iRay))
-                   totArea = totArea + Area(iray)
+                tmp = intensityAlongRayGeneric(rayPos, viewVec, grid,  &
+                        -deltaV, source, nSource, thisAtom, iTrans, occultingDisc=.true.)
+                thisIntensity =  thisIntensity + real(tmp * area(iRay))
+                totArea = totArea + Area(iray)
              enddo
+
              thisIntensity = thisIntensity / real(SUM(area(1:nray)))
              cube%intensity(ix,iy,iv-iv1+1) = real(thisIntensity)
+
+             
           enddo
-       !$OMP END DO
+          !$OMP END DO
+
+          !$OMP BARRIER
+          !$OMP END PARALLEL
 
 
-       !$OMP BARRIER
-       !$OMP END PARALLEL
        enddo
        write(*,*) "Velocity bin ",iv, " done."
 
@@ -3874,6 +3904,7 @@ contains
 
 
     nRay = 0
+
     do i = 1, nPoints
        if ((abs(xCen-xPoints(i)) < dx/2.d0).and. &
             (abs(yCen-yPoints(i)) < dy/2.d0)) then
@@ -3882,10 +3913,11 @@ contains
           yRay(nRay) = yPoints(i)
           if (nRay == SIZE(xRay)) then
              write(*,*) "max array sized reached for nray"
-             exit
+             stop
           endif
        endif
     enddo
+
     if (nRay == 1) then
        area(1) = dx*dy
     else if (nRay == 2) then
@@ -3899,7 +3931,7 @@ contains
        endif
        allocate(xtmp(1:nray),ytmp(1:nRay))
        xtmp(1:nRay) = xRay(1:nray) - (xcen-dx/2.d0)
-       ytmp(1:nray) = yRay(:nRay) - (yCen-dy/2.d0)
+       ytmp(1:nray) = yRay(1:nRay) - (yCen-dy/2.d0)
        call voron2(nRay, xTmp, yTmp, dx, area(1:nRay), ok)
        if (.not.ok) then
           area(1:nRay) = dx*dy/dble(nray)
@@ -4154,7 +4186,7 @@ contains
     integer :: nPoints, i, j
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nphi
-    real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2
+    real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2, dxOffset, dyOffset
     integer :: ix, iy, iSource, nr1, nr2, nr3
     logical :: enhanced
     enhanced = .true.
@@ -4199,7 +4231,7 @@ contains
        enddo   
     enddo
 
-    rmin = dw_rmin
+    rmin = ttaurirOuter/1.d10 !dw_rmin
     rMax = dw_rmax
     do i = 1, nr3
        r1 = rMin + (rmax-rMin) * (dble(i-1)/dble(nr3))**3
@@ -4221,21 +4253,43 @@ contains
     dy = cube%yAxis(2) - cube%yAxis(1)
     do ix = 1, cube%nx
        do iy = 1, cube%ny
-          nPoints = nPoints + 1
-          xPoints(nPoints) = cube%xAxis(ix) - dx / 4.d0
-          yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0
+
+          call randomNumberGenerator(getDouble=dxOffset)
+          call randomNumberGenerator(getDouble=dyOffset)
+          dxOffset = (2.d0*dxOffset-1.d0) * dx/8.d0
+          dyOffset = (2.d0*dyOffset-1.d0) * dy/8.d0
 
           nPoints = nPoints + 1
-          xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0
-          yPoints(nPoints) = cube%yAxis(iy) + dy / 4.d0
+          xPoints(nPoints) = cube%xAxis(ix) - dx / 4.d0 + dxOffset
+          yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0 + dyOffset
+
+
+          call randomNumberGenerator(getDouble=dxOffset)
+          call randomNumberGenerator(getDouble=dyOffset)
+          dxOffset = (2.d0*dxOffset-1.d0) * dx/8.d0
+          dyOffset = (2.d0*dyOffset-1.d0) * dy/8.d0
 
           nPoints = nPoints + 1
-          xPoints(nPoints) = cube%xAxis(ix) - dx / 4.d0
-          yPoints(nPoints) = cube%yAxis(iy) + dy / 4.d0
+          xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0 + dxOffset
+          yPoints(nPoints) = cube%yAxis(iy) + dy / 4.d0 + dyOffset
+
+          call randomNumberGenerator(getDouble=dxOffset)
+          call randomNumberGenerator(getDouble=dyOffset)
+          dxOffset = (2.d0*dxOffset-1.d0) * dx/8.d0
+          dyOffset = (2.d0*dyOffset-1.d0) * dy/8.d0
 
           nPoints = nPoints + 1
-          xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0
-          yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0
+          xPoints(nPoints) = cube%xAxis(ix) - dx / 4.d0 + dxOffset
+          yPoints(nPoints) = cube%yAxis(iy) + dy / 4.d0 + dyOffset
+
+          call randomNumberGenerator(getDouble=dxOffset)
+          call randomNumberGenerator(getDouble=dyOffset)
+          dxOffset = (2.d0*dxOffset-1.d0) * dx/8.d0
+          dyOffset = (2.d0*dyOffset-1.d0) * dy/8.d0
+
+          nPoints = nPoints + 1
+          xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0 + dxOffset
+          yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0 + dyOffset
 
        enddo
     enddo

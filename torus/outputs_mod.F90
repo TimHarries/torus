@@ -128,7 +128,7 @@ contains
           !       gridDistance = 140.d0* pctocm/1.d10
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, i, totalflux)
+               globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true.)
        enddo
     endif
 

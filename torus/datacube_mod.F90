@@ -943,7 +943,6 @@ subroutine freeDataCube(thiscube)
     real(double) :: f
     integer :: i
 
-
     allocate(v(1:thisCube%nv))
     allocate(y(1:thisCube%nv))
     do i = 1, thisCube%nv
@@ -951,10 +950,9 @@ subroutine freeDataCube(thiscube)
        y(i) = SUM(thisCube%intensity(:,:,i))
     enddo
     f = y(1)
-    y(1:thisCube%nv) = y(1:thisCube%nv) / f
     open(38, file=specfile, status="unknown",form="formatted")
     do i = 1, thisCube%nv
-       write(38,*) v(i), y(i)
+       write(38,*) v(i), y(i)/f, y(i)
     enddo
     deallocate(v, y)
     close(38)
