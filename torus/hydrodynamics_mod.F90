@@ -97,13 +97,18 @@ contains
 
 
  recursive subroutine perturbIfront(thisOctal, grid)
+#ifdef PHOTOION
+   use inputs_mod, only : photoionPhysics
+   use ion_mod, only : nGlobalIon, globalIonArray, returnMu
+#endif
    type(octal), pointer :: thisOctal
    type(octal), pointer :: child
    type(octal), pointer :: neighbourOCtal
    type(gridtype) :: grid   
    integer :: i, subcell, neighbourSubcell
    type(VECTOR) :: direction, rVec, locator
-
+   real(double) :: getpressure, cs, A, mu
+   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child                 
@@ -125,9 +130,19 @@ contains
              !know that in this hardwired benchmark I do not have to seek across mpi boundary
              !this is pretty rubbish but for a test it isn't worth overhauling loads of the rest of the code.
 !             if(thisOctal%pressure_i(subcell) /= neighbourOctal%pressure_i(subcell)) then
+             if (photoionPhysics) then
+                mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+             else
+                mu = 2.33d0
+             endif
+             getPressure =  thisOctal%rho(subcell)
+             getPressure =  getpressure/((mu*mHydrogen))
+             getPressure =  getpressure*kerg*thisOctal%temperature(subcell)
+             cs = sqrt(getPressure/thisOctal%rho(subcell))
+             A = 0.75d0*cs
              if((thisOctal%ionFrac(subcell, 1)- neighbourOctal%ionFrac(subcell, 1)) > 0.2 ) then
-                thisOctal%rhou(subcell) = abs(thisOctal%rho(subcell)*(3.d6*(sin(twopi*(rVec%z+(grid%octreeRoot%subcellSize/2.d0))* &
-                     (grid%octreeroot%subcellsize/2.d0)))))
+                thisOctal%rhou(subcell) = abs(thisOctal%rho(subcell)*(A*(sin(twopi*(rVec%z+(grid%octreeRoot%subcellSize/2.d0))* &
+                     (grid%octreeroot%subcellsize/8.d0)))))
              end if
          end if
        end if

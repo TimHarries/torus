@@ -445,7 +445,7 @@ contains
        endif
     end if
     
-    if(grid%geometry == "planar") then
+    if(grid%geometry == "SB_instblt") then
        print *, "PERTURBING I FRONT "
        call perturbIfront(grid%octreeRoot, grid)
     end if
