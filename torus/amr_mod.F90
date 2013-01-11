@@ -6993,12 +6993,16 @@ endif
 
     if(CD_version == 1) then
        thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     else if (CD_version == 2) then
        thisOctal%velocity(subcell) = VECTOR(0.5, 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     else if (CD_version == 3) then
        thisOctal%velocity(subcell) = VECTOR(2., 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     else if (CD_version == 4) then
        thisOctal%velocity(subcell) = VECTOR(20., 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     end if
 
     if (rvec%x < 0.5d0) then
@@ -7010,9 +7014,9 @@ endif
        thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     else
        if(v1) then
-          thisOctal%rho(subcell) = 10.d0
+          thisOctal%rho(subcell) = 1.d0
        else
-          thisOctal%rho(subcell) = 1000.d0
+          thisOctal%rho(subcell) = 1.d0
        end if
        thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     endif
