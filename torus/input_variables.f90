@@ -121,6 +121,7 @@
   character(len=20) :: limiterType    !Flux limiter type
   integer :: idump                    !Hydrodynamics time step dump number
   real(double) :: gridDistanceScale   !Scale of grid
+  integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
 
   logical :: readTurb !read in a turbulent velocity grid
   character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)

@@ -1889,6 +1889,9 @@ contains
     call getDouble("etaviscosity", etaViscosity, 1.d0, cLine, fLine, nLines, &
          "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
 
+    call getInteger("CD_version", CD_version, cLine, fLine, nLines, &
+         "Contact discontinuity test version: ","(a,1x,i4,a)", 1, ok, .true.)
+
 
     call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
          "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
