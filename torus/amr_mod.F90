@@ -247,6 +247,12 @@ CONTAINS
     CASE("SB_CD_1Db")
        call calcContactDiscontinuityOneDDensity(thisOctal, subcell, v1=.false.)
 
+    CASE("SB_CD_2Da")
+       call calcContactDiscontinuityTwoDDensity(thisOctal, subcell, v1=.true.)
+
+    CASE("SB_CD_2Db")
+       call calcContactDiscontinuityTwoDDensity(thisOctal, subcell, v1=.false.)
+
     CASE("SB_instblt")
        call calcPlanarIfrontDensity(thisOctal, subcell)
 
@@ -3811,7 +3817,8 @@ CONTAINS
 !                stop
 !             end if
           
-       case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da")
+       case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
+            ,"SB_CD_2Da" , "SB_CD_2Db")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
@@ -7028,6 +7035,68 @@ endif
 
   end subroutine calcContactDiscontinuityOneDDensity
 
+
+  subroutine calcContactDiscontinuityTwoDDensity(thisOctal, subcell, v1)
+    use inputs_mod, only : CD_version
+    TYPE(octal) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    logical :: v1
+    real(double) :: x1, y1, xmin, xmax, ymin, ymax
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    thisOctal%energy(subcell) = 1.d0
+    thisOctal%pressure_i(subcell) = 10.d0
+
+    if(CD_version == 1) then
+       thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+    else if (CD_version == 2) then
+       thisOctal%velocity(subcell) = VECTOR(0.5, 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+    else if (CD_version == 3) then
+       thisOctal%velocity(subcell) = VECTOR(2., 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+    else if (CD_version == 4) then
+       thisOctal%velocity(subcell) = VECTOR(20., 0., 0.)
+       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+    end if
+
+    x1 = rVec%x
+    y1 = rVec%y
+
+    xmax = 1.5*cos(1.0) - 1.5*sin(1.0)
+    ymax = 1.5*cos(1.0) + 1.5*sin(1.0)
+    xmin = 0.5*cos(1.0) - 0.5*sin(1.0)
+    ymin = 0.5*cos(1.0) + 0.5*sin(1.0)
+
+
+
+!    if (x1 + y1 < 3.d0 .and. x1 + y1 > 1.d0 ) then
+!    if (rVec%x < xmax .and. rVec%z < ymax .and. rVec%x > xmin .and. rVec%z > ymin & 
+    if ((rVec%x + rVec%y) < (ymax+xmax) .and. (rVec%x + rVec%y) > (ymin+xmin)) then
+       if(v1) then
+          thisOctal%rho(subcell) = 10.d0
+       else
+          thisOctal%rho(subcell) = 1000.d0
+       end if
+       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    else
+       if(v1) then
+          thisOctal%rho(subcell) = 1.d0
+       else
+          thisOctal%rho(subcell) = 1.d0
+       end if
+       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    endif
+
+    thisOctal%phi_i(subcell) = 0.d0
+!    thisOctal%boundaryCondition(subcell) = 1
+    thisOctal%gamma(subcell) = 1.0001
+    thisOctal%iEquationOfState(subcell) = 0
+
+  end subroutine calcContactDiscontinuityTwoDDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
