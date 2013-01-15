@@ -7042,8 +7042,11 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     logical :: v1
-    real(double) :: x1, y1, xmin, xmax, ymin, ymax
-
+    real(double) :: x1, y1, x2, y2, x3, y3, x4, y4
+    real(double) :: x, y, ycheck14, ycheck34, ycheck23, ycheck21
+    real(double) :: m14, m34, m23, m21
+    logical :: ok
+    
     rVec = subcellCentre(thisOctal, subcell)
 
     thisOctal%energy(subcell) = 1.d0
@@ -7063,19 +7066,95 @@ endif
        thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     end if
 
-    x1 = rVec%x
-    y1 = rVec%y
+    x = rVec%x
+    y = rVec%z
 
-    xmax = 1.5*cos(1.0) - 1.5*sin(1.0)
-    ymax = 1.5*cos(1.0) + 1.5*sin(1.0)
-    xmin = 0.5*cos(1.0) - 0.5*sin(1.0)
-    ymin = 0.5*cos(1.0) + 0.5*sin(1.0)
+!         x3
+!
+!    x2       x4
+!
+!         x1
+
+    !rotate the square
+    !xmax
+    x4 = 0.5*cos(1.0) + 0.5*sin(1.d0)
+    !ymax
+    y3 = 0.5*cos(1.0) + 0.5*sin(1.0)
+    !xmin
+    x2 = -0.5*cos(1.0) - 0.5*sin(1.0)
+    !ymin
+    y1 = -0.5*cos(1.0) - 0.5*sin(1.0)
+    !others
+    x3 = -0.5*cos(1.0) + 0.5*sin(1.0)
+    x1 = 0.5*cos(1.0) - 0.5*sin(1.0)
+    y2 = -0.5*cos(1.0) + 0.5*sin(1.0)
+    y4 = 0.5*cos(1.0) - 0.5*sin(1.0)
 
 
+    !get the new actual limit coordinates
+    x4 = 1.d0 + x4
+    x2 = 1.d0 + x2
+    y3 = 1.d0 + y3
+    y1 = 1.d0 + y1
+    x3 = 1.d0 + x3
+    y4 = 1.d0 + y4
+    x1 = 1.d0 + x1
+    y2 = 1.d0 + y2
 
+
+!get the gradients
+    m21 = (y1-y2)/(x1-x2)
+    m23 = (y3-y2)/(x3-x2)
+    m34 = (y4-y3)/(x4-x3)
+    m14 = (y4-y1)/(x4-x1)
+
+
+    
+    ok = .false.
+    if(x <= x4 .and. x >= x3) then
+       ycheck14 = y1 + m14*(x-x1) 
+       ycheck34 = y3 + m34*(x-x3) 
+
+       if(y > ycheck14 .and. y < ycheck34) then
+          ok = .true.
+       end if
+    else if (x < x3 .and. x > x1) then
+       ycheck14 = y1 + m14*(x-x1)
+       ycheck23 = y2 + m23*(x-x2)
+       if(y > ycheck14 .and. y < ycheck23) then
+          ok = .true.
+       end if
+    else if (x < x1 .and. x > x2) then
+       ycheck21 = y2 + m21*(x-x2)
+       ycheck23 = y2 + m23*(x-x2)
+       if(y > ycheck21 .and. y < ycheck23) then
+          ok = .true.
+       end if
+
+    else 
+       ok = .false.
+    end if
+
+
+!    print *, "x1", x1
+!    print *, "x2", x2
+!    print *, "x3", x3
+!    print *, "x4", x4!
+!    print *, "y1", y1!
+!    print *, "y2", y2!
+!    print *, "y3", y3!
+!    print *, "y4", y4!
+!    print *, "m21", m21
+!    print *, "m23", m23
+!    print *, "m34", m34
+!    print *, "m14", m14
+!    stop
+    
 !    if (x1 + y1 < 3.d0 .and. x1 + y1 > 1.d0 ) then
 !    if (rVec%x < xmax .and. rVec%z < ymax .and. rVec%x > xmin .and. rVec%z > ymin & 
-    if ((rVec%x + rVec%y) < (ymax+xmax) .and. (rVec%x + rVec%y) > (ymin+xmin)) then
+!    if ((x1 + y1) < (ymax+xmax) .and. (x1 + y1) > (ymin+xmin) .and. (x1+y1) > (xmidA + ymidA) &    
+!         .and. (x1+y1) < (xmidB + ymidB)) then
+    if(ok) then
        if(v1) then
           thisOctal%rho(subcell) = 10.d0
        else
