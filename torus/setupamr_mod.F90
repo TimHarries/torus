@@ -1456,7 +1456,7 @@ contains
 
   subroutine postSetupChecks(grid)
 #ifdef SPH
-    use sph_data_class, only: sph_mass_within_grid
+    use sph_data_class, only: sph_mass_within_grid, info_sph
 #endif
     use inputs_mod, only : mDisc, geometry
     use memory_mod, only : findTotalMemory, reportMemory
@@ -1492,6 +1492,10 @@ contains
 
 ! Write a VTK file so we can check the SPH to grid conversion 
        call writeVTKfile(grid, "gridFromSph.vtk")
+
+! Write SPH information (e.g. code units) to a file
+       call info_sph("info_sph.dat")
+
 #endif
     case("fitsfile")
        call writeVTKfile(grid, "gridFromFitsFile.vtk",  &

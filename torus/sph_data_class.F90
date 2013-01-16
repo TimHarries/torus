@@ -15,6 +15,7 @@ module sph_data_class
 
   public:: &
        kill, &
+       info_sph, &
        get_udist, &
        get_umass, &
        get_utime, &
@@ -1459,6 +1460,12 @@ part_loop: do ipart=1, nlines
     out = sphdata%utime
   end function get_utime
     
+  ! returns program units of velocity in cm/s
+  function get_uvel() RESULT(out)
+    implicit none
+    real(double) :: out
+    out = sphdata%uvel
+  end function get_uvel
 
   ! returns the number of gas particles
   function get_npart() RESULT(out)
@@ -1763,7 +1770,7 @@ part_loop: do ipart=1, nlines
   ! Prints basic infomation
   !
   ! if filename is '*' then it prints on screen.
-  subroutine info(filename)
+  subroutine info_sph(filename)
     implicit none
     character(LEN=*), intent(in) :: filename
     integer :: UN
@@ -1786,6 +1793,7 @@ part_loop: do ipart=1, nlines
     write(UN,*)     'Units of length            : ', get_udist(), ' [cm]'
     write(UN,*)     'Units of mass              : ', get_umass(), ' [g]'
     write(UN,*)     'Units of time              : ', get_utime(),  ' [s]' 
+    write(UN,*)     'Units of velocity          : ', get_uvel(),   '[cm/s]'
     write(UN,'(a)') ' '    
     write(UN,*)     '# of stars                 : ',  get_nptmass()
     write(UN,*)     '# of gas particles (total) : ',  get_npart()   
@@ -1796,7 +1804,7 @@ part_loop: do ipart=1, nlines
     
     if (filename(1:1) /= '*')  close(UN)
 
-  end subroutine info
+  end subroutine info_sph
 
 
 
