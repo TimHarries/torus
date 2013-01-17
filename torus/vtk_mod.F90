@@ -95,7 +95,9 @@ contains
 
 #ifdef MPI
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
-            if (thisOctal%ghostCell(subcell).and.(.not.vtkincludeGhosts)) cycle
+            if (associated(thisOctal%ghostCell)) then
+               if (thisOctal%ghostCell(subcell).and.(.not.vtkincludeGhosts)) cycle
+            endif
 #endif
             if (thisOctal%threed) then
                if (.not.thisOctal%cylindrical) then

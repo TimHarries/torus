@@ -13,6 +13,9 @@ module vh1_mod
   real(db), private, save, allocatable :: yaxis(:)
   real(db), private, save, allocatable :: vx(:,:), vy(:,:)
 
+  real(db), private, parameter :: xSource = 3.3e7_db
+  logical, private, parameter  :: centreOnSource=.true.
+
 contains
 
 
@@ -90,6 +93,13 @@ contains
     xaxis(:) = xaxis(:) / 1.0e10_db
     yaxis(:) = yaxis(:) / 1.0e10_db
 
+! Apply offset to put star at the origin
+    if (centreOnSource) then 
+       xaxis(:) = xaxis(:) - xSource
+       write(message,*) "X-axis offset by ", xSource, "to centre grid on source"
+       call writeInfo(message, FORINFO)
+    end if
+
     close(10)
 
     call writeInfo("Finished reading VH-1 data", FORINFO)
@@ -149,8 +159,12 @@ contains
        thisVel=VECTOR(vy(this_j, this_i), 0.0, vx(this_j, this_i))
 ! Store velocity for writing into VTK file. Needs to be as fraction of c. 
        thisOctal%velocity(subcell) = thisVel/cspeed
-! Vector from source position to this cell. Note hardwired source position!!
-       sourceToCell = thisCentre - VECTOR(0.0, 0.0, 3.3e7)
+! Vector from source position to this cell. Remember that VH-1 x-axis is Torus z-axis.
+       if (centreOnSource) then
+          sourceToCell = thisCentre - VECTOR(0.0, 0.0,0.0)
+       else
+          sourceToCell = thisCentre - VECTOR(0.0, 0.0, xSource)
+       endif
 ! Project velocity onto this vector to get the outflow velocity
        vOutflow = (thisVel.dot.sourceToCell)/modulus(sourceToCell)
 
@@ -163,6 +177,17 @@ contains
        endif
 
     end if
+
+    thisOctal%temperature(subcell) = 10000.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
 
   end subroutine assign_from_vh1
 
