@@ -925,6 +925,9 @@ module amr_utils_mod
        else
           octVec2D = point
        endif
+       if(hydrodynamics .and. .not. cylindricalHydro) then
+          octVec2D = point
+       end if
        IF (octVec2D%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
        ELSEIF (octVec2D%x > thisOctal%xMax) THEN ; inOctal = .FALSE.
        ELSEIF (octVec2D%z < thisOctal%zMin) THEN ; inOctal = .FALSE.

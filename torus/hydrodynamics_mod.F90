@@ -4851,7 +4851,7 @@ end subroutine sumFluxes
     real(double) :: dt, tc(512), temptc(512), mu
     real(double) :: currentTime
     integer :: i, it, iUnrefine
-    character(len=80) :: plotfile
+    character(len=80) :: plotfile, filename
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous
     type(VECTOR) :: direction, viewVec
@@ -4864,6 +4864,7 @@ end subroutine sumFluxes
     integer :: nUnrefine, jt, count
     integer :: evenUpArray(nHydroThreadsGlobal)
     integer :: ierr
+    logical :: openFile
 
     nUnrefine = 0
     count = 0
@@ -5149,6 +5150,17 @@ end subroutine sumFluxes
                "q22          ", &
                "q_i          "/))
                
+          if(grid%geometry == "SB_CD_2Da" .or. grid%geometry == "SB_CD_2Db") then
+             write(filename,'(a,i4.4,a)') "dump_",it,".txt"
+             openFile = .true.
+             if(myRankGlobal == 0) then
+                call writePosRhoPressureVelZERO(filename)
+             else
+                call writePosRhoPressureVel(grid%octreeRoot)
+                call killZero()
+             end if
+          end if
+
           if (grid%geometry == "sedov") &
                call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
        endif
@@ -5515,6 +5527,97 @@ end subroutine sumFluxes
     enddo
     close(444)
   end subroutine doHydrodynamics2dCylindrical
+
+
+  recursive  subroutine writePosRhoPressureVel(thisOctal)
+    use mpi
+    type(octal), pointer :: thisOctal, child
+    integer :: subcell
+    integer :: ier, ierr, i
+    integer, parameter :: nStorage = 8
+    real(double) :: tempstorage(nStorage)
+    type(vector) :: rVec
+    integer :: status, tag = 40
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call writePosRhoPressureVel(child)
+                exit
+             end if
+          end do
+       else 
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             tempStorage(1) = rVec%x
+             tempStorage(2) = rVec%y
+             tempStorage(3) = rVec%z
+             tempStorage(4) = thisOctal%rho(subcell)
+             tempStorage(5) = thisOctal%pressure_i(subcell)
+             tempStorage(6) = thisOctal%rhou(subcell)
+             tempStorage(7) = thisOctal%rhov(subcell)
+             tempStorage(8) = thisOctal%rhow(subcell)
+
+             call mpi_send(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, &
+                  tag, localWorldCommunicator, ierr)
+          end if      
+       end if
+    end do   
+ 
+  end subroutine writePosRhoPressureVel
+
+  subroutine writePosRhoPressureVelZERO(fileName)
+    use mpi
+    character(len=*) :: fileName
+    integer :: ier, ierr
+    integer, parameter :: nStorage = 8
+    real(double) :: tempstorage(nStorage)
+    integer :: status, tag = 40
+    logical :: cycling
+
+    open(unit=912, file=fileName, status="replace", iostat=ier)
+    write (912, '(6(a4, 3x))') "x", "z", "rho", "p", "vx", "vz"
+
+    cycling = .true.
+    do while (cycling)
+       call mpi_recv(tempStorage, nStorage, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, &
+            localWorldCommunicator, status, ierr)           
+
+       if(tempStorage(4) > 1.d29) then
+          cycling = .false.
+       end if
+       
+       if(cycling) then
+          write(912, '(6(e12.3, 3x))') tempStorage(1), tempStorage(3), tempStorage(4), &
+               tempStorage(5), tempStorage(6), tempStorage(8)
+       end if
+    end do
+    close(912)
+  end subroutine writePosRhoPressureVelZERO
+
+  subroutine killZero()
+    use mpi    
+    integer :: ierr
+    integer, parameter :: nStorage = 8
+    real(double) :: tempstorage(nStorage)
+    integer :: tag = 40
+
+    call MPI_BARRIER(amrCommunicator, ierr)
+    if(myRankGlobal == 1) then
+       tempStorage = 0.d0
+       tempStorage(4) = 1.d30
+       
+       call mpi_send(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, &
+            tag, localWorldCommunicator, ierr)       
+
+    end if
+       
+
+  end subroutine
+  
 
 !clear the memory of what cells werer refined in the last refinement sweep 
   recursive subroutine zeroRefinedLastTime(thisOctal)
