@@ -259,6 +259,9 @@ CONTAINS
     CASE("SB_WNHII")
        call calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
 
+    CASE("SB_offCentre")
+       call calcOffCentreExpansionDensity(thisOctal, subcell)
+       
     CASE("isosphere")
        call calcIsoSphereDensity(thisOctal, subcell)
 
@@ -3807,7 +3810,8 @@ CONTAINS
 !             end if
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
-            ,"SB_CD_2Da" , "SB_CD_2Db")
+            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre")
+
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
@@ -7242,6 +7246,60 @@ endif
     yplusbound = 2
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
+
+
+  subroutine calcOffCentreExpansionDensity(thisOctal, subcell)
+    type(octal) :: thisOctal
+    integer :: subcell
+    type(vector) :: rVec, cen
+    real(double) :: R, ethermal
+
+    cen = VECTOR(0.4*pcToCm/1.d10, 0.d0, 0.d0)
+    rVec = subcellCentre(thisOctal, subcell)
+
+    rVec%x = rVec%x - cen%x
+
+    R = modulus(rVec)
+
+    if (R < (1.d-10*pcToCm)) then
+       !inside the sphere
+       thisOctal%rho(subcell) = 4.85d-21
+       thisOctal%temperature(subcell) = 100.d0
+    else
+       thisOctal%rho(subcell) = 1.d-29
+       thisOctal%temperature(subcell) = 100.d0
+    end if
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+    
+    thisOctal%energy(subcell) = thisOctal%pressure_i(subcell)/thisOctal%rho(subcell) &
+         + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+     
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+!    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+
+
+  end subroutine calcOffCentreExpansionDensity
 
 !for StarBench code comparison workshop
   subroutine calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)

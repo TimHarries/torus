@@ -5150,7 +5150,8 @@ end subroutine sumFluxes
                "q22          ", &
                "q_i          "/))
                
-          if(grid%geometry == "SB_CD_2Da" .or. grid%geometry == "SB_CD_2Db") then
+          if(grid%geometry == "SB_CD_2Da" .or. grid%geometry == "SB_CD_2Db" .or. &
+               grid%geometry == "SB_offCentre") then
              write(filename,'(a,i4.4,a)') "dump_",it,".txt"
              openFile = .true.
              if(myRankGlobal == 0) then
