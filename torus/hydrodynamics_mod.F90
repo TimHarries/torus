@@ -5534,11 +5534,11 @@ end subroutine sumFluxes
     use mpi
     type(octal), pointer :: thisOctal, child
     integer :: subcell
-    integer :: ier, ierr, i
+    integer :: ierr, i
     integer, parameter :: nStorage = 8
     real(double) :: tempstorage(nStorage)
     type(vector) :: rVec
-    integer :: status, tag = 40
+    integer :: tag = 40
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
