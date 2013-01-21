@@ -237,8 +237,8 @@ contains
     call getDouble("lengthunit", lengthUnit, 1.d0, cLine, fLine, nLines, &
          "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
 
-    call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
-         "Number of photon packets","(a,i8,a)", 0, ok, .false.)
+    call getbigInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
+         "Number of photon packets","(a,i12,a)", 0, ok, .false.)
 
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
          "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
@@ -1852,8 +1852,8 @@ contains
 
     call getInteger("nlucy", nLucy, cLine, fLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",0,ok,.false.)
 
-    call getInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i8,a)", 0, ok, .false.)
+    call getbigInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
+         "Number of photons in image","(a,i12,a)", 0, ok, .false.)
 
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &

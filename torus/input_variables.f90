@@ -86,7 +86,7 @@
   logical :: binPhotons        !Dump a spectrum of propagated photon packets
   logical :: noDiffuseField    !Use the on the spot approximation
   logical :: dustOnly          !Consider dust physics only
-  integer :: inputNMonte       !Number of photon packets to propagate
+  integer(bigInt) :: inputNMonte       !Number of photon packets to propagate
   integer :: maxPhotoIonIter   !Maximimum interation number
 
   logical :: periodicX, periodicY, periodicZ ! Periodic photon boundary conditions

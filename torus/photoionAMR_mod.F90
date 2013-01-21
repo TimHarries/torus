@@ -70,7 +70,7 @@ contains
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical, &
-         computeCourantV
+         computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
@@ -164,6 +164,7 @@ contains
        if(grid%geometry == "molefil") deltaTforDump = tdump
        if(grid%geometry == "sphere") deltaTforDump = tdump
        if(grid%geometry == "SB_WNHII") deltaTforDump = tdump
+       if(grid%geometry == "SB_offCentre") deltaTforDump = tdump
        if(grid%geometry == "turbulence") then
 
 !turbulence phase
@@ -764,6 +765,18 @@ contains
 
           if(grid%geometry == "SB_WNHII") then
              call dumpWhalenNormanTest(grid)
+          end if
+
+          if(grid%geometry == "SB_offCentre") then
+             if(myRankGlobal == 0) then
+                write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".txt"
+                call writePosRhoPressureVelZERO(mpiFilename)
+             else
+                call writePosRhoPressureVel(grid%octreeRoot)
+                call killZero()
+             end if
+
+
           end if
 
           if(grid%geometry == "SB_instblt") then
