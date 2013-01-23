@@ -361,6 +361,9 @@ contains
     real, pointer :: xArray(:) => null()
     integer :: nLambda 
     real(double) :: packetWeight
+    real(double) :: temp
+    real :: temp2
+
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 20
@@ -411,6 +414,10 @@ contains
 #ifdef MPI
         call randomNumberGenerator(randomSeed=.true.)
 #endif
+
+     call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=1500., rosselandKappa = temp)
+     call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=10000., kappap = temp2)
+     write(*,*) "Ross (1500), Planck (10000): ",temp,temp2/grid%octreeRoot%rho(1)
 
         if (solveVerticalHydro) then
 
@@ -843,7 +850,6 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
      call writeInfo("Done.",TRIVIAL)
      call resetNewDirectionMie
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
-
   end if
   call allocateMemoryForDust(grid%octreeRoot)
 end subroutine setupDust

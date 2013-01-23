@@ -45,7 +45,7 @@ contains
     ok = .true.
     oneKappa = .false.
     monteCarloRT = .false.
-
+    vtkincludeGhosts = .true.
     biasToLyman = .false.
 
     nDustType = 1
@@ -124,9 +124,6 @@ contains
 
     call getLogical("novtkgrid", noVtkGrid, cLine, fLine, nLines, &
          "Suppress VTK grid files: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getLogical("vtkincludeghosts", vtkIncludeGhosts, cLine, fLine, nLines, &
-         "Include ghost cells in XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("compressdumps", compressedDumpFiles, cLine, fLine, nLines, &
          "Use compressed dump files: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1905,6 +1902,9 @@ contains
     if (cylindricalHydro) then
        dx = amrgridSize/dble(2**maxDepthAMR-4)
        amrGridSize = amrGridsize + real(4.0d0*dx)
+       vtkIncludeGhosts = .false.
+       call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
+               "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
     endif
 
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &

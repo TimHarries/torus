@@ -707,6 +707,7 @@
   real :: sampleFreq        ! maximum number of samples made per subcell
   logical :: amr2dOnly      ! only use cells in 2D plane through grid
   logical :: cylindrical
+  real(double) :: alphaViscosity
   logical :: captureShocks !shock capturing
   logical :: refineOnTemperature !refine grid using temperature gradient
   logical :: refineOnMass !refine grid using cell mass

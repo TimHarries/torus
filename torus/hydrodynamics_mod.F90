@@ -2229,7 +2229,7 @@ contains
     integer :: subcell, i
     real(double) :: dt, rhou, dx, dv
     real(double) :: eps
-    real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
+    real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half, r
     real(double) :: rhorv_i_plus_half, rhorv_i_minus_half
     real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
 
@@ -2279,6 +2279,8 @@ contains
 !modify the cell velocity due to the pressure gradient
 
 
+             r = thisOctal%x_i(subcell)
+
              x_i_plus_half = thisOctal%x_i(subcell) + thisOctal%subcellSize*gridDistanceScale/2.d0
              x_i_minus_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistanceScale/2.d0
 
@@ -2316,12 +2318,15 @@ contains
              dx = x_i_plus_half - x_i_minus_half
 
              if (direction%x > 0.d0) then
+
+
+
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
-
+                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + dt * fVisc%y * r
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2345,6 +2350,8 @@ contains
 
 ! alpha viscosity
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%z
+
+
 
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -3672,7 +3679,7 @@ end subroutine sumFluxes
 
 !Perform a single hydrodynamics step, in r and z directions, for the 2D cylindrical case.     
   subroutine hydroStep2dCylindrical(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
-    use inputs_mod, only : doselfGrav, doGasGravity
+    use inputs_mod, only : doselfGrav, doGasGravity, alphaViscosity
     type(GRIDTYPE) :: grid
     logical :: selfGravity
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -3700,7 +3707,9 @@ end subroutine sumFluxes
     endif
 
     if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
-    call setupAlphaViscosity(grid, 0.3d0, 0.1d0)
+
+    call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
+
     call setupCylindricalViscosity(grid%octreeRoot, grid)
     if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
 
