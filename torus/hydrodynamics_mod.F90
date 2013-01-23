@@ -7990,6 +7990,7 @@ real(double) :: rho
 666 continue
   end subroutine setupGhostsLevel
 
+
   integer function getBoundary(boundary) result(i)
     use inputs_mod, only : xplusbound, yplusbound, zplusbound, &
          xminusbound, yminusbound, zminusbound 
@@ -8014,6 +8015,33 @@ real(double) :: rho
      end select
    end function getBoundary
 
+   integer function getEndLoop(evenuparray) result(max)
+     integer :: evenUpArray(nHydroThreadsGlobal)
+     integer :: i
+
+     max = 0
+     do i = 1, nhydrothreadsglobal
+        if(evenuparray(i) >  max) then
+           max = evenuparray(i)
+        end if
+     end do
+
+   end function getEndLoop
+
+   integer function getNWorking(evenuparray, k) result(n)
+     integer :: evenUpArray(nHydroThreadsGlobal)
+     integer :: i, k
+
+     n = 0
+     do i = 1, nhydrothreadsglobal
+        if(evenuparray(i) == k) then
+           n = n + 1
+        end if
+     end do
+
+   end function getNWorking
+
+
   subroutine refineGridGeneric(grid, tol, evenupArray)
     use inputs_mod, only : minDepthAMR, maxDepthAMR
     use mpi
@@ -8031,26 +8059,7 @@ real(double) :: rho
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
 
-    if(grid%octreeRoot%twoD) then 
-       endloop = 4
-       if(nHydroThreadsGlobal == 16) then
-          nworking = 4
-       else
-          nworking = 1
-       end if
-    else if(grid%octreeroot%threed) then
-       endloop = 8
-       if(nHydroThreadsGlobal == 64) then
-          nworking = 8
-       else if(nHydroThreadsGlobal == 512) then
-          nworking = 32
-       else
-          nworking = 1
-       end if
-    else
-       endloop = 2
-       nworking = 1
-    end if
+    endloop = getEndLoop(evenuparray)
 
     allocate(safe(endloop, nHydroThreadsGlobal))
 
@@ -8069,7 +8078,9 @@ real(double) :: rho
 !       do iThread = 1, nHydroThreadsGlobal
        do k = 1, endloop
           if(evenuparray(myRankGlobal) /= k) then
-              !         if (myrankGlobal /= iThread) then 
+!nworking is the number of threads that will be working at once in this stage of the even up
+             nworking = getNWorking(evenUpArray, k)
+             !         if (myrankGlobal /= iThread) then 
              !call hydroValuesServer(grid, iThread)
 !             call hydroValuesServer(grid, nworking)
              call hydroValuesServer2(grid, nworking, k, endloop, safe)
@@ -8972,41 +8983,7 @@ end subroutine refineGridGeneric2
 
     allThreadsConverged = .false.
 
-!    if(grid%octreeRoot%twoD) then 
-!       endloop = 4
-!       nworking = 4
-!    else if(grid%octreeroot%threed) then
-!!       endloop = 8
-
-!    else if(nThreadsGlobal == 512) then
-!          nworking = 32
-!       nworking = 8
-!    else
-!       endloop = 2
-!       nworking = 1
-!    end if
-
-
-    if(grid%octreeRoot%twoD) then 
-       endloop = 4
-       if(nHydroThreadsGlobal == 16) then
-          nworking = 4
-       else
-          nworking = 1
-       end if
-    else if(grid%octreeroot%threed) then
-       endloop = 8
-       if(nHydroThreadsGlobal == 64) then
-          nworking = 8
-       else if(nHydroThreadsGlobal == 512) then
-          nworking = 32
-       else
-          nworking = 1
-       end if
-    else
-       endloop = 2
-       nworking = 1
-    end if
+    endloop = getEndLoop(evenuparray)
 
     allocate(safe(endloop, nHydroThreadsGlobal))
     safe = 0
@@ -9018,6 +8995,7 @@ end subroutine refineGridGeneric2
        end do
     end do
 
+
     do while(.not.allThreadsConverged)
        localChanged = .false.
 
@@ -9028,6 +9006,7 @@ end subroutine refineGridGeneric2
           do k = 1, endloop
 !             if (myrankGlobal /= iThread) then
              if(evenUpArray(myRankGlobal) /= k) then
+                nworking = getNWorking(evenUpArray, k)
 !                call hydroValuesServer(grid, iThread)
 !                call hydroValuesServer(grid, nworking)
                 call hydroValuesServer2(grid, nworking, k, endloop, safe)
@@ -9043,6 +9022,7 @@ end subroutine refineGridGeneric2
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 !          enddo
           end do
+
           index = index + 1.d0
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
@@ -9112,6 +9092,7 @@ end subroutine refineGridGeneric2
              do k = 1, endloop
                 if(evenUpArray(myRankGlobal) /= k) then
 !                   call hydroValuesServer(grid, nworking)
+                   nworking = getNWorking(evenUpArray, k)
                    call hydroValuesServer2(grid, nworking, k, endloop, safe)
                 else
 !                   if(myRank == 2) then
@@ -9144,6 +9125,7 @@ end subroutine refineGridGeneric2
                 if(evenUpArray(myRankGlobal) /= k) then
 !                   call hydroValuesServer(grid, iThread)
 !                   call hydroValuesServer(grid, nworking)
+                   nworking = getNWorking(evenUpArray, k)
                    call hydroValuesServer2(grid, nworking, k, endloop, safe)
                 else
                    call evenUpGrid(grid%octreeRoot, grid,  globalConverged(myrankGlobal), index, inherit=inheritFlag)

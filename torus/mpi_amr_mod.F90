@@ -4279,6 +4279,15 @@ end subroutine writeRadialFile
     type(gridtype) :: grid
     integer :: evenUpArray(nHydroThreadsGlobal)
 
+!an evenuparray contains an element for every domain on the grid.
+!the integer for each element specifies in which wave of the even
+!up process that thread does its work.
+!This allows threads that do not rely on each other to do their
+!evening up at the same time
+!e.g. (thread1, thread2, thread3) ---> (1, 2, 1)
+!would mean that thread1 and thread3 do their evening up at the same time
+!in wave 1 and thread 2 does its evening up separately in wave 2.
+
     if(grid%octreeRoot%twoD) then
        if((nHydrothreadsGlobal) == 4) then
           evenUpArray = (/1, 2, 3, 4/)
@@ -4286,6 +4295,7 @@ end subroutine writeRadialFile
 !          evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
 !new version so as to not screw up shephard's method
           evenUpArray = (/1, 2, 3, 4, 5, 1, 6, 3, 7, 8, 1, 2, 9, 7, 5, 1/)
+!          evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16/)
        end if
     else if(grid%octreeRoot%threeD) then
        if((nHydrothreadsGlobal) == 8) then
