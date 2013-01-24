@@ -6988,7 +6988,7 @@ endif
 
     rVec = subcellCentre(thisOctal, subcell)
 
-    thisOctal%energy(subcell) = 1.d0
+
     thisOctal%pressure_i(subcell) = 10.d0
 
     if(CD_version == 1) then
@@ -7008,27 +7008,35 @@ endif
     if (rvec%x < 0.5d0) then
        if(v1) then
           thisOctal%rho(subcell) = 1.d-2
-          thisOctal%temperature(subcell) = 2.33d0*mHydrogen/kerg
+
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
+               thisOctal%velocity(subcell)%x
        else
           thisOctal%rho(subcell) = 1.d0
-          thisOctal%temperature(subcell) = 2.33d0*mHydrogen/kerg
+
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
+               thisOctal%velocity(subcell)%x
+
        end if
-       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     else
        if(v1) then
           thisOctal%rho(subcell) = 1.d-3
-          thisOctal%temperature(subcell) = 23.3d0*mHydrogen/kerg
+
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
+               thisOctal%velocity(subcell)%x*(10.d0)
        else
           thisOctal%rho(subcell) = 1.d-3
-          thisOctal%temperature(subcell) = 2330.d0*mHydrogen/kerg
-       end if
-       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-    endif
 
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
+               thisOctal%velocity(subcell)%x*(1000.d0)
+
+       end if
+    endif
+    thisOctal%energy(subcell) = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
     thisOctal%phi_i(subcell) = 0.d0
 !    thisOctal%boundaryCondition(subcell) = 1
     thisOctal%gamma(subcell) = 1.0001
-    thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%iEquationOfState(subcell) = 0
 
   end subroutine calcContactDiscontinuityOneDDensity
 

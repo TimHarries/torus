@@ -4242,8 +4242,8 @@ end subroutine sumFluxes
     
     call  dumpValuesAlongLine(grid, plotfile, &
          VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
-
-    do while(currentTime <= tend)
+    
+    do while(currentTime < tend)
                
        tc = 0.d0
 
@@ -4258,6 +4258,20 @@ end subroutine sumFluxes
 
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+
+       if ((currentTime + dt) .gt. nextDumpTime) then
+          dt = nextDumpTime - currentTime
+       endif
+
+       if ((currentTime + dt).gt.tEnd) then
+          nextDumpTime = tEnd
+          dt = nextDumpTime - currentTime
+       endif
+       
+
+       print *, "dt, tdump ", dt, tdump
+      
+
 
        if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
@@ -4313,7 +4327,7 @@ end subroutine sumFluxes
        currentTime = currentTime + dt
 
 !dump simulation data if dump time is reached
-       if (currentTime .gt. nextDumpTime) then
+       if (currentTime .ge. nextDumpTime) then
           if(grid%geometry == "hydro1d") then
              write(plotfile,'(a,i4.4,a)') "sod_",it,".dat"
           else
