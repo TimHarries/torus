@@ -4118,7 +4118,8 @@ end subroutine sumFluxes
           cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
        case(1) ! isothermal
 
-          cs = sqrt(getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
+          cs = sqrt((thisOctal%gamma(subcell)*getPressure(thisOctal, subcell))&
+               /thisOctal%rho(subcell))
 
        case(2) ! barotropic
           rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))
@@ -4236,6 +4237,12 @@ end subroutine sumFluxes
     iniE = totalEnergy
 
 !loop until simulation end time
+
+    write(plotfile,'(a,i4.4,a)') "start.dat"
+    
+    call  dumpValuesAlongLine(grid, plotfile, &
+         VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+
     do while(currentTime <= tend)
                
        tc = 0.d0
@@ -4307,9 +4314,14 @@ end subroutine sumFluxes
 
 !dump simulation data if dump time is reached
        if (currentTime .gt. nextDumpTime) then
-          write(plotfile,'(a,i4.4,a)') "sod_",it,".dat"
+          if(grid%geometry == "hydro1d") then
+             write(plotfile,'(a,i4.4,a)') "sod_",it,".dat"
+          else
+             write(plotfile,'(a,i4.4,a)') "torus1Dhydro_",it,".dat"
+          end if
           call  dumpValuesAlongLine(grid, plotfile, &
                VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
           grid%iDump = it
