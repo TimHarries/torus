@@ -7151,21 +7151,27 @@ endif
 !    if (rVec%x < xmax .and. rVec%z < ymax .and. rVec%x > xmin .and. rVec%z > ymin & 
 !    if ((x1 + y1) < (ymax+xmax) .and. (x1 + y1) > (ymin+xmin) .and. (x1+y1) > (xmidA + ymidA) &    
 !         .and. (x1+y1) < (xmidB + ymidB)) then
-    if(ok) then
+
+    if (ok) then
        if(v1) then
-          thisOctal%rho(subcell) = 10.d0
+          thisOctal%rho(subcell) = 1.d-2
+          thisOctal%temperature(subcell) = 2.33d0*mHydrogen/kerg
        else
-          thisOctal%rho(subcell) = 1000.d0
+          thisOctal%rho(subcell) = 1.d0
+          thisOctal%temperature(subcell) = 2.33d0*mHydrogen/kerg
        end if
        thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     else
        if(v1) then
-          thisOctal%rho(subcell) = 1.d0
+          thisOctal%rho(subcell) = 1.d-3
+          thisOctal%temperature(subcell) = 23.3d0*mHydrogen/kerg
        else
-          thisOctal%rho(subcell) = 1.d0
+          thisOctal%rho(subcell) = 1.d-3
+          thisOctal%temperature(subcell) = 2330.d0*mHydrogen/kerg
        end if
        thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     endif
+
 
     thisOctal%phi_i(subcell) = 0.d0
 !    thisOctal%boundaryCondition(subcell) = 1

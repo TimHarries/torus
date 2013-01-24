@@ -763,9 +763,9 @@ contains
 !       nPhase = nPhase + 1
        if (dumpThisTime) then
 
-          if(grid%geometry == "SB_WNHII") then
+!          if(grid%geometry == "SB_WNHII") then
              call dumpWhalenNormanTest(grid)
-          end if
+!          end if
 
           if(grid%geometry == "SB_offCentre") then
              if(myRankGlobal == 0) then
