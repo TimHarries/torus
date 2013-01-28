@@ -5089,14 +5089,16 @@ end subroutine sumFluxes
 
        write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
 
+       if ((currentTime + dt) .gt. nextDumpTime) then
+          dt = nextDumpTime - currentTime
+       endif
+
        if ((currentTime + dt).gt.tEnd) then
           nextDumpTime = tEnd
           dt = nextDumpTime - currentTime
        endif
 
-       if ((currentTime + dt) .gt. nextDumpTime) then
-          dt = nextDumpTime - currentTime
-       endif
+
 
        if (myrankGlobal /= 0) then
           if (myrankWorldGlobal == 1) write(*,*) "courantTime", dt, it
@@ -5187,10 +5189,13 @@ end subroutine sumFluxes
                
           if(grid%geometry == "SB_CD_2Da" .or. grid%geometry == "SB_CD_2Db" .or. &
                grid%geometry == "SB_offCentre") then
+
              write(filename,'(a,i4.4,a)') "dump_",it,".txt"
              openFile = .true.
+
              if(myRankGlobal == 0) then
                 call writePosRhoPressureVelZERO(filename)
+
              else
                 call writePosRhoPressureVel(grid%octreeRoot)
                 call killZero()
@@ -5611,8 +5616,9 @@ end subroutine sumFluxes
     integer :: ier, ierr
     integer, parameter :: nStorage = 8
     real(double) :: tempstorage(nStorage)
-    integer :: status, tag = 40
+    integer :: tag = 40
     logical :: cycling
+    integer :: status(MPI_STATUS_SIZE)
 
     open(unit=912, file=fileName, status="replace", iostat=ier)
     write (912, '(6(a4, 3x))') "x", "z", "rho", "p", "vx", "vz"
