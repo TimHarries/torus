@@ -262,6 +262,9 @@ CONTAINS
     CASE("SB_offCentre")
        call calcOffCentreExpansionDensity(thisOctal, subcell)
        
+    CASE("SB_isoshock")
+       call calcIsothermalShockDensity(thisOctal, subcell)
+
     CASE("isosphere")
        call calcIsoSphereDensity(thisOctal, subcell)
 
@@ -3810,7 +3813,7 @@ CONTAINS
 !             end if
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
-            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre")
+            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshock")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -6988,7 +6991,6 @@ endif
 
     rVec = subcellCentre(thisOctal, subcell)
 
-
     thisOctal%pressure_i(subcell) = 10.d0
 
     if(CD_version == 1) then
@@ -7326,6 +7328,64 @@ endif
 
 
   end subroutine calcOffCentreExpansionDensity
+
+
+
+  subroutine calcIsothermalShockDensity(thisOctal, subcell)
+    use inputs_mod, only : CD_version
+    TYPE(octal) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: cs
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    thisOctal%rho(subcell) = 1.d0
+    thisOctal%pressure_i(subcell) = 1.d0
+    thisOctal%temperature(subcell) = 1.d0
+    thisOctal%rhoe(subcell) = 3.d0/2.d0
+
+    if (rvec%x < 0.d0) then
+       if(CD_version == 1) then
+          thisOctal%velocity(subcell) = VECTOR(4., 0., 0.)
+       else if (CD_version == 2) then
+          thisOctal%velocity(subcell) = VECTOR(8., 0., 0.)
+       else if (CD_version == 3) then
+          thisOctal%velocity(subcell) = VECTOR(16., 0., 0.)
+       else if (CD_version == 4) then
+          thisOctal%velocity(subcell) = VECTOR(32., 0., 0.)
+       else if (CD_version == 5) then
+          thisOctal%velocity(subcell) = VECTOR(64., 0., 0.)
+       end if       
+    else
+       if(CD_version == 1) then
+          thisOctal%velocity(subcell) = VECTOR(-4., 0., 0.)
+       else if (CD_version == 2) then
+          thisOctal%velocity(subcell) = VECTOR(-8., 0., 0.)
+       else if (CD_version == 3) then
+          thisOctal%velocity(subcell) = VECTOR(-16., 0., 0.)
+       else if (CD_version == 4) then
+          thisOctal%velocity(subcell) = VECTOR(-32., 0., 0.)
+       else if (CD_version == 5) then
+          thisOctal%velocity(subcell) = VECTOR(-64., 0., 0.)
+       end if
+    endif
+    thisOctal%gamma(subcell) = 5.d0/3.d0
+    cs =  thisOctal%rho(subcell)
+    cs =  cs/((2.33d0*mHydrogen))
+    cs =  cs*kerg*thisOctal%temperature(subcell)
+    cs = sqrt(thisOctal%gamma(subcell) * cs/thisOctal%rho(subcell))
+
+    thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+    thisOCtal%velocity(subcell)%x = thisOctal%velocity(subcell)%x*cs
+
+    thisOctal%energy(subcell) = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+    thisOctal%phi_i(subcell) = 0.d0
+!    thisOctal%boundaryCondition(subcell) = 1
+
+    thisOctal%iEquationOfState(subcell) = 0
+
+  end subroutine calcIsothermalShockDensity
 
 !for StarBench code comparison workshop
   subroutine calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
