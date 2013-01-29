@@ -262,7 +262,7 @@ CONTAINS
     CASE("SB_offCentre")
        call calcOffCentreExpansionDensity(thisOctal, subcell)
        
-    CASE("SB_isoshock")
+    CASE("SB_isoshck")
        call calcIsothermalShockDensity(thisOctal, subcell)
 
     CASE("isosphere")
@@ -3813,7 +3813,7 @@ CONTAINS
 !             end if
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
-            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshock")
+            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -7332,7 +7332,9 @@ endif
 
 
   subroutine calcIsothermalShockDensity(thisOctal, subcell)
-    use inputs_mod, only : CD_version
+    use inputs_mod, only : CD_version, amrgridcentrex
+    use inputs_mod, only : inflowrho, inflowspeed, inflowmomentum
+    use inputs_mod, only : inflowpressure, inflowenergy, inflowrhoe
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7345,7 +7347,7 @@ endif
     thisOctal%temperature(subcell) = 1.d0
     thisOctal%rhoe(subcell) = 3.d0/2.d0
 
-    if (rvec%x < 0.d0) then
+    if (rvec%x < amrgridcentrex) then
        if(CD_version == 1) then
           thisOctal%velocity(subcell) = VECTOR(4., 0., 0.)
        else if (CD_version == 2) then
@@ -7371,11 +7373,11 @@ endif
        end if
     endif
     thisOctal%gamma(subcell) = 5.d0/3.d0
-    cs =  thisOctal%rho(subcell)
-    cs =  cs/((2.33d0*mHydrogen))
-    cs =  cs*kerg*thisOctal%temperature(subcell)
-    cs = sqrt(thisOctal%gamma(subcell) * cs/thisOctal%rho(subcell))
-
+!    cs =  thisOctal%rho(subcell)
+!    cs =  cs/((2.33d0*mHydrogen))
+!    cs =  cs*kerg*thisOctal%temperature(subcell)
+!    cs = sqrt(thisOctal%gamma(subcell) * cs/thisOctal%rho(subcell))
+    cs = 1.d0
     thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     thisOCtal%velocity(subcell)%x = thisOctal%velocity(subcell)%x*cs
 
@@ -7384,6 +7386,14 @@ endif
 !    thisOctal%boundaryCondition(subcell) = 1
 
     thisOctal%iEquationOfState(subcell) = 0
+
+    inflowRho = 1.d0
+    inflowSpeed = thisOctal%velocity(subcell)%x
+    inflowMomentum = inflowSpeed * inflowRho * cspeed
+    inflowPressure = 1.d0
+    inflowEnergy = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+    inflowRhoe = inflowEnergy * inflowRho
+
 
   end subroutine calcIsothermalShockDensity
 

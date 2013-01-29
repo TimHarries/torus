@@ -4333,8 +4333,14 @@ end subroutine sumFluxes
           else
              write(plotfile,'(a,i4.4,a)') "torus1Dhydro_",it,".dat"
           end if
-          call  dumpValuesAlongLine(grid, plotfile, &
-               VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+
+          if(grid%geometry == "SB_isoshck") then
+             call  dumpValuesAlongLine(grid, plotfile, &
+                  VECTOR(1.d0,0.d0,0.0d0), VECTOR(2.d0, 0.d0, 0.0d0), 1024)
+          else
+             call  dumpValuesAlongLine(grid, plotfile, &
+                  VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+          end if
 
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
@@ -6435,10 +6441,16 @@ real(double) :: rho
                    thisOctal%tempStorage(subcell,7) = inflowPressure
 
 ! NB confusion regarding 2d being x,z rather than x,y
+                   
+!                   print *, "enforcing in mom of ", inflowmomentum
+!                   print *, "enforcing in speed of ", inflowspeed
+!                   print *, "enforcing in rho of ", inflowrho
+                   
+
 
                    if (thisOctal%twod.or.thisOctal%oneD) then
                       if (abs(dir%x) > 0.9d0) then
-                         thisOctal%tempStorage(subcell,3) = inflowMomentum
+                         thisOctal%tempStorage(subcell,3) = inflowmomentum
                          thisOctal%tempStorage(subcell,4) = 0.d0
                          thisOctal%tempStorage(subcell,5) = 0.d0
                       endif
@@ -10474,7 +10486,7 @@ end subroutine refineGridGeneric2
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
           if (eThermal < 0.d0) then
-             write(*,*) "eThermal problem: ",ethermal
+!             write(*,*) "eThermal problem: ",ethermal
              ethermal = TINY(ethermal)
           endif
 
