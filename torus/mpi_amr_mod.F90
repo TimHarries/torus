@@ -2084,7 +2084,7 @@ contains
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
-       qViscosity = neighbourOctal%qViscosity(neighbourSubcell, 1, 1)
+       qViscosity = neighbourOctal%qViscosity(neighbourSubcell, :, :)
        rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
        rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
        pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)

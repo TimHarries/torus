@@ -479,7 +479,7 @@ contains
     type(VECTOR) :: direction, rvec, locator
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
-    real(double) :: dt, area, dx
+    real(double) :: dt, dx
     logical :: radial
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
@@ -500,18 +500,6 @@ contains
 
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (thisOctal%edgeCell(subcell)) cycle
-          radial = .true. 
-          if (direction%x < 0.1d0) then
-             radial = .false.
-          endif
-          rVec = subcellCentre(thisOctal,subcell)
-          if (radial) then
-             area = twoPi * ((thisOctal%x_i(subcell)-thisOctal%subcellSize/2.d0) * thisOctal%subcellSize * gridDistanceScale)
-          else
-             area = pi * ((rVec%x*gridDistanceScale + thisOctal%subcellSize*gridDistanceScale/2.d0)**2 - &
-                  (rVec%x*gridDistanceScale-thisOctal%subcellSize*gridDistanceScale/2.d0)**2)
-          endif
-                
           locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*smallestCellsize)
           neighbouroctal => thisoctal
           call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
@@ -597,6 +585,7 @@ contains
     integer :: subcell, i
     logical :: radial
     real(double) :: dt, dv, df, area_i, area_i_plus_1
+    real(double) :: area1, area2
 
   
     do subcell = 1, thisoctal%maxchildren
@@ -613,10 +602,7 @@ contains
 
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
-
-
           if ((.not.thisoctal%ghostcell(subcell))) then !.and.(.not.thisOctal%boundaryCell(subcell))) then
-
 
              radial = .true. 
              if (direction%x < 0.1d0) then
@@ -634,7 +620,6 @@ contains
                 area_i_plus_1 = area_i
              endif
 
-          
              dv = cellVolume(thisOctal, subcell)*1.d30
 
              df = (thisoctal%flux_i_plus_1(subcell) * area_i_plus_1 - thisoctal%flux_i(subcell) * area_i)
@@ -2330,9 +2315,6 @@ contains
 
              fVisc =  divQ(thisOctal, subcell,  grid) *  thisOctal%rho(subcell)
 
-!             if (abs(thisOctal%centre%z) < 0.5d6) then
-!                write(*,*) "fvisc ",real(fvisc%x), real(fVisc%y), real(fVisc%z)
-!             endif
 
 !             fVisc = VECTOR(0.d0, 0.d0, 0.d0)
 

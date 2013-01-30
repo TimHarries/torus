@@ -965,9 +965,14 @@ contains
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
                       actualSubcell=subcell) 
-                 write(lunit, *) real(vel%x*cspeed/1.e5), real(vel%y*cspeed/1.e5), &
-                      real(vel%z*cspeed/1.e5)
-
+                 if (thisOctal%threed) then
+                    write(lunit, *) real(vel%x*cspeed/1.e5), real(vel%y*cspeed/1.e5), &
+                         real(vel%z*cspeed/1.e5)
+                 else
+                    write(lunit, *) real(vel%x*cspeed/1.e5), real(vel%z*cspeed/1.e5), &
+                         real(vel%y*cspeed/1.e5)
+                 endif
+                    
 !               case("quadvelocity")
 !                     write(lunit, *) thisOctal%quadvelocity(subcell)%x*cspeed/1.e5, &
 !                          thisOctal%quadvelocity(subcell)%y*cspeed/1.e5, thisOctal%quadvelocity(subcell)%z*cspeed/1.e5
@@ -2933,10 +2938,15 @@ end subroutine writeXMLVtkFileAMR
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
                       actualSubcell=subcell) 
-                 rArray(1, n) = real(real(vel%x*cspeed/1.e5))
-                 rArray(2, n) = real(vel%y*cspeed/1.e5)
-                 rArray(3, n) = real(vel%z*cspeed/1.e5)
-
+                 if (thisOctal%threeD) then
+                    rArray(1, n) = real(real(vel%x*cspeed/1.e5))
+                    rArray(2, n) = real(vel%y*cspeed/1.e5)
+                    rArray(3, n) = real(vel%z*cspeed/1.e5)
+                 else
+                    rArray(1, n) = real(real(vel%x*cspeed/1.e5))
+                    rArray(2, n) = real(vel%z*cspeed/1.e5)
+                    rArray(3, n) = real(vel%y*cspeed/1.e5)
+                 endif
                case("ne")
                   rArray(1, n) = real(real(thisOctal%ne(subcell)))
 

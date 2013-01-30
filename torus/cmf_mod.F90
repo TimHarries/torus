@@ -3022,11 +3022,20 @@ contains
     real(double) ::  rhoCol
     real(double) :: bfOpac, bfEmiss
     real(double) :: dustOpac, dustEmiss
-    integer :: ilambda
+    integer :: ilambda, iomp
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
     
     real(double) :: tauStep, tauTmp, iStep
     logical :: passThroughResonance, ok, closeToResonance
+#ifdef _OPENMP
+    integer :: omp_get_thread_num
+#endif
+
+       iomp = 0
+#ifdef _OPENMP
+       iomp = omp_get_thread_num()
+#endif
+
 
     i0 = tiny(i0)
     justPhotosphere = .false.
@@ -3154,13 +3163,16 @@ contains
 
              if (dv1*dv2 < 0.d0) passThroughResonance = .true.
 
-             if (modulus(endVel)==0.d0) passThroughResonance = .false.
+!             if (modulus(endVel)==0.d0) passThroughResonance = .false.
 
              if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 10.d0*thisOctal%microturb(subcell))) then
                 closeToResonance = .true.
              endif
 
              if (closeToResonance.or.passThroughResonance) nTau = 20
+
+!             if (passThroughResonance) write(*,*) "ray passes through resonance ",dv1*cspeed/1.d5,dv2*cspeed/1.d5
+!             if (closeToResonance) write(*,*) "close to resonance ",dv1*cspeed/1.d5,dv2*cspeed/1.d5
 
           endif
           bfOpac = 0.d0
@@ -3255,9 +3267,10 @@ contains
 
              dTau = alphaNu *  (distArray(i)-distArray(i-1))
 
-             if ((dtau > 0.2d0).and.(tau < 20.d0).and.(alphanu < 1.d29)) then
+             if ((dtau > 0.1d0).and.(tau < 20.d0).and.(alphanu < 1.d29)) then
                 ok = .false.
                 ntau = ntau * 2
+!                write(*,*) "ntau doubled to ",ntau,tau
                 exit
              endif
 
@@ -3274,6 +3287,7 @@ contains
              if (ok) then
                 i0 = i0 + iStep
                 tau = tau + tauStep
+!                if ((myrankGlobal==1).and.(iomp==0).and.(tau > 0.01d0))write(*,*) "i0, tau ",real(i0),real(tau),real(taustep)
              endif
              if ((.not. ok).and.(ntau > 100000)) then
                 write(*,*) "ntau cap limit reached ",alphanu,dustopac
@@ -4182,7 +4196,7 @@ contains
     use datacube_mod, only : datacube
     type(SOURCETYPE) :: sourceArray(:)
     type(DATACUBE) :: cube
-    type(VECTOR) :: xProj, yProj
+    type(VECTOR) :: xProj, yProj, rVec
     integer :: nPoints, i, j
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nphi
@@ -4191,10 +4205,10 @@ contains
     logical :: enhanced
     enhanced = .true.
 
-    nphi = 200
-    nr1 = 100
-    nr2 = 100
-    nr3 = 100
+    nphi = 100
+    nr1 = 50
+    nr2 = 50
+    nr3 = 50
 
     nPoints = (nr1 + nr2 + nr3) * nphi +  globalnSource * nr1 * nphi
     nPoints = nPoints + 4*cube%nx*cube%ny
@@ -4208,6 +4222,7 @@ contains
           dphi = dphi * twoPi
           do j = 1, nphi
              phi = twoPi * dble(j)/dble(nPhi)+dphi
+             rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
              xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
              yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
@@ -4218,32 +4233,34 @@ contains
     rmin = sourceArray(1)%radius 
     rMax = ttaurirouter/1.d10
     do i = 1, nr2
-       r1 = rMin + (rmax-rMin) * (dble(i-1)/dble(nr2))**3
-       r2 = rMin + (rmax-rMin) * (dble(i)/dble(nr2))**3
-       r = 0.5d0*(r1+r2)
+       r1 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i-1)/dble(nr2))
+       r2 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i)/dble(nr2))
+       r = 10.d0**(0.5d0*(r1+r2))
        call randomNumberGenerator(getDouble=dphi)
        dphi = dphi * twoPi
        do j = 1, nphi
           phi = twoPi * dble(j)/dble(nPhi)+dphi
+          rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
           nPoints = nPoints + 1
-          xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
-          yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+          xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
+          yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
        enddo   
     enddo
 
     rmin = ttaurirOuter/1.d10 !dw_rmin
     rMax = dw_rmax
     do i = 1, nr3
-       r1 = rMin + (rmax-rMin) * (dble(i-1)/dble(nr3))**3
-       r2 = rMin + (rmax-rMin) * (dble(i)/dble(nr3))**3
-       r = 0.5d0*(r1+r2)
+       r1 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i-1)/dble(nr3))
+       r2 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i)/dble(nr3))
+       r = 10.d0**(0.5d0*(r1+r2))
        call randomNumberGenerator(getDouble=dphi)
        dphi = dphi * twoPi
        do j = 1, nphi
           phi = twoPi * dble(j)/dble(nPhi)+dphi
+          rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
           nPoints = nPoints + 1
-          xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
-          yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+          xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
+          yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
        enddo   
     enddo
 
@@ -4293,6 +4310,13 @@ contains
 
        enddo
     enddo
+    if (writeoutput) then
+       open(23,file="rays.dat", status="unknown",form="formatted")
+       do ix = 1, nPoints
+          write(23,*) xPoints(ix),yPoints(ix)
+       enddo
+       close(23)
+    endif
 
   end subroutine createRayGridGeneric
 
