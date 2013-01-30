@@ -7344,7 +7344,8 @@ endif
 
     thisOctal%rho(subcell) = 1.d0
     thisOctal%pressure_i(subcell) = 1.d0
-    thisOctal%temperature(subcell) = 1.d0
+!    thisOctal%temperature(subcell) = 1.d0
+
     thisOctal%rhoe(subcell) = 3.d0/2.d0
 
     if (rvec%x < amrgridcentrex) then
@@ -7373,6 +7374,9 @@ endif
        end if
     endif
     thisOctal%gamma(subcell) = 5.d0/3.d0
+
+
+    thisOctal%temperature(subcell) = 2.33d0*mHydrogen/(thisOctal%gamma(subcell) * kerg)
 !    cs =  thisOctal%rho(subcell)
 !    cs =  cs/((2.33d0*mHydrogen))
 !    cs =  cs*kerg*thisOctal%temperature(subcell)
@@ -7385,7 +7389,7 @@ endif
     thisOctal%phi_i(subcell) = 0.d0
 !    thisOctal%boundaryCondition(subcell) = 1
 
-    thisOctal%iEquationOfState(subcell) = 0
+    thisOctal%iEquationOfState(subcell) = 1
 
     inflowRho = 1.d0
     inflowSpeed = thisOctal%velocity(subcell)%x
