@@ -1014,7 +1014,7 @@ contains
     integer :: nDepth
     integer :: ierr
 !    real(double) :: q , rho, rhoe, rhov, rhow, pressure, phi, flux, phigas
-!"
+!
     select case(boundaryType)
     case("leftupper")
        direction = VECTOR(-1.d0, 0.d0, 1.d0)
@@ -4294,7 +4294,8 @@ end subroutine writeRadialFile
        else if((nHydrothreadsGlobal) == 16) then
 !          evenUpArray = (/1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4/)
 !new version so as to not screw up shephard's method
-          evenUpArray = (/1, 2, 3, 4, 5, 1, 6, 3, 7, 8, 1, 2, 9, 7, 5, 1/)
+!          evenUpArray = (/1, 2, 3, 4, 5, 1, 6, 3, 7, 8, 1, 2, 9, 7, 5, 1/)
+          evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16/)
 !          evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16/)
        end if
     else if(grid%octreeRoot%threeD) then

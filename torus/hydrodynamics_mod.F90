@@ -403,7 +403,7 @@ contains
 
           if (.not.thisoctal%ghostCell(subcell)) then
              rVec = subcellCentre(thisOctal, subcell)
-             r = modulus(rVec)
+             r = sqrt(rVec%x**2 + rVec%y**2)
              call locate(rAxis, nr, r, i)
              mass = mr(i)
              mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
@@ -521,9 +521,9 @@ contains
           ! need to construct flux correctly at this point
           if (.not.thisoctal%edgecell(subcell)) then
              if (thisoctal%u_interface(subcell).ge.0.d0) then
-                thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i_minus_1(subcell) * area
+                thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i_minus_1(subcell)
              else
-                thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i(subcell) * area
+                thisoctal%flux_i(subcell) = thisoctal%u_interface(subcell) * thisoctal%q_i(subcell)
              endif
         
              if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
@@ -541,7 +541,7 @@ contains
                   0.5d0 * abs(thisoctal%u_interface(subcell)) * &
                   (1.d0 - abs(thisoctal%u_interface(subcell) * dt / &
                    dx)) * &
-                  thisoctal%philimit(subcell) * (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell)) * area
+                  thisoctal%philimit(subcell) * (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
 
           endif
 !          if (thisoctal%flux_i(subcell) > 1.d-10) write(*,*) "flux ",thisoctal%flux_i(subcell),thisoctal%u_interface(subcell), &
@@ -593,9 +593,10 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: direction
+    type(VECTOR) :: direction, rVec
     integer :: subcell, i
-    real(double) :: dt, dv, df
+    logical :: radial
+    real(double) :: dt, dv, df, area_i, area_i_plus_1
 
   
     do subcell = 1, thisoctal%maxchildren
@@ -612,11 +613,31 @@ contains
 
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
+
+
           if ((.not.thisoctal%ghostcell(subcell))) then !.and.(.not.thisOctal%boundaryCell(subcell))) then
+
+
+             radial = .true. 
+             if (direction%x < 0.1d0) then
+                radial = .false.
+             endif
+             rVec = subcellCentre(thisOctal,subcell)
+             if (radial) then
+                area_i = twoPi * ((thisOctal%x_i(subcell)-gridDistanceScale*thisOctal%subcellSize/2.d0) &
+                     * thisOctal%subcellSize * gridDistanceScale)
+                area_i_plus_1 = twoPi * ((thisOctal%x_i(subcell)+gridDistanceScale*thisOctal%subcellSize/2.d0) &
+                     * thisOctal%subcellSize * gridDistanceScale)
+             else
+                area_i = pi * ((rVec%x*gridDistanceScale + thisOctal%subcellSize*gridDistanceScale/2.d0)**2 - &
+                     (rVec%x*gridDistanceScale-thisOctal%subcellSize*gridDistanceScale/2.d0)**2)
+                area_i_plus_1 = area_i
+             endif
+
           
              dv = cellVolume(thisOctal, subcell)*1.d30
 
-             df = (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell))
+             df = (thisoctal%flux_i_plus_1(subcell) * area_i_plus_1 - thisoctal%flux_i(subcell) * area_i)
 
              thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dv)
 
@@ -2309,6 +2330,9 @@ contains
 
              fVisc =  divQ(thisOctal, subcell,  grid) *  thisOctal%rho(subcell)
 
+!             if (abs(thisOctal%centre%z) < 0.5d6) then
+!                write(*,*) "fvisc ",real(fvisc%x), real(fVisc%y), real(fVisc%z)
+!             endif
 
 !             fVisc = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -2325,8 +2349,8 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
-                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + dt * fVisc%y * r
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%x
+                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - dt * fVisc%y * r
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2349,7 +2373,7 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%z
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%z
 
 
 
@@ -3700,7 +3724,7 @@ end subroutine sumFluxes
        if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
        endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -3709,9 +3733,8 @@ end subroutine sumFluxes
     if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
 
     call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
-
-    call setupCylindricalViscosity(grid%octreeRoot, grid)
     if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+
 
     do iDir = 1, 3
        select case (iDir)
@@ -3729,6 +3752,7 @@ end subroutine sumFluxes
              thisBound = 2
        end select
        
+       call setupCylindricalViscosity(grid%octreeRoot, grid)
 
        call setupX(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -5557,6 +5581,7 @@ end subroutine sumFluxes
                "u_i          ", &
                "hydrovelocity", &
                "chiline      ", &
+               "mass         ", &
                "rhou         ", &
                "rhov         ", &
                "rhow         ", &
