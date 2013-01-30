@@ -925,16 +925,14 @@ module molecular_mod
 #ifdef PHOTOION
      if(usedust) then
         call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
+
+        write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
+        call writeVtkFile(grid, mpiFilename, &                                               
+             valueTypeString=(/"rho          ", "dust1        " , "temperature  "/))
+!     print *, "WRITTEN FILE"                         
      end if
 #endif
 
-     write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"                                                                          
-     call writeVtkFile(grid, mpiFilename, &                                                                                     
-          valueTypeString=(/"rho          ", "dust1        " , "temperature  "/))
-
-!     print *, "WRITTEN FILE"                         
-
-     
 ! logicals are quicker to access than strings 
      if(grid%geometry .eq. 'molebench') molebench = .true.
      if(grid%geometry .eq. 'molcluster') molcluster = .true.
