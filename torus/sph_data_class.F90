@@ -563,7 +563,7 @@ part_loop: do ipart=1, nlines
 
           if ( convertRhoToHI ) then
              sphdata%rhon(igas) = (1.0-2.0*h2ratio)*rhon*5.0/7.0
-             sphdata%rhon(igas) = max(sphdata%rhon(igas),1.0e-60)
+             sphdata%rhon(igas) = max(sphdata%rhon(igas),1.0e-60_db)
           end if
 
           if (useCO) then 
