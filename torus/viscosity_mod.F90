@@ -369,7 +369,7 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           thisoctal%qViscosity(subcell,1:3,1:3) = 0.d0
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
 
 ! first calculate div V
 
@@ -444,13 +444,13 @@ contains
 ! now tau_zr
 
              thisOctal%qViscosity(subcell,3,1) = thisOctal%qViscosity(subcell,1,3) 
-             write(*,*)  " "
-             write(*,'(a,1p,3e9.1)') "qvisc ",thisOctal%qViscosity(subcell,1,1:3)
-             write(*,'(a,1p,3e9.1)') "      ",thisOctal%qViscosity(subcell,2,1:3)
-             write(*,'(a,1p,3e9.1)') "      ",thisOctal%qViscosity(subcell,3,1:3)
-             write(*,*)  "Trace (%): ",(thisOctal%qViscosity(subcell,1,1) +  &
-                  thisOctal%qViscosity(subcell,2,2) +  thisOctal%qViscosity(subcell,3,3) ) &
-                  / maxval(abs(thisOctal%qViscosity(subcell,:,:)))
+!             write(*,*)  " "
+!             write(*,'(a,1p,3e9.1)') "qvisc ",thisOctal%qViscosity(subcell,1,1:3)
+!             write(*,'(a,1p,3e9.1)') "      ",thisOctal%qViscosity(subcell,2,1:3)
+!             write(*,'(a,1p,3e9.1)') "      ",thisOctal%qViscosity(subcell,3,1:3)
+!             write(*,*)  "Trace (%): ",(thisOctal%qViscosity(subcell,1,1) +  &
+!                  thisOctal%qViscosity(subcell,2,2) +  thisOctal%qViscosity(subcell,3,3) ) &
+!                  / maxval(abs(thisOctal%qViscosity(subcell,:,:)))
 
           endif
        endif

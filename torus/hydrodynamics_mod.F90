@@ -401,7 +401,7 @@ contains
 
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
-          if (.not.thisoctal%ghostCell(subcell)) then
+          if (.not.thisoctal%edgeCell(subcell)) then
              rVec = subcellCentre(thisOctal, subcell)
              r = sqrt(rVec%x**2 + rVec%y**2)
              call locate(rAxis, nr, r, i)
@@ -476,11 +476,10 @@ contains
     use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisoctal, neighbourOctal
-    type(VECTOR) :: direction, rvec, locator
+    type(VECTOR) :: direction, locator
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell
     real(double) :: dt, dx
-    logical :: radial
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
     integer :: nd
@@ -585,7 +584,6 @@ contains
     integer :: subcell, i
     logical :: radial
     real(double) :: dt, dv, df, area_i, area_i_plus_1
-    real(double) :: area1, area2
 
   
     do subcell = 1, thisoctal%maxchildren
@@ -2332,7 +2330,7 @@ contains
 
 ! alpha viscosity
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%x
-                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - dt * fVisc%y * r
+                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + dt * fVisc%y * r
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -3712,10 +3710,6 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
-    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
-
-    call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
-    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
 
 
     do iDir = 1, 3
@@ -3734,7 +3728,6 @@ end subroutine sumFluxes
              thisBound = 2
        end select
        
-       call setupCylindricalViscosity(grid%octreeRoot, grid)
 
        call setupX(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -3781,13 +3774,17 @@ end subroutine sumFluxes
        call setuprhorvplusminus1(grid%octreeRoot, grid)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupPressure(grid%octreeRoot, grid, direction)
-       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+!       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-       if (useTensorViscosity) then
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call setupViscosity(grid%octreeRoot, grid)
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       endif
+
+
+       if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+       call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
+       if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call setupCylindricalViscosity(grid%octreeRoot, grid)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        !modify rhou and rhoe due to pressure/gravitational potential gradient
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
