@@ -1812,6 +1812,8 @@ CONTAINS
 !$OMP SHARED(o6yArray, yArray, yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) &
 !$OMP REDUCTION(+: ntot,tooFewSamples, boundaryProbs, negativeOpacity, totalOutputLuminosity)
 
+    if (nSource > 0) &
+     call randomSource(source, nSource, j, weightSource,grid%lamArray, nLambda, initialize=.true.)  
 
    call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
@@ -1895,8 +1897,8 @@ CONTAINS
                       source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
-!                 write(*,*) "r, weight, i ", modulus(thisPhoton%position)/rcore,thisPhoton%weight, weightContPhoton, &
-!                      Thisphoton%stokes%i
+                 write(*,*) "r, weight, i ", modulus(thisPhoton%position)/1500.,thisPhoton%weight, weightContPhoton, &
+                      Thisphoton%stokes%i
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
 !                 endif

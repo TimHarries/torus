@@ -2329,8 +2329,8 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%x
-                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + dt * fVisc%y * r
+
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
@@ -2353,7 +2353,7 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * fVisc%z
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%z
 
 
 
@@ -3710,6 +3710,10 @@ end subroutine sumFluxes
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
 
+    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+    call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
+    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+
 
 
     do iDir = 1, 3
@@ -3775,12 +3779,6 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupPressure(grid%octreeRoot, grid, direction)
 !       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
-
-
-
-       if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
-       call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
-       if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call setupCylindricalViscosity(grid%octreeRoot, grid)
