@@ -5251,8 +5251,7 @@ end subroutine sumFluxes
              openFile = .true.
 
              if(myRankGlobal == 0) then
-                call writePosRhoPressureVelZERO(filename)
-
+                call writePosRhoPressureVelZERO(filename, grid)
              else
                 call writePosRhoPressureVel(grid%octreeRoot)
                 call killZero()
@@ -5668,8 +5667,9 @@ end subroutine sumFluxes
  
   end subroutine writePosRhoPressureVel
 
-  subroutine writePosRhoPressureVelZERO(fileName)
+  subroutine writePosRhoPressureVelZERO(fileName, grid)
     use mpi
+    type(gridtype) :: grid
     character(len=*) :: fileName
     integer :: ier, ierr
     integer, parameter :: nStorage = 8
@@ -5691,8 +5691,13 @@ end subroutine sumFluxes
        end if
        
        if(cycling) then
-          write(912, '(6(e12.3, 3x))') tempStorage(1), tempStorage(3), tempStorage(4), &
-               tempStorage(5), tempStorage(6), tempStorage(8)
+          if(grid%octreeroot%twod) then
+             write(912, '(6(e12.3, 3x))') tempStorage(1), tempStorage(3), tempStorage(4), &
+                  tempStorage(5), tempStorage(6), tempStorage(8)
+          else
+             write(912, '(6(e12.3, 3x))') tempStorage(1), tempStorage(2), tempStorage(3), &
+                  tempStorage(4), tempStorage(5), tempStorage(6), tempStorage(8)
+          end if
        end if
     end do
     close(912)

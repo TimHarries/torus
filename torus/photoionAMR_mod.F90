@@ -763,20 +763,20 @@ contains
 !       nPhase = nPhase + 1
        if (dumpThisTime) then
 
-!          if(grid%geometry == "SB_WNHII") then
+          if(grid%geometry == "SB_WNHII") then
              call dumpWhalenNormanTest(grid)
-!          end if
+          end if
 
-          if(grid%geometry == "SB_offCentre") then
+          if(grid%geometry == "SB_offCen") then
              if(myRankGlobal == 0) then
                 write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".txt"
-                call writePosRhoPressureVelZERO(mpiFilename)
+                call writePosRhoPressureVelZERO(mpiFilename, grid)
              else
                 call writePosRhoPressureVel(grid%octreeRoot)
                 call killZero()
              end if
-
-
+             
+             
           end if
 
           if(grid%geometry == "SB_instblt") then
@@ -5298,14 +5298,14 @@ subroutine dumpWhalenNormanTest(grid)
      if(firstTime .and. .not. readGrid) then
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
-                status="replace", form="formatted",iostat=ier)
+                status="unknown", form="formatted",iostat=ier)
            open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
-                status="replace", form="formatted",iostat=ier)
+                status="unknown", form="formatted",iostat=ier)
         else
            open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
-                status="replace", form="formatted",iostat=ier)
+                status="unknown", form="formatted",iostat=ier)
            open(unit=66, file="WN08native_MassFn_torus_haworth.txt", &
-                status="replace", form="formatted", iostat=ier)
+                status="unknown", form="formatted", iostat=ier)
         end if
         firstTime = .false.
         
@@ -5315,14 +5315,14 @@ subroutine dumpWhalenNormanTest(grid)
      else
         if(quickThermal) then
            open(unit=65, file="WN08simple_IFradius_torus_haworth.txt", &
-                status="old", position="append", iostat=ier)
+                status="unknown", position="append", form="formatted", iostat=ier)
            open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
-                status="old", position="append", iostat=ier)
+                status="unknown", position="append", form="formatted", iostat=ier)
         else
            open(unit=65, file="WN08native_IFradius_torus_haworth.txt", &
-                status="old", position="append", iostat=ier)
+                status="unknown", position="append", form="formatted",iostat=ier)
            open(unit=66, file="WN08simple_MassFn_torus_haworth.txt", &
-                status="old", position="append", iostat=ier)
+                status="unknown", position="append", form="formatted", iostat=ier)
         end if
      end if
   end if

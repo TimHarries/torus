@@ -259,7 +259,7 @@ CONTAINS
     CASE("SB_WNHII")
        call calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
 
-    CASE("SB_offCentre")
+    CASE("SB_offCen")
        call calcOffCentreExpansionDensity(thisOctal, subcell)
        
     CASE("SB_isoshck")
@@ -3818,6 +3818,7 @@ CONTAINS
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", "SB_coolshk")
 
+
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
@@ -7146,25 +7147,6 @@ endif
     end if
 
 
-!    print *, "x1", x1
-!    print *, "x2", x2
-!    print *, "x3", x3
-!    print *, "x4", x4!
-!    print *, "y1", y1!
-!    print *, "y2", y2!
-!    print *, "y3", y3!
-!    print *, "y4", y4!
-!    print *, "m21", m21
-!    print *, "m23", m23
-!    print *, "m34", m34
-!    print *, "m14", m14
-!    stop
-    
-!    if (x1 + y1 < 3.d0 .and. x1 + y1 > 1.d0 ) then
-!    if (rVec%x < xmax .and. rVec%z < ymax .and. rVec%x > xmin .and. rVec%z > ymin & 
-!    if ((x1 + y1) < (ymax+xmax) .and. (x1 + y1) > (ymin+xmin) .and. (x1+y1) > (xmidA + ymidA) &    
-!         .and. (x1+y1) < (xmidB + ymidB)) then
-
     if (ok) then
        if(v1) then
           thisOctal%rho(subcell) = 1.d-2
@@ -7358,7 +7340,7 @@ endif
        thisOctal%velocity(subcell) = VECTOR(-32., 0., 0.)
     end if
 
-    thisOctal%temperature(subcell) = 2.33d0*mHydrogen/(thisOctal%gamma(subcell) * kerg)
+    thisOctal%temperature(subcell) = 2.33*mHydrogen/(thisOctal%gamma(subcell) * kerg)
 !    thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0)*(thisOctal%rhoe(subcell))
 !    cs =  thisOctal%rho(subcell)
 !    cs =  cs/((2.33d0*mHydrogen))
