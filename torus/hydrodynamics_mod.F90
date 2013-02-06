@@ -2217,6 +2217,12 @@ contains
                 endif
 
              endif
+
+             if(grid%geometry == "SB_coolshk") then
+!                print *, "ENFORCING COOLING "
+                call enforceCooling(grid%octreeRoot, dt, grid)
+             end if
+
           endif
        endif
     enddo
@@ -2393,6 +2399,50 @@ contains
     enddo
   end subroutine pressureforceCylindrical
 
+
+!Calculate the modification to cell velocity and energy due to the pressure gradient
+  recursive subroutine enforceCooling(thisoctal, dt, grid)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(gridtype) :: grid
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: thisT, dt
+!    real(double), parameter :: Teq = 1.d0
+    real(double), parameter :: Teq = 2.33d0*mHydrogen/kerg
+
+    
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call enforcecooling(child, dt, grid)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+          if (.not.thisoctal%ghostcell(subcell)) then
+
+             thisT = (thisOctal%gamma(subcell)-1.d0)*thisOctal%rhoe(subcell)
+             thisT = thisT * 2.33d0*mHydrogen/kerg
+            thisOctal%temperature(subcell) = thisT*2.33d0*mHydrogen/kerg
+!                  thisOctal%rho(subcell)
+!             print *, "thisT ", thisT
+!             print *, "Teq ", Teq
+
+             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - &
+                  ((dt*256.d0*(thisT - Teq)))
+
+!             thisT = (thisOctal%gamma(subcell)-1.d0)*thisOctal%rhoe(subcell)
+!             print *, "newT ", thisT
+          end if
+       end if
+    end do
+
+  end subroutine enforceCooling
 
 !Use to damp oscillations/flow
   recursive subroutine damp(thisoctal)
@@ -4335,7 +4385,7 @@ end subroutine sumFluxes
              write(plotfile,'(a,i4.4,a)') "torus1Dhydro_",it,".dat"
           end if
 
-          if(grid%geometry == "SB_isoshck") then
+          if(grid%geometry == "SB_isoshck" .or. grid%geometry == "SB_coolshk") then
              call  dumpValuesAlongLine(grid, plotfile, &
                   VECTOR(1.d0,0.d0,0.0d0), VECTOR(2.d0, 0.d0, 0.0d0), 1024)
           else
