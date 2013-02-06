@@ -4169,7 +4169,7 @@ end subroutine sumFluxes
           cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
        case(1) ! isothermal
 
-          cs = sqrt((thisOctal%gamma(subcell)*getPressure(thisOctal, subcell))&
+          cs = sqrt((getPressure(thisOctal, subcell))&
                /thisOctal%rho(subcell))
 
        case(2) ! barotropic
