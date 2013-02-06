@@ -2428,7 +2428,7 @@ contains
 
              thisT = (thisOctal%gamma(subcell)-1.d0)*thisOctal%rhoe(subcell)
              thisT = thisT * 2.33d0*mHydrogen/kerg
-            thisOctal%temperature(subcell) = thisT*2.33d0*mHydrogen/kerg
+            thisOctal%temperature(subcell) = real(thisT*2.33d0*mHydrogen/kerg)
 !                  thisOctal%rho(subcell)
 !             print *, "thisT ", thisT
 !             print *, "Teq ", Teq
