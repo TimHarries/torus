@@ -7340,7 +7340,7 @@ endif
        thisOctal%velocity(subcell) = VECTOR(-32., 0., 0.)
     end if
 
-    thisOctal%temperature(subcell) = 2.33*mHydrogen/(thisOctal%gamma(subcell) * kerg)
+    thisOctal%temperature(subcell) = real(2.33*mHydrogen/(thisOctal%gamma(subcell) * kerg))
 !    thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0)*(thisOctal%rhoe(subcell))
 !    cs =  thisOctal%rho(subcell)
 !    cs =  cs/((2.33d0*mHydrogen))
