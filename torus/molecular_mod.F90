@@ -2125,7 +2125,9 @@ end subroutine molecularLoop
         matrixA(k,l) = matrixA(k,l) - blujnu(itrans)
      enddo
 !write(*,*) "matrix",matrixA(:,:)
-     if(debug) matrixArad = matrixA
+
+! Store for use in raditively dominated solution if the LU solver fails (2nd fix).
+     matrixArad = matrixA
 
 ! Add contributions from getcollmatrix
      matrixA(1:maxlevel,1:maxlevel) = matrixA(1:maxlevel,1:maxlevel) - collmatrix(1:maxlevel,1:maxlevel)
