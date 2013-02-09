@@ -7324,7 +7324,6 @@ endif
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: cs
 
     rVec = subcellCentre(thisOctal, subcell)
 
