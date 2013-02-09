@@ -703,6 +703,7 @@ contains
 
           
           call writeAttributePointerFlexi(20, "rhoe", thisOctal%rhoe, fileFormatted)
+          call writeAttributePointerFlexi(20, "rhoeLast", thisOctal%rhoeLastTime, fileFormatted)
           call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
 
           call writeAttributePointerFlexi(20, "qViscosity", thisOctal%qViscosity, fileFormatted)
@@ -4183,6 +4184,8 @@ contains
 
          case("rhoe")
             call readPointerFlexi(20, thisOctal%rhoe, fileFormatted)
+         case("rhoeLast")
+            call readPointerFlexi(20, thisOctal%rhoeLastTime, fileFormatted)
          case("energy")
             call readPointerFlexi(20, thisOctal%energy, fileFormatted)
 
@@ -4523,6 +4526,8 @@ contains
 
          case("rhoe")
             call receivePointerFlexi(thisOctal%rhoe)
+         case("rhoeLast")
+            call receivePointerFlexi(thisOctal%rhoeLastTime)
          case("energy")
             call receivePointerFlexi(thisOctal%energy)
 
@@ -4735,6 +4740,7 @@ contains
 
 
       call sendAttributePointerFlexi(iThread, "rhoe", thisOctal%rhoe)
+      call sendAttributePointerFlexi(iThread, "rhoeLast", thisOctal%rhoeLastTime)
       call sendAttributePointerFlexi(iThread, "energy", thisOctal%energy)
 
       call sendAttributePointerFlexi(iThread, "qViscosity", thisOctal%qViscosity)

@@ -120,6 +120,8 @@ CONTAINS
        if (associated(thisOctal%rhov)) thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
        if (associated(thisOctal%rhow)) thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
        if (associated(thisOctal%rhoe)) thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
+       if (associated(thisOctal%rhoeLastTime)) thisOctal%rhoeLastTime(subcell) = &
+            parentOctal%rhoeLastTime(parentSubcell)
        if (associated(thisOctal%phi_i)) thisOctal%phi_i(subcell) = parentOctal%phi_i(parentSubcell)
        if (associated(thisOctal%phi_gas)) thisOctal%phi_gas(subcell) = parentOctal%phi_gas(parentSubcell)
        if (associated(thisOctal%phi_stars)) thisOctal%phi_stars(subcell) = parentOctal%phi_stars(parentSubcell)
@@ -7340,13 +7342,14 @@ endif
        thisOctal%velocity(subcell) = VECTOR(-32., 0., 0.)
     end if
 
-    thisOctal%temperature(subcell) = real(2.33*mHydrogen/(thisOctal%gamma(subcell) * kerg))
+    thisOctal%temperature(subcell) = real(2.33d0*mHydrogen/(kerg))
+
 !    thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0)*(thisOctal%rhoe(subcell))
 !    cs =  thisOctal%rho(subcell)
 !    cs =  cs/((2.33d0*mHydrogen))
 !    cs =  cs*kerg*thisOctal%temperature(subcell)
 !    cs = sqrt(thisOctal%gamma(subcell) * cs/thisOctal%rho(subcell))
-    cs = 1.d0
+!    cs = 1.d0
     thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
 !    thisOCtal%velocity(subcell)%x = thisOctal%velocity(subcell)%x*cs
 
@@ -7411,12 +7414,17 @@ endif
     thisOctal%gamma(subcell) = 5.d0/3.d0
 
 
+
     thisOctal%temperature(subcell) = real(2.33d0*mHydrogen/(kerg))
-!    cs =  thisOctal%rho(subcell)
-!    cs =  cs/((2.33d0*mHydrogen))
-!    cs =  cs*kerg*thisOctal%temperature(subcell)
+!    thisOctal%temperature(subcell) = real(2.33*mHydrogen/(thisOctal%gamma(subcell) * kerg))
+!    thisOctal%temperature(subcell) = real((3.d0/2.d0)*(2.33*mHydrogen)/(kerg*(5.d0/3.d0 - 1.d0)))
+!    thisOctal%temperature(subcell) = real(thisOctal%subcellSize/(1024.d0*kerg))
+    cs =  thisOctal%rho(subcell)
+    cs =  cs/((2.33d0*mHydrogen))
+    cs =  cs*kerg*thisOctal%temperature(subcell)
 !    cs = sqrt(thisOctal%gamma(subcell) * cs/thisOctal%rho(subcell))
-    cs = 1.d0
+   cs = sqrt(cs/thisOctal%rho(subcell))
+!    cs = 1.d0
     thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     thisOCtal%velocity(subcell)%x = thisOctal%velocity(subcell)%x*cs
 
@@ -10318,6 +10326,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%rhov, source%rhov)
     call copyAttribute(dest%rhow, source%rhow)
     call copyAttribute(dest%rhoe, source%rhoe)
+    call copyAttribute(dest%rhoeLastTime, source%rhoeLastTime)
     call copyAttribute(dest%qViscosity, source%qViscosity)
     call copyAttribute(dest%refinedLastTime, source%refinedLastTime)
 
@@ -14335,6 +14344,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%rhow,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%rhoe,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhoeLastTime,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%energy,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%phi_i,thisOctal%maxchildren)
@@ -14481,6 +14491,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%rhov)
     call deallocateAttribute(thisOctal%rhow)
     call deallocateAttribute(thisOctal%rhoE)
+    call deallocateAttribute(thisOctal%rhoeLastTime)
     call deallocateAttribute(thisOctal%energy)
     call deallocateAttribute(thisOctal%pressure_i)
     call deallocateAttribute(thisOctal%pressure_i_plus_1)

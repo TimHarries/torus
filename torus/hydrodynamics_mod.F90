@@ -2091,6 +2091,7 @@ contains
     real(double) :: eps
     real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
     real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
+    real(double) :: iniRhoe
 
     eps = smallestCellSize * 1.d10
     
@@ -2130,7 +2131,7 @@ contains
              dv = cellVolume(thisOctal, subcell) * 1.d30
   
 !modify the cell velocity due to the pressure gradient
-
+             iniRhoe = thisOctal%rhoe(subcell)
 
              x_i_plus_half = thisOctal%x_i(subcell) + thisOctal%subcellSize*gridDistanceScale/2.d0
              x_i_minus_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistanceScale/2.d0
@@ -2220,7 +2221,7 @@ contains
 
              if(grid%geometry == "SB_coolshk") then
 !                print *, "ENFORCING COOLING "
-                call enforceCooling(grid%octreeRoot, dt, grid)
+                call enforceCooling(grid%octreeRoot, dt, grid, iniRhoe)
              end if
 
           endif
@@ -2401,13 +2402,13 @@ contains
 
 
 !Calculate the modification to cell velocity and energy due to the pressure gradient
-  recursive subroutine enforceCooling(thisoctal, dt, grid)
+  recursive subroutine enforceCooling(thisoctal, dt, grid, inirhoe)
     use mpi
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: thisT, dt
+    real(double) :: thisT, dt, inirhoe, du
 !    real(double), parameter :: Teq = 1.d0
     real(double), parameter :: Teq = 2.33d0*mHydrogen/kerg
 
@@ -2418,7 +2419,7 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call enforcecooling(child, dt, grid)
+                call enforcecooling(child, dt, grid, inirhoe)
                 exit
              end if
           end do
@@ -2426,18 +2427,48 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
 
-             thisT = (thisOctal%gamma(subcell)-1.d0)*thisOctal%rhoe(subcell)
-             thisT = thisT * 2.33d0*mHydrogen/kerg
-            thisOctal%temperature(subcell) = real(thisT*2.33d0*mHydrogen/kerg)
-!                  thisOctal%rho(subcell)
-!             print *, "thisT ", thisT
-!             print *, "Teq ", Teq
 
-             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - &
-                  ((dt*256.d0*(thisT - Teq)))
+             thisT = 0.d0
+
+             du = thisOctal%rhoe(subcell) - thisOctal%rhoeLastTime(subcell)
+             du = du * Teq
+
+             thisT = thisOctal%temperature(subcell) + &
+                  (thisOCtal%gamma(subcell)-1.d0)*du
+
+             thisT = thisT - ((1.d0/256.d0)*(du/dt))
+             
+
+!             du = (thisOctal%rhoe(subcell)/thisOctal%rho(subcell)) &
+!                  - (inirhoe/thisOctal%rho(subcell))
+!             du = du*Teq
+!
+!             thisT = ((1.d0/256.d0))
+!!             print *, "thisT ", thisT
+!             if(dt /= 0.d0) then               
+!                thisT = thisT * (du/dt)
+!             else!
+!                t!hisT = 0.d0
+!             end !if
+!             if(thisT < Teq) thisT = 0.d0
+!             !             print *, "thisTB ", thisT
+!
+!             thisT = thisT + Teq
+! !            print *, "thisTC ", thisT
+!             thisOctal%temperature(subcell) = thisT!
 
 !             thisT = (thisOctal%gamma(subcell)-1.d0)*thisOctal%rhoe(subcell)
-!             print *, "newT ", thisT
+!             thisT = thisT * 2.33d0*mHydrogen/(kerg*thisOctal%rho(subcell))
+!             thisOctal%temperature(subcell) = thisT*2.33d0*mHydrogen/&
+!                  (kerg*thisOctal%rho(subcell))!!
+!
+!             if(thisT /= Teq) then
+!                print *, "thisT ", thisT
+!                print *, "du ", du
+!!             end if
+!
+!             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - &
+!                  ((dt*256.d0*(thisT - Teq)))
           end if
        end if
     end do
@@ -4169,8 +4200,12 @@ end subroutine sumFluxes
           cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
        case(1) ! isothermal
 
-          cs = sqrt((getPressure(thisOctal, subcell))&
-               /thisOctal%rho(subcell))
+
+!          cs = sqrt((thisOctal%gamma(subcell)*getPressure(thisOctal, subcell))&
+!               /thisOctal%rho(subcell))
+          cs = sqrt(getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
+          
+
 
        case(2) ! barotropic
           rhoPhys = returnPhysicalUnitDensity(thisOctal%rho(subcell))
@@ -4250,6 +4285,7 @@ end subroutine sumFluxes
        direction = VECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
        call calculateRhoE(grid%octreeRoot, direction)
+       call assignRhoeLast(grid%octreeRoot)
 
 !ensure that all cells are within one level of refinement of one another       
        call evenUpGridMPI(grid,.false.,dorefine, evenUpArray)
@@ -4384,7 +4420,7 @@ end subroutine sumFluxes
           else
              write(plotfile,'(a,i4.4,a)') "torus1Dhydro_",it,".dat"
           end if
-
+         
           if(grid%geometry == "SB_isoshck" .or. grid%geometry == "SB_coolshk") then
              call  dumpValuesAlongLine(grid, plotfile, &
                   VECTOR(1.d0,0.d0,0.0d0), VECTOR(2.d0, 0.d0, 0.0d0), 1024)
@@ -4392,7 +4428,7 @@ end subroutine sumFluxes
              call  dumpValuesAlongLine(grid, plotfile, &
                   VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
           end if
-
+          call assignRhoeLast(grid%octreeRoot)
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
           grid%iDump = it
@@ -5625,6 +5661,29 @@ end subroutine sumFluxes
     enddo
     close(444)
   end subroutine doHydrodynamics2dCylindrical
+
+
+  recursive  subroutine assignRhoeLast(thisOctal)
+    use mpi
+    type(octal), pointer :: thisOctal, child
+    integer :: subcell
+    integer :: i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignRhoeLast(child)
+                exit
+             end if
+          end do
+       else 
+          thisOctal%rhoeLastTime(subcell) = thisOctal%rhoe(subcell)
+       end if
+    end do
+  end subroutine assignRhoeLast
 
 
   recursive  subroutine writePosRhoPressureVel(thisOctal)
@@ -10560,9 +10619,12 @@ end subroutine refineGridGeneric2
              mu = 2.33d0
           endif
 
+!          mu = 1.d0
+
           getPressure =  thisOctal%rho(subcell)
           getPressure =  getpressure/((mu*mHydrogen))
           getPressure =  getpressure*kerg*thisOctal%temperature(subcell)
+!          getPressure =  getpressure*kerg
 
 !          getPressure =  (thisOctal%rho(subcell)/(mu*mHydrogen))*kerg*thisOctal%temperature(subcell)
 
