@@ -2360,7 +2360,7 @@ contains
                      (p_i_plus_half - p_i_minus_half) / dx
 
 ! alpha viscosity
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%z
+                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
 
 
@@ -3795,6 +3795,10 @@ end subroutine sumFluxes
     call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
     if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
 
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupCylindricalViscosity(grid%octreeRoot, grid)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
 
 
     do iDir = 1, 3
@@ -3860,10 +3864,6 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupPressure(grid%octreeRoot, grid, direction)
 !       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
-
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call setupCylindricalViscosity(grid%octreeRoot, grid)
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        !modify rhou and rhoe due to pressure/gravitational potential gradient
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
@@ -5649,10 +5649,34 @@ end subroutine sumFluxes
                "rhow         ", &
                "phi          ", &
                "pressure     ", &
-               "fvisc        ", &
                "q11          ", &
                "q22          ", &
                "q_i          "/))
+
+          write(plotfile,'(a,i4.4,a)') "visc_",it,".vtk"
+          call writeVtkFile(grid, plotfile, &
+               valueTypeString=(/"q11   ", &
+                                 "q12   ", &
+                                 "q13   ", &
+                                 "q21   ", &
+                                 "q22   ", &
+                                 "q23   ", &
+                                 "q31   ", &
+                                 "q32   ", &
+                                 "q33   ", &
+                                 "fvisc1", &
+                                 "fvisc2", &
+                                 "fvisc3", &
+                                 "rho   ", &
+                                 "rhou  ", &
+                                 "rhov  ", &
+                                 "rhow  " &
+                                 /))
+
+          if (writeoutput) then
+             write(plotfile,'(a,i4.4,a)') "source",it,".dat"
+             call writeSourceArray(plotfile)
+          endif
                
           if (grid%geometry == "sedov") &
                call dumpValuesAlongLine(grid, "sedov.dat", VECTOR(0.5d0,0.d0,0.0d0), VECTOR(0.9d0, 0.d0, 0.0d0), 1000)
@@ -5916,6 +5940,12 @@ end subroutine sumFluxes
                 thisOctal%rhow(subcell) = thisOctal%tempStorage(subcell,5)
                 thisOctal%energy(subcell) = thisOctal%tempStorage(subcell,6)
                 thisOctal%pressure_i(subcell) = thisOctal%tempStorage(subcell,7)
+                thisOctal%temperature(subcell) = thisOctal%tempStorage(subcell,9)
+                if (thisOctal%temperature(subcell) == 0.0) then
+                   write(*,*) "warning: temperature is zero in transfertempstorage"
+                   write(*,*) "pos ",subcellCentre(thisOctal,subcell)
+                   write(*,*) "boundary ",thisOctal%boundaryCondition(subcell)
+                endif
 !                thisOctal%phi_i(subcell) =  thisOctal%tempStorage(subcell,8)
              else
                 thisOctal%phi_gas(subcell) = thisOctal%tempStorage(subcell,1)
@@ -6313,7 +6343,7 @@ real(double) :: rho
           if (thisOctal%ghostCell(subcell)) then
 
              if (.not.associated(thisOctal%tempStorage)) then
-                allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:9))
                 thisOctal%tempStorage = 0.d0
              endif
              if (doPhiGas) then
@@ -6340,6 +6370,7 @@ real(double) :: rho
 
                    thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
                    thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
+                   thisOctal%tempStorage(subcell,9) = bOctal%temperature(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
 
@@ -6353,7 +6384,7 @@ real(double) :: rho
 
                      if (abs(dir%x) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
-                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = -bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
                          thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
                       endif
@@ -6424,6 +6455,7 @@ real(double) :: rho
 
                    thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
                    thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
+                   thisOctal%tempStorage(subcell,9) = bOctal%temperature(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
 
@@ -10100,6 +10132,7 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
                 frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
+!                frac = abs(sumd2phidx2 - fourPi* gGrav * thisOctal%rho(subcell))/(fourPi * gGrav * thisOctal%rho(subcell))
                 thisOctal%chiline(subcell) = frac
                 fracChange = max(frac, fracChange)
              else

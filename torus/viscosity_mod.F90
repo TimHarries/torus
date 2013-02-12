@@ -16,7 +16,7 @@ contains
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     integer :: subcell, neighbourSubcell
     real(double) :: u_i_minus_1, u_i_plus_1
-    type(VECTOR) :: cen
+    type(VECTOR) :: cen, dx, cen_i_plus_1, cen_i_minus_1
     type(VECTOR) :: dir_u, dir_x, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, qViscosity(3,3)
     real(double) :: rm1, um1, pm1, r
@@ -28,7 +28,7 @@ contains
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir_x, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
-
+    cen_i_minus_1 = VECTOR(px,py,pz)
     if (cylindricalHydro) then
        r = sqrt(px**2 + py**2)*gridDistanceScale
        u_i_minus_1 = (VECTOR(rhou,rhov/r,rhow).dot.dir_u)/rho
@@ -41,6 +41,7 @@ contains
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir_x, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+    cen_i_plus_1 = VECTOR(px,py,pz)
     if (cylindricalHydro) then
        r = sqrt(px**2 + py**2)*gridDistanceScale
        u_i_plus_1 = (VECTOR(rhou,rhov/r,rhow).dot.dir_u)/rho
@@ -48,8 +49,8 @@ contains
        u_i_plus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
     endif
 
-
-    dudx = (u_i_plus_1 - u_i_minus_1) / (2.d0*thisOctal%subcellSize*gridDistanceScale)
+    dx = cen_i_plus_1 - cen_i_minus_1
+    dudx = (u_i_plus_1 - u_i_minus_1) / ((dx.dot.dir_x)*gridDistanceScale)
   end function dudx
 
 
@@ -165,8 +166,8 @@ contains
     use inputs_mod, only : smallestCellSize,gridDistanceScale
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal, neighbourOctal
-    type(VECTOR) :: out
-    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz
+    type(VECTOR) :: out, cen_i_plus_1, cen_i_minus_1
+    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,dx
     real(double) :: qViscosity1(3,3), qViscosity2(3,3)
     integer :: subcell, neighbourSubcell
     type(VECTOR) :: dir(3), cen2, locator
@@ -191,15 +192,17 @@ contains
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(jDir), q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity1)
-             
+             cen_i_plus_1 = VECTOR(px, py,pz)
              
              locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(jDir)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(jDir), q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity2)
+             cen_i_minus_1 = VECTOR(px, py,pz)
           
-             tmp(iDir, jDir) = (qviscosity1(iDir, jDir) - qviscosity2(iDir, jDir))/(2.d0*thisOctal%subcellSize*gridDistanceScale)
+             dx = (cen_i_plus_1 - cen_i_minus_1).dot.dir(jDir)
+             tmp(iDir, jDir) = (qviscosity1(iDir, jDir) - qviscosity2(iDir, jDir))/(dx*gridDistanceScale)
           else
 
              select case(idir)
@@ -349,6 +352,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child, neighbourOctal
     real(double) :: divV, r, vTheta
+    real(double) :: r_i_minus_1, r_i_plus_1
     integer :: subcell, i, neighbourSubcell, nd
     type(VECTOR) :: rVec, locator, cen, dir_x
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext
@@ -383,18 +387,19 @@ contains
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir_x, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
 
-             u_i_minus_1 = gridDistanceScale * sqrt(px**2 + py**2) * rhou / rho
-
+             r_i_minus_1 = gridDistanceScale * sqrt(px**2 + py**2)
+             u_i_minus_1 = r_i_minus_1 * rhou / rho
              locator = cen + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir_x
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir_x, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
 
-             u_i_plus_1 = gridDistanceScale * sqrt(px**2 + py**2) * rhou / rho
+             r_i_plus_1 = gridDistanceScale * sqrt(px**2 + py**2)
+             u_i_plus_1 = r_i_plus_1 * rhou / rho
 
 
-             drvrdr = (u_i_plus_1 - u_i_minus_1) / (2.d0*thisOctal%subcellSize*gridDistanceScale)
+             drvrdr = (u_i_plus_1 - u_i_minus_1) / (r_i_plus_1 - r_i_minus_1)
 
 
              divV = (1.d0/r) * drvrdr +  dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid)

@@ -88,6 +88,7 @@ module source_mod
            write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "Ran ""N","M","R","L","L(spec)","x","y","z"
       do i = 1, nSource
          fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
+         if (writeoutput) &
               write(*,'(i3.3,1x,i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') myrankWorldGlobal, i,&
               source(i)%mass/msol, &
               source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, fromspec/lsol, source(i)%position%x, &

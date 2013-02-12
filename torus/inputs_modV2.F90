@@ -1232,8 +1232,9 @@ contains
             "Maximum rhoe gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
   
-    call getReal("amrgridsize", amrGridSize, 1., cLine, fLine, nLines, &
-         "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+
+    call getReal("amrgridsize", amrGridSize, 1.0, cLine, fLine, nLines, &
+         "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000.0, ok, .false.) 
     call getUnitDouble("amrgridcentrex", amrGridCentreX, "distance" , cLine, fLine, nLines, &
          "Grid centre X-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
     call getUnitDouble("amrgridcentrey", amrGridCentreY, "distance" , cLine, fLine, nLines, &
@@ -1242,7 +1243,7 @@ contains
          "Grid centre Z-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
 
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
-         amrGridCentrex = amrGridSize/2.d0
+         amrGridCentrex = dble(amrGridSize)/2.d0
 
     if (amr3d.and.cylindrical.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
@@ -1900,8 +1901,8 @@ contains
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (cylindricalHydro) then
-       dx = amrgridSize/dble(2**maxDepthAMR-4)
-       amrGridSize = amrGridsize + real(4.0d0*dx)
+       dx = dble(amrgridSize)/dble(2**maxDepthAMR-4)
+       amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
        vtkIncludeGhosts = .false.
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
                "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
@@ -2259,15 +2260,15 @@ contains
     ! This is used as the default image size
     select case (axisunits)
     case ("au","AU")
-       wholeGrid = (amrGridSize*1.0e10) / real(autocm)
+       wholeGrid = (amrGridSize*1.0e10) / auTocm
     case ("pc","PC")
-       wholeGrid = (amrGridSize*1.0e10) / real(pctocm)
+       wholeGrid = (amrGridSize*1.0e10) / pctocm
     case ("cm")
        wholeGrid = amrGridSize*1.0e10
     case ("arcsec")
-       wholeGrid = (amrGridSize*1.0e10) / real(pctocm) ! pc
+       wholeGrid = (amrGridSize*1.0e10) / pctocm ! pc
        wholeGrid = wholeGrid / gridDistance            ! radians
-       wholeGrid = wholeGrid * (180.0/real(pi)) * 3600.0     ! arcsec
+       wholeGrid = wholeGrid * (180.d0/pi) * 3600.d0     ! arcsec
     case default
        wholeGrid = amrGridSize
        write(message,*) "Unrecognised units in readImageParameters: ", trim(axisunits)

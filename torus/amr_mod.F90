@@ -536,7 +536,7 @@ CONTAINS
     grid%octreeRoot%nDepth = 1
     grid%octreeRoot%nChildren = 0
     grid%octreeRoot%hasChild = .FALSE.
-    grid%octreeRoot%subcellSize = size/2.0_oc
+    grid%octreeRoot%subcellSize = dble(size)/2.0_oc
     grid%octreeRoot%centre = centre
     if (cylindrical) then
        grid%octreeRoot%centre%x = -size / 2.d0

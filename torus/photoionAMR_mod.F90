@@ -347,6 +347,7 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource)
                 endif
+                tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
@@ -631,9 +632,9 @@ contains
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
-               looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack) 
-          cylindricalHydro = tmpCylindricalHydro
+                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
+                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack) 
+                cylindricalHydro = tmpCylindricalHydro
 
          call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0
@@ -1017,16 +1018,16 @@ end subroutine radiationHydro
 
     real, allocatable :: tempCell(:,:), temp1(:), temp2(:), tempIon(:,:,:)
 
-    integer :: n_rmdr, mOctal
+    integer :: n_rmdr, mOctal, nNotEscaped
     character(len=80) :: mpiFilename, message
     integer :: ierr
-    integer :: iter, nFrac
+    integer :: iter, nFrac, nNotEndLoop, nToNextEventPhoto
     real :: totFrac
     integer :: maxChild
     integer :: nScatBigPacket, j, nScatSmallPacket
     logical :: sourceInThickCell, tempLogical
     logical :: undersampled, flushBuffer, containsLastPacket
-    real(double) :: maxDiffRadius
+    real(double) :: maxDiffRadius, maxDiffRadius1, maxDiffRadius2
     integer :: receivedStackSize, nToSend
     !AMR
 !    integer :: iUnrefine, nUnrefine
@@ -1365,8 +1366,17 @@ end subroutine radiationHydro
        sourceInThickCell = .false.
        maxDiffRadius = 0.d0
        nSmallPackets = 0
+
+       call tauRadius(grid, VECTOR(1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1)
+       call MPI_BCAST(maxDiffRadius1, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+       call tauRadius(grid, VECTOR(0.d0, 0.d0, 1.d0), 1.d0, maxDiffRadius2)
+       call MPI_BCAST(maxDiffRadius2, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+
+       maxDiffRadius = min(maxDiffRadius1, maxDiffRadius2)
+       if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
+
        if (myrankGlobal /= 0) then
-          call defineDiffusionZone(grid, maxDiffRadius)
+          call setDiffusionZoneOnRadius(grid%octreeRoot, maxDiffRadius)
           do i = 1, globalnSource
              if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
           enddo
@@ -1555,9 +1565,9 @@ end subroutine radiationHydro
                                toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
                                toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
                                toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
-!                               if (toSendStack(thisPacket)%lastPhoton) then
+                               if (toSendStack(thisPacket)%lastPhoton) then
 !                                  write(*,*) myrankWorldGlobal, " sending last packet ",thisPacket, imonte
-!                               endif
+                               endif
                                thisPacket = thisPacket + 1
                                nInf = nInf + 1
                                
@@ -1569,7 +1579,7 @@ end subroutine radiationHydro
                             
                             end if
                          end do
-
+! stuck here
                          call MPI_SSEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
                               OptCounter, tag, localWorldCommunicator,  ierr)
 
@@ -1685,10 +1695,12 @@ end subroutine radiationHydro
              currentStack%freq = 0.d0
              stackSize = 0
              nSaved = 0
+             nNotEndLoop = 0
              sendAllPhotons = .false.
              !needNewPhotonArray = .true.  
              do while(.not.endLoop) 
-
+                nNotEndLoop = nNotEndLoop + 1
+                
                 crossedMPIboundary = .false.
 
                 !Get a new photon stack
@@ -1760,7 +1772,7 @@ end subroutine radiationHydro
 !TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
 !                              call MPI_SEND(toSendStack, maxStackLimit, &
 !                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
-                               write(*,*) myrankWorldGlobal," flushing  stack to ",optCounter, " size ",thisPacket-1
+!                               write(*,*) myrankWorldGlobal," flushing  stack to ",optCounter, " size ",thisPacket-1
                                call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
                                     localWorldCommunicator, ierr)
                               !reset the counter for this thread's bundle recieve
@@ -1897,10 +1909,12 @@ end subroutine radiationHydro
 !                if (myrankWorldGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
                 doingSmallPackets = .false.
                 startNewSmallPacket = .false.
+                nToNextEventPhoto = 0
 
                 if (.not.endLoop) then
                    nScat = 0
                    escaped = .false.
+                   nNotEscaped = 0
                    do while(.not.escaped)
 
                       if ((doingSmallPackets).and.(startNewSmallPacket)) then
@@ -1926,7 +1940,15 @@ end subroutine radiationHydro
                       endif
                          
 
-
+                      nToNextEventPhoto = nToNextEventPhoto + 1
+                      if (nToNextEventPhoto > 80000) then
+                         write(*,*) "too next event photo called ",nToNextEventPhoto
+                         write(*,*) "rank ",myrankWorldGlobal
+                         write(*,*) "rVec ",rVec
+                         write(*,*) "uHat ",uhat
+                         write(*,*) "thisOctal%xmin ",thisOctal%xmin
+                         write(*,*) "thisOctal%xmax ",thisOctal%xmax
+                      endif
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
                            crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, bigPhotonPacket)
@@ -1961,9 +1983,9 @@ end subroutine radiationHydro
                          nSaved(newThread) = nSaved(newThread) + 1
                          nToSend = nToSend + 1
                          flushBuffer = containsLastPacket
-!                         if (flushBuffer) then
+                         if (flushBuffer) then
 !                            write(*,*) myrankWorldGlobal, " flushing buffer with ",nToSend
-!                         endif
+                         endif
 
                          !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
                          do optCounter = 1, nHydroThreadsGlobal
@@ -2069,6 +2091,11 @@ end subroutine radiationHydro
 
                
                                if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+                                  if (thisOctal%temperature(subcell) == 0.0) then
+                                     write(*,*) "temperature of cell is zero"
+                                     write(*,*) "cell is ghost " ,thisOctal%ghostCell(subcell)
+                                     write(*,*) "edge? ", thisOctal%edgeCell(subcell)
+                                  endif
                                   call randomNumberGenerator(getDouble=r1)
                                   
                                   if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
@@ -2164,6 +2191,14 @@ end subroutine radiationHydro
                          startNewSmallPacket = .true.
 !                         write(*,*) myrankWorldGlobal, " small photon packet escaped, getting new one"
                       endif
+                      nNotEscaped = nNotEscaped + 1
+!                      if (nNotEscaped > 10000) then
+!                         write(*,*) "been around the not escaped loop too many times"
+!                         write(*,*) "finished ",finished
+!                         write(*,*) "rVec ",rVec
+!                         write(*,*) "nScat ",nScat
+!                         escaped =  .true.
+!                      endif
                    enddo
 !                   write(*,*) "photon escaped after ",nscat," scatterings"
                    nPhot = nPhot + 1
@@ -2336,6 +2371,7 @@ end subroutine radiationHydro
 
 
 ! now we need to reduce the estimators across all the hydro sets.
+    call mpi_barrier(MPI_COMM_WORLD, ierr)
     if (myrankWorldGlobal == 1) call tune(6, "Update MPI grid")  ! start a stopwatch
     if (nHydroSetsGlobal > 1) then
        do iThread = 1, nHydroThreadsGlobal
@@ -2346,6 +2382,7 @@ end subroutine radiationHydro
           call mpi_barrier(MPI_COMM_WORLD, ierr)
        enddo
     endif
+    call mpi_barrier(MPI_COMM_WORLD, ierr)
     if (myrankWorldGlobal == 1) call tune(6, "Update MPI grid")  ! stop a stopwatch
 
     call  identifyUndersampled(grid%octreeRoot)
@@ -2454,7 +2491,7 @@ end subroutine radiationHydro
                    !                         write(*,*) i, "temp, frac ",thisOctal%temperature(1),thisOctal%ionFrac(1,1)
                    !                      endif
                    if (iter > 100) then
-                      write(*,*) "temperature/ionization fraction not converged after 100 iterations"
+                      write(*,*) "temperature/ionization fraction not converged after 100 iterations ",thisOctal%ghostCell(subcell)
                       converged = .true.
                    endif
                    !                   write(*,*) "ion/thermal converged after ",iter
@@ -3010,6 +3047,7 @@ recursive subroutine  setDiffusionZoneOnRadius(thisOctal, maxRadius)
         end do
      else
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           thisOctal%diffusionApprox(subcell) = .false.
         if (modulus(subcellCentre(thisOctal, subcell) - globalSourceArray(1)%position) < maxRadius) then
            thisOctal%diffusionApprox(subcell) = .true.
         endif
@@ -3053,7 +3091,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !   integer :: ilambda
    logical, intent(out) :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
-   integer :: nextSubcell, i
+   integer :: nextSubcell, i, nStillInGrid
    logical :: outofTime, neverInteracted
    logical :: sourcePhoton, crossedPeriodic
    logical :: usedMRW
@@ -3124,12 +3162,22 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 
+    nStillInGrid = 0
     do while(stillinGrid .and. (tau > thisTau) .and. .not. outOfTime) 
-
+       nStillInGrid = nStillInGrid + 1
+       if (nStillInGrid > 10000) then
+          write(*,*) myRankWorldGlobal," nStillInGrid ",nStillInGrid
+          write(*,*) "rVec ",rVec
+          write(*,*) "uHat ",uHat
+          write(*,*) "tVal ",tval
+          write(*,*) "xmin,xmax ",thisOctal%xmin, thisOctal%xmax
+          write(*,*) "thisTau ",thisTau
+          write(*,*) "tau ",tau
+       endif
 ! add on the distance to the next cell
 
        oldrVec = rVec
-       rVec = rVec + (tVal+1.d-3*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
+       rVec = rVec + (tVal+1.d-2*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
 
 ! at this point the photon packet takes momentum from the cell
 
@@ -3148,71 +3196,73 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
        else
-          if(.not. crossedPeriodic .and. neverInteracted) then
-             !Give photon packets a second chance if they haven't interacted
-             stillingrid = .false.
-             crossedPeriodic = .true.
-             crossedMPIBoundary = .true.
-             
-             !Calculate new position vector
-             upperBound%x = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
-             lowerBound%x = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
-             upperBound%y = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
-             lowerBound%y = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
-             upperBound%z = grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize
-             lowerBound%z = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
 
-             iniVec = rVec
-
-             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize*2.d0
-             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize*2.d0
-             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize*2.d0
-             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize*2.d0
-             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize*2.d0
-             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize*2.d0
-
-             if(rVec == iniVec) then
-                !no transfer occurs
-                crossedPeriodic = .false.
-                crossedMPIBoundary = .false.
-             end if
-
-             !This needs to be better
-             !In 1D the vector may have been altered so that the pp escapes in the y or z direction
-             !(not sure if this is a bug in the code) 
-             if(grid%octreeRoot%oneD) then
-                if(rvec%x == iniVec%x) then
-                   !Escape was due to y or z
-                   crossedPeriodic = .false.
-                   crossedMPIBoundary = .false.
-                   rVec = iniVec
-                end if
-             elseif(grid%octreeRoot%twoD) then
-                if(rvec%y /= iniVec%y) then
-                   !escape was due to y
-                   rVec = iniVec
-                end if 
-             end if
-
-             if(crossedPeriodic .and. (inOctal(grid%octreeRoot,rVec))) then
-                nextOctal => thisOctal
-                nextSubcell = subcell
-                call findSubcellLocal(rVec, nextOctal, nextSubcell)
-                newThread = nextOctal%mpiThread(nextSubcell)
-!                print *, "rVec1 ", iniVec
+!          if(.not. crossedPeriodic .and. neverInteracted) then
+!             !Give photon packets a second chance if they haven't interacted
+!             stillingrid = .false.
+!             crossedPeriodic = .true.
+!             crossedMPIBoundary = .true.
+!             
+!             !Calculate new position vector
+!             upperBound%x = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
+!             lowerBound%x = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+!             upperBound%y = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
+!             lowerBound%y = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
+!             upperBound%z = grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize
+!             lowerBound%z = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+!
+!             iniVec = rVec
+!
+!             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize*2.d0
+!             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize*2.d0
+!             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize*2.d0
+!             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize*2.d0
+!             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize*2.d0
+!             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize*2.d0
+!
+!             if(rVec == iniVec) then
+!                !no transfer occurs
+!                crossedPeriodic = .false.
+!                crossedMPIBoundary = .false.
+!             end if
+!
+!             !This needs to be better
+!             !In 1D the vector may have been altered so that the pp escapes in the y or z direction
+!             !(not sure if this is a bug in the code) 
+!             if(grid%octreeRoot%oneD) then
+!                if(rvec%x == iniVec%x) then
+!                   !Escape was due to y or z
+!                   crossedPeriodic = .false.
+!                   crossedMPIBoundary = .false.
+!                   rVec = iniVec
+!                end if
+!             elseif(grid%octreeRoot%twoD) then
+!                if(rvec%y /= iniVec%y) then
+!                   !escape was due to y
+!                   rVec = iniVec
+!                end if 
+!             end if
+!
+!             if(crossedPeriodic .and. (inOctal(grid%octreeRoot,rVec))) then
+!                nextOctal => thisOctal
+!                nextSubcell = subcell
+!                call findSubcellLocal(rVec, nextOctal, nextSubcell)
+!                newThread = nextOctal%mpiThread(nextSubcell)
+!!                print *, "rVec1 ", iniVec
 !                print *, "rVec2 ", rVec
-             else
-                crossedPeriodic = .false.
-                crossedMPIBoundary = .false.
-                rVec = iniVec
-   
-             end if
-
-
-
-          else
-             stillingrid = .false.
-          end if
+!             else
+!                crossedPeriodic = .false.
+!                crossedMPIBoundary = .false.
+!                rVec = iniVec
+!   
+!             end if
+!
+!
+!
+!          else
+!             stillingrid = .false.
+!          end if
+          stillInGrid = .false.
           escaped = .true. 
 
        endif
@@ -4002,12 +4052,17 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end subroutine getHbetaluminosity
 
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
+    use inputs_mod, only : hydrodynamics
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
     integer :: subcell
     
     do subcell = 1, thisOctal%maxChildren
+       
+       if (hydrodynamics) then
+          if (thisOctal%ghostCell(subcell)) cycle
+       endif
 
        if (.not.thisOctal%hasChild(subcell)) then
 
@@ -4073,7 +4128,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
     use mpi
-    use inputs_mod, only : tMinGlobal
+    use inputs_mod, only : tMinGlobal, hydrodynamics
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
@@ -4094,6 +4149,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
  !THAW - trying to root out mpi things
           if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
           
+             if (hydrodynamics) then
+                if (thisOctal%ghostCell(subcell)) cycle
+             endif
+
+
+
              if (thisOctal%inflow(subcell)) then
                 
 !             write(*,*) thisOctal%nCrossings(subcell),thisOctal%undersampled(subcell)
@@ -6032,7 +6093,7 @@ real(double) function returnGamma(table, temp, freq) result(out)
   integer,save :: i, j
   real(double) :: tfac, ffac, gamma1, gamma2, logT, logF
 
-  logT = log10(min(temp,table%temp(table%nTemp)))
+  logT = log10(max(table%temp(1),min(temp,table%temp(table%nTemp))))
   logF = log10(min(freq, table%freq(table%nfreq)))
 
   call hunt(table%temp, table%nTemp, logT, i)
@@ -7659,7 +7720,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     logical, save :: firstTime = .true.
     integer, parameter :: ny = 100
     real(double) :: y(ny), prob(ny), thisY
-    integer :: i, n
+    integer :: i, n, iLoop
     real(double), parameter :: gamma = 3.d0
 
     if (firstTime) then
@@ -7681,10 +7742,14 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
     diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
-    i = 0
+    iLoop = 0
     call distanceToNearestWall(rVec, r0, thisOctal, subcell)
     do
-       i = i + 1
+       iLoop = iLoop + 1
+       if (iLoop > 100000) then
+          write(*,*) "modified random walk loop exitted early"
+          exit
+       endif
        call randomNumberGenerator(getDouble=zeta)
        call locate(prob, ny, zeta, i)
        thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))

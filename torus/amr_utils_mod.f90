@@ -57,7 +57,7 @@ module amr_utils_mod
     logical, optional :: hitGrid
     logical :: debug
     
-    real(double) :: subcellsize
+    real(double) :: subcellsize, r1overd
     type(VECTOR) :: normdiff, test
 
     if (PRESENT(hitGrid)) hitGrid = .true.
@@ -205,7 +205,9 @@ module amr_utils_mod
          compX = modulus(rDirection)
          call normalize(rDirection)
                
-         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+         r1overd = 1.d30
+         if (d /= 0.d0) r1Overd = r1/d
+         theta = asin(max(-1.d0,min(1.d0,r1overd)))
          cosmu = xHat.dot.rdirection
          mu = acos(max(-1.d0,min(1.d0,cosmu)))
          distTor1 = 1.e30
@@ -463,17 +465,22 @@ module amr_utils_mod
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
 
+!         write(*,*) "this point is inOctal, setting havedescended to true"
+
+
         haveDescended = .TRUE. ! record that we have gone down the tree.
       
         ! if the point lies within the current octal, we identify the
         !   subcell
         subcell = whichSubcell(thisOctal,point)
+!        write(*,*) "this point is in subcell ", subcell
 
         ! if a problem has been detected, this is where we complete the search
         IF (boundaryProblem) RETURN 
       
         ! if the subcell has a child, we look in the child for the point
         IF ( thisOctal%hasChild(subcell) ) THEN
+!           write(*,*) "this subcell has a child"
                 
           ! search the index to see where it is stored
           DO i = 1, thisOctal%nChildren, 1
@@ -481,21 +488,23 @@ module amr_utils_mod
                     
               thisOctal => thisOctal%child(i)
 
-
+!              write(*,*) "calling findsubcelllocalprivate recursively"
               CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
               RETURN
               
             END IF
-          END DO
+         END DO
           
-        ELSE 
+      ELSE 
           RETURN
-        END IF
+       END IF
 
       ELSE
         ! if the point is outside the current octal, we look in its
         !   parent octal
-
+!         write(*,*) "this point is not in octal "
+!         write(*,*) "point ",point
+!         write(*,*) "xmin/max, zmin/max ",thisOctal%xmin, thisOctal%xmax, thisOctal%zmin,thisOctal%zmax
         ! first check that we are not outside the grid
         IF ( thisOctal%nDepth == 1 ) THEN
            if(.not. suppresswarnings) then
@@ -508,6 +517,7 @@ module amr_utils_mod
           write(*,*) sqrt(point%x**2+point%y**2)
           write(*,*) atan2(point%y,point%x)*radtodeg
           write(*,*) " "
+          write(*,*) "cylindrical hydro ",cylindricalhydro
           write(*,*) thisOctal%centre
           write(*,*) thisOctal%subcellSize
 !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
@@ -524,6 +534,7 @@ module amr_utils_mod
      
         ! if we have previously gone down the tree, and are now going back up, there
         !   must be a problem.
+       
         IF (haveDescended) then
            boundaryProblem = .TRUE.
            phi =  atan2(point%y,point%x)
@@ -544,6 +555,11 @@ module amr_utils_mod
            write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
            write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
            write(*,*) " r min/max ",thisOctal%r-thisOctal%subcellsize,thisOctal%r+thisOctal%subcellsize
+
+           write(*,*) "x > xMin ",point%x > thisOctal%xMin
+           write(*,*) "x < xMax ",point%x < thisOctal%xMax
+           write(*,*) "z > zMin ",point%z > thisOctal%zMin
+           write(*,*) "x < zMax ",point%z < thisOctal%zMax
            write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, &
                 thisOctal%parent%zMax
            write(*,*) "cen ",thisOctal%centre
@@ -564,6 +580,7 @@ module amr_utils_mod
         endif
         
         IF ( thisOctal%nDepth /= 1 ) THEN
+!           write(*,*) "ascending to octal above"
            thisOctal => thisOctal%parent
         ENDIF
 
@@ -871,7 +888,7 @@ module amr_utils_mod
   FUNCTION inOctal(thisOctal,point,alreadyRotated) 
     ! true if the point lies within the boundaries of the current octal
   
-    use inputs_mod, only : hydrodynamics, cylindricalHydro
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
@@ -925,7 +942,7 @@ module amr_utils_mod
        else
           octVec2D = point
        endif
-       if(hydrodynamics .and. .not. cylindricalHydro) then
+       if(hydrodynamics .and. (.not. cylindricalHydro).and.(.not.photoionPhysics)) then
           octVec2D = point
        end if
        IF (octVec2D%x < thisOctal%xMin) THEN ; inOctal = .FALSE. 
@@ -1354,7 +1371,7 @@ module amr_utils_mod
        else ! two-d grid case below
 
           halfCellSize = thisOctal%subcellSize/2.d0
-          r1 = subcen%x - halfCellSize
+          r1 = max(0.d0, subcen%x - halfCellSize)
           r2 = subcen%x + halfCellSize
 
           distToR1 = 1.d30
@@ -1848,7 +1865,7 @@ module amr_utils_mod
 !          if (thisOctal%splitAzimuthally) then
 !             ang1 = thisOctal%phi - thisOctal%dphi/4.
 !             ang2 = thisOctal%phi + thisOctal%dphi/4.
-!          else
+!          Else
 !             ang1 = thisOctal%phi - thisOctal%dphi/2.
 !             ang2 = thisOctal%phi + thisOctal%dphi/2.
 !          endif

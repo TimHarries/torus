@@ -132,6 +132,7 @@ program torus
 
         call  setupamrgrid(grid)
 
+!        call sanityCheckGrid(grid)
 
      !  call checkAMRgrid(grid, .false.)
 

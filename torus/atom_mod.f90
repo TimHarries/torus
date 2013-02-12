@@ -345,7 +345,7 @@ contains
     real(double) :: fac1, fac2, fac3, nu, T
 
     fac1 = (twoTimeshCgs*nu**3)/cSpeedSquared
-    fac3 =  hCgsOverKErg * nu / T 
+    fac3 =  hCgsOverKErg * nu / max(T, 1.d-30)
     if (fac3 > 100.d0) then
        fac2 = 0.d0
     else

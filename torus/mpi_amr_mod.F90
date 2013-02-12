@@ -11,7 +11,7 @@ contains
 
   subroutine setupAMRCOMMUNICATOR
     use mpi
-    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr2d
+    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr2d, amr3d
     integer :: ierr, i, j, iset, k
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
@@ -32,15 +32,15 @@ contains
 
        if (nHydroThreadsInput == 0) then
 
-          if (mod(nThreadsGlobal, 513) == 0) then
+          if (amr3d.and.(mod(nThreadsGlobal, 513) == 0)) then
              nHydroThreadsGlobal = 512
-          else if (mod(nThreadsGlobal, 65) == 0) then
+          else if (amr3d.and.(mod(nThreadsGlobal, 65) == 0)) then
              nHydroThreadsGlobal = 64
-          else if (mod(nThreadsGlobal, 9) == 0) then
+          else if (amr3d.and.(mod(nThreadsGlobal, 9) == 0)) then
              nHydroThreadsGlobal = 8
-          else if (amr2d.and.mod(nThreadsGlobal, 17) == 0) then
+          else if (amr2d.and.(mod(nThreadsGlobal, 17) == 0)) then
              nHydroThreadsGlobal = 16
-          else if (amr2d.and.mod(nThreadsGlobal, 5) == 0) then
+          else if (amr2d.and.(mod(nThreadsGlobal, 5) == 0)) then
              nHydroThreadsGlobal = 4
           else
              write(*,*) "Number of MPI threads is ",nThreadsGlobal
@@ -316,13 +316,24 @@ contains
     do iThread = 1, nHydroThreadsGlobal
        if (myRankGlobal == iThread) then
           localMass = 0.d0
-          call findTotalMassWithinRMPI(grid%octreeRoot, radius, localMass)
+          call findTotalMassWithinRMPIPrivate(grid%octreeRoot, radius, localMass)
        else
           call MPI_SEND(radius, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-          call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
        endif
-       mass = mass + localMass
+!          call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+!       endif
+!       mass = mass + localMass
     enddo
+
+    mass = mass + localMass
+
+    do iThread = 1, nHydroThreadsGlobal
+       if (myRankGlobal /= iThread) then
+          call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+          mass = mass + localMass
+       endif
+    enddo
+
   end subroutine findMassOverAllThreadsWithinR
     
 
@@ -338,6 +349,8 @@ contains
 
     stillServing = .true.
 
+    call findTotalMassWithinRMPI(grid, radius, totalMass, reset=.true.)
+
     do while(stillServing)
 
        call MPI_RECV(radius, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
@@ -346,16 +359,46 @@ contains
           stillServing = .false.
        else
           totalmass = 0.d0
-          call findTotalMassWithinRMPI(grid%octreeRoot, radius, totalMass)
+          call findTotalMassWithinRMPI(grid, radius, totalMass)
           call MPI_SEND(totalMass, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine findTotalMassWithinRServer
 
 
+  subroutine findTotalMassWithinRMPI(grid, radius, totalMass, reset)
+    type(GRIDTYPE) :: grid
+    real(double) :: radius
+    real(double) :: totalMass
+    logical, optional :: reset
+    logical :: doReset
+    logical, save :: firstTime = .true.
+    real(double), save :: savedRadius, savedMass
+
+    doReset = .false.
+    if (PRESENT(reset)) then
+       doReset = reset
+    endif
+    if (doReset) firstTime = .true.
+    
+    if (firstTime) then
+       savedRadius = 0.d0
+       call findMaxR(grid%octreeRoot, savedRadius)
+       savedMass = 0.d0
+       call findTotalMassWithinRMPIPrivate(grid%octreeRoot, savedRadius, savedMass)
+       firstTime = .false.
+    endif
+
+    if (radius > savedRadius) then
+       totalMass = savedMass
+    else
+       totalMass = 0.d0
+       call findTotalMassWithinRMPIPrivate(grid%octreeRoot, radius, totalMass)
+    endif
+  end subroutine findTotalMassWithinRMPI
 
 
-  recursive subroutine findTotalMassWithinRMPI(thisOctal, radius, totalMass)
+  recursive subroutine findTotalMassWithinRMPIPrivate(thisOctal, radius, totalMass)
     use inputs_mod, only : hydrodynamics, cylindricalHydro
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -370,7 +413,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call findtotalMassWithinRMPI(child, radius,totalMass)
+                call findtotalMassWithinRMPIPrivate(child, radius,totalMass)
                 exit
              end if
           end do
@@ -400,7 +443,38 @@ contains
           endif
        end if
     enddo
-  end subroutine findTotalMassWithinRMPI
+  end subroutine findTotalMassWithinRMPIPrivate
+
+  recursive subroutine findMaxR(thisOctal, radius)
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: radius
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findMaxR(child, radius)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if(.not. thisoctal%ghostcell(subcell)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             if (modulus(rVec) > radius) then
+                radius = modulus(rVec)
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findMaxR
 
   subroutine findAngMomOverAllThreads(grid, angMom, centre)
     use mpi
@@ -1789,7 +1863,7 @@ contains
              octVec = centre + r * dirvec(j)
              if (inOctal(grid%octreeRoot, octVec)) then
                 neighbourOctal => thisOctal 
-               call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+               call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
 !                if (neighbourOctal%mpiThread(neighboursubcell) /= iThread) then
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
                    i1 = ithread
@@ -3060,6 +3134,122 @@ end subroutine writeRadialFile
 
 666 continue
   end subroutine dumpValuesAlongLine
+
+
+  subroutine tauRadius(grid, uHat, tauWanted, tauRad)
+    use mpi
+    use inputs_mod, only : smallestCellsize
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, soctal
+    integer :: subcell
+    integer :: nPoints
+    type(VECTOR) :: uHat, position
+    real(double) :: loc(4), tauRad, tauWanted, tau, flag
+    integer, parameter :: nStorage = 5
+    real(double) :: tempSTorage(nStorage), tval
+    integer, parameter :: tag = 30
+    integer :: status(MPI_STATUS_SIZE), ierr
+    real :: kappap
+    logical :: stillLooping
+    integer :: sendThread
+    integer :: i
+    logical :: hitGrid
+
+    thisOctal => grid%octreeRoot
+    position = (-10.d0*grid%octreeRoot%subcellSize) * uHat
+    tval = distanceToGridFromOutside(grid, position, uHat, hitGrid)
+    if (hitGrid) then
+       position = position + (tval+0.01d0*smallestcellsize)*uHat
+    else
+       write(*,*) "missed grid in tauRadius"
+       stop
+    endif
+    tau = 0.d0
+    if (myrankGlobal == 0) then
+
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          loc(4) = tau
+          call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+          flag = tempStorage(1)
+          if (tempStorage(1) > 1.d29) then
+             tauRad = tempStorage(2)
+             exit
+          else if (tempStorage(1) < -1.d29) then
+             tauRad = 1.d30
+             exit
+          else
+             tau = tau + tempStorage(2)
+             position = VECTOR(tempStorage(3), tempStorage(4), tempStorage(5))
+          endif
+         
+       enddo
+       !Send escape trigger to other threads
+       do sendThread = 1, nHydroThreadsGlobal
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 5, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+       enddo
+       close(20)
+       goto 666
+
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 5, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+
+             tau = loc(4)
+
+             do
+                call findSubcellLocal(position, thisOctal, subcell)
+                if (.not.OctalOnThread(thisOctal, subcell, myRankGlobal)) then
+                   tempStorage(1) = 0.d0
+                   tempStorage(2) = tau
+                   tempStorage(3) = position%x
+                   tempStorage(4) = position%y
+                   tempStorage(5) = position%z
+                   exit
+                endif
+
+
+                sOctal => thisOctal
+                call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
+                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+                tau = tau + dble(kappap) * tval *1.e10
+                position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
+
+                if (tau > tauWanted) then
+                   tauRad = modulus(position)
+                   tempStorage(1) = 1.d30
+                   tempStorage(2) = tauRad
+                   exit
+                endif
+
+                if (.not.inOctal(grid%octreeRoot, position)) then
+                   tempStorage(1) = -1.d30
+                   exit
+                endif
+             enddo
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          endif
+       enddo
+    endif
+
+666 continue
+  end subroutine tauRadius
     
   subroutine grid_info_mpi(thisGrid, filename)
     use amr_mod, only:  countVoxels
@@ -3514,7 +3704,7 @@ end subroutine writeRadialFile
 
           ypoint = 0.d0
           y = 0.d0
-          rhovPoint = 0.d0
+!          rhovPoint = 0.d0
                     
           nq = min(40, nPoints - 1)
           nw = min(40, nPoints - 1)

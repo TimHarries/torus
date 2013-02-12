@@ -11,7 +11,7 @@ module setupamr_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute
   use gridtype_mod, only:   gridtype
-  USE parallel_mod, ONLY:   torus_abort
+  USE parallel_mod, ONLY:   torus_abort, torus_mpi_barrier
   use mpi_global_mod
   use TTauri_mod, only: TTauri_accretion_mass
 
@@ -2133,6 +2133,66 @@ recursive subroutine quickSublimate(thisOctal)
     endif
     enddo
   end subroutine quickSublimate
+
+
+  subroutine SanityCheckGrid(grid)
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, boundVec
+    type(OCTAL), pointer :: thisOctal, testOctal
+    integer :: subcell, i
+    if (myrankWorldGlobal == 1) then
+       do i = 1, 100
+          write(*,*) "Running AMR sanity check ",i
+
+10        continue
+          rVec = randomUnitVector()
+          rVec = grid%OctreeRoot%centre + rVec * grid%octreeRoot%subcellSize
+
+          testOctal => grid%octreeRoot
+          thisOctal => grid%octreeRoot
+
+          call findSubcellLocal(rVec, testOctal, subcell)
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) goto 10
+          write(*,*) "testOctal found OK"
+
+          write(*,*) "grid centre ",grid%octreeRoot%centre
+          write(*,*) "grid x min.max ",grid%octreeRoot%xMin, grid%octreeRoot%xMax
+          write(*,*) "grid z min.max ",grid%octreeRoot%zMin, grid%octreeRoot%zMax
+
+
+          boundVec = VECTOR(testOctal%xMin, 0.d0, rVec%z)
+          call findSubcellTD(boundVec, grid%octreeRoot, thisOctal, subcell)
+          write(*,*) "xMin test passed"
+
+          call findSubcellLocal(boundVec, thisOctal, subcell)
+          write(*,*) "xMin test passed with findsubcelllocal"
+
+
+          boundvec = VECTOR(testOctal%xMax, 0.d0, rVec%z)
+          call findSubcellTD(boundVec, grid%octreeRoot, thisOctal, subcell)
+          write(*,*) "xMax test passed"
+
+          call findSubcellLocal(boundVec, thisOctal, subcell)
+          write(*,*) "xMax test passed with findsubcelllocal"
+
+          boundVec = VECTOR(rVec%x, 0.d0, testOctal%zMin)
+          call findSubcellTD(boundVec, grid%octreeRoot, thisOctal, subcell)
+          write(*,*) "zMin test passed"
+
+          call findSubcellLocal(boundVec, thisOctal, subcell)
+          write(*,*) "zMin test passed with findsubcelllocal"
+
+          boundVec = VECTOR(rVec%x, 0.d0, testOctal%zMax)
+          call findSubcellTD(boundVec, grid%octreeRoot, thisOctal, subcell)
+          write(*,*) "zMax test passed"
+
+          call findSubcellLocal(boundVec, thisOctal, subcell)
+          write(*,*) "zMax test passed with findsubcelllocal"
+
+       enddo
+    endif
+    call torus_mpi_barrier
+  end subroutine SanityCheckGrid
 
 
 end module setupamr_mod
