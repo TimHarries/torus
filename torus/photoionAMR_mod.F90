@@ -3197,71 +3197,71 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
        else
 
-!          if(.not. crossedPeriodic .and. neverInteracted) then
-!             !Give photon packets a second chance if they haven't interacted
-!             stillingrid = .false.
-!             crossedPeriodic = .true.
-!             crossedMPIBoundary = .true.
-!             
-!             !Calculate new position vector
-!             upperBound%x = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
-!             lowerBound%x = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
-!             upperBound%y = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
-!             lowerBound%y = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
-!             upperBound%z = grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize
-!             lowerBound%z = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
-!
-!             iniVec = rVec
-!
-!             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize*2.d0
-!             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize*2.d0
-!             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize*2.d0
-!             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize*2.d0
-!             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize*2.d0
-!             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize*2.d0
-!
-!             if(rVec == iniVec) then
-!                !no transfer occurs
-!                crossedPeriodic = .false.
-!                crossedMPIBoundary = .false.
-!             end if
-!
-!             !This needs to be better
-!             !In 1D the vector may have been altered so that the pp escapes in the y or z direction
-!             !(not sure if this is a bug in the code) 
-!             if(grid%octreeRoot%oneD) then
-!                if(rvec%x == iniVec%x) then
-!                   !Escape was due to y or z
-!                   crossedPeriodic = .false.
-!                   crossedMPIBoundary = .false.
-!                   rVec = iniVec
-!                end if
-!             elseif(grid%octreeRoot%twoD) then
-!                if(rvec%y /= iniVec%y) then
-!                   !escape was due to y
-!                   rVec = iniVec
-!                end if 
-!             end if
-!
-!             if(crossedPeriodic .and. (inOctal(grid%octreeRoot,rVec))) then
-!                nextOctal => thisOctal
-!                nextSubcell = subcell
-!                call findSubcellLocal(rVec, nextOctal, nextSubcell)
-!                newThread = nextOctal%mpiThread(nextSubcell)
-!!                print *, "rVec1 ", iniVec
-!                print *, "rVec2 ", rVec
-!             else
-!                crossedPeriodic = .false.
-!                crossedMPIBoundary = .false.
-!                rVec = iniVec
-!   
-!             end if
-!
-!
-!
-!          else
-!             stillingrid = .false.
-!          end if
+          if(.not. crossedPeriodic .and. neverInteracted) then
+             !Give photon packets a second chance if they haven't interacted
+             stillingrid = .false.
+             crossedPeriodic = .true.
+             crossedMPIBoundary = .true.
+             
+             !Calculate new position vector
+             upperBound%x = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
+             lowerBound%x = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+             upperBound%y = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
+             lowerBound%y = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
+             upperBound%z = grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize
+             lowerBound%z = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+
+             iniVec = rVec
+
+             if(rVec%x < lowerBound%x .and. periodicX)   rVec%x = rVec%x + grid%octreeRoot%subcellSize*2.d0
+             if(rVec%y < lowerBound%y .and. periodicY)   rVec%y = rVec%y + grid%octreeRoot%subcellSize*2.d0
+             if(rVec%z < lowerBound%z .and. periodicZ)   rVec%z = rVec%z + grid%octreeRoot%subcellSize*2.d0
+             if(rVec%x > upperBound%x .and. periodicX)   rVec%x = rVec%x - grid%octreeRoot%subcellSize*2.d0
+             if(rVec%y > upperBound%y .and. PeriodicY)   rVec%y = rVec%y - grid%octreeRoot%subcellSize*2.d0
+             if(rVec%z > upperBound%z .and. periodicZ)   rVec%z = rVec%z - grid%octreeRoot%subcellSize*2.d0
+
+             if(rVec == iniVec) then
+                !no transfer occurs
+                crossedPeriodic = .false.
+                crossedMPIBoundary = .false.
+             end if
+
+             !This needs to be better
+             !In 1D the vector may have been altered so that the pp escapes in the y or z direction
+             !(not sure if this is a bug in the code) 
+             if(grid%octreeRoot%oneD) then
+                if(rvec%x == iniVec%x) then
+                   !Escape was due to y or z
+                   crossedPeriodic = .false.
+                   crossedMPIBoundary = .false.
+                   rVec = iniVec
+                end if
+             elseif(grid%octreeRoot%twoD) then
+                if(rvec%y /= iniVec%y) then
+                   !escape was due to y
+                   rVec = iniVec
+                end if 
+             end if
+
+             if(crossedPeriodic .and. (inOctal(grid%octreeRoot,rVec))) then
+                nextOctal => thisOctal
+                nextSubcell = subcell
+                call findSubcellLocal(rVec, nextOctal, nextSubcell)
+                newThread = nextOctal%mpiThread(nextSubcell)
+!                print *, "rVec1 ", iniVec
+                print *, "rVec2 ", rVec
+             else
+                crossedPeriodic = .false.
+                crossedMPIBoundary = .false.
+                rVec = iniVec
+   
+             end if
+
+
+
+          else
+             stillingrid = .false.
+          end if
           stillInGrid = .false.
           escaped = .true. 
 
