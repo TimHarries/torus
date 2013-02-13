@@ -1869,7 +1869,7 @@ end subroutine radiationHydro
                !$OMP SHARED(dfreq, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest) &
-               !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal)
+               !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal, nToNextEventPhoto, nNotEscaped)
                
                finished = .false.
                escaped = .false.
