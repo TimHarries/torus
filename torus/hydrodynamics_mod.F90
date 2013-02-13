@@ -2254,7 +2254,7 @@ contains
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
                 call pressureforceCylindrical(child, dt, grid, direction)
-                exit
+               exit
              end if
           end do
        else
@@ -2410,7 +2410,7 @@ contains
     integer :: subcell, i
     real(double) :: thisT, dt, inirhoe, du
 !    real(double), parameter :: Teq = 1.d0
-    real(double), parameter :: Teq = 2.33d0*mHydrogen/kerg
+    real(double), parameter :: To = 2.33d0*mHydrogen/kerg
 
     
     do subcell = 1, thisoctal%maxchildren
@@ -2426,18 +2426,44 @@ contains
        else
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
-
-
+             
              thisT = 0.d0
 
-             du = thisOctal%rhoe(subcell) - thisOctal%rhoeLastTime(subcell)
-             du = du * Teq
-
-             thisT = thisOctal%temperature(subcell) + &
-                  (thisOCtal%gamma(subcell)-1.d0)*du
-
-             thisT = thisT - ((1.d0/256.d0)*(du/dt))
+             print *, " "
+             print *, "A", thisOctal%temperature(subcell), thisOctal%rhoe(subcell)
+             thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0) * &
+                  (To*thisOctal%rhoe(subcell)/thisOctal%rho(subcell))
              
+             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - ((1.d0/256.d0) &
+                  *dt * ((thisOctal%gamma(subcell) - 1.d0) * &
+                  (To*thisOctal%rhoe(subcell)/thisOctal%rho(subcell)) - &
+                  To))
+             !                  thisOctal%temperature(subcell)))
+
+             print *, "B", thisOctal%temperature(subcell), thisOctal%rhoe(subcell)
+             print *, " "
+
+
+
+
+!             du = thisOctal%rhoe(subcell)/thisOctal%rho(subcell) &
+!                  - thisOctal%rhoeLastTime(subcell)
+!!             du = du * Teq
+!
+!!             thisT = thisOctal%temperature(subcell) + &
+ !                 (thisOCtal%gamma(subcell)-1.d0)*du
+!!             print *, "-------------- "
+!             print *, "du"
+!!             print *, "thisT a", thisT
+!             if(dt /= 0.d0) then
+!                thisT = thisT - ((1.d0/256.d0)*(du/dt))
+!!                print *, "thisT b", thisT
+!             end if
+!!             print *, "thisT ", thisT
+!!             print *, " "
+!             if(dt /= 0.d0) then
+!                thisOctal%temperature(subcell) = thisT
+!             end if
 
 !             du = (thisOctal%rhoe(subcell)/thisOctal%rho(subcell)) &
 !                  - (inirhoe/thisOctal%rho(subcell))
@@ -5704,7 +5730,7 @@ end subroutine sumFluxes
              end if
           end do
        else 
-          thisOctal%rhoeLastTime(subcell) = thisOctal%rhoe(subcell)
+          thisOctal%rhoeLastTime(subcell) = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
        end if
     end do
   end subroutine assignRhoeLast

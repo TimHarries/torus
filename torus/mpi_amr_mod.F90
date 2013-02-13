@@ -2567,7 +2567,7 @@ contains
     use mpi
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
-    real(double) :: loc(3), tempStorage(8)
+    real(double) :: loc(3), tempStorage(9)
     integer :: subcell, i
     logical :: doJustGrav
     integer :: tag1 = 78, tag2 = 79
@@ -2612,12 +2612,12 @@ contains
             ! write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, localWorldCommunicator, ierr)
             ! write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 8, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), &
+             call MPI_RECV(tempStorage, 9, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), &
                   tag2, localWorldCommunicator, status, ierr)
             ! write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
-                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:9))
                    thisOctal%tempStorage = 0.d0
                 else
                    allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
@@ -2637,7 +2637,7 @@ contains
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
     integer :: nDepth
-    real(double) :: loc(3), tempStorage(8)
+    real(double) :: loc(3), tempStorage(9)
     logical :: doJustGrav
     integer :: subcell, i
     integer :: tag1 = 78, tag2 = 79
@@ -2686,7 +2686,7 @@ contains
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) then
                 if (.not.doJustGrav) then
-                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:8))
+                   allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:9))
                    thisOctal%tempStorage = 0.d0
                 else
                    allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:1))
@@ -2705,7 +2705,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     logical :: sendLoop
-    real(double) :: loc(3), tempStorage(8)
+    real(double) :: loc(3), tempStorage(9)
     integer :: ierr, receiveThread
     integer :: status(MPI_STATUS_SIZE)
     integer :: subcell
@@ -2738,11 +2738,12 @@ contains
              tempStorage(5) = thisOctal%rhow(Subcell)
              tempStorage(6) = thisOctal%energy(Subcell)
              tempStorage(7) = thisOctal%pressure_i(Subcell)
-             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
+             tempStorage(9) = thisOctal%temperature(subcell)
+             call MPI_SEND(tempStorage, 9, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
           else
 !             tempStorage(1) = thisOctal%phi_i(Subcell)
              tempStorage(1) = thisOctal%phi_gas(Subcell)
-             call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
+             call MPI_SEND(tempStorage, 9, MPI_DOUBLE_PRECISION, receiveThread, tag2, localWorldCommunicator, ierr)
           endif
        endif
     enddo
@@ -2756,7 +2757,7 @@ contains
     type(OCTAL), pointer :: thisOctal
     logical :: sendLoop
     integer :: nDepth
-    real(double) :: loc(3), tempStorage(8)
+    real(double) :: loc(3), tempStorage(9)
     integer :: ierr, receiveThread
     integer :: status(MPI_STATUS_SIZE)
     integer :: subcell
@@ -3040,9 +3041,10 @@ end subroutine writeRadialFile
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen
     real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas
+    real(double) :: temperature
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 10
+    integer, parameter :: nStorage = 11
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE)
@@ -3080,8 +3082,11 @@ end subroutine writeRadialFile
           p = tempStorage(8)
           phi_stars = tempStorage(9)
           phi_gas = tempStorage(10)
+          temperature = tempStorage(11)
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p
+          else if (grid%geometry == "SB_coolshk") then
+             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas
           end if
@@ -3127,6 +3132,7 @@ end subroutine writeRadialFile
              tempStorage(8) = thisOctal%pressure_i(subcell)             
              tempStorage(9) = thisOctal%phi_stars(subcell)             
              tempStorage(10) = thisOctal%phi_gas(subcell)             
+             tempStorage(11) = thisOctal%temperature(subcell)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
        enddo
