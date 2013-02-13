@@ -5940,7 +5940,7 @@ end subroutine sumFluxes
                 thisOctal%rhow(subcell) = thisOctal%tempStorage(subcell,5)
                 thisOctal%energy(subcell) = thisOctal%tempStorage(subcell,6)
                 thisOctal%pressure_i(subcell) = thisOctal%tempStorage(subcell,7)
-                thisOctal%temperature(subcell) = thisOctal%tempStorage(subcell,9)
+                thisOctal%temperature(subcell) = real(thisOctal%tempStorage(subcell,9))
                 if (thisOctal%temperature(subcell) == 0.0) then
                    write(*,*) "warning: temperature is zero in transfertempstorage"
                    write(*,*) "pos ",subcellCentre(thisOctal,subcell)
