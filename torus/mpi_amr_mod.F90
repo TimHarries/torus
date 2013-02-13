@@ -3142,7 +3142,6 @@ end subroutine writeRadialFile
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
-    integer :: nPoints
     type(VECTOR) :: uHat, position
     real(double) :: loc(4), tauRad, tauWanted, tau, flag
     integer, parameter :: nStorage = 5
@@ -3152,7 +3151,6 @@ end subroutine writeRadialFile
     real :: kappap
     logical :: stillLooping
     integer :: sendThread
-    integer :: i
     logical :: hitGrid
 
     thisOctal => grid%octreeRoot
