@@ -710,6 +710,9 @@ contains
             "T Tauri accretion rate model: ","(a,a,1x,a)","constant", ok, .true.)
        call getReal("mdotpar1", MdotParameter1, 1., cLine, fLine, nLines, &
             "1st parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .true.)
+       if (maxCellMass > 1.d29) then
+          maxCellMass = 1.d17 * (mdotparameter1/1.d-8)
+       endif
        call getReal("mdotpar2", MdotParameter2, 1., cLine, fLine, nLines, &
             "2nd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
        call getReal("mdotpar3", MdotParameter3, 1., cLine, fLine, nLines, &

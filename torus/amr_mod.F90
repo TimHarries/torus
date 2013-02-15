@@ -3533,7 +3533,7 @@ CONTAINS
           
           fac = (r*1.d10-TTauriRInner)/(TTauriRouter-TTauriRinner)
                     
-          fac = 5d0
+          fac = 10.d0
           
           if (inFlow) then
              !        write(*,*) "c/l ",cellsize/laccretion

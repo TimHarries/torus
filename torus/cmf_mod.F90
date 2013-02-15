@@ -3466,6 +3466,7 @@ contains
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
+
     iv1 = 1
     iv2 = nv
  
@@ -3595,6 +3596,7 @@ contains
     nr1 = 100
     nr2 = 100
     nr3 = 100
+    if (.not.ttauriWind) nr3 = 0
 
 
     nr = nr1 + nr2 + nr3
@@ -3630,6 +3632,7 @@ contains
        enddo
     endif
 
+
     if (nr3 > 0) then
        rmin = ttauriRouter/1.d10 ! DW_Rmin
        rMax = DW_Rmax
@@ -3651,6 +3654,7 @@ contains
           dphi(iPhi) = phi2 - phi1
        enddo
 
+       if(writeoutput) open(66,file="points_spec_from_rays.dat",status="unknown",form="formatted")
     do ir = 1, nr
        r1 = rGrid(ir)
 
@@ -3663,6 +3667,10 @@ contains
           xPos = r1 * sin(phi1)
           yPos = 0.d0
           zPos = r1 * cos(phi1)
+
+          if (writeoutput) then
+             write(66,*) xpos,zpos
+          endif
 
           xProj =  VECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
           call normalize(xProj)
@@ -3677,6 +3685,7 @@ contains
           dOmega(nRay) = da(nRay) / (distance/1.d10)**2
        enddo
     enddo
+    if (writeoutput) close(66)
   end subroutine createRayGrid
 
 
