@@ -7032,27 +7032,27 @@ endif
        if(v1) then
           thisOctal%rho(subcell) = 10.d0
           thisOctal%pressure_i(subcell) = 10.d0
-          thisOctal%temperature(subcell) = 10.d0*2.33d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg)
+          thisOctal%temperature(subcell) = real(10.d0*2.33d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg))
        else
           thisOctal%rho(subcell) = 1000.d0
           thisOctal%pressure_i(subcell) = 1000.d0
-          thisOctal%temperature(subcell) = 1000.d0*2.33d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg)
+          thisOctal%temperature(subcell) = real(1000.d0*2.33d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg))
        end if
 !       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)                
     else
        if(v1) then
           thisOctal%rho(subcell) = 1.d0
           thisOctal%pressure_i(subcell) = 1.d0
-          thisOctal%temperature(subcell) = 10.d0*2.33d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg)
+          thisOctal%temperature(subcell) = real(10.d0*2.33d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg))
 !          thisOctal%temperature(subcell) = 100.d0                                                  
        else
           thisOctal%rho(subcell) = 1.d0
           thisOctal%pressure_i(subcell) = 1.d0
-          thisOctal%temperature(subcell) = 1000.d0*2.33d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg)
+          thisOctal%temperature(subcell) = real(1000.d0*2.33d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg))
 !          thisOctal%temperature(subcell) = 10000.d0                                                
        end if
 !       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)                
