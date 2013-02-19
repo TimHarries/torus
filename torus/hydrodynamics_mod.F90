@@ -2408,7 +2408,7 @@ contains
     type(gridtype) :: grid
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: thisT, dt, inirhoe, du
+    real(double) :: thisT, dt, inirhoe !, du
 !    real(double), parameter :: Teq = 1.d0
     real(double), parameter :: To = 2.33d0*mHydrogen/kerg
 
@@ -2431,8 +2431,10 @@ contains
 
              print *, " "
              print *, "A", thisOctal%temperature(subcell), thisOctal%rhoe(subcell)
-             thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0) * &
-                  (To*thisOctal%rhoe(subcell)/thisOctal%rho(subcell))
+! Explicit conversion to single precision to avoid compiler warrning
+             thisOctal%temperature(subcell) = real( &
+             (thisOctal%gamma(subcell) - 1.d0) * (To*thisOctal%rhoe(subcell)/thisOctal%rho(subcell)), &
+             si)
              
              thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - ((1.d0/256.d0) &
                   *dt * ((thisOctal%gamma(subcell) - 1.d0) * &
