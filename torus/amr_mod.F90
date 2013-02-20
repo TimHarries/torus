@@ -243,6 +243,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+    CASE("drabek")
+       call calcDrabekDensity(thisOctal, subcell)
+
     CASE("SB_CD_1Da")
        call calcContactDiscontinuityOneDDensity(thisOctal, subcell, v1=.true.)
 
@@ -3818,8 +3821,8 @@ CONTAINS
 !             end if
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
-            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", "SB_coolshk")
-
+            ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
+            "SB_coolshk", "drabek")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -6994,6 +6997,8 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     logical :: v1
+    logical, save :: firstTime = .true.
+    real(double) :: ethermal
 
     rVec = subcellCentre(thisOctal, subcell)
 
@@ -7013,51 +7018,75 @@ endif
        thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     end if
 
-    if(CD_version == 1) then
-       thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-    else if (CD_version == 2) then
-       thisOctal%velocity(subcell) = VECTOR(0.5, 0., 0.)
-       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-    else if (CD_version == 3) then
-       thisOctal%velocity(subcell) = VECTOR(2., 0., 0.)
-       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-    else if (CD_version == 4) then
-       thisOctal%velocity(subcell) = VECTOR(20., 0., 0.)
-       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-    end if
+!    if(CD_version == 1) then
+!       thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+!    else if (CD_version == 2) then
+!       thisOctal%velocity(subcell) = VECTOR(0.5, 0., 0.)
+!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+!    else if (CD_version == 3) then
+!       thisOctal%velocity(subcell) = VECTOR(2., 0., 0.)
+!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+!    else if (CD_version == 4) then
+!       thisOctal%velocity(subcell) = VECTOR(20., 0., 0.)
+!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
+!    end if
 
 
-    if (rvec%x < 0.5d0) then
+!    if (rvec%x < 0.6d0 .and. rVec%x > 0.1d0) then
+    if(rVec%x > 0.5d0) then
        if(v1) then
           thisOctal%rho(subcell) = 10.d0
-          thisOctal%pressure_i(subcell) = 10.d0
-          thisOctal%temperature(subcell) = real(10.d0*2.33d0*mHydrogen/&
+
+          thisOctal%temperature(subcell) = real(10.d0*mHydrogen/&
                (thisOctal%rho(subcell)*kerg))
+
+          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
+               kerg*thisOctal%temperature(subcell))/(mHydrogen)
+
+          if(firstTime) then
+             print *, "HIGH RHO TEMP", thisOctal%temperature(subcell)
+             print *, "HIGH RHO P", thisOctal%pressure_i(subcell)
+          end if
+          
        else
           thisOctal%rho(subcell) = 1000.d0
-          thisOctal%pressure_i(subcell) = 1000.d0
-          thisOctal%temperature(subcell) = real(1000.d0*2.33d0*mHydrogen/&
+  !        thisOctal%pressure_i(subcell) = 1000.d0
+          thisOctal%temperature(subcell) = real(1000.d0*mHydrogen/&
                (thisOctal%rho(subcell)*kerg))
+          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
+               kerg*thisOctal%temperature(subcell))/(mHydrogen)
        end if
 !       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)                
     else
        if(v1) then
           thisOctal%rho(subcell) = 1.d0
-          thisOctal%pressure_i(subcell) = 1.d0
-          thisOctal%temperature(subcell) = real(10.d0*2.33d0*mHydrogen/&
+ !         thisOctal%pressure_i(subcell) = 10.d0
+          thisOctal%temperature(subcell) = real(10.d0*mHydrogen/&
                (thisOctal%rho(subcell)*kerg))
+          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
+               kerg*thisOctal%temperature(subcell))/(mHydrogen)
+          if(firstTime) then
+             print *, "LOW RHO TEMP", thisOctal%temperature(subcell)        
+             print *, "LOW RHO P", thisOctal%pressure_i(subcell) 
+             firstTime = .false.
+          end if
+
 !          thisOctal%temperature(subcell) = 100.d0                                                  
        else
           thisOctal%rho(subcell) = 1.d0
-          thisOctal%pressure_i(subcell) = 1.d0
-          thisOctal%temperature(subcell) = real(1000.d0*2.33d0*mHydrogen/&
+!          thisOctal%pressure_i(subcell) = 1000.d0
+          thisOctal%temperature(subcell) = real(1000.d0*mHydrogen/&
                (thisOctal%rho(subcell)*kerg))
+          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
+               kerg*thisOctal%temperature(subcell))/(mHydrogen)
 !          thisOctal%temperature(subcell) = 10000.d0                                                
        end if
 !       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)                
     endif
 
+    
+    
 
 !    if (rvec%x < 0.5d0) then
 !       if(v1) then
@@ -7086,7 +7115,11 @@ endif
 !
 !       end if
 !    endif
-    thisOctal%energy(subcell) = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell)*thisOctal%rho(subcell)
     thisOctal%phi_i(subcell) = 0.d0
 !    thisOctal%boundaryCondition(subcell) = 1
     thisOctal%gamma(subcell) = 1.0001
@@ -7230,6 +7263,77 @@ endif
     thisOctal%iEquationOfState(subcell) = 0
 
   end subroutine calcContactDiscontinuityTwoDDensity
+
+
+
+!
+!Emily wants to produce simulated molecular line data for
+!spheres of varying density distribution to compare with
+!her observations
+!
+  subroutine calcDrabekDensity(thisOctal, subcell)
+    use inputs_mod, only : density_code
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, fac, centre
+    logical, save :: firstTime = .true.
+    integer, parameter :: nr = 1000
+    real(double), save :: r(nr), rho(nr)
+    integer :: i
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+
+    if(density_code == 1) then ! bonnor ebert sphere
+       if (firstTime) then
+          firstTime = .false.
+          r = 0.d0; rho = 0.d0
+          centre = 0.d0
+          call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)          
+          r = r / 1.d10
+          if (myrankGlobal==1) then
+             do i =1 , nr
+                write(55, *) r(i)*1.d10/autocm, rho(i)
+             enddo
+          endif
+       endif
+
+       if (rMod < r(nr)) then
+          call locate(r, nr, rMod, i)
+          fac = (rMod-r(i))/(r(i+1)-r(i))
+          thisOctal%rho(subcell) = rho(i) + fac*(rho(i+1)-rho(i))
+          thisOctal%temperature(subcell) = 10.d0
+       else
+          thisOctal%rho(subcell) = rho(nr)
+          thisOctal%temperature(subcell) = 10.d0
+       endif
+
+
+    else if(density_code == 2) then ! log normal
+
+    else if(density_code == 3) then !uniform density
+       
+    end if
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+  end subroutine calcDrabekDensity
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound

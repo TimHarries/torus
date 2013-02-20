@@ -2033,30 +2033,32 @@ contains
 !Get pressure, independent of viscosity
           thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
 
-
-          if (.not.useTensorViscosity) then
-             !Calculate viscosity contribution to cell pressure
-             biggamma = 0.d0
-             if(withViscosity) then
-                if (.not.thisoctal%edgecell(subcell)) then
-                   useviscosity = .false.
-                   if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
-!                   if (thisOctal%divV(subcell) < 0.d0) useViscosity = .true.
-                   if (useviscosity) then
-                      
-                      biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
-                           * thisoctal%rho(subcell)
-
-!                      bigGamma = eta**2 * (thisOctal%subcellSize*gridDistancescale)**2 * &
-!                           thisOctal%rho(subcell) * thisOctal%divV(subcell)**2
-                   else
-                      biggamma = 0.d0
+!          if(0 == 1) then
+             if (.not.useTensorViscosity) then
+                !Calculate viscosity contribution to cell pressure
+                biggamma = 0.d0
+                if(withViscosity) then
+                   if (.not.thisoctal%edgecell(subcell)) then
+                      useviscosity = .false.
+                      if (thisoctal%u_i_plus_1(subcell) .le. thisoctal%u_i_minus_1(subcell)) useviscosity = .true.
+                      !                   if (thisOctal%divV(subcell) < 0.d0) useViscosity = .true.
+                      if (useviscosity) then
+                         
+                         biggamma = 0.25d0 * eta**2 * (thisoctal%u_i_plus_1(subcell) - thisoctal%u_i_minus_1(subcell))**2 &
+                              * thisoctal%rho(subcell)
+                         
+                         !                      bigGamma = eta**2 * (thisOctal%subcellSize*gridDistancescale)**2 * &
+                         !                           thisOctal%rho(subcell) * thisOctal%divV(subcell)**2
+                      else
+                         biggamma = 0.d0
+                      endif
                    endif
-                endif
-!                if (bigGamma /= 0.d0) then
-!                   write(*,*) thisOctal%pressure_i(subcell),bigGamma,biggamma2
-!                endif
-
+                   !                if (bigGamma /= 0.d0) then
+                   !                   write(*,*) thisOctal%pressure_i(subcell),bigGamma,biggamma2
+                   !                endif
+ !               else
+ !                  biggamma = 0.d0
+ !               end if
 
                 thisoctal%pressure_i(subcell) = thisoctal%pressure_i(subcell) + biggamma
              end if
@@ -2683,6 +2685,30 @@ contains
   end subroutine copyrhotoq
 
 !copy cell rho to advecting quantity q
+  recursive subroutine copyTemptoq(thisoctal)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyTemptoq(child)
+                exit
+             end if
+          end do
+       else
+  
+          thisoctal%q_i(subcell) = thisoctal%temperature(subcell)
+        
+       endif
+    enddo
+  end subroutine copyTemptoq
+
+!copy cell rho to advecting quantity q
   recursive subroutine copyrhorvtoq(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -2849,6 +2875,33 @@ contains
        endif
     enddo
   end subroutine copyrhowtoq
+
+!copy advecting quantity q back to cell rhov
+  recursive subroutine copyqtoTemp(thisoctal)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyqtoTemp(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+          if (.not.thisoctal%ghostcell(subcell)) then
+             thisoctal%temperature(subcell) = thisoctal%q_i(subcell)
+          endif
+          
+       endif
+    enddo
+  end subroutine copyqtoTemp
+
 
 !copy advecting quantity q back to cell rhov
   recursive subroutine copyqtorhov(thisoctal)
@@ -3145,6 +3198,22 @@ contains
   end subroutine advectrho
 
 !copy cell rho to q, advect q, copy q back to cell rho
+  subroutine advectTemperature(grid, direction, dt, npairs, thread1, &
+       thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+
+    call copyTemptoq(grid%octreeroot)
+    call advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    call copyqtoTemp(grid%octreeroot)
+
+  end subroutine advectTemperature
+
+!copy cell rho to q, advect q, copy q back to cell rho
   subroutine advectrhoCylindrical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -3340,7 +3409,7 @@ contains
 !    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupqx(grid%octreeroot, grid, direction)
 !   call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-   call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
     call fluxlimiter(grid%octreeroot)
     call constructflux(grid%octreeroot, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
@@ -3446,6 +3515,14 @@ end subroutine sumFluxes
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    call advectTemperature(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+
+!impose boundary conditions again
+!THAW - If the model is isothermal the temperature at the boundaries needs to be updated prior to the 
+!new pressure calculations otherwise you use an out of date temperature
+    call imposeboundary(grid%octreeroot, grid)
+    call periodboundary(grid)
+    call transfertempstorage(grid%octreeroot)
 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call computepressureGeneral(grid, grid%octreeroot, .false.) !Thaw Rhie-Chow might just need setuppressureu
@@ -4259,7 +4336,7 @@ end subroutine sumFluxes
     use inputs_mod, only : tStart, tEnd, tDump, dorefine, amrTolerance
     use mpi
     type(gridtype) :: grid
-    real(double) :: dt,  gamma, mu
+    real(double) :: dt,  gamma!, mu
     real(double) :: currentTime
     integer :: i
     type(VECTOR) :: direction
@@ -4275,13 +4352,14 @@ end subroutine sumFluxes
     integer :: ierr
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-    gamma = 7.d0 / 5.d0
-    mu = 2.d0
+!!!!! What was this doing here
+!    gamma = 7.d0 / 5.d0
+!    mu = 2.d0
     nHydroThreads = nHydroThreadsGlobal
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
 
-    mu = 2.d0
+!    mu = 2.d0
 
 
 
@@ -4443,6 +4521,7 @@ end subroutine sumFluxes
 
 !dump simulation data if dump time is reached
        if (currentTime .ge. nextDumpTime) then
+!       if(0 == 0) then
           if(grid%geometry == "hydro1d") then
              write(plotfile,'(a,i4.4,a)') "sod_",it,".dat"
           else
@@ -4454,7 +4533,7 @@ end subroutine sumFluxes
                   VECTOR(1.d0,0.d0,0.0d0), VECTOR(2.d0, 0.d0, 0.0d0), 1024)
           else
              call  dumpValuesAlongLine(grid, plotfile, &
-                  VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.d0, 0.d0, 0.0d0), 1000)
+                  VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.5d0, 0.d0, 0.0d0), 1000)
           end if
           call assignRhoeLast(grid%octreeRoot)
           nextDumpTime = nextDumpTime + tDump
@@ -10678,7 +10757,12 @@ end subroutine refineGridGeneric2
              mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
           else
              mu = 2.33d0
+!             if(grid%geometry == "SB_1D_2Da" .or. grid%geometry == "SB_CD_1Db" &
+!                  .or. grid%geometry == "SB_1D_2Da" .or. grid%geometry == "SB_CD_1Db") then                
+             mu = 1.d0
+!             end if
           endif
+          
 
 !          mu = 1.d0
 

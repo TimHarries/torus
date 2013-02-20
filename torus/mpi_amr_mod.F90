@@ -815,7 +815,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 32
+    integer, parameter :: nStorage = 33
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
@@ -827,6 +827,7 @@ contains
     integer :: nDepth
     integer :: ierr
     real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
+    real(double) :: temperature
     real(double) :: rm1, rum1, pm1, qViscosity(3,3)
 
     select case(boundaryType)
@@ -1012,6 +1013,7 @@ contains
                 tempStorage(31) = neighbourOctal%qViscosity(neighbourSubcell,3,2)
                 tempStorage(32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
 
+                tempStorage(33) = neighbourOctal%temperature(subcell)
 
 !                write(*,*) myrank," set up tempstorage with ", &
 
@@ -1020,7 +1022,7 @@ contains
 
              else ! need to average
                 call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-                     flux, phi, phigas, rm1, rum1, pm1, qViscosity)
+                     flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
                 tempStorage(1) = q
                 tempStorage(2) = rho
                 tempStorage(3) = rhoe
@@ -1056,7 +1058,7 @@ contains
                 tempStorage(31) = qViscosity(3,2)
                 tempStorage(32) = qViscosity(3,3)
 
-
+                tempStorage(33) = temperature
              endif
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
@@ -1975,7 +1977,7 @@ contains
 
     real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
     real(double), intent(out) :: xplus, px, py, pz, qViscosity(3,3), rm1, rum1, pm1
-
+    real(double) :: temperature
 
     nbound = getNboundFromDirection(direction)
 
@@ -2042,7 +2044,7 @@ contains
           endif
        else
           call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-               flux, phi, phigas, rm1, rum1, pm1, qViscosity) ! fine to coarse
+               flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature) ! fine to coarse
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           
        endif
@@ -2130,13 +2132,13 @@ contains
 
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
-       rhoe, pressure, flux, phi, phigas, rm1, rum1, pm1, qViscosity)
+       rhoe, pressure, flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
     use inputs_mod, only : useTensorViscosity, cylindricalHydro
 
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
     real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi, phigas, qViscosity(3,3)
-    real(double) :: fac, rm1, rum1, pm1
+    real(double) :: fac, rm1, rum1, pm1, temperature
     type(VECTOR) :: direction
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
@@ -2155,6 +2157,7 @@ contains
        rhov = neighbourOctal%rhov(neighbourSubcell)
        rhow = neighbourOctal%rhow(neighbourSubcell)
        pressure = neighbourOctal%pressure_i(neighbourSubcell)
+       temperature = neighbourOctal%temperature(neighbourSubcell)
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
@@ -2184,6 +2187,7 @@ contains
        rhov = 0.5d0*(neighbourOctal%rhov(nSubcell(1)) + neighbourOctal%rhov(nSubcell(2)))
        rhow = 0.5d0*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)))
        pressure = 0.5d0*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)))
+       temperature = 0.5d0*(neighbourOctal%temperature(nSubcell(1)) + neighbourOctal%temperature(nSubcell(2)))
        flux = 0.5d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)))
        phi = 0.5d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)))
        phigas = 0.5d0*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)))
@@ -2243,6 +2247,9 @@ contains
 
        rhow = fac*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)) + & 
             neighbourOctal%rhow(nSubcell(3)) + neighbourOctal%rhow(nSubcell(4)))
+
+       rhow = fac*(neighbourOctal%temperature(nSubcell(1)) + neighbourOctal%temperature(nSubcell(2)) + & 
+            neighbourOctal%temperature(nSubcell(3)) + neighbourOctal%temperature(nSubcell(4)))
 
        pressure = fac*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)) + & 
             neighbourOctal%pressure_i(nSubcell(3)) + neighbourOctal%pressure_i(nSubcell(4)))
@@ -3084,7 +3091,11 @@ end subroutine writeRadialFile
           phi_gas = tempStorage(10)
           temperature = tempStorage(11)
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
-             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p
+!             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg), &
+!                  rhoe/rho
+             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature*1.d7, &
+                  rhoe/rho
+
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else

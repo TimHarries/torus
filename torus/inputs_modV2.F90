@@ -529,6 +529,7 @@ contains
 
 !       call getString("contflux", contFluxFile, cLine, fLine, nLines, &
 !            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+       
 
        call getReal("omega", bigOmega, 1., cLine, fLine, nLines, &
             "Ratio of w/w_c: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
@@ -546,6 +547,18 @@ contains
              stop
           endif
        endif
+
+    case("drabek")
+       call getInteger("density_code", density_code, cLine, fLine, nLines, &
+            "Density distribution code : ","(a,i8,a)", 2, ok, .false.)
+       
+       call getDouble("peakRho", peakRho, 1.d0, cLine, fLine, nLines, &
+            "Peak cloud density : ", "(a,es9.3,1x,a)", 1.0d0, ok, .false.) 
+
+       call getDouble("meanT", meanT, 1.d0, cLine, fLine, nLines, &
+            "Average cloud temperature : ", "(a,es9.3,1x,a)", 1.0d0, ok, .false.) 
+       
+       
 
 
     case("starburst")

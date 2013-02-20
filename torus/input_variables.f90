@@ -216,6 +216,16 @@
   integer :: itrans
   integer :: observerpos ! position of observer in molecular_mod image generation
 
+
+!-----------------------------
+! Drabek model parameters    |
+!-----------------------------
+  integer :: density_Code
+  real(double) :: peakRho
+  real(double) :: meanT
+!-----------------------------
+
+
 !------------------------------------------
 ! Galactic plane survey (angularImage_mod) 
 !------------------------------------------
