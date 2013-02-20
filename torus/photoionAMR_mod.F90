@@ -2491,7 +2491,7 @@ end subroutine radiationHydro
                    !                         write(*,*) i, "temp, frac ",thisOctal%temperature(1),thisOctal%ionFrac(1,1)
                    !                      endif
                    if (iter > 100) then
-                      write(*,*) "temperature/ionization fraction not converged after 100 iterations ",thisOctal%ghostCell(subcell)
+                      write(*,*) "temperature/ionization fraction not converged after 100 iterations "!,thisOctal%ghostCell(subcell)
                       converged = .true.
                    endif
                    !                   write(*,*) "ion/thermal converged after ",iter
