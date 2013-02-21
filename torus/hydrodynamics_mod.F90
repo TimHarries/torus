@@ -2895,7 +2895,7 @@ contains
        else
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
-             thisoctal%temperature(subcell) = thisoctal%q_i(subcell)
+             thisoctal%temperature(subcell) = real(thisoctal%q_i(subcell))
           endif
           
        endif
