@@ -4336,7 +4336,7 @@ end subroutine sumFluxes
     use inputs_mod, only : tStart, tEnd, tDump, dorefine, amrTolerance
     use mpi
     type(gridtype) :: grid
-    real(double) :: dt,  gamma!, mu
+    real(double) :: dt!,  gamma!, mu
     real(double) :: currentTime
     integer :: i
     type(VECTOR) :: direction
@@ -4519,7 +4519,7 @@ end subroutine sumFluxes
 !update the simulation time
        currentTime = currentTime + dt
 
-!dump simulation data if dump time is reached
+!dump simulation data if dump time is reached!
        if (currentTime .ge. nextDumpTime) then
 !       if(0 == 0) then
           if(grid%geometry == "hydro1d") then
