@@ -7521,7 +7521,7 @@ endif
   subroutine calcIsothermalShockDensity(thisOctal, subcell)
     use inputs_mod, only : CD_version, amrgridcentrex
     use inputs_mod, only : inflowrho, inflowspeed, inflowmomentum
-    use inputs_mod, only : inflowpressure, inflowenergy, inflowrhoe
+    use inputs_mod, only : inflowpressure, inflowenergy, inflowrhoe, inflowTemp
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7589,7 +7589,7 @@ endif
     inflowPressure = 1.d0
     inflowEnergy = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
     inflowRhoe = inflowEnergy * inflowRho
-
+    inflowTemp = thisOctal%temperature(subcell)
 
   end subroutine calcIsothermalShockDensity
 

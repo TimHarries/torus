@@ -6694,7 +6694,8 @@ real(double) :: rho
 
                    thisOctal%tempStorage(subcell,6) = inflowEnergy
                    thisOctal%tempStorage(subcell,7) = inflowPressure
-
+                   thisOctal%tempStorage(subcell,9) = inflowTemp
+                   
 ! NB confusion regarding 2d being x,z rather than x,y
                    
 !                   print *, "enforcing in mom of ", inflowmomentum

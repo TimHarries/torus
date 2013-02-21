@@ -135,6 +135,7 @@
   real(double) :: inflowRhoE
   real(double) :: inflowEnergy
   real(double) :: inflowMomentum
+  real(double) :: inflowTemp
   real(double) :: inflowSpeed
 
 !gradient direction of inflow conditions
