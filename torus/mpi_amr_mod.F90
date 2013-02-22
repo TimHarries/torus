@@ -1013,7 +1013,7 @@ contains
                 tempStorage(31) = neighbourOctal%qViscosity(neighbourSubcell,3,2)
                 tempStorage(32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
 
-                tempStorage(33) = neighbourOctal%temperature(subcell)
+                tempStorage(33) = neighbourOctal%temperature(neighbourSubcell)
 
 !                write(*,*) myrank," set up tempstorage with ", &
 
