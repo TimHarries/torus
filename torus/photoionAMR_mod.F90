@@ -817,7 +817,7 @@ contains
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         ",  &
+               "diff         ","dust1        ",  &
                "phi          ","rhou         ","rhov         ","rhow         "/))
 
 

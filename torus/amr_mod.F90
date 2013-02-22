@@ -1120,7 +1120,7 @@ CONTAINS
     ! if this is the root of the tree, we initialize the counter
     IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
     
-    if (thisOctal%nDepth == nDepth) then
+    if ((thisOctal%nDepth == nDepth).or.((thisOctal%nDepth < nDepth).and.(thisOctal%nChildren==0))) then
        counter = counter + 1 
        array(counter)%content => thisOctal
        array(counter)%inUse = .true.
@@ -7919,7 +7919,7 @@ endif
 !          thisOctal%rhov(subcell) = 2.d0*(rMod/sphereRadius)*sqrt(bigG * mSol / (rDash*1.d10))*(rDash*1.d10)*thisOctal%rho(subcell)
        endif
     else
-       thisOctal%rho(subcell) = 1.d-1 * rhoSphere
+       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif

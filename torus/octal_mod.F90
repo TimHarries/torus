@@ -318,7 +318,7 @@ MODULE octal_mod
     type(VECTOR), pointer :: radiationMomentum(:) => null()
     type(VECTOR), pointer :: kappaTimesFlux(:) => null()
     real(double), pointer :: phi_i(:) => null(), phi_i_plus_1(:) => null(), phi_i_minus_1(:) => null()
-    real(double), pointer :: phi_stars(:) => null(), phi_gas(:) => null()
+    real(double), pointer :: phi_stars(:) => null(), phi_gas(:) => null(), phi_gas_corr(:) => null()
     real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
     real(double),pointer :: rhorv_i_minus_1(:) => null(), rhorv_i_plus_1(:) => null()
     type(VECTOR), pointer :: fViscosity(:) => null()

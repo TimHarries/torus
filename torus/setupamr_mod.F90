@@ -386,6 +386,11 @@ contains
            call howmanysplits()
            call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
            call finishGrid(grid%octreeRoot, grid, romData=romData)
+
+          call findMassOverAllThreads(grid, totalmass)
+          write(message,'(a,1pe12.5,a)') "Total mass in grid (solar masses): ",totalMass/lsol
+          call writeInfo(message,TRIVIAL)
+
         end if
 
 

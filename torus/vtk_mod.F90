@@ -1031,7 +1031,7 @@ contains
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
                case("chiline")
-                  write(lunit, *) max( real(thisOctal%chiline(subcell)), min_single_prec )
+                  write(lunit, *) real(thisOctal%chiline(subcell))
 
 
                case("microturb")
@@ -3024,7 +3024,7 @@ end subroutine writeXMLVtkFileAMR
                   if (.not.associated(thisOctal%chiline)) then
                      rArray(1, n) = 0.d0
                   else
-                     rArray(1, n) = real(max( real(thisOctal%chiline(subcell)), min_single_prec ))
+                     rArray(1, n) = real(thisOctal%chiline(subcell))
                   endif
 
 
@@ -3032,7 +3032,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(max( real(thisOctal%microturb(subcell)*cspeed/1.e5), min_single_prec ))
 
                case("etaline")
-                  rArray(1, n) = real(max ( real(thisOctal%etaline(subcell)), min_single_prec ))
+                  rArray(1, n) = real(thisOctal%etaline(subcell))
 
                case("n4")
                   rArray(1, n) = real(max ( real(thisOctal%atomLevel(subcell,1,4)), min_single_prec ))

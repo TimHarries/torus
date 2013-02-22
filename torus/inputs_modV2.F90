@@ -1917,9 +1917,9 @@ contains
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (cylindricalHydro) then
-       dx = dble(amrgridSize)/dble(2**maxDepthAMR-4)
+       dx = dble(amrgridSize)/dble(2**4-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       vtkIncludeGhosts = .false.
+!       vtkIncludeGhosts = .false.
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
                "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
     endif

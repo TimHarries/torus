@@ -253,6 +253,7 @@ contains
     use inputs_mod, only : hydrodynamics, cylindricalHydro
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
   real(double) :: totalMass
   real(double),optional :: minRho, maxRho
   real(double) :: dv!, totalVolume
@@ -278,6 +279,8 @@ contains
                    if (thisOctal%twoD) then
                       if (cylindricalHydro) then
                          dv = cellVolume(thisOctal, subcell) * 1.d30
+                         rVec = subcellCentre(thisOctal,subcell)
+                         if (rVec%x < 0.d0) dv = 0.d0
                          if (thisOctal%ghostCell(subcell)) dv = 0.d0
                       else
                          dv = thisOctal%subcellSize**2
@@ -1437,7 +1440,7 @@ contains
                    stop
                 endif
                 
-                neighbourOctal => thisOctal
+                neighbourOctal => grid%octreeRoot
                 call findSubcellLocalLevel(octVec, neighbourOctal, neighbourSubcell, nDepth)
 
                 if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
@@ -1508,7 +1511,7 @@ contains
                 stop
              endif
 
-             if (neighbourOctal%nDepth <= thisnDepth) then
+!             if (neighbourOctal%nDepth <= thisnDepth) then
                 Tempstorage(1) = neighbourOctal%q_i(neighbourSubcell)
                 tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
                 tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
@@ -1518,7 +1521,7 @@ contains
                 tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
                 rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
                      direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
-                tOctal => neighbourOctal
+                tOctal => grid%octreeRoot
                 tSubcell = neighbourSubcell
                 call findSubcellLocalLevel(rVec, tOctal, tSubcell, nDepth)
                 tempStorage(8) = tOctal%q_i(tsubcell)
@@ -1554,13 +1557,13 @@ contains
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
 !                          write(*,*) myRank, " temp storage sent"
 
-             else ! need to average
+!             else ! need to average
 
-                write(*,*) "Error on receiveAcrossMpiBoundaryLevel"
-                stop
+!                write(*,*) "Error on receiveAcrossMpiBoundaryLevel"
+!                stop
             
 
-             endif
+!          endif
           endif
        enddo
     endif

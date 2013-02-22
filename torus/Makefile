@@ -165,7 +165,7 @@ ifeq ($(SYSTEM), complexity)
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
-    EXE=torus.cmp
+    EXE=torus.junk
     STATICLIBS= -Bstatic
     STARLIBS= 
     CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
