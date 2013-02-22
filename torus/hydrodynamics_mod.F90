@@ -311,9 +311,9 @@ contains
 
   recursive subroutine restrictResiduals(thisoctal, nDepth)
     use mpi
-    type(octal), pointer   :: thisoctal, parentoctal, testoctal
+    type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, n, m, j,nDepth
+    integer :: i, nDepth
 
 
     if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
@@ -9193,6 +9193,7 @@ end subroutine refineGridGeneric2
     do i = 1, nCells
        rVec = subcellCentre(tempOctal, tempSubcell) + &
             (tempOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize) * direction 
+       tempOctal => grid%octreeRoot
        call findSubcellLocal(rVec, tempOctal, tempSubcell)
     enddo
     locator = rVec
@@ -10604,7 +10605,6 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    integer :: iter
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
@@ -10613,7 +10613,7 @@ end subroutine refineGridGeneric2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
-    real(double) :: mVal, epsilon, tauMax, tauMin
+    real(double) :: tauMin
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
@@ -11086,9 +11086,9 @@ end subroutine refineGridGeneric2
     use mpi
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
-    integer :: minLevel, iDepth, i
+    integer :: minLevel, iDepth
     real(double) :: deltaT, fracChange, ghostFracChange, tempFracChange
-    integer :: ierr, iter, bigLoop, outerloop
+    integer :: ierr, iter, bigLoop
     logical :: firstTime
     character(len=80) :: plotfile
 
@@ -11293,7 +11293,8 @@ end subroutine refineGridGeneric2
 
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
-             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", MAXVAL(fracChange(1:nHydroThreads)),tol
+             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
+                  MAXVAL(fracChange(1:nHydroThreads)),tol
 
              do i = iDepth, maxDepthAMR-1
                 call updatePhiTree(grid%octreeRoot, i)
