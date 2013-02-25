@@ -12518,11 +12518,11 @@ end function readparameterfrom2dmap
   end subroutine assignDensitiesAlphaDisc
 
 
-  recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
+  recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
     use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
     use inputs_mod, only : TTauriDiskHeight
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi
-    real(double) :: astar, mdot, thisR, thisRho, thisV, minRho, minr
+    real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -12535,7 +12535,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child =>thisOctal%child(i)
-                call assignDensitiesMahdavi(grid, child, astar, mdot, minRho, minR)
+                call assignDensitiesMahdavi(grid, child, astar, mdot, minRCubedRhoSquared)
                 exit
              end if
           end do
@@ -12565,9 +12565,8 @@ end function readparameterfrom2dmap
                 thisOctal%inflow(subcell) = .true.
                 thisOctal%rho(Subcell) = thisRho
                 thisOctal%temperature(subcell) = isothermTemp
-                if (thisRho < minRho) then
-                   minRho = thisRho
-                   minR = thisR
+                if ((thisR**3*thisRho**2) < minRCubedRhoSquared) then
+                   minRCubedRhoSquared = thisR**3*thisRho**2
                 endif
 
                if (abs(cellCentre%z) < TTauriDiskHeight/1.d10) then
@@ -12596,10 +12595,10 @@ end function readparameterfrom2dmap
     enddo
   end subroutine assignDensitiesMahdavi
 
-  recursive subroutine assignTemperaturesMahdavi(grid, thisOctal, astar, mdot, minrho,minr)
+  recursive subroutine assignTemperaturesMahdavi(grid, thisOctal, astar, mdot, minRcubedRhoSquared)
     use inputs_mod, only : maxHartTemp, isotherm, isothermtemp
     use magnetic_mod, only : inflowMahdavi
-    real(double) :: astar, mdot, thisR, minRho, minr
+    real(double) :: astar, mdot, thisR,  minrCubedRhoSquared
     real(double) :: requiredMaxHeating, thisHeating, localCooling
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -12615,8 +12614,8 @@ end function readparameterfrom2dmap
     if (.not.isoTherm) then
        call locate(logT, 8, log10(dble(maxHartTemp)), j)
        requiredmaxHeating = gamma(j) + (gamma(j+1)-gamma(j))*(log10(dble(maxHartTemp))-logT(j))/(logT(j+1)-logT(j))
-       requiredMaxHeating = 10.d0**requiredMaxHeating * (minRho/mhydrogen)**2
-       fac = requiredMaxHeating * minR**3
+       requiredMaxHeating = 10.d0**requiredMaxHeating /mhydrogen**2
+       fac = requiredMaxHeating * minRcubedrhoSquared
     endif
 
     do subcell = 1, thisOctal%maxChildren
@@ -12625,7 +12624,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call assignTemperaturesMahdavi(grid, child, astar, mdot, minRho, minR)
+                call assignTemperaturesMahdavi(grid, child, astar, mdot, minRCubedRhoSquared)
                 exit
              end if
           end do

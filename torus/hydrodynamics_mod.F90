@@ -313,7 +313,8 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth
+    integer :: i, nDepth, j
+    real(double) :: mass(8)
 
 
     if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
@@ -323,18 +324,99 @@ contains
        end do
     else
        if (ANY(thisOctal%ghostCell)) goto 666
+
+       do j = 1, thisOctal%maxChildren 
+          mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
+       enddo
+
        if (.not.associated(thisOctal%parent%chiline)) allocate(thisOctal%parent%chiline(1:thisOctal%parent%maxChildren))
        thisOctal%parent%chiLine(thisOctal%parentSubcell) = &
-            SUM(thisOctal%chiline(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+            SUM(thisOctal%chiline(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:thisOctal%maxChildren))
     endif
     666 continue
   end subroutine restrictResiduals
+
+  recursive subroutine restrictPhi(thisoctal, nDepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: i, nDepth, j, n
+    real(double) :: mass(8)
+
+
+    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call restrictPhi(child, nDepth)
+       end do
+    else
+
+       if (thisoctal%twod) then
+          n = 4
+       else
+          n = 8
+       endif
+       do j = 1, n 
+          mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
+       enddo
+
+       thisOctal%parent%phi_gas(thisOctal%parentSubcell) = &
+            SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:n))
+    endif
+    666 continue
+  end subroutine restrictPhi
+
+
+  recursive subroutine setSourceToFourPiRhoG(thisoctal, nDepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: i, nDepth, j, n
+    real(double) :: mass(8)
+
+
+    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call setSourceToFourPiRhoG(child, nDepth)
+       end do
+    else
+       if (.not.associated(thisOctal%source)) allocate(thisOctal%source(1:thisOctal%maxChildren))
+       thisOctal%source = thisOctal%rho * bigG * fourPi
+    endif
+  end subroutine setSourceToFourPiRhoG
+
+  recursive subroutine setSourceToResiduals(thisoctal, nDepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: i, nDepth, j, n
+    real(double) :: mass(8)
+
+
+    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call setSourceToResiduals(child, nDepth)
+       end do
+    else
+       if (.not.associated(thisOctal%source)) allocate(thisOctal%source(1:thisOctal%maxChildren))
+       if (.not.associated(thisOctal%chiLine)) then
+          allocate(thisOctal%chiLine(1:thisOctal%maxChildren))
+          thisOctal%chiline = 0.d0
+       endif
+       thisOctal%source = thisOctal%chiLine
+    endif
+  end subroutine setSourceToResiduals
+
+
 
   recursive subroutine prolongateCorrections(thisoctal, ndepth)
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth
+    integer :: subcell, i, n, ndepth, j
+    real(double) :: mass(8)
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -344,11 +426,17 @@ contains
        else
           n = 8
        endif
+       do j = 1, n 
+          mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
+       enddo
+
 
        if (.not.associated(thisOctal%phi_gas_corr)) then
           allocate(thisOctal%phi_gas_corr(1:thisOctal%maxChildren))
        endif
-       thisoctal%phi_gas_corr = thisoctal%parent%phi_gas_corr(thisoctal%parentsubcell)
+       do j = 1, n
+          thisoctal%phi_gas_corr(j) = mass(j)*thisoctal%parent%phi_gas_corr(thisoctal%parentsubcell)/SUM(mass(1:n))
+       enddo
     else
 
        do subcell = 1, thisoctal%maxchildren
@@ -423,10 +511,10 @@ contains
           mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
        enddo
 
-       thisOctal%phi_gas = thisOctal%phi_gas - (SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
+!       thisOctal%phi_gas = thisOctal%phi_gas - (SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
 
-!       thisOctal%phi_gas = thisOctal%phi_gas - &
-!            (SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:thisOctal%maxChildren)))
+       thisOctal%phi_gas = thisOctal%phi_gas - &
+            (SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:thisOctal%maxChildren)))
 
        thisoctal%phi_gas = thisoctal%parent%phi_gas(thisoctal%parentsubcell) + thisOctal%phi_gas
        if (any(thisOctal%phi_gas > 0.d0)) write(*,*) myrankGlobal," phi ",thisoctal%phi_gas(1:4),thisOctal%ghostCell(1:4)
@@ -3991,30 +4079,12 @@ end subroutine sumFluxes
 
        !boundary conditions
        call imposeBoundary(grid%octreeRoot, grid)
-!       call periodBoundary(grid)
        call transferTempStorage(grid%octreeRoot)
-
-       call writeVtkFile(grid, "afterimpose.vtk", &
-               valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-               "u_i          ", &
-               "hydrovelocity", &
-               "chiline      ", &
-               "mass         ", &
-               "rhou         ", &
-               "rhov         ", &
-               "rhow         ", &
-               "phi          ", &
-               "pressure     ", &
-               "ghosts       ", &
-               "edges        ", &
-               "q11          ", &
-               "q22          ", &
-               "q_i          "/))
-
 
     if (selfGravity) then
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (dogasgravity)  call multiGrid(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
           call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
@@ -6313,7 +6383,7 @@ end subroutine sumFluxes
     else
 
        do subcell = 1, thisOctal%maxChildren
-          thisOctal%phi_gas(subcell) = thisOctal%phi_gas(subcell) + thisOctal%phi_gas_corr(subcell)
+          thisOctal%phi_gas(subcell) = thisOctal%phi_gas(subcell) - thisOctal%phi_gas_corr(subcell)
        enddo
     endif
   end subroutine applyCorrections
@@ -10768,23 +10838,20 @@ end subroutine refineGridGeneric2
 
 
              oldPhi = thisOctal%phi_gas(subcell)
-             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
+             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - thisOctal%source(subcell) * deltaT) 
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
 
-!             if (myrankglobal == 1) write(*,*) newphi,thisOctal%phi_gas(subcell),deltaT, sumd2phidx2, thisOctal%rho(subcell)
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+             if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
-                frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
-                frac = abs(sumd2phidx2 - fourPi* gGrav * thisOctal%rho(subcell))/(fourPi * gGrav * thisOctal%rho(subcell))
-                thisOctal%chiline(subcell) = frac!sumd2phidx2 - fourPi* gGrav * thisOctal%rho(subcell)
-
+                frac = abs(sumd2phidx2 - thisOctal%source(subcell))/thisOctal%source(subcell)
+                thisOctal%chiline(subcell) = sumd2phidx2 - thisOctal%source(subcell)
+                thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
                 fracChange = 1.d30
-!                frac = fracChange
              endif
-!             thisOctal%chiline(subcell) = frac
 
              thisOctal%phi_gas(subcell) = newPhi
              
@@ -11098,66 +11165,169 @@ end subroutine refineGridGeneric2
 
     minLevel = 4
     if (cylindricalHydro) minLevel = 4
+    call updateDensityTree(grid%octreeRoot)
 
     firstTime = .true.
     bigLoop = 0
     fracChange = 1.d0
-    do while (fracChange > 1.d-1)
+    do while (fracChange > 1.d-2)
        bigLoop = bigLoop + 1
-    call updateDensityTree(grid%octreeRoot)
-
-    do iDepth = minLevel, maxDepthAMR
-       if (writeoutput) write(*,*) "Multigrid working at idepth ",idepth
-       call unsetGhosts(grid%octreeRoot)
-       call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
-       call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
-       
-       if (firstTime .or. (iDepth == minDepthAMR)) then
-          if(dirichlet) then
-             if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-             call applyDirichlet(grid, iDepth)
-             if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-          end if
-       endif
-       
-       if (cylindricalHydro) then
-          call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
-          call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
-       endif
-       call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
 
 
-       fracChange = 1.d3
-       iter = 0 
-       do while(fracChange > 1.d-1)
-          iter = iter + 1
+       do iDepth = minLevel, maxDepthAMR
+          if (writeoutput) write(*,*) "Multigrid working at idepth ",idepth
+          call unsetGhosts(grid%octreeRoot)
+          call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
+          call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
 
+             if(dirichlet.and.firstTime) then
+                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+                call applyDirichlet(grid, iDepth)
+                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+             endif
 
-          fracChange = 0.d0
-          if (cylindricalHydro) then
-             call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth)
-          else
-             call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth)
-          endif
           if (cylindricalHydro) then
              call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
              call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
           endif
           call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
 
-          call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
-          fracChange = tempFracChange
 
-          if (iter == 2000) exit
+          fracChange = 1.d3
+          iter = 0 
+
+          call setSourceTofourPiRhoG(grid%octreeRoot, iDepth)
+
+          do while(fracChange > 1.d-2)
+             iter = iter + 1
+
+
+             fracChange = 0.d0
+             if (cylindricalHydro) then
+                call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth)
+             else
+                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth)
+             endif
+             if (cylindricalHydro) then
+                call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
+                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
+             endif
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+
+             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+             fracChange = tempFracChange
+
+             if (iter == 10) exit
+          enddo
+
+          call restrictResiduals(grid%octreeRoot, iDepth)
+          call zeroCorrections(grid%octreeRoot, iDepth-1)
+          call swapCorrectionsforPhiGas(grid%octreeRoot, iDepth-1)
+
+
+          fracChange = 1.d3
+          iter = 0 
+
+          call setSourceToResiduals(grid%octreeRoot, iDepth-1)
+
+
+          call unsetGhosts(grid%octreeRoot)
+          call setupEdgesLevel(grid%octreeRoot, grid, iDepth-1)
+          call setupGhostsLevel(grid%octreeRoot, grid, iDepth-1)
+
+             if(dirichlet.and.firstTime) then
+                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+                call applyDirichlet(grid, iDepth-1)
+                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+             endif
+
+          if (cylindricalHydro) then
+             call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth-1, phi_gas=.true.)
+             call transferTempStorageLevel(grid%octreeRoot, iDepth-1, justGrav = .true.)
+          endif
+          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
+          do while(fracChange > 1.d-2)
+             iter = iter + 1
+
+
+             fracChange = 0.d0
+             if (cylindricalHydro) then
+                call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth-1)
+             else
+                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth-1)
+             endif
+             if (cylindricalHydro) then
+                call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth-1, phi_gas=.true.)
+                call transferTempStorageLevel(grid%octreeRoot, iDepth-1, justGrav = .true.)
+             endif
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
+
+             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+             fracChange = tempFracChange
+
+             if (iter == 10) exit
+          enddo
+
+          call swapPhiGasForCorrections(grid%octreeRoot, iDepth-1)
+          call prolongateCorrections(grid%octreeRoot, idepth)
+          call applyCorrections(grid%octreeRoot, iDepth)
+
+          fracChange = 1.d3
+          iter = 0 
+
+          call setSourceTofourPiRhoG(grid%octreeRoot, iDepth)
+
+          call unsetGhosts(grid%octreeRoot)
+          call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
+          call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
+
+             if(dirichlet.and.firstTime) then
+                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+                call applyDirichlet(grid, iDepth)
+                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+             endif
+
+          if (cylindricalHydro) then
+             call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
+             call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
+          endif
+          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+
+          do while(fracChange > 1.d-2)
+             iter = iter + 1
+
+
+             fracChange = 0.d0
+             if (cylindricalHydro) then
+                call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth)
+             else
+                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth)
+             endif
+             if (cylindricalHydro) then
+                call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
+                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
+             endif
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+
+             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+             fracChange = tempFracChange
+
+             if (iter == 10) exit
+          enddo
+
        enddo
-       if (iDepth < maxDepthAMR) call updatePhiTreeNew(grid%octreeRoot, iDepth)
+
+
+
+
+
+
+       firstTime = .false.
+       if (writeoutput) write(*,*) "Convergence ",fracChange
+           write(plotfile,'(a,i2.2,a)') "gravfull_",bigLoop,".vtk"
+           call writeVtkFile(grid, plotfile, &
+                valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
     enddo
-    firstTime = .false.
-    if (writeoutput) write(*,*) "Convergence ",fracChange
-!    write(plotfile,'(a,i2.2,a)') "gravfull_",bigLoop,".vtk"
-!    call writeVtkFile(grid, plotfile, &
-!         valueTypeString=(/"phigas ", "rho    ","chiline"/))
- enddo
 
 
     call writeInfo("Gsweep2called",TRIVIAL)
@@ -11179,30 +11349,30 @@ end subroutine refineGridGeneric2
 
     fracChange = 1.d3
     iter = 0 
-          write(plotfile,'(a,i4.4,a)') "grav_",iter,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+    write(plotfile,'(a,i4.4,a)') "grav_",iter,".vtk"
+    call writeVtkFile(grid, plotfile, &
+         valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
 
-       do while(fracChange > 1.d-2)
-          iter = iter + 1
+    do while(fracChange > 1.d-2)
+       iter = iter + 1
 
 
-          fracChange = 0.d0
-          call  gSweep2(grid%octreeRoot, grid, deltaT, fracChange, iter)
-          if (cylindricalHydro) then
-             call imposeBoundary(grid%octreeRoot, grid, phi_gas=.true.)
-             call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-          endif
-          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       fracChange = 0.d0
+       call  gSweep2(grid%octreeRoot, grid, deltaT, fracChange, iter)
+       if (cylindricalHydro) then
+          call imposeBoundary(grid%octreeRoot, grid, phi_gas=.true.)
+          call transferTempStorage(grid%octreeRoot, justGrav = .true.)
+       endif
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
-          fracChange = tempFracChange
-!          write(plotfile,'(a,i4.4,a)') "grav_",iter,".vtk"
-!          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+       call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+       fracChange = tempFracChange
+       !          write(plotfile,'(a,i4.4,a)') "grav_",iter,".vtk"
+       !          call writeVtkFile(grid, plotfile, &
+       !               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
 
-          if (writeoutput) write(*,*) "gsweep2 ",iter,fracChange
-       enddo
+       if (writeoutput) write(*,*) "gsweep2 ",iter,fracChange
+    enddo
 
 
   end subroutine multiGrid
@@ -11221,8 +11391,8 @@ end subroutine refineGridGeneric2
     integer :: it, ierr, i, minLevel
     character(len=30) :: plotfile
 
-    tol = 1.d-4
-    tol2 = 1.d-5
+    tol = 1.d-2
+    tol2 = 1.d-2
 
 
     nHydroThreads = nHydroThreadsGlobal

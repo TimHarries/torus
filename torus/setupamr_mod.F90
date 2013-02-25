@@ -66,7 +66,7 @@ contains
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass
-    real(double) :: minRho, minR
+    real(double) :: minRCubedRhoSquared
     character(len=80) :: message
     integer :: nVoxels, nOctals
     integer :: counter, nTimes
@@ -306,12 +306,12 @@ contains
           call zeroDensity(grid%octreeRoot)
           astar = accretingAreaMahdavi()
           if (writeoutput) write(*,*) "accreting area (%) ",100.*astar/(fourpi*ttauriRstar**2)
-          minRho = 1.d30
+          minRCubedRhoSquared = 1.d30
           if (ttauriMagnetosphere) then
              call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                  minRho, minR)
+                  minRCubedRhoSquared)
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                     minRho, minR)
+                     minRCubedRhoSquared)
           endif
 !          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
           if (ttauriwind)  call addDiscWind(grid)
@@ -407,9 +407,9 @@ contains
           case("ttauri")
              if (ttauriMagnetosphere) then
                 call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                     minRho, minR)
+                     minRcubedRHoSquared)
                 call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                     minRho, minR)
+                     minRCubedRhoSquared)
              endif
              call testVelocity(grid%octreeRoot,grid)
        
