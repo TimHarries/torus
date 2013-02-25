@@ -363,7 +363,6 @@ contains
        thisOctal%parent%phi_gas(thisOctal%parentSubcell) = &
             SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:n))
     endif
-    666 continue
   end subroutine restrictPhi
 
 
@@ -371,8 +370,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth, j, n
-    real(double) :: mass(8)
+    integer :: i, nDepth
 
 
     if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
@@ -390,8 +388,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth, j, n
-    real(double) :: mass(8)
+    integer :: i, nDepth
 
 
     if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
