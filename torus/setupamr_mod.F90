@@ -252,9 +252,12 @@ contains
 #endif
 
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+#ifdef MPI
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol
           call writeInfo(message,TRIVIAL)
+#endif
+
 
 
 
@@ -386,11 +389,11 @@ contains
            call howmanysplits()
            call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
            call finishGrid(grid%octreeRoot, grid, romData=romData)
-
+#ifdef MPI
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in grid (solar masses): ",totalMass/lsol
           call writeInfo(message,TRIVIAL)
-
+#endif
         end if
 
 
