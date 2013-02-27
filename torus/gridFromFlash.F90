@@ -166,12 +166,38 @@ end subroutine assign_from_flash
 
 #else
 
-! Stub subroutine in case Torus has been built without HDF5 support
+! Stub subroutines in case Torus has been built without HDF5 support
 subroutine read_flash_hdf
   write(*,*) "Torus was built without HDF support so cannot read a Flash HDF file"
   write(*,*) "Rebuild Torus with hdf=yes"
   STOP
 end subroutine read_flash_hdf
+
+subroutine assign_from_flash(thisOctal, subcell)
+
+  use octal_mod
+  use vector_mod
+  implicit none
+
+  real(db), parameter :: rho_bg=1.0e-23_db
+
+  TYPE(OCTAL) :: thisOctal
+  integer     :: subcell
+
+  thisOctal%rho(subcell) = 1.0e-33_db
+  thisOctal%dustTypeFraction(subcell,:) = 0.0
+  thisOctal%temperature(subcell) = 10000.
+  thisOctal%etaCont(subcell) = 0.
+  thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+  thisOctal%ne(subcell) = thisOctal%nh(subcell)
+  thisOctal%nhi(subcell) = 1.e-8
+  thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+  thisOctal%inFlow(subcell) = .true.
+  thisOctal%velocity = VECTOR(0.,0.,0.)
+  thisOctal%biasCont3D = 1.
+  thisOctal%etaLine = 1.e-30
+
+end subroutine assign_from_flash
 
 #endif
 
