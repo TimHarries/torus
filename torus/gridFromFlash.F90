@@ -3,7 +3,6 @@
 
 ! To do: read in additional data for calculating cell positions
 !        populate Torus grid with these values
-!        de-allocate arrays when they are finished with
 
 module gridFromFlash
 
@@ -19,11 +18,13 @@ module gridFromFlash
   integer, parameter, private :: NXB = 8
   integer, parameter, private :: NYB = 8
   integer, parameter, private :: NZB = 8
+  integer, parameter, private :: MDIM =3 ! number of dimensions
   character(len=80), private :: message
 
   real(kind=db), private, allocatable, save :: density(:,:,:,:)
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
-  real(kind=db), private, allocatable, save :: pressure(:,:,:,:)
+! Block centre co-ordinates
+  real(kind=db), private, allocatable, save :: bc_coords(:,:) 
 
 contains
 
@@ -53,12 +54,14 @@ contains
 
   allocate (density(maxblocks, NXB, NYB, NZB))
   allocate (temperature(maxblocks, NXB, NYB, NZB))
-  allocate (pressure(maxblocks, NXB, NYB, NZB))
+  allocate (bc_coords(maxblocks,3))
 
 ! Read in the data
   call read_gridvar("dens",density)
   call read_gridvar("temp",temperature)
-  call read_gridvar("pres", pressure)
+
+! Read co-ordinates of the block centres
+  call read_coords
 
 ! Will need to read some more things here to work out the cell co-ordintes
 
@@ -131,7 +134,73 @@ contains
 
   end subroutine read_gridvar
 
+  subroutine read_coords
+
+    integer(kind=HID_T) :: dataSet, dataSpace
+    integer(kind=HSIZE_T) :: count(2), offset(2)
+    integer(kind=HSIZE_T) :: dims(2)
+
+    call writeInfo("Reading coordinates",TRIVIAL)
+
+! Open data set
+    call h5Dopen_f(file_id, "coordinates", dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening coordinates data set")
+    end if
+
+! Get an identifier for the data space
+    call h5dget_space_f(dataSet, dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening coordinates data space")
+    end if
+
+! Define hyperslab
+    count(:) = (/maxblocks, 2/)
+    offset(:) = (/0,0/)
+    call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error selecting hyperslab")
+    end if
+
+! Read the data
+    call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, bc_coords, dims, error)
+    if ( error == 0 ) then
+       write(message,*) "Maximum x value= ", maxval(bc_coords(:,1))
+       call writeInfo(message,TRIVIAL)
+       write(message,*) "Minimum x value= ", minval(bc_coords(:,1))
+       call writeInfo(message,TRIVIAL)
+       write(message,*) "Maximum y value= ", maxval(bc_coords(:,2))
+       call writeInfo(message,TRIVIAL)
+       write(message,*) "Minimum y value= ", minval(bc_coords(:,2))
+       call writeInfo(message,TRIVIAL)
+       write(message,*) "Maximum z value= ", maxval(bc_coords(:,3))
+       call writeInfo(message,TRIVIAL)
+       write(message,*) "Minimum z value= ", minval(bc_coords(:,3))
+       call writeInfo(message,TRIVIAL)
+    else 
+       call writeFatal("Error reading data")
+    end if
+
+! Close data space
+    call h5Sclose_f(dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data space")
+    end if
+
+! Close data set
+    call h5dclose_f(dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data set")
+    end if
+
+! Convert to Torus units
+    bc_coords(:,:) = bc_coords(:,:) * 1.0e-10
+
+  end subroutine read_coords
+
 end subroutine read_flash_hdf
+
+!--------------------------------------------------------------------------------------
 
 subroutine assign_from_flash(thisOctal, subcell)
 
@@ -143,11 +212,25 @@ subroutine assign_from_flash(thisOctal, subcell)
 
   TYPE(OCTAL), intent(inout) :: thisOctal
   integer, intent(in) :: subcell
-  integer, save :: i=1
+  integer :: i
+  TYPE(VECTOR) :: thisTorusCellCentre
+  real(double) :: dist2, mindist2
 
-  thisOctal%rho(subcell) = density(i,1,1,1) !rho_bg
-  i = i+1
-  if (i>maxblocks) i=1
+! Brute force to find the closest block
+! This is just to sanity check the co-ordinates
+! FIX ME!!
+  thisOctal%rho(subcell) = rho_bg
+  thisTorusCellCentre = subCellCentre(thisOctal, subcell)
+  mindist2=1.0e99_db
+  do i=1, maxblocks
+     dist2= (bc_coords(i,1)-thisTorusCellCentre%x)**2 + &
+            (bc_coords(i,2)-thisTorusCellCentre%y)**2 + &
+            (bc_coords(i,3)-thisTorusCellCentre%z)**2
+     if (dist2<mindist2) then
+        thisOctal%rho(subcell) = density(i,1,1,1) 
+        mindist2 = dist2
+     end if
+  end do
 
   thisOctal%dustTypeFraction(subcell,:) = 0.0
 
@@ -201,5 +284,12 @@ end subroutine assign_from_flash
 
 #endif
 
+subroutine deallocate_gridFromFlash
+
+  if (allocated(density))     deallocate (density)
+  if (allocated(temperature)) deallocate (temperature)
+  if (allocated(bc_coords))   deallocate (bc_coords)
+
+end subroutine deallocate_gridFromFlash
 
 end module gridFromFlash

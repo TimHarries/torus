@@ -538,11 +538,16 @@ contains
 !           else
 !              do; enddo
 !              endif
+
+! Free allocatable arrays used in the grid set up which are no longer required. 
+! These subroutines should check that the arrays they are deallocating have actually 
+! been allocated, that way it is always safe to call the subroutine.
 #ifdef USECFITSIO
         call deallocate_gridFromFitsFile
 #endif
-
+        call deallocate_gridFromFlash
         call delete_particle_lists(grid%octreeRoot)
+
   end subroutine setupamrgrid
 
   subroutine doSmoothOnTau(grid)
