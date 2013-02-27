@@ -4,8 +4,12 @@ module vh1_mod
 
   implicit none
 
+! Public components
   public :: read_vh1, assign_from_vh1, get_density_vh1
   
+  logical, public :: vh1FileRequired=.false.
+
+! Private components
   integer, private :: nx
   integer, private :: ny
   real(db), private, save, allocatable :: rho(:,:)

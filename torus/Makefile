@@ -14,6 +14,7 @@
 
 USEMKL  = no
 cfitsio = yes
+hdf = no
 memcheck = yes
 zlib = yes
 debug   = no
@@ -167,9 +168,12 @@ ifeq ($(SYSTEM), complexity)
     MATHTRAP=
     EXE=torus.junk
     STATICLIBS= -Bstatic
-    STARLIBS= 
     CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
 #    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
+    ifeq ($(hdf), yes)
+       F95COMP+=-I/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+       STARLIBS=-L/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+    endif
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
@@ -190,7 +194,6 @@ ifeq ($(SYSTEM), davesmac)
     ZLIBLIBS = -lz	
     MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
 #    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
-#    STARLIBS = -limf                                                                   
     EXE = torus.intelmac
     KNOWN_SYSTEM = yes
 endif
@@ -240,7 +243,6 @@ ifeq ($(SYSTEM), zensingle)
     MATHTRAP=
     EXE=torus.zensingle
     STATICLIBS= -Bstatic
-    STARLIBS= 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     ZLIBLIBS = -lz
     MPIFLAG = 
@@ -299,6 +301,11 @@ ifeq ($(cfitsio), no)
    CFITSIOLIBS  =
 else
    ETCFLAG += -DUSECFITSIO
+endif
+
+ifeq ($(hdf), yes)
+   ETCFLAG += -DUSEHDF
+   STARLIBS += -lhdf5_fortran -lhdf5
 endif
 
 ifeq ($(zlib), no)
@@ -437,7 +444,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
 
 CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoion_utils_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
 	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 ion_mod.F90 gridtype_mod.F90 gridFromFitsFile.F90 \
-	         fits_utils_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
+	         gridFromFlash.F90 fits_utils_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 TTauri_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 viscosity_mod.F90 $(TORUSMAINSOURCE)
@@ -475,7 +482,7 @@ all: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS)
+	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS)
     else
 	    @echo ""
 	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."

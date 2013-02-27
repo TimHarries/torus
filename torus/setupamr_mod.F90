@@ -52,11 +52,12 @@ contains
          hasPhotoionAllocations, allocatePhotoionAttributes
 #endif
 #endif
-    use vh1_mod, only: read_vh1
+    use vh1_mod, only: read_vh1, vh1FileRequired
     use memory_mod
 #ifdef USECFITSIO
     use gridFromFitsFile
 #endif
+    use gridFromFlash
 
     implicit none
 
@@ -264,7 +265,10 @@ contains
 #endif
 
        case("runaway")
-          call read_vh1
+
+          if (vh1FileRequired)   call read_vh1
+          if (flashFileRequired) call read_flash_hdf
+
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
