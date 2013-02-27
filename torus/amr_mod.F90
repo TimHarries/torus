@@ -51,7 +51,8 @@ CONTAINS
     use cmfgen_class, only: cmfgen_mass_velocity
     use jets_mod, only: calcJetsMassVelocity
     use romanova_class, only: calc_romanova_mass_velocity
-    use vh1_mod, only: assign_from_vh1
+    use vh1_mod, only: assign_from_vh1, vh1FileRequired
+    use gridFromFlash, only: assign_from_flash, flashFileRequired
 #ifdef USECFITSIO
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
@@ -420,7 +421,13 @@ CONTAINS
       thisOctal%temperature = 8000.
 
    CASE ("runaway")
-      call assign_from_vh1(thisOctal, subcell)
+      if (vh1FileRequired) then 
+         call assign_from_vh1(thisOctal, subcell)
+      elseif(flashFileRequired) then
+         call assign_from_flash(thisOctal, subcell)
+      else
+         call torus_abort("No way to assign density for runaway geometry")
+      endif
       if (thisOctal%nDepth > 1) then
          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
       endif
@@ -3133,7 +3140,7 @@ CONTAINS
     use romanova_class, only:  romanova_density
     use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
-    use vh1_mod, only: get_density_vh1
+    use vh1_mod, only: get_density_vh1, vh1FileRequired
     use density_mod, only: density
 #ifdef SPH
     USE cluster_class, only:   find_n_particle_in_subcell
@@ -3668,16 +3675,17 @@ CONTAINS
                    
        case("runaway")
           
-          call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
+          if (vh1FileRequired) then 
+             call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
           
-          ! Split on mass per cell 
-          total_mass = cellVolume(thisOctal, subcell)  * 1.d30 * ave_density
-          if ( total_mass > amrlimitscalar .and. amrlimitscalar > 0.0 ) split = .true.
+             ! Split on mass per cell 
+             total_mass = cellVolume(thisOctal, subcell)  * 1.d30 * ave_density
+             if ( total_mass > amrlimitscalar .and. amrlimitscalar > 0.0 ) split = .true.
           
-          ! Split on density contrast
-          fac = ( maxDensity - minDensity ) / ( maxDensity + minDensity )
-          if ( npt_subcell >= 2 .and. fac > amrlimitscalar2 .and. amrlimitscalar2 > 0.0 ) split = .true. 
-          
+             ! Split on density contrast
+             fac = ( maxDensity - minDensity ) / ( maxDensity + minDensity )
+             if ( npt_subcell >= 2 .and. fac > amrlimitscalar2 .and. amrlimitscalar2 > 0.0 ) split = .true. 
+          endif
           
        case("starburst")
           if (thisOctal%nDepth < mindepthamr) then

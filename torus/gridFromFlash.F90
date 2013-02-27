@@ -68,8 +68,8 @@ contains
 ! Terminate HDF interface
   CALL h5close_f(error)
 
-  write(*,*) "This routine isn't finished so I'm going to stop here"
-  STOP
+  call writeInfo("Finished reading Flash file",FORINFO)
+  call writeInfo("")
 
 contains
 
@@ -132,6 +132,37 @@ contains
   end subroutine read_gridvar
 
 end subroutine read_flash_hdf
+
+subroutine assign_from_flash(thisOctal, subcell)
+
+  use octal_mod
+  use vector_mod
+  implicit none
+
+  real(db), parameter :: rho_bg=1.0e-23_db
+
+  TYPE(OCTAL), intent(inout) :: thisOctal
+  integer, intent(in) :: subcell
+  integer, save :: i=1
+
+  thisOctal%rho(subcell) = density(i,1,1,1) !rho_bg
+  i = i+1
+  if (i>maxblocks) i=1
+
+  thisOctal%dustTypeFraction(subcell,:) = 0.0
+
+  thisOctal%temperature(subcell) = 10000.
+  thisOctal%etaCont(subcell) = 0.
+  thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+  thisOctal%ne(subcell) = thisOctal%nh(subcell)
+  thisOctal%nhi(subcell) = 1.e-8
+  thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+  thisOctal%inFlow(subcell) = .true.
+  thisOctal%velocity = VECTOR(0.,0.,0.)
+  thisOctal%biasCont3D = 1.
+  thisOctal%etaLine = 1.e-30
+
+end subroutine assign_from_flash
 
 #else
 
