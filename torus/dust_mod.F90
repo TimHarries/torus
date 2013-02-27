@@ -1083,7 +1083,7 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac
+    use inputs_mod, only : grainFrac, nDustType
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1141,7 +1141,7 @@ contains
           frac = max(frac, smallVal)
 
 
-          thisOctal%dustTypeFraction(subcell,:) = grainFrac(:) * frac
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType) * frac
 
 
           call locate(grid%lamArray, grid%nLambda, 5500., iLambda)

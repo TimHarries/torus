@@ -133,9 +133,10 @@ module molecular_mod
 
         read(30,*) junk
         read(30,'(a)') thisMolecule%molecule
+        thisMolecule%molecule = adjustl(thisMolecule%molecule)
         if( preprocess2) call writeInfo("Reading data for molecule: "//trim(thisMolecule%molecule),IMPORTANT)
 
-        write(molgridfilename,*) trim(thismolecule%molecule),"_grid.grid"
+        write(molgridfilename,'(a,a)') trim(thismolecule%molecule),"_grid.grid"
 
         read(30,*) junk
         read(30,*) thisMolecule%molecularWeight
@@ -4705,7 +4706,7 @@ end subroutine plotdiscValues
          sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSlevel
         call writeInfo(message,FORINFO)
     write(message,'(a,f11.7)') "Std Dev                                   ", &
-         sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
+         sqrt(max(0.d0,maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2))
     call writeInfo(message,FORINFO)
     call writeinfo("",FORINFO)  
 

@@ -1011,6 +1011,16 @@ contains
                   "Dust sublimation temperature (K): ","(a,f8.2,a)", 10., ok, .true.)
           endif
 
+    case("spiral")
+       call getReal("vterm", vterm, 1.e5, cLine, fLine, nLines, &
+            "Terminal velocity (km/s): ","(a,f7.1,a)", 20., ok, .true.)
+       call getReal("period", period, 24.*3600., cLine, fLine, nLines, &
+            "Period (days): ","(a,f7.1,a)", 20., ok, .true.)
+       call getReal("massenv", massEnvelope, real(mSol), cLine, fLine,  nLines, &
+            "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
+       
+
+
     case("shakara")
 
        oneKappa = .true.
@@ -1595,7 +1605,7 @@ contains
        call getReal("molAbundance", molAbundance, 1., cLine, fLine, nLines, &
             "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .false.)
        call getLogical("removehotmolecular", removeHotMolecular, cLine, fLine, nLines, &
-            "Remove molecular material above 100K: ", "(a,1l,1x,a)", .false., ok, .true.)
+            "Remove molecular material above 100K: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("isinlte", isinlte, cLine, fLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &

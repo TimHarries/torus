@@ -295,6 +295,9 @@ CONTAINS
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
 
+    CASE("spiral")
+       call calcSpiral(thisOctal, subcell)
+
     CASE("interptest")
        call calcinterptest(thisOctal, subcell)
 
@@ -364,7 +367,7 @@ CONTAINS
     CASE ("clumpyagb")
        CALL clumpyagb(thisOctal, subcell)
 
-    CASE ("molefil")
+    CASE ("filament")
        CALL molecularFilamentFill(thisOctal, subcell)
 
     CASE ("ggtau")
@@ -3834,6 +3837,17 @@ CONTAINS
                  massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
                  if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
                       .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+       case("spiral")
+          split = splitSpiral(thisOctal)
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
+             split = .true.
+             splitInAzimuth = .true.
+          endif
+          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.)) then
+             splitInAzimuth = .true.
+          endif
+
 
        case("unisphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -3944,13 +3958,13 @@ CONTAINS
           if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
           if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
           
-       case("molefil")
+       case("filament")
           
           rhoc = 5.d-19
           r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
 
           cellCentre = subcellCentre(thisOctal, subcell)
-          rd = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
+          rd = modulus(VECTOR(cellCentre%x, 0.d0, 0.d0))
           ! change the parameter
           rd = rd+thisOctal%subcellSize/2.d0
           OstrikerRho(1) = rhoc * (1.d0+(rd/r0)**2)**(-2.d0)
@@ -7932,6 +7946,73 @@ endif
 
   end subroutine calcSphere
 
+  subroutine calcSpiral(thisOctal,subcell)
+    use inputs_mod, only : vterm, period
+    real(double) :: rMod, spiralFac, theta
+    real(double) :: rSpiral, densityFac
+    integer :: iSpiral
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec, spiralVec
+    vterm = 2000.d5
+    period = 245.d0 * 24.d0 * 3600.d0
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = sqrt(rVec%x**2 + rVec%y**2)
+
+    spiralFac = dble(vterm * period) / 1.d10
+
+
+    theta = atan2(rVec%y, rVec%x)
+    if (theta < 0.d0) theta = theta + twoPi
+
+    thisOctal%inflow(subcell) = .true.
+    thisOctal%rho(subcell) = 1.d-20
+    do iSpiral = 0, 100
+       rSpiral = (dble(iSpiral) + theta/twopi) * spiralFac
+       densityFac = (spiralFac/rMod)**3
+       spiralVec = rSpiral * VECTOR(cos(theta),sin(theta),0.d0)
+       if (modulus(rVec-spiralVec) < 0.1d0*rSpiral) then
+          thisOctal%rho(subcell) = densityFac
+       endif
+    enddo
+
+
+  end subroutine calcSpiral
+
+  logical function splitSpiral(thisOctal)
+    use inputs_mod, only : vterm, period
+    real(double) :: rMod, spiralFac, theta
+    real(double) :: rSpiral, densityFac
+    integer :: iSpiral
+    TYPE(octal), INTENT(IN) :: thisOctal
+    type(VECTOR) :: rVec, spiralVec
+
+
+    splitSpiral = .false.
+    rVec = thisOctal%centre
+    rMod = sqrt(rVec%x**2 + rVec%y**2)
+
+    spiralFac = dble(vterm * period) / 1.d10
+
+
+    theta = atan2(rVec%y, rVec%x)
+    if (theta < 0.d0) theta = theta + twoPi
+
+
+    do iSpiral = 0, 10
+       rSpiral = (dble(iSpiral) + theta/twopi) * spiralFac
+       densityFac = (spiralFac/rMod)**3
+       spiralVec = rSpiral * VECTOR(cos(theta),sin(theta),0.d0)
+       if (modulus(rVec-spiralVec) < max(2.d0*thisOctal%subcellSize,rMod*thisOctal%dPhi)) then
+          if (thisOctal%subcellSize > 0.01d0 * rSpiral) splitSpiral=.true.
+       endif
+    enddo
+
+    
+  end function splitSpiral
+
+
   subroutine calcinterptest(thisOctal,subcell)
 
     use inputs_mod,only : amrgridsize
@@ -8945,19 +9026,18 @@ end function readparameterfrom2dmap
     TYPE(VECTOR) :: cellCentre
 
 
-      rhoc = 5.d-19
-      r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
+    rhoc = 5.d-19
+    r0 = sqrt(2.d0*(10.d0*kerg/(2.3d0*mHydrogen))/(pi*bigG*rhoc))/1.d10
 
     cellCentre = subcellCentre(thisOctal, subcell)
-    r1 = modulus(VECTOR(cellCentre%x, cellCentre%y, 0.d0))
+    r1 = modulus(VECTOR(cellCentre%x, 0.d0, 0.d0))
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%rho(subcell) = rhoc * (1.d0 + (r1/r0)**2)**(-2.d0)
-
     if (molecularPhysics) then
        thisOctal%molAbundance(subcell) = molAbundance
        thisOctal%microTurb(subcell) = 1.e5/cspeed
        thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
-    thisOctal%cornerVelocity =  VECTOR(0.d0,0.d0,0.d0)
+       thisOctal%cornerVelocity =  VECTOR(0.d0,0.d0,0.d0)
     endif
 
     thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
@@ -8981,7 +9061,6 @@ end function readparameterfrom2dmap
           
        endif
     endif
-    thisOctal%etaCont(subcell) = 0.
     if (hydrodynamics) then
        thisOctal%gamma(subcell) = 1.0
        thisOctal%iEquationOfState(subcell) = 1

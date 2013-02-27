@@ -161,7 +161,6 @@ contains
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
-       if(grid%geometry == "molefil") deltaTforDump = tdump
        if(grid%geometry == "sphere") deltaTforDump = tdump
        if(grid%geometry == "SB_WNHII") deltaTforDump = tdump
        if(grid%geometry == "SB_offCentre") deltaTforDump = tdump

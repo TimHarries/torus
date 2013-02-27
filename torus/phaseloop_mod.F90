@@ -1897,8 +1897,8 @@ CONTAINS
                       source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
-                 write(*,*) "r, weight, i ", modulus(thisPhoton%position)/1500.,thisPhoton%weight, weightContPhoton, &
-                      Thisphoton%stokes%i
+!                 write(*,*) "r, weight, i ", modulus(thisPhoton%position)/1500.,thisPhoton%weight, weightContPhoton, &
+!                      Thisphoton%stokes%i
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
 !                 endif

@@ -462,7 +462,14 @@ contains
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 #endif
-
+          case("spiral")
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             scaleFac = real(massEnvelope / totalMass)
+             call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             if (writeoutput) write(*,*) "Total mass in spiral (solar masses): ",totalMass/msol
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
 #ifdef MPI
