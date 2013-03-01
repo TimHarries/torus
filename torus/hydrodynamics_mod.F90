@@ -2632,10 +2632,10 @@ contains
 
                 oldT = (thisOctal%gamma(subcell) - 1.d0)*((3.d0/2.d0))!*temperatureUnit
                 
-                thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0)*u_A!*temperatureUnit
+                thisOctal%temperature(subcell) = real((thisOctal%gamma(subcell) - 1.d0)*u_A)
 
-                if(thisOctal%temperature(subcell) < 1.d0) then
-                   thisOctal%temperature(subcell) = 1.d0!temperatureUnit
+                if(thisOctal%temperature(subcell) < 1.0) then
+                   thisOctal%temperature(subcell) = 1.0!temperatureUnit
                 end if
 
                 thisOctal%energy(subcell) = u_A - ((dt*256.d0)* &
@@ -2645,7 +2645,7 @@ contains
                    thisOctal%energy(subcell) = 3.d0/2.d0
                 end if
 
-                thisOctal%temperature(subcell) = thisOctal%temperature(subcell) * temperatureUnit
+                thisOctal%temperature(subcell) = real(thisOctal%temperature(subcell) * temperatureUnit)
 
                 thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
 !

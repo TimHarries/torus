@@ -7526,8 +7526,8 @@ endif
     thisOctal%energy(subcell) = thisOctal%rhoe(subcell)/thisOctal%rho(subcell) 
     
     temperatureUnit = (2.33d0*mHydrogen/(kerg))!*(3.d0/2.d0)*((5.d0/3.d0)-1.d0)))
-    thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0) * &
-         thisOctal%energy(subcell)*temperatureUnit
+    thisOctal%temperature(subcell) = real((thisOctal%gamma(subcell) - 1.d0) * &
+         thisOctal%energy(subcell)*temperatureUnit)
 
     thisOctal%phi_i(subcell) = 0.d0
     thisOctal%iEquationOfState(subcell) = 1
