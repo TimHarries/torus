@@ -1,8 +1,5 @@
-! Read a Flash HDF file, based on Ross Parkin's raytrace.c
+! Read a Flash HDF file, written with help from Ross Parkin's raytrace.c
 ! D. Acreman February 2013
-
-! To do: read in additional data for calculating cell positions
-!        populate Torus grid with these values
 
 module gridFromFlash
 
@@ -14,6 +11,7 @@ module gridFromFlash
 
 ! Private module variables
   character(len=*), parameter, private :: infile="bow_hdf5_chk_0048"
+  real(double), parameter, private :: ySlice = 0.8e8_db
   integer, parameter, private :: maxblocks=11056
   integer, parameter, private :: NXB = 8
   integer, parameter, private :: NYB = 8
@@ -23,8 +21,6 @@ module gridFromFlash
 
   real(kind=db), private, allocatable, save :: density(:,:,:,:)
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
-! Block centre co-ordinates
-  real(kind=db), private, allocatable, save :: bc_coords(:,:)
 ! Block refinement level
   integer, private, allocatable, save :: lrefine(:)
 ! Block bounding boxes
@@ -56,11 +52,10 @@ contains
      call writeFatal("Error opening "//infile)
   endif
 
-  allocate (density(maxblocks, NXB, NYB, NZB))
-  allocate (temperature(maxblocks, NXB, NYB, NZB))
-  allocate (bc_coords(maxblocks,3))
+  allocate (density(NXB, NYB, NZB,maxblocks))
+  allocate (temperature(NXB, NYB, NZB,maxblocks))
   allocate (lrefine(maxblocks))
-  allocate (boundBox(maxblocks,3,2))
+  allocate (boundBox(2,3,maxblocks))
 
 ! Read in the data
   call read_gridvar("dens",density)
@@ -68,7 +63,6 @@ contains
 
 ! Read block information
   call read_lrefine
-  call read_coords
   call read_bndbox
 
 ! Close the file
@@ -108,7 +102,7 @@ contains
     end if
 
 ! Define hyperslab
-    count = (/maxblocks, NXB, NYB, NZB/)
+    count = (/NXB, NYB, NZB, maxblocks/)
     offset(:) = 0
     call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
     if ( error /= 0 ) then
@@ -223,7 +217,7 @@ contains
     end if
 
 ! Define hyperslab
-    count(:) = (/maxblocks,3,2/)
+    count(:) = (/2,3,maxblocks/)
     offset(:) = (/0,0,0/)
     call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
     if ( error /= 0 ) then
@@ -233,17 +227,17 @@ contains
 ! Read the data
     call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, boundBox, dims, error)
     if ( error == 0 ) then
-       write(message,*) "Maximum x bound= ", maxval(boundBox(:,1,2))
+       write(message,*) "Maximum x bound= ", maxval(boundBox(2,1,:))
        call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum x bound= ", minval(boundBox(:,1,1))
+       write(message,*) "Minimum x bound= ", minval(boundBox(1,1,:))
        call writeInfo(message,TRIVIAL)
-       write(message,*) "Maximum y bound= ", maxval(boundBox(:,2,2))
+       write(message,*) "Maximum y bound= ", maxval(boundBox(2,2,:))
        call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum y bound= ", minval(boundBox(:,2,1))
+       write(message,*) "Minimum y bound= ", minval(boundBox(1,2,:))
        call writeInfo(message,TRIVIAL)
-       write(message,*) "Maximum z bound= ", maxval(boundBox(:,3,2))
+       write(message,*) "Maximum z bound= ", maxval(boundBox(2,3,:))
        call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum z bound= ", minval(boundBox(:,3,1))
+       write(message,*) "Minimum z bound= ", minval(boundBox(1,3,:))
        call writeInfo(message,TRIVIAL)
     else 
        call writeFatal("Error reading refinement data")
@@ -265,72 +259,6 @@ contains
     boundBox(:,:,:) = boundBox(:,:,:) * 1.0e-10_db
 
   end subroutine read_bndbox
-
-!--------------------------------------------------------------------------------------
-
-  subroutine read_coords
-
-    integer(kind=HID_T) :: dataSet, dataSpace
-    integer(kind=HSIZE_T) :: count(2), offset(2)
-    integer(kind=HSIZE_T) :: dims(2)
-
-    call writeInfo("Reading coordinates",TRIVIAL)
-
-! Open data set
-    call h5Dopen_f(file_id, "coordinates", dataSet, error)
-    if ( error /= 0 ) then
-       call writeFatal("Error opening coordinates data set")
-    end if
-
-! Get an identifier for the data space
-    call h5dget_space_f(dataSet, dataSpace, error)
-    if ( error /= 0 ) then
-       call writeFatal("Error opening coordinates data space")
-    end if
-
-! Define hyperslab
-    count(:) = (/maxblocks, 2/)
-    offset(:) = (/0,0/)
-    call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
-    if ( error /= 0 ) then
-       call writeFatal("Error selecting hyperslab")
-    end if
-
-! Read the data
-    call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, bc_coords, dims, error)
-    if ( error == 0 ) then
-       write(message,*) "Maximum x value= ", maxval(bc_coords(:,1))
-       call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum x value= ", minval(bc_coords(:,1))
-       call writeInfo(message,TRIVIAL)
-       write(message,*) "Maximum y value= ", maxval(bc_coords(:,2))
-       call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum y value= ", minval(bc_coords(:,2))
-       call writeInfo(message,TRIVIAL)
-       write(message,*) "Maximum z value= ", maxval(bc_coords(:,3))
-       call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum z value= ", minval(bc_coords(:,3))
-       call writeInfo(message,TRIVIAL)
-    else 
-       call writeFatal("Error reading data")
-    end if
-
-! Close data space
-    call h5Sclose_f(dataSpace, error)
-    if ( error /= 0 ) then
-       call writeFatal("Error closing data space")
-    end if
-
-! Close data set
-    call h5dclose_f(dataSet, error)
-    if ( error /= 0 ) then
-       call writeFatal("Error closing data set")
-    end if
-
-! Convert to Torus units
-    bc_coords(:,:) = bc_coords(:,:) * 1.0e-10
-
-  end subroutine read_coords
 
 end subroutine read_flash_hdf
 
@@ -357,50 +285,79 @@ subroutine assign_from_flash(thisOctal, subcell)
   lrefineClosest = -1
   iClosest = -1
 
-  do i=1, maxblocks
+blocks:  do i=1, maxblocks
 
 ! Is this subcell in this block?
+     if ( thisOctal%twoD) then
 
-     if ( (boundBox(i,1,1) < thisTorusCellCentre%x).and. &
-          (boundBox(i,1,2) > thisTorusCellCentre%x).and. &
-          (boundBox(i,2,1) < thisTorusCellCentre%y).and. &
-          (boundBox(i,2,2) > thisTorusCellCentre%y).and. &
-          (boundBox(i,3,1) < thisTorusCellCentre%z).and. &
-          (boundBox(i,3,2) > thisTorusCellCentre%z) ) then 
+        if ( (boundBox(1,1,i) <= thisTorusCellCentre%x).and. &
+             (boundBox(2,1,i) >  thisTorusCellCentre%x).and. &
+             (boundBox(1,2,i) <= ySlice).and. &
+             (boundBox(2,2,i) >  ySlice).and. &
+             (boundBox(1,3,i) <= thisTorusCellCentre%z).and. &
+             (boundBox(2,3,i) >  thisTorusCellCentre%z) ) then 
 
 ! If the block is higher refinement than any previous block containing 
 ! the point then use the current block
-        if (lrefine(i) > lrefineClosest) then
-           iClosest       = i
-           lrefineClosest = lrefine(i)
+           if (lrefine(i) > lrefineClosest) then
+              iClosest       = i
+              lrefineClosest = lrefine(i)
+           end if
+
         end if
 
-     end if
-  end do
+     elseif (thisOctal%threeD) then
 
+        if ( (boundBox(1,1,i) <= thisTorusCellCentre%x).and. &
+             (boundBox(2,1,i) >  thisTorusCellCentre%x).and. &
+             (boundBox(1,2,i) <= thisTorusCellCentre%y).and. &
+             (boundBox(2,2,i) >  thisTorusCellCentre%y).and. &
+             (boundBox(1,3,i) <= thisTorusCellCentre%z).and. &
+             (boundBox(2,3,i) >  thisTorusCellCentre%z) ) then 
+
+! If the block is higher refinement than any previous block containing 
+! the point then use the current block
+           if (lrefine(i) > lrefineClosest) then
+              iClosest       = i
+              lrefineClosest = lrefine(i)
+           end if
+
+        end if
+
+     else
+        call writeFatal("Octal is not 2D or 3D")
+     end if
+  end do blocks
+
+! Find the closest cell within the block
   if (iClosest /= -1 ) then
 
-     xdist = thisTorusCellCentre%x - boundBox(iClosest,1,1)
-     dx    = (boundBox(iClosest,1,2) - boundBox(iClosest,1,1)) / real(NXB,db)
+     xdist = thisTorusCellCentre%x - boundBox(1,1,iClosest)
+     dx    = (boundBox(2,1,iClosest) - boundBox(1,1,iClosest)) / real(NXB,db)
      icell = int(xdist / dx) + 1 
 
-     ydist = thisTorusCellCentre%y - boundBox(iClosest,2,1)
-     dy    = (boundBox(iClosest,2,2) - boundBox(iClosest,2,1)) / real(NYB,db)
-     jcell = int(ydist / dy) + 1 
+     if ( thisOctal%twoD) then
+        ydist = ySlice - boundBox(1,2,iClosest)
+     elseif (thisOctal%threeD) then
+        ydist = thisTorusCellCentre%y - boundBox(1,2,iClosest)
+     else
+        call writeFatal("Octal is not 2D or 3D")
+     endif
+     dy    = (boundBox(2,2,iClosest) - boundBox(1,2,iClosest)) / real(NYB,db)
+     jcell = int(ydist / dy) + 1
 
-     zdist = thisTorusCellCentre%z - boundBox(iClosest,3,1)
-     dz    = (boundBox(iClosest,3,2) - boundBox(iClosest,3,1)) / real(NZB,db)
+     zdist = thisTorusCellCentre%z - boundBox(1,3,iClosest)
+     dz    = (boundBox(2,3,iClosest) - boundBox(1,3,iClosest)) / real(NZB,db)
      kcell = int(zdist / dz) + 1 
 
-     thisOctal%rho(subcell) = density(iClosest,icell,jcell,kcell) 
-
+     thisOctal%rho(subcell) = density(icell,jcell,kcell,iClosest) 
+     thisOctal%temperature(subcell) = temperature(icell,jcell,kcell,iClosest)
   else
      thisOctal%rho(subcell) = rho_bg
+     thisOctal%temperature(subcell) = 10.0
   endif
 
   thisOctal%dustTypeFraction(subcell,:) = 0.0
-
-  thisOctal%temperature(subcell) = 10000.
   thisOctal%etaCont(subcell) = 0.
   thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
   thisOctal%ne(subcell) = thisOctal%nh(subcell)
@@ -425,26 +382,13 @@ end subroutine read_flash_hdf
 subroutine assign_from_flash(thisOctal, subcell)
 
   use octal_mod
-  use vector_mod
   implicit none
-
-  real(db), parameter :: rho_bg=1.0e-23_db
 
   TYPE(OCTAL) :: thisOctal
   integer     :: subcell
 
   thisOctal%rho(subcell) = 1.0e-33_db
-  thisOctal%dustTypeFraction(subcell,:) = 0.0
-  thisOctal%temperature(subcell) = 10000.
-  thisOctal%etaCont(subcell) = 0.
-  thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-  thisOctal%ne(subcell) = thisOctal%nh(subcell)
-  thisOctal%nhi(subcell) = 1.e-8
-  thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-  thisOctal%inFlow(subcell) = .true.
-  thisOctal%velocity = VECTOR(0.,0.,0.)
-  thisOctal%biasCont3D = 1.
-  thisOctal%etaLine = 1.e-30
+  call writeFatal("Called assign_from_flash in build without HDF support")
 
 end subroutine assign_from_flash
 
@@ -454,7 +398,6 @@ subroutine deallocate_gridFromFlash
 
   if (allocated(density))     deallocate (density)
   if (allocated(temperature)) deallocate (temperature)
-  if (allocated(bc_coords))   deallocate (bc_coords)
   if (allocated(lrefine))     deallocate (lrefine)
   if (allocated(boundBox))    deallocate (boundBox)
 
