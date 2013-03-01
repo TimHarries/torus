@@ -2414,11 +2414,11 @@ contains
                 endif
 
              endif
-
-             if(grid%geometry == "SB_coolshk") then
+!
+ !            if(grid%geometry == "SB_coolshk") then
 !                print *, "ENFORCING COOLING "
-                call enforceCooling(grid%octreeRoot, dt, grid, iniRhoe)
-             end if
+  !              call enforceCooling(grid%octreeRoot, dt, grid, iniRhoe)
+  !           end if
 
           endif
        endif
@@ -2598,107 +2598,84 @@ contains
 
 
 !Calculate the modification to cell velocity and energy due to the pressure gradient
-  recursive subroutine enforceCooling(thisoctal, dt, grid, inirhoe)
+  recursive subroutine enforceCooling(thisoctal, dt, grid)!, inirhoe)
     use mpi
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: thisT, dt, inirhoe !, du
-
+    real(double) ::  dt !, du
+    logical, save :: firstTime = .true.!, uKineticSave=.true.
 !    real(double), parameter :: Teq = 1.d0
-    real(double), parameter :: To = 2.33d0*mHydrogen/kerg
-
-    
+    real(double) ::  u_A!, u_kinetic, u_B
+    real, parameter :: temperatureUnit = (2.33d0*mHydrogen/(kerg))!*(3.d0/2.d0)*((5.d0/3.d0)-1.d0)))
+    real :: oldT
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
           ! find the child
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call enforcecooling(child, dt, grid, inirhoe)
+                call enforcecooling(child, dt, grid)!, inirhoe)
                 exit
              end if
           end do
        else
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!                
+
+             if(dt /= 0.d0) then
+               
+                u_A = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
+
+                oldT = (thisOctal%gamma(subcell) - 1.d0)*((3.d0/2.d0))!*temperatureUnit
+                
+                thisOctal%temperature(subcell) = (thisOctal%gamma(subcell) - 1.d0)*u_A!*temperatureUnit
+
+                if(thisOctal%temperature(subcell) < 1.d0) then
+                   thisOctal%temperature(subcell) = 1.d0!temperatureUnit
+                end if
+
+                thisOctal%energy(subcell) = u_A - ((dt*256.d0)* &
+                     (dble(thisOctal%temperature(subcell)) - dble(oldT))) !- u_kinetic
+
+                if(thisOctal%energy(subcell) < 3.d0/2.d0) then
+                   thisOctal%energy(subcell) = 3.d0/2.d0
+                end if
+
+                thisOctal%temperature(subcell) = thisOctal%temperature(subcell) * temperatureUnit
+
+                thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+!
+                if(thisOCtal%temperature(subcell) /= oldT .and. firstTime) then
+                   print *, "COOLING STATUS"
+                   print *, "du ", thisOctal%energy(subcell) - u_A
+                   print *, "U ", thisOctal%energy(subcell)
+                   print *, "U_A", u_A
+                   print *, "Teq ", oldT
+                   print *, "Temperature ", thisOctal%temperature(subcell)/temperatureUnit
+                   firstTime = .false.
+                end if
+                if(thisOctal%energy(subcell) < 0.0d0) then
+                   print *, "negative temperature"
+                   print *, "du ", THISOCTal%energy(subcell) - u_A
+                   print *, "oldT ", oldT
+!                   print *, "Teq ", Teq
+                   print *, "Temperature ", thisOctal%temperature(subcell) 
+                   print *, (dt*256.d0)*(dble(thisOctal%temperature(subcell)) - dble(oldT))
+                endif
+             end if
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
              
-             thisT = 0.d0
-
-             print *, " "
-             print *, "A", thisOctal%temperature(subcell), thisOctal%rhoe(subcell)
-! Explicit conversion to single precision to avoid compiler warrning
-             thisOctal%temperature(subcell) = real( &
-             (thisOctal%gamma(subcell) - 1.d0) * (To*thisOctal%rhoe(subcell)/thisOctal%rho(subcell)), &
-             si)
-             
-             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - ((1.d0/256.d0) &
-                  *dt * ((thisOctal%gamma(subcell) - 1.d0) * &
-                  (To*thisOctal%rhoe(subcell)/thisOctal%rho(subcell)) - &
-                  To))
-             !                  thisOctal%temperature(subcell)))
-
-             print *, "B", thisOctal%temperature(subcell), thisOctal%rhoe(subcell)
-             print *, " "
-
-
-
-
-!             du = thisOctal%rhoe(subcell)/thisOctal%rho(subcell) &
-!                  - thisOctal%rhoeLastTime(subcell)
-!!             du = du * Teq
-!
-!!             thisT = thisOctal%temperature(subcell) + &
- !                 (thisOCtal%gamma(subcell)-1.d0)*du
-!!             print *, "-------------- "
-!             print *, "du"
-!!             print *, "thisT a", thisT
-!             if(dt /= 0.d0) then
-!                thisT = thisT - ((1.d0/256.d0)*(du/dt))
-!!                print *, "thisT b", thisT
-!             end if
-!!             print *, "thisT ", thisT
-!!             print *, " "
-!             if(dt /= 0.d0) then
-!                thisOctal%temperature(subcell) = thisT
-!             end if
-
-!             du = (thisOctal%rhoe(subcell)/thisOctal%rho(subcell)) &
-!                  - (inirhoe/thisOctal%rho(subcell))
-!             du = du*Teq
-!
-!             thisT = ((1.d0/256.d0))
-!!             print *, "thisT ", thisT
-!             if(dt /= 0.d0) then               
-!                thisT = thisT * (du/dt)
-!             else!
-!                t!hisT = 0.d0
-!             end !if
-!             if(thisT < Teq) thisT = 0.d0
-!             !             print *, "thisTB ", thisT
-!
-!             thisT = thisT + Teq
-! !            print *, "thisTC ", thisT
-!             thisOctal%temperature(subcell) = thisT!
-
-!             thisT = (thisOctal%gamma(subcell)-1.d0)*thisOctal%rhoe(subcell)
-!             thisT = thisT * 2.33d0*mHydrogen/(kerg*thisOctal%rho(subcell))
-!             thisOctal%temperature(subcell) = thisT*2.33d0*mHydrogen/&
-!                  (kerg*thisOctal%rho(subcell))!!
-!
-!             if(thisT /= Teq) then
-!                print *, "thisT ", thisT
-!                print *, "du ", du
-!!             end if
-!
-!             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - &
-!                  ((dt*256.d0*(thisT - Teq)))
           end if
        end if
     end do
 
   end subroutine enforceCooling
+
 
 !Use to damp oscillations/flow
   recursive subroutine damp(thisoctal)
@@ -3741,7 +3718,9 @@ end subroutine sumFluxes
 
 !update cell velocities and rhoe's due to pressure gradient
     call pressureforce(grid%octreeroot, dt, grid, direction)
-
+    if(grid%geometry == "SB_coolshk") then
+       call enforceCooling(grid%octreeRoot, dt, grid)!, iniRhoe)
+    end if
 !impose boundary conditions again
     call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
