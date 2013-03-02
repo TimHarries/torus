@@ -79,6 +79,7 @@ contains
   subroutine writewarning(wstring)
     character(len=*) :: wstring
     logical :: doOutput
+    dooutput = .false.
     if (outputWarnings.and.(verbosityLevel .ge. IMPORTANT)) dooutput = .true.
     if (writeoutput.and.dooutput) then
        write(*,'(a,a,a)') "WARNING: ", trim(wstring)," !"

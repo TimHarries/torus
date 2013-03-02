@@ -36,7 +36,7 @@
   logical :: calcBenchmark
 
   logical :: dowriteRadialFile
-  character(len=80) :: radialFilename
+  character(len=200) :: radialFilename
 
 !-----------------------------------
 ! Write/read a grid for a warm start

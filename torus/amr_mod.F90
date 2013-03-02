@@ -299,6 +299,10 @@ CONTAINS
     CASE("spiral")
        call calcSpiral(thisOctal, subcell)
 
+
+    CASE("envelope")
+       call calcEnvelope(thisOctal, subcell)
+
     CASE("interptest")
        call calcinterptest(thisOctal, subcell)
 
@@ -3846,16 +3850,31 @@ CONTAINS
                  if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
                       .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
        case("spiral")
-          split = splitSpiral(thisOctal)
+          call splitSpiral(thisOctal, split, splitInAzimuth)
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
              split = .true.
              splitInAzimuth = .true.
           endif
-          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.)) then
-             splitInAzimuth = .true.
-          endif
 
+       case("envelope")
+          r = modulus(thisOctal%centre)
+          if (firsttime) then
+             nr = 100
+             do i = 1, 100
+                rgrid(i) = log10(rinner) + (dble(i-1)/dble(nr-1))*log10(rOuter/rInner)
+             enddo
+             rgrid(1:nr) = 10.d0**rgrid(1:nr)
+             firsttime = .false.
+          endif
+          if ((r > rInner).and.(r < rOuter)) then
+             call locate(rGrid, 100, r ,i)
+             if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
+          endif
+          if (((r < rInner).and.(r+thisOctal%subcellsize > rInner))) split = .true.
+          if (((r > rInner).and.(r-thisOctal%subcellsize < rInner))) split = .true.
+
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("unisphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -7957,6 +7976,29 @@ endif
 
   end subroutine calcSphere
 
+  subroutine calcEnvelope(thisOctal,subcell)
+
+    use inputs_mod, only : rInner, rOuter, MassEnvelope
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real(double) :: rho0, rMod
+    type(VECTOR) :: rVec
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    thisOctal%rho(subcell) = 1.d-30
+    thisOctal%temperature(subcell) = 10.
+    rho0 =   massEnvelope &
+         / (((8.d0/3.d0) * pi * (rInner*1.d10)**1.5d0)*((rOuter*1.d10)**1.5d0 - (rInner*1.d10)**1.5d0))
+!    write(*,*) "rho0 ",rho0
+    if ((rMod > rInner).and.(rMod < rOuter)) then
+       thisOctal%rho(subcell) = rho0 * (rmod/rInner)**-1.5d0
+    endif
+  end subroutine calcEnvelope
+    
+
+
+  
   subroutine calcSpiral(thisOctal,subcell)
     use inputs_mod, only : vterm, period
     real(double) :: rMod, spiralFac, theta
@@ -7991,16 +8033,18 @@ endif
 
   end subroutine calcSpiral
 
-  logical function splitSpiral(thisOctal)
+  subroutine splitSpiral(thisOctal, split, splitInAzimuth)
     use inputs_mod, only : vterm, period
     real(double) :: rMod, spiralFac, theta
     real(double) :: rSpiral, densityFac
     integer :: iSpiral
+    logical :: split, splitInAzimuth
     TYPE(octal), INTENT(IN) :: thisOctal
     type(VECTOR) :: rVec, spiralVec
 
 
-    splitSpiral = .false.
+    split = .false.
+    splitInAzimuth = .false.
     rVec = thisOctal%centre
     rMod = sqrt(rVec%x**2 + rVec%y**2)
 
@@ -8011,17 +8055,31 @@ endif
     if (theta < 0.d0) theta = theta + twoPi
 
 
-    do iSpiral = 0, 10
+    do iSpiral = 0, 100
        rSpiral = (dble(iSpiral) + theta/twopi) * spiralFac
        densityFac = (spiralFac/rMod)**3
        spiralVec = rSpiral * VECTOR(cos(theta),sin(theta),0.d0)
-       if (modulus(rVec-spiralVec) < max(2.d0*thisOctal%subcellSize,rMod*thisOctal%dPhi)) then
-          if (thisOctal%subcellSize > 0.01d0 * rSpiral) splitSpiral=.true.
+       if ((modulus(rVec-spiralVec) < max(2.d0*thisOctal%subcellSize,rMod*thisOctal%dPhi)).or. &
+           (modulus(rVec-spiralVec) < 0.2d0*rSpiral)) then
+          if (thisOctal%subcellSize > 0.02d0 * rSpiral) split=.true.
+          if (iSpiral < 10) then
+             if (thisOctal%dPhi*radtodeg > 11.d0) then
+                splitInAzimuth = .true.
+                split = .true.
+             endif
+             if (iSpiral < 2) then
+                if (thisOctal%dPhi*radtodeg > 2.1d0) then
+                   splitInAzimuth = .true.
+                   split = .true.
+                endif
+             endif
+          endif
        endif
+
     enddo
 
     
-  end function splitSpiral
+  end subroutine splitSpiral
 
 
   subroutine calcinterptest(thisOctal,subcell)
@@ -9837,7 +9895,7 @@ end function readparameterfrom2dmap
              end if
           end do
        else
-          thisOctal%rho(subcell) = thisOctal%rho(subcell) * scaleFac
+          thisOctal%rho(subcell) = max(1.d-25,thisOctal%rho(subcell) * scaleFac)
        endif
     enddo
   end subroutine scaleDensityAMR

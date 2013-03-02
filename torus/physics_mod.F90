@@ -417,7 +417,7 @@ contains
 
      call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=1500., rosselandKappa = temp)
      call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=10000., kappap = temp2)
-     write(*,*) "Ross (1500), Planck (10000): ",temp,temp2/grid%octreeRoot%rho(1)
+!     write(*,*) "Ross (1500), Planck (10000): ",temp,temp2/grid%octreeRoot%rho(1)
 
         if (solveVerticalHydro) then
 

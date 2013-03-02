@@ -350,14 +350,71 @@ contains
     endif
 
     if (dowriteRadialFile) then
+       if (splitOverMpi) then
 #ifdef MPI
        call writeRadialFile(radialfilename, grid)
 #endif
+    else
+       call writeRadial(grid, radialFilename)
+    endif
     endif
 
 
 666 continue
   end subroutine doOutputs
+
+  subroutine writeRadial(grid, filename)
+    type(GRIDTYPE) :: grid
+    integer :: i
+    character(len=*) :: filename
+    integer :: nr, nOctals
+    real(double), allocatable :: rArray(:), rhoArray(:), tArray(:)
+
+    call countVoxels(grid%octreeRoot, nOctals, nr)
+    allocate(rArray(1:nr), tArray(1:nr), rhoArray(1:nr))
+    nr = 0
+    call getRadial(grid%octreeRoot,  nr, rArray, rhoArray, tArray)
+
+    if (writeoutput) then
+       open(33, file=filename, status="unknown", form="formatted")
+       write(33,'(a)') "# radius (AU), dust temperature (K), density N(H_2)"
+       do i = 1, nr
+          write(33,'(1p,e13.3,e13.3,e13.3)') rArray(i)*1.d10/autocm,tArray(i),rhoArray(i)/(2.d0*mHydrogen)
+       enddo
+       close(33)
+    endif
+    deallocate(rArray, tArray, rhoArray)
+  end subroutine writeRadial
+
+
+
+  recursive subroutine getRadial(thisOctal, nr, rArray, rhoArray, tArray)
+  real(double) :: rArray(:), rhoArray(:), tArray(:)
+  integer :: nr
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  getRadial(child, nr, rArray, rhoArray, tArray)
+                exit
+             end if
+          end do
+
+       else
+          nr = nr + 1
+          rArray(nr) = modulus(subcellCentre(thisOctal, subcell))
+          tArray(nr) = dble(thisOctal%temperature(subcell))
+          rhoArray(nr) = thisOctal%rho(subcell)
+       endif
+    enddo
+  end subroutine getRadial
+
 
 
 end module outputs_mod

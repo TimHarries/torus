@@ -85,7 +85,7 @@ module source_mod
       if ( nsource<1 ) return
 
       if (writeoutput) &
-           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "Ran ""N","M","R","L","L(spec)","x","y","z"
+           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "Ran ","N","M","R","L","L(spec)","x","y","z"
       do i = 1, nSource
          fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
          if (writeoutput) &

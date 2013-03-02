@@ -75,6 +75,27 @@ module utils_mod
 contains
 
 
+  real(double) function getGridValue(i, r1, r2, nr, logarithmic)
+    integer :: i, nr
+    real(double) :: r1, r2
+    logical :: logarithmic
+
+    if (.not.logarithmic) then
+       if (nr > 1) then
+          getGridValue = r1 + (r2-r1) * dble(i-1)/dble(nr-1)
+       else
+          getGridValue = r1
+       endif
+    else
+       if (nr > 1) then
+          getGridValue = log10(r1) + log10(r2/r1) * dble(i-1)/dble(nr-1)
+          getGridValue = 10.d0**getGridValue
+       else
+          getGridValue = r1
+       endif
+    endif
+  end function getGridValue
+
   ! solve a quadratic equation
 
 

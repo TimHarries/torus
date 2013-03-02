@@ -27,7 +27,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
-    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
+    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings, mDisc, dusttogas
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
@@ -150,9 +150,9 @@ contains
     if (myRankIsZero) then
        writeoutput = .true.
 
-       print *, ' '
-       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
-       print *, ' '
+!       print *, ' '
+!       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
+!       print *, ' '
     endif
 
     ! ============================================================================
@@ -670,14 +670,14 @@ contains
           ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
           if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-          if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
+!          if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
           !   call update_octal_MPI(grid%octreeRoot, grid)
 
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
           call updateGridMPI(grid)
-          if(myRankGlobal == 0) write(*,*) "Done update."
+!          if(myRankGlobal == 0) write(*,*) "Done update."
 
           if(doTuning) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 
@@ -746,7 +746,7 @@ contains
 
           nCellsInDiffusion = 0
           nUndersampled = 0
-          if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
+!          if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
           call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
           percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
 
@@ -874,7 +874,7 @@ contains
              !                endif
              !             endif
 
-             if (iiter_grand == 8) then
+             if ((iiter_grand == 8).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -1007,7 +1007,7 @@ contains
 
     enddo
 
-    if (variableDustSublimation.and.thisIsFinalPass) then
+    if (variableDustSublimation.and.thisIsFinalPass.and.doSmoothGridTau) then
        call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
        if ((nfrac /= 0).and.(writeoutput)) then
           write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)

@@ -11139,8 +11139,8 @@ end subroutine refineGridGeneric2
     call updatePhiTree(grid%octreeRoot, 4)
 
 
-    minLevel = 4
-    if (cylindricalHydro) minLevel = 4
+    minLevel = 5
+    if (cylindricalHydro) minLevel = 5
     call updateDensityTree(grid%octreeRoot)
 
     firstTime = .true.
@@ -11210,12 +11210,6 @@ end subroutine refineGridGeneric2
           call unsetGhosts(grid%octreeRoot)
           call setupEdgesLevel(grid%octreeRoot, grid, iDepth-1)
           call setupGhostsLevel(grid%octreeRoot, grid, iDepth-1)
-
-             if(dirichlet.and.firstTime) then
-                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-                call applyDirichlet(grid, iDepth-1)
-                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-             endif
 
           if (cylindricalHydro) then
              call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth-1, phi_gas=.true.)
@@ -11292,10 +11286,6 @@ end subroutine refineGridGeneric2
           enddo
 
        enddo
-
-
-
-
 
 
        firstTime = .false.

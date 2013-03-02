@@ -417,7 +417,7 @@ contains
           if ((miePhase(i,j,nMuMie)%element(1,1)/max(1.e-30,miePhase(i,j,nMuMie-1)%element(1,1))) > 10.d0) then
              miePhase(i,j,nMuMie)%element  = real(10.d0 * miePhase(i,j,nMuMie-1)%element)
              if (writeoutput.and.firstTime) then
-                write(*,*) "! Undersampeld miephase fixed (near 180)"
+                call writeInfo("Undersampeld miephase fixed (near 180)",TRIVIAL)
                 firstTime = .false.
              endif
           endif
@@ -425,7 +425,7 @@ contains
           if ((miePhase(i,j,1)%element(1,1)/max(1.e-30,miePhase(i,j,2)%element(1,1))) > 10.d0) then
              miePhase(i,j,1)%element  = real(10.d0 * miePhase(i,j,2)%element)
              if (writeoutput.and.firstTime) then
-                write(*,*) "! Undersampeld miephase fixed (near 0)"
+                call writeInfo("Undersampeld miephase fixed (near 0)",TRIVIAL)
                 firstTime = .false.
              endif
           endif

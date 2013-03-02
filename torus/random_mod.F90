@@ -220,7 +220,7 @@ contains
        if (.not.different) then
           write(*,*) "! Threads do not have independent random sequences"
        endif
-          write(*,*) "Random sequence test:  Success - threads have independent random sequences"
+          call writeInfo("Random sequence test:  Success - threads have independent random sequences",TRIVIAL)
     endif
 #ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -305,7 +305,7 @@ contains
           write(*,*) "! Threads do not have same random sequences"
           write(*,*) itest
        else
-          write(*,*) "Synced seed test: Success - threads have same random number sequences"
+          call writeInfo( "Synced seed test: Success - threads have same random number sequences", TRIVIAL)
        endif
     endif
 #ifdef MPI

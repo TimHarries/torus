@@ -1018,6 +1018,15 @@ contains
             "Period (days): ","(a,f7.1,a)", 20., ok, .true.)
        call getReal("massenv", massEnvelope, real(mSol), cLine, fLine,  nLines, &
             "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
+
+
+    case("envelope")
+       call getReal("rinner", rInner, real(autocm)/1.e10, cLine, fLine, nLines, &
+            "Inner radius (AU): ","(a,f7.1,a)", 20., ok, .true.)
+       call getReal("router", rOuter, real(autocm)/1.e10, cLine, fLine, nLines, &
+            "Outer radius (AU): ","(a,f7.1,a)", 20., ok, .true.)
+       call getReal("massenv", massEnvelope, real(mSol), cLine, fLine,  nLines, &
+            "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
        
 
 

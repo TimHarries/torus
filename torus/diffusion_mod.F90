@@ -1227,9 +1227,9 @@ subroutine setDiffOnTau(grid)
     allocate(octalsBelongRank(size(octalArray)))
     
     if (my_rank == 0) then
-       print *, ' '
-       print *, 'Diffusion on Tau computed by ', np-1, ' processors.'
-       print *, ' '
+!       print *, ' '
+!       print *, 'Diffusion on Tau computed by ', np-1, ' processors.'
+!       print *, ' '
        call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
                             setDebug=.false.)
     

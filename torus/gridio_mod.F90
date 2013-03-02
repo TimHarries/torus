@@ -337,7 +337,7 @@ contains
        call writeFatal("zlib is needed for writing compressed files")
 #endif
     endif
-    call writeInfo("File written and closed")
+    call writeInfo("File written and closed",TRIVIAL)
        
     
   contains

@@ -1290,7 +1290,7 @@ contains
     if (associated(grid%inUse)) deallocate(grid%inUse)
        nullify(grid%inUse)
 
-    call writeinfo("done.")
+    call writeinfo("done.",TRIVIAL)
   end subroutine freeGrid
 
   logical function insideGrid(grid, rVec)

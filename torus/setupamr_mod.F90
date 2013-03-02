@@ -466,6 +466,11 @@ contains
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 #endif
+          case("envelope")
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             if (writeoutput) write(*,*) "Mass of envelope: ",totalMass/msol
+
           case("spiral")
              totalMass = 0.d0
              call findTotalMass(grid%octreeRoot, totalMass)
