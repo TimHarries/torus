@@ -125,7 +125,7 @@ program torus
 
      call setupMicrophysics(grid)
 
-     if trim(grid%geometry == "envelope") then
+     if (trim(grid%geometry) == "envelope") then
         call calculategrid()
         goto 666
      endif

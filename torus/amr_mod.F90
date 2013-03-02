@@ -7992,7 +7992,7 @@ endif
          / (((8.d0/3.d0) * pi * (rInner*1.d10)**1.5d0)*((rOuter*1.d10)**1.5d0 - (rInner*1.d10)**1.5d0))
 !    write(*,*) "rho0 ",rho0
     if ((rMod > rInner).and.(rMod < rOuter)) then
-       thisOctal%rho(subcell) = rho0 * (rmod/rInner)**-1.5d0
+       thisOctal%rho(subcell) = rho0 * (rmod/rInner)**(-1.5d0)
     endif
   end subroutine calcEnvelope
     
