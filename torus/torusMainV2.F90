@@ -125,8 +125,10 @@ program torus
 
      call setupMicrophysics(grid)
 
-     call calculategrid()
-     goto 666
+     if trim(grid%geometry == "envelope") then
+        call calculategrid()
+        goto 666
+     endif
 !$OMP MASTER
      if (doSetupAMRgrid) then
 
