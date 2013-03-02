@@ -215,15 +215,15 @@ contains
                    do iRouter = 1, nRouter
                       do iMassStar = 1, nMassStar
 
-                      massEnvelope =  getGridValue(iMass, massStart, massEnd, nMass, .false.)*mSol
-                      rInner =  getGridValue(iRinner, rinnerStart, rinnerEnd, nrInner, .true.)*autocm/1.d10
-                      rOuter = getGridValue(irOuter, rOuterStart, rOuterEnd, nrOuter, .false.)*autocm/1.d10
+                      massEnvelope =  real(getGridValue(iMass, massStart, massEnd, nMass, .false.)*mSol)
+                      rInner =  real(getGridValue(iRinner, rinnerStart, rinnerEnd, nrInner, .true.)*autocm/1.d10)
+                      rOuter = real(getGridValue(irOuter, rOuterStart, rOuterEnd, nrOuter, .false.)*autocm/1.d10)
 !
                       massStar =  getGridValue(iMassStar, massStarStart, massStarEnd, nMassStar, .false.)
                       lum = getGridValue(iLum, lumStart, lumEnd, nlum, .true.)
-                      radius = getGridValue(iRadius, radiusStart, radiusEnd, nRadius, .false.)
-                      mDot = getGridValue(iAcc, accStart, accEnd, nAcc, .true.)*msol / (365.25d0*24.d0*3600.d0)
-                      teff = (lum / (fourPi * radius**2 * stefanBoltz))**0.25d0
+                      radius = real(getGridValue(iRadius, radiusStart, radiusEnd, nRadius, .false.))
+                      mDot = real(getGridValue(iAcc, accStart, accEnd, nAcc, .true.)*msol / (365.25d0*24.d0*3600.d0))
+                      teff = real((lum / (fourPi * radius**2 * stefanBoltz))**0.25d0)
 
                       lAcc = bigG * mDot * massStar / radius
                       tAcc = (lAcc / (fourPi * radius**2 * stefanBoltz))**0.25d0

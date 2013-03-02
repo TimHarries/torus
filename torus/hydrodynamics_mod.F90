@@ -2630,7 +2630,7 @@ contains
                
                 u_A = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
 
-                oldT = (thisOctal%gamma(subcell) - 1.d0)*((3.d0/2.d0))!*temperatureUnit
+                oldT = real((thisOctal%gamma(subcell) - 1.d0)*((3.d0/2.d0)))!*temperatureUnit
                 
                 thisOctal%temperature(subcell) = real((thisOctal%gamma(subcell) - 1.d0)*u_A)
 
