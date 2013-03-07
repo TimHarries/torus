@@ -33,7 +33,7 @@ module gridFromFlash
 contains
 
 ! Accessor function
-  logical function flashFileRequired
+  logical function flashFileRequired()
     flashFileRequired = isRequired
   end function flashFileRequired
 
