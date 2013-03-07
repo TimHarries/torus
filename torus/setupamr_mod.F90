@@ -72,10 +72,10 @@ contains
     integer :: nVoxels, nOctals
     integer :: counter, nTimes
 !    integer :: nUnrefine
+    real :: scalefac
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
-    real :: scalefac
     real(double) :: objectDistance
 #endif
 #ifdef MPI 
