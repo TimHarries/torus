@@ -23,6 +23,7 @@ module gridFromFlash
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
 ! Block refinement level
   integer, private, allocatable, save :: lrefine(:)
+  integer, private, save :: maxRefine ! maximum level of refinement
 ! Block bounding boxes
   real(kind=db), private, allocatable, save :: boundBox(:,:,:)
 
@@ -167,7 +168,8 @@ contains
 ! Read the data
     call h5dread_f(dataSet, H5T_NATIVE_INTEGER, lrefine, dims, error)
     if ( error == 0 ) then
-       write(message,*) "Maximum refinement level= ", maxval(lrefine(:))
+       maxRefine =  maxval(lrefine(:))
+       write(message,*) "Maximum refinement level= ", maxRefine
        call writeInfo(message,TRIVIAL)
        write(message,*) "Minimum refinement level= ", minval(lrefine(:))
        call writeInfo(message,TRIVIAL)
@@ -302,6 +304,9 @@ blocks:  do i=1, maxblocks
            if (lrefine(i) > lrefineClosest) then
               iClosest       = i
               lrefineClosest = lrefine(i)
+! If we've found a block at the highest level of refinement then we need look 
+! no further so exit the loop
+              if (lrefineClosest == maxRefine) exit blocks
            end if
 
         end if
@@ -320,6 +325,9 @@ blocks:  do i=1, maxblocks
            if (lrefine(i) > lrefineClosest) then
               iClosest       = i
               lrefineClosest = lrefine(i)
+! If we've found a block at the highest level of refinement then we need look 
+! no further so exit the loop
+              if (lrefineClosest == maxRefine) exit blocks
            end if
 
         end if
@@ -357,7 +365,13 @@ blocks:  do i=1, maxblocks
      thisOctal%temperature(subcell) = 10.0
   endif
 
-  thisOctal%dustTypeFraction(subcell,:) = 0.0
+! Choose where to put dust
+  if (thisOctal%temperature(subcell) > 1.5e5) then
+     thisOctal%dustTypeFraction(subcell,:) = 0.0
+  else
+     thisOctal%dustTypeFraction(subcell,:) = 1.0
+  end if
+
   thisOctal%etaCont(subcell) = 0.
   thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
   thisOctal%ne(subcell) = thisOctal%nh(subcell)
