@@ -6,18 +6,21 @@ module gridFromFlash
   use kind_mod
   use messages_mod
 
-! Public module variables
-  logical :: flashFileRequired=.true.
+  public :: setGridFromFlashParameters, assign_from_flash, flashFileRequired, &
+       read_flash_hdf, deallocate_gridfromflash
 
-! Private module variables
-  character(len=*), parameter, private :: infile="bow_hdf5_chk_0048"
-  real(double), parameter, private :: ySlice = 0.8e8_db
-  integer, parameter, private :: maxblocks=11056
+  private
+
+  logical :: isRequired=.false.
+
+  character(len=80), private  :: infile
+  real(double), private       :: ySlice
+  integer, private            :: maxblocks
   integer, parameter, private :: NXB = 8
   integer, parameter, private :: NYB = 8
   integer, parameter, private :: NZB = 8
   integer, parameter, private :: MDIM =3 ! number of dimensions
-  character(len=80), private :: message
+  character(len=80), private  :: message
 
   real(kind=db), private, allocatable, save :: density(:,:,:,:)
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
@@ -28,6 +31,36 @@ module gridFromFlash
   real(kind=db), private, allocatable, save :: boundBox(:,:,:)
 
 contains
+
+! Accessor function
+  logical function flashFileRequired
+    flashFileRequired = isRequired
+  end function flashFileRequired
+
+! Set module variables from values the parameters file. Called from inputs_mod.
+  subroutine setGridFromFlashParameters(flashfilename, numblocks, slice)
+
+    implicit none 
+
+    integer, intent(in) :: numblocks
+    character(len=80), intent(in) :: flashfilename
+    real(double), intent(in) :: slice
+
+    if (numblocks > 0) then
+       maxBlocks = numBlocks
+    else
+       write(message,*) "Number of blocks must be positive.", numBlocks
+       call writeFatal(message)
+    endif
+
+    infile = flashfilename
+
+! It is currently assumed that the slice is taken in the y-direction
+    yslice = slice
+
+    isRequired=.true.
+
+  end subroutine setGridFromFlashParameters
 
 #ifdef USEHDF
   subroutine read_flash_hdf

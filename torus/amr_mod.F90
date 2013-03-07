@@ -427,7 +427,7 @@ CONTAINS
    CASE ("runaway")
       if (vh1FileRequired) then 
          call assign_from_vh1(thisOctal, subcell)
-      elseif(flashFileRequired) then
+      elseif(flashFileRequired()) then
          call assign_from_flash(thisOctal, subcell)
       else
          call torus_abort("No way to assign density for runaway geometry")

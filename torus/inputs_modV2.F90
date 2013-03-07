@@ -1286,10 +1286,6 @@ contains
     if (amr1d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
 
-
-
-
-
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
          "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.) 
 
@@ -1301,6 +1297,32 @@ contains
 
     call getString("geometry", geometry, cLine, fLine, nLines, &
          "Geometry: ","(a,a,a)","sphere",ok, .true.)
+
+! For setting up a grid from a Flash HDF5 dump
+    if (checkPresent("flashfilename", cline, nlines)) call readFlashParameters
+
+
+  contains
+
+    subroutine readFlashParameters
+      use gridFromFlash, only: setGridFromFlashParameters
+
+      character(len=80) :: flashfilename
+      integer :: numBlocks
+      real(double) :: slice
+
+      call getString("flashfilename", flashfilename, cLine, fLine, nLines, &
+           "Flash file name: ","(a,a,a)","default",ok,.true.)
+       
+      call getInteger("numflashblocks", numblocks, cLine, fLine, nLines, &
+           "Number of blocks in flash file: ", "(a,i7,a)",1000,ok,.true.)
+
+      call getDouble("flashslice", slice, 1.d0, cLine, fLine, nLines, &
+           "Position of slice for 2D cut ","(a,1p,e9.3,1x,a)", 0.8e8_db, ok, .false.) 
+
+      call setGridFromFlashParameters(flashfilename, numblocks, slice)
+
+    end subroutine readFlashParameters
 
   end subroutine readGridInitParameters
 

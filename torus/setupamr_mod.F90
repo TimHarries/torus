@@ -267,7 +267,7 @@ contains
        case("runaway")
 
           if (vh1FileRequired)   call read_vh1
-          if (flashFileRequired) call read_flash_hdf
+          if (flashFileRequired()) call read_flash_hdf
 
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
