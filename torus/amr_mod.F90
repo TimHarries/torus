@@ -425,7 +425,7 @@ CONTAINS
       thisOctal%temperature = 8000.
 
    CASE ("runaway")
-      if (vh1FileRequired) then 
+      if (vh1FileRequired()) then 
          call assign_from_vh1(thisOctal, subcell)
       elseif(flashFileRequired()) then
          call assign_from_flash(thisOctal, subcell)
@@ -3679,7 +3679,7 @@ CONTAINS
                    
        case("runaway")
           
-          if (vh1FileRequired) then 
+          if (vh1FileRequired()) then 
              call get_density_vh1(thisOctal, subcell, ave_density, minDensity, maxDensity, npt_subcell)
           
              ! Split on mass per cell 

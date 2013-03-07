@@ -1301,6 +1301,8 @@ contains
 ! For setting up a grid from a Flash HDF5 dump
     if (checkPresent("flashfilename", cline, nlines)) call readFlashParameters
 
+! For setting up a grid from a VH-1 dump
+    if (checkPresent("vh1filename", cline, nlines)) call readVh1Parameters
 
   contains
 
@@ -1323,6 +1325,18 @@ contains
       call setGridFromFlashParameters(flashfilename, numblocks, slice)
 
     end subroutine readFlashParameters
+
+    subroutine readVh1Parameters
+      use vh1_mod, only: setGridFromVh1Parameters
+
+      character(len=80) :: vh1filename
+
+      call getString("vh1filename", vh1filename, cLine, fLine, nLines, &
+           "VH1 file name: ","(a,a,a)","default",ok, .true.)
+
+      call setGridFromVh1Parameters(vh1filename)
+
+    end subroutine readVh1Parameters
 
   end subroutine readGridInitParameters
 

@@ -5,9 +5,10 @@ module vh1_mod
   implicit none
 
 ! Public components
-  public :: read_vh1, assign_from_vh1, get_density_vh1
+  public :: read_vh1, assign_from_vh1, get_density_vh1, vh1FileRequired, &
+       setGridFromVh1Parameters
   
-  logical, public :: vh1FileRequired=.false.
+  private
 
 ! Private components
   integer, private :: nx
@@ -20,19 +21,35 @@ module vh1_mod
   real(db), private, parameter :: xSource = 3.3e7_db
   logical, private, parameter  :: centreOnSource=.true.
 
+  logical, private  :: isRequired=.false.
+  character(len=80), private :: infile
+
 contains
 
+! Set module variables from values the parameters file. Called from inputs_mod.
+! Could add xSource and centreOnSource 
+  subroutine setGridFromVh1Parameters(vh1filename)
+    character(len=80), intent(in) :: vh1filename
+
+    infile=vh1filename
+
+    isRequired=.true.
+
+  end subroutine setGridFromVh1Parameters
+
+! Accessor function
+  logical function  vh1FileRequired()
+     vh1FileRequired=isRequired
+  end function vh1FileRequired
 
   subroutine read_vh1
     
     ! Read data from VH-1 output file written by printold.f
     
     use messages_mod
-    use inputs_mod, only: file_line_count
 
     implicit none
 
-    character(len=*), parameter :: infile="vh1.dat"
     character(len=7) :: head1
     character(len=6) :: head2
     character(len=4) :: head3
@@ -111,6 +128,28 @@ contains
     call writeInfo(message, FORINFO)
     write(message,*) "y-axis (min/max) =", yaxis(1), yaxis(nx)
     call writeInfo(message, FORINFO)
+
+  contains
+
+! Count the number of lines in a file. 
+! Should return the same answer as wc -l i.e. includes blank lines in the total
+! D. Acreman, June 2010
+    integer function file_line_count(filename)
+
+      character(len=*) :: filename
+      character(len=1) :: dummy
+      integer :: status 
+
+      file_line_count = 0
+      open(unit=30, status="old", file=filename)
+      do
+         read(30,'(a1)',iostat=status) dummy
+         if ( status /= 0 ) exit
+         file_line_count = file_line_count + 1 
+      end do
+      close(30)
+
+    end function file_line_count
 
   end subroutine read_vh1
 
