@@ -227,6 +227,10 @@ ifeq ($(SYSTEM), zen)
     EXE=torus.zen
     STATICLIBS= -Bstatic
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    ifeq ($(hdf), yes)
+       F95COMP+=-I/sw/hdf5_intel/include
+       STARLIBS=-L/sw/hdf5_intel/lib
+    endif
     ZLIBLIBS = -lz	
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
@@ -244,6 +248,10 @@ ifeq ($(SYSTEM), zensingle)
     EXE=torus.zensingle
     STATICLIBS= -Bstatic
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    ifeq ($(hdf), yes)
+       F95COMP+=-I/sw/hdf5_intel/include
+       STARLIBS=-L/sw/hdf5_intel/lib
+    endif
     ZLIBLIBS = -lz
     MPIFLAG = 
     KNOWN_SYSTEM=yes
