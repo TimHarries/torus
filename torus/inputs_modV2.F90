@@ -1312,17 +1312,21 @@ contains
       character(len=80) :: flashfilename
       integer :: numBlocks
       real(double) :: slice
+      logical :: doReflectY
 
       call getString("flashfilename", flashfilename, cLine, fLine, nLines, &
            "Flash file name: ","(a,a,a)","default",ok,.true.)
        
-      call getInteger("numflashblocks", numblocks, cLine, fLine, nLines, &
+      call getInteger("flashnumblocks", numblocks, cLine, fLine, nLines, &
            "Number of blocks in flash file: ", "(a,i7,a)",1000,ok,.true.)
 
       call getDouble("flashslice", slice, 1.d0, cLine, fLine, nLines, &
            "Position of slice for 2D cut ","(a,1p,e9.3,1x,a)", 0.8e8_db, ok, .false.) 
 
-      call setGridFromFlashParameters(flashfilename, numblocks, slice)
+      call getLogical("flashreflecty", doReflectY, cLine, fLine, nLines, &
+           "Reflect y=axis: ","(a,1l,1x,a)", .false., ok, .false.)
+
+      call setGridFromFlashParameters(flashfilename, numblocks, slice, doReflectY)
 
     end subroutine readFlashParameters
 

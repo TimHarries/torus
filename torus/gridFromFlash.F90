@@ -15,6 +15,8 @@ module gridFromFlash
 
   character(len=80), private  :: infile
   real(double), private       :: ySlice
+  logical, private            :: reflectYaxis=.false.
+
   integer, private            :: maxblocks
   integer, parameter, private :: NXB = 8
   integer, parameter, private :: NYB = 8
@@ -24,6 +26,8 @@ module gridFromFlash
 
   real(kind=db), private, allocatable, save :: density(:,:,:,:)
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
+  real(kind=db), private, save :: minRho, minTem
+
 ! Block refinement level
   integer, private, allocatable, save :: lrefine(:)
   integer, private, save :: maxRefine ! maximum level of refinement
@@ -38,13 +42,14 @@ contains
   end function flashFileRequired
 
 ! Set module variables from values the parameters file. Called from inputs_mod.
-  subroutine setGridFromFlashParameters(flashfilename, numblocks, slice)
+  subroutine setGridFromFlashParameters(flashfilename, numblocks, slice, doReflectY)
 
     implicit none 
 
     integer, intent(in) :: numblocks
     character(len=80), intent(in) :: flashfilename
     real(double), intent(in) :: slice
+    logical, intent(in) :: doReflectY
 
     if (numblocks > 0) then
        maxBlocks = numBlocks
@@ -58,6 +63,10 @@ contains
 ! It is currently assumed that the slice is taken in the y-direction
     yslice = slice
 
+! Currently only the y-axis can be reflected
+    reflectYaxis = doReflectY
+
+! The read subroutine is actvated when setGridFromFlashParameters is called
     isRequired=.true.
 
   end subroutine setGridFromFlashParameters
@@ -92,8 +101,8 @@ contains
   allocate (boundBox(2,3,maxblocks))
 
 ! Read in the data
-  call read_gridvar("dens",density)
-  call read_gridvar("temp",temperature)
+  call read_gridvar("dens",density,minRho)
+  call read_gridvar("temp",temperature,minTem)
 
 ! Read block information
   call read_lrefine
@@ -112,10 +121,11 @@ contains
 
 !----------------------------------------------------------------------------
 
-  subroutine read_gridvar(varName,buf)
+  subroutine read_gridvar(varName,buf,minValue)
 
     character(len=*), intent(in) :: varName
     real(kind=db), intent(out) :: buf(maxblocks, NXB, NYB, NZB)
+    real(kind=db), intent(out) :: minValue
 
     integer(kind=HID_T) :: dataSet, dataSpace
     integer(kind=HSIZE_T) :: count(4), offset(4)
@@ -145,10 +155,11 @@ contains
 
 ! Read the data
     call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, buf, dims, error)
+    minValue = minval(buf)
     if ( error == 0 ) then
        write(message,*) "Maximum data value= ", maxval(buf)
        call writeInfo(message,TRIVIAL)
-       write(message,*) "Minimum data value= ", minval(buf)
+       write(message,*) "Minimum data value= ", minvalue
        call writeInfo(message,TRIVIAL)
     else 
        call writeFatal("Error reading data")
@@ -305,8 +316,6 @@ subroutine assign_from_flash(thisOctal, subcell)
   use vector_mod
   implicit none
 
-  real(db), parameter :: rho_bg=1.0e-30_db
-
   TYPE(OCTAL), intent(inout) :: thisOctal
   integer, intent(in) :: subcell
   integer :: i
@@ -314,11 +323,18 @@ subroutine assign_from_flash(thisOctal, subcell)
   integer :: lrefineClosest, iClosest
   real(double) :: xdist, ydist, zdist
   real(double) :: dx, dy, dz
+  real(double) :: thisY ! For treating reflective y-axis
   integer :: icell, jcell, kcell
 
   thisTorusCellCentre = subCellCentre(thisOctal, subcell)
   lrefineClosest = -1
   iClosest = -1
+
+  if (reflectYaxis) then 
+     thisY = abs(thisTorusCellCentre%y)
+  else
+     thisY = thisTorusCellCentre%y
+  endif
 
 blocks:  do i=1, maxblocks
 
@@ -348,8 +364,8 @@ blocks:  do i=1, maxblocks
 
         if ( (boundBox(1,1,i) <= thisTorusCellCentre%x).and. &
              (boundBox(2,1,i) >  thisTorusCellCentre%x).and. &
-             (boundBox(1,2,i) <= thisTorusCellCentre%y).and. &
-             (boundBox(2,2,i) >  thisTorusCellCentre%y).and. &
+             (boundBox(1,2,i) <= thisy).and. &
+             (boundBox(2,2,i) >  thisy).and. &
              (boundBox(1,3,i) <= thisTorusCellCentre%z).and. &
              (boundBox(2,3,i) >  thisTorusCellCentre%z) ) then 
 
@@ -380,7 +396,7 @@ blocks:  do i=1, maxblocks
      if ( thisOctal%twoD) then
         ydist = ySlice - boundBox(1,2,iClosest)
      elseif (thisOctal%threeD) then
-        ydist = thisTorusCellCentre%y - boundBox(1,2,iClosest)
+        ydist = thisy - boundBox(1,2,iClosest)
      else
         call writeFatal("Octal is not 2D or 3D")
      endif
@@ -394,8 +410,8 @@ blocks:  do i=1, maxblocks
      thisOctal%rho(subcell) = density(icell,jcell,kcell,iClosest) 
      thisOctal%temperature(subcell) = temperature(icell,jcell,kcell,iClosest)
   else
-     thisOctal%rho(subcell) = rho_bg
-     thisOctal%temperature(subcell) = 10.0
+     thisOctal%rho(subcell) = minRho
+     thisOctal%temperature(subcell) = minTem
   endif
 
 ! Choose where to put dust
