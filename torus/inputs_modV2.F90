@@ -565,11 +565,11 @@ contains
             "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
 
        if (n2max < 0.d0) then
-          amrGridSize  = (nCol/abs(n2max))/1.d10
-          amrGridCentreX = amrGridSize/2.d0
+          amrGridSize  = real((nCol/abs(n2max))/1.d10)
+          amrGridCentreX = amrGridSize/2.0
        else
-          amrGridSize = (2.d0*ncol/n2max)/1.d10
-          amrGridCentreX = amrGridSize/2.d0
+          amrGridSize = real((2.d0*ncol/n2max)/1.d10)
+          amrGridCentreX = amrGridSize/2.0
           amrGridCentreY = 0.d0 
           amrGridCentreZ = 0.d0
        endif
