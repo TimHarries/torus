@@ -8679,7 +8679,7 @@ endif
 
 
     x = modulus(subcellCentre(thisOctal,subcell))
-    thisOctal%temperature(subcell) = tkinetic
+    thisOctal%temperature(subcell) = real(tkinetic,si)
     thisOctal%microTurb(subcell) = vturb*1.d5/cspeed
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     thisOctal%molAbundance(subcell) = molAbundance
