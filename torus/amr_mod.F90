@@ -436,6 +436,19 @@ CONTAINS
       else
          call torus_abort("No way to assign density for runaway geometry")
       endif
+
+! Any temperature set in call to assign_from_* is overwritten here
+      thisOctal%temperature(subcell) = 10000.
+
+      thisOctal%etaCont(subcell) = 0.
+      thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+      thisOctal%ne(subcell) = thisOctal%nh(subcell)
+      thisOctal%nhi(subcell) = 1.e-8
+      thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+      thisOctal%inFlow(subcell) = .true.
+      thisOctal%velocity = VECTOR(0.,0.,0.)
+      thisOctal%biasCont3D = 1.
+      thisOctal%etaLine = 1.e-30
       if (thisOctal%nDepth > 1) then
          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
       endif

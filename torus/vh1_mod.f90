@@ -198,6 +198,10 @@ contains
 ! this_j is for VH-1 x-axis and this_i is for VH-1 y-axis
        thisOctal%rho(subcell) = rho(this_j, this_i)
 
+!
+! Set dust fraction based on velocity relative to the source. 
+! This is for the runaway geometry 
+!
 ! Extract cell velocity from the VH-1 grid
        thisVel=VECTOR(vy(this_j, this_i), 0.0, vx(this_j, this_i))
 ! Store velocity for writing into VTK file. Needs to be as fraction of c. 
@@ -220,17 +224,6 @@ contains
        endif
 
     end if
-
-    thisOctal%temperature(subcell) = 10000.
-    thisOctal%etaCont(subcell) = 0.
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%nhi(subcell) = 1.e-8
-    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-    thisOctal%inFlow(subcell) = .true.
-    thisOctal%velocity = VECTOR(0.,0.,0.)
-    thisOctal%biasCont3D = 1.
-    thisOctal%etaLine = 1.e-30
 
   end subroutine assign_from_vh1
 

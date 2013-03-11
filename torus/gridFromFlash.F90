@@ -421,15 +421,8 @@ blocks:  do i=1, maxblocks
      thisOctal%dustTypeFraction(subcell,:) = 1.0
   end if
 
-  thisOctal%etaCont(subcell) = 0.
-  thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-  thisOctal%ne(subcell) = thisOctal%nh(subcell)
-  thisOctal%nhi(subcell) = 1.e-8
-  thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-  thisOctal%inFlow(subcell) = .true.
+! Velocity is set to zero for now, add here if required
   thisOctal%velocity = VECTOR(0.,0.,0.)
-  thisOctal%biasCont3D = 1.
-  thisOctal%etaLine = 1.e-30
 
 end subroutine assign_from_flash
 
