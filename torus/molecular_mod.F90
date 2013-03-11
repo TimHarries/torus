@@ -99,6 +99,7 @@ module molecular_mod
    end type MOLECULETYPE
 
    type(MOLECULETYPE) :: globalMolecule
+   integer :: globalItrans
 
  contains
    ! Read in molecular parameters from file - note: abundance hard-coded here
@@ -1251,7 +1252,7 @@ module molecular_mod
             !$OMP DO SCHEDULE(static)
 
     do iOctal = ioctal_beg, ioctal_end
-!       if (debug .and. writeoutput) then
+!       if (writeoutput) then
 !          write(message,*) iOctal,ioctal_beg,ioctal_end
 !          call writeInfo(message,TRIVIAL)
 !       endif
@@ -1524,7 +1525,7 @@ module molecular_mod
 !        if (.not.gridConvergedTest) then
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
-              if (.not.fixedRays .and. nray < 5000) then
+              if (.not.fixedRays .and. nray < 500000) then
 !                 if(mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) then
                     nRay = nRay * 2 
 !                 endif
@@ -1762,7 +1763,6 @@ end subroutine molecularLoop
 
 ! Follow long characteristic of ray until edge of grid
      do while(inOctal(grid%octreeRoot, currentPosition))
-
 ! Find distance to edge of cell
         call findSubcellLocal(currentPosition, thisOctal, subcell)
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, soctal = thisoctal)
@@ -2834,6 +2834,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !                                       tau = opticaldepth, ncol = ncol)
 !            endif
             else
+
                call continuumintensityalongray(rayposition,viewvec,grid,lamline,i0,tau = opticaldepth)
             endif
          endif
@@ -2917,7 +2918,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      integer :: ix1, ix2
      character(len=200) :: message
      real(double) :: intensitysum, fluxsum, linefreq !,ddv
-     real(double), save :: background
+     real(double), save :: background, trad, wavenumber
      real, allocatable :: temp(:,:,:)
      character(len=80) :: filename
 #ifdef USECFITSIO
@@ -3092,15 +3093,20 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !             call fineGaussianWeighting(cube, cube%nx, beamsize, weight)!, NormalizeArea = .true.) 
 
            endif
-
-           write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4,a,es12.4,es12.4,es12.4)') &
+           background = Bnu(linefreq, Tcbr)
+           wavenumber = 1.d0/(cspeed/linefreq)
+           Trad = 1.d0/(2.d0*kerg*wavenumber**2)*(intensitysum - background) ! radiation temperature
+           write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4,a,es12.4,a, es12.4)') &
                 "DELTAV(v/c):",deltaV," V (km/s):",real(cube%vAxis(iv)), "Average Intensity:",intensitysum, &
-                " FLUX: ", fluxsum, (fluxsum / linefreq) * 1e26, (fluxsum - background) &
-                / linefreq * 1d26  
+                " FLUX: ", fluxsum, " Trad (K): ", Trad
+
+!, (fluxsum / linefreq) * 1e26, (fluxsum - background) &
+!                / linefreq * 1d26  
            open(10, file="tempfile.dat",status="unknown",form="formatted",position="append")
-           write(10,'(es11.4e1,f8.4,es12.4,es12.4,es12.4,es12.4)') &
+           write(10,'(es11.4e1,f8.4,es12.4,es12.4,es12.4,es12.4,es12.4)') &
                 real(cube%vAxis(iv)), deltaV, intensitysum, &
-                fluxsum / linefreq * 1e26, (fluxsum - background) / linefreq * 1e26 
+                fluxsum / linefreq * 1e26, (fluxsum - background) / linefreq * 1e26, &
+                tRad
            close(10)
            call writeinfo(message,FORINFO)
 
@@ -4266,7 +4272,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       subroutine setObserverVectors(viewvec, observerVec, imagebasis)
 
-        use inputs_mod, only : imageside
+        use inputs_mod, only : imageside, spherical, amr1d
         use inputs_mod, only : griddistance 
         use inputs_mod, only : observerpos ! line number of observer position in observerfile 
         use inputs_mod, only : centrevecX, centrevecY, centrevecZ
@@ -4295,6 +4301,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         else
 ! Define a vector that points *from* a specific observer that may be rotated wlog
            viewVec = VECTOR(0.d0,1.d0,0.d0) 
+           if (amr1d.and.(.not.spherical)) viewVec = VECTOR(-1.d0, 0.d0, 0.d0)
            imagebasis(1) = VECTOR(1.d0,0.d0,0.d0) ! Define a horizontal basis vector for the image
            imagebasis(2) = VECTOR(0.d0,0.d0,1.d0) ! Define a vertical basis vector for the image
 ! This line controls inclination in a 2D geometry (e.g. IRAS04158, shakara) - ANTI-CLOCKWISE ROTATION           
@@ -5274,6 +5281,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
   !$OMP THREADPRIVATE (firstTime, haveBeenwarned, bnuBckGrnd)
 
+     write(*,*) "in intensity along ray2"
+
      if(present(tautest)) then
         dotautest = tautest
      else
@@ -5287,8 +5296,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      
      if(inOctal(grid%octreeRoot, Position)) then
         disttogrid = 0.
-!        call writeinfo("inside",TRIVIAL)
-!        write(*,*) position
+        call writeinfo("inside",TRIVIAL)
+        write(*,*) position
      else
         distToGrid = distanceToGridFromOutside(grid, position, direction) 
      endif
@@ -5337,8 +5346,11 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
      enddo
    
      rayLength = 0.d0
+
+     write(*,*) "inoctal ",inOctal(grid%octreeRoot, currentPosition), currentPosition
      do while(inOctal(grid%octreeRoot, currentPosition).and.(rayLength < maxLengthOfRay))
 
+        write(*,*) icount
         icount = icount + 1
 
         call findSubcelllocal(currentPosition, thisOctal, subcell)
@@ -5502,7 +5514,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
            dI = opticaldepth * dI
            i0 = i0 + dI
-              
         enddo
 
         
@@ -5848,10 +5859,12 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
         deps = 10.d0 * deps
         currentPosition = position + (distToGrid + deps) * direction
      enddo
+
    
      do while(inOctal(grid%octreeRoot, currentPosition))
+        
 
-!        write(*,*) "i0", i0
+
         icount = icount + 1
 !        call writeinfo("check again",TRIVIAL)           
         call findSubcelllocal(currentPosition, thisOctal, subcell)
@@ -6001,6 +6014,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
               phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
            end if
            
+
+
            if(densitysubsample .and. .not. h21cm ) then
               nmol = thisoctal%molabundance(subcell) * &
               (interpolated_Density(thisposition, grid) / (2.d0 * mhydrogen))
@@ -6118,7 +6133,6 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            endif
         
            currentPosition = currentPosition + (tval + origdeps) * direction
-        
      enddo
          
 666  continue
@@ -6286,6 +6300,89 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 666  continue
    end subroutine photoionChemistry
  
+  subroutine writeRadialMolecular(grid, filename, thisMolecule, iTrans)
+    use inputs_mod, only : spherical
+    type(GRIDTYPE) :: grid
+    type(MOLECULETYPE) :: thisMolecule
+    integer :: itrans
+    integer :: i
+    character(len=*) :: filename
+    integer :: nr, nOctals
+    real(double), allocatable :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:)
+
+    call countVoxels(grid%octreeRoot, nOctals, nr)
+    allocate(rArray(1:nr), tArray(1:nr), rhoArray(1:nr),TexArray(1:nr), tauArray(1:nr))
+    nr = 0
+    call getRadialMolecular(grid%octreeRoot, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray)
+
+    if (writeoutput) then
+       open(33, file=filename, status="unknown", form="formatted")
+       if (spherical) then
+          write(33,'(a)') "# radius (AU), dust temperature (K), density N(H_2), Tex, tau"
+       else
+          write(33,'(a)') "# x (AU), dust temperature (K), density N(H_2), Tex, tau"
+       endif
+       do i = 1, nr
+          write(33,'(1p,e13.3,e13.3,e13.3,e13.3,e13.3)') rArray(i)*1.d10/autocm,tArray(i),rhoArray(i)/(2.d0*mHydrogen), &
+               texArray(i), tauArray(i)
+       enddo
+       close(33)
+    endif
+    deallocate(rArray, tArray, rhoArray, TExArray, tauArray)
+  end subroutine writeRadialMolecular
+
+
+
+  recursive subroutine getRadialMolecular(thisOctal, thisMolecule, itrans, nr, rArray, rhoArray, tArray, TexArray, tauArray)
+    use inputs_mod, only : ncol, vturb, molAbundance
+    type(MOLECULETYPE) :: thisMolecule
+    integer :: itrans
+    type(VECTOR) :: rVec
+  real(double) :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:)
+  integer :: nr
+  integer :: iUpper, iLower
+  real(double) :: nLower, nUpper, lineFreq, nmol, wavenumber
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+
+  linefreq = thisMolecule%transfreq(itrans)
+  wavenumber = 1.d0/(cspeed/linefreq)
+  iUpper = thisMolecule%iTransUpper(iTrans)
+  iLower = thisMolecule%iTransLower(iTrans)
+        
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  getRadialMolecular(child, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray)
+                exit
+             end if
+          end do
+
+       else
+          nr = nr + 1
+          rVec = subcellCentre(thisOctal, subcell)
+          rArray(nr) = rVec%x
+          tArray(nr) = dble(thisOctal%temperature(subcell))
+          rhoArray(nr) = thisOctal%rho(subcell)
+           nmol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+           nlower = thisOctal%molecularLevel(iLower,subcell) !* nMol
+           nupper = thisOctal%molecularLevel(iUpper,subcell) !* nMol
+           TexArray(nr) = 1.d0/(-kev * log((nUpper/nLower)*(thisMolecule%g(iLower)/thisMolecule%g(iUpper)))/&
+                (thisMolecule%energy(iUpper) - thisMolecule%energy(iLower)))
+           tauArray(nr) = thisMolecule%einsteinA(iUpper) / (8.d0 * pi * wavenumber**3) * &
+                (ncol * molAbundance)/(2.35d0*vturb*1.d5) * &
+                (nLower * (thisMolecule%g(iUpper)/thisMolecule%g(iLower)) - nUpper)
+       endif
+    enddo
+  end subroutine getRadialMolecular
+
+
+
 #ifdef MPI
 
  subroutine intensityAlongRaySplitOverMPI(position, direction, grid, thisMolecule, iTrans, deltaV,i0)

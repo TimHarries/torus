@@ -125,7 +125,7 @@ program torus
 
      call setupMicrophysics(grid)
 
-     if (trim(grid%geometry) == "envelope") then
+     if (trim(geometry) == "envelope") then
         call calculategrid()
         goto 666
      endif
@@ -200,11 +200,11 @@ contains
     
     massStart = 1.d0; massEnd = 1.d0; nMass = 1
     massStarStart  = 1.d0*mSol; massStarEnd = 1.d0*mSol; nMassStar = 1
-    radiusStart = 1.d0 * rSol; radiusEnd = 3.d0 * rSol; nRadius = 1
-    lumStart =1.d-3*lSol; lumEnd = 2.d0 * lSol; nLum = 1
-    accStart = 1.d-9; accEnd = 1.d-4; nAcc = 6
+    radiusStart = 3.58d0 * rSol; radiusEnd = 3.58d0 * rSol; nRadius = 1
+    lumStart = 2.668d0*lSol; lumEnd = 2.668d0 * lSol; nLum = 1
+    accStart = 1.d-20; accEnd = 1.d-20; nAcc = 1
     rOuterStart = 1d4; rOuterEnd = 1d4; nrouter = 1
-    rInnerStart = 10.d0; RinnerEnd = 1000.d0; nRinner = 1
+    rInnerStart = 400.d0; RinnerEnd = 400.d0; nRinner = 1
     
     
     do iMass = 1, nMass
@@ -245,6 +245,7 @@ contains
                       globalsourceArray(1)%luminosity = lum + lAcc
                       globalsourceArray(1)%teff = teff
                       globalSourceArray(1)%position = VECTOR(0.d0, 0.d0, 0.d0)
+                      call testRandomSource(globalsourceArray, globalnsource)
                       call writeSourceList(globalSourceArray, globalnSource)
                       
                       amrGridSize = rOuter
@@ -257,7 +258,7 @@ contains
                       call doPhysics(grid)
 
                       write(radialFilename, &
-                           '(a,sp,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a)') &
+                           '(a,sp,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f8.3,a)') &
                            "menv_",log10(massEnvelope/msol), &
                            "_rinner_",log10(rinner*1.d10/autocm), &
                            "_router_",log10(router*1.d10/autocm), &

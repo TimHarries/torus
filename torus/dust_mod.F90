@@ -1083,7 +1083,7 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac, nDustType
+    use inputs_mod, only : grainFrac, nDustType, tThresh
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1127,6 +1127,8 @@ contains
              sublimationTemp = real(max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2)))
           endif
           if (temperature < sublimationTemp) newFrac = 1.
+
+          if (tThresh /= 0.) sublimationTemp = tThresh
 
           if (temperature >= sublimationTemp) then
              newfrac = exp(-dble((temperature-sublimationtemp)/subRange))

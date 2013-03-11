@@ -54,7 +54,7 @@ contains
     noscattering = .false.
     forceFirstScat = .false.
     usebias = .true.
-    
+    tthresh = 0.
     intProFilename = "none"
     nBlobs = 0
     nLines = 0
@@ -318,6 +318,12 @@ contains
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+    if (hydrodynamics.and.spherical.and.amr1d) then
+       call writeWarning("Spherical geometry not implemented for hydrodynamics")
+    endif
+
+    if (hydrodynamics.and.amr1d) spherical = .false.   ! not spherical grid for 1-d hydro
+
 
     call getLogical("nbody", donBodyOnly, cLine, fLine, nLines, &
          "Perform an n-body (bigG=1) calculation: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -548,15 +554,25 @@ contains
           endif
        endif
 
-    case("drabek")
-       call getInteger("density_code", density_code, cLine, fLine, nLines, &
-            "Density distribution code : ","(a,i8,a)", 2, ok, .false.)
-       
-       call getDouble("peakRho", peakRho, 1.d0, cLine, fLine, nLines, &
-            "Peak cloud density : ", "(a,es9.3,1x,a)", 1.0d0, ok, .false.) 
+    case("triangle")
+       call getDouble("ncol", nCol, 1.d0, cLine, fLine, nLines, &
+            "Column density of H_2 (cm^-2): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
 
-       call getDouble("meanT", meanT, 1.d0, cLine, fLine, nLines, &
-            "Average cloud temperature : ", "(a,es9.3,1x,a)", 1.0d0, ok, .false.) 
+       call getDouble("tkinetic", tKinetic, 1.d0, cLine, fLine, nLines, &
+            "Kinetic temperature: ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+
+       call getDouble("n2max", n2max, 1.d0, cLine, fLine, nLines, &
+            "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+
+       if (n2max < 0.d0) then
+          amrGridSize  = (nCol/abs(n2max))/1.d10
+          amrGridCentreX = amrGridSize/2.d0
+       else
+          amrGridSize = (2.d0*ncol/n2max)/1.d10
+          amrGridCentreX = amrGridSize/2.d0
+          amrGridCentreY = 0.d0 
+          amrGridCentreZ = 0.d0
+       endif
        
        
 
@@ -1012,6 +1028,8 @@ contains
           endif
 
     case("spiral")
+       call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
+            "Dust sublimation temperature (K): ","(a,f8.2,a)", 0., ok, .true.)
        call getReal("vterm", vterm, 1.e5, cLine, fLine, nLines, &
             "Terminal velocity (km/s): ","(a,f7.1,a)", 20., ok, .true.)
        call getReal("period", period, 24.*3600., cLine, fLine, nLines, &
@@ -1181,6 +1199,10 @@ contains
 
     call getLogical("amr1d", amr1d, cLine, fLine, nLines, &
          "AMR grid is in one-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    call getLogical("spherical", spherical, cLine, fLine, nLines, &
+         "AMR grid is one-dimension and spherical: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("amr2d", amr2d, cLine, fLine, nLines, &
          "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)

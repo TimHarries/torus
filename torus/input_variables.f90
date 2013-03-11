@@ -224,6 +224,10 @@
   integer :: density_Code
   real(double) :: peakRho
   real(double) :: meanT
+  real(double) :: nCol
+  real(double) :: n2max
+  real(double) :: tKinetic
+
 !-----------------------------
 
 
@@ -717,7 +721,8 @@
                             !   smoothing is applied 
   real :: sampleFreq        ! maximum number of samples made per subcell
   logical :: amr2dOnly      ! only use cells in 2D plane through grid
-  logical :: cylindrical
+  logical :: cylindrical    ! 3d grid is cylindrical
+  logical :: spherical      ! spherical 1d grid
   real(double) :: alphaViscosity
   logical :: captureShocks !shock capturing
   logical :: refineOnTemperature !refine grid using temperature gradient

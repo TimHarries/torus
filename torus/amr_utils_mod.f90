@@ -16,11 +16,15 @@ module amr_utils_mod
 
 
     real(double) function gridArea(grid)
-      use inputs_mod, only : cylindrical
+      use inputs_mod, only : cylindrical, spherical
       type(GRIDTYPE) :: grid
 
-      if (grid%octreeRoot%oneD) then
+      if (grid%octreeRoot%oneD.and.spherical) then
          gridArea = fourPi*(grid%octreeRoot%subcellSize*2.d0)*1.d20
+      endif
+
+      if (grid%octreeRoot%oneD.and.(.not.spherical)) then
+         gridArea = (grid%octreeRoot%subcellSize*2.d0)**2*1.d20
       endif
       if (grid%octreeRoot%twoD) then
          gridArea = twoPi * (2.d0*grid%octreeRoot%subcellSize)**2 + &
@@ -41,7 +45,7 @@ module amr_utils_mod
 
 
   function distanceToGridFromOutside(grid, posVec, direction, hitGrid) result (tval)
-    use inputs_mod, only : suppressWarnings
+    use inputs_mod, only : suppressWarnings, spherical
     type(GRIDTYPE) :: grid
     type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
@@ -51,7 +55,7 @@ module amr_utils_mod
     real(double) :: distToZboundary
     type(VECTOR) ::  zHat, rhat
     real(double) ::  compx, gridRadius
-    real(oct) :: t(6),denom(6), r, r1, d, cosmu,x1,x2
+    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
     integer :: i,j
     logical :: ok, thisOk(6)
     logical, optional :: hitGrid
@@ -69,7 +73,7 @@ module amr_utils_mod
 
    thisOctal => grid%octreeRoot
 
-   if (thisOctal%oneD) then
+   if (thisOctal%oneD.and.spherical) then
    
       r1 = thisOctal%subcellSize*2.d0
       d = modulus(point)
@@ -93,6 +97,35 @@ module amr_utils_mod
          tval = min(x1,x2)
       endif
       goto 666
+   endif
+
+   if (thisOctal%oneD.and.(.not.spherical)) then
+   
+      r1 = subcen%x - thisOctal%subcellSize
+      r2 = subcen%x + thisOctal%subcellSize
+
+      if (posVec%x > r2) then
+         if (direction%x > 0.d0) then
+            hitgrid = .false.
+            tval = 1.d30
+         else
+            tval = (posVec%x - r2)/abs(direction%x)
+         endif
+         goto 666
+      endif
+
+      if (posVec%x < r1) then
+         if (direction%x < 0.d0) then
+            hitgrid = .false.
+            tval = 1.d30
+         else
+            tval = (r1 - posVec%x)/abs(direction%x)
+         endif
+         goto 666
+      endif
+      write(*,*) "error in 1d spherical case"
+
+
    endif
 
     if (thisOctal%threed.and.(.not.thisOctal%cylindrical)) then
@@ -304,7 +337,7 @@ module amr_utils_mod
   !   only searches in downwards direction (TD = top-down) , so
   !   probably best to start from root of tree
 
-    use inputs_mod, only : hydrodynamics, cylindricalHydro
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     type(vector) :: point_local
@@ -321,7 +354,11 @@ module amr_utils_mod
           point_local = point
        endif
     else !oneD
-       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+       if (spherical) then
+          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+       else
+          point_local = point
+       endif
     end if
 
     CALL findSubcellTDprivate(point_local,currentOctal,resultOctal,subcell)
@@ -400,7 +437,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use inputs_mod, only : hydrodynamics, suppresswarnings, cylindricalHydro
+    use inputs_mod, only : hydrodynamics, suppresswarnings, cylindricalHydro, spherical
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     TYPE(vector) :: point_local
@@ -428,7 +465,7 @@ module amr_utils_mod
        point_local = point
     endif
     if (thisOctal%oneD) then
-       if (.not.hydrodynamics) then
+       if (spherical) then
           point_local = VECTOR(modulus(point), 0.d0, 0.d0)
        else
           point_local = point
@@ -596,7 +633,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use inputs_mod, only : hydrodynamics, cylindricalHydro
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
     IMPLICIT NONE
     integer :: nDepth
     TYPE(vector), INTENT(IN) :: point
@@ -625,7 +662,7 @@ module amr_utils_mod
        point_local = point
     endif
     if (thisOctal%oneD) then
-       if (.not.hydrodynamics) then
+       if (spherical) then
           point_local = VECTOR(modulus(point), 0.d0, 0.d0)
        else
           point_local = point
@@ -888,7 +925,7 @@ module amr_utils_mod
   FUNCTION inOctal(thisOctal,point,alreadyRotated) 
     ! true if the point lies within the boundaries of the current octal
   
-    use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics, spherical
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
@@ -955,7 +992,7 @@ module amr_utils_mod
     endif
 
     if (thisOctal%oneD) then
-       if (.not.hydroDynamics) then
+       if (spherical) then
           r = modulus(point)
           if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
@@ -1045,6 +1082,7 @@ module amr_utils_mod
 
 
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal, sSubcell)
+    use inputs_mod, only : spherical
     use octal_mod, only: returndPhi
 
     implicit none
@@ -1088,7 +1126,7 @@ module amr_utils_mod
     endif
     subcen =  subcellCentre(thisOctal,subcell)
 
-    if (thisOctal%oneD) then
+    if (thisOctal%oneD.and.spherical) then
 
        distToR1 = 1.d30
        distToR2 = 1.d30
@@ -1119,6 +1157,15 @@ module amr_utils_mod
 !             write(*,*) "r1",x1,x2,disttor1,mu,theta
 
        tval = min(distTor1, distTor2)
+       goto 666
+    endif
+
+    if (thisOctal%oneD.and.(.not.spherical)) then
+       if (direction%x > 0.d0) then
+          tVal = (subcen%x + thisOctal%subcellSize/2.d0 - posVec%x)/direction%x
+       else
+          tVal = (posVec%x - (subcen%x - thisOctal%subcellSize/2.d0))/abs(direction%x)
+       endif
        goto 666
     endif
 
@@ -1791,6 +1838,7 @@ module amr_utils_mod
 
 
   type(VECTOR) function randomPositionInCell(thisOctal, subcell)
+    use inputs_mod, only : spherical
     use octal_mod, only: returndPhi
 
     type(OCTAL) :: thisOctal
@@ -1812,7 +1860,11 @@ module amr_utils_mod
        r1 = r1 - 0.5d0
        r1 = r1 * 0.9999
        r = r1 * thisOctal%subcellSize + octalCentre%x
-       randomPositionInCell = r * randomUnitVector()
+       if (spherical) then
+          randomPositionInCell = r * randomUnitVector()
+       else
+          randomPositionInCell = VECTOR(r, 0.d0, 0.d0)
+       endif
        goto 666
     endif
 

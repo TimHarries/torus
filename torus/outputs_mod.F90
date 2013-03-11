@@ -44,7 +44,7 @@ contains
     use blob_mod, only : blobtype
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
-    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau
+    use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -355,7 +355,11 @@ contains
        call writeRadialFile(radialfilename, grid)
 #endif
     else
-       call writeRadial(grid, radialFilename)
+       if (molecularPhysics) then
+          call writeRadialMolecular(grid, radialFilename, globalMolecule, itrans)
+       else
+          call writeRadial(grid, radialFilename)
+       endif
     endif
     endif
 
@@ -364,6 +368,7 @@ contains
   end subroutine doOutputs
 
   subroutine writeRadial(grid, filename)
+    use inputs_mod, only : spherical
     type(GRIDTYPE) :: grid
     integer :: i
     character(len=*) :: filename
@@ -377,9 +382,13 @@ contains
 
     if (writeoutput) then
        open(33, file=filename, status="unknown", form="formatted")
-       write(33,'(a)') "# radius (AU), dust temperature (K), density N(H_2)"
+       if (spherical) then
+          write(33,'(a)') "# radius (AU), dust temperature (K), density N(H_2)"
+       else
+          write(33,'(a)') "# x (AU), dust temperature (K), density N(H_2)"
+       endif
        do i = 1, nr
-          write(33,'(1p,e13.3,e13.3,e13.3)') rArray(i)*1.d10/autocm,tArray(i),rhoArray(i)/(2.d0*mHydrogen)
+          write(33,'(1p,e13.3,e13.3,e13.3)') rArray(i)*1.d10/autocm,tArray(i),rhoArray(i)/(2.33d0*mHydrogen)
        enddo
        close(33)
     endif

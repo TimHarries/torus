@@ -296,6 +296,10 @@ CONTAINS
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
 
+
+    CASE("triangle")
+       call calcTriangle(thisOctal, subcell)
+
     CASE("spiral")
        call calcSpiral(thisOctal, subcell)
 
@@ -7990,6 +7994,8 @@ endif
     thisOctal%temperature(subcell) = 10.
     rho0 =   massEnvelope &
          / (((8.d0/3.d0) * pi * (rInner*1.d10)**1.5d0)*((rOuter*1.d10)**1.5d0 - (rInner*1.d10)**1.5d0))
+
+    rho0 = 3.d6 * 2.33d0 * mHydrogen
 !    write(*,*) "rho0 ",rho0
     if ((rMod > rInner).and.(rMod < rOuter)) then
        thisOctal%rho(subcell) = rho0 * (rmod/rInner)**(-1.5d0)
@@ -8647,6 +8653,37 @@ endif
                                      / (cspeed * 1e-5)) ! mu is subsonic turbulence
    endif
   end subroutine molecularBenchmark
+
+  subroutine calcTriangle(thisOctal,subcell)
+
+    use inputs_mod, only : molAbundance, tKinetic, vturb, nCol, n2max, amrGridSize
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real(double) :: x, bigL
+    
+    bigL = amrGridSize
+
+
+    x = modulus(subcellCentre(thisOctal,subcell))
+    thisOctal%temperature(subcell) = tkinetic
+    thisOctal%microTurb(subcell) = vturb*1.d5/cspeed
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    thisOctal%molAbundance(subcell) = molAbundance
+
+    if (n2max < 0.d0) then
+       thisOctal%nh2(subcell) = abs(n2max)
+    else
+
+       if (x < bigL/2.d0) then
+          thisOctal%nh2(subcell) = 2.d0 * n2max * x / bigL
+       else
+          thisOctal%nh2(subcell) = 2.d0 * n2max * (bigL - x)/bigL
+       endif
+    endif
+    thisOctal%rho(subcell) = thisOctal%nh2(Subcell) * 2.d0 * mHydrogen
+
+  end subroutine calcTriangle
 
   subroutine WaterBenchmark1(thisOctal, subcell)
 
