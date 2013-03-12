@@ -1941,12 +1941,12 @@ end subroutine radiationHydro
 
                       nToNextEventPhoto = nToNextEventPhoto + 1
                       if (nToNextEventPhoto > 80000) then
-                         write(*,*) "too next event photo called ",nToNextEventPhoto
-                         write(*,*) "rank ",myrankWorldGlobal
-                         write(*,*) "rVec ",rVec
-                         write(*,*) "uHat ",uhat
-                         write(*,*) "thisOctal%xmin ",thisOctal%xmin
-                         write(*,*) "thisOctal%xmax ",thisOctal%xmax
+!                         write(*,*) "too next event photo called ",nToNextEventPhoto
+ !                        write(*,*) "rank ",myrankWorldGlobal
+ !                        write(*,*) "rVec ",rVec
+ !                        write(*,*) "uHat ",uhat
+ !                        write(*,*) "thisOctal%xmin ",thisOctal%xmin
+ !                        write(*,*) "thisOctal%xmax ",thisOctal%xmax
                       endif
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
@@ -2170,14 +2170,14 @@ end subroutine radiationHydro
                             call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                  Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
                                  kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
-                            write(*,*) "thislam",thislam,ilam, lamArray(ilam)
-                            write(*,*) lamArray(1:nLambda)
-                            write(*,*) "kappaAbsDust",kappaAbsDust
-                            write(*,*) "kappaAbsGas",kappaAbsGas
-                            write(*,*) "kappaSca",kappaScadb
-                            write(*,*) "kappaAbs",kappaAbsdb
-                            write(*,*) "onekappaabs",grid%oneKappaAbs(1,ilam)
-                            write(*,*) "onekappasca",grid%oneKappasca(1,ilam)
+!                            write(*,*) "thislam",thislam,ilam, lamArray(ilam)
+!!                            write(*,*) lamArray(1:nLambda)
+ !                           write(*,*) "kappaAbsDust",kappaAbsDust
+ !                           write(*,*) "kappaAbsGas",kappaAbsGas
+ !                           write(*,*) "kappaSca",kappaScadb
+ !                           write(*,*) "kappaAbs",kappaAbsdb
+ !                           write(*,*) "onekappaabs",grid%oneKappaAbs(1,ilam)
+ !                           write(*,*) "onekappasca",grid%oneKappasca(1,ilam)
                   
                             escaped = .true.
                             
@@ -3248,7 +3248,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 call findSubcellLocal(rVec, nextOctal, nextSubcell)
                 newThread = nextOctal%mpiThread(nextSubcell)
 !                print *, "rVec1 ", iniVec
-                print *, "rVec2 ", rVec
+!                print *, "rVec2 ", rVec
              else
                 crossedPeriodic = .false.
                 crossedMPIBoundary = .false.

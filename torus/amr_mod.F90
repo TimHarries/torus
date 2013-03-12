@@ -244,9 +244,6 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
-    CASE("drabek")
-       call calcDrabekDensity(thisOctal, subcell)
-
     CASE("SB_CD_1Da")
        call calcContactDiscontinuityOneDDensity(thisOctal, subcell, v1=.true.)
 
@@ -261,6 +258,9 @@ CONTAINS
 
     CASE("SB_instblt")
        call calcPlanarIfrontDensity(thisOctal, subcell)
+
+    CASE("SB_gasmix")
+       call calcMixingGasDensity(thisOctal, subcell)
 
     CASE("SB_WNHII")
        call calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
@@ -3854,7 +3854,7 @@ CONTAINS
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
-            "SB_coolshk", "drabek")
+            "SB_coolshk", "SB_gasmix")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -7323,76 +7323,6 @@ endif
   end subroutine calcContactDiscontinuityTwoDDensity
 
 
-
-!
-!Emily wants to produce simulated molecular line data for
-!spheres of varying density distribution to compare with
-!her observations
-!
-  subroutine calcDrabekDensity(thisOctal, subcell)
-    use inputs_mod, only : density_code
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    INTEGER, INTENT(IN) :: subcell
-    type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, fac, centre
-    logical, save :: firstTime = .true.
-    integer, parameter :: nr = 1000
-    real(double), save :: r(nr), rho(nr)
-    integer :: i
-
-
-    rVec = subcellCentre(thisOctal, subcell)
-    rMod = modulus(rVec)
-
-    if(density_code == 1) then ! bonnor ebert sphere
-       if (firstTime) then
-          firstTime = .false.
-          r = 0.d0; rho = 0.d0
-          centre = 0.d0
-          call bonnorEbertRun(10.d0, 1.d0, 1000.d0*1.d0*mhydrogen,  nr, r, rho)          
-          r = r / 1.d10
-          if (myrankGlobal==1) then
-             do i =1 , nr
-                write(55, *) r(i)*1.d10/autocm, rho(i)
-             enddo
-          endif
-       endif
-
-       if (rMod < r(nr)) then
-          call locate(r, nr, rMod, i)
-          fac = (rMod-r(i))/(r(i+1)-r(i))
-          thisOctal%rho(subcell) = rho(i) + fac*(rho(i+1)-rho(i))
-          thisOctal%temperature(subcell) = 10.d0
-       else
-          thisOctal%rho(subcell) = rho(nr)
-          thisOctal%temperature(subcell) = 10.d0
-       endif
-
-
-    else if(density_code == 2) then ! log normal
-
-    else if(density_code == 3) then !uniform density
-       
-    end if
-
-    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-    thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%nhi(subcell) = 1.e-5
-    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
-    
-    thisOctal%ionFrac(subcell,1) = 1.               !HI
-    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
-    if (SIZE(thisOctal%ionFrac,2) > 2) then      
-       thisOctal%ionFrac(subcell,3) = 1.            !HeI
-       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
-       
-    endif
-    thisOctal%etaCont(subcell) = 0.
-  end subroutine calcDrabekDensity
-
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
 
@@ -7653,6 +7583,66 @@ endif
     inflowTemp = thisOctal%temperature(subcell)
 
   end subroutine calcIsothermalShockDensity
+
+!Pascal Tremblins starbench test
+  subroutine calcMixingGasDensity(thisOctal, subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec, cen
+    real(double) :: eThermal, R
+
+
+    cen = VECTOR(0.4*pcToCm/1.d10, 0.d0, 0.d0)
+    rVec = subcellCentre(thisOctal, subcell)
+
+    rVec = rVec - cen
+
+    R = modulus(rVec)
+
+    if (R < (0.25d-10*pcToCm)) then
+       thisOctal%rho(subcell) = 1.d4*1.4d0*mHydrogen
+       thisOctal%temperature(subcell) = real(13.34d0)
+       thisOctal%ionFrac(subcell,1) = 1.               !HI
+       thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+          thisOctal%ionFrac(subcell,3) = 1.            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
+       endif      
+    else
+       thisOctal%rho(subcell) = 6.67d0*1.4d0*mHydrogen
+       thisOctal%temperature(subcell) = real(10000.d0)
+       thisOctal%ionFrac(subcell,1) = 1.e-10               !HI
+       thisOctal%ionFrac(subcell,2) = 1.           !HII
+       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+          thisOctal%ionFrac(subcell,3) = 1.e-10            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.        !HeII          
+       endif
+    endif
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+   
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * ethermal
+    thisOctal%energy(subcell) = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+
+    thisOctal%gamma(subcell) = 1.d0
+    thisOctal%iEquationOfState(subcell) = 1
+     
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+!    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+
+    thisOctal%etaCont(subcell) = 0.
+  end subroutine calcMixingGasDensity
+
+
 
 !for StarBench code comparison workshop
   subroutine calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
