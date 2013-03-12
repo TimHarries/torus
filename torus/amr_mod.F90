@@ -3875,21 +3875,22 @@ CONTAINS
           endif
 
        case("envelope")
-          r = modulus(thisOctal%centre)
-          if (firsttime) then
-             nr = 100
-             do i = 1, 100
-                rgrid(i) = log10(rinner) + (dble(i-1)/dble(nr-1))*log10(rOuter/rInner)
-             enddo
-             rgrid(1:nr) = 10.d0**rgrid(1:nr)
-             firsttime = .false.
-          endif
-          if ((r > rInner).and.(r < rOuter)) then
-             call locate(rGrid, 100, r ,i)
-             if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
-          endif
-          if (((r < rInner).and.(r+thisOctal%subcellsize > rInner))) split = .true.
-          if (((r > rInner).and.(r-thisOctal%subcellsize < rInner))) split = .true.
+          call calcEnvelope(thisOctal, subcell,checksplit=split)
+!          r = modulus(thisOctal%centre)
+!          if (firsttime) then
+!             nr = 100
+!             do i = 1, 100
+!                rgrid(i) = log10(rinner) + (dble(i-1)/dble(nr-1))*log10(rOuter/rInner)
+!             enddo
+!             rgrid(1:nr) = 10.d0**rgrid(1:nr)
+!             firsttime = .false.
+!          endif
+!          if ((r > rInner).and.(r < rOuter)) then
+!             call locate(rGrid, 100, r ,i)
+!             if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
+!          endif
+!          if (((r < rInner).and.(r+thisOctal%subcellsize > rInner))) split = .true.
+!          if (((r > rInner).and.(r-thisOctal%subcellsize < rInner))) split = .true.
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -7983,26 +7984,60 @@ endif
 
   end subroutine calcSphere
 
-  subroutine calcEnvelope(thisOctal,subcell)
+  subroutine calcEnvelope(thisOctal,subcell,checkSplit)
 
     use inputs_mod, only : rInner, rOuter, MassEnvelope
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    real(double) :: rho0, rMod
+    real(double) :: rho0, fac, zHeight
     type(VECTOR) :: rVec
+    integer :: i
+    real(double), save :: rArray(250),zArray(250), rho(250)
+    real(double) :: junk,rDash,zDash
+    integer, save :: nPoints = 250
+    logical, save :: firstTime = .true.
+    logical, optional :: checkSplit
+
+    if (present(checkSplit)) checkSplit = .false.
+
+    if (firstTime) then
+       open(33, file="envelope.txt", status="old", form="formatted")
+       do i = 1, nPoints
+          read(33,*) rArray(i), zArray(i), junk, rho(i)
+       enddo
+       close(33)
+       rArray = rArray * autocm/1.d10
+       zArray = zArray * autocm/1.d10
+       rho = rho * 2.33d0 * mHydrogen
+       firstTime = .false.
+    endif
 
     rVec = subcellCentre(thisOctal, subcell)
-    rMod = modulus(rVec)
+    zDash = abs(rVec%z)
+    rDash = sqrt(rVec%x**2 + rVec%y**2)
     thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10.
-    rho0 =   massEnvelope &
-         / (((8.d0/3.d0) * pi * (rInner*1.d10)**1.5d0)*((rOuter*1.d10)**1.5d0 - (rInner*1.d10)**1.5d0))
+!    rho0 =   massEnvelope &
+!         / (((8.d0/3.d0) * pi * (rInner*1.d10)**1.5d0)*((rOuter*1.d10)**1.5d0 - (rInner*1.d10)**1.5d0))
+!
+!    rho0 = 3.d6 * 2.33d0 * mHydrogen
+!!    write(*,*) "rho0 ",rho0
+!    if ((rMod > rInner).and.(rMod < rOuter)) then
+!       thisOctal%rho(subcell) = rho0 * (rmod/rInner)**(-1.5d0)
+!    endif
 
-    rho0 = 3.d6 * 2.33d0 * mHydrogen
-!    write(*,*) "rho0 ",rho0
-    if ((rMod > rInner).and.(rMod < rOuter)) then
-       thisOctal%rho(subcell) = rho0 * (rmod/rInner)**(-1.5d0)
+    call locate(rArray, nPoints, rDash, i)
+    fac = (rDash - rArray(i))/(rArray(i+1)-rArray(i))
+    zHeight = zArray(i) + (zArray(i+1)-zArray(i))*fac
+    if (((zDash-thisOctal%subcellSize/2.d0) < zHeight).and.(rDash < rArray(npoints))) then
+       if (rDash > rArray(1)) thisOctal%rho(subcell) = rho(i)+fac*(rho(i+1)-rho(i))
+       if (present(checkSplit)) then
+          if ((rArray(i+1)-rArray(i)) < thisOctal%subcellSize) then
+             checkSplit = .true.
+          endif
+       endif
     endif
+       
   end subroutine calcEnvelope
     
 

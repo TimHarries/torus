@@ -203,7 +203,7 @@ contains
     radiusStart = 3.58d0 * rSol; radiusEnd = 3.58d0 * rSol; nRadius = 1
     lumStart = 2.668d0*lSol; lumEnd = 2.668d0 * lSol; nLum = 1
     accStart = 1.d-20; accEnd = 1.d-20; nAcc = 1
-    rOuterStart = 1d4; rOuterEnd = 1d4; nrouter = 1
+    rOuterStart = 4.d4; rOuterEnd = 4.d4; nrouter = 1
     rInnerStart = 400.d0; RinnerEnd = 400.d0; nRinner = 1
     
     
@@ -252,6 +252,7 @@ contains
                       amrgridCentreX = rOuter/2.d0
                       call  setupamrgrid(grid)
 
+                      call writeVtkFile(grid, "rho.vtk")
 
                       call randomNumberGenerator(randomSeed=.true.)
 
