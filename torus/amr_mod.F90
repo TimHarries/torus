@@ -7989,7 +7989,7 @@ endif
     use inputs_mod, only : rInner, rOuter, MassEnvelope
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    real(double) :: rho0, fac, zHeight
+    real(double) :: fac, zHeight
     type(VECTOR) :: rVec
     integer :: i
     real(double), save :: rArray(250),zArray(250), rho(250)
