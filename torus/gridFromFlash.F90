@@ -26,7 +26,11 @@ module gridFromFlash
 
   real(kind=db), private, allocatable, save :: density(:,:,:,:)
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
-  real(kind=db), private, save :: minRho, minTem
+  real(kind=db), private, allocatable, save :: vx(:,:,:,:)
+  real(kind=db), private, allocatable, save :: vy(:,:,:,:)
+  real(kind=db), private, allocatable, save :: vz(:,:,:,:)
+  real(kind=db), private, save :: minRho, minTem, minVx, minVy, minVz
+  real(kind=db), private, save :: maxRho, maxTem, maxVx, maxVy, maxVz
 
 ! Block refinement level
   integer, private, allocatable, save :: lrefine(:)
@@ -66,7 +70,7 @@ contains
 ! Currently only the y-axis can be reflected
     reflectYaxis = doReflectY
 
-! The read subroutine is actvated when setGridFromFlashParameters is called
+! The read subroutine is activated when setGridFromFlashParameters is called
     isRequired=.true.
 
   end subroutine setGridFromFlashParameters
@@ -97,12 +101,18 @@ contains
 
   allocate (density(NXB, NYB, NZB,maxblocks))
   allocate (temperature(NXB, NYB, NZB,maxblocks))
+  allocate (vx(NXB, NYB, NZB,maxblocks))
+  allocate (vy(NXB, NYB, NZB,maxblocks))
+  allocate (vz(NXB, NYB, NZB,maxblocks))
   allocate (lrefine(maxblocks))
   allocate (boundBox(2,3,maxblocks))
 
 ! Read in the data
-  call read_gridvar("dens",density,minRho)
-  call read_gridvar("temp",temperature,minTem)
+  call read_gridvar("dens", density,     minRho, maxRho)
+  call read_gridvar("temp", temperature, minTem, maxRho)
+  call read_gridvar("velx", vx,          minVx,  maxVx)
+  call read_gridvar("vely", vy,          minVy,  maxVy)
+  call read_gridvar("velz", vz,          minVz,  maxVz)
 
 ! Read block information
   call read_lrefine
@@ -121,11 +131,11 @@ contains
 
 !----------------------------------------------------------------------------
 
-  subroutine read_gridvar(varName,buf,minValue)
+  subroutine read_gridvar(varName,buf,minValue,maxValue)
 
     character(len=*), intent(in) :: varName
     real(kind=db), intent(out) :: buf(maxblocks, NXB, NYB, NZB)
-    real(kind=db), intent(out) :: minValue
+    real(kind=db), intent(out) :: minValue, maxValue
 
     integer(kind=HID_T) :: dataSet, dataSpace
     integer(kind=HSIZE_T) :: count(4), offset(4)
@@ -156,8 +166,9 @@ contains
 ! Read the data
     call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, buf, dims, error)
     minValue = minval(buf)
+    maxValue = maxval(buf)
     if ( error == 0 ) then
-       write(message,*) "Maximum data value= ", maxval(buf)
+       write(message,*) "Maximum data value= ", maxvalue
        call writeInfo(message,TRIVIAL)
        write(message,*) "Minimum data value= ", minvalue
        call writeInfo(message,TRIVIAL)
@@ -309,6 +320,7 @@ contains
 end subroutine read_flash_hdf
 
 !--------------------------------------------------------------------------------------
+! Set subcell density, temperature and velocity
 
 subroutine assign_from_flash(thisOctal, subcell)
 
@@ -409,20 +421,17 @@ blocks:  do i=1, maxblocks
 
      thisOctal%rho(subcell) = density(icell,jcell,kcell,iClosest) 
      thisOctal%temperature(subcell) = temperature(icell,jcell,kcell,iClosest)
+
+! Store velocity as fraction of c.
+     thisOctal%velocity(subcell) = VECTOR( (vx(icell,jcell,kcell,iClosest) / cspeed) , &
+                                           (vy(icell,jcell,kcell,iClosest) / cspeed) , &
+                                           (vz(icell,jcell,kcell,iClosest) / cspeed) )
+
   else
      thisOctal%rho(subcell) = minRho
      thisOctal%temperature(subcell) = minTem
+     thisOctal%velocity(subcell) = VECTOR(0.0_db, 0.0_db, 0.0_db)
   endif
-
-! Choose where to put dust
-  if (thisOctal%temperature(subcell) > 1.5e5) then
-     thisOctal%dustTypeFraction(subcell,:) = 0.0
-  else
-     thisOctal%dustTypeFraction(subcell,:) = 1.0
-  end if
-
-! Velocity is set to zero for now, add here if required
-  thisOctal%velocity = VECTOR(0.,0.,0.)
 
 end subroutine assign_from_flash
 
@@ -454,6 +463,9 @@ subroutine deallocate_gridFromFlash
 
   if (allocated(density))     deallocate (density)
   if (allocated(temperature)) deallocate (temperature)
+  if (allocated(vx))          deallocate (vx)
+  if (allocated(vy))          deallocate (vy)
+  if (allocated(vz))          deallocate (vz)
   if (allocated(lrefine))     deallocate (lrefine)
   if (allocated(boundBox))    deallocate (boundBox)
 

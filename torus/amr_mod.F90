@@ -446,7 +446,6 @@ CONTAINS
       thisOctal%nhi(subcell) = 1.e-8
       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
       thisOctal%inFlow(subcell) = .true.
-      thisOctal%velocity = VECTOR(0.,0.,0.)
       thisOctal%biasCont3D = 1.
       thisOctal%etaLine = 1.e-30
       if (thisOctal%nDepth > 1) then

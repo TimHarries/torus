@@ -170,7 +170,7 @@ contains
 
     thisCentre = subcellcentre(thisOctal, subcell)
 
-! Remeber that the axes are flipped. 
+! Remember that the axes are flipped. 
     if ( thisCentre%x < yaxis(1)  .or. &
          thisCentre%x > yaxis(nx) .or. &
          thisCentre%z < xaxis(1)  .or. &
