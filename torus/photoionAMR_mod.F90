@@ -1259,6 +1259,9 @@ end subroutine radiationHydro
              else
                 !nMonte = 2**(maxDepthAMR)
                 nTotalMonte = 100000
+                if(usepacketsplitting) then
+                   nTotalMonte = nTotalMonte * 100
+                end if
              end if
           
        else 
@@ -1273,6 +1276,9 @@ end subroutine radiationHydro
                 !nMonte = 5242880/2.
              else
                 nTotalMonte = int(500.d0 * 2**(maxDepthAMR))
+                if(usepacketsplitting) then
+                   nTotalMonte = nTotalMonte * 100
+                end if
              end if
           else
              call writeInfo("Non uniform grid, setting arbitrary nMonte", TRIVIAL)
