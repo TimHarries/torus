@@ -3052,7 +3052,10 @@ contains
     transitionLambda = lamLine 
 
     transitionFreq = cSpeed / (lamLine * angstromtocm)
-    iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
+
+
+    ilambda = 1
+    if (mie) iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
 
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
