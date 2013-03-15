@@ -17,7 +17,7 @@ cp ../*.f90 .
 rm hydrodynamics_mod.f90 photoionAMR_mod.f90 photoion_mod.f90
 rm photoion_utils_mod.f90 angularImage_mod.f90 molecular_mod.f90 
 rm torusMod.f90 ion_mod.f90 nbody_mod.f90 qShep*90 timedep_mod.f90
-rm cluster_class.f90 sph_data_class.f90 wr104_mod.f90
+rm cluster_class.f90 sph_data_class.f90 
 rm phfit2.f90 cmf_mod.f90 modelatom_mod.f90 h21cm_mod.f90
 rm isochrone_class.f90
 

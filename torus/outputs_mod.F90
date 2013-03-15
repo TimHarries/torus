@@ -355,11 +355,15 @@ contains
        call writeRadialFile(radialfilename, grid)
 #endif
     else
+#ifdef MOLECULAR
        if (molecularPhysics) then
           call writeRadialMolecular(grid, radialFilename, globalMolecule, itrans)
        else
+#endif
           call writeRadial(grid, radialFilename)
+#ifdef MOLECULAR
        endif
+#endif
     endif
     endif
 
