@@ -11561,10 +11561,6 @@ end subroutine refineGridGeneric2
     real(double) :: mu, rhoPhys, gamma, cs, rhoNorm
 
     mu = 0.d0
-    if(grid%geometry == "SB_gasmix") then
-       mu = 1.4d0
-    end if
-
 
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic
@@ -11596,9 +11592,9 @@ end subroutine refineGridGeneric2
 !                  .or. grid%geometry == "SB_1D_2Da" .or. grid%geometry == "SB_CD_1Db") then                
 !             mu = 1.d0
 !             end if
-             if(grid%geometry == "SB_gasmix") then
-                mu = 1.4d0
-             end if
+!             if(grid%geometry == "SB_gasmix") then
+!                mu = 1.4d0
+!             end if
              
           endif
           
