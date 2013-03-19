@@ -7055,7 +7055,7 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     logical :: v1
-    logical, save :: firstTime = .true.
+!    logical, save :: firstTime = .true.
     real(double) :: ethermal, thisT
 
     rVec = subcellCentre(thisOctal, subcell)
