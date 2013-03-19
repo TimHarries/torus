@@ -16,7 +16,9 @@ if [[ -e ${TORUS_TEST_DIR}/lock ]]; then
 fi
 
 # Process output from coverage analysis
+echo "--------------------------" >> ${LOG_FILE}
 echo "Processing coverage output" >> ${LOG_FILE}
+echo "--------------------------" >> ${LOG_FILE}
 cd ${TORUS_TEST_DIR}/benchmarks_ompiosx/build
 process_gcov.sh >> ${LOG_FILE}
 
@@ -149,10 +151,24 @@ else
     suite_status="FAILED"
 fi
 
+# Extract timing information
+rm -f timings
+echo >> timings
+echo "--------------------------------" >> timings
+echo "Timing information from tune.dat" >> timings
+echo "--------------------------------" >> timings
+echo >> timings
+
+for tunefile in `find . -name 'tune*.txt'`; do
+    echo ${tunefile} >> timings
+    tail -1 ${tunefile} >> timings
+    echo >> timings
+done
+
 # Set up the message body 
 echo  >> header
 mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log~
-cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ > ${TORUS_TEST_DIR}/torus_daily_test_log 
+cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ timings > ${TORUS_TEST_DIR}/torus_daily_test_log 
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
