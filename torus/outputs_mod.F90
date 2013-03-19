@@ -140,8 +140,8 @@ contains
 
     if (atomicPhysics.and.calcPhotometry) then
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
-       if (writeoutput) then
-          open(66, file="phase.dat", status="unknown", form="formatted")
+       if (myrankGlobal == 1) then
+          open(28, file="phase.dat", status="unknown", form="formatted")
        endif
        do i = 1, 50
           viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
@@ -165,11 +165,11 @@ contains
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
                globalSourceArray, globalnsource, 1, vflux, forceLambda=5500.d0, occultingDisc=.true.)
-          if (writeoutput) write(66,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
+          if (myrankGlobal == 1) write(28,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
                returnMagnitude(bFlux, "B") -  returnMagnitude(vFlux,"V")
-!          write(*,*) "v, b flux",vflux, bflux
+          write(*,*)  myrankGlobal,writeoutput, " v, b flux",vflux, bflux
        enddo
-       if (writeoutput) close(66)
+       if (myrankGlobal==1) close(28)
     endif
 
     if (atomicPhysics.and.calcSpectrum.and.(.not.monteCarloRT)) then
