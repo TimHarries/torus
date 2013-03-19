@@ -12,7 +12,9 @@ module vtk_mod
   use constants_mod
   use utils_mod
   use amr_mod
+#ifdef MPI
   use mpi_amr_mod
+#endif
   use messages_mod
   use vector_mod
   use mpi_global_mod

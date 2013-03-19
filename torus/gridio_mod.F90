@@ -11,7 +11,9 @@ module gridio_mod
   use cmfgen_class
   use messages_mod
   use mpi_global_mod
+#ifdef MPI
   use mpi_amr_mod
+#endif
   use parallel_mod, only : torus_mpi_barrier
   use zlib_mod
  implicit none
