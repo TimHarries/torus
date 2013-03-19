@@ -167,7 +167,7 @@ contains
                globalSourceArray, globalnsource, 1, vflux, forceLambda=5500.d0, occultingDisc=.true.)
           if (myrankGlobal == 1) write(28,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
                returnMagnitude(bFlux, "B") -  returnMagnitude(vFlux,"V")
-          write(*,*)  myrankGlobal,writeoutput, " v, b flux",vflux, bflux
+!          write(*,*)  myrankGlobal,writeoutput, " v, b flux",vflux, bflux
        enddo
        if (myrankGlobal==1) close(28)
     endif

@@ -3044,14 +3044,15 @@ contains
     a = 0.d0; blu = 0.d0; bul = 0.d0
 
 
-    if (PRESENT(forceFreq)) then
-       transitionFreq = forceFreq
-    endif
-
 
     transitionLambda = lamLine 
 
     transitionFreq = cSpeed / (lamLine * angstromtocm)
+    if (PRESENT(forceFreq)) then
+       transitionFreq = forceFreq
+       transitionLambda = (cspeed/transitionFreq)/angstromToCm
+    endif
+
 
 
     ilambda = 1
