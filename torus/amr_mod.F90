@@ -7526,8 +7526,7 @@ endif
     type(VECTOR) :: rVec, cen
     real(double) :: eThermal, R
 
-
-    cen = VECTOR(0.4*pcToCm/1.d10, 0.d0, 0.d0)
+    cen = VECTOR(1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10)
     rVec = subcellCentre(thisOctal, subcell)
 
     rVec = rVec - cen
