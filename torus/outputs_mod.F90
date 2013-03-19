@@ -439,7 +439,7 @@ contains
     integer :: i,j
     type(VECTOR) :: rVec
     integer, parameter :: nPoints=250
-    real(double) :: rArray(nPoints),zArray(nPoints), tArray(nPoints), zDash, rDash
+    real(double) :: rArray(nPoints),zArray(nPoints), zDash, rDash
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     open(33, file="envelope.txt", status="old", form="formatted")

@@ -10490,7 +10490,7 @@ end subroutine refineGridGeneric2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
-    real(double) :: mVal, epsilon, tauMax, tauMin
+    real(double) :: tauMin
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
@@ -11545,7 +11545,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-    character(len=30) :: plotfile
+!    character(len=30) :: plotfile
 
     tol = 1.d-4
     tol2 = 1.d-5
