@@ -87,6 +87,9 @@ ifeq ($(openmp), yes)
   ETCFLAG += $(OPENMPFLAG)
 endif
 
+# For zlib
+ETCFLAG += -lz
+
 TORUSMAINSOURCE= torusMainV2.F90
 INPUTSMODSOURCE= inputs_modV2.f90
 
@@ -112,7 +115,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             cmfgen_class.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 sed_mod.f90 fits_utils_mod.f90 \
-            image_utils_mod.f90 units_mod.f90
+            image_utils_mod.f90 units_mod.f90 zlib_mod.f90 gridFromFlash.f90 
 
 CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 \
 	         mpi_amr_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 \

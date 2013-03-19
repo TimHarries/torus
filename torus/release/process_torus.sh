@@ -7,7 +7,7 @@ for srcFile in *.F90; do
     outfile=`echo $srcFile | sed s/F90/f90/`
 #    fpp -P $srcFile $outfile
 # Add OpenMP key if you want to build with OpenMP. 
-    fpp -P -D_OPENMP $srcFile $outfile
+    fpp -P -D_OPENMP -DUSEZLIB $srcFile $outfile
 done
 
 rm *.F90
@@ -23,7 +23,16 @@ rm isochrone_class.f90
 
 ln -s ../makedepend
 
-echo -n "Number of lines "
-wc -l *90 | tail -1 
+echo -n "Number of lines in reduced code: "
+num_red=`wc -l *90 | tail -1 | awk '{print $1}'`
+echo $num_red
+
+echo -n "Number of lines in full code: "
+num_full=`wc -l ../*90 | tail -1 | awk '{print $1}`
+echo $num_full
+
+frac=`echo $num_red $num_full | awk '{print $1/$2}`
+echo "Fraction in reduced code: ${frac}"
+
 
 echo "All done"
