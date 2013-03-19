@@ -87,7 +87,13 @@ contains
           call writeFogel(grid, intextFilename, outtextFilename)
        endif
 
+
     endif
+
+    if (geometry == "envelope") then
+       if (writeoutput) call writeEduard(grid)
+    endif
+
 
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
@@ -428,6 +434,37 @@ contains
     enddo
   end subroutine getRadial
 
+  subroutine writeEduard(grid)
+    type(GRIDTYPE) :: grid
+    integer :: i,j
+    type(VECTOR) :: rVec
+    integer, parameter :: nPoints=250
+    real(double) :: rArray(nPoints),zArray(nPoints), tArray(nPoints), zDash, rDash
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    open(33, file="envelope.txt", status="old", form="formatted")
+    do i = 1, nPoints
+       read(33,*) rArray(i), zArray(i)
+    enddo
+    close(33)
+
+    open(33, file="rzt.dat", status="unknown", form="formatted")
+    write(33,'(a)') "% R (au), Z (au), T(K)"
+    thisOctal => grid%octreeRoot
+    do i = 1, nPoints
+       do j = 1 , 10
+          zDash = (zArray(i) * dble(j-1)/9.d0)*autocm/1.d10
+          rDash = rArray(i) * autocm/1.d10
+
+          rVec = VECTOR(rDash, 0.d0, zDash)
+
+          call findSubcellLocal(rVec, thisOctal, subcell)
+
+          write(33, '(1p,3e15.3)') rArray(i), zDash*1.d10/autocm, thisOctal%temperature(subcell)
+       enddo
+    enddo
+    close(33)
+  end subroutine writeEduard
 
 
 end module outputs_mod

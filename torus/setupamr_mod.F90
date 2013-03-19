@@ -484,11 +484,15 @@ contains
 #ifdef MPI
           case("unisphere","gravtest")
              if (hydrodynamics) then
+             totalMass = 0.d0
                 call findmassoverallthreads(grid, totalmass)
+                if (writeoutput) write(*,*) "Total mass in sphere before (solar masses): ",totalMass/msol
                 call  torus_mpi_barrier
                 if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, sphereMass/totalMass)
                 call  torus_mpi_barrier
+                totalMass = 0.d0
                 call findmassoverallthreads(grid, totalmass)
+                if (writeoutput) write(*,*) "Total mass in sphere (solar masses): ",totalMass/msol
              endif
 #endif
           case DEFAULT

@@ -410,8 +410,10 @@ module source_mod
     call randomSource(source, nSource, iSource, weight=packetWeight)
        tot = tot + eps * packetWeight
     enddo
-    write(*,*) "Test random source: expect luminosity ",totlum
-    write(*,*) "Test random source: found luminosity ",tot
+    if (writeoutput) then
+       write(*,*) "Test random source: expect luminosity ",totlum
+       write(*,*) "Test random source: found luminosity ",tot
+    endif
     if (abs(totlum-tot)/tot > 0.01d0) then
        call writeFatal("Error in randomSource")
     endif

@@ -801,8 +801,8 @@ contains
     real(oct)  :: cellSize, d
     TYPE(VECTOR)     :: cellCentre
 !    integer, parameter :: nr = 150  ! normal resolution
-    integer, parameter :: nr = 180  ! normal resolution
-!    integer, parameter :: nr = 40  ! low resolution
+!    integer, parameter :: nr = 180  ! normal resolution
+    integer, parameter :: nr = 40  ! low resolution
 
     real(double) :: r
     integer :: i
