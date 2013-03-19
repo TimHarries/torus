@@ -4704,6 +4704,9 @@ end subroutine sumFluxes
           if(grid%geometry == "SB_isoshck" .or. grid%geometry == "SB_coolshk") then
              call  dumpValuesAlongLine(grid, plotfile, &
                   VECTOR(1.d0,0.d0,0.0d0), VECTOR(2.d0, 0.d0, 0.0d0), 1024)
+          else if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
+             call  dumpValuesAlongLine(grid, plotfile, &
+                  VECTOR(0.00390625d0,0.d0,0.0d0), VECTOR(1.5d0, 0.d0, 0.0d0), 1000)             
           else
              call  dumpValuesAlongLine(grid, plotfile, &
                   VECTOR(0.d0,0.d0,0.0d0), VECTOR(1.5d0, 0.d0, 0.0d0), 1000)

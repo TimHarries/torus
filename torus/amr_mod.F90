@@ -7050,7 +7050,7 @@ endif
   end subroutine calcPlanarIfrontDensity
 
   subroutine calcContactDiscontinuityOneDDensity(thisOctal, subcell, v1)
-    use inputs_mod, only : CD_version
+    use inputs_mod, only : CD_version, amrgridcentrex
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7076,112 +7076,46 @@ endif
        thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
     end if
 
-!    if(CD_version == 1) then
-!       thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-!    else if (CD_version == 2) then
-!       thisOctal%velocity(subcell) = VECTOR(0.5, 0., 0.)
-!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-!    else if (CD_version == 3) then
-!       thisOctal%velocity(subcell) = VECTOR(2., 0., 0.)
-!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-!    else if (CD_version == 4) then
-!       thisOctal%velocity(subcell) = VECTOR(20., 0., 0.)
-!       thisOctal%velocity(subcell)%x = thisOctal%velocity(subcell)%x/cSpeed
-!    end if
-
-
-!    if (rvec%x < 0.6d0 .and. rVec%x > 0.1d0) then
-    if(rVec%x > 0.5d0) then
+    if(rVec%x > amrgridcentrex) then
        if(v1) then
           thisOctal%rho(subcell) = 10.d0
-
-          thisOctal%temperature(subcell) = real(10.d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg))
-
-          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
-               kerg*thisOctal%temperature(subcell))/(mHydrogen)
-
-          if(firstTime) then
-             print *, "HIGH RHO TEMP", thisOctal%temperature(subcell)
-             print *, "HIGH RHO P", thisOctal%pressure_i(subcell)
-          end if
-          
+          thisOctal%pressure_i(subcell) = 10.d0
+          thisT = 10.d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg)
        else
           thisOctal%rho(subcell) = 1000.d0
-  !        thisOctal%pressure_i(subcell) = 1000.d0
-          thisOctal%temperature(subcell) = real(1000.d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg))
-          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
-               kerg*thisOctal%temperature(subcell))/(mHydrogen)
+          thisOctal%pressure_i(subcell) = 1000.d0
+          thisT = 1000.d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg)
        end if
-!       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)                
     else
        if(v1) then
           thisOctal%rho(subcell) = 1.d0
- !         thisOctal%pressure_i(subcell) = 10.d0
-          thisOctal%temperature(subcell) = real(10.d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg))
-          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
-               kerg*thisOctal%temperature(subcell))/(mHydrogen)
-          if(firstTime) then
-             print *, "LOW RHO TEMP", thisOctal%temperature(subcell)        
-             print *, "LOW RHO P", thisOctal%pressure_i(subcell) 
-             firstTime = .false.
-          end if
-
-!          thisOctal%temperature(subcell) = 100.d0                                                  
+          thisOctal%pressure_i(subcell) = 10.d0
+          thisT = 10.d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg)
        else
           thisOctal%rho(subcell) = 1.d0
-!          thisOctal%pressure_i(subcell) = 1000.d0
-          thisOctal%temperature(subcell) = real(1000.d0*mHydrogen/&
-               (thisOctal%rho(subcell)*kerg))
-          thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
-               kerg*thisOctal%temperature(subcell))/(mHydrogen)
-!          thisOctal%temperature(subcell) = 10000.d0                                                
+          thisOctal%pressure_i(subcell) = 1000.d0
+          thisT = 1000.d0*mHydrogen/&
+               (thisOctal%rho(subcell)*kerg)          
        end if
-!       thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)                
+
     endif
 
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)* &
+         kerg*thisT)/(mHydrogen)
+    
+    ethermal = thisOctal%pressure_i(subcell)/thisOctal%rho(subcell)
     
     
-
-!    if (rvec%x < 0.5d0) then
-!       if(v1) then
-!          thisOctal%rho(subcell) = 1.d-2
-!
-!          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
-!               thisOctal%velocity(subcell)%x
-!       else
-!          thisOctal%rho(subcell) = 1.d0
-!
-!          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
-!               thisOctal%velocity(subcell)%x
-!
-!       end if
-!    else
-!       if(v1) then
-!          thisOctal%rho(subcell) = 1.d-3
-!
-!          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
-!               thisOctal%velocity(subcell)%x*(10.d0)
-!       else
-!          thisOctal%rho(subcell) = 1.d-3
-!
-!          thisOctal%rhoe(subcell) = thisOctal%rho(subcell)* &
-!               thisOctal%velocity(subcell)%x*(1000.d0)
-!
-!       end if
-!    endif
-    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell)*thisOctal%rho(subcell)
+
     thisOctal%phi_i(subcell) = 0.d0
-!    thisOctal%boundaryCondition(subcell) = 1
-    thisOctal%gamma(subcell) = 1.0001
-    thisOctal%iEquationOfState(subcell) = 1
+
+    thisOctal%iEquationOfState(subcell) = 0
+
 
   end subroutine calcContactDiscontinuityOneDDensity
 

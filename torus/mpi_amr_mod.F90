@@ -3094,11 +3094,10 @@ end subroutine writeRadialFile
           phi_gas = tempStorage(10)
           temperature = tempStorage(11)
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
-!             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg), &
-!                  rhoe/rho
-             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature*1.d7, &
-                  rhoe/rho
 
+             if(cen%x > 0.0078125d0 .and. cen%x < (1.d0+0.0078125d0)) then                
+                write(20,'(1p,7e14.5)') modulus(cen), rho, p,  rhou/rho
+             end if
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
@@ -3106,9 +3105,6 @@ end subroutine writeRadialFile
           end if
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
-          !print *, "POSITION 2 ", position
-          !print *, "direction 2 ", direction
-          !print *, "tVal 2 ", tVal
 
        enddo
        !Send escape trigger to other threads
