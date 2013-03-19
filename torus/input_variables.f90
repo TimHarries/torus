@@ -120,6 +120,7 @@
   real(double) :: rho_const           !Density of fixed density boundary conditions
   character(len=20) :: limiterType    !Flux limiter type
   integer :: idump                    !Hydrodynamics time step dump number
+  integer :: vtuToGrid
   real(double) :: gridDistanceScale   !Scale of grid
   integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
 

@@ -4746,7 +4746,7 @@ end subroutine sumFluxes
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
     use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance, dumpRadial
-    use inputs_mod, only : addSinkParticles
+    use inputs_mod, only : addSinkParticles, vtutogrid
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(512), temptc(512),  mu
@@ -5221,13 +5221,17 @@ end subroutine sumFluxes
           grid%iDump = it
           grid%currentTime = currentTime
 
+          if(mod(real(grid%iDump), real(vtutogrid)) == 0.0) then
+             write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
+             call writeAMRgrid(plotfile,.false. ,grid)
+          end if
+
           if (dumpRadial) then
              write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
              call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
           endif
-          write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
-          call writeAMRgrid(plotfile,.false. ,grid)
+
 
           if (writeoutput) then
              write(plotfile,'(a,i4.4,a)') "source",it,".dat"
@@ -5257,6 +5261,7 @@ end subroutine sumFluxes
 !The main routine for 2D hydrodynamics
   subroutine doHydrodynamics2d(grid)
     use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance, modelwashydro
+    use inputs_mod, only : vtutogrid
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(512), temptc(512), mu
@@ -5546,8 +5551,11 @@ end subroutine sumFluxes
           grid%iDump = it
           grid%currentTime = currentTime
           call hydrovelocityConvert(grid%octreeRoot)
-          write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
-          call writeAMRgrid(plotfile,.false. ,grid)
+
+          if(mod(real(grid%iDump), real(vtutogrid)) == 0.0) then
+             write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
+             call writeAMRgrid(plotfile,.false. ,grid)
+          end if
           write(plotfile,'(a,i4.4,a)') "dump_",it,".vtk"
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
@@ -5588,6 +5596,7 @@ end subroutine sumFluxes
 !The main routine for 2D hydrodynamics in cylindrical coordinates
   subroutine doHydrodynamics2dCylindrical(grid)
     use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance, modelwashydro, doselfgrav
+    use inputs_mod, only : vtutogrid
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(512), temptc(512), mu
@@ -5920,8 +5929,10 @@ end subroutine sumFluxes
           grid%iDump = it
           grid%currentTime = currentTime
           call hydrovelocityConvert(grid%octreeRoot)
-          write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
-          call writeAMRgrid(plotfile,.false. ,grid)
+          if(mod(real(grid%iDump), real(vtutogrid)) == 0.0) then
+             write(plotfile,'(a,i4.4,a)') "dump_",it,".grid"
+             call writeAMRgrid(plotfile,.false. ,grid)
+          end if
           write(plotfile,'(a,i4.4,a)') "dump_",it,".vtk"
           call writeVtkFile(grid, plotfile, &
                valueTypeString=(/"rho          ","velocity     ","rhoe         " , &

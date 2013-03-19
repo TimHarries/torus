@@ -1997,6 +1997,9 @@ contains
     call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &
+         "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
+
     if (cylindricalHydro) then
        dx = dble(amrgridSize)/dble(2**4-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)

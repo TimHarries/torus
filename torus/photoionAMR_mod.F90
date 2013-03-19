@@ -60,7 +60,7 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas
+    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -106,8 +106,9 @@ contains
     integer :: iterStack(3)
     integer :: optID
     logical, save :: firstWN=.true.
-
-
+!    real :: gridToVtu_value
+!    integer :: gridVtuCounter
+!    gridVtuCounter = 0
     dumpThisTime = .false.
 
     call mpi_barrier(MPI_COMM_WORLD,ierr)
@@ -762,11 +763,14 @@ contains
 !            "hydrovelocity","sourceCont   ", "pressure     "/))
 !       nPhase = nPhase + 1
        if (dumpThisTime) then
-
+          if(mod(real(grid%iDump), real(vtuToGrid)) == 0.0) then
+             write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
+             call writeAmrGrid(mpiFilename, .false., grid)
+          end if
           if(grid%geometry == "SB_WNHII") then
              call dumpWhalenNormanTest(grid)
           end if
-
+          
           if(grid%geometry == "SB_offCen") then
              if(myRankGlobal == 0) then
                 write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".txt"
@@ -809,8 +813,7 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-          write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-          call writeAmrGrid(mpiFilename, .false., grid)
+
 
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
