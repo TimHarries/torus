@@ -380,7 +380,7 @@ contains
        end do
     else
        if (.not.associated(thisOctal%source)) allocate(thisOctal%source(1:thisOctal%maxChildren))
-       thisOctal%source = thisOctal%rho * bigG * fourPi
+       thisOctal%source(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * bigG * fourPi
     endif
   end subroutine setSourceToFourPiRhoG
 
