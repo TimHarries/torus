@@ -11547,8 +11547,9 @@ end subroutine refineGridGeneric2
     integer :: it, ierr, i, minLevel
 !    character(len=30) :: plotfile
 
-    tol = 1.d-4
-    tol2 = 1.d-5
+
+    tol = 1.d-5
+    tol2 = 1.d-6
 
 
     nHydroThreads = nHydroThreadsGlobal
