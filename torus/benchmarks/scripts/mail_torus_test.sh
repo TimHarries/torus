@@ -118,6 +118,15 @@ else
     suite_status="FAILED"
 fi
 
+# Test for success of 2D gravity solver test
+num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest/check_log_ompiosx_gravtest_2d.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    echo "2D gravity test successful. " >> header
+else
+    echo "!! 2D gravity test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
 # Test for success of nbody test
 num_success=`/usr/bin/grep "Torus nbody test successful" benchmarks_gfortran/benchmarks/nbody/check_log_gfortran_nbody.txt | /usr/bin/wc -l`
 num_success2=`/usr/bin/grep "Torus nbody test successful" benchmarks_ompiosx-openmp/benchmarks/nbody/check_log_ompiosx_nbody.txt | /usr/bin/wc -l`

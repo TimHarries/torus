@@ -285,13 +285,25 @@ for sys in ${SYS_TO_TEST}; do
 
 # Gravity solver test
     case ${sys} in
-	ompiosx|zen)  echo "Running gravity solver test"
+	ompiosx|zen)  echo "Running 3D gravity solver test"
 	    export THIS_BENCH=gravtest
 	    run_dom_decomp 9
 	    check_it > check_log_${SYSTEM}_gravtest.txt 2>&1 
 	    cat check_log_${SYSTEM}_gravtest.txt
 	    echo ;;
 	*) echo "Gravity solver test does not run on this system. Skipping"
+	    echo ;;
+    esac
+
+# Gravity solver test in 2D
+    case ${sys} in
+	ompiosx|zen)  echo "Running 2D gravity solver test"
+	    export THIS_BENCH=gravtest_2d
+	    run_dom_decomp 5
+	    check_it > check_log_${SYSTEM}_gravtest_2d.txt 2>&1 
+	    cat check_log_${SYSTEM}_gravtest_2d.txt
+	    echo ;;
+	*) echo "2D Gravity solver test does not run on this system. Skipping"
 	    echo ;;
     esac
 
