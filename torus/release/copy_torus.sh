@@ -1,5 +1,6 @@
 #!/bin/ksh
 
+# Get the subversion revision string from the top level of the repository
 cd ..
 svnstring=`svnversion`
 export TORUS_TAR_FILE=torus2.0-${svnstring}_public_alpha.tar
@@ -9,20 +10,20 @@ cd release
 echo "Copying Torus source code"
 cp ../*.[fF]90 . 
 
+# Get rid of files we don't want to release
 echo "Removing files not for release"
-# Get rid of files we don't need
 rm hydrodynamics_mod.?90 photoionAMR_mod.?90 photoion_mod.?90
 rm photoion_utils_mod.?90 angularImage_mod.?90 molecular_mod.?90 
 rm torusMod.?90 ion_mod.?90 nbody_mod.?90 qShep*90 timedep_mod.?90
 rm cluster_class.?90 sph_data_class.?90 
 rm phfit2.?90 cmf_mod.?90 modelatom_mod.?90 h21cm_mod.?90
 rm isochrone_class.?90 viscosity_mod.?90 stateq_mod.?90
-
-# Only used by stateq_mod
 rm math_mod2.?90
 
-cp ../makedepend . 
+# Fix permissions
+chmod -x *90
 
+# Report some stats
 echo 
 echo -n "Number of lines in reduced code: "
 num_red=`wc -l *90 | tail -1 | awk '{print $1}'`
@@ -37,10 +38,18 @@ echo "Fraction in reduced code: ${frac}"
 echo 
 
 echo "Making tar file"
+# Use the main repository makefile to generate make.depends
+ln -s ../Makefile
+ln -s ../makedepend 
 make depends > /dev/null 2>&1
+rm Makefile makedepend
+
+# Now generate the release version Makefile
+cat Makefile_release make.depends > Makefile
+
 mkdir torus
-mv *90 make.depends makedepend torus
-cp svn_version.h Makefile torus
+mv *90 Makefile torus
+cp svn_version.h  torus
 tar cf ${TORUS_TAR_FILE} torus
 
 echo "Testing build"
@@ -58,6 +67,7 @@ if [[ -x torus.ifort ]]; then
     cd ..
     rm -r torus 
     rm -r build
+    rm make.depends
     gzip ${TORUS_TAR_FILE}
     exit 0
 else

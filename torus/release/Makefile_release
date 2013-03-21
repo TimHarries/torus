@@ -1,44 +1,36 @@
+#
+# Torus Makefile
+#
+
+# Default options
 memcheck = yes
 openmp  = yes
 cfitsio = no
 ETCFLAG  =
 
+# Set the SYSTEM environment variable to the name of your Fortran compiler
+
 ifeq ($(SYSTEM), g95)
     F95COMP  = g95
-    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
     FASTFLAG = -O3
-    CFITSIOLIBS = -lcfitsio
+    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
     EXE = torus.g95
     KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), gfortran)
-    ifeq ($(mpi), yes)
-        F95COMP = mpif90
-        ETCFLAG += -DMPI
-    else
-        F95COMP = gfortran
-    endif
-    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
+    F95COMP = gfortran
     FASTFLAG = -O2
+    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), ifort)
-    ifeq ($(mpi), yes)
-        F95COMP = mpif90
-        ETCFLAG += -DMPI
-    else
-        F95COMP= ifort
-    endif
+    F95COMP= ifort
     FASTFLAG= -O2
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
-    STATICFLAG=
     EXE=torus.ifort
-    F2CLIB=
-    STATICLIBS= -Bstatic
-    STARLIBS= 
     KNOWN_SYSTEM=yes
 endif
 
@@ -46,9 +38,15 @@ endif
 # Deal with make options
 #
 
+ifeq ($(mpi), yes)
+   F95COMP = mpif90
+   ETCFLAG += -DMPI
+endif
+
 ifeq ($(cfitsio), no)
    CFITSIOLIBS  =
 else
+   CFITSIOLIBS = -lcfitsio
    ETCFLAG += -DUSECFITSIO
 endif
 
@@ -56,11 +54,6 @@ ifeq ($(memcheck), yes)
    ETCFLAG += -DMEMCHECK
 endif
 
-ifeq ($(static), yes)
-   ETCFLAG += $(STATICFLAG)
-else
-   STATICLIBS =
-endif
 
 # Set OpenMP flags
 ifeq ($(openmp), yes)
@@ -71,19 +64,13 @@ ifeq ($(openmp), yes)
      STARLIBS += -static-libgcc
      FASTFLAG = 
   endif
-  ifeq ($(SYSTEM), ompiosx)
-     OPENMPFLAG = -fopenmp 
-     STARLIBS += -static-libgcc
-     FASTFLAG = 
-  endif
   ETCFLAG += $(OPENMPFLAG)
+else
+  STARLIBS= 
 endif
 
 # For zlib
 ETCFLAG += -lz -DUSEZLIB
-
-TORUSMAINSOURCE= torusMainV2.F90
-INPUTSMODSOURCE= inputs_modV2.f90
 
 #
 # Source files
@@ -96,7 +83,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
             distortion_mod.f90  TTauri_mod.f90 \
             disc_hydro_mod.f90 gas_opacity_mod.f90 \
             integratePath.f90 mieDistPhaseMatrix.f90 \
-            gridtype_mod.f90 \
+            gridtype_mod.f90 inputs_modV2.f90 \
             fillGridTio.f90 fillGridRayleigh.f90 fillGridThomson.f90  \
             amr_mod.f90 amr_utils_mod.f90  \
             jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
@@ -113,15 +100,14 @@ CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 \
 	         parallel_mod.F90 image_mod.F90  mpi_amr_mod.F90 vtk_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90  \
-	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 $(TORUSMAINSOURCE)
+	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 torusMainV2.F90
 
 # Object files
 #
-INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
+
 F90OBJ = $(F90SOURCE:.f90=.o)
-CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
-CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
-ALLOBJ = $(F90OBJ)  $(INPUTSMODOBJ) $(CAPF90OBJ)
+CAPF90OBJ = $(CAPF90SOURCE:.F90=.o)
+ALLOBJ = $(F90OBJ) $(CAPF90OBJ)
 
 #
 # Compilers and compiler flags
@@ -136,9 +122,9 @@ all: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
-	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS) $(MKLIBS) $(XMLLIBS)
+	    $(F90) -o $(EXE) \
+	    $(F90OBJ) $(CAPF90OBJ) \
+	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS)
 	    @echo "...done"
     else
 	    @echo ""
@@ -158,7 +144,6 @@ depends: preprocess
 	@echo ""
 	@echo "Making dependency file..."
 	@touch -c make.depends
-	@./makedepend
 	@echo "...done"
 	@echo ""
 
@@ -197,11 +182,3 @@ link: depends $(ALLOBJ)
 	$(F90) -c $<
 
 
-#
-# Auto-generated dependency file
-#   - 'make depends' must be run before 'make' as the dependencies included
-#     with the directive below are always one step behind the current version
-#
--include make.depends
-
-# DO NOT DELETE
