@@ -26,7 +26,12 @@ ifeq ($(SYSTEM), gfortran)
 endif
 
 ifeq ($(SYSTEM), ifort)
-    F95COMP= ifort
+    ifeq ($(mpi), yes)
+        F95COMP = mpif90
+        ETCFLAG += -DMPI
+    else
+        F95COMP= ifort
+    endif
     FASTFLAG= -O2
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
@@ -106,7 +111,7 @@ F90SOURCE = torus_version_mod.f90 kind_mod.f90 constants_mod.f90 atom_mod.f90 ve
 
 CAPF90SOURCE =	 octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 \
-	         parallel_mod.F90 image_mod.F90 vtk_mod.F90 \
+	         parallel_mod.F90 image_mod.F90  mpi_amr_mod.F90 vtk_mod.F90 \
                  phaseloop_mod.F90 gridio_mod.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 $(TORUSMAINSOURCE)
 
