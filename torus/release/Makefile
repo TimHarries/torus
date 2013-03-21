@@ -75,7 +75,7 @@ ifeq ($(openmp), yes)
 endif
 
 # For zlib
-ETCFLAG += -lz
+ETCFLAG += -lz -DUSEZLIB
 
 TORUSMAINSOURCE= torusMainV2.F90
 INPUTSMODSOURCE= inputs_modV2.f90

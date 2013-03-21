@@ -21,6 +21,9 @@ rm cluster_class.f90 sph_data_class.f90
 rm phfit2.f90 cmf_mod.f90 modelatom_mod.f90 h21cm_mod.f90
 rm isochrone_class.f90 viscosity_mod.f90 stateq_mod.f90 mpi_amr_mod.f90
 
+# Only used by stateq_mod
+rm math_mod2.f90
+
 rm -f makedepend
 ln -s ../makedepend
 
