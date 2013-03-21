@@ -71,6 +71,6 @@ if [[ -x torus.ifort ]]; then
     gzip ${TORUS_TAR_FILE}
     exit 0
 else
-    echo "Found torus.ifort not found: build failed"
+    echo "torus.ifort not found: build failed"
     exit 1
 fi
