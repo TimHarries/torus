@@ -119,7 +119,7 @@ else
 fi
 
 # Test for success of 2D gravity solver test
-num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest/check_log_ompiosx_gravtest_2d.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest/check_log_ompiosx_gravtest.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
     echo "2D gravity test successful. " >> header
 else
@@ -181,8 +181,9 @@ cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ timings > ${TORUS_TEST_DIR}/t
 export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
 
 # Send mail 
+gzip torus_test_output.tar
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar ${user} < ${LOG_FILE}
+    /sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar.gz ${user} < ${LOG_FILE}
 done
 
 exit
