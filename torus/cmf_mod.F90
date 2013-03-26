@@ -3597,7 +3597,7 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, nr3, i
 
-    nr1 = 100
+    nr1 = 200
     nr2 = 100
     nr3 = 100
     if (.not.ttauriWind) nr3 = 0

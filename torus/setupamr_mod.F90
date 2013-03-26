@@ -343,6 +343,7 @@ contains
 
           if (doSmoothGrid) then
              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             if (writeoutput) write(*,*) "Scale factor ",smoothFactor
              do
                 gridConverged = .true.
                 ! The following is Tim's replacement for soomthAMRgrid.

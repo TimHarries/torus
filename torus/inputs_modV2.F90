@@ -1043,8 +1043,13 @@ contains
             "Inner radius (AU): ","(a,f7.1,a)", 20., ok, .true.)
        call getReal("router", rOuter, real(autocm)/1.e10, cLine, fLine, nLines, &
             "Outer radius (AU): ","(a,f7.1,a)", 20., ok, .true.)
-       call getReal("massenv", massEnvelope, real(mSol), cLine, fLine,  nLines, &
-            "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
+       call getDouble("n2max", n2max, 1.d0, cLine, fLine, nLines, &
+            "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+       call getReal("beta", beta, 1., cLine, fLine, nLines, &
+            "Power law index: ","(a,f7.0,a)", 1., ok, .true.)
+
+!       call getReal("massenv", massEnvelope, real(mSol), cLine, fLine,  nLines, &
+!            "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
        
 
 
@@ -1568,9 +1573,16 @@ contains
                   "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
 
              write(keyword, '(a,i1)') "teff",i
-             call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
-                  "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
-
+             if (checkPresent(keyword, cline, nlines)) then
+                call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
+                     "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
+             else
+                write(keyword, '(a,i1)') "lum",i
+                call getDouble(keyword, sourceLum(i), lSol, cLine, fLine, nLines, &
+                     "Source luminosity (solar luminosities) : ","(a,f7.2,a)",1.d0, ok, .true.)
+                sourceTeff(i) = (sourceLum(i) / (fourPi*sourceRadius(i)**2*1.d20 * stefanBoltz))**0.25d0
+             endif
+             
              write(keyword, '(a,i1)') "mass",i
              call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
                   "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)

@@ -289,6 +289,7 @@
   character(len=80) :: sourceHistoryFilename
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10), sourceMdot(10)
+  real(double) :: sourceLum(10)
   real(double) :: accretionRadius
   logical :: stellarSource(10)
   character(len=10) :: diffuseType(10)

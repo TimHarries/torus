@@ -7918,13 +7918,13 @@ endif
 
   subroutine calcEnvelope(thisOctal,subcell,checkSplit)
 
-    use inputs_mod, only : rInner, rOuter, MassEnvelope
+    use inputs_mod, only : rInner, rOuter, n2max, amr1d, amr2d, beta
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real(double) :: fac, zHeight
     type(VECTOR) :: rVec
     integer :: i
-    real(double), save :: rArray(250),zArray(250), rho(250)
+    real(double), save :: rArray(250),zArray(250), rho(250), rMod, rho0
     real(double) :: junk,rDash,zDash
     integer, save :: nPoints = 250
     logical, save :: firstTime = .true.
@@ -7945,6 +7945,7 @@ endif
     endif
 
     rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
     zDash = abs(rVec%z)
     rDash = sqrt(rVec%x**2 + rVec%y**2)
     thisOctal%rho(subcell) = 1.d-30
@@ -7952,24 +7953,27 @@ endif
 !    rho0 =   massEnvelope &
 !         / (((8.d0/3.d0) * pi * (rInner*1.d10)**1.5d0)*((rOuter*1.d10)**1.5d0 - (rInner*1.d10)**1.5d0))
 !
-!    rho0 = 3.d6 * 2.33d0 * mHydrogen
-!!    write(*,*) "rho0 ",rho0
-!    if ((rMod > rInner).and.(rMod < rOuter)) then
-!       thisOctal%rho(subcell) = rho0 * (rmod/rInner)**(-1.5d0)
-!    endif
-
-    call locate(rArray, nPoints, rDash, i)
-    fac = (rDash - rArray(i))/(rArray(i+1)-rArray(i))
-    zHeight = zArray(i) + (zArray(i+1)-zArray(i))*fac
-    if (((zDash-thisOctal%subcellSize/2.d0) < zHeight).and.(rDash < rArray(npoints))) then
-       if (rDash > rArray(1)) thisOctal%rho(subcell) = rho(i)+fac*(rho(i+1)-rho(i))
-       if (present(checkSplit)) then
-          if ((rArray(i+1)-rArray(i)) < thisOctal%subcellSize) then
-             checkSplit = .true.
+    if (amr1d) then
+       rho0 = n2max * 2.33d0 * mHydrogen
+       if ((rMod > rInner).and.(rMod < rOuter)) then
+          thisOctal%rho(subcell) = rho0 * (rmod/rInner)**beta
+       endif
+    endif
+    if (amr2d) then
+       if ((rDash > rArray(1)).and.(rDash < rArray(nPoints))) then
+          call locate(rArray, nPoints, rDash, i)
+          fac = (rDash - rArray(i))/(rArray(i+1)-rArray(i))
+          zHeight = zArray(i) + (zArray(i+1)-zArray(i))*fac
+          if (((zDash-thisOctal%subcellSize/2.d0) < zHeight).and.(rDash < rArray(npoints))) then
+             if (rDash > rArray(1)) thisOctal%rho(subcell) = rho(i)+fac*(rho(i+1)-rho(i))
+             if (present(checkSplit)) then
+                if ((rArray(i+1)-rArray(i)) < 5.d0*thisOctal%subcellSize) then
+                   checkSplit = .true.
+                endif
+             endif
           endif
        endif
     endif
-       
   end subroutine calcEnvelope
     
 
@@ -7983,7 +7987,6 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, spiralVec
-    vterm = 2000.d5
     period = 245.d0 * 24.d0 * 3600.d0
 
     rVec = subcellCentre(thisOctal, subcell)

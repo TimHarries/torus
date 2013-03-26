@@ -12,7 +12,7 @@ contains
     use modelatom_mod, only : globalAtomArray
 #endif
     use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
-    use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry
+    use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
@@ -91,7 +91,7 @@ contains
     endif
 
     if (geometry == "envelope") then
-       if (writeoutput) call writeEduard(grid)
+       if (writeoutput.and.amr2d) call writeEduard(grid)
     endif
 
 
