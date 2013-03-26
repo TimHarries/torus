@@ -4439,7 +4439,8 @@ CONTAINS
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
           
           !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
-          
+
+          write(*,*) hr, height, r, betadisc
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
@@ -7900,7 +7901,6 @@ endif
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
        if (cylindricalHydro) then
           thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
-!          thisOctal%rhov(subcell) = 2.d0*(rMod/sphereRadius)*sqrt(bigG * mSol / (rDash*1.d10))*(rDash*1.d10)*thisOctal%rho(subcell)
        endif
     else
        thisOctal%rho(subcell) = 1.d-2 * rhoSphere
@@ -9347,7 +9347,7 @@ end function readparameterfrom2dmap
 !    write(*,*) "r", r
 !    write(*,*) "rvec", rvec, modulus(rvec)
 
-    if ((r > rInner)) then !.and.(r < rOuter)) then
+!    if ((r > rInner)) then !.and.(r < rOuter)) then
        v = sqrt(2.d0*6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
 !    write(*,*) "v", v
  
@@ -9355,7 +9355,7 @@ end function readparameterfrom2dmap
       call normalize(keplerianvelocity) 
       keplerianvelocity = (v/cSpeed) * keplerianvelocity        
 
-    endif
+!    endif
   end function keplerianVelocity
 
 
@@ -9655,7 +9655,6 @@ end function readparameterfrom2dmap
     r = real(modulus(rVec))
     thisOctal%inflow(subcell) = .true.
     thisOctal%temperature(subcell) = 100. 
-    thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
 
     thisOctal%rho(subcell) = 1.d-30
@@ -9689,7 +9688,6 @@ end function readparameterfrom2dmap
 ! tinkered from 10K - I figured the cooler bits will gently drop but a 
 ! large no. of cells are close to this temp.
        thisOctal%temperature(subcell) = 10.
-       thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 
        if (photoionization) then
@@ -9697,13 +9695,13 @@ end function readparameterfrom2dmap
           thisOctal%ne(subcell) = 1.e-5!thisOctal%nh(subcell)
           thisOctal%nhi(subcell) = 1.e-5
           thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+          thisOctal%biasCont3D = 1.
+          thisOctal%etaLine = 1.e-30
        endif
 
        h = real(height * (r / (100.d0*autocm/1.d10))**betaDisc)
     
     endif
-    thisOctal%biasCont3D = 1.
-    thisOctal%etaLine = 1.e-30
 
     if(molecular) then
  !      if(modulus(rvec) .lt. 1000.) then
@@ -9723,9 +9721,9 @@ end function readparameterfrom2dmap
 
     if (hydrodynamics) then
        r = sqrt(rVec%x**2 + rVec%y**2)
-       if (r > rOuter*0.9d0) then
-          thisOctal%rho(subcell) = thisOctal%rho(subcell) * exp(-(r-rOuter*0.9d0)/(0.01d0*rOuter))
-       endif
+!       if (r > rOuter*0.99d0) then
+!          thisOctal%rho(subcell) = thisOctal%rho(subcell) * exp(-(r-rOuter*0.99d0)/(0.01d0*rOuter))
+!       endif
 
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
        thisOctal%temperature(subcell) = 10. !real((1.d-15*10.d0)/thisOCtal%rho(subcell))
@@ -9733,20 +9731,11 @@ end function readparameterfrom2dmap
        thisOctal%boundaryCondition(subcell) = 4
        thisOctal%iEquationOfState(subcell) = 1
        thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
-       if (modulus(rvec) < rInner) then
-          thisOctal%phi_i(subcell) = -bigG * mCore / (rInner*1.d10)
-          thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-       endif
        thisOctal%gamma(subcell) = 7.d0/5.d0
        ethermal = real(1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell))
        thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
        thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-       zplusbound = 2
-       zminusbound = 2
-       xplusbound = 2
-       xminusbound = 2
-       yplusbound = 2
-       yminusbound = 2
+       thisOctal%rhov(subcell) = modulus(keplerianVelocity(rVec))*thisOctal%rho(subcell) * (r *gridDistanceScale)*cSpeed
     endif
 
 
@@ -10602,6 +10591,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%q_i_minus_2, source%q_i_minus_2)
     call copyAttribute(dest%q_i_minus_1, source%q_i_minus_1)
     call copyAttribute(dest%q_i, source%q_i)
+    call copyAttribute(dest%fViscosity, source%fViscosity)
     call copyAttribute(dest%q_i_plus_1, source%q_i_plus_1)
 
     call copyAttribute(dest%flux_i_minus_1, source%flux_i_minus_1)
@@ -14612,6 +14602,9 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%q_i_minus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%q_i_minus_2,thisOctal%maxchildren)
 
+
+       call allocateAttribute(thisOctal%fviscosity,thisOctal%maxchildren)
+
        call allocateAttribute(thisOctal%x_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%x_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%x_i_minus_1,thisOctal%maxchildren)
@@ -14771,6 +14764,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%mpiBoundaryStorage)
     call deallocateAttribute(thisOctal%mpiCornerStorage)
     call deallocateAttribute(thisOctal%q_i)
+    call deallocateAttribute(thisOctal%fViscosity)
     call deallocateAttribute(thisOctal%q_i_plus_1)
     call deallocateAttribute(thisOctal%q_i_minus_1)
     call deallocateAttribute(thisOctal%q_i_minus_2)

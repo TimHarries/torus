@@ -826,7 +826,8 @@ contains
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         ","dust1        ",  &
-               "phi          ","rhou         ","rhov         ","rhow         "/))
+               "phi          ","rhou         ","rhov         ","rhow         ", &
+               "vphi         "/))
 
 
 

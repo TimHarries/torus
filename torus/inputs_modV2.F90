@@ -2013,9 +2013,10 @@ contains
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
 
     if (cylindricalHydro) then
+       amrGridCentreX = amrgridsize/2.
        dx = dble(amrgridSize)/dble(2**4-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-!       vtkIncludeGhosts = .false.
+       vtkIncludeGhosts = .false.
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
                "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
     endif

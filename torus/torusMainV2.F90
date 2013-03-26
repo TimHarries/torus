@@ -173,7 +173,7 @@ program torus
      call freeGrid(grid)
      call freeGlobalSourceArray()
   enddo
-  666 continue
+!  666 continue
 
 #ifdef MPI
   call torus_mpi_barrier

@@ -3508,7 +3508,7 @@ contains
                call readBranchFromFile(i, fileFormatted)
             enddo
 
-            write(*,*) myrankglobal, "setting nchildren to zero"
+!            write(*,*) myrankglobal, "setting nchildren to zero"
             thisOctal%nChildren = 0 
             thisOctal%hasChild = .false.
          endif

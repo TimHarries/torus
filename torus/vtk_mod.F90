@@ -2664,7 +2664,7 @@ end subroutine writeXMLVtkFileAMR
   end subroutine getValues
 
     recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n, includeGhosts)
-      use inputs_mod, only : lambdaSmooth, hydrodynamics
+      use inputs_mod, only : lambdaSmooth, hydrodynamics, gridDistanceScale
       type(OCTAL), pointer :: thisOctal, child
       logical :: includeGhosts
       type(GRIDTYPE) :: grid
@@ -2672,7 +2672,7 @@ end subroutine writeXMLVtkFileAMR
       real :: rArray(:,:)
       integer :: i, subcell, n, iVal, nVal
       integer, save ::  iLambda
-      real(double) :: ksca, kabs, value, v
+      real(double) :: ksca, kabs, value, v, r
       type(VECTOR) :: rVec, vel
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
@@ -3114,6 +3114,11 @@ end subroutine writeXMLVtkFileAMR
 
                case("rhov")
                   rArray(1, n) = real(thisOctal%rhov(subcell))
+
+               case("vphi")
+                  rVec = subcellCentre(thisOctal,subcell)
+                  r = rVec%x * gridDistanceScale
+                  rArray(1, n) = real(thisOctal%rhov(subcell)**2/(thisOctal%rho(subcell)**2*r**3))
 
                case("rhow")
                   rArray(1, n) = real(thisOctal%rhow(subcell))
