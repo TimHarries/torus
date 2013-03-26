@@ -228,20 +228,17 @@ contains
     out%x = tmp2(1)
     out%y = tmp2(2)
     out%z = tmp2(3)
-666 continue
+!666 continue
   end function divQ
 
   function newdivQ(thisOctal, subcell,  grid) result(out)
     use inputs_mod, only : smallestCellSize,gridDistanceScale
     type(gridtype) :: grid
-    type(octal), pointer   :: thisoctal, neighbourOctal
-    type(VECTOR) :: out, cen_i_plus_1, cen_i_minus_1
-    real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,dx
-    real(double) :: qViscosity1(3,3), qViscosity2(3,3)
-    integer :: subcell, neighbourSubcell
-    type(VECTOR) :: dir, cen2, locator
-    real(double) :: rm1, um1, pm1, r, tmp1, tmp2
-    integer :: nd
+    type(octal), pointer   :: thisoctal
+    type(VECTOR) :: out
+    integer :: subcell
+    type(VECTOR) :: dir, cen2
+    real(double) :: r
 
     out = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -428,13 +425,10 @@ contains
     use inputs_mod, only : gridDistanceScale, smallestCellSize
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
-    type(octal), pointer  :: child, neighbourOctal
+    type(octal), pointer  :: child
     real(double) :: divV, r, vTheta
-    real(double) :: r_i_minus_1, r_i_plus_1
-    integer :: subcell, i, neighbourSubcell, nd
-    type(VECTOR) :: rVec, locator, cen, dir_x
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext
-    real(double) :: px, py, pz, rm1, um1, pm1, u_i_minus_1, u_i_plus_1, drvrdr, qViscosity(3,3),tmp
+    integer :: subcell, i
+    type(VECTOR) :: rVec
   
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then

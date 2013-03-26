@@ -6070,24 +6070,24 @@ end subroutine sumFluxes
 
           write(plotfile,'(a,i4.4,a)') "visc_",it,".vtk"
           call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"q11   ", &
-                                 "q12   ", &
-                                 "q13   ", &
-                                 "q21   ", &
-                                 "q22   ", &
-                                 "q23   ", &
-                                 "q31   ", &
-                                 "q32   ", &
-                                 "q33   ", &
-                                 "fvisc1", &
+               valueTypeString=(/"q11          ", &
+                                 "q12          ", &
+                                 "q13          ", &
+                                 "q21          ", &
+                                 "q22          ", &
+                                 "q23          ", &
+                                 "q31          ", &
+                                 "q32          ", &
+                                 "q33          ", &
+                                 "fvisc1       ", &
                                  "vphi         ", &
-                                 "etaline    ", &
-                                 "fvisc2", &
-                                 "fvisc3", &
-                                 "rho   ", &
-                                 "rhou  ", &
-                                 "rhov  ", &
-                                 "rhow  " &
+                                 "etaline      ", &
+                                 "fvisc2       ", &
+                                 "fvisc3       ", &
+                                 "rho          ", &
+                                 "rhou         ", &
+                                 "rhov         ", &
+                                 "rhow         " &
                                  /))
 
           if (writeoutput) then
@@ -8965,7 +8965,7 @@ real(double) :: rho
 
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-	  if (thisOctal%ghostCell(subcell)) cycle
+          if (thisOctal%ghostCell(subcell)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
