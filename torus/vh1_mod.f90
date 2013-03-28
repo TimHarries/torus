@@ -6,7 +6,7 @@ module vh1_mod
 
 ! Public components
   public :: read_vh1, assign_from_vh1, get_density_vh1, vh1FileRequired, &
-       setGridFromVh1Parameters
+       setGridFromVh1Parameters, deallocate_vh1
   
   private
 
@@ -18,22 +18,24 @@ module vh1_mod
   real(db), private, save, allocatable :: yaxis(:)
   real(db), private, save, allocatable :: vx(:,:), vy(:,:)
 
-  real(db), private, parameter :: xSource = 3.3e7_db
-  logical, private, parameter  :: centreOnSource=.true.
-
+  real(db), private, save :: xOffset, yOffset
   logical, private  :: isRequired=.false.
   character(len=80), private :: infile
+
+! Density for regions outside the VH-1 grid
+  real(db), parameter, private :: rho_bg=1.0e-23_db
 
 contains
 
 ! Set module variables from values the parameters file. Called from inputs_mod.
-! Could add xSource and centreOnSource 
-  subroutine setGridFromVh1Parameters(vh1filename)
+  subroutine setGridFromVh1Parameters(vh1filename, vh1xOffset, vh1yOffset)
     character(len=80), intent(in) :: vh1filename
+    real(double), intent(in) :: vh1xOffset, vh1yOffset
 
-    infile=vh1filename
-
-    isRequired=.true.
+    infile     = vh1filename
+    xOffset    = vh1xOffset
+    yOffset    = vh1yOffset
+    isRequired = .true.
 
   end subroutine setGridFromVh1Parameters
 
@@ -114,10 +116,16 @@ contains
     xaxis(:) = xaxis(:) / 1.0e10_db
     yaxis(:) = yaxis(:) / 1.0e10_db
 
-! Apply offset to put star at the origin
-    if (centreOnSource) then 
-       xaxis(:) = xaxis(:) - xSource
-       write(message,*) "X-axis offset by ", xSource, "to centre grid on source"
+! Apply offsets.
+    if (xOffset /= 0.0) then 
+       xaxis(:) = xaxis(:) + xOffset
+       write(message,*) "X-axis offset by ", xOffset, " (Torus length units)"
+       call writeInfo(message, FORINFO)
+    end if
+
+    if (yOffset /= 0.0) then 
+       yaxis(:) = yaxis(:) + yOffset
+       write(message,*) "Y-axis offset by ", xOffset, " (Torus length units)"
        call writeInfo(message, FORINFO)
     end if
 
@@ -159,14 +167,12 @@ contains
     use vector_mod
     implicit none
 
-    real(db), parameter :: rho_bg=1.0e-23_db
-
     TYPE(OCTAL), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
 
-    TYPE(vector) :: thisCentre, thisVel, sourceToCell
-    real(db) :: vOutflow
+    TYPE(vector) :: thisVel, thisCentre
     integer :: this_i, this_j, i, j
+
 
     thisCentre = subcellcentre(thisOctal, subcell)
 
@@ -176,7 +182,8 @@ contains
          thisCentre%z < xaxis(1)  .or. &
          thisCentre%z > xaxis(ny) ) then 
        
-       thisOctal%rho(subcell) = rho_bg
+       thisOctal%rho(subcell)      = rho_bg
+       thisOctal%velocity(subcell) = VECTOR(0.0,0.0,0.0)
 
     else
 
@@ -198,30 +205,9 @@ contains
 ! this_j is for VH-1 x-axis and this_i is for VH-1 y-axis
        thisOctal%rho(subcell) = rho(this_j, this_i)
 
-!
-! Set dust fraction based on velocity relative to the source. 
-! This is for the runaway geometry 
-!
-! Extract cell velocity from the VH-1 grid
+! Extract cell velocity from the VH-1 grid and store velocity as fraction of c. 
        thisVel=VECTOR(vy(this_j, this_i), 0.0, vx(this_j, this_i))
-! Store velocity for writing into VTK file. Needs to be as fraction of c. 
        thisOctal%velocity(subcell) = thisVel/cspeed
-! Vector from source position to this cell. Remember that VH-1 x-axis is Torus z-axis.
-       if (centreOnSource) then
-          sourceToCell = thisCentre - VECTOR(0.0, 0.0,0.0)
-       else
-          sourceToCell = thisCentre - VECTOR(0.0, 0.0, xSource)
-       endif
-! Project velocity onto this vector to get the outflow velocity
-       vOutflow = (thisVel.dot.sourceToCell)/modulus(sourceToCell)
-
-! Set up initial dust distribution
-       if (vOutflow > 2000.0*1e5) then 
-! No dust in outflow
-          thisOctal%dustTypeFraction(subcell,:) = 0.0
-       else
-          thisOctal%dustTypeFraction(subcell,:) = 0.01
-       endif
 
     end if
 
@@ -335,5 +321,15 @@ contains
     mean_rho = sum_rho / real(ncells,db)
 
   end subroutine get_density_vh1
+
+  subroutine deallocate_vh1
+    
+    if (allocated(rho))   deallocate(rho)
+    if (allocated(vx))    deallocate(vx)
+    if (allocated(vy))    deallocate(vy)
+    if (allocated(xaxis)) deallocate(xaxis)
+    if (allocated(yaxis)) deallocate(yaxis)
+
+  end subroutine deallocate_vh1
 
 end module vh1_mod

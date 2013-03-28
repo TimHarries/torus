@@ -429,28 +429,7 @@ CONTAINS
       thisOctal%temperature = 8000.
 
    CASE ("runaway")
-      if (vh1FileRequired()) then 
-         call assign_from_vh1(thisOctal, subcell)
-      elseif(flashFileRequired()) then
-         call assign_from_flash(thisOctal, subcell)
-      else
-         call torus_abort("No way to assign density for runaway geometry")
-      endif
-
-! Any temperature set in call to assign_from_* is overwritten here
-      thisOctal%temperature(subcell) = 10000.
-
-      thisOctal%etaCont(subcell) = 0.
-      thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-      thisOctal%ne(subcell) = thisOctal%nh(subcell)
-      thisOctal%nhi(subcell) = 1.e-8
-      thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-      thisOctal%inFlow(subcell) = .true.
-      thisOctal%biasCont3D = 1.
-      thisOctal%etaLine = 1.e-30
-      if (thisOctal%nDepth > 1) then
-         thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
-      endif
+      call calcRunaway
 
 #ifdef USECFITSIO
    CASE("fitsfile")
@@ -497,6 +476,58 @@ CONTAINS
  
     end if
  
+    contains
+
+      subroutine calcRunaway
+        use inputs_mod, only: sourcePos
+        TYPE(vector) :: sourceToCell, thisVel
+        real(db) :: vOutflow
+        real(db), parameter :: vWind = 1800.0_db
+        logical, parameter :: runawayDustFromOutflow=.false.
+
+        if (vh1FileRequired()) then 
+           call assign_from_vh1(thisOctal, subcell)
+        elseif(flashFileRequired()) then
+           call assign_from_flash(thisOctal, subcell)
+        else
+           call torus_abort("No way to assign density for runaway geometry")
+        endif
+
+! Any temperature set in call to assign_from_* is overwritten here
+        thisOctal%temperature(subcell) = 10000.
+        thisOctal%etaCont(subcell) = 0.
+        thisOctal%nh(subcell)      = thisOctal%rho(subcell) / mHydrogen
+        thisOctal%ne(subcell)      = thisOctal%nh(subcell)
+        thisOctal%nhi(subcell)     = 1.e-8
+        thisOctal%nhii(subcell)    = thisOctal%ne(subcell)
+        thisOctal%inFlow(subcell)  = .true.
+        thisOctal%biasCont3D       = 1.0
+        thisOctal%etaLine          = 1.e-30
+        if (thisOctal%nDepth > 1) then
+           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+        endif
+
+! This section decides where to put dust
+! Vector from first source to cell centre
+        sourceToCell = subcellcentre(thisOctal, subcell) - sourcePos(1)
+        thisVel = thisOctal%velocity(subcell)
+! Project velocity onto sourceToCell vector to get the outflow velocity
+        if (runawayDustFromOutflow) then
+           vOutflow = (thisVel.dot.sourceToCell)/modulus(sourceToCell)
+        else
+           vOutflow = modulus(thisVel)
+        endif
+! Convert to km/s
+        vOutflow = vOutflow * (cspeed / 1.0e5_db)
+! Set up initial dust distribution with no dust in outflow
+        if (vOutflow > vWind) then 
+           thisOctal%dustTypeFraction(subcell,:) = 0.0
+        else
+           thisOctal%dustTypeFraction(subcell,:) = 0.01
+        endif
+
+      end subroutine calcRunaway
+
   END SUBROUTINE calcValuesAMR
 
   SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, romData ,&
@@ -6876,7 +6907,7 @@ endif
     endif
     
     thisOctal%etaCont(subcell) = 0.
-  end subroutine
+  end subroutine calcRadiativeRoundUpDensity
 
 !http://www.astrosim.net/code/doku.php?id=home:codetest:hydrotest:wengen:wengen3
 !Agertz et al. (2007) - fundamental differences between SPH and grid methods

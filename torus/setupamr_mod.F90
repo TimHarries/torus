@@ -52,7 +52,7 @@ contains
          hasPhotoionAllocations, allocatePhotoionAttributes
 #endif
 #endif
-    use vh1_mod, only: read_vh1, vh1FileRequired
+    use vh1_mod
     use memory_mod
 #ifdef USECFITSIO
     use gridFromFitsFile
@@ -556,6 +556,7 @@ contains
         call deallocate_gridFromFitsFile
 #endif
         call deallocate_gridFromFlash
+        call deallocate_vh1
         call delete_particle_lists(grid%octreeRoot)
 
   end subroutine setupamrgrid

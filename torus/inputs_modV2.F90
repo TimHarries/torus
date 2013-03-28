@@ -1361,11 +1361,18 @@ contains
       use vh1_mod, only: setGridFromVh1Parameters
 
       character(len=80) :: vh1filename
+      real(double) :: vh1xoffset, vh1yoffset
 
       call getString("vh1filename", vh1filename, cLine, fLine, nLines, &
-           "VH1 file name: ","(a,a,a)","default",ok, .true.)
+           "VH1: file name: ","(a,a,a)","default",ok, .true.)
 
-      call setGridFromVh1Parameters(vh1filename)
+      call getDouble("vh1xoffset", vh1xoffset, 1.d0, cLine, fLine, nLines, &
+           "VH1: offset applied to x-axis: ","(a,1p,e10.3,1x,a)", 0.0e0_db, ok, .false.) 
+      
+      call getDouble("vh1yoffset", vh1yoffset, 1.d0, cLine, fLine, nLines, &
+           "VH1: offset applied to y-axis: ","(a,1p,e10.3,1x,a)", 0.0e0_db, ok, .false.) 
+
+      call setGridFromVh1Parameters(vh1filename, vh1xoffset, vh1yoffset)
 
     end subroutine readVh1Parameters
 
