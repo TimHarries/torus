@@ -1,5 +1,16 @@
 #!/bin/ksh
 
+echo "Extracting release version of Torus"
+
+which ifort > /dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+    echo "Will use ifort for build test"
+    export TESTSYS=ifort
+else
+    echo "Will use gfortran for build test"
+    export TESTSYS=gfortran
+fi 
+
 # Get the subversion revision string from the top level of the repository
 cd ..
 svnstring=`svnversion`
@@ -59,10 +70,10 @@ cd build
 ln -s ../${TORUS_TAR_FILE}
 tar xf ${TORUS_TAR_FILE}
 mv torus/* .
-make SYSTEM=ifort > compile_log 2>&1
+make SYSTEM=${TESTSYS} > compile_log 2>&1
 
-if [[ -x torus.ifort ]]; then 
-    echo "Found torus.ifort: build OK"
+if [[ -x torus.${TESTSYS} ]]; then 
+    echo "Found torus.${TESTSYS}: build OK"
     echo "Cleaning up"
     cd ..
     rm -r torus 
@@ -71,6 +82,6 @@ if [[ -x torus.ifort ]]; then
     gzip ${TORUS_TAR_FILE}
     exit 0
 else
-    echo "torus.ifort not found: build failed"
+    echo "torus.${TESTSYS} not found: build failed"
     exit 1
 fi
