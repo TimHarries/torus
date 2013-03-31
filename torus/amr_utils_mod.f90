@@ -220,115 +220,215 @@ module amr_utils_mod
 ! now look at the cylindrical case
 
          ! first do the inside and outside curved surfaces
+         if(thisOctal%cylindrical) then
+            if (thisOctal%twoD) then
+               r = sqrt(subcen%x**2 + subcen%y**2)
+               r1 = r + thisOctal%subcellSize
+               gridRadius = r1
+            else
+               gridRadius = 2.d0*thisOctal%subcellSize
+               r1 = gridRadius
+            endif
 
-         if (thisOctal%twoD) then
-            r = sqrt(subcen%x**2 + subcen%y**2)
-            r1 = r + thisOctal%subcellSize
-            gridRadius = r1
-         else
-            gridRadius = 2.d0*thisOctal%subcellSize
-            r1 = gridRadius
-         endif
 
+            d = sqrt(point%x**2+point%y**2)
+            xHat = (-1.d0)*VECTOR(point%x, point%y,0.d0)
+            call normalize(xHat)
+            rDirection = VECTOR(direction%x, direction%y, 0.d0)
+            compX = modulus(rDirection)
+            call normalize(rDirection)
+            
+            r1overd = 1.d30
+            if (d /= 0.d0) r1Overd = r1/d
+            theta = asin(max(-1.d0,min(1.d0,r1overd)))
+            cosmu = xHat.dot.rdirection
+            mu = acos(max(-1.d0,min(1.d0,cosmu)))
+            distTor1 = 1.e30
+            if (compx /= 0.d0) then
+               if (mu  < theta ) then
+                  call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+                  if (.not.ok) then
+                     if (PRESENT(hitGrid)) then
+                        hitGrid = .false.
+                     else
+                        write(*,*) "Quad solver failed in distanceToGridFromOutside"
+                        x1 = thisoctal%subcellSize
+                        x2 = 0.d0
+                     endif
+                  endif
+                  distTor1 = min(x1,x2)/CompX
+                  hitVec = posVec + distToR1 * direction
+                  if (abs(hitVec%z) > thisOctal%subcellSize) distToR1 = 1.d30
+               endif
+            endif
+         
+            distToRboundary = distTor1
+            if (distToRboundary < 0.d0) then
+               distToRboundary = 1.e30
+            endif
+            
+            ! now do the upper and lower (z axis) surfaces
+            
+            zHat = VECTOR(0.d0, 0.d0, 1.d0)
+            compZ = zHat.dot.direction
+            currentZ = point%z
+            
+            debug = .false.
+            if(debug) then
+               write(*,*) "subcen",subcen
+               write(*,*) "thisoctal%subcellsize",thisoctal%subcellsize
+               write(*,*) "point", point
+               write(*,*) "posvec", posvec
+               write(*,*) "direction",direction
+            endif
+            
+            if (compZ /= 0.d0 ) then
+               if (compZ > 0.d0) then
+                  distToZboundary= (subcen%z - thisOctal%subcellsize - currentZ ) / compZ                              
+                  hitVec = posvec + disttoZboundary * direction
+                  if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
+               else
+                  distToZboundary = abs((subcen%z + thisOctal%subcellsize - currentZ ) / compZ)
+                  hitVec = posvec + disttoZboundary * direction
+                  if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
+               endif
+            else
+               disttoZboundary = 1.e30
+            endif
+            
+            tVal = min(distToZboundary, distToRboundary)
+            if(.not. suppressWarnings) then
 
-         d = sqrt(point%x**2+point%y**2)
-         xHat = (-1.d0)*VECTOR(point%x, point%y,0.d0)
-         call normalize(xHat)
-         rDirection = VECTOR(direction%x, direction%y, 0.d0)
-         compX = modulus(rDirection)
-         call normalize(rDirection)
+               !            if (tVal > 1.e29) then
+               !               write(*,*) "Cylindrical"
+               !               write(*,*) "posVec",posvec
+               !               write(*,*) "direction",direction
+               !               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
+               !               write(*,*) "subcen",subcen
+               !               write(*,*) "z",currentZ
+               !               write(*,*) "x1,x2",x1,x2
+               !            endif
                
-         r1overd = 1.d30
-         if (d /= 0.d0) r1Overd = r1/d
-         theta = asin(max(-1.d0,min(1.d0,r1overd)))
-         cosmu = xHat.dot.rdirection
-         mu = acos(max(-1.d0,min(1.d0,cosmu)))
-         distTor1 = 1.e30
-         if (compx /= 0.d0) then
-            if (mu  < theta ) then
-               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-               if (.not.ok) then
+               if (tval < 0.) then
                   if (PRESENT(hitGrid)) then
                      hitGrid = .false.
                   else
-                     write(*,*) "Quad solver failed in distanceToGridFromOutside"
-                     x1 = thisoctal%subcellSize
-                     x2 = 0.d0
+                     write(*,*) "Cylindrical"
+                     write(*,*) tVal,distToZboundary,disttorboundary
+                     write(*,*) "subcen",subcen
+                     write(*,*) "z",currentZ
                   endif
                endif
-               distTor1 = min(x1,x2)/CompX
-               hitVec = posVec + distToR1 * direction
-               if (abs(hitVec%z) > thisOctal%subcellSize) distToR1 = 1.d30
             endif
-         endif
-         
-         distToRboundary = distTor1
-         if (distToRboundary < 0.d0) then
-            distToRboundary = 1.e30
-         endif
-
-         ! now do the upper and lower (z axis) surfaces
-
-         zHat = VECTOR(0.d0, 0.d0, 1.d0)
-         compZ = zHat.dot.direction
-         currentZ = point%z
-
-         debug = .false.
-         if(debug) then
-            write(*,*) "subcen",subcen
-            write(*,*) "thisoctal%subcellsize",thisoctal%subcellsize
-            write(*,*) "point", point
-            write(*,*) "posvec", posvec
-            write(*,*) "direction",direction
-         endif
-
-         if (compZ /= 0.d0 ) then
-            if (compZ > 0.d0) then
-               distToZboundary= (subcen%z - thisOctal%subcellsize - currentZ ) / compZ                              
-               hitVec = posvec + disttoZboundary * direction
-               if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
-            else
-               distToZboundary = abs((subcen%z + thisOctal%subcellsize - currentZ ) / compZ)
-               hitVec = posvec + disttoZboundary * direction
-               if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
-            endif
-         else
-            disttoZboundary = 1.e30
-         endif
-      
-         tVal = min(distToZboundary, distToRboundary)
-         if(.not. suppressWarnings) then
-
-!            if (tVal > 1.e29) then
-!               write(*,*) "Cylindrical"
-!               write(*,*) "posVec",posvec
-!               write(*,*) "direction",direction
-!               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
-!               write(*,*) "subcen",subcen
-!               write(*,*) "z",currentZ
-!               write(*,*) "x1,x2",x1,x2
-!            endif
-
-            if (tval < 0.) then
+            test = posVec + (tval+1.d-3*grid%halfSmallestSubcell) * direction
+            if (.not.inOctal(grid%octreeRoot, test)) then
                if (PRESENT(hitGrid)) then
                   hitGrid = .false.
-               else
-                  write(*,*) "Cylindrical"
-                  write(*,*) tVal,distToZboundary,disttorboundary
-                  write(*,*) "subcen",subcen
-                  write(*,*) "z",currentZ
                endif
             endif
-         endif
-         test = posVec + (tval+1.d-3*grid%halfSmallestSubcell) * direction
-         if (.not.inOctal(grid%octreeRoot, test)) then
-            if (PRESENT(hitGrid)) then
-               hitGrid = .false.
-            endif
-         endif
 
-      endif
-      
+         else if (thisOctal%twod) then
+
+            ! square
+
+            ok = .true.
+            
+            subcellsize = thisOctal%subcellSize
+            
+            if(direction%x .ne. 0.d0) then            
+               denom(1) = 1.d0 / direction%x
+            else
+               denom(1) = 0.d0
+            endif
+            denom(2) = -denom(1)
+            
+            !         if(direction%y .ne. 0.d0) then            
+            !            denom(2) = 1.d0 / direction%y
+            !         else
+            !            denom(2) = 0.d0
+            !         endif
+            !         denom(5) = -denom(2)
+            
+            if(direction%z .ne. 0.d0) then            
+               denom(3) = 1.d0 / direction%z
+            else
+               denom(3) = 0.d0
+            endif
+            denom(4) = -denom(3)
+            
+            normdiff = subcen - posvec
+            
+            t(1) =  (normdiff%x + subcellsize) * denom(1)
+            t(2) =  (normdiff%x - subcellsize) * denom(1)
+            t(3) =  (normdiff%z + subcellsize) * denom(3)
+            t(4) =  (normdiff%z - subcellsize) * denom(3)
+            
+            
+            !         t(1) =  (normdiff%x + subcellsize) * denom(1)
+            !        t(2) =  (normdiff%y + subcellsize) * denom(2)
+            !        t(3) =  (normdiff%z + subcellsize) * denom(3)
+            !        t(4) =  (normdiff%x - subcellsize) * denom(1)
+            !        t(5) =  (normdiff%y - subcellsize) * denom(2)
+            !         t(6) =  (normdiff%z - subcellsize) * denom(3)
+            
+            
+            thisOk = .true.
+            
+            do i = 1, 4
+               if (denom(i) .ge. 0.d0) then
+                  thisOK(i) = .false.
+!                  print *, "PROBLEM 1", denom(i)
+               end if
+               if (t(i) < 0.) then
+                  thisOk(i) = .false.
+!                  print *, "PROBLEM 2", t(i)
+               endif
+            enddo
+            
+            j = 0
+            do i = 1, 4
+               if (thisOk(i)) j=j+1
+            enddo
+            
+            if (j == 0) ok = .false.
+            
+            if (.not.ok) then
+               if (PRESENT(hitGrid)) then
+                  hitGrid = .false.
+ !                 print *, "MISSED GRID A", j
+               else
+                  write(*,*) "Error: j=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. 2D"
+                  write(*,*) direction%x,direction%y,direction%z
+                  write(*,*) t(1:6)
+               endif
+            endif
+            
+            tval = maxval(t, mask=thisOk)
+            
+            !         write(*,*) t(1:6),thisOK(1:6)
+            
+            if (tval == 0.) then
+               if (PRESENT(hitGrid)) then
+                  hitGrid = .false.
+                  print *, "MISSED GRID B"
+               else
+                  write(*,*) " tval=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. "
+                  write(*,*) posVec
+                  write(*,*) direction%x,direction%y,direction%z
+                  write(*,*) t(1:6)
+                  stop
+               endif
+            endif
+            
+            test = posVec + (tval+1.d-3*grid%halfSmallestSubcell) * direction
+            if (.not.inOctal(grid%octreeRoot, test)) then
+               if (PRESENT(hitGrid)) then
+                  hitGrid = .false.
+               endif
+            endif
+         
+         endif
+      end if
 666   continue
     end function distanceToGridFromOutside
 
@@ -970,7 +1070,7 @@ module amr_utils_mod
           ENDIF
        endif
     else ! twoD case
-       if (.not.cylindricalHydro) then
+       if (cylindricalHydro) then
           if (doRotate) then
              octVec2D = projectToXZ(point)
           else

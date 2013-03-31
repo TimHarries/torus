@@ -646,6 +646,8 @@ contains
              if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) "problem with the x_i values"
                 stop
+ !            else
+!                print *, "x_i values were good"
              endif
 
 
@@ -1206,6 +1208,14 @@ contains
 
              if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
                 write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
+                print *, "cen ", subcellCentre(thisOctal, subcell)
+                if (.not.octalonthread(neighbouroctal, neighboursubcell, myrankGlobal)) then
+                   print *, "AND IT WASNT ON THREAD"
+                end if
+                print *, "EDGE", thisOctal%edgecell(subcell)
+                print *, "GHOST", thisOctal%ghostcell(subcell)
+!             else
+!                print *, "good at u_i"
              endif
              weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
 
@@ -4024,6 +4034,7 @@ end subroutine sumFluxes
 
    if(firsttime) then
       print *, "perturbing pressuregrid"
+      firsttime = .false.
    end if
 
    do subcell = 1, thisOctal%maxChildren
@@ -4047,15 +4058,18 @@ end subroutine sumFluxes
  end subroutine perturbPressureGrid
    
 !Perform a single hydrodynamics step, in x and z directions, for the 2D case.     
-  subroutine hydroStep2d(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
+  subroutine hydroStep2d(grid, timeStep, nPairs, thread1, thread2, nBound, group, &
+       nGroup, perturbPressure)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup
     real(double) :: timeStep, dt
     type(VECTOR) :: direction
     integer :: idir, thisBound
+    logical, optional :: perturbPressure
 
     do iDir = 1, 3
+       print *, " DOING DIRECTION ", iDir
        select case (iDir)
           case(1)
              direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -4076,14 +4090,21 @@ end subroutine sumFluxes
        call periodBoundary(grid)
        call transferTempStorage(grid%octreeRoot)
 
+
        call setupX(grid%octreeRoot, grid, direction)
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupQX(grid%octreeRoot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
        !set up grid values
        call computepressureGeneral(grid, grid%octreeroot, .true.) 
+       if(present(perturbPressure)) then
+          call PerturbPressureGrid(grid%octreeRoot)
+       end if 
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 !       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
@@ -4097,7 +4118,12 @@ end subroutine sumFluxes
        call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-
+       !if running a radiation hydrodynamics calculation, advect the ion fraction
+       if(photoionPhysics .and. hydrodynamics) then
+          call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+          call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       end if
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
        !calculate and set up pressures   
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -5559,7 +5585,7 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads))
        dt = MIN(dt_pressure, dt)
-       dt = MIN(dt_viscous, dt)
+       dt= MIN(dt_viscous, dt)
        dt = dt * dble(cflNumber)
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
@@ -7979,6 +8005,12 @@ real(double) :: rho
           do iProbe = 1, nProbes
              locator = rVec + &
                   (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
+
+!             if(rVec%x < 1.d8 .and. iProbe == 2) then
+ !               print *, "EDGE LOC IS ", locator
+  !              print *, "rVEC is ", rVec
+   !          end if
+
              if (.not.inOctal(grid%octreeRoot, locator)) then
                 nProbeOutside = nProbeOutside + 1
                 thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
@@ -8031,6 +8063,9 @@ real(double) :: rho
              else if (thisOctal%threeD .and. nProbeOutside == 3) then
                 thisOctal%corner(subcell) = .true.
              end if
+
+   !       else if(rVec%x < 1.d8) then
+    !         print *, "EDGE SHOULD HAVE BEEN FOUND"
                 
           endif
        endif
