@@ -270,7 +270,8 @@ contains
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 1.d0, 0.d0)
-          if (.not.cylindricalHydro .or. grid%octreeroot%twod) then
+!          if (.not.cylindricalHydro .or. .not. grid%octreeroot%twod) then
+          if(grid%octreeRoot%threeD) then
              call calculateRhoV(grid%octreeRoot, direction)
           endif
           direction = VECTOR(0.d0, 0.d0, 1.d0)
@@ -1987,6 +1988,9 @@ end subroutine radiationHydro
                             thisFreq = smallPacketFreq
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             uHat = randomUnitVector()
+!                            if(grid%twoD) then
+!                               thisOctal%
+!                            end if
                             smallPhotonPacket = .true.
                             bigPhotonPacket = .false.
                             call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
@@ -3223,15 +3227,15 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     nStillInGrid = 0
     do while(stillinGrid .and. (tau > thisTau) .and. .not. outOfTime) 
        nStillInGrid = nStillInGrid + 1
-       if (nStillInGrid > 10000) then
-          write(*,*) myRankWorldGlobal," nStillInGrid ",nStillInGrid
-          write(*,*) "rVec ",rVec
-          write(*,*) "uHat ",uHat
-          write(*,*) "tVal ",tval
-          write(*,*) "xmin,xmax ",thisOctal%xmin, thisOctal%xmax
-          write(*,*) "thisTau ",thisTau
-          write(*,*) "tau ",tau
-       endif
+!       if (nStillInGrid > 10000) then
+!          write(*,*) myRankWorldGlobal," nStillInGrid ",nStillInGrid
+!          write(*,*) "rVec ",rVec
+!          write(*,*) "uHat ",uHat
+!          write(*,*) "tVal ",tval
+!          write(*,*) "xmin,xmax ",thisOctal%xmin, thisOctal%xmax
+!          write(*,*) "thisTau ",thisTau
+!          write(*,*) "tau ",tau
+!       endif
 ! add on the distance to the next cell
 
        oldrVec = rVec

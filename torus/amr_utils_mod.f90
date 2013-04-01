@@ -556,7 +556,7 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       if (.not.cylindricalHydro) then
+       if (cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -753,7 +753,7 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       if (.not.cylindricalhydro) then
+       if (cylindricalhydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -1380,6 +1380,7 @@ module amr_utils_mod
        else
 
           ! now look at the cylindrical case
+          
 
           halfCellSize = thisOctal%subcellSize/2.d0
           rVec = subcellCentre(thisOctal,subcell)
@@ -1517,98 +1518,173 @@ module amr_utils_mod
 
        else ! two-d grid case below
 
-          halfCellSize = thisOctal%subcellSize/2.d0
-          r1 = max(0.d0, subcen%x - halfCellSize)
-          r2 = subcen%x + halfCellSize
-
-          distToR1 = 1.d30
-          distToR2 = 1.d30
-          d2 = point%x**2+point%y**2
-          d = sqrt(d2)
-          xVec = VECTOR(point%x, point%y,0.d0)
-          xHat = xVec
-          call normalize(xHat)
-          rDirection = VECTOR(direction%x, direction%y,0.d0)
-          compX = modulus(rDirection)
-          if (compX /= 0.d0) call normalize(rDirection)
-
-          if (compX /= 0.d0) then
-             cosmu =((-1.d0)*xHat).dot.rdirection
-             call solveQuadDble(1.d0, -2.d0*d*cosmu, d2-r2**2, x1, x2, ok)
-             if (.not.ok) then
-                write(*,*) "Quad solver failed in distanceToCellBoundary I",d,cosmu,r2
-                write(*,*) "xhat",xhat
-                write(*,*) "dir",direction
-                write(*,*) "point",point
-                do
-                enddo
-                x1 = thisoctal%subcellSize/2.d0
-                x2 = 0.d0
+          if(.not. thisOctal%cylindrical) then
+             ok = .true.
+             
+             halfSubCellsize = thisOctal%subcellsize * 0.5d0
+             
+             if(direction%x .ne. 0.d0) then            
+                denom(1) = 1.d0 / direction%x
+             else
+                denom(1) = 0.d0
              endif
-             distTor2 = max(x1,x2)/compX
+             denom(4) = -denom(1)
+             
+             
+             if(direction%z .ne. 0.d0) then            
+                denom(3) = 1.d0 / direction%z
+             else
+                denom(3) = 0.d0
+             endif
+             denom(6) = -denom(3)
+             
+             normdiff = subcen - posvec
+             
+             thisOK = .false.
+             ok = .false.
+             t(1) =  (normdiff%x + halfsubcellsize) * denom(1)
+             if (t(1) > 0.d0) then
+                thisOK(1) = .true.
+                ok = .true.
+             endif
+!             t(2) =  (normdiff%y + halfsubcellsize) * denom(2)
+!             if (t(2) > 0.d0) then
+!                thisOK(2) = .true.
+!                ok = .true.
+!             endif
+             t(3) =  (normdiff%z + halfsubcellsize) * denom(3)
+             if (t(3) > 0.d0) then
+                thisOK(3) = .true.
+                ok = .true.
+             endif
+             t(4) =  (normdiff%x - halfsubcellsize) * denom(1)
+             if (t(4) > 0.d0) then
+                thisOK(4) = .true.
+                ok = .true.
+             endif
+ !            t(5) =  (normdiff%y - halfsubcellsize) * denom(2)
+ !            if (t(5) > 0.d0) then
+ !               thisOK(5) = .true.
+ !               ok = .true.
+ !            endif
+             t(6) =  (normdiff%z - halfsubcellsize) * denom(3)
+             if (t(6) > 0.d0) then
+                thisOK(6) = .true.
+                ok = .true.
+             endif
+             
+             if (.not.ok) then
+                write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToCellBoundary. "
+                write(*,*) direction%x,direction%y,direction%z
+                write(*,*) t(1:6)
+                write(*,*) "denom: ", denom(1:6)
+                write(*,*) "subcen", subcen
+                write(*,*) "posvec", posvec
+                write(*,*) "t", t
+                write(*,*) "normdiff%x: ", normdiff%x
+                write(*,*) "normdiff%y: ", normdiff%y
+                write(*,*) "normdiff%z: ", normdiff%z
+                write(*,*) "halfsubcellsize ", halfsubcellsize
+                call torus_abort
+             endif
+             
+             tval = minval(t, mask=thisOk)
+          else
+             
 
-             distTor1 = 1.e30
-
-             if (cosmu > 0.d0) then
-                a = 1.d0
-                b = -2.d0*d*cosmu
-                c = d2-r1**2
-                fac = b*b-4.d0*a*c
-                if (fac > 0.d0) then
-                   call solveQuadDble(a, b, c, x1, x2, ok)
-                   !               if(ok) then
-                   !                  write(*,*) "All good",d,cosmu,r1,x1,x2
-                   !                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
-                   !               endif
-                   
-                   if (.not.ok) then
-                      write(*,*) "mu", mu, "theta", theta
-                      write(*,*) "Quad solver failed in distanceToCellBoundary IIb",d,cosmu,r1,x1,x2
-                      write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
-                      write(*,*) "xhat",xhat
-                      write(*,*) "dir",direction
-                      write(*,*) "point",point
+             halfCellSize = thisOctal%subcellSize/2.d0
+             r1 = max(0.d0, subcen%x - halfCellSize)
+             r2 = subcen%x + halfCellSize
+             
+             distToR1 = 1.d30
+             distToR2 = 1.d30
+             d2 = point%x**2+point%y**2
+             d = sqrt(d2)
+             xVec = VECTOR(point%x, point%y,0.d0)
+             xHat = xVec
+             call normalize(xHat)
+             rDirection = VECTOR(direction%x, direction%y,0.d0)
+             compX = modulus(rDirection)
+             if (compX /= 0.d0) call normalize(rDirection)
+             
+             if (compX /= 0.d0) then
+                cosmu =((-1.d0)*xHat).dot.rdirection
+                call solveQuadDble(1.d0, -2.d0*d*cosmu, d2-r2**2, x1, x2, ok)
+                if (.not.ok) then
+                   write(*,*) "Quad solver failed in distanceToCellBoundary I",d,cosmu,r2
+                   write(*,*) "xhat",xhat
+                   write(*,*) "dir",direction
+                   write(*,*) "point",point
+                   do
+                   enddo
+                   x1 = thisoctal%subcellSize/2.d0
+                   x2 = 0.d0
+                endif
+                distTor2 = max(x1,x2)/compX
+                
+                distTor1 = 1.e30
+                
+                if (cosmu > 0.d0) then
+                   a = 1.d0
+                   b = -2.d0*d*cosmu
+                   c = d2-r1**2
+                   fac = b*b-4.d0*a*c
+                   if (fac > 0.d0) then
+                      call solveQuadDble(a, b, c, x1, x2, ok)
+                      !               if(ok) then
+                      !                  write(*,*) "All good",d,cosmu,r1,x1,x2
+                      !                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
+                      !               endif
                       
-                      x1 = thisoctal%subcellSize/2.d0
-                      x2 = 0.d0
+                      if (.not.ok) then
+                         write(*,*) "mu", mu, "theta", theta
+                         write(*,*) "Quad solver failed in distanceToCellBoundary IIb",d,cosmu,r1,x1,x2
+                         write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
+                         write(*,*) "xhat",xhat
+                         write(*,*) "dir",direction
+                         write(*,*) "point",point
+                         
+                         x1 = thisoctal%subcellSize/2.d0
+                         x2 = 0.d0
+                      endif
+                      distTor1 = min(x1,x2)/compX
                    endif
-                   distTor1 = min(x1,x2)/compX
                 endif
              endif
-          endif
-          distToXboundary = min(distTor1, distTor2)
-
-
-          compZ = zHat.dot.direction
-          currentZ = point%z
-
-          if (compZ /= 0.d0 ) then
-             if (compZ > 0.d0) then
-                distToZboundary = (subcen%z + halfCellSize - currentZ ) / compZ
+             distToXboundary = min(distTor1, distTor2)
+             
+             
+             compZ = zHat.dot.direction
+             currentZ = point%z
+             
+             if (compZ /= 0.d0 ) then
+                if (compZ > 0.d0) then
+                   distToZboundary = (subcen%z + halfCellSize - currentZ ) / compZ
+                else
+                   distToZboundary = abs((subcen%z - halfCellSize - currentZ ) / compZ)
+                endif
              else
-                distToZboundary = abs((subcen%z - halfCellSize - currentZ ) / compZ)
+                disttoZboundary = 1.e30
              endif
-          else
-             disttoZboundary = 1.e30
-          endif
-
-          tVal = min(distToZboundary, distToXboundary)
-          if (tVal > 1.e29) then
-             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-             write(*,*) "subcen",subcen
-             write(*,*) "z", currentZ
-             write(*,*) "TVAL", tval
-             write(*,*) "direction", direction
-             call torus_abort
-          endif
-
-!          if (tval < 0.) then
-!             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-!             write(*,*) "subcen",subcen
+             
+             tVal = min(distToZboundary, distToXboundary)
+             if (tVal > 1.e29) then
+                write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+                write(*,*) "subcen",subcen
+                write(*,*) "z", currentZ
+                write(*,*) "TVAL", tval
+                write(*,*) "direction", direction
+                call torus_abort
+             endif
+             
+             !          if (tval < 0.) then
+             !             write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+             !             write(*,*) "subcen",subcen
              !         write(*,*) "x,z",currentX,currentZ
-!          endif
-      
-   endif
+             !          endif
+             
+          endif
+       end if
 
 666    continue
 
@@ -2040,7 +2116,7 @@ module amr_utils_mod
        
        randomPositionInCell = VECTOR(xOctal,0.d0,zOctal)
 
-       if (thisOctal%twod) then
+       if (thisOctal%twod .and. thisOctal%cylindrical) then
 
           call randomNumberGenerator(getDouble=ang)
           ang = ang * twoPi
