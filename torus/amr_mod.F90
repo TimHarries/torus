@@ -7712,7 +7712,7 @@ endif
 !Star at 0,0,0
 !BES's at 2.5, 5, 7.5, 10, 12.5pc
 
-    centre(1) = VECTOR(5.5d9, 0.d0, 5.d9)
+    centre(1) = VECTOR(6.2d9, 0.d0, 5.d9)
     centre(2) = VECTOR(2.d9, 0.d0, 2.d9)
     centre(3) = VECTOR(6.d9, 0.d0, 1.d9)
     centre(4) = VECTOR(3.d9, 0.d0, 8.d9)

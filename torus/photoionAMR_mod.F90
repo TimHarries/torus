@@ -1321,7 +1321,7 @@ end subroutine radiationHydro
        else 
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
-                nTotalMonte = int(10.d0 * (4.d0**(maxDepthAMR)))
+                nTotalMonte = int(1000.d0 * (4.d0**(maxDepthAMR)))
              else if(grid%octreeRoot%threeD) then
 !                nMonte = 1000.d0
                 nTotalMonte = int(100.d0 * (8.d0**(maxDepthAMR)))

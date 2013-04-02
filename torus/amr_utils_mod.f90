@@ -448,7 +448,8 @@ module amr_utils_mod
     if (currentoctal%threeD) then
        point_local = point
     elseif (currentoctal%twoD) then
-       if (.not.cylindricalHydro) then
+!       if (.not.cylindricalHydro) then
+       if (cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -556,6 +557,7 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
+!       if (.not.cylindricalHydro) then
        if (cylindricalHydro) then
           point_local = projectToXZ(point)
        else
@@ -753,6 +755,7 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
+!       if (.not. cylindricalhydro) then
        if (cylindricalhydro) then
           point_local = projectToXZ(point)
        else
@@ -2117,7 +2120,6 @@ module amr_utils_mod
        randomPositionInCell = VECTOR(xOctal,0.d0,zOctal)
 
        if (thisOctal%twod .and. thisOctal%cylindrical) then
-
           call randomNumberGenerator(getDouble=ang)
           ang = ang * twoPi
           randomPositionInCell = rotateZ(randomPositionInCell, ang)
