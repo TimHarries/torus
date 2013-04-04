@@ -650,11 +650,8 @@ module source_mod
                   t = sqrt(1.d0-w*w)
                   u = t*cos(ang)
                   v = t*sin(ang)
-!                  if(grid%octreeroot%twod) then
- !                    direction = VECTOR(u, 0.d0, w)
-  !                else
-                     direction = VECTOR(u, v, w)
-   !               end if
+                  direction = VECTOR(u, v, w)
+                  
             endif
             
                   

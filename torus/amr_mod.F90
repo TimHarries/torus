@@ -7704,7 +7704,7 @@ endif
     integer, parameter :: nr = 1000
     real(double), save :: r(nr), rho(nr)
     integer :: i, j
-    integer, parameter :: numClouds=4
+    integer, parameter :: numClouds=5
     type(VECTOR) :: centre(numClouds)
 !    logical :: inSphere = .false.
 
@@ -7712,20 +7712,15 @@ endif
 !Star at 0,0,0
 !BES's at 2.5, 5, 7.5, 10, 12.5pc
 
-    centre(1) = VECTOR(6.2d9, 0.d0, 5.d9)
-    centre(2) = VECTOR(2.d9, 0.d0, 2.d9)
-    centre(3) = VECTOR(6.d9, 0.d0, 1.d9)
-    centre(4) = VECTOR(3.d9, 0.d0, 8.d9)
-!    centre(1) = VECTOR(5.5d9, 5.d9, 5.d9)
-!    centre(2) = VECTOR(2.d9, 5.d9, 2.d9)
-!    centre(3) = VECTOR(6.d9, 5.d9, 1.d9)
-!    centre(4) = VECTOR(3.d9, 5.d9, 8.d9)
+    centre(1) = VECTOR(2.5d0, 0.d0, 0.d0)
+    centre(2) = VECTOR(0.d0, 5.d0, 0.d0)
+    centre(3) = VECTOR(0.d0, 0.d0, 7.5d0)
+    centre(4) = VECTOR(-10.d0, 0.d0, 0.d0)
+    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
 
-!    centre(5) = VECTOR(0.d0, 5.d9, -12.5d0)  
-
-!    do j = 1, numClouds
-!       centre(j) = (centre(j) * pctocm)/1.d10
-!    end do
+    do j = 1, numClouds
+       centre(j) = (centre(j) * pctocm)/1.d10
+    end do
 
     if (firstTime) then
        firstTime = .false.
@@ -7757,9 +7752,6 @@ endif
 
     thisOctal%temperature = 10.d0
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-    thisOctal%rhou(subcell) = 0.d0
-    thisOctal%rhov(subcell) = 0.d0
-    thisOctal%rhow(subcell) = 0.d0
     !Thaw - will probably want to change this to use returnMu
     ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
@@ -7768,13 +7760,13 @@ endif
     thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
     thisOctal%gamma(subcell) = 1.0
     thisOctal%iEquationOfState(subcell) = 1
-    !THAW - temporary - for grav test
+!THAW - temporary - for grav test
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-5
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
-    
+
     thisOctal%ionFrac(subcell,1) = 1.               !HI
     thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
     if (SIZE(thisOctal%ionFrac,2) > 2) then
@@ -7783,7 +7775,7 @@ endif
     endif
     thisOctal%etaCont(subcell) = 0.
 
-    
+
     thisOctal%inFlow(subcell) = .true.
 
   end subroutine calcRadialClouds

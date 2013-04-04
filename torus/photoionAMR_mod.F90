@@ -60,7 +60,7 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, dorefine
+    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -70,7 +70,7 @@ contains
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical, &
-         computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners
+         computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
@@ -239,18 +239,12 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    call writeVtkFile(grid, "preghosts.vtk", &
-         valueTypeString=(/"ghosts     " /))
-
     if (myrankGlobal /= 0) then
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
-!       call evenUpGridMPI(grid, .false., .true., evenuparray)
-       call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
+       call evenUpGridMPI(grid, .false., .true., evenuparray)
     endif
-    call writeVtkFile(grid, "inighosts.vtk", &
-         valueTypeString=(/"ghosts     " /))
 
     if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cfl
 
@@ -270,8 +264,7 @@ contains
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 1.d0, 0.d0)
-!          if (.not.cylindricalHydro .or. .not. grid%octreeroot%twod) then
-          if(grid%octreeRoot%threeD) then
+          if (.not.cylindricalHydro) then
              call calculateRhoV(grid%octreeRoot, direction)
           endif
           direction = VECTOR(0.d0, 0.d0, 1.d0)
@@ -313,18 +306,9 @@ contains
           call resetnh(grid%octreeRoot)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           direction = VECTOR(1.d0, 0.d0, 0.d0)
-!          print *, "SETUP X TEST A "
-          call setupX(grid%octreeRoot, grid, direction)
-!          direction = VECTOR(0.d0, 0.d0, 1.d0)
-!          print *, "SETUP X TEST B "
- !         call setupX(grid%octreeRoot, grid, direction)
           call setupX(grid%octreeRoot, grid, direction)
           call setupQX(grid%octreeRoot, grid, direction)
           !    call calculateEnergy(grid%octreeRoot, gam
-
-          call writeInfo("Checking Boundary Partner Vectors", TRIVIAL)
-          call checkBoundaryPartners(grid%octreeRoot, grid)
-          call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
 
        endif
     end if
@@ -379,7 +363,7 @@ contains
              
              call writeInfo("Dumping post-photoionization data", TRIVIAL)
              call writeVtkFile(grid, "start.vtk", &
-             valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     " /))
+             valueTypeString=(/"rho        ","HI         " ,"temperature", "pressure   " /))
           end do
        end if
 
@@ -700,42 +684,14 @@ contains
              call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           else
              if(grid%currentTime==0.d0 .and. grid%geometry == "SB_WNHII")then
-                if(grid%octreeRoot%twoD) then
-                   call writeInfo("calling hydro step 2D",TRIVIAL)
-                   if(firstWN) then
-                      call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
-                           perturbPressure=.true.)
-                   else
-                      call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
-                           perturbPressure=.false.)
-                   end if
-                elseif(grid%octreeRoot%threeD) then
-                   call writeInfo("calling hydro step 2D",TRIVIAL)
-                   if(firstWN) then
-                      call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
-                           , perturbPressure=.true.)
-                   else
-                      call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
-                           , perturbPressure=.false.)
-                   end if
-
-                end if
-
-             else if (grid%octreeRoot%threeD) then
                 call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
-                     , perturbPressure=.false.)
-             else if (grid%octreeroot%twod) then
-                call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
-                     perturbPressure=.false.)
+                     , perturbPressure=.true.)
+                firstWN = .false.
              else
-                call torus_abort("1d radhydro not supported")
+                call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
              end if
-             firstWN = .false.
-             !          else
-             !             call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
-          end if
+          endif
        endif
-!    endif
 
 
 !       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
@@ -1321,7 +1277,7 @@ end subroutine radiationHydro
        else 
           if(minDepthAMR == maxDepthAMR) then
              if(grid%octreeRoot%twoD) then
-                nTotalMonte = int(1000.d0 * (4.d0**(maxDepthAMR)))
+                nTotalMonte = int(10.d0 * (4.d0**(maxDepthAMR)))
              else if(grid%octreeRoot%threeD) then
 !                nMonte = 1000.d0
                 nTotalMonte = int(100.d0 * (8.d0**(maxDepthAMR)))
@@ -1988,9 +1944,6 @@ end subroutine radiationHydro
                             thisFreq = smallPacketFreq
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             uHat = randomUnitVector()
-!                            if(grid%twoD) then
-!                               thisOctal%
-!                            end if
                             smallPhotonPacket = .true.
                             bigPhotonPacket = .false.
                             call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
@@ -3227,15 +3180,15 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     nStillInGrid = 0
     do while(stillinGrid .and. (tau > thisTau) .and. .not. outOfTime) 
        nStillInGrid = nStillInGrid + 1
-!       if (nStillInGrid > 10000) then
-!          write(*,*) myRankWorldGlobal," nStillInGrid ",nStillInGrid
-!          write(*,*) "rVec ",rVec
-!          write(*,*) "uHat ",uHat
-!          write(*,*) "tVal ",tval
-!          write(*,*) "xmin,xmax ",thisOctal%xmin, thisOctal%xmax
-!          write(*,*) "thisTau ",thisTau
-!          write(*,*) "tau ",tau
-!       endif
+       if (nStillInGrid > 10000) then
+          write(*,*) myRankWorldGlobal," nStillInGrid ",nStillInGrid
+          write(*,*) "rVec ",rVec
+          write(*,*) "uHat ",uHat
+          write(*,*) "tVal ",tval
+          write(*,*) "xmin,xmax ",thisOctal%xmin, thisOctal%xmax
+          write(*,*) "thisTau ",thisTau
+          write(*,*) "tau ",tau
+       endif
 ! add on the distance to the next cell
 
        oldrVec = rVec
@@ -5673,7 +5626,7 @@ recursive subroutine getTestValues(thisOctal, minR, meanR, maxR, mIo, &
   real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
   integer :: nRadii, i
   real(double) :: u2, eKinetic, dv, thisR, rho
-  type(VECTOR) :: thisRVec, cen
+  type(VECTOR) :: thisRVec
   real(double) :: rhoBins(15), rhoDist(15)
 
   do subcell = 1, thisOctal%maxChildren
@@ -5696,14 +5649,8 @@ recursive subroutine getTestValues(thisOctal, minR, meanR, maxR, mIo, &
                 thisOctal%ionFrac(subcell,2) > 0.1) then
               !found the ionization front             
               thisRVec = subcellCentre(thisOctal, subcell)
-
-              if(thisOctal%threeD) then
-                 cen = VECTOR(3.160d8, 3.160d8, 3.160d8)
-              else if (thisOctal%twoD) then
-                 cen = VECTOR(3.160d8, 0.d0, 3.160d8)
-              end if              
-
-              thisR = modulus(thisRVec - cen)
+              
+              thisR = modulus(thisRVec)
 
               if(thisR < minR) then
                  !update minimum I front radius

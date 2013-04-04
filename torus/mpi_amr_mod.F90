@@ -1986,7 +1986,6 @@ contains
 
     if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
        write(*,*) "Bonndary error for twod: ",nbound
-       print *, "direction ", direction
        x = -2.d0
        x = sqrt(x)
     endif
