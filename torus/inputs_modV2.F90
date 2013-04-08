@@ -1647,6 +1647,8 @@ contains
 
        call getLogical("lte", lte, cLine, fLine, nLines, &
             "Read in LTE grid: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("restart", restart, cLine, fLine, nLines, &
+            "Restart molecular calculation : ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, fLine, nLines, &
                "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("suppresswarnings", suppressWarnings, cLine, fLine, nLines, &
@@ -1708,7 +1710,7 @@ contains
        call getLogical("outputconvergence", outputconvergence, cLine, fLine, nLines, &
             "Write out convergence data : ", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("dotune", dotune, cLine, fLine, nLines, &
-            "Write out convergence data : ", "(a,1l,1x,a)", .false., ok, .false.)
+            "Write out tuning data : ", "(a,1l,1x,a)", .false., ok, .false.)
 
 
        call getLogical("doCOchemistry", doCOchemistry, cLine, fLine, nLines, &

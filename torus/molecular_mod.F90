@@ -21,7 +21,6 @@ module molecular_mod
    use datacube_mod, only : writeDataCube
 #endif
    use parallel_mod, only : torus_mpi_barrier
-   use gridio_mod, only: readamrgrid, writeamrgrid
    use atom_mod, only: bnu
    use vtk_mod, only: writeVtkFile
    use mpi_global_mod
@@ -376,7 +375,7 @@ module molecular_mod
      integer :: subcell, ichild, isubcell
      integer :: i
      integer :: nOctal, nVoxels
-     logical, save :: firsttime1 = .true.
+! firsttime1 is defunct
      logical, save :: firsttime2 = .true.
      logical :: inlte
      logical, save :: firstAbundanceWarning = .true.
@@ -384,23 +383,9 @@ module molecular_mod
      real(double) :: nupper(200), nlower(200)
      real(double) :: levelpops(200), alphanubase(200), nmol
 
-     !$OMP THREADPRIVATE( firstTime1, firstTime2, firstAbundanceWarning )
+     !$OMP THREADPRIVATE( firstTime2, firstAbundanceWarning )
 
      inlte = isinlte
-
-!Code to handle a restart. Read in grid from file 
-     if(firsttime1 .and. restart) then
-        call writeinfo("Reading in previous grid", FORINFO)
-        call freeGrid(grid)
-        call readAMRgrid(molgridfilename,.false.,grid)
-        call writeinfo("Done", FORINFO)
-        firsttime1 = .false.
-     elseif(addnewmoldata .and. firsttime1) then ! read intermediate grid
-!- grid is now read in elsewhere THAW
-!        call readAMRgrid("notmolecular.grid",.false.,grid)
-        restart = .false.
-        firsttime1 = .false.
-     endif
 
 ! Recursively fill all the subcells with molecular level data
 ! To save space when deailing with large numbers of octals determine maxlevels first.
@@ -853,10 +838,10 @@ module molecular_mod
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
           zeroGhosts, forceIniRay
-     use messages_mod, only : myRankIsZero
      use dust_mod
      use parallel_mod
      use vtk_mod
+     use gridio_mod, only: writeamrgrid
 #ifdef PHOTOION
      use photoion_utils_mod, only : quicksublimate
 #endif
@@ -4477,28 +4462,28 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !!$        call writeinfo(message, FORINFO)
 !!$        
 !!$      end subroutine testOpticalDepth
-
-      subroutine plotdiscValues(grid, thisMolecule)
-        
-        type(GRIDTYPE) :: grid
-        type(MOLECULETYPE) :: thisMolecule
-  real(double) :: mean(6)
-  mean = 0.d0
-  call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
-  call addDustToOctalParams(grid, grid%OctreeRoot, thisMolecule)
-  
-  call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 2)
-  
-  call readAMRgrid("molecular_tmp.grid",.false.,grid)
-  
-  call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 0)
-  
-  call readAMRgrid("molecular_tmp.grid",.false.,grid)
-  
-  ! Set everything back to the way it was?
-  call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 1)
-
-end subroutine plotdiscValues
+!!$
+!!$      subroutine plotdiscValues(grid, thisMolecule)
+!!$        
+!!$        type(GRIDTYPE) :: grid
+!!$        type(MOLECULETYPE) :: thisMolecule
+!!$  real(double) :: mean(6)
+!!$  mean = 0.d0
+!!$  call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)
+!!$  call addDustToOctalParams(grid, grid%OctreeRoot, thisMolecule)
+!!$  
+!!$  call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 2)
+!!$  
+!!$  call readAMRgrid("molecular_tmp.grid",.false.,grid)
+!!$  
+!!$  call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 0)
+!!$  
+!!$  call readAMRgrid("molecular_tmp.grid",.false.,grid)
+!!$  
+!!$  ! Set everything back to the way it was?
+!!$  call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 1)
+!!$
+!!$end subroutine plotdiscValues
 
      type(VECTOR) function velocity(position, grid, startOctal, subcell) RESULT(out)
        use amr_utils_mod, only : returnVelocityVector2
