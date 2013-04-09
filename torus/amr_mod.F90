@@ -274,6 +274,9 @@ CONTAINS
     CASE("SB_coolshk")
        call calcCoolingShockDensity(thisOctal, subcell)
 
+    CASE("SB_runaway")
+       call calcSB_runaway(thisOctal, subcell)
+
     CASE("isosphere")
        call calcIsoSphereDensity(thisOctal, subcell)
 
@@ -7151,6 +7154,51 @@ endif
 
   end subroutine calcContactDiscontinuityOneDDensity
 
+  subroutine calcSB_Runaway(thisOctal, subcell)
+    use inputs_mod, only : photoionPhysics
+    TYPE(octal) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double), parameter :: rSphere = 0.99d0 * pctocm / 1.d10
+    real(double), parameter :: rhoAmbient = 2.338d-24
+    real(double) :: eThermal
+    rVec = subcellCentre(thisOctal, subcell)
+    if (modulus(rVec) > rSphere) then
+       thisOctal%rho(subcell) = rhoAmbient
+       thisOctal%temperature(subcell) = 7.5d0
+       if (photoionPhysics) then
+          thisOctal%ionFrac(subcell,1) = 1.               !HI
+          thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+       endif
+    else
+       thisOctal%rho(subcell) = rhoAmbient * 2000.d0
+       thisOctal%temperature(subcell) = 7500.d0
+       if (photoionPhysics) then
+          thisOctal%ionFrac(subcell,1) = 1.e-10           !HI
+          thisOctal%ionFrac(subcell,2) = 1.               !HII
+       endif
+    endif
+
+    ethermal = (1.d0/(2.d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = thisOctal%rho(subcell) * ethermal
+    thisOctal%rhoe(subcell) = ethermal
+    thisOctal%rhou(subcell) = 0.d0
+    thisOctal%rhov(subcell) = 0.d0
+    thisOctal%rhow(subcell) = 0.d0
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+    thisOctal%inFlow(subcell) = .true.
+    if (photoionPhysics) then
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,2)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.d0
+       thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+    endif
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+  end subroutine calcSB_Runaway
 
   subroutine calcContactDiscontinuityTwoDDensity(thisOctal, subcell, v1)
     use inputs_mod, only : CD_version

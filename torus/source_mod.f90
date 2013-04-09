@@ -85,14 +85,18 @@ module source_mod
       if ( nsource<1 ) return
 
       if (writeoutput) &
-           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12)') "Ran ","N","M","R","L","L(spec)","x","y","z"
+           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
+           "Ran ","N","M","R","L","L(spec)","x","y","z","vx","vy","vz"
       do i = 1, nSource
          fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
          if (writeoutput) &
-              write(*,'(i3.3,1x,i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') myrankWorldGlobal, i,&
+              write(*, &
+         '(i3.3,1x,i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
+              myrankWorldGlobal, i,&
               source(i)%mass/msol, &
               source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, fromspec/lsol, source(i)%position%x, &
-              source(i)%position%y,source(i)%position%z
+              source(i)%position%y,source(i)%position%z, source(i)%velocity%x/1.d5, source(i)%velocity%y/1.d5, &
+              source(i)%velocity%z/1.d5
          tot = 0.d0
          do j = 1, source(i)%spectrum%nLambda
             if (j < source(i)%spectrum%nlambda) then
