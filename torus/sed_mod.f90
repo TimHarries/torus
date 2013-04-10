@@ -68,9 +68,7 @@ contains
 
 ! Check input values and issue a warning if anything is odd  
        if (lastInc <= firstInc) call writeWarning("lastInc is not greater than firstInc")
-       if (firstInc > piBy2)    call writeWarning("firstInc > pi/2")
-       if (lastInc  > piBy2)    call writeWarning("LastInc > pi/2")
-       
+
        SedNInc = nInclination
        allocate(SedInclinations(SedNInc))
 

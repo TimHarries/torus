@@ -83,6 +83,7 @@ contains
 #else
      call writeInfo("cfitsio=no", TRIVIAL)
 #endif
+    call  writeInfo('', TRIVIAL)
 
   end subroutine report_parallel_type
 

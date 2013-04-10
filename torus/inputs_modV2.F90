@@ -1331,6 +1331,9 @@ contains
 ! For setting up a grid from a VH-1 dump
     if (checkPresent("vh1filename", cline, nlines)) call readVh1Parameters
 
+! For setting up a grid from a FITS file
+     if (checkPresent("fitsgridfile", cline, nlines)) call readFitsGridParameters
+
   contains
 
     subroutine readFlashParameters
@@ -1375,6 +1378,17 @@ contains
       call setGridFromVh1Parameters(vh1filename, vh1xoffset, vh1yoffset)
 
     end subroutine readVh1Parameters
+
+    subroutine readFitsGridParameters
+      use gridFromFitsFile, only: setGridFromFitsParameters
+      character(len=80) :: filename
+
+      call getString("fitsgridfile", filename, cLine, fLine, nLines, &
+           "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+
+      call setGridFromFitsParameters(filename)
+
+    end subroutine readFitsGridParameters
 
   end subroutine readGridInitParameters
 
@@ -2569,7 +2583,7 @@ contains
     integer :: nLines
     logical :: ok, isRange
     character(len=80) :: message
-    logical :: sed, jansky, SIsed
+    logical :: sed, jansky, SIsed, uniformInCos
     integer :: nInclination
     real    :: firstInclination
     real    :: lastInclination=80.0
@@ -2603,7 +2617,7 @@ contains
        firstInclination = firstInclination * real(degToRad)
        if (nInclination > 1) &
             call getReal("lastinc", lastInclination, 1.0, cLine, fLine, nLines, &
-            "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
+            "Last inclination angle (deg): ","(a,f5.1,1x,a)", 80., ok, .true.)
        lastInclination = lastInclination * real(degToRad)
     end if
 
@@ -2689,12 +2703,15 @@ contains
     call getLogical("forbiddensed", forbiddenSED, cLine, fLine, nLines, &
          "Include forbidden line emission in SED: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("sedcospaced", UniformInCos, cLine, fLine, nLines, &
+         "SED inclinations are uniform in cos(inc): ","(a,1l,1x,a)", .true., ok, .false.)
+
     if (allocated(inclinations)) then 
        call setSedParameters(outFile,jansky,SIsed,sed,incList=inclinations)
        deallocate(inclinations)
     else
        call setSedParameters(outFile,jansky,SIsed,sed,nInclination=nInclination,&
-            firstInc=firstInclination,LastInc=LastInclination, cosSpacing=.true.)
+            firstInc=firstInclination,LastInc=LastInclination, cosSpacing=UniformInCos)
     end if
 
   end subroutine readSpectrumParameters

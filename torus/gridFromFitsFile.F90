@@ -9,13 +9,16 @@
 module gridFromFitsFile
   use kind_mod 
   use messages_mod
+  use constants_mod
   implicit none
 
-  public :: read_fits_file_for_grid, assign_from_fitsfile
+  public :: read_fits_file_for_grid, assign_from_fitsfile, setGridFromFitsParameters
   private :: setup_axes, read_lutable
 
+  logical, private, save :: isRequired = .false.
+
 ! Filename
-  character(len=*), parameter, private :: filename = "vh1.fits"
+  character(len=80), private, save :: filename="none"
 
 ! Arrays to hold data from fits files
 ! Number of pixels
@@ -25,6 +28,11 @@ module gridFromFitsFile
   real(double), private, save :: xMin, xMax, dx
   real(double), private, save :: yMin, yMax, dy
   real(double), private, save :: zMin, zMax, dz
+
+! Size of the x-axis
+  real(double), parameter :: xSize   = 30.0*pctocm
+  real(double), parameter :: xCentre =  0.0*pctocm
+
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
 
@@ -37,6 +45,14 @@ module gridFromFitsFile
   real, private, save :: pdlogt(npd), pd(npd)
 
   contains
+
+! Called from inputs_mod to set parameters for this module
+    subroutine setGridFromFitsParameters(infile)
+      character(len=80) :: infile
+
+      isRequired = .true.
+      filename=infile
+    end subroutine setGridFromFitsParameters
 
 !-------------------------------------------------------------------------------
 ! Reads in a FITS file which will be used to set up the Torus AMR grid
@@ -58,12 +74,17 @@ module gridFromFitsFile
       integer :: i, j, k, n
       real :: grad1
       character(len=80) :: record, comment
-      logical :: anynull
+      logical :: anynull, found_file
       real(single) :: maxdata, mindata
 
       if (.not.idealGas) call read_lutable
 
       call writeInfo ("Initialising grid from a FITS file", IMPORTANT)
+
+      inquire (file=filename, exist=found_file)
+      if (.not. found_file) then
+         call writeFatal("The file called "//trim(filename)//" does not exist")
+      endif
       call writeInfo ("Reading FITS file "//filename, FORINFO)
       status = 0
 
@@ -205,15 +226,15 @@ npd_loop:            do n=1,npd
       character(len=80) :: message
       integer :: i
 
-      call writeInfo("Setting up axes for a 30pc box", IMPORTANT)
+      call writeInfo("Setting up axes for a cubic box with identical x,y and z axes", IMPORTANT)
 
 ! Minimum and maximum extent of the domain
-      xMin= -15.0 * pcToCm
-      xMax = 15.0 * pcToCm ! assume a 30pc domain
+      xMin=  xCentre - (0.5 * xSize)
+      xMax = xCentre + (0.5 * xSize)
 
-      write (message,*) "Minimum x= ", xMin, " cm"
+      write (message,*) "Minimum x= ", xMin/pctocm, " pc"
       call writeInfo(message, TRIVIAL)
-      write (message,*) "Maximum x= ", xMax, " cm"
+      write (message,*) "Maximum x= ", xMax/pctocm, " pc"
       call writeInfo(message, TRIVIAL)
 
 ! Cell size
