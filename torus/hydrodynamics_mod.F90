@@ -3911,9 +3911,10 @@ end subroutine sumFluxes
        
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
-!       if(present(perturbPressure)) then
+       if(present(perturbPressure)) then
+          continue ! do nothing but avoid compiler warning
 !          call PerturbPressureGrid(grid%octreeRoot)
-!       end if 
+       end if 
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
@@ -4100,9 +4101,10 @@ end subroutine sumFluxes
        !set up grid values
 !       call computepressureGeneral(grid, grid%octreeroot, .true.) 
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
-!       if(present(perturbPressure)) then
+       if(present(perturbPressure)) then
+          continue ! do nothing but avoid compiler warning
 !          call PerturbPressureGrid(grid%octreeRoot)
-!       end if 
+       end if 
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
