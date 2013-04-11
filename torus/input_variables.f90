@@ -109,7 +109,6 @@
   real(double) :: etaViscosity        !Artificial viscosity parameter
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
-  logical :: cart2d                   ! 2D rhd in cartesian coords
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed

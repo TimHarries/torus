@@ -100,6 +100,13 @@ if [[ $thisHost == service0 || $thisHost == service2 ]]; then
     system_mpi=zen
     system_hybrid=zen
     system_openmp=zensingle
+
+elif [[ $thisHost == dirac* ]]; then
+    echo "This looks like Complexity"
+    system_mpi=complexity
+    system_hybrid=complexity
+    system_openmp=complexity
+    
 else
 
 # Look for compiler for OpenMP build 
@@ -165,7 +172,7 @@ if [[ $openmp == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_openmp} openmp=yes $make_args
+    make getsvnver=no SYSTEM=${system_openmp} openmp=yes mpi=no $make_args
     cp torus.${system_openmp} ../../bin/torus.openmp
     cd ../.. 
 fi

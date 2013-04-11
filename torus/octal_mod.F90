@@ -13,6 +13,9 @@ MODULE octal_mod
 
   public :: subcellCentre, within_subcell
 
+  logical, public :: cart2d ! 2D rhd in cartesian coords
+
+
 !       y                  z
 !       |                 /
 !       |      __________/______ 
@@ -336,7 +339,7 @@ CONTAINS
  
   TYPE(Vector) FUNCTION subcellCentre(thisOctal,nChild)
     ! returns the centre of one of the subcells of the current octal 
-    use inputs_mod, only : cart2d
+
     IMPLICIT NONE
 
     TYPE(octal), INTENT(IN) :: thisOctal 

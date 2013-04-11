@@ -4,8 +4,7 @@ module amr_utils_mod
   use vector_mod
   use messages_mod
   USE constants_mod
-  USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
-       allocateattribute, copyattribute, deallocateattribute
+  USE octal_mod
   use gridtype_mod, only: gridtype
   use mpi_global_mod, only: myRankGlobal
   use parallel_mod, only : torus_abort
@@ -45,7 +44,7 @@ module amr_utils_mod
 
 
   function distanceToGridFromOutside(grid, posVec, direction, hitGrid) result (tval)
-    use inputs_mod, only : suppressWarnings, spherical, cart2d
+    use inputs_mod, only : suppressWarnings, spherical
     type(GRIDTYPE) :: grid
     type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
@@ -426,7 +425,7 @@ module amr_utils_mod
   !   probably best to start from root of tree
 
     use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
-    use inputs_mod, only : cart2d
+
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     type(vector) :: point_local
@@ -529,7 +528,7 @@ module amr_utils_mod
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
     use inputs_mod, only : hydrodynamics, suppresswarnings, cylindricalHydro, spherical
-    use inputs_mod, only : cart2d
+
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     TYPE(vector) :: point_local
@@ -735,7 +734,7 @@ module amr_utils_mod
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
     use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
-    use inputs_mod, only : cart2d
+
     IMPLICIT NONE
     integer :: nDepth
     TYPE(vector), INTENT(IN) :: point
@@ -1037,7 +1036,6 @@ module amr_utils_mod
     ! true if the point lies within the boundaries of the current octal
   
     use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics, spherical
-    use inputs_mod, only : cart2d
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
@@ -1207,7 +1205,7 @@ module amr_utils_mod
 
 
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal, sSubcell)
-    use inputs_mod, only : spherical, cart2d
+    use inputs_mod, only : spherical
     use octal_mod, only: returndPhi
 
     implicit none
@@ -2074,7 +2072,7 @@ module amr_utils_mod
 
 
   type(VECTOR) function randomPositionInCell(thisOctal, subcell)
-    use inputs_mod, only : spherical, cart2d
+    use inputs_mod, only : spherical
     use octal_mod, only: returndPhi
 
     type(OCTAL) :: thisOctal

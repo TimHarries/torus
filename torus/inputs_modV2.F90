@@ -2004,6 +2004,8 @@ contains
   end subroutine readPhotoionEquilibriumParameters
 
   subroutine readHydrodynamicsParameters(cLine, fLine, nLines)
+    use octal_mod, only: cart2d
+
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
