@@ -656,7 +656,7 @@ module source_mod
                   v = t*sin(ang)
                   direction = VECTOR(u, v, w)
                   
-            endif
+               endif
             
                   
                

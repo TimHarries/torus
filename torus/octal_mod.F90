@@ -336,7 +336,7 @@ CONTAINS
  
   TYPE(Vector) FUNCTION subcellCentre(thisOctal,nChild)
     ! returns the centre of one of the subcells of the current octal 
-
+    use inputs_mod, only : cart2d
     IMPLICIT NONE
 
     TYPE(octal), INTENT(IN) :: thisOctal 
@@ -418,28 +418,45 @@ CONTAINS
                 enddo
              END SELECT
           else
-             SELECT CASE (nChild)
-             CASE (1)    
-                subcellCentre = rVec - (d * xHat) - (d * zHat)
-                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-             CASE (2)    
-                subcellCentre = rVec + (d * xHat) - (d * zHat)
-                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-             CASE (3)    
-                subcellCentre = rVec - (d * xHat) + (d * zHat)
-                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-             CASE (4)    
-                subcellCentre = rVec + (d * xHat) + (d * zHat)
-                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-             CASE DEFAULT
-                PRINT *, "Error:: Invalid nChild passed to subcellCentre cylindical 3D case 2"
-                PRINT *, "        nChild = ", nChild 
-                do
-                enddo
-             END SELECT
+             if(cart2d) then
+                SELECT CASE (nChild)
+                CASE (1)    
+                   subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,0.d0,-1.d0)
+                CASE (2)    
+                   subcellCentre = thisOctal%centre + d * VECTOR(1.d0,0.d0,-1.d0)
+                CASE (3)    
+                   subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,0.d0,-1.d0)
+                CASE (4)    
+                   subcellCentre = thisOctal%centre + d * VECTOR(1.d0,0.d0,-1.d0)
+                CASE DEFAULT
+                   PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
+                   PRINT *, "        nChild = ", nChild 
+                   STOP
+                END SELECT
+             else
+                SELECT CASE (nChild)
+                CASE (1)    
+                   subcellCentre = rVec - (d * xHat) - (d * zHat)
+                   subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+                CASE (2)    
+                   subcellCentre = rVec + (d * xHat) - (d * zHat)
+                   subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+                CASE (3)    
+                   subcellCentre = rVec - (d * xHat) + (d * zHat)
+                   subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+                CASE (4)    
+                   subcellCentre = rVec + (d * xHat) + (d * zHat)
+                   subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+                CASE DEFAULT
+                   PRINT *, "Error:: Invalid nChild passed to subcellCentre cylindical 3D case 2"
+                   PRINT *, "        nChild = ", nChild 
+                   do
+                   enddo
+                END SELECT
+             end if
           endif
        endif
- else
+    else
     SELECT CASE (nChild)
     CASE (1)    
        subcellCentre = thisOctal%centre - (d * xHat) - (d * zHat)

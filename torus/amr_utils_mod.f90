@@ -45,7 +45,7 @@ module amr_utils_mod
 
 
   function distanceToGridFromOutside(grid, posVec, direction, hitGrid) result (tval)
-    use inputs_mod, only : suppressWarnings, spherical
+    use inputs_mod, only : suppressWarnings, spherical, cart2d
     type(GRIDTYPE) :: grid
     type(VECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
@@ -89,7 +89,7 @@ module amr_utils_mod
             if (PRESENT(hitGrid)) then
                hitGrid = .false.
             else
-               write(*,*) "Quad solver failed in distanceToGridFromOutside"
+               write(*,*) "Quad solver failed in distanceToGridFromOutside 1d"
                x1 = thisoctal%subcellSize
                x2 = 0.d0
             endif
@@ -127,6 +127,94 @@ module amr_utils_mod
 
 
    endif
+
+    if (thisOctal%twod.and.(cart2d)) then
+
+          ! cube
+
+         ok = .true.
+
+         subcellsize = thisOctal%subcellSize
+
+         if(direction%x .ne. 0.d0) then            
+            denom(1) = 1.d0 / direction%x
+         else
+            denom(1) = 0.d0
+         endif
+         denom(4) = -denom(1)
+
+!         if(direction%y .ne. 0.d0) then            
+!            denom(2) = 1.d0 / direction%y
+!         else
+!            denom(2) = 0.d0
+!         endif
+!         denom(5) = -denom(2)
+
+         if(direction%z .ne. 0.d0) then            
+            denom(3) = 1.d0 / direction%z
+         else
+            denom(3) = 0.d0
+         endif
+         denom(6) = -denom(3)
+
+         normdiff = subcen - posvec
+         t = 0.d0
+         t(1) =  (normdiff%x + subcellsize) * denom(1)
+ !        t(2) =  (normdiff%y + subcellsize) * denom(2)
+         t(3) =  (normdiff%z + subcellsize) * denom(3)
+         t(4) =  (normdiff%x - subcellsize) * denom(1)
+!         t(5) =  (normdiff%y - subcellsize) * denom(2)
+         t(6) =  (normdiff%z - subcellsize) * denom(3)
+
+         thisOk = .true.
+
+         do i = 1, 6
+            if (denom(i) .ge. 0.d0) thisOK(i) = .false.
+            if (t(i) < 0.) thisOk(i) = .false.
+         enddo
+         
+         j = 0
+         do i = 1, 6
+            if (thisOk(i)) j=j+1
+         enddo
+         
+         if (j == 0) ok = .false.
+         
+         if (.not.ok) then
+            if (PRESENT(hitGrid)) then
+               hitGrid = .false.
+            else
+               write(*,*) "Error: j=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. 2d"
+               write(*,*) direction%x,direction%y,direction%z
+               write(*,*) t(1:6)
+            endif
+         endif
+         
+         tval = maxval(t, mask=thisOk)
+         
+!         write(*,*) t(1:6),thisOK(1:6)
+
+         if (tval == 0.) then
+            if (PRESENT(hitGrid)) then
+               hitGrid = .false.
+            else
+               write(*,*) " tval=0 (no intersection???) in lucy_mod::distancetoGridFromOutside. "
+               write(*,*) posVec
+               write(*,*) direction%x,direction%y,direction%z
+               write(*,*) t(1:6)
+               stop
+            endif
+         endif
+
+         test = posVec + (tval+1.d-3*grid%halfSmallestSubcell) * direction
+         if (.not.inOctal(grid%octreeRoot, test)) then
+            if (PRESENT(hitGrid)) then
+               hitGrid = .false.
+            endif
+         endif
+         goto 666
+      end if
+
 
     if (thisOctal%threed.and.(.not.thisOctal%cylindrical)) then
 
@@ -338,6 +426,7 @@ module amr_utils_mod
   !   probably best to start from root of tree
 
     use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
+    use inputs_mod, only : cart2d
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     type(vector) :: point_local
@@ -348,7 +437,9 @@ module amr_utils_mod
     if (currentoctal%threeD) then
        point_local = point
     elseif (currentoctal%twoD) then
-       if (.not.cylindricalHydro) then
+       if(cart2d) then
+          point_local = point
+       elseif (.not.cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -438,6 +529,7 @@ module amr_utils_mod
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
     use inputs_mod, only : hydrodynamics, suppresswarnings, cylindricalHydro, spherical
+    use inputs_mod, only : cart2d
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
     TYPE(vector) :: point_local
@@ -456,11 +548,20 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       if (.not.cylindricalHydro) then
+       if(cart2d) then
+          point_local = point
+       else if (.not.cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
        endif
+
+
+!       if (.not.cylindricalHydro) then
+!          point_local = projectToXZ(point)
+!       else
+!          point_local = point
+!       endif
     else
        point_local = point
     endif
@@ -634,6 +735,7 @@ module amr_utils_mod
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
     use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
+    use inputs_mod, only : cart2d
     IMPLICIT NONE
     integer :: nDepth
     TYPE(vector), INTENT(IN) :: point
@@ -653,11 +755,20 @@ module amr_utils_mod
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       if (.not.cylindricalhydro) then
+       if(cart2d) then
+          point_local = point
+          elseif (.not.cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
        endif
+
+!
+!       if (.not.cylindricalhydro) then
+!          point_local = projectToXZ(point)!
+!       else!
+!          point_local = point
+!       endif
     else
        point_local = point
     endif
@@ -926,6 +1037,7 @@ module amr_utils_mod
     ! true if the point lies within the boundaries of the current octal
   
     use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics, spherical
+    use inputs_mod, only : cart2d
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
@@ -970,15 +1082,28 @@ module amr_utils_mod
           ENDIF
        endif
     else ! twoD case
-       if (.not.cylindricalHydro) then
+       if(cart2d) then
+          octVec2d = point
+       else if (.not.cylindricalHydro) then
           if (doRotate) then
-             octVec2D = projectToXZ(point)
+             octvec2d = projectToXZ(point)
           else
-             octVec2D = point   
-          endif
+             octVec2d = point
+          end if
        else
-          octVec2D = point
+          octvec2d = point
        endif
+
+
+!       if (.not.cylindricalHydro) then
+!          if (doRotate) then
+!             octVec2D = projectToXZ(point)
+!          else
+!             octVec2D = point   
+!          endif
+!       else
+!          octVec2D = point
+!       endif
        if(hydrodynamics .and. (.not. cylindricalHydro).and.(.not.photoionPhysics)) then
           octVec2D = point
        end if
@@ -1082,7 +1207,7 @@ module amr_utils_mod
 
 
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal, sSubcell)
-    use inputs_mod, only : spherical
+    use inputs_mod, only : spherical, cart2d
     use octal_mod, only: returndPhi
 
     implicit none
@@ -1168,6 +1293,117 @@ module amr_utils_mod
        endif
        goto 666
     endif
+
+
+       if (thisOctal%twoD .and. cart2d) then
+          ok = .true.
+
+          halfSubCellsize = thisOctal%subcellsize * 0.5d0
+          denom = 0.d0
+
+          if(direction%x .ne. 0.d0) then            
+             denom(1) = 1.d0 / direction%x
+          else
+             denom(1) = 0.d0
+          endif
+          denom(4) = -denom(1)
+
+!          if(direction%y .ne. 0.d0) then            
+!             denom(2) = 1.d0 / direction%y
+!          else
+!             denom(2) = 0.d0
+!          endif
+!          denom(5) = -denom(2)
+          
+          if(direction%z .ne. 0.d0) then            
+             denom(3) = 1.d0 / direction%z
+          else
+             denom(3) = 0.d0
+          endif
+          denom(6) = -denom(3)
+
+          normdiff = subcen - posvec
+          t = 0.d0
+          thisOK = .false.
+          ok = .false.
+          t(1) =  (normdiff%x + halfsubcellsize) * denom(1)
+          if (t(1) > 0.d0) then
+             thisOK(1) = .true.
+             ok = .true.
+          endif
+          t(2) =  (normdiff%y + halfsubcellsize) * denom(2)
+          if (t(2) > 0.d0) then
+             thisOK(2) = .true.
+             ok = .true.
+         endif
+          t(3) =  (normdiff%z + halfsubcellsize) * denom(3)
+          if (t(3) > 0.d0) then
+             thisOK(3) = .true.
+             ok = .true.
+          endif
+          t(4) =  (normdiff%x - halfsubcellsize) * denom(1)
+          if (t(4) > 0.d0) then
+             thisOK(4) = .true.
+             ok = .true.
+          endif
+          t(5) =  (normdiff%y - halfsubcellsize) * denom(2)
+          if (t(5) > 0.d0) then
+             thisOK(5) = .true.
+             ok = .true.
+          endif
+          t(6) =  (normdiff%z - halfsubcellsize) * denom(3)
+          if (t(6) > 0.d0) then
+             thisOK(6) = .true.
+             ok = .true.
+          endif
+
+!          where(t > 0.d0)
+!             jarray = 1
+!             thisOk = .true.
+!          elsewhere
+!             jarray = 0
+!             thisOk = .false.
+!          end where
+!          
+!          j = sum(jarray)
+
+!          if (j .eq. 0) ok = .false.
+ 
+          if (.not.ok) then
+             write(*,*) "Error: j=0 (no intersection???) in amr_mod::distanceToCellBoundary.2d "
+             write(*,*) direction%x,direction%y,direction%z
+             write(*,*) t(1:6)
+             write(*,*) "denom: ", denom(1:6)
+             write(*,*) "subcen", subcen
+             write(*,*) "posvec", posvec
+             write(*,*) "t", t
+             write(*,*) "normdiff%x: ", normdiff%x
+             write(*,*) "normdiff%y: ", normdiff%y
+             write(*,*) "normdiff%z: ", normdiff%z
+             write(*,*) "halfsubcellsize ", halfsubcellsize
+             call torus_abort
+          endif
+          
+          tval = minval(t, mask=thisOk)
+          
+! Commented out by Dave Acreman, October 2008
+! tval == 0 is handled at the end of this subroutine    
+!          if (tval == 0.) then
+!             write(*,*) posVec
+!             write(*,*) direction%x,direction%y,direction%z
+!             write(*,*) t(1:6)
+!             call torus_abort("tval==0 in distanceToCellBoundary")
+!          endif
+
+          !if (tval > sqrt(3.)*thisOctal%subcellsize) then
+             !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
+             !     write(*,*) "direction",direction
+             !     write(*,*) t(1:6)
+             !     write(*,*) denom(1:6)
+          !endif
+          goto 666
+       end if
+
 
     if (thisOctal%threed) then
 
@@ -1838,7 +2074,7 @@ module amr_utils_mod
 
 
   type(VECTOR) function randomPositionInCell(thisOctal, subcell)
-    use inputs_mod, only : spherical
+    use inputs_mod, only : spherical, cart2d
     use octal_mod, only: returndPhi
 
     type(OCTAL) :: thisOctal
@@ -1944,7 +2180,9 @@ module amr_utils_mod
 
           call randomNumberGenerator(getDouble=ang)
           ang = ang * twoPi
-          randomPositionInCell = rotateZ(randomPositionInCell, ang)
+          if(cart2d) then
+             randomPositionInCell = rotateZ(randomPositionInCell, ang)
+          end if
        endif
     endif
 666 continue

@@ -646,6 +646,8 @@ contains
              if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) "problem with the x_i values"
                 stop
+ !            else
+!                print *, "x_i values were good"
              endif
 
 
@@ -1206,6 +1208,14 @@ contains
 
              if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
                 write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
+                print *, "cen ", subcellCentre(thisOctal, subcell)
+                if (.not.octalonthread(neighbouroctal, neighboursubcell, myrankGlobal)) then
+                   print *, "AND IT WASNT ON THREAD"
+                end if
+                print *, "EDGE", thisOctal%edgecell(subcell)
+                print *, "GHOST", thisOctal%ghostcell(subcell)
+!             else
+!                print *, "good at u_i"
              endif
              weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
 
@@ -3520,24 +3530,6 @@ contains
   end subroutine advectIonFrac
 
 !copy cell ionfrac to q, advect q, copy q back to cell ionfrac
-  subroutine advectIonFracCylindrical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
-    integer :: npairs, thread1(:), thread2(:), nbound(:)
-    integer :: group(:), ngroup
-    integer :: usethisbound
-    type(gridtype) :: grid
-    real(double) :: dt
-    type(vector) :: direction
-    integer :: i
-
-    do i = 1, grid%nion
-       call copyIonfractoq(grid%octreeroot, i)
-       call advectqcylindrical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
-       call copyqtoIonfrac(grid%octreeroot, direction, i)
-    enddo
-
-  end subroutine advectIonFracCylindrical
-
-!copy cell ionfrac to q, advect q, copy q back to cell ionfrac
   subroutine advectDust(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     use inputs_mod, only : nDustType
     integer :: npairs, thread1(:), thread2(:), nbound(:)
@@ -3919,9 +3911,9 @@ end subroutine sumFluxes
        
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
-       if(present(perturbPressure)) then
-          call PerturbPressureGrid(grid%octreeRoot)
-       end if 
+!       if(present(perturbPressure)) then
+!          call PerturbPressureGrid(grid%octreeRoot)
+!       end if 
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
@@ -4015,7 +4007,7 @@ end subroutine sumFluxes
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
    else
-      if (.not.moveSources) globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
+      globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
    
    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
@@ -4042,6 +4034,7 @@ end subroutine sumFluxes
 
    if(firsttime) then
       print *, "perturbing pressuregrid"
+      firsttime = .false.
    end if
 
    do subcell = 1, thisOctal%maxChildren
@@ -4065,15 +4058,18 @@ end subroutine sumFluxes
  end subroutine perturbPressureGrid
    
 !Perform a single hydrodynamics step, in x and z directions, for the 2D case.     
-  subroutine hydroStep2d(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
+  subroutine hydroStep2d(grid, timeStep, nPairs, thread1, thread2, nBound, group, &
+       nGroup, perturbPressure)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     integer :: group(:), nGroup
     real(double) :: timeStep, dt
     type(VECTOR) :: direction
     integer :: idir, thisBound
+    logical, optional :: perturbPressure
 
     do iDir = 1, 3
+!       print *, " DOING DIRECTION ", iDir
        select case (iDir)
           case(1)
              direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -4094,14 +4090,22 @@ end subroutine sumFluxes
        call periodBoundary(grid)
        call transferTempStorage(grid%octreeRoot)
 
+
        call setupX(grid%octreeRoot, grid, direction)
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupQX(grid%octreeRoot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
        !set up grid values
-       call computepressureGeneral(grid, grid%octreeroot, .true.) 
+!       call computepressureGeneral(grid, grid%octreeroot, .true.) 
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+!       if(present(perturbPressure)) then
+!          call PerturbPressureGrid(grid%octreeRoot)
+!       end if 
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 !       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
@@ -4115,7 +4119,12 @@ end subroutine sumFluxes
        call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-
+       !if running a radiation hydrodynamics calculation, advect the ion fraction
+       if(photoionPhysics .and. hydrodynamics) then
+          call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+          call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       end if
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
        !calculate and set up pressures   
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -4230,12 +4239,6 @@ end subroutine sumFluxes
        call advectRhoRVCylindrical(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoECylindrical(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
-       if(photoionPhysics) then
-          call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-          call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-       end if
-
-
 
        !calculate and set up pressures   
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -4271,16 +4274,9 @@ end subroutine sumFluxes
    endif
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
-      if (doselfGrav) then
-         call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
-      else
-         if (globalnSource == 1) then
-            globalSourceArray(1)%position =  globalSourceArray(1)%position + &
-                 (dt * globalSourceArray(1)%velocity)
-         endif
-      endif
+      call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
    else
-      if (.not.moveSources) globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
+      globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
    
 
@@ -5183,6 +5179,7 @@ end subroutine sumFluxes
        if (useTensorViscosity) then
           call viscousTimeScale(grid%octreeRoot, grid, dt)
        endif
+       tc(myRankGlobal) = min(tCourant, tSourceSource, tGasSource, tPressureGrad)
        call MPI_ALLREDUCE(tCourant, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, AMRCommunicator, ierr)
        tCourant = tempDouble
        call MPI_ALLREDUCE(tSourceSource, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, AMRCommunicator, ierr)
@@ -5191,8 +5188,6 @@ end subroutine sumFluxes
        tGasSource = tempDouble
        call MPI_ALLREDUCE(tPressureGrad, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, AMRCommunicator, ierr)
        tPressureGrad = tempDouble
-       tc(myRankGlobal) = min(tCourant, tSourceSource, tGasSource, tPressureGrad)
-
        if (writeOutput) then
           write(*,'(a,1pe12.3)') "Normal courant time ", tCourant
           write(*,'(a,1pe12.3)') "Source-source courant time ", tSourceSource
@@ -5473,8 +5468,8 @@ end subroutine sumFluxes
        if (it == 0) then
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
-          direction = VECTOR(0.d0, 1.d0, 0.d0)
-          call calculateRhoV(grid%octreeRoot, direction)
+!          direction = VECTOR(0.d0, 1.d0, 0.d0)
+!          call calculateRhoV(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 0.d0, 1.d0)
           call calculateRhoW(grid%octreeRoot, direction)
           call calculateRhoE(grid%octreeRoot, direction)
@@ -5591,7 +5586,7 @@ end subroutine sumFluxes
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads))
        dt = MIN(dt_pressure, dt)
-       dt = MIN(dt_viscous, dt)
+       dt= MIN(dt_viscous, dt)
        dt = dt * dble(cflNumber)
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
@@ -5737,7 +5732,7 @@ end subroutine sumFluxes
     real(double) :: nextDumpTime, tff!, ang
     real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous, vBulk, vSound
     type(VECTOR) :: initAngMom
-    real(double) :: tSourceSource, tGasSource
+    
     type(VECTOR) :: direction, viewVec, totalAngMom
     integer :: thread1(512), thread2(512), nBound(512), nPairs
     integer :: nGroup, group(512)
@@ -5756,7 +5751,6 @@ end subroutine sumFluxes
     it = grid%iDump
     currentTime = grid%currentTime
     nextDumpTime = 0.d0
-    call writeSourceList(globalsourceArray, globalnSource)
 
     if (it /= 1) then
        call writeVTKfile(grid, "readin.vtk")
@@ -5903,8 +5897,6 @@ end subroutine sumFluxes
        tc = 0.d0
        dt_pressure = 1.d30
        dt_viscous = 1.d30
-       tSourceSource = 1.d30
-       tGasSource = 1.d30
        if (myrankGlobal /= 0) then
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
@@ -5912,18 +5904,9 @@ end subroutine sumFluxes
           call computeDivV(grid%octreeRoot, grid)
           call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
-          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tSourceSource)
-          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, globalsourceArray, tGasSource)
        endif
-       call MPI_ALLREDUCE(tSourceSource, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
-       tSourceSource = tempDouble
-
-       call MPI_ALLREDUCE(tGasSource, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
-       tGasSource = tempDouble
-
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
-
        call MPI_ALLREDUCE(dt_viscous, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_viscous = tempDouble
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
@@ -5931,16 +5914,10 @@ end subroutine sumFluxes
        dt = MINVAL(tc(1:nHydroThreads))
        dt = MIN(dt_pressure, dt)
        dt = MIN(dt_viscous, dt)
-
-       dt = MIN(tSourceSource, dt)
-       dt = MIN(tGasSource, dt)
-
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
           write(*,*) "Courant time from P ",dt_pressure
           write(*,*) "Courant time from visc ",dt_viscous
-          write(*,*) "Courant time from source-source ",tSourceSource
-          write(*,*) "Courant time from gas-source ",tGasSource
        endif
        dt = dt * dble(cflNumber)
 
@@ -5971,18 +5948,14 @@ end subroutine sumFluxes
        tc = 0.d0
        dt_pressure = 1.d30
        dt_viscous = 1.d30
-       tSourceSource = 1.d30
        vBulk = 0.d0
        vSound = 0.d0
-       tGasSource = 1.d30
        if (myrankGlobal /= 0) then
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           call computeCourantV(grid, grid%octreeRoot, vBulk, vSound)
           call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
-          if (nbodyPhysics) call computeCourantTimeNbody(grid, globalnSource, globalsourceArray, tSourceSource)
-          if (nbodyPhysics) call computeCourantTimeGasSource(grid, grid%octreeRoot, globalnsource, globalsourceArray, tGasSource)
        endif
 
        call MPI_ALLREDUCE(vBulk, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
@@ -5990,11 +5963,6 @@ end subroutine sumFluxes
        call MPI_ALLREDUCE(vSound, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
        vSound = tempDouble
 
-       call MPI_ALLREDUCE(tSourceSource, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
-       tSourceSource = tempDouble
-
-       call MPI_ALLREDUCE(tGasSource, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
-       tGasSource = tempDouble
 
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
@@ -6005,9 +5973,6 @@ end subroutine sumFluxes
        dt = MINVAL(tc(1:nHydroThreads))
        dt = MIN(dt_pressure, dt)
        dt = MIN(dt_viscous, dt)
-       dt = MIN(tSourceSource, dt)
-       dt = MIN(tGasSource, dt)
-
        dt = dt * dble(cflNumber)
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
@@ -6015,8 +5980,6 @@ end subroutine sumFluxes
           write(*,*) "maximum sound speed ",Vsound/1.d5
           write(*,*) "Courant time from P ",dt_pressure
           write(*,*) "Courant time from visc ",dt_viscous
-          write(*,*) "Courant time from source-source ",tSourceSource
-          write(*,*) "Courant time from gas-source ",tGasSource
        endif
 
        write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
@@ -6049,8 +6012,8 @@ end subroutine sumFluxes
        if (writeoutput) write(*,*) "Total mass: ",totalMass
        if (cylindricalHydro) then
           call findAngMomOverAllThreads(grid, totalAngMom, VECTOR(0.d0, 0.d0, 0.d0))
-          if (writeoutput) write(*,*) "Total angular momentum: ",totalAngMom%z+globalSourceArray(1)%angMomentum%z !, &
-!               100.d0*(totalAngMom%z+globalSourceArray(1)%angMomentum%z-initAngMom%z)/initAngMom%z
+          if (writeoutput) write(*,*) "Total angular momentum: ",totalAngMom%z+globalSourceArray(1)%angMomentum%z, &
+               100.d0*(totalAngMom%z+globalSourceArray(1)%angMomentum%z-initAngMom%z)/initAngMom%z
        endif
 
 
@@ -8043,6 +8006,12 @@ real(double) :: rho
           do iProbe = 1, nProbes
              locator = rVec + &
                   (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
+
+!             if(rVec%x < 1.d8 .and. iProbe == 2) then
+ !               print *, "EDGE LOC IS ", locator
+  !              print *, "rVEC is ", rVec
+   !          end if
+
              if (.not.inOctal(grid%octreeRoot, locator)) then
                 nProbeOutside = nProbeOutside + 1
                 thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
@@ -8095,6 +8064,9 @@ real(double) :: rho
              else if (thisOctal%threeD .and. nProbeOutside == 3) then
                 thisOctal%corner(subcell) = .true.
              end if
+
+   !       else if(rVec%x < 1.d8) then
+    !         print *, "EDGE SHOULD HAVE BEEN FOUND"
                 
           endif
        endif

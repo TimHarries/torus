@@ -2032,6 +2032,9 @@ contains
     call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("cart2d", cart2d, cLine, fLine, nLines, &
+         "2d RHD in cartesians: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
 

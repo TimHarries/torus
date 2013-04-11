@@ -7421,10 +7421,10 @@ endif
     type(vector) :: rVec, cen
     real(double) :: R, ethermal
 
-    cen = VECTOR(0.4*pcToCm/1.d10, 0.d0, 0.d0)
+    cen = VECTOR(1.54d9 + (0.4d0*pcToCm/1.d10), 0.d0, 1.54d9)
     rVec = subcellCentre(thisOctal, subcell)
 
-    rVec%x = rVec%x - cen%x
+    rVec = rVec - cen
 
     R = modulus(rVec)
 
@@ -7433,7 +7433,8 @@ endif
        thisOctal%rho(subcell) = 4.85d-21
        thisOctal%temperature(subcell) = 100.d0
     else
-       thisOctal%rho(subcell) = 1.d-29
+!       thisOctal%rho(subcell) = 1.6733000000000001e-26
+       thisOCtal%rho(subcell) = 1.7d-24
        thisOctal%temperature(subcell) = 100.d0
     end if
 
@@ -7752,7 +7753,7 @@ endif
     integer, parameter :: nr = 1000
     real(double), save :: r(nr), rho(nr)
     integer :: i, j
-    integer, parameter :: numClouds=5
+    integer, parameter :: numClouds=4
     type(VECTOR) :: centre(numClouds)
 !    logical :: inSphere = .false.
 
@@ -7760,11 +7761,17 @@ endif
 !Star at 0,0,0
 !BES's at 2.5, 5, 7.5, 10, 12.5pc
 
-    centre(1) = VECTOR(2.5d0, 0.d0, 0.d0)
-    centre(2) = VECTOR(0.d0, 5.d0, 0.d0)
-    centre(3) = VECTOR(0.d0, 0.d0, 7.5d0)
-    centre(4) = VECTOR(-10.d0, 0.d0, 0.d0)
-    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
+!    centre(1) = VECTOR(2.5d0, 0.d0, 0.d0)
+!    centre(2) = VECTOR(0.d0, 5.d0, 0.d0)
+!    centre(3) = VECTOR(0.d0, 0.d0, 7.5d0)
+!    centre(4) = VECTOR(-10.d0, 0.d0, 0.d0)
+!    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
+
+    centre(1) = VECTOR(6.2d9, 0.d0, 5.d9)
+    centre(2) = VECTOR(2.d9, 0.d0, 2.d9)
+    centre(3) = VECTOR(6.d9, 0.d0, 1.d9)
+    centre(4) = VECTOR(3.d9, 0.d0, 8.d9)
+!    centre(1) = VECTOR(7.5d8, 0.d0, 5.d9)
 
     do j = 1, numClouds
        centre(j) = (centre(j) * pctocm)/1.d10
