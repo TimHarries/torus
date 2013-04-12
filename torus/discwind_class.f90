@@ -459,12 +459,13 @@ contains
        Vphi = discwind_Vphi(this,x, y, z) /c   ! in [c] the unit of the speed of light    
        
        phi = ATAN2(y,x)
+       if (phi < 0.d0) phi = phi + twoPi
        theta = ACOS( (ABS(z)+d) / rp )  ! origin shifted
        
        Vx = Vr*SIN(theta)*COS(phi) - Vphi*SIN(phi)      ! [c]
        Vy = Vr*SIN(theta)*SIN(phi) + Vphi*COS(phi)      ! [c]
        Vz = Vr*COS(theta)                               ! [c]
-       if (z <0 ) Vz = -Vz
+       if (z < 0.d0) Vz = -Vz
 
        discwind_velocity= VECTOR(Vx, Vy, Vz)  ! [c]
 
@@ -701,9 +702,13 @@ contains
     DO iSubcell = 1, thisOctal%maxChildren
 
        if (thisOctal%hasChild(isubcell)) cycle
-       IF (need_to_split2(thisOctal,isubcell,this).and.(thisOctal%nDepth < maxDepthAMR)) then
+       IF ((need_to_split2(thisOctal,isubcell,this).and.(thisOctal%nDepth < maxDepthAMR))) then
 
-          CALL add_new_children_discwind(thisOctal, isubcell, grid, this)
+          if (thisOctal%dPhi*radtodeg > 89.d0) then
+             CALL add_new_children_discwind(thisOctal, isubcell, grid, this, splitAzimuthally=.true.)
+          else
+             CALL add_new_children_discwind(thisOctal, isubcell, grid, this)
+          endif
 
           if (.not.thisOctal%hasChild(isubcell)) then
              write(*,*) "add child failed in splitGrid"

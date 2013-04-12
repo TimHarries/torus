@@ -3659,7 +3659,7 @@ CONTAINS
         
              if (inflow) then
                 if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
-                if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.d0)) then
+                if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 19.d0)) then
                    split = .true.
                    splitInAzimuth = .true.
                 endif
@@ -8073,7 +8073,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, spiralVec
-    period = 245.d0 * 24.d0 * 3600.d0
+!    period = 245.d0 * 24.d0 * 3600.d0
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = sqrt(rVec%x**2 + rVec%y**2)

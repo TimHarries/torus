@@ -3404,11 +3404,11 @@ contains
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
-!    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
-!         "sourceline ",  &
-!         "ne         ", "jnu        ","haschild   ", &
-!         "inflow     ","temperature", "velocity   ", &
-!         "cornervel  "/))
+    call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
+         "sourceline ",  &
+         "ne         ", "jnu        ","haschild   ", &
+         "inflow     ","temperature", "velocity   ", &
+         "cornervel  "/))
 
 
     doCube = calcDataCube

@@ -3084,16 +3084,18 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            write(message,'(a,es11.4e1,tr3,a,f10.4,tr3,a,es12.4,a,es12.4,a, es12.4)') &
                 "DELTAV(v/c):",deltaV," V (km/s):",real(cube%vAxis(iv)), "Average Intensity:",intensitysum, &
                 " FLUX: ", fluxsum, " Trad (K): ", Trad
+              call writeinfo(message,FORINFO)
 
 !, (fluxsum / linefreq) * 1e26, (fluxsum - background) &
 !                / linefreq * 1d26  
-           open(10, file="tempfile.dat",status="unknown",form="formatted",position="append")
-           write(10,'(es11.4e1,f8.4,es12.4,es12.4,es12.4,es12.4,es12.4)') &
-                real(cube%vAxis(iv)), deltaV, intensitysum, &
-                fluxsum / linefreq * 1e26, (fluxsum - background) / linefreq * 1e26, &
-                tRad
-           close(10)
-           call writeinfo(message,FORINFO)
+!           if (Writeoutput) then
+!              open(10, file="tempfile.dat",status="unknown",form="formatted",position="append")
+!              write(10,'(es11.4e1,f8.4,es12.4,es12.4,es12.4,es12.4,es12.4)') &
+!                   real(cube%vAxis(iv)), deltaV, intensitysum, &
+!                   fluxsum / linefreq * 1e26, (fluxsum - background) / linefreq * 1e26, &
+!                   tRad
+!              close(10)
+!           endif
 
 #ifdef USECFITSIO
            if(writeoutput .and. writetempfits) then 

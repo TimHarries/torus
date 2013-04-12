@@ -92,6 +92,7 @@ contains
 
     if (geometry == "envelope") then
        if (writeoutput.and.amr2d) call writeEduard(grid)
+       goto 666
     endif
 
 
