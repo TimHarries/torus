@@ -35,6 +35,7 @@ module gridFromFitsFile
 
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
+  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:)
 
 ! If true use the ideal gas EOS to calculate temperature
   logical, parameter, private :: idealGas=.false.
@@ -54,12 +55,65 @@ module gridFromFitsFile
       filename=infile
     end subroutine setGridFromFitsParameters
 
+    subroutine read_fits_file_for_grid
+
+      use fits_utils_mod, only: printFitsError
+      use constants_mod, only: Rgas
+
+! FITS file variables and parameters
+      integer :: status, unit, blocksize
+      integer, parameter :: readwrite=0 ! Open file read only 
+      integer, parameter :: group=0
+      character(len=80) :: record, comment, filetype
+      logical :: found_file
+
+
+      call writeInfo ("Initialising grid from a FITS file", IMPORTANT)
+
+      inquire (file=filename, exist=found_file)
+      if (.not. found_file) then
+         call writeFatal("The file called "//trim(filename)//" does not exist")
+      endif
+      call writeInfo ("Reading FITS file "//filename, FORINFO)
+      status = 0
+
+! Get a free LUN then open the file
+      call ftgiou(unit, status)
+      call ftopen(unit, filename,readwrite,blocksize,status)
+
+      call ftgkys(unit,"VH_DATA",record,comment,status)
+      if (status==0) then
+         fileType = "VH1"
+      else
+         fileType = "pion"
+      endif
+
+! Close the file and free the LUN
+      call ftclos(unit, status)
+      call ftfiou(unit, status)
+
+! If there were any errors then print them out
+      call printFitsError(status)
+
+      select case(fileType)
+         case("VH1")
+            call read_fits_file_for_grid_vh1
+         case("pion")
+            call read_fits_file_for_grid_mackey
+         case DEFAULT
+            call writeFatal("Fits file type not recognised")
+            stop
+      end select
+
+
+    end subroutine read_fits_file_for_grid
+
 !-------------------------------------------------------------------------------
 ! Reads in a FITS file which will be used to set up the Torus AMR grid
 ! Based on the FITS cookbook
 ! D. Acreman, October 2012
 
-    subroutine read_fits_file_for_grid
+    subroutine read_fits_file_for_grid_vh1
 
       use fits_utils_mod, only: printFitsError
       use constants_mod, only: Rgas
@@ -202,7 +256,99 @@ npd_loop:            do n=1,npd
 ! Now set up the co-ordinate axes. For now we're assuming they are not held in the FITS file. 
       call setup_axes()
 
-    end subroutine read_fits_file_for_grid
+    end subroutine read_fits_file_for_grid_vh1
+
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+! Reads in a FITS file which will be used to set up the Torus AMR grid
+! Based on the FITS cookbook
+! D. Acreman, October 2012
+
+    subroutine read_fits_file_for_grid_mackey
+
+      use fits_utils_mod, only: printFitsError
+      use constants_mod, only: Rgas
+
+      character(len=80) :: message
+
+! FITS file variables and parameters
+      integer :: status, unit, blocksize
+      integer, parameter :: readwrite=0 ! Open file read only 
+      integer, parameter :: group=0
+      integer :: naxis, nfound, npixels, hdutype
+      character(len=80) :: record, comment
+      logical :: anynull
+      real(single) :: maxdata, mindata, xmin0, xmin1, xmin2
+      real(single) :: xmax0, xmax1, xmax2
+      real(double) :: junk(40,20)
+
+
+      call writeInfo ("Initialising grid from a FITS file", IMPORTANT)
+      call writeInfo ("Reading FITS file "//filename, FORINFO)
+      status = 0
+
+! Get a free LUN then open the file
+      call ftgiou(unit, status)
+      call ftopen(unit, filename,readwrite,blocksize,status)
+
+! Find out how many axes there are
+      call ftgkyj(unit,"GRIDNDIM",naxis,comment,status)
+      write(message,*) "There are ", naxis, "axes"
+      call writeInfo(message,TRIVIAL)
+
+! Find out the size of the axis
+      axis_size(:)=1
+      call ftgkyj(unit,"NGRID0",axis_size(1),nfound,status)
+      call ftgkyj(unit,"NGRID1",axis_size(2),nfound,status)
+      call ftgkyj(unit,"NGRID2",axis_size(3),nfound,status)
+      write(message,*) "Axis sizes: ", axis_size
+      call writeInfo(message,TRIVIAL)
+      npixels = axis_size(1) * axis_size(2) * axis_size(3)
+
+      allocate(density_double     (axis_size(1), axis_size(2), axis_size(3)) )
+      allocate(temperature_double (axis_size(1), axis_size(2), axis_size(3)) )
+
+      call ftgkye(unit,"XMIN0",xmin0,nfound,status)
+      call ftgkye(unit,"XMIN1",xmin1,nfound,status)
+      call ftgkye(unit,"XMIN2",xmin2,nfound,status)
+
+      call ftgkye(unit,"XMAX0",xmax0,nfound,status)
+      call ftgkye(unit,"XMAX1",xmax1,nfound,status)
+      call ftgkye(unit,"XMAX2",xmax2,nfound,status)
+
+
+
+! Move to the next extension
+      call ftmrhd(unit,1,hdutype,status)
+      call ftgkys(unit,"EXTNAME",record,comment,status)
+      if (status==0) then
+         write(message,*) "Reading density from field with EXTNAME= ", trim(record)
+         call writeInfo(message,TRIVIAL)
+      else
+         call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+      endif
+
+! Read in the data.
+      call ftgpvd(unit,group,1,npixels,1d-33,junk,anynull,status)
+
+! Write out some information about the data we have just read as a basic check 
+      mindata = minval(density(:,:,:))
+      maxdata = maxval(density(:,:,:))
+      write(message,*) "Minimum data value= ", mindata
+      call writeInfo(message,FORINFO)
+      write(message,*) "Maximum data value= ", maxdata
+      call writeInfo(message,FORINFO)
+
+
+! Close the file and free the LUN
+      call ftclos(unit, status)
+      call ftfiou(unit, status)
+
+! If there were any errors then print them out
+      call printFitsError(status)
+
+    end subroutine read_fits_file_for_grid_mackey
 
 !-------------------------------------------------------------------------------
     subroutine read_lutable
