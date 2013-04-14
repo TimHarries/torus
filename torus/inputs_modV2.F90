@@ -1386,7 +1386,7 @@ contains
       call getString("fitsgridfile", filename, cLine, fLine, nLines, &
            "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
 
-      call setGridFromFitsParameters(filename)
+      call setGridFromFitsParameters(filename,amr2d,amr3d)
 
     end subroutine readFitsGridParameters
 

@@ -45,14 +45,24 @@ module gridFromFitsFile
   integer, parameter, private :: npd = 91
   real, private, save :: pdlogt(npd), pd(npd)
 
+! Grid geometry
+  logical, private, save :: amr2d, amr3d
+
   contains
 
 ! Called from inputs_mod to set parameters for this module
-    subroutine setGridFromFitsParameters(infile)
+    subroutine setGridFromFitsParameters(infile,twod,threed)
       character(len=80) :: infile
+      logical, intent(in) :: twod, threed
 
       isRequired = .true.
       filename=infile
+      amr2d = twod
+      amr3d = threed
+
+      if (amr2d.and.amr3d) call writeWarning("Both 2D and 3D are set")
+      if (( .not.amr2d) .and. (.not.amr3d) ) call writeWarning("Neither 2D nor 3D is set")
+
     end subroutine setGridFromFitsParameters
 
     subroutine read_fits_file_for_grid
@@ -488,7 +498,7 @@ npd_loop:            do n=1,npd
 
 !-------------------------------------------------------------------------------
     logical function checkFitsSplit(thisOctal)
-      use inputs_mod, only : amr2d, amr3d
+
       use octal_mod
       use utils_mod, only : locate
 
@@ -517,7 +527,7 @@ npd_loop:            do n=1,npd
 !-------------------------------------------------------------------------------
 
     subroutine assign_from_fitsfile_interp(thisOctal, subcell)
-      use inputs_mod, only : amr2d, amr3d
+
       use octal_mod
       use utils_mod, only : locate
 
@@ -547,9 +557,9 @@ npd_loop:            do n=1,npd
             call locate(xAxis, axis_size(1), rVec%x, thisI)
             call locate(yAxis, axis_size(2), rVec%y, thisJ)
             call locate(zAxis, axis_size(3), rVec%z, thisK)
-            u = (rVec%x - xAxis(thisI))/(xAxis(thisI+1)-xAxis(thisI))
-            v = (rVec%y - yAxis(thisJ))/(yAxis(thisJ+1)-yAxis(thisJ))
-            w = (rVec%z - zAxis(thisK))/(zAxis(thisK+1)-zAxis(thisK))
+            u = real((rVec%x - xAxis(thisI))/(xAxis(thisI+1)-xAxis(thisI)))
+            v = real((rVec%y - yAxis(thisJ))/(yAxis(thisJ+1)-yAxis(thisJ)))
+            w = real((rVec%z - zAxis(thisK))/(zAxis(thisK+1)-zAxis(thisK)))
             thisOctal%rho(subcell) =   density_double(thisI  ,  thisJ  ,thisK  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
                                     +  density_double(thisI+1,  thisJ  ,thisK  ) * (     u)*(1.d0-v)*(1.d0-w) &
                                     +  density_double(thisI  ,  thisJ+1,thisK  ) * (1.d0-u)*(     v)*(1.d0-w) &
@@ -562,8 +572,8 @@ npd_loop:            do n=1,npd
             call locate(xAxis, axis_size(1), rVec%z, thisI)
             call locate(yAxis, axis_size(2), rVec%x, thisJ)
             
-            u = (rVec%z - xAxis(thisI))/(xAxis(thisI+1)-xAxis(thisI))
-            v = (rVec%x - yAxis(thisJ))/(yAxis(thisJ+1)-yAxis(thisJ))
+            u = real((rVec%z - xAxis(thisI))/(xAxis(thisI+1)-xAxis(thisI)))
+            v = real((rVec%x - yAxis(thisJ))/(yAxis(thisJ+1)-yAxis(thisJ)))
             thisOctal%rho(subcell) =     density_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
                                     +  density_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
                                    +  density_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
