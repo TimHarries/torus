@@ -12,7 +12,7 @@ module gridFromFitsFile
   use constants_mod
   implicit none
 
-  public :: read_fits_file_for_grid, assign_from_fitsfile, setGridFromFitsParameters
+  public :: read_fits_file_for_grid, assign_from_fitsfile, setGridFromFitsParameters, checkFitsSplit
   private :: setup_axes, read_lutable
 
   logical, private, save :: isRequired = .false.
@@ -99,7 +99,7 @@ module gridFromFitsFile
          case("VH1")
             call read_fits_file_for_grid_vh1
          case("pion")
-            call read_fits_file_for_grid_mackey
+            call read_fits_file_for_grid_pion
          case DEFAULT
             call writeFatal("Fits file type not recognised")
             stop
@@ -265,7 +265,7 @@ npd_loop:            do n=1,npd
 ! Based on the FITS cookbook
 ! D. Acreman, October 2012
 
-    subroutine read_fits_file_for_grid_mackey
+    subroutine read_fits_file_for_grid_pion
 
       use fits_utils_mod, only: printFitsError
       use constants_mod, only: Rgas
@@ -276,12 +276,12 @@ npd_loop:            do n=1,npd
       integer :: status, unit, blocksize
       integer, parameter :: readwrite=0 ! Open file read only 
       integer, parameter :: group=0
-      integer :: naxis, nfound, npixels, hdutype
+      integer :: naxis, nfound, npixels, hdutype, i
       character(len=80) :: record, comment
       logical :: anynull
-      real(single) :: maxdata, mindata, xmin0, xmin1, xmin2
+      real(single) :: xmin0, xmin1, xmin2
       real(single) :: xmax0, xmax1, xmax2
-      real(double) :: junk(40,20)
+      real(double), parameter :: nullvall = 1.d-33
 
 
       call writeInfo ("Initialising grid from a FITS file", IMPORTANT)
@@ -317,7 +317,29 @@ npd_loop:            do n=1,npd
       call ftgkye(unit,"XMAX1",xmax1,nfound,status)
       call ftgkye(unit,"XMAX2",xmax2,nfound,status)
 
+      allocate(xAxis(1:axis_size(1)))
+      allocate(yAxis(1:axis_size(2)))
+      allocate(zAxis(1:axis_size(3)))
 
+      dx = (xMax0 - xMin0)/real(axis_size(1))
+      dy = (xMax1 - xMin1)/real(axis_size(2))
+      dz = (xMax2 - xMin2)/real(axis_size(3))
+      do i = 1, axis_size(1)
+         xAxis(i) = xMin0 + dx * real(i-1)
+      enddo
+      do i = 1, axis_size(2)
+         yAxis(i) = xMin1 + dy * real(i-1)
+      enddo
+      do i = 1, axis_size(3)
+         zAxis(i) = xMin2 + dz * real(i-1)
+      enddo
+
+      xAxis = xAxis / 1.e10
+      yAxis = yAxis / 1.e10
+      zAxis = zAxis / 1.e10
+      dx = dx / 1.e10
+      dy = dy / 1.e10
+      dz = dz / 1.e10
 
 ! Move to the next extension
       call ftmrhd(unit,1,hdutype,status)
@@ -330,15 +352,16 @@ npd_loop:            do n=1,npd
       endif
 
 ! Read in the data.
-      call ftgpvd(unit,group,1,npixels,1d-33,junk,anynull,status)
-
+      write(*,*) "reading ", npixels, " pixels"
+      call ftgpvd(unit,group,1,npixels,nullvall,density_double(:,:,:),anynull,status)
+      write(*,*) "read"
 ! Write out some information about the data we have just read as a basic check 
-      mindata = minval(density(:,:,:))
-      maxdata = maxval(density(:,:,:))
-      write(message,*) "Minimum data value= ", mindata
-      call writeInfo(message,FORINFO)
-      write(message,*) "Maximum data value= ", maxdata
-      call writeInfo(message,FORINFO)
+!      mindata = minval(density(:,:,:))
+!      maxdata = maxval(density(:,:,:))
+!      write(message,*) "Minimum data value= ", mindata
+!      call writeInfo(message,FORINFO)
+!      write(message,*) "Maximum data value= ", maxdata
+!      call writeInfo(message,FORINFO)
 
 
 ! Close the file and free the LUN
@@ -347,8 +370,8 @@ npd_loop:            do n=1,npd
 
 ! If there were any errors then print them out
       call printFitsError(status)
-
-    end subroutine read_fits_file_for_grid_mackey
+      write(*,*) "done reading"
+    end subroutine read_fits_file_for_grid_pion
 
 !-------------------------------------------------------------------------------
     subroutine read_lutable
@@ -423,6 +446,23 @@ npd_loop:            do n=1,npd
       TYPE(OCTAL), intent(inout) :: thisOctal
       integer, intent(in) :: subcell
 
+      if (allocated(density_double)) then
+         call assign_from_fitsfile_interp(thisOctal, subcell)
+      else
+         call assign_from_fitsfile_nointerp(thisOctal, subcell)
+      endif
+    end subroutine assign_from_fitsfile
+
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+
+    subroutine assign_from_fitsfile_nointerp(thisOctal, subcell)
+      use octal_mod
+
+      TYPE(OCTAL), intent(inout) :: thisOctal
+      integer, intent(in) :: subcell
+
       TYPE(vector) :: thisCentre
       integer :: thisI, thisJ, thisK
 
@@ -444,10 +484,104 @@ npd_loop:            do n=1,npd
       thisOctal%biasCont3D = 1.
       thisOctal%etaLine = 1.e-30
 
-    end subroutine assign_from_fitsfile
+    end subroutine assign_from_fitsfile_nointerp
+
+!-------------------------------------------------------------------------------
+    logical function checkFitsSplit(thisOctal)
+      use inputs_mod, only : amr2d, amr3d
+      use octal_mod
+      use utils_mod, only : locate
+
+
+      TYPE(OCTAL), intent(inout) :: thisOctal
+      type(VECTOR) :: rVec
+      logical :: inPionDomain
+      rVec = thisOctal%centre
+
+      if (amr2d) then
+         inPionDomain = (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2))).and. &
+              (rVec%z >= xAxis(1)).and.(rVec%z <= xAxis(axis_size(1)))
+      else if (amr3d) then
+         inPionDomain = (rVec%x >= xAxis(1)).and.(rVec%x <= xAxis(axis_size(1))).and. &
+              (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
+              (rVec%z >= xAxis(3)).and.(rVec%z <= zAxis(axis_size(3)))
+      endif
+      checkFitsSplit = .false.
+      if (inPionDomain) then
+         if (amr2d) then
+            if (thisOctal%subcellSize > 0.5d0*min(dx,dy)) checkFitsSplit = .true.
+         endif
+      endif
+    end function checkFitsSplit
 
 !-------------------------------------------------------------------------------
 
+    subroutine assign_from_fitsfile_interp(thisOctal, subcell)
+      use inputs_mod, only : amr2d, amr3d
+      use octal_mod
+      use utils_mod, only : locate
+
+
+      TYPE(OCTAL), intent(inout) :: thisOctal
+      integer, intent(in) :: subcell
+
+      TYPE(vector) :: rVec
+      integer :: thisI, thisJ, thisK
+      real :: u, v, w 
+      logical :: inPionDomain
+      rVec = subcellcentre(thisOctal, subcell)
+      thisOctal%rho(subcell) = 1.d-30
+      inPionDomain = .false.
+      if (amr2d) then
+         inPionDomain = (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2))).and. &
+              (rVec%z >= xAxis(1)).and.(rVec%z <= xAxis(axis_size(1)))
+      else if (amr3d) then
+         inPionDomain = (rVec%x >= xAxis(1)).and.(rVec%x <= xAxis(axis_size(1))).and. &
+              (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
+              (rVec%z >= xAxis(3)).and.(rVec%z <= zAxis(axis_size(3)))
+      endif
+
+
+      if (inPionDomain) then
+         if (amr3d) then
+            call locate(xAxis, axis_size(1), rVec%x, thisI)
+            call locate(yAxis, axis_size(2), rVec%y, thisJ)
+            call locate(zAxis, axis_size(3), rVec%z, thisK)
+            u = (rVec%x - xAxis(thisI))/(xAxis(thisI+1)-xAxis(thisI))
+            v = (rVec%y - yAxis(thisJ))/(yAxis(thisJ+1)-yAxis(thisJ))
+            w = (rVec%z - zAxis(thisK))/(zAxis(thisK+1)-zAxis(thisK))
+            thisOctal%rho(subcell) =   density_double(thisI  ,  thisJ  ,thisK  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
+                                    +  density_double(thisI+1,  thisJ  ,thisK  ) * (     u)*(1.d0-v)*(1.d0-w) &
+                                    +  density_double(thisI  ,  thisJ+1,thisK  ) * (1.d0-u)*(     v)*(1.d0-w) &
+                                    +  density_double(thisI+1,  thisJ+1,thisK  ) * (     u)*(     v)*(1.d0-w) &
+                                    +  density_double(thisI  ,  thisJ  ,thisK+1) * (1.d0-u)*(1.d0-v)*(     w) &
+                                    +  density_double(thisI+1,  thisJ  ,thisK+1) * (     u)*(1.d0-v)*(     w) &
+                                    +  density_double(thisI  ,  thisJ+1,thisK+1) * (1.d0-u)*(     v)*(     w) &
+                                    +  density_double(thisI+1,  thisJ+1,thisK+1) * (     u)*(     v)*(     w)  
+         else if (amr2d) then
+            call locate(xAxis, axis_size(1), rVec%z, thisI)
+            call locate(yAxis, axis_size(2), rVec%x, thisJ)
+            
+            u = (rVec%z - xAxis(thisI))/(xAxis(thisI+1)-xAxis(thisI))
+            v = (rVec%x - yAxis(thisJ))/(yAxis(thisJ+1)-yAxis(thisJ))
+            thisOctal%rho(subcell) =     density_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
+                                    +  density_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
+                                   +  density_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
+                                   +  density_double(thisI+1,thisJ+1,1)* (     u)*(     v) 
+         endif
+      endif
+
+      thisOctal%etaCont(subcell) = 0.
+      thisOctal%inFlow(subcell) = .true.
+      thisOctal%velocity = VECTOR(0.,0.,0.)
+      thisOctal%biasCont3D = 1.
+      thisOctal%etaLine = 1.e-30
+
+    end subroutine assign_from_fitsfile_interp
+
+!-------------------------------------------------------------------------------
+
+      
     subroutine deallocate_gridFromFitsFile
 
       if (allocated (density))     deallocate(density)

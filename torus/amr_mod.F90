@@ -15,7 +15,6 @@ module amr_mod
   USE cluster_class, only:  cluster
 #endif
   use mpi_global_mod, only: myRankGlobal
-
   IMPLICIT NONE
 
   type STREAMTYPE
@@ -531,6 +530,13 @@ CONTAINS
 
       end subroutine calcRunaway
 
+      subroutine calcPion(thisOctal, subcell)
+        use gridFromFitsFile, only : assign_from_fitsfile_interp
+        type(OCTAL) :: thisOctal
+        integer :: subcell
+
+        call assign_from_fitsfile_interp(thisOctal, subcell)
+      end subroutine calcPion
   END SUBROUTINE calcValuesAMR
 
   SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, romData ,&
@@ -3196,6 +3202,8 @@ CONTAINS
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1, vh1FileRequired
     use density_mod, only: density
+    use gridFromFitsFile, only : checkFitsSplit
+
 #ifdef SPH
     USE cluster_class, only:   find_n_particle_in_subcell
     use sph_data_class, only:  sphVelocityPresent, get_npart
@@ -3726,7 +3734,8 @@ CONTAINS
           else
              split = .false.
           endif          
-                   
+       case("fitsfile")
+          split = checkFitsSplit(thisOctal)
        case("runaway")
           
           if (vh1FileRequired()) then 
@@ -4474,7 +4483,7 @@ CONTAINS
           
           !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
-          write(*,*) hr, height, r, betadisc
+!          write(*,*) hr, height, r, betadisc
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
