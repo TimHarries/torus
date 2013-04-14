@@ -756,7 +756,7 @@ module amr_utils_mod
     if (thisOctal%twoD) then
        if(cart2d) then
           point_local = point
-          elseif (.not.cylindricalHydro) then
+       elseif (.not.cylindricalHydro) then
           point_local = projectToXZ(point)
        else
           point_local = point
@@ -2178,7 +2178,7 @@ module amr_utils_mod
 
           call randomNumberGenerator(getDouble=ang)
           ang = ang * twoPi
-          if(cart2d) then
+          if(.not.cart2d) then
              randomPositionInCell = rotateZ(randomPositionInCell, ang)
           end if
        endif
