@@ -61,7 +61,7 @@ contains
   subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, fluxUnits, &
        imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance)
     use messages_mod
-    use constants_mod, only: autocm, pctocm, radToDeg, pi
+    use constants_mod, only: autocm, pctocm, pi
     implicit none 
 
 ! Arguments

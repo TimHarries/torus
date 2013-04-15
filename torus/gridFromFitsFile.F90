@@ -286,7 +286,7 @@ npd_loop:            do n=1,npd
       integer :: status, unit, blocksize
       integer, parameter :: readwrite=0 ! Open file read only 
       integer, parameter :: group=0
-      integer :: naxis, nfound, npixels, hdutype, i
+      integer :: naxis, npixels, hdutype, i
       character(len=80) :: record, comment
       logical :: anynull
       real(single) :: xmin0, xmin1, xmin2
@@ -309,9 +309,9 @@ npd_loop:            do n=1,npd
 
 ! Find out the size of the axis
       axis_size(:)=1
-      call ftgkyj(unit,"NGRID0",axis_size(1),nfound,status)
-      call ftgkyj(unit,"NGRID1",axis_size(2),nfound,status)
-      call ftgkyj(unit,"NGRID2",axis_size(3),nfound,status)
+      call ftgkyj(unit,"NGRID0",axis_size(1),comment,status)
+      call ftgkyj(unit,"NGRID1",axis_size(2),comment,status)
+      call ftgkyj(unit,"NGRID2",axis_size(3),comment,status)
       write(message,*) "Axis sizes: ", axis_size
       call writeInfo(message,TRIVIAL)
       npixels = axis_size(1) * axis_size(2) * axis_size(3)
@@ -319,13 +319,13 @@ npd_loop:            do n=1,npd
       allocate(density_double     (axis_size(1), axis_size(2), axis_size(3)) )
       allocate(temperature_double (axis_size(1), axis_size(2), axis_size(3)) )
 
-      call ftgkye(unit,"XMIN0",xmin0,nfound,status)
-      call ftgkye(unit,"XMIN1",xmin1,nfound,status)
-      call ftgkye(unit,"XMIN2",xmin2,nfound,status)
+      call ftgkye(unit,"XMIN0",xmin0,comment,status)
+      call ftgkye(unit,"XMIN1",xmin1,comment,status)
+      call ftgkye(unit,"XMIN2",xmin2,comment,status)
 
-      call ftgkye(unit,"XMAX0",xmax0,nfound,status)
-      call ftgkye(unit,"XMAX1",xmax1,nfound,status)
-      call ftgkye(unit,"XMAX2",xmax2,nfound,status)
+      call ftgkye(unit,"XMAX0",xmax0,comment,status)
+      call ftgkye(unit,"XMAX1",xmax1,comment,status)
+      call ftgkye(unit,"XMAX2",xmax2,comment,status)
 
       allocate(xAxis(1:axis_size(1)))
       allocate(yAxis(1:axis_size(2)))
