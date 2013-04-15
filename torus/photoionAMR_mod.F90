@@ -74,6 +74,7 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
+    use inputs_mod, only: densitySpectrum
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -196,13 +197,37 @@ contains
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
        if(justDump) then 
-          write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
-          call writeVtkFile(grid, mpiFilename, &
-               valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     ","radmom       ", "rhou         " &
-               , "rhov         ", "rhow         "/))
-          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-          call torus_abort("vtk dump completed. Aborting...")
+
+          if(densitySpectrum) then
+  !           print *, "DUMPING DENSITY SPECTRUM"
+             if(myRankGlobal == 0) then
+                write(mpiFilename,'(a, i4.4, a)') "rhoSpectrum.dat"
+!                print *, "RANK ", myrankglobal, " GOING IN"
+                call dumpDensitySpectrumZero(mpiFilename)
+             else
+ !               print *, "RANK ", myrankglobal, " GOING IN"
+                call dumpDensitySpectrumOther(grid%octreeRoot)
+                print *, "RANK ", myrankglobal, "IS OUT"
+                call MPI_BARRIER(amrCommunicator, ierr)
+                if(myRankGlobal == 1) then
+                   call killDensitySpectrumDumper()
+                   print *, "killing zero"
+                end if
+             end if
+    !         print *, "RANK ", myrankglobal, "IS AT FINAL GATE"
+             call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+             call torus_abort("Density spectrum dump completed. Aborting...")
+          else
+             write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
+             call writeVtkFile(grid, mpiFilename, &
+                  valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+                  "hydrovelocity","sourceCont   ","pressure     ","radmom       ", "rhou         " &
+                  , "rhov         ", "rhow         "/))
+             
+             call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+             call torus_abort("vtk dump completed. Aborting...")
+          end if
+
        end if
        
        if(dumpBisbas) then

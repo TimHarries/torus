@@ -3152,6 +3152,129 @@ end subroutine writeRadialFile
   end subroutine dumpValuesAlongLine
 
 
+  subroutine dumpDensitySpectrumZero(filename)
+    use mpi 
+    implicit none
+    real(double) :: rho
+    character(len=*) :: filename
+    integer :: ierr
+    integer, parameter :: nBins = 14
+    real(double) :: tempSTorage(2), mass, logrho
+    integer, parameter :: tag = 50
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillRecving!, found
+    integer :: i    
+    real(double) :: dv, binIDs(nBins+1), massSpec(nBins), dRho
+
+   ! print *, "ENTERED"
+    if(myrankglobal == 0) then
+       open(22, file=filename, form="formatted", status="replace")
+
+       binIDs(1) = -25.
+       dRho = 0.5
+       do i = 2, nBins+1
+          binIDs(i) = binIDs(i-1) + dRho
+       end do
+  !     print *, "BIN IDS SET UP"
+       massSpec = 0.d0
+       stillRecving=.true.
+       do while (stillRecving)
+!          print *, "WAITING TO RECV"
+          call MPI_RECV(tempStorage, 2, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, &
+               tag, localWorldCommunicator, status, ierr)       
+ !         print *, "RECVD ONE"
+          rho = tempStorage(1)
+          dv = tempStorage(2)
+          mass = rho*dv
+          if (rho > 1.d20) then
+             stillRecving = .false.
+          end if
+          if(stillRecving) then
+             logrho = log10(rho)
+             
+!             Found = .false.
+             
+             
+ !            do while (.not. found)
+             do i=1, nBins
+                if(logrho > binIDs(i) .and. logrho < binIDs(i+1)) then
+                   massSpec(i) = massSpec(i) + mass                   
+                   !                      found = .true.
+                end if
+             end do
+             !              found = .true.
+             !          end do
+          end if
+       end do
+       print *, "DONE, preparing to dump data"
+       print *, binIDs
+       print *, massSpec
+       do i = 1, nBins
+          write(22,'(1p,7e14.2)') binIDs(i), massSpec(i)
+          write(22,'(1p,7e14.2)') binIDs(i+1), massSpec(i)
+       end do
+       close(22)
+   end if
+
+
+ end subroutine dumpDensitySpectrumZero
+
+
+ recursive subroutine dumpDensitySpectrumOther(thisOctal)
+    use mpi 
+    use inputs_mod, only : griddistancescale
+    implicit none
+    type(OCTAL), pointer :: thisOctal, childOctal
+    integer :: subcell!, childSubcell
+    integer :: ierr
+    integer, parameter :: nBins = 10
+    real(double) :: tempSTorage(2), dv
+    integer, parameter :: tag = 50
+    integer :: i    
+!    real(double) :: binIDs(nBins+1), massSpec(nBins)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                childOctal => thisOctal%child(i)
+                call  dumpDensitySpectrumOther(childOctal)
+                exit
+             end if
+          end do
+       else 
+          if(.not. thisoctal%ghostcell(subcell)) then
+             tempStorage(1) = thisOctal%rho(subcell)
+             if(thisOctal%twoD) then
+                tempStorage(2) = (thisOctal%subcellSize**2)*griddistancescale**2
+             else
+                dv = cellVolume(thisOctal, subcell)*1.d30
+             end if
+!             print *, "SENDING"
+             call MPI_SEND(tempStorage, 2, MPI_DOUBLE_PRECISION, 0, &
+                  tag, localWorldCommunicator, ierr) 
+!             print *, "SENT"
+          end if
+       end if
+    end do
+!    print *, "DONE"
+ end subroutine dumpDensitySpectrumOther
+
+ subroutine killDensitySpectrumDumper()
+   use mpi
+   implicit none
+   integer, parameter :: tag = 50
+   integer :: ierr
+   real(double) :: tempSTorage(2)
+
+   tempStorage(1) = 1.d25
+   tempStorage(2) = 0.d0
+   call MPI_SEND(tempStorage, 2, MPI_DOUBLE_PRECISION, 0, &
+        tag, localWorldCommunicator, ierr)   
+
+ end subroutine killDensitySpectrumDumper
+
   subroutine tauRadius(grid, uHat, tauWanted, tauRad)
     use mpi
     use inputs_mod, only : smallestCellsize
