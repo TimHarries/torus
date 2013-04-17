@@ -1334,8 +1334,10 @@ contains
 ! For setting up a grid from a VH-1 dump
     if (checkPresent("vh1filename", cline, nlines)) call readVh1Parameters
 
+#ifdef USECFITSIO
 ! For setting up a grid from a FITS file
      if (checkPresent("fitsgridfile", cline, nlines)) call readFitsGridParameters
+#endif
 
   contains
 
@@ -1382,6 +1384,7 @@ contains
 
     end subroutine readVh1Parameters
 
+#ifdef USECFITSIO
     subroutine readFitsGridParameters
       use gridFromFitsFile, only: setGridFromFitsParameters
       character(len=80) :: filename
@@ -1392,6 +1395,7 @@ contains
       call setGridFromFitsParameters(filename,amr2d,amr3d)
 
     end subroutine readFitsGridParameters
+#endif
 
   end subroutine readGridInitParameters
 

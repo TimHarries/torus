@@ -530,6 +530,7 @@ CONTAINS
 
       end subroutine calcRunaway
 
+#ifdef USECFITSIO
       subroutine calcPion(thisOctal, subcell)
         use gridFromFitsFile, only : assign_from_fitsfile_interp
         type(OCTAL) :: thisOctal
@@ -537,6 +538,7 @@ CONTAINS
 
         call assign_from_fitsfile_interp(thisOctal, subcell)
       end subroutine calcPion
+#endif
   END SUBROUTINE calcValuesAMR
 
   SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, romData ,&
@@ -3202,8 +3204,9 @@ CONTAINS
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1, vh1FileRequired
     use density_mod, only: density
+#ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
-
+#endif
 #ifdef SPH
     USE cluster_class, only:   find_n_particle_in_subcell
     use sph_data_class, only:  sphVelocityPresent, get_npart
@@ -3734,8 +3737,10 @@ CONTAINS
           else
              split = .false.
           endif          
+#ifdef USECFITSIO
        case("fitsfile")
           split = checkFitsSplit(thisOctal)
+#endif
        case("runaway")
           
           if (vh1FileRequired()) then 
