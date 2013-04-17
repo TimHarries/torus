@@ -3,6 +3,7 @@
 #
 
 # Default options
+SYSTEM = gfortran
 memcheck = yes
 openmp  = yes
 cfitsio = no
@@ -21,7 +22,7 @@ endif
 ifeq ($(SYSTEM), gfortran)
     F95COMP = gfortran
     FASTFLAG = -O2
-    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
+    DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
 endif
@@ -54,6 +55,10 @@ ifeq ($(memcheck), yes)
    ETCFLAG += -DMEMCHECK
 endif
 
+ifeq ($(debug), yes)
+   ETCFLAG += $(DEBUGFLAG)
+   FASTFLAG = 
+endif
 
 # Set OpenMP flags
 ifeq ($(openmp), yes)
