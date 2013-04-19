@@ -8360,7 +8360,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vvec,zaxis
-    real(double) :: omega,r, v, phi, ethermal, eKinetic, fac
+    real(double) :: r, v, ethermal, eKinetic, fac
     real(double) :: theta, r0
     real(double) :: rhoambient, tAmbient
     real(double) :: rhoRing, Tring

@@ -2074,7 +2074,7 @@ end subroutine radiationHydro
                       endif
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
-                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, bigPhotonPacket)
+                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 !                      if (escaped.and.bigPHotonPacket) then
 !                         write(*,*) myrankGlobal, " big photon packet escaped ",rVec
 !                      endif
@@ -3180,14 +3180,13 @@ end subroutine setDiffusionZoneOnRadius
 
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, &
-     bigPhotonPacket)
+     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+
   use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro
   use mpi
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
-   logical :: bigPhotonPacket
    type(OCTAL), pointer :: thisOctal
    type(OCTAL),pointer :: oldOctal
    real(double) :: tPhoton, tLimit, epsOverDeltaT

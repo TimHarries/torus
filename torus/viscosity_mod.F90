@@ -555,7 +555,6 @@ contains
 
   recursive subroutine viscousTimescaleCylindrical(thisoctal, grid, dt)
     use inputs_mod, only : smallestCellsize, gridDistanceScale
-    real(double) :: lengthScale
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
