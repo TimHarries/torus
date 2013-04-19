@@ -8380,15 +8380,15 @@ endif
     vVec = (v/cSpeed) * vVec
 
     thisOctal%rho(subcell) = rhoambient
-    thisOctal%temperature(subcell) = Tambient
+    thisOctal%temperature(subcell) = real(Tambient)
     thisOctal%velocity(subcell) = vVec
     if ((abs(rVec%z)-(thisOctal%subcellSize/2.d0)) < 0.1d0*Smallestcellsize) then
        fac = exp(-((rVec%x-r0)/(0.2d0*r0))**2)
        thisOctal%rho(subcell) = rhoambient + (rhoRing-rhoAmbient) * fac
-       thisOctal%temperature(subcell) = tAmbient * rhoAmbient/thisOctal%rho(subcell)
+       thisOctal%temperature(subcell) = real(tAmbient * rhoAmbient/thisOctal%rho(subcell))
     else
        thisOctal%rho(subcell) = rhoambient
-       thisOctal%temperature(subcell) = tambient
+       thisOctal%temperature(subcell) = real(tambient)
     endif
     thisOctal%rhoV(subcell) = thisOctal%rho(subcell) * v * (r * 1.d10)
 
