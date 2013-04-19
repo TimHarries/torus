@@ -1247,7 +1247,7 @@ contains
   end subroutine writeVTKfileSource
 
   subroutine writeVTKfileNbody(nSource, source, vtkFilename)
-    use inputs_mod, only : donBodyOnly
+    use inputs_mod, only : donBodyOnly, amr3d
     use source_mod
     use mpi_global_mod
     integer :: nSource
@@ -1257,7 +1257,7 @@ contains
     integer :: nPoints, nElements, iSource
     integer :: i
     type(VECTOR) :: cVec, aVec, v1, v2, v3, v4, zAxis
-    real(double) :: dphi, dtheta
+    real(double) :: dphi, dtheta, r, ang1, ang2
     integer :: nCount
     
 
@@ -1273,6 +1273,7 @@ contains
     write(lunit,'(a)') "ASCII"
     write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
 
+    if (amr3d) then
     nPoints = 0 
     do iSource = 1 , nSource
        nPoints = nPoints + source(iSource)%surface%nElements
@@ -1356,6 +1357,59 @@ contains
           write(lunit,*) source(isource)%teff
        enddo
     enddo
+ else
+    nPoints = nSource * 100
+    nElements = nPoints
+    nPoints = nPoints * 3
+    write(lunit,'(a,i10,a)') "POINTS ",nPoints, " float"
+
+    do iSource = 1, nSource
+       do i = 1, 100
+          r = source(isource)%accretionRadius/1.d10
+          ang1 = twoPi * dble(i-1)/100.d0
+          ang2 = twoPi * dble(i)/100.d0
+          v1 = VECTOR(source(isource)%position%x, &
+               source(isource)%position%z, &
+               0.d0)
+          v2 = VECTOR(source(isource)%position%x +  r*cos(ang1), &
+                      source(isource)%position%z + r*sin(ang1),  &
+                      0.d0)
+          v3 = VECTOR(source(isource)%position%x +  r*cos(ang2), &
+                      source(isource)%position%z + r*sin(ang2),  &
+                      0.d0)
+          write(lunit,*) v1%x, v1%y, 0.d0
+          write(lunit,*) v2%x, v2%y, 0.d0
+          write(lunit,*) v3%x, v3%y, 0.d0
+       enddo
+    enddo
+
+    write(lunit, '(a, i10, i10)') "CELLS ",nElements, nPoints+nElements
+    ncount = 0
+    do iSource = 1, nSource
+       do i = 1, 100
+          write(lunit, '(5i10)') 3, nCount,&
+                    nCount + 1, &
+                    nCount + 2 
+               nCount = nCount + 3
+       enddo
+    enddo
+    write(lunit, '(a, i10)') "CELL_TYPES ",nElements
+    do i = 1, nElements
+       write(lunit, '(a)') "5"
+    enddo
+    write(lunit, '(a,  i10)') "CELL_DATA ",nElements
+
+    write(lunit,'(a,a,a)') "SCALARS ","mass"," float"
+    write(lunit, '(a)') "LOOKUP_TABLE default"
+
+    do iSource = 1, nSource
+       do i = 1, 100
+          write(lunit,*) source(isource)%mass/msol
+       enddo
+    enddo
+
+endif
+
 
     close(lunit)
 #ifdef MPI

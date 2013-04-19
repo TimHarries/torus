@@ -236,6 +236,11 @@ contains
                    write(*,*) "Source outside grid!"
                 end if
 
+                if (cylindricalHydro) then
+                   source(isource)%onEdge = .false.
+                   source(isource)%onCorner = .false.
+                endif
+
                 select case(inputContFluxFile(isource))
                 case("blackbody")
                    !          if(biasToLyman) then
@@ -366,7 +371,7 @@ contains
 
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-    integer, parameter :: nMuMie = 20
+    integer, parameter :: nMuMie = 50
     integer :: nlower, nupper, sign
     type(GRIDTYPE) :: grid
 #ifdef MPI

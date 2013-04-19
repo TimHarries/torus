@@ -704,7 +704,7 @@ contains
        if (thisOctal%hasChild(isubcell)) cycle
        IF ((need_to_split2(thisOctal,isubcell,this).and.(thisOctal%nDepth < maxDepthAMR))) then
 
-          if (thisOctal%dPhi*radtodeg > 89.d0) then
+          if (thisOctal%dPhi*radtodeg > 44.d0) then
              CALL add_new_children_discwind(thisOctal, isubcell, grid, this, splitAzimuthally=.true.)
           else
              CALL add_new_children_discwind(thisOctal, isubcell, grid, this)

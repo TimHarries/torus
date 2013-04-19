@@ -35,6 +35,10 @@ contains
     else
        u_i_minus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
     endif
+!    r = cen%x * gridDistanceScale
+!    u_i_minus_1 =  (VECTOR(thisOctal%rhou(subcell),thisOctal%rhov(subcell)/r,thisOctal%rhow(subcell)).dot.dir_u)/thisOctal%rho(subcell)
+!    cen_i_minus_1 = cen
+
 
     locator = cen + (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir_x
     neighbouroctal => thisoctal
@@ -183,11 +187,11 @@ contains
     cen2 = subcellCentre(thisOctal,subcell)
     locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(1)
     
+    r = sqrt(cen2%x**2 + cen2%y**2) * gridDistanceScale
 
     do iDir = 1, 3
        do jDir = 1, 3
 
-          r = sqrt(cen2%x**2 + cen2%y**2) * gridDistanceScale
 
 
           if (jDir /= 2) then
@@ -455,24 +459,25 @@ contains
              divV = dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) + &
                   thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*r) +  &
                   dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid)
+
 ! now tau_rr
 
-             thisOctal%qViscosity(subcell,1,1) = thisOctal%etaline(subcell) *  &
+             thisOctal%qViscosity(subcell,1,1) = thisOctal%etaline(subcell) *  thisOctal%rho(subcell) * &
              (2.d0 * dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) - 0.6666666666d0 * divV)
 
 ! now tau_thetatheta
-             thisOctal%qViscosity(subcell,2,2) =  thisOctal%etaline(subcell) *  &
+             thisOctal%qViscosity(subcell,2,2) =  thisOctal%etaline(subcell) *  thisOctal%rho(subcell) * &
              (2.d0 * thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*r) - 0.6666666666d0 * divV)
 
 ! now tau_zz
 
-             thisOctal%qViscosity(subcell,3,3) = thisOctal%etaline(subcell) * &
+             thisOctal%qViscosity(subcell,3,3) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
              (2.d0 * dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid) - 0.6666666666d0 * divV)
 
 ! now tau_rtheta
 
              vTheta = thisOctal%rhov(subcell) / (thisOctal%rho(subcell)*r)
-             thisOctal%qViscosity(subcell,1,2) = thisOctal%etaline(subcell) * &
+             thisOctal%qViscosity(subcell,1,2) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
                   (dudx(thisOctal, subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) - (vTheta/r))
 
 ! now tau_thetar
@@ -481,7 +486,7 @@ contains
 
 ! now tau_thetaz
 
-             thisOctal%qViscosity(subcell,2,3) = thisOctal%etaline(subcell) * &
+             thisOctal%qViscosity(subcell,2,3) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
              dudx(thisOctal, subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(0.d0, 0.d0, 1.d0), grid)
 
 
@@ -492,14 +497,14 @@ contains
 
 ! now tau_rz
 
-             thisOctal%qViscosity(subcell,1,3) = thisOctal%etaline(subcell) * &
+             thisOctal%qViscosity(subcell,1,3) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
              (dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) + &
               dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), VECTOR(0.d0, 0.d0, 1.d0), grid))
 
 ! now tau_zr
 
              thisOctal%qViscosity(subcell,3,1) = thisOctal%qViscosity(subcell,1,3) 
-!             if (thisOctal%rho(subcell) > 1.d-14) then
+!             if (thisOctal%rho(subcell) > 1.d-16) then
 !                write(*,*)  " "
 !                write(*,'(a,1p,3e9.1)') "qvisc ",thisOctal%qViscosity(subcell,1,1:3)
 !                write(*,'(a,1p,3e9.1)') "      ",thisOctal%qViscosity(subcell,2,1:3)
@@ -547,6 +552,40 @@ contains
        endif
     enddo
   end subroutine viscousTimescale
+
+  recursive subroutine viscousTimescaleCylindrical(thisoctal, grid, dt)
+    use inputs_mod, only : smallestCellsize, gridDistanceScale
+    real(double) :: lengthScale
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    real(double) :: dt, thisTime, acc
+    type(VECTOR) :: fVisc
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call viscousTimescaleCylindrical(child, grid, dt)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+          if (.not.thisOctal%ghostCell(subcell)) then
+
+             fVisc =  newdivQ(thisOctal, subcell,  grid)
+             acc = max(abs(fVisc%x), abs(fvisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
+
+             thisTime = 0.1d0*sqrt(smallestCellSize*gridDistanceScale/acc)
+             dt = min(thisTime, dt)
+          endif
+       endif
+    enddo
+  end subroutine viscousTimescaleCylindrical
 
 #endif
 end module viscosity_mod

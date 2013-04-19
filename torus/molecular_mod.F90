@@ -38,7 +38,7 @@ module molecular_mod
       module procedure LTEpopsDouble
    end interface
 
-   integer, parameter :: maxray = 1048577
+   integer, parameter :: maxray = 10485770
    integer :: mintrans, minlevel, maxlevel, maxtrans, nlevels, ntrans
    integer :: grand_iter, ngcounter
    integer :: nray

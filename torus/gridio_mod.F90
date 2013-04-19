@@ -3687,12 +3687,17 @@ contains
                call getBranchOverMPI(grid%octreeRoot, null())
             endif
          else
-            do iThread = 0, nThreadsGlobal - 1
-               if (myrankGlobal == iThread) call readAmrGridSingle(gridfilename, fileFormatted, grid)
-               write(message,'(a,i3,a)') "Thread ",ithread, " read"
-               call writeInfo(message,TRIVIAL)
-               call torus_mpi_barrier
-            enddo
+!            do iThread = 0, nThreadsGlobal - 1
+!               if (myrankGlobal == iThread) call readAmrGridSingle(gridfilename, fileFormatted, grid)
+!               write(message,'(a,i3,a)') "Thread ",ithread, " read"
+!               call writeInfo(message,TRIVIAL)
+!               call torus_mpi_barrier
+!            enddo
+            
+            call readAmrGridSingle(gridfilename, fileFormatted, grid)
+            write(message,'(a,i3,a)') "Thread ",ithread, " read"
+            call writeInfo(message,TRIVIAL)
+
          endif
 
 

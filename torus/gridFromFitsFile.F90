@@ -498,7 +498,7 @@ npd_loop:            do n=1,npd
 
 !-------------------------------------------------------------------------------
     logical function checkFitsSplit(thisOctal)
-
+!      use inputs_mod, only : amr2d, amr3d
       use octal_mod
       use utils_mod, only : locate
 
@@ -527,7 +527,6 @@ npd_loop:            do n=1,npd
 !-------------------------------------------------------------------------------
 
     subroutine assign_from_fitsfile_interp(thisOctal, subcell)
-
       use octal_mod
       use utils_mod, only : locate
 

@@ -275,7 +275,7 @@ contains
     if (SedInLambdaFLambda) then
        write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
     else if (SedInSiUnits) then
-       write(20,*) '# Columns are: Lambda (Microns) and Flux (W/m^2)'
+       write(20,*) '# Columns are: Lambda (Microns) and Flux (Flux * lambda) (W/m^2)'
     else if (SedInJansky) then
        write(20,*) '# Columns are: Lambda (Microns) and Flux (janskies)'
     else

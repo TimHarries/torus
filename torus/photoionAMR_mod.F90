@@ -53,14 +53,14 @@ end type PHOTONPACKET
   real :: heIRecombinationNe(3)
   real :: heIIrecombinationLines(3:30, 2:16)
   type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
-
+  real(double) :: globalEpsOverDeltaT
 contains
 
 #ifdef HYDRO
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, dorefine
+    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -100,17 +100,19 @@ contains
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
-    real(double) :: vBulk, vSound
+    real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt
     logical :: noPhoto=.false., tmpCylindricalHydro
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
     integer :: optID
     logical, save :: firstWN=.true.
+    
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter
 !    gridVtuCounter = 0
     dumpThisTime = .false.
+
 
     call mpi_barrier(MPI_COMM_WORLD,ierr)
 
@@ -126,7 +128,7 @@ contains
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
     cfl = 0.3d0
-    
+    globalEpsOverDeltaT = 0.d0
     mu = 1.d0
 
     sign = 1
@@ -360,10 +362,12 @@ contains
 !       else
 !          call ionizeGrid(grid%octreeRoot)
 !       endif
-       if (startFromNeutral) then
-          call neutralGrid(grid%octreeRoot)
-       else if (grid%geometry /= "SB_gasmix") then
-          call ionizeGrid(grid%octreeRoot)
+       if (.not.timeDependentRT) then
+          if (startFromNeutral) then
+             call neutralGrid(grid%octreeRoot)
+          else if (grid%geometry /= "SB_gasmix") then
+             call ionizeGrid(grid%octreeRoot)
+          endif
        endif
 
 !       if (grid%geometry(1:6) == "sphere") &
@@ -384,7 +388,8 @@ contains
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                if (.not.timedependentRT) &
+                     call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
@@ -396,8 +401,9 @@ contains
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
-                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
+                if (.not.timeDependentRT) &
+                     call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                     looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
              endif
@@ -538,6 +544,9 @@ contains
        gasSourcedt = 1.d30
        raddt = 1.d30
        pressuredt = 1.d30
+       recombinationDt = 1.d30
+       ionizationDt = 1.d30
+       thermalDt = 1.d30
        viscDt = 1.d30
        vBulk = 0.d0
        vSound = 0.d0
@@ -551,6 +560,12 @@ contains
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
           call computeDivV(grid%octreeRoot, grid)
           call pressureGradientTimeStep(grid, pressureDt, nPairs, thread1, thread2, nBound, group, nGroup)
+          if (timeDependentRT) then
+             call getRecombinationTime(grid%octreeRoot, recombinationDt)
+             call getIonizationTime(grid%octreeRoot, grid, ionizationDt, globalepsOverDeltaT)
+             call getThermalTime(grid%octreeRoot, grid, thermalDt, globalepsOverDeltaT)
+          endif
+
           if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
           endif
@@ -561,6 +576,16 @@ contains
        vBulk = tempDouble
        call MPI_ALLREDUCE(vSound, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
        vSound = tempDouble
+
+
+       call MPI_ALLREDUCE(recombinationDt, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       recombinationDt = tempDouble
+
+       call MPI_ALLREDUCE(ionizationDt, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       ionizationDt = tempDouble
+
+       call MPI_ALLREDUCE(thermalDt, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       thermalDt = tempDouble
 
        call MPI_ALLREDUCE(gasdt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        gasDt = tempDouble
@@ -574,19 +599,23 @@ contains
        pressureDt = tempDouble
        call MPI_ALLREDUCE(viscdt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        viscDt = tempDouble
-       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt, viscDt)
+       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt, viscDt, &
+            thermalDt)
 
        if (writeoutput) then
-          write(*,"(a,1p,e12.3)") "Courant Time: ", dt* dble(cfl)
-          write(*,"(a,1p,e12.3)") "Max bulk velocity: ", vBulk/1.d5
-          write(*,"(a,1p,e12.3)") "Max sound speed: ", vSound/1.d5
-          write(*,"(a,1p,e12.3)") "Std courant Time: ", gasdt
-          write(*,"(a,1p,e12.3)") "Source-source courant Time: ", sourceSourceDT
-          write(*,"(a,1p,e12.3)") "Gas-source courant Time: ", gasSourceDt
-          write(*,"(a,1p,e12.3)") "Radiation pressure courant time: ", raddt
-          write(*,"(a,1p,e12.3)") "Pressure gradient courant time: ", pressuredt
+          write(*,"(a30,1p,e12.3)") "Courant Time: ", dt* dble(cfl)
+          write(*,"(a30,1p,e12.3)") "Gas courant Time: ", gasdt
+          write(*,"(a30,1p,e12.3)") "Recombination time: ", recombinationDt
+          write(*,"(a30,1p,e12.3)") "Ionization time: ", ionizationDt
+          write(*,"(a30,1p,e12.3)") "Thermal time: ", thermalDt
+          write(*,"(a30,1p,e12.3)") "Source-source courant Time: ", sourceSourceDT
+          write(*,"(a30,1p,e12.3)") "Gas-source courant Time: ", gasSourceDt
+          write(*,"(a30,1p,e12.3)") "Radiation pressure courant time: ", raddt
+          write(*,"(a30,1p,e12.3)") "Pressure gradient courant time: ", pressuredt
+          write(*,"(a30,1p,e12.3)") "Max bulk velocity: ", vBulk/1.d5
+          write(*,"(a30,1p,e12.3)") "Max sound speed: ", vSound/1.d5
           if (useTensorViscosity) &
-               write(*,"(a,1p,e12.3)") "Viscous time: ", viscdt
+               write(*,"(a30,1p,e12.3)") "Viscous time: ", viscdt
        endif
        
 
@@ -666,7 +695,7 @@ contains
           else
              looplimittime = deltaTForDump
           end if
-          looplimittime = 1.d30
+          if (timeDependentRT) loopLimitTime = dt
           call setupNeighbourPointers(grid, grid%octreeRoot)
           call resetnh(grid%octreeRoot)
 !          if (grid%geometry == "sphere") &
@@ -680,7 +709,7 @@ contains
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
-                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack) 
+                     looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 cylindricalHydro = tmpCylindricalHydro
 
          call writeInfo("Done",TRIVIAL)
@@ -897,7 +926,7 @@ contains
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         ","dust1        ",  &
                "phi          ","rhou         ","rhov         ","rhow         ", &
-               "vphi         "/))
+               "vphi         ","jnu          "/))
 
 
 
@@ -1509,6 +1538,8 @@ end subroutine radiationHydro
           epsoverdeltat = lcore/dble(nMonte)
        end if
        
+       globalEpsOverDeltaT = epsOverDeltaT
+
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
        if (myrankWorldGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
@@ -2555,7 +2586,7 @@ end subroutine radiationHydro
                    if (quickThermal) then
                       call quickThermalCalc(thisOctal)
                    else
-                      call calculateThermalBalanceTimeDep(grid, thisOctal, epsOverDeltaT, deltaTime)
+                      call calculateThermalBalanceTimeDep(grid, thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
                    end if
                 enddo
                 
@@ -3276,9 +3307,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) - uHat * photonMomentum * photonPacketWeight
 !       if (myrankGlobal == 1) write(*,*) "mom sub ",thisOctal%radiationMomentum(subcell)
        tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
-       if (tPhoton > tLimit) then
+       if (tphoton > 1.d30) then
+!       if (tPhoton > tLimit) then
           escaped = .true.
-          if (bigPhotonPacket) write(*,*) myrankGlobal, " big photon packet escaped due to tlimit. bug"
+!          if (bigPhotonPacket) write(*,*) myrankGlobal, " big photon packet escaped due to tlimit. bug"
           outOfTime = .true.
        endif
 
@@ -4143,6 +4175,138 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     enddo
   end subroutine getHbetaluminosity
 
+  recursive subroutine getRecombinationTime(thisOctal, tRecomb)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: tRecomb,thisT
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getRecombinationTime(child, tRecomb)
+                exit
+             end if
+          end do
+       else
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
+             thisT = 1.d0/(thisOctal%nh(subcell) * recombrate(globalIonArray(1), thisOctal%temperature(subcell)))
+             tRecomb = min(thisT, tRecomb)
+
+
+          endif
+       end if
+    enddo
+  end subroutine getRecombinationTime
+
+
+  recursive subroutine getIonizationTime(thisOctal, grid, tIonization, epsOverDeltaT)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: tIonization,thisT,photoionRate, recombinationRate
+    integer :: k, iStart, iEnd, nIonizationStages
+    real(double) :: chargeExchangeIonization, chargeExchangeRecombination
+    integer :: subcell, i, iIon
+    real(double) :: v,  epsOverDeltaT
+    real :: temperature
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getIonizationTime(child, grid, tIonization, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
+
+             if (.not.thisOctal%ghostCell(subcell)) then
+             v = cellVolume(thisOctal, subcell)
+             k = 1
+             temperature = thisOctal%temperature(subcell)
+             
+
+             iStart = k
+             iEnd = k+1
+             do while(grid%ion(istart)%z == grid%ion(iEnd)%z)
+                iEnd = iEnd + 1
+             enddo
+             iEnd = iEnd - 1
+             nIonizationStages = iEnd - iStart + 1
+          
+             do i = 1, nIonizationStages-1
+                iIon = iStart+i-1
+                call getChargeExchangeRecomb(grid%ion(iion+1), temperature, &
+                     thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+                     chargeExchangeRecombination)
+        
+                call getChargeExchangeIon(grid%ion(iion), temperature, &
+                     thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
+                     chargeExchangeIonization)
+        
+                photoIonRate = (epsOverDeltaT / (v*1.d30))*thisOctal%photoIonCoeff(subcell,iIon) + chargeExchangeIonization
+        
+
+                recombinationRate = recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination
+
+
+             end do
+                thisT = 1.d0/max(abs(recombinationRate - photoIonRate),1.d-20)
+                tIonization = min(thisT, tIonization)
+                thisOctal%biasline3d(subcell) = thisT
+             endif
+          endif
+       end if
+    enddo
+  end subroutine getIonizationTime
+
+  recursive subroutine getThermalTime(thisOctal, grid, tThermal, epsOverDeltaT)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: tThermal,thisT
+    integer :: subcell, i
+    real(double) :: epsOverDeltaT
+    real(double) :: hHeating, heHeating, dustHeating, totalHeating, totalCooling
+    real(double) :: mu, energy
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getThermalTime(child, grid, tThermal, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
+
+             if (.not.thisOctal%ghostCell(subcell)) then
+
+                call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+
+                mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
+                energy = 1.5d0*(thisOctal%rho(subcell)/(mu*mhydrogen))*kerg*thisOctal%temperature(subcell)
+                totalCooling = HHecooling(grid, thisOctal, subcell, thisOctal%temperature(subcell)) 
+
+                thisT =  (energy / max(abs(totalCooling-totalHeating),1.d-20))
+                tThermal = min(thisT, tThermal)
+             endif
+
+          endif
+       end if
+    enddo
+  end subroutine getThermalTime
+
+
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
     use inputs_mod, only : hydrodynamics
     type(gridtype) :: grid
@@ -4185,16 +4349,16 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        if (.not.thisOctal%hasChild(subcell)) then
 
           if (thisOctal%inflow(subcell)) then
-             if (.not.thisOctal%undersampled(subcell)) then
+!             if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalanceTimeDep(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT, deltaT)
                 
-             else
-                thisOctal%ionFrac(subcell, 1) = 1.d0
-                thisOctal%ionFrac(subcell, 2) = 1.d-30
-                if(thisOctal%nCrossings(subcell) /= 0) then
-                 !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
-                end if
-             endif
+!             else
+!                thisOctal%ionFrac(subcell, 1) = 1.d0
+!                thisOctal%ionFrac(subcell, 2) = 1.d-30
+!                if(thisOctal%nCrossings(subcell) /= 0) then
+!                 !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!                end if
+!             endif
           endif
        endif
     enddo
@@ -4556,7 +4720,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           
           if (thisOctal%inflow(subcell)) then
 
-             if (.not.thisOctal%undersampled(subcell)) then
+!             if (.not.thisOctal%undersampled(subcell)) then
+             if (.not.thisOctal%ghostCell(subcell)) then
                 
                 call calculateEquilibriumTemperature(grid, thisOctal, subcell, epsOverDeltaT, Teq)
 
@@ -4568,9 +4733,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
                 thermalTime = (energy / abs(totalCooling))
 
-                if (deltaTime > thermalTime) then
-                   thisOctal%temperature(subcell) = real(Teq)
-                else
+!                if (deltaTime > thermalTime) then
+!                   thisOctal%temperature(subcell) = real(Teq)
+!                else
 
                    nTimes = 10
                 
@@ -4581,12 +4746,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       thisOctal%temperature(subcell) = real((2.d0/3.d0)*energy*(mu*mhydrogen)/(thisOctal%rho(subcell)*kerg))
                       totalCooling = HHecooling(grid, thisOctal, subcell, thisOctal%temperature(subcell)) 
                    enddo
-                endif
+!                endif
 
+                endif
              endif
           endif
-       endif
-    enddo
+       enddo
   end subroutine calculateThermalBalanceTimeDep
   
   function HHeCooling(grid, thisOctal, subcell, temperature, debug) result (coolingRate)
@@ -4948,60 +5113,11 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
   integer :: nIonizationStages
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
-  real(double), allocatable :: xplus1overx(:)
-  real(double) :: photoIonRate, recombinationRate, recombTime
+  real(double) :: photoIonRate, recombinationRate
   real(double), allocatable :: ionFrac(:)
   v = cellVolume(thisOctal, subcell)
   k = 1
   allocate(ionFrac(1:SIZE(thisOctal%ionFrac,2)))
-  
-  do while(k <= grid%nIon)
-
-     iStart = k
-     iEnd = k+1
-     do while(grid%ion(istart)%z == grid%ion(iEnd)%z)
-        iEnd = iEnd + 1
-     enddo
-     iEnd = iEnd - 1
-     nIonizationStages = iEnd - iStart + 1
-          
-     allocate(xplus1overx(1:nIonizationStages-1))
-     do i = 1, nIonizationStages-1
-        iIon = iStart+i-1
-        call getChargeExchangeRecomb(grid%ion(iion+1), temperature, &
-             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
-             chargeExchangeRecombination)
-        
-        call getChargeExchangeIon(grid%ion(iion), temperature, &
-             thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
-             chargeExchangeIonization)
-        
-        xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
-             max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
-!        if ((myRankGlobal==1).and.(grid%ion(iion)%species(1:2) =="H ")) &
-!             write(*,*) i,xplus1overx(i), thisOctal%photoioncoeff(subcell,iion), &
-!             thisOctal%ne(subcell), epsoverdeltat,v,chargeExchangeIonization, chargeExchangeRecombination
-     enddo
-     ionFrac(iStart:iEnd) = 1.d0
-     do i = 1, nIonizationStages - 1
-        iIon = iStart+i-1
-        ionFrac(iIon+1) = ionFrac(iIon) * xplus1overx(i)
-        !if ((myRankGlobal==1).and.grid%ion(iion)%species(1:2) =="H ") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
-     enddo
-     
-     if (SUM(ionFrac(iStart:iEnd)) /= 0.d0) then
-        ionFrac(iStart:iEnd) = &
-             max(1.d-50,ionFrac(iStart:iEnd))/SUM(ionFrac(iStart:iEnd))
-     else
-        ionFrac(iStart:iEnd) = 1.d-50
-     endif
-
-        deallocate(xplus1overx)
-
-        k = iEnd + 1
-     end do
-
-  k = 1
   
   do while(k <= grid%nIon)
 
@@ -5028,17 +5144,8 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 
         recombinationRate = recombRate(grid%ion(iion), temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination
 
-        recombTime = 1.d0/recombinationRate
         thisOctal%ionFrac(subcell,iion) = thisOctal%ionFrac(subcell,iion) + deltaT * (recombinationRate - photoIonRate)
 
-     if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
-        thisOctal%ionFrac(subcell,iStart:iEnd) = &
-             max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
-     else
-        thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
-     endif
-     
-        thisOctal%ionFrac(subcell, iIon) = min(max(thisOctal%ionFrac(subcell,iIon),ionFrac(iIon)),1.d0)
 
         if(thisOctal%ionFrac(subcell, iIon) <= 0.d0) then
            thisOctal%ionFrac(subcell, iIon) = 1.d-50
@@ -5046,8 +5153,17 @@ subroutine solveIonizationBalanceTimeDep(grid, thisOctal, subcell, temperature, 
 
      enddo
 
+!     if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
+!        thisOctal%ionFrac(subcell,iStart:iEnd) = &
+!             max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+!     else
+!        thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
+!     endif
+     
+
+
      thisOctal%ionFrac(subcell, iEnd) = 1.d0 - SUM(thisOctal%ionFrac(subcell,iStart:iEnd-1))
-     thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
+!     thisOctal%ionFrac(subcell, iend) = min(max(thisOctal%ionFrac(subcell,iend),ionFrac(iend)),1.d0)
 
      if(thisOctal%ionFrac(subcell, iend) <= 0.d0) then
         thisOctal%ionFrac(subcell, iend) = 1.d-50
@@ -6172,6 +6288,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   real(double), intent(out) :: hHeating, heHeating, totalHeating, dustHeating
 
   dustHeating  = 0.d0
+  heHeating = 0.d0
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
@@ -6181,7 +6298,6 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   endif
   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
   totalHeating = (Hheating + HeHeating + dustHeating)
-  
 end subroutine getHeating
 
 real(double) function returnGamma(table, temp, freq) result(out)

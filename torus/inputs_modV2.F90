@@ -1763,6 +1763,9 @@ contains
     logical :: ok
     real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
 
+    call getLogical("timedep", timeDependentRT, cLine, fLine, nLines, &
+         "Time-dependent RT: ", "(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
@@ -2053,7 +2056,7 @@ contains
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
        vtkIncludeGhosts = .false.
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
-               "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
+               "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .true.)
     endif
 
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &

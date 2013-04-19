@@ -212,6 +212,9 @@ CONTAINS
     CASE("proto")
        CALL calcProtoDensity(thisOctal,subcell,grid)
 
+    CASE("kleyring")
+       CALL calcKleyRingDensity(thisOctal,subcell)
+
 
     CASE("wrshell")
        CALL calcWRShellDensity(thisOctal,subcell,grid)
@@ -7179,17 +7182,17 @@ endif
     rVec = subcellCentre(thisOctal, subcell)
     if (modulus(rVec) > rSphere) then
        thisOctal%rho(subcell) = rhoAmbient
-       thisOctal%temperature(subcell) = 7.5d0
+       thisOctal%temperature(subcell) = 2.e4
        if (photoionPhysics) then
-          thisOctal%ionFrac(subcell,1) = 1.               !HI
-          thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+          thisOctal%ionFrac(subcell,1) = 1.d-2             !HI
+          thisOctal%ionFrac(subcell,2) = 1.d0           !HII
        endif
     else
        thisOctal%rho(subcell) = rhoAmbient * 2000.d0
-       thisOctal%temperature(subcell) = 7500.d0
+       thisOctal%temperature(subcell) = 7.5
        if (photoionPhysics) then
-          thisOctal%ionFrac(subcell,1) = 1.e-10           !HI
-          thisOctal%ionFrac(subcell,2) = 1.               !HII
+          thisOctal%ionFrac(subcell,1) = 1.d0           !HI
+          thisOctal%ionFrac(subcell,2) = 1.d-2               !HII
        endif
     endif
 
@@ -8351,6 +8354,56 @@ endif
     thisOctal%iEquationOfState(subcell) = 4
 
   end subroutine calcProtoBinDensity
+
+  subroutine calcKleyRingDensity(thisOctal,subcell)
+    use inputs_mod, only : smallestCellsize
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec, vvec,zaxis
+    real(double) :: omega,r, v, phi, ethermal, eKinetic, fac
+    real(double) :: theta, r0
+    real(double) :: rhoambient, tAmbient
+    real(double) :: rhoRing, Tring
+
+    rhoRing = 1.d-14
+    rhoAmbient = 1.d-20
+    tRing = 1.e-2
+    tAmbient = tRing * rhoRing/rhoAmbient
+    zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+    rVec = subcellCentre(thisOctal, subcell)
+    r = sqrt(rVec%x**2 + rVec%y**2)
+    r0 = 1.d4
+    theta = acos(rVec%z/sqrt(rVec%x**2+rVec%z**2))
+    v = sqrt(bigG * mSol /(r*1.d10))*sin(theta)
+    vVec = rVec .cross. zAxis
+    call normalize(vVec)
+    vVec = (v/cSpeed) * vVec
+
+    thisOctal%rho(subcell) = rhoambient
+    thisOctal%temperature(subcell) = Tambient
+    thisOctal%velocity(subcell) = vVec
+    if ((abs(rVec%z)-(thisOctal%subcellSize/2.d0)) < 0.1d0*Smallestcellsize) then
+       fac = exp(-((rVec%x-r0)/(0.2d0*r0))**2)
+       thisOctal%rho(subcell) = rhoambient + (rhoRing-rhoAmbient) * fac
+       thisOctal%temperature(subcell) = tAmbient * rhoAmbient/thisOctal%rho(subcell)
+    else
+       thisOctal%rho(subcell) = rhoambient
+       thisOctal%temperature(subcell) = tambient
+    endif
+    thisOctal%rhoV(subcell) = thisOctal%rho(subcell) * v * (r * 1.d10)
+
+    eKinetic = 0.5d0 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
+
+    eThermal = 1.5d0*kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+!    thisOctal%gamma(subcell) = 5.d0/3.d0
+!    eThermal = (kErg*thisOctal%temperature(subcell))/(thisOctal%gamma(subcell) - 1.d0)
+    thisOctal%energy(subcell) = ethermal
+    thisOctal%rhoe(subcell) = thisOctal%energy(Subcell) * thisOctal%rho(subcell)
+!    thisOCtal%pressure_i(subcell) = (thisOctal%gamma(subcell)-1.d0) * eThermal * thisOctal%rho(subcell)
+    thisOctal%iEquationOfState(subcell) = 1
+
+
+  end subroutine calcKleyRingDensity
     
   subroutine calcnbodyDensity(thisOctal,subcell)
 
