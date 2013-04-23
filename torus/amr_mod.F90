@@ -2526,7 +2526,7 @@ CONTAINS
     INTEGER                        :: subcell
 
     TYPE(vector)              :: centre, rVec
-    real(oct)           :: fac, inc, thisPhi, dphi
+    real(oct)           :: fac, inc, thisPhi
     real(oct)           :: t1, t2, t3
     real(double)        :: dt1, dt2, dt3
     real(oct)           :: r1, r2, phi1, phi2
