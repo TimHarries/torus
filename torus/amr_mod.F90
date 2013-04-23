@@ -2525,8 +2525,8 @@ CONTAINS
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
 
-    TYPE(vector)              :: centre
-    real(oct)           :: fac, inc
+    TYPE(vector)              :: centre, rVec
+    real(oct)           :: fac, inc, thisPhi, dphi
     real(oct)           :: t1, t2, t3
     real(double)        :: dt1, dt2, dt3
     real(oct)           :: r1, r2, phi1, phi2
@@ -2922,16 +2922,10 @@ CONTAINS
             endif
             if (resultOctal%dphi > piby2) then
                amrGridVelocity = resultOctal%velocity(subcell)
-               vr = sqrt(amrGridVelocity%x**2 + amrGridVelocity%y**2)
-               if ((point%x*amrgridvelocity%x + point%y*amrgridvelocity%y) > 0.d0) then
-                  vr = vr
-               else
-                  vr = -vr
-               endif
-               vz = amrGridvelocity%z
-               amrGridVelocity = VECTOR(vr, 0.d0, vz)
-               phi = atan2(point%y, point%x)
-               newVec = rotateZ(amrGridVelocity, -phi)
+               rVec = subcellCentre(resultOctal, subcell)
+               thisPhi = atan2(rVec%y, rVec%x)
+               phi = thisPhi - atan2(point%y, point%x)
+               newVec = rotateZ(amrGridVelocity, phi)
                amrGridVelocity = newVec
             endif
 

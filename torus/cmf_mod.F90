@@ -25,7 +25,7 @@ module cmf_mod
   implicit none
 
   private
-  public:: atomLoop, calculateAtomSpectrum
+  public:: atomLoop, calculateAtomSpectrum, checkVelocityInterp
 
 contains
 
@@ -2283,6 +2283,41 @@ contains
        endif
     enddo
   end subroutine swapPops
+
+  recursive  subroutine checkVelocityInterp(thisOctal, grid)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(VECTOR) :: interpVel, rVec
+    real(double) :: diff
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkVelocityInterp(child, grid)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal, subcell)
+          interpVel = amrGridVelocity(grid%octreeRoot, rVec, startOctal = thisOctal, actualSubcell = subcell) 
+          if (modulus(thisOctal%velocity(subcell)) /= 0.d0) then
+             diff = modulus(thisOctal%velocity(subcell) - interpVel)/modulus(thisOctal%velocity(subcell))
+             if (diff > 0.1d0) then
+                write(*,*) "Interpolated and grid centre velocities differ by more than 10%  ",diff
+                write(*,*) "centre ", cspeed*thisOctal%velocity(subcell)
+                write(*,*) "interp ",cspeed * interpVel
+                write(*,*) "depth ", thisOctal%ndepth
+                write(*,*) "dphi ",thisOctal%dphi * radtodeg
+             endif
+          endif
+       endif
+    enddo
+  end subroutine checkVelocityInterp
 
 
   recursive  subroutine  calcEtaLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
