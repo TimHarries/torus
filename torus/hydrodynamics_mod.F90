@@ -14595,7 +14595,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           end do
        else
           eThermal = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-          thisOctal%temperature(subcell) = mu * mHydrogen * eThermal / (1.5d0 * kerg)
+          thisOctal%temperature(subcell) = real(mu * mHydrogen * eThermal / (1.5d0 * kerg))
        endif
     enddo
   end subroutine calculateTemperatureFromEnergy

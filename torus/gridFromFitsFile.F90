@@ -364,14 +364,27 @@ npd_loop:            do n=1,npd
 ! Read in the data.
       write(*,*) "reading ", npixels, " pixels"
       call ftgpvd(unit,group,1,npixels,nullvall,density_double(:,:,:),anynull,status)
-      write(*,*) "read"
-! Write out some information about the data we have just read as a basic check 
-!      mindata = minval(density(:,:,:))
-!      maxdata = maxval(density(:,:,:))
-!      write(message,*) "Minimum data value= ", mindata
-!      call writeInfo(message,FORINFO)
-!      write(message,*) "Maximum data value= ", maxdata
-!      call writeInfo(message,FORINFO)
+      write(*,*) "read ",status
+
+
+      call FTMNHD(unit, 0, "TR0", 0, status)
+      call ftgkys(unit,"EXTNAME",record,comment,status)
+      if (status==0) then
+         write(message,*) "Reading ionization fraction from field with EXTNAME= ", trim(record)
+         call writeInfo(message,TRIVIAL)
+      else
+         call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+      endif
+
+      call FTMNHD(unit, 0, "Eint", 0, status)
+      call ftgkys(unit,"EXTNAME",record,comment,status)
+      if (status==0) then
+         write(message,*) "Reading temperature from field with EXTNAME= ", trim(record)
+         call writeInfo(message,TRIVIAL)
+      else
+         call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+      endif
+
 
 
 ! Close the file and free the LUN

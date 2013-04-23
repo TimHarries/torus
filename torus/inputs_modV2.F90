@@ -1558,6 +1558,7 @@ contains
     integer :: i 
     character(len=20) :: keyword
     logical :: ok
+    logical :: teffPresent, radiusPresent, lumPresent
 
 
 
@@ -1595,20 +1596,55 @@ contains
 
        else
 
-          if (stellarSource(i)) then
+          if (stellarSource(i)) then             
              write(keyword, '(a,i1)') "radius",i
-             call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
-                  "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
-
+             radiusPresent = checkPresent(keyword, cline, nlines)
              write(keyword, '(a,i1)') "teff",i
-             if (checkPresent(keyword, cline, nlines)) then
+             teffPresent = checkPresent(keyword, cline, nlines)
+             write(keyword, '(a,i1)') "lum",i
+             lumPresent = checkPresent(keyword, cline, nlines)
+
+             if (radiusPresent.and.teffPresent.and.lumPresent) then
+                call writeFatal("Source overspecified - choose 2 of teff, R, and Lum")
+                stop
+             endif
+
+             if (radiusPresent.and.teffPresent) then
+                write(keyword, '(a,i1)') "radius",i
+                call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
+                     "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
+
+                write(keyword, '(a,i1)') "teff",i
                 call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
                      "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
-             else
+
+                sourceLum(i) = fourPi * sourceRadius(i)**2 *1.d20 * stefanBoltz * sourceTeff(i)**4
+             else if (radiusPresent.and.lumPresent) then
+
+                write(keyword, '(a,i1)') "radius",i
+                call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
+                     "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
+
                 write(keyword, '(a,i1)') "lum",i
                 call getDouble(keyword, sourceLum(i), lSol, cLine, fLine, nLines, &
                      "Source luminosity (solar luminosities) : ","(a,f7.2,a)",1.d0, ok, .true.)
                 sourceTeff(i) = (sourceLum(i) / (fourPi*sourceRadius(i)**2*1.d20 * stefanBoltz))**0.25d0
+             else if (teffPresent.and.lumPresent) then
+
+                write(keyword, '(a,i1)') "lum",i
+                call getDouble(keyword, sourceLum(i), lSol, cLine, fLine, nLines, &
+                     "Source luminosity (solar luminosities) : ","(a,1pe12.5,a)",1.d0, ok, .true.)
+
+                write(keyword, '(a,i1)') "teff",i
+                call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
+                     "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
+
+                write(*,*) sourceteff(i),sourcelum(i)
+                sourceRadius(i) = sqrt(sourceLum(i) / (fourPi * sourceTeff(i)**4 * stefanBoltz))/1.d10
+                write(*,*) "source radius ",sourceRadius(i)*1.d10/rsol
+             else
+                call writeFatal("Source underspecified - need two of radius, teff and lum")
+                stop
              endif
              
              write(keyword, '(a,i1)') "mass",i
