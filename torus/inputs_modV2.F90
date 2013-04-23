@@ -1639,9 +1639,7 @@ contains
                 call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
                      "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
 
-                write(*,*) sourceteff(i),sourcelum(i)
                 sourceRadius(i) = sqrt(sourceLum(i) / (fourPi * sourceTeff(i)**4 * stefanBoltz))/1.d10
-                write(*,*) "source radius ",sourceRadius(i)*1.d10/rsol
              else
                 call writeFatal("Source underspecified - need two of radius, teff and lum")
                 stop

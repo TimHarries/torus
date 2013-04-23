@@ -35,7 +35,7 @@ module gridFromFitsFile
 
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
-  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:)
+  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:), ionfrac_double(:,:,:)
 
 ! If true use the ideal gas EOS to calculate temperature
   logical, parameter, private :: idealGas=.false.
@@ -294,7 +294,7 @@ npd_loop:            do n=1,npd
       real(double), parameter :: nullvall = 1.d-33
 
 
-      call writeInfo ("Initialising grid from a FITS file", IMPORTANT)
+      call writeInfo ("Initialising grid from a pion FITS file", IMPORTANT)
       call writeInfo ("Reading FITS file "//filename, FORINFO)
       status = 0
 
@@ -318,6 +318,7 @@ npd_loop:            do n=1,npd
 
       allocate(density_double     (axis_size(1), axis_size(2), axis_size(3)) )
       allocate(temperature_double (axis_size(1), axis_size(2), axis_size(3)) )
+      allocate(ionfrac_double (axis_size(1), axis_size(2), axis_size(3)) )
 
       call ftgkye(unit,"XMIN0",xmin0,comment,status)
       call ftgkye(unit,"XMIN1",xmin1,comment,status)
@@ -362,9 +363,7 @@ npd_loop:            do n=1,npd
       endif
 
 ! Read in the data.
-      write(*,*) "reading ", npixels, " pixels"
       call ftgpvd(unit,group,1,npixels,nullvall,density_double(:,:,:),anynull,status)
-      write(*,*) "read ",status
 
 
       call FTMNHD(unit, 0, "TR0", 0, status)
@@ -373,8 +372,12 @@ npd_loop:            do n=1,npd
          write(message,*) "Reading ionization fraction from field with EXTNAME= ", trim(record)
          call writeInfo(message,TRIVIAL)
       else
-         call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+         call writeFatal("Could not find ionization fraction HDU")
+         stop
       endif
+
+! Read in the data.
+      call ftgpvd(unit,group,1,npixels,nullvall,ionfrac_double(:,:,:),anynull,status)
 
       call FTMNHD(unit, 0, "Eint", 0, status)
       call ftgkys(unit,"EXTNAME",record,comment,status)
@@ -382,9 +385,12 @@ npd_loop:            do n=1,npd
          write(message,*) "Reading temperature from field with EXTNAME= ", trim(record)
          call writeInfo(message,TRIVIAL)
       else
-         call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+         call writeFatal("Could not find temperature HDU")
+         stop
       endif
 
+! Read in the data.
+      call ftgpvd(unit,group,1,npixels,nullvall,temperature_double(:,:,:),anynull,status)
 
 
 ! Close the file and free the LUN
@@ -393,7 +399,6 @@ npd_loop:            do n=1,npd
 
 ! If there were any errors then print them out
       call printFitsError(status)
-      write(*,*) "done reading"
     end subroutine read_fits_file_for_grid_pion
 
 !-------------------------------------------------------------------------------
@@ -580,6 +585,23 @@ npd_loop:            do n=1,npd
                                     +  density_double(thisI+1,  thisJ  ,thisK+1) * (     u)*(1.d0-v)*(     w) &
                                     +  density_double(thisI  ,  thisJ+1,thisK+1) * (1.d0-u)*(     v)*(     w) &
                                     +  density_double(thisI+1,  thisJ+1,thisK+1) * (     u)*(     v)*(     w)  
+            thisOctal%temperature(subcell) =   real(temperature_double(thisI  ,  thisJ  ,thisK  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
+                                    +  temperature_double(thisI+1,  thisJ  ,thisK  ) * (     u)*(1.d0-v)*(1.d0-w) &
+                                    +  temperature_double(thisI  ,  thisJ+1,thisK  ) * (1.d0-u)*(     v)*(1.d0-w) &
+                                    +  temperature_double(thisI+1,  thisJ+1,thisK  ) * (     u)*(     v)*(1.d0-w) &
+                                    +  temperature_double(thisI  ,  thisJ  ,thisK+1) * (1.d0-u)*(1.d0-v)*(     w) &
+                                    +  temperature_double(thisI+1,  thisJ  ,thisK+1) * (     u)*(1.d0-v)*(     w) &
+                                    +  temperature_double(thisI  ,  thisJ+1,thisK+1) * (1.d0-u)*(     v)*(     w) &
+                                    +  temperature_double(thisI+1,  thisJ+1,thisK+1) * (     u)*(     v)*(     w)  )
+!            thisOctal%ionfrac(subcell,2) =   ionfrac_double(thisI  ,  thisJ  ,thisK  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
+!                                    +  ionfrac_double(thisI+1,  thisJ  ,thisK  ) * (     u)*(1.d0-v)*(1.d0-w) &
+!                                    +  ionfrac_double(thisI  ,  thisJ+1,thisK  ) * (1.d0-u)*(     v)*(1.d0-w) &
+!                                    +  ionfrac_double(thisI+1,  thisJ+1,thisK  ) * (     u)*(     v)*(1.d0-w) &
+!                                    +  ionfrac_double(thisI  ,  thisJ  ,thisK+1) * (1.d0-u)*(1.d0-v)*(     w) &
+!                                    +  ionfrac_double(thisI+1,  thisJ  ,thisK+1) * (     u)*(1.d0-v)*(     w) &
+!                                    +  ionfrac_double(thisI  ,  thisJ+1,thisK+1) * (1.d0-u)*(     v)*(     w) &
+!                                    +  ionfrac_double(thisI+1,  thisJ+1,thisK+1) * (     u)*(     v)*(     w)  
+!            thisOctal%ionFrac(subcell,1) = 1.d0 - thisOctal%ionFrac(subcell,2)
          else if (amr2d) then
             call locate(xAxis, axis_size(1), rVec%z, thisI)
             call locate(yAxis, axis_size(2), rVec%x, thisJ)
@@ -611,6 +633,11 @@ npd_loop:            do n=1,npd
       if (allocated (xaxis))       deallocate(xaxis)
       if (allocated (yaxis))       deallocate(yaxis)
       if (allocated (zaxis))       deallocate(zaxis)
+
+
+      if (allocated (density_double))     deallocate(density_double)
+      if (allocated (temperature_double))     deallocate(temperature_double)
+      if (allocated (ionfrac_double))     deallocate(ionfrac_double)
 
     end subroutine deallocate_gridFromFitsFile
 
