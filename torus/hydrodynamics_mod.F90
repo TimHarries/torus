@@ -607,7 +607,7 @@ contains
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
              thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
 
-             thisOctal%etaline(subcell) = 1.d19
+             thisOctal%etaline(subcell) = 1.d18
 
 !             write(*,*) "mass ",mass/msol, " etaline ",thisOctal%etaline(subcell)
           endif
@@ -2452,10 +2452,10 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceCylindrical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : radiationPressure, nBodyPhysics
+    use inputs_mod, only : radiationPressure, nBodyPhysics, includePressureTerms
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
-    type(VECTOR) :: direction, fVisc
+    type(VECTOR) :: direction, fVisc, rVec
     type(octal), pointer  :: child 
     integer :: subcell, i
     logical :: debug
@@ -2518,7 +2518,8 @@ contains
 !modify the cell velocity due to the pressure gradient
 
 
-             r = thisOctal%x_i(subcell)
+             rVec = subcellCentre(thisOctal, subcell)
+             r = sqrt(rVec%x**2 + rVec%y**2) * gridDistanceScale
 
              x_i_plus_half = thisOctal%x_i(subcell) + thisOctal%subcellSize*gridDistanceScale/2.d0
              x_i_minus_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistanceScale/2.d0
@@ -2548,7 +2549,7 @@ contains
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 !             if (writeoutput) write(*,*) "new ",fVisc
-!             fVisc =  divQ(thisOctal, subcell,  grid) *  thisOctal%rho(subcell)
+!             fVisc =  divQ(thisOctal, subcell,  grid)
 !             if (writeoutput) write(*,*) "old ",fVisc
 
 
@@ -2562,12 +2563,13 @@ contains
              if (direction%x > 0.d0) then
 
 
-
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
-                     (p_i_plus_half - p_i_minus_half) / dx
-                if (debug) then
-                   write(*,*) "change in mom from pressure in x ",- dt * &
-                     (p_i_plus_half - p_i_minus_half) / dx
+                if (includePressureTerms) then
+                   thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
+                        (p_i_plus_half - p_i_minus_half) / dx
+                   if (debug) then
+                      write(*,*) "change in mom from pressure in x ",- dt * &
+                           (p_i_plus_half - p_i_minus_half) / dx
+                   endif
                 endif
 
 ! alpha viscosity
@@ -2587,17 +2589,15 @@ contains
                 endif
 
 
-
 !                write(*,*) "fvisc ",fVisc%x, " phi ",thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
                 ! now centrifugal term
+
 
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 
 
-!                if (thisOctal%rho(subcell) > 1.d-16) write(*,*) "rhov ",thisOctal%rhov(subcell),dt*fvisc%y*r
-                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
 
 
 !                if (thisOctal%rho(subcell) > 1.d-14) then
@@ -2652,15 +2652,20 @@ contains
 
              else
 
-                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
-                     (p_i_plus_half - p_i_minus_half) / dx
+                if (includePressureTerms) then
+                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
+                        (p_i_plus_half - p_i_minus_half) / dx
+                endif
                 if (debug) then
                    write(*,*) "change in mom from pressure in z ",- dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
                 endif
 
 ! alpha viscosity
-                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
+!                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
+
+                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
+
 
                 if (debug) then
                    write(*,*) "change in mom from viscosity in z ", dt * fVisc%z

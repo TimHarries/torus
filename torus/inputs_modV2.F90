@@ -1970,6 +1970,10 @@ contains
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+    call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
+         "Dust sublimation temperature (K): ","(a,f8.2,a)", 0., ok, .false.)
+
+
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",200,ok,.false.)
 
@@ -2119,6 +2123,9 @@ contains
 
     call getString("limitertype", limiterType, cLine, fLine, nLines, &
          "Flux limiter to use: ","(a,a,1x,a)","superbee", ok, .false.)
+
+    call getLogical("includepressure", includePressureTerms, cLine, fLine, nLines, &
+         "Include pressure source terms: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("readturb", readTurb, cLine, fLine, nLines, &
          "read in a turbulent velocity field from file: ","(a,1l,1x,a)", .false., ok, .false.)

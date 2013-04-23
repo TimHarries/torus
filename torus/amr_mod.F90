@@ -2534,7 +2534,7 @@ CONTAINS
     type(vector) :: newvec
     TYPE(vector) :: point_local, vvec, rHat
 
-    real(double) :: weights(27), vr, vz
+    real(double) :: weights(27)
     logical, optional :: linearinterp
     logical :: linear
     logical, save :: firstTime = .true.
@@ -8360,15 +8360,15 @@ endif
     real(double) :: rhoRing, Tring
 
     rhoRing = 1.d-14
-    rhoAmbient = 1.d-20
+    rhoAmbient = 1.d-18
     tRing = 1.e-2
     tAmbient = tRing * rhoRing/rhoAmbient
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
     rVec = subcellCentre(thisOctal, subcell)
     r = sqrt(rVec%x**2 + rVec%y**2)
-    r0 = 1.d4
+    r0 = 1.5d4
     theta = acos(rVec%z/sqrt(rVec%x**2+rVec%z**2))
-    v = sqrt(bigG * mSol /(r*1.d10))*sin(theta)
+    v = sqrt(bigG * msol /(r*1.d10))*sin(theta)
     vVec = rVec .cross. zAxis
     call normalize(vVec)
     vVec = (v/cSpeed) * vVec

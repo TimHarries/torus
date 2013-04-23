@@ -268,18 +268,23 @@ contains
 
   end function newdivQ
 
-  function dQdx(thisOctal, subcell,  grid, i, j, dir) 
+  function dQdx(thisOctal, subcell,  grid, i, j, dir, multbyr) 
     use inputs_mod, only : smallestCellSize,gridDistanceScale
     type(gridtype) :: grid
     real(double) :: dqdx
+    logical, optional :: multbyr
+    logical :: doMultByR
     type(octal), pointer   :: thisoctal, neighbourOctal
     type(VECTOR) :: cen_i_plus_1, cen_i_minus_1
     real(double) :: q, rho, rhoe, rhou,rhov,rhow, x, qnext, pressure, flux, phi, phigas,xnext,px,py,pz,dx
     real(double) :: qViscosity1(3,3), qViscosity2(3,3)
     integer :: subcell, neighbourSubcell
     type(VECTOR) :: dir, cen2, locator
-    real(double) :: rm1, um1, pm1, r
+    real(double) :: rm1, um1, pm1, r,r1 ,r2
     integer :: nd, i, j
+
+    doMultByR = .false.
+    if (present(multbyr)) doMultByR = multByR
 
     dqdx = 0.d0
 
@@ -293,16 +298,22 @@ contains
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity1)
     cen_i_plus_1 = VECTOR(px, py,pz)
-             
+    r2 = abs(px)*gridDistanceScale
+    
     locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity2)
     cen_i_minus_1 = VECTOR(px, py,pz)
+    r1 = abs(px)*gridDistanceScale
           
     dx = (cen_i_plus_1 - cen_i_minus_1).dot.dir
-    dqdx = (qviscosity1(i, j) - qviscosity2(i, j))/(dx*gridDistanceScale)
+    if (doMultByR) then
+       dqdx = (r2*qviscosity1(i, j) - r1*qviscosity2(i, j))/(dx*gridDistanceScale)
+    else
+       dqdx = (qviscosity1(i, j) - qviscosity2(i, j))/(dx*gridDistanceScale)
+    endif
   end function dQdx
 
   function divV(thisOctal, subcell, grid) result(out)
@@ -558,8 +569,8 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    real(double) :: dt, thisTime, acc
-    type(VECTOR) :: fVisc
+    real(double) :: dt, thisTime, acc, r, torque
+    type(VECTOR) :: fVisc, rVec
     integer :: subcell, i
   
     do subcell = 1, thisoctal%maxchildren
@@ -577,10 +588,19 @@ contains
           if (.not.thisOctal%ghostCell(subcell)) then
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
-             acc = max(abs(fVisc%x), abs(fvisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
+!             acc = max(abs(fVisc%x), abs(fVisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
+             acc = max(abs(fVisc%x), 0.d0)/ thisOctal%rho(subcell)
 
-             thisTime = 0.1d0*sqrt(smallestCellSize*gridDistanceScale/acc)
+             thisTime = sqrt(smallestCellSize*gridDistanceScale/acc)
              dt = min(thisTime, dt)
+             
+             rVec = subcellCentre(thisOCtal, subcell)
+             r = rVec%x * gridDistanceScale
+             torque = abs(fVisc%y) * r
+             thisTime = max(1.d5,thisOctal%rhov(subcell)) / torque
+             dt = min(thisTime, dt)
+
+
           endif
        endif
     enddo

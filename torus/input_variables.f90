@@ -103,6 +103,7 @@
   logical :: doGasGravity             ! Include gas gravity in calculation
   logical :: dirichlet                !Use dirichlet boundary conditions - otherwise periodic used by default
   logical :: severeDamping            ! Turn on damping
+  logical :: includePressureTerms     ! include pressure source terms
   logical :: dumpRadial               ! write a text radial cut each dump
   logical :: radiationPressure        ! use radiation pressure terms
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
