@@ -58,7 +58,7 @@ contains
     type(GRIDTYPE) :: grid
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-    integer, parameter :: nMuMie = 20
+    integer, parameter :: nMuMie = 50
     integer :: i
     character(len=80) :: message
     integer :: nimage

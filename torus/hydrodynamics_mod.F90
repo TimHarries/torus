@@ -2550,9 +2550,6 @@ contains
                   thisOctal%rhov(subcell)) * fac2
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
-!             if (writeoutput) write(*,*) "new ",fVisc
-!             fVisc =  divQ(thisOctal, subcell,  grid)
-!             if (writeoutput) write(*,*) "old ",fVisc
 
              if (thisOctal%rho(subcell) < 1.d-19) &
              fVisc = VECTOR(0.d0, 0.d0, 0.d0)
@@ -5967,7 +5964,7 @@ end subroutine sumFluxes
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
           call computeDivV(grid%octreeRoot, grid)
-          call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
+          if (includePressureTerms) call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescaleCylindrical(grid%octreeRoot, grid, dt_viscous)
        endif
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
@@ -6019,7 +6016,7 @@ end subroutine sumFluxes
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           call computeCourantV(grid, grid%octreeRoot, vBulk, vSound)
-          call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
+          if (includePRessureTerms) call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescaleCylindrical(grid%octreeRoot, grid, dt_viscous)
        endif
 
