@@ -607,11 +607,6 @@ contains
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
              thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
 
-             thisOctal%etaline(subcell) = 0.d0
-             if (thisOctal%rho(subcell) > 1.d-19) &
-             thisOctal%etaline(subcell) = 1.d18
-
-!             write(*,*) "mass ",mass/msol, " etaline ",thisOctal%etaline(subcell)
           endif
        endif
     enddo
@@ -2551,8 +2546,6 @@ contains
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
-             if (thisOctal%rho(subcell) < 1.d-19) &
-             fVisc = VECTOR(0.d0, 0.d0, 0.d0)
 
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
@@ -2661,9 +2654,11 @@ contains
                 endif
 
 ! alpha viscosity
-!                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
+                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
+
+!                write(*,*) "ratio vr/vtheta: ",thisOctal%rhou(subcell)/(thisOctal%rhov(subcell)/r), thisOctal%rho(subcell),r/1e14
 
 
                 if (debug) then
