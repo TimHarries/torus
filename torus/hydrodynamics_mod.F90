@@ -607,6 +607,8 @@ contains
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
              thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
 
+             thisOctal%etaline(subcell) = 0.d0
+             if (thisOctal%rho(subcell) > 1.d-19) &
              thisOctal%etaline(subcell) = 1.d18
 
 !             write(*,*) "mass ",mass/msol, " etaline ",thisOctal%etaline(subcell)
@@ -2552,8 +2554,8 @@ contains
 !             fVisc =  divQ(thisOctal, subcell,  grid)
 !             if (writeoutput) write(*,*) "old ",fVisc
 
-
-!             fVisc = VECTOR(0.d0, 0.d0, 0.d0)
+             if (thisOctal%rho(subcell) < 1.d-19) &
+             fVisc = VECTOR(0.d0, 0.d0, 0.d0)
 
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc

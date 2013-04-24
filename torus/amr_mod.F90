@@ -8360,13 +8360,13 @@ endif
     real(double) :: rhoRing, Tring
 
     rhoRing = 1.d-14
-    rhoAmbient = 1.d-18
+    rhoAmbient = 1.d-20
     tRing = 1.e-2
     tAmbient = tRing * rhoRing/rhoAmbient
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
     rVec = subcellCentre(thisOctal, subcell)
     r = sqrt(rVec%x**2 + rVec%y**2)
-    r0 = 1.5d4
+    r0 = 1.d4
     theta = acos(rVec%z/sqrt(rVec%x**2+rVec%z**2))
     v = sqrt(bigG * msol /(r*1.d10))*sin(theta)
     vVec = rVec .cross. zAxis
@@ -8378,7 +8378,7 @@ endif
     thisOctal%velocity(subcell) = vVec
     if ((abs(rVec%z)-(thisOctal%subcellSize/2.d0)) < 0.1d0*Smallestcellsize) then
        fac = exp(-((rVec%x-r0)/(0.2d0*r0))**2)
-       thisOctal%rho(subcell) = rhoambient + (rhoRing-rhoAmbient) * fac
+       thisOctal%rho(subcell) = 1.d-2* rhoRing + (0.99d0*rhoRing)* fac
        thisOctal%temperature(subcell) = real(tAmbient * rhoAmbient/thisOctal%rho(subcell))
     else
        thisOctal%rho(subcell) = rhoambient

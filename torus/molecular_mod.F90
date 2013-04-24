@@ -1510,7 +1510,7 @@ module molecular_mod
 !        if (.not.gridConvergedTest) then
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
-              if (.not.fixedRays .and. nray < 500000) then
+              if (.not.fixedRays .and. nray < (maxRay/2)) then
 !                 if(mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) then
                     nRay = nRay * 2 
 !                 endif
