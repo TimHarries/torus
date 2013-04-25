@@ -3819,7 +3819,14 @@ end subroutine sumFluxes
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-    call advectTemperature(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+!    call advectTemperature(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    !if running a radiation hydrodynamics calculation, advect the ion fraction
+    if(photoionPhysics .and. hydrodynamics) then
+       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+       call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    end if
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+    
 
 !impose boundary conditions again
 !THAW - If the model is isothermal the temperature at the boundaries needs to be updated prior to the 

@@ -70,7 +70,9 @@ contains
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical, &
-         computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners
+         computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
+         hydrostep1d
+
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
@@ -782,7 +784,8 @@ contains
                 call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
                      perturbPressure=.false.)
              else
-                call torus_abort("1d radhydro not supported")
+                call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+!                call torus_abort("1d radhydro not supported")
              end if
              firstWN = .false.
              !          else
@@ -945,17 +948,29 @@ contains
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
           endif
 
+          if(grid%geometry == "bonnor" .and. grid%octreeRoot%oneD) then
+             write(mpiFilename,'(a,i4.4,a)') "1DRHD_torus",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, & 
+                  VECTOR(-grid%octreeRoot%subcellSize,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+
+             write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
+             call dumpStromgrenRadius(grid, datFileName,  & 
+                  VECTOR(-grid%octreeRoot%subcellSize,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+          end if
+
 
           
 !Track the evolution of the ionization front with time
        if(grid%geometry == "hii_test") then
           write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
-          call dumpValuesAlongLine(grid, datFileName, VECTOR(-1.5d9,  -1.5d9, 1.5d9), &
-               VECTOR(1.5d9, 1.5d9, 1.5d9), 1000)
+          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.d9,  0.d0, 1.d9), &
+               VECTOR(2.d9, 0.d0, 2.d9), 1000)!
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-          call dumpStromgrenRadius(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-               VECTOR(0.0d0, 0.0d0, 1.5d9), 1000)
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.d9,  0.d0, 1.d9), &
+               VECTOR(2.d9, 0.0d0, 2.d9), 1000)
        end if
  
     endif

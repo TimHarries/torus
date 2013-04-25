@@ -122,7 +122,7 @@ module amr_utils_mod
          endif
          goto 666
       endif
-      write(*,*) "error in 1d spherical case"
+!      write(*,*) "error in 1d spherical case"
 
 
    endif

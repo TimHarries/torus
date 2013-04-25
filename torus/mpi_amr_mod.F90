@@ -2839,6 +2839,8 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
     direction = endPoint - startPoint
     call normalize(direction)
 
+    if (myHydroSetGlobal /= 0) goto 666
+
     if (myrankWorldGlobal == 0) then
        if(firstTime) then
           !Overwrite any existing file
