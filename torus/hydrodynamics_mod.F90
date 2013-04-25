@@ -9027,7 +9027,7 @@ real(double) :: rho
     real(double) :: limit
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
-    real(double) :: speed1, speed2, rhoJ, cs, bigJ, rhoJeans
+    real(double) :: speed1, speed2, cs, bigJ, rhoJeans
     integer :: nd
     integer :: index1, index2, step
     real(double) :: index
