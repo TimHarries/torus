@@ -5494,9 +5494,7 @@ end subroutine sumFluxes
        enddo
 
 
-       call writeInfo("Setting up even up array", TRIVIAL)
-       call setupEvenUpArray(grid, evenUpArray)
-       call writeInfo("Done", TRIVIAL)
+
 
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call writeInfo("Doing initial exchange", TRIVIAL)
@@ -5839,6 +5837,12 @@ end subroutine sumFluxes
        call setupEvenUpArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
 
+       call writeInfo("Evening up", TRIVIAL)
+       call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+
+
+
 !do initial exchange across boundaries. The exchange gives subdomain boundary cells information about their foreign neighbours
        call writeInfo("Doing initial exchange", TRIVIAL)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -6127,6 +6131,8 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        
        currentTime = currentTime + dt
+
+       if (writeoutput) write(*,'(a,f7.2)') "Percent left until dump ",100.d0*(nextDumpTime - currentTime)/tdump
 
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
@@ -9021,7 +9027,7 @@ real(double) :: rho
     real(double) :: limit
     logical :: refineOnGradient
     real(double) :: rho, rhoe, rhou, rhov, rhow, energy, phi, x, y, z, pressure
-    real(double) :: speed1, speed2
+    real(double) :: speed1, speed2, rhoJ, cs, bigJ, rhoJeans
     integer :: nd
     integer :: index1, index2, step
     real(double) :: index
@@ -9222,11 +9228,11 @@ real(double) :: rho
     endif
 
     if (converged.and.refineOnJeans) then
-!       bigJ = 0.25d0
-!       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
-!       cs = soundSpeed(thisOctal, subcell)
-       massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
-       if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
+       bigJ = 0.25d0
+       cs = soundSpeed(thisOctal, subcell)
+       rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * returnCodeUnitLength(thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
+       massTol = rhoJeans*1.d30*cellVolume(thisOctal,subcell)
+       if (((thisOctal%rho(subcell)*1.d30*cellVolume(thisOctal,subcell)) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
           write(*,*)  myrankGlobal," splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
 !          write(*,*) "mass tol ",masstol
@@ -14580,13 +14586,19 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
 
   recursive subroutine calculateTemperatureFromEnergy(thisOctal)
+    use inputs_mod, only : photoionPhysics
+    use ion_mod, only : nGlobalIon, globalIonArray, returnMu
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: eThermal
     real(double) :: mu
 
-    mu = 2.33d0
+    if (photoionPhysics) then
+       mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+    else
+       mu = 2.33d0
+    endif
 
     do subcell = 1, thisOctal%maxChildren
        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle

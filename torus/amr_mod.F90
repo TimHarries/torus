@@ -3260,6 +3260,8 @@ CONTAINS
     type(VECTOR) :: centre, dirVec(6), locator
     integer :: nDir
     real(double) :: maxGradient, grad, phiMax
+    
+    real(double) :: bigJ, rhoJeans, cs
 #ifdef SPH
     real(double) :: massPerCell, n_bin_az
     real(double) :: vgradx, vgrady, vgradz, vgrad
@@ -3907,9 +3909,16 @@ CONTAINS
 
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
-                 massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
-                 if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
-                      .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
+          bigJ = 0.25d0
+          cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))
+          rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * (thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
+          massTol  = rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
+!          massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
+          if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
+               .and.(thisOctal%nDepth < maxDepthAMR)) then
+             split = .true.
+!             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+          endif
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -8006,7 +8015,7 @@ endif
     endif
     if (hydrodynamics) then
        thisOctal%iequationOfState(subcell) = 1 ! isothermal
-       ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+       ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
        thisOctal%energy(subcell) = eThermal
        thisOctal%gamma(subcell) = 2.d0
     endif

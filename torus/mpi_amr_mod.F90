@@ -1,4 +1,3 @@
-
 module mpi_amr_mod
 #ifdef MPI
 

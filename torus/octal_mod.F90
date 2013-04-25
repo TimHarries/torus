@@ -791,8 +791,8 @@ CONTAINS
        endif
     else
        rVec = subcellCentre(thisOctal,subcell)
-       r1 = rVec%x-thisOctal%subcellSize/2.d0
-       r2 = rVec%x+thisOctal%subcellSize/2.d0
+       r1 = abs(rVec%x)-thisOctal%subcellSize/2.d0
+       r2 = abs(rVec%x)+thisOctal%subcellSize/2.d0
        v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
     endif
 666 continue
