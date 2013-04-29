@@ -252,18 +252,20 @@ contains
     r = cen2%x * gridDistanceScale
 
 
-    out%x = out%x + dqdx(thisOctal, subcell, grid, 1, 1, VECTOR(1.d0, 0.d0, 0.d0))
-    out%x = out%x + thisOctal%qViscosity(subcell,1,1) / r
-    out%x = out%x - thisOctal%qViscosity(subcell,2,2) / r
-    out%x = out%x + dqdx(thisOctal, subcell, grid, 1, 3, VECTOR(0.d0, 0.d0, 1.d0))
+    if ( (cen2%x - (thisOctal%subcellSize/2.d0+0.01d0*smallestCellSize)) > 0.d0) then ! not on axis
+       out%x = out%x + dqdx(thisOctal, subcell, grid, 1, 1, VECTOR(1.d0, 0.d0, 0.d0))
+       out%x = out%x + thisOctal%qViscosity(subcell,1,1) / r
+       out%x = out%x - thisOctal%qViscosity(subcell,2,2) / r
+       out%x = out%x + dqdx(thisOctal, subcell, grid, 1, 3, VECTOR(0.d0, 0.d0, 1.d0))
 
-    out%y = out%y  + dqdx(thisOctal, subcell, grid, 1, 2, VECTOR(1.d0, 0.d0, 0.d0))
-    out%y = out%y + 2.d0 * thisOctal%qViscosity(subcell,1,2)/r
-    out%y = out%y  + dqdx(thisOctal, subcell, grid, 2, 3, VECTOR(0.d0, 0.d0, 1.d0))
+       out%y = out%y  + dqdx(thisOctal, subcell, grid, 1, 2, VECTOR(1.d0, 0.d0, 0.d0))
+       out%y = out%y + 2.d0 * thisOctal%qViscosity(subcell,1,2)/r
+       out%y = out%y  + dqdx(thisOctal, subcell, grid, 2, 3, VECTOR(0.d0, 0.d0, 1.d0))
 
-    out%z = out%z + dqdx(thisOctal, subcell, grid, 1, 3, VECTOR(1.d0, 0.d0, 0.d0))
-    out%z = out%z + thisOctal%qViscosity(subcell,1,3)/r
-    out%z = out%z + dqdx(thisOctal, subcell, grid, 3, 3, VECTOR(0.d0, 0.d0, 1.d0))
+       out%z = out%z + dqdx(thisOctal, subcell, grid, 1, 3, VECTOR(1.d0, 0.d0, 0.d0))
+       out%z = out%z + thisOctal%qViscosity(subcell,1,3)/r
+       out%z = out%z + dqdx(thisOctal, subcell, grid, 3, 3, VECTOR(0.d0, 0.d0, 1.d0))
+    endif
 
   end function newdivQ
 

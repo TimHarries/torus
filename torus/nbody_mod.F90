@@ -444,6 +444,89 @@ contains
   end subroutine recursivePotentialFromGas
 
 
+  subroutine calculateForceFromSinks(thisOctal, subcell, source, nSource, eps, force)
+    use inputs_mod, only : gridDistanceScale, cylindricalHydro
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: position, rVec, force, fVec, thisPos
+    integer :: nSource, iSource, i, j
+    real(double) :: eps, mass, r, V, dm, dx
+    
+    V = 1.d30 * cellVolume(thisOctal, subcell)
+    force = VECTOR(0.d0, 0.d0, 0.d0)
+    mass = thisOctal%rho(subcell) * V
+
+    position = subcellCentre(thisOctal, subcell)
+
+    do iSource = 1, nSource
+       rVec = source(isource)%position - position
+       r = modulus(rVec)
+       if (r > thisOctal%subcellSize) then
+          fVec = rVec/modulus(rVec)
+          force = force + ((bigG*mass*source(isource)%mass/ ((r*gridDistanceScale)**2 + eps**2))*fVec)
+       else
+          if (cylindricalHydro) then
+             dm = mass / 64.d0
+             do i = 1, 8
+                do j = 1, 8
+                   dx = thisOctal%subcellSize/8.d0
+                   thisPos = position + VECTOR(position%x + dble(i-1)/8.d0 *dx + dx/2.d0 - 4.d0*dx, &
+                        0.d0, position%z + dble(j-1)/8.d0 * dx + dx/2.d0 - 4.d0*dx)
+                   rVec = source(isource)%position - thisPos
+                   r = modulus(rVec)
+                   fVec = rVec/modulus(rVec)
+                   force = force + ((bigG*dm*source(isource)%mass/ ((r*gridDistanceScale)**2 + eps**2))*fVec)
+                enddo
+             enddo
+          endif
+       endif
+            
+    enddo
+    force = force / V
+  end subroutine calculateForceFromSinks
+
+  subroutine calculatePotentialFromSinks(thisOctal, subcell, source, nSource, potential)
+    use inputs_mod, only : gridDistanceScale, cylindricalHydro
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: position, rVec,  thisPos
+    integer :: nSource, iSource, i, j
+    real(double) :: potential, mass, r, V, dm, dx
+    
+    V = 1.d30 * cellVolume(thisOctal, subcell)
+    potential = 0.d0
+    mass = thisOctal%rho(subcell) * V
+
+    position = subcellCentre(thisOctal, subcell)
+
+    do iSource = 1, nSource
+       rVec = source(isource)%position - position
+       r = modulus(rVec)
+       if (r > thisOctal%subcellSize) then
+          potential = potential -  (bigG*mass*source(isource)%mass/ (r*gridDistanceScale))
+       else
+          if (cylindricalHydro) then
+             dm = mass / 64.d0
+             do i = 1, 8
+                do j = 1, 8
+                   dx = thisOctal%subcellSize/8.d0
+                   thisPos = position + VECTOR(position%x + dble(i-1)/8.d0 *dx + dx/2.d0 - 4.d0*dx, &
+                        0.d0, position%z + dble(j-1)/8.d0 * dx + dx/2.d0 - 4.d0*dx)
+                   rVec = source(isource)%position - thisPos
+                   r = modulus(rVec)
+                   potential = potential - (bigG*dm*source(isource)%mass/ (r*gridDistanceScale))
+                enddo
+             enddo
+          endif
+       endif
+            
+    enddo
+  end subroutine calculatePotentialFromSinks
+
+
+
   recursive subroutine applySourcePotential(thisOctal, source, nSource, eps)
     type(SOURCETYPE) :: source(:)
     integer :: nSource

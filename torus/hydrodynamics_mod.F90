@@ -2452,7 +2452,7 @@ contains
     use inputs_mod, only : radiationPressure, nBodyPhysics, includePressureTerms
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
-    type(VECTOR) :: direction, fVisc, rVec
+    type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks
     type(octal), pointer  :: child 
     integer :: subcell, i
     logical :: debug
@@ -2546,7 +2546,8 @@ contains
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
-
+             call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
+                  smallestCellSize*gridDistanceScale, gravForceFromSinks)
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
 
@@ -2574,6 +2575,9 @@ contains
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+
+                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
+
 
                 if (debug) then
                    write(*,*) "change in mom from gravity in x ", dt * & !gravity due to gas
@@ -2668,6 +2672,9 @@ contains
 
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+
+                thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + dt * gravForceFromSinks%z ! grav due to sinks
+
 
                 if (debug) then
                    write(*,*) "change in mom from gravity in z ", dt * & !gravity due to gas
@@ -4220,9 +4227,9 @@ end subroutine sumFluxes
 !       if (dogasgravity)  call multiGrid(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
-       if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
-       endif
+!       if (globalnSource > 0) then
+!          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
+!       endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
@@ -5916,9 +5923,9 @@ end subroutine sumFluxes
              if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
 
              call zeroSourcepotential(grid%octreeRoot)
-             if (globalnSource > 0) then
-                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
-             endif
+!             if (globalnSource > 0) then
+!                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
+!             endif
              call sumGasStarGravity(grid%octreeRoot)
              if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
           endif
@@ -14032,7 +14039,12 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              endif
 
 
-             eGrav = cellMass * thisOctal%phi_i(subcell)
+             if (.not.cylindricalHydro) then
+                eGrav = cellMass * thisOctal%phi_i(subcell)
+             else
+                 call calculatePotentialFromSinks(thisOctal, subcell, source, nSource, eGrav)
+                 eGrav = eGrav + cellMass * thisOctal%phi_i(subcell)
+              endif
              eThermal = 0.5d0 * cellMass * soundSpeed(thisOctal, subcell)**2
              if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
