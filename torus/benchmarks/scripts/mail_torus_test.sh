@@ -1,6 +1,6 @@
 #!/bin/ksh
 
-mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk tjh202@exeter.ac.uk claire@astro.ex.ac.uk"
+mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
 #mail_to="acreman@astro.ex.ac.uk"
 
 export BASE_DIR=/Users/acreman
@@ -119,7 +119,7 @@ else
 fi
 
 # Test for success of 2D gravity solver test
-num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest/check_log_ompiosx_gravtest.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep "Torus gravity solver test successful" benchmarks_ompiosx/benchmarks/gravtest_2d/check_log_ompiosx_gravtest_2d.txt | /usr/bin/wc -l`
 if [[ ${num_success} -eq 1 ]]; then
     echo "2D gravity test successful. " >> header
 else
