@@ -41,6 +41,7 @@ mass 1.d0
 radius 1.d0
 position 0. 0. 0.
 velocity 0. 0. 0.
+alpha 0.
 
 xplusboundstring freeOutNoIn
 xminusboundstring freeOutNoIn

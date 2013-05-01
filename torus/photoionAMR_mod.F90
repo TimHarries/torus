@@ -6,7 +6,6 @@ module photoionAMR_mod
 #ifdef MPI
 use constants_mod
 use messages_mod
-
 use parallel_mod
 use photoion_utils_mod
 use gridio_mod
@@ -988,7 +987,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest
+         radPressureTest,  zBoundaryReflecting
     use inputs_mod, only : resetDiffusion, usePacketSplitting
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1623,6 +1622,12 @@ end subroutine radiationHydro
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+
+                if (zBoundaryReflecting) then
+                   rHat%z = abs(rHat%z)
+                   rVec%z = abs(rVec%z)
+                   uHat%z = abs(uHat%z)
+                endif
 
                 !re-weighting for corner sources, edges still need work
                 if(source(iSource)%onCorner) then
@@ -2638,8 +2643,8 @@ end subroutine radiationHydro
 
              
           endif
-          if (nHydroSetsGlobal > 1) tempCell(iOctal,:) = thisOctal%temperature(:)
-          if (nHydroSetsGlobal > 1) tempIon(iOctal,:,:) = real(thisOctal%ionFrac(:,:))
+          if (nHydroSetsGlobal > 1) tempCell(iOctal,1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
+          if (nHydroSetsGlobal > 1) tempIon(iOctal,1:thisOctal%maxChildren,:) = real(thisOctal%ionFrac(1:thisOctal%maxChildren,:))
        enddo
        !$OMP END DO
        !$OMP END PARALLEL
@@ -2884,6 +2889,7 @@ end subroutine radiationHydro
         if (myRankWorldGlobal == 0) write(*,*) "Exceeded maxiter iterations, forcing convergence"
         converged = .true.
      endif
+     write(*,*) "myrank ",myrankGlobal, " converged ",converged, " undersampled ",undersampled
 
 !       if (myRankGlobal /= 0) then
 !          iOctal_beg = 1
@@ -3024,14 +3030,15 @@ end subroutine radiationHydro
 !        write(*,*) "monteCheck ",monteCheck
 !     endif
 
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!     call writeVtkFile(grid, mpiFilename, &
-!          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!          "hydrovelocity","sourceCont   ","pressure     ", &
-!          "crossings    ", &
-!          "chiline      ", &
-!          "dust1        ", &
-!          "diff         "/))
+     write(*,*) myrankglobal, " calling vtk writer"
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+     call writeVtkFile(grid, mpiFilename, &
+          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+          "hydrovelocity","sourceCont   ","pressure     ", &
+          "crossings    ", &
+          "chiline      ", &
+          "dust1        ", &
+          "diff         "/))
 
      if(singleMegaPhoto) then
 
@@ -3197,7 +3204,7 @@ end subroutine setDiffusionZoneOnRadius
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
-  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro
+  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro, zBoundaryReflecting
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -3260,7 +3267,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !    write(*,*) "calling distancetocellboundary with ",cylindricalHydro
 !    write(*,*) "rVec ",rVec
 !    write(*,*) "uHat ",uHat
+
+    if (rVec%z < 0.d0) then
+       write(*,*) "rVec ",rVec
+       write(*,*) "uHat ",uHat
+    endif
     call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+!    write(*,*) "tval ",tval
     
     octVec = rVec
     thisOctVec = rVec
@@ -3327,6 +3340,20 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          if (bigPhotonPacket) write(*,*) myrankGlobal, " big photon packet escaped due to tlimit. bug"
           outOfTime = .true.
        endif
+
+
+
+          zBoundaryReflecting = .true.
+          if (zBoundaryReflecting) then
+             if (rVec%z < 0.d0) then
+                rVec = rVec - (2.d-3*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
+                uHat%z = -uHat%z
+                stillInGrid = .true.
+             endif
+          endif
+
+
+
 
 ! check whether the photon has escaped from the grid
        if (inOctal(grid%octreeRoot,rVec)) then
@@ -3402,9 +3429,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           end if
           stillInGrid = .false.
           escaped = .true. 
-
-       endif
           
+       endif
+       
        octVec = rVec
        
 ! check whether the photon has  moved across an MPI boundary
@@ -3453,6 +3480,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! calculate the distance to the next cell
 
+          if (rVec%z < 0.d0) then
+             write(*,*) "rVec ",rVec
+             write(*,*) "uHat ",uHat
+          endif
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
 
           octVec = rVec

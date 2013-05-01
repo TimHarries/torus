@@ -4499,17 +4499,17 @@ CONTAINS
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
           
-          if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
-               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
-               (.not.thisOctal%cylindrical)) split=.true.
-          
           if (.not.smoothinneredge) then
+             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
+                  (.not.thisOctal%cylindrical)) split=.true.
+          endif
+          
              if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
                 if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
                    if (.not.thisOctal%cylindrical) split = .true.
                 endif
              endif
-          endif
           
           if ((r+cellsize/2.d0) < rInner) split = .false.
           if ((r-cellsize/2.d0) > Router) split = .false.
@@ -9815,6 +9815,8 @@ end function readparameterfrom2dmap
     thisOctal%temperature(subcell) = 100. 
     rd = rOuter / 2.
 
+    thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+
     thisOctal%rho(subcell) = 1.d-30
     if (associated(thisOctal%nh)) &
          thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
@@ -9841,6 +9843,7 @@ end function readparameterfrom2dmap
     endif
 
     r = real(sqrt(rVec%x**2 + rVec%y**2))
+
     if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
 ! tinkered from 10K - I figured the cooler bits will gently drop but a 

@@ -232,6 +232,10 @@ contains
 
                 endif
 
+!                if (cylindricalHydro) then
+!                   source(iSource)%onCorner = .true.
+!                endif
+
                 if(source(iSource)%outsideGrid .and. myRankGlobal == 1) then
                    write(*,*) "Source outside grid!"
                 end if

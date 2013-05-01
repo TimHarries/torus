@@ -91,6 +91,7 @@
   integer :: maxPhotoIonIter   !Maximimum interation number
 
   logical :: periodicX, periodicY, periodicZ ! Periodic photon boundary conditions
+  logical :: zBoundaryReflecting ! zboundary reflects photons for 2d cylindrical hydro
   logical :: doPhotoRefine     !Refine the AMR grid between iterations of the photo loop
 
 !---------------

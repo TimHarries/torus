@@ -419,10 +419,10 @@ contains
        else
           call locate(mStar, nSteps, source%mass, i)
           t = (source%mass - mStar(i))/(mStar(i+1)-mstar(i))
-          source%radius = (rStar(i) + t * (rStar(i+1) - rStar(i)))/1.d10
-          source%luminosity = lStar(i) + t * (lStar(i+1) - lStar(i))
-          source%teff = (source%luminosity / (fourpi * source%radius**2 * 1.d20 * stefanBoltz))**0.25d0
        endif
+       source%radius = (rStar(i) + t * (rStar(i+1) - rStar(i)))/1.d10
+       source%luminosity = max(1.d0, lStar(i) + t * (lStar(i+1) - lStar(i)))
+       source%teff = (source%luminosity / (fourpi * source%radius**2 * 1.d20 * stefanBoltz))**0.25d0
 
      end subroutine getHosokawaProperties
        

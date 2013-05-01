@@ -913,7 +913,7 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only : rInner, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, betaDisc
+    use inputs_mod, only : rSublimation, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, betaDisc
     use octal_mod, only : cellVolume
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -940,7 +940,7 @@ contains
           rVec = subcellCentre(thisOctal, subcell)
           r = sqrt(rVec%x**2+rVec%y**2)
           z = rVec%z
-          if ( (r > rInner).and.(r < rOuter)) then
+          if ( (r > rSublimation).and.(r < rOuter)) then
              tot = 0.d0
              do iDust = 1, nDustType
                 thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)

@@ -1080,14 +1080,18 @@ contains
        call getReal("teff1", teff, 1., cLine, fLine, nLines, &
             "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
 
+          call getReal("rsub", rSublimation, rcore, cLine, fLine, nLines, &
+               "Sublimation radius (rstar): ","(a,f5.1,a)", 0., ok, .false.)
 
        call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
             "Set sublimation radius empirically (Whitney et al 2004): ","(a,1l,1x,a)", .false., ok, .false.)
 
        if (.not.setSubRadius) then
-          rSublimation = rInner
-          write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
-          call writeInfo(message,TRIVIAL)
+          if (rSublimation == 0.) then
+             rSublimation = rInner
+             write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+             call writeInfo(message,TRIVIAL)
+          endif
        else
           rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
           write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"

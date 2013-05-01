@@ -321,7 +321,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 !$OMP THREADPRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray)
 
-  probDust = 0.1
+  probDust = 0.5
   phaseTime = 0.0
   phaseOffset = 0.0
   dopshift = 0.

@@ -3483,7 +3483,7 @@ subroutine setBiasOnTau(grid, iLambda)
           
           if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-
+          
           if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
