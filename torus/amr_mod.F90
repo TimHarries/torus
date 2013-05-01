@@ -3191,7 +3191,7 @@ CONTAINS
          ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell, refineQ2Only
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
-    use inputs_mod, only : inputnsource, sourcepos
+    use inputs_mod, only : inputnsource, sourcepos, smoothinneredge
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -4503,9 +4503,11 @@ CONTAINS
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
                (.not.thisOctal%cylindrical)) split=.true.
           
-          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
-             if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
-                if (.not.thisOctal%cylindrical) split = .true.
+          if (.not.smoothinneredge) then
+             if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
+                if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
+                   if (.not.thisOctal%cylindrical) split = .true.
+                endif
              endif
           endif
           
