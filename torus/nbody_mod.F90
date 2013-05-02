@@ -451,7 +451,7 @@ contains
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: position, rVec, force, fVec, thisPos
     integer :: nSource, iSource, i, j
-    real(double) :: eps, mass, r, V, dm, dx
+    real(double) :: eps, mass, r, V, dm, dx, r1, r2
     
     V = 1.d30 * cellVolume(thisOctal, subcell)
     force = VECTOR(0.d0, 0.d0, 0.d0)
@@ -464,19 +464,22 @@ contains
        r = modulus(rVec)
        if (r > thisOctal%subcellSize) then
           fVec = rVec/modulus(rVec)
-          force = force + ((bigG*mass*source(isource)%mass/ ((r*gridDistanceScale)**2 + eps**2))*fVec)
+          force = force + ((bigG*mass*source(isource)%mass * splineSoftening(r*gridDistanceScale,eps))*fVec)
        else
           if (cylindricalHydro) then
              dm = mass / 64.d0
              do i = 1, 8
                 do j = 1, 8
                    dx = thisOctal%subcellSize/8.d0
+                   r1 = position%x + dble(i-1)/8.d0 *dx  - 4.d0*dx
+                   r2 = position%x + dble(i-1)/8.d0 *dx + dx - 4.d0*dx
+                   dm = thisOctal%rho(subcell) * 1.d30 * pi * (r2**2 - r1**2) * dx
                    thisPos = position + VECTOR(position%x + dble(i-1)/8.d0 *dx + dx/2.d0 - 4.d0*dx, &
                         0.d0, position%z + dble(j-1)/8.d0 * dx + dx/2.d0 - 4.d0*dx)
                    rVec = source(isource)%position - thisPos
-                   r = modulus(rVec)
+                   r = modulus(rVec) * gridDistanceScale
                    fVec = rVec/modulus(rVec)
-                   force = force + ((bigG*dm*source(isource)%mass/ ((r*gridDistanceScale)**2 + eps**2))*fVec)
+                   force = force + ((bigG*dm*source(isource)%mass * splineSoftening(r, eps))*fVec)
                 enddo
              enddo
           endif
@@ -486,6 +489,25 @@ contains
     force = force / V
   end subroutine calculateForceFromSinks
 
+  real(double) function splineSoftening(r, rSoft)
+    real(double) :: r, rSoft, fac
+
+    fac = r / rSoft
+
+! spline softening from Appendix A of Federrath et al., 2010, ApJ 713, 269
+
+    if (fac < 0.5d0) then
+
+       splineSoftening = (4.d0 / rSoft**2) * ( (8.d0/3.d0) * fac - (48.d0/5.d0)*fac**3 + 8.d0 * fac**4)
+    else if ((fac >= 0.5d0).and.(fac < 1.d0)) then
+       splineSoftening = (4.d0/rSoft**2) * ( (16.d0/3.d0) * fac - 12.d0 * fac**2 + (48.d0/5.d0) * fac**3 - &
+            (8.d0/3.d0) * fac**4 - (1.d0/60.d0) * fac**2)
+    else
+       splineSoftening = 1.d0 / r**2
+    endif
+  end function splineSoftening
+
+
   subroutine calculatePotentialFromSinks(thisOctal, subcell, source, nSource, potential)
     use inputs_mod, only : gridDistanceScale, cylindricalHydro
     type(OCTAL), pointer :: thisOctal
@@ -493,7 +515,7 @@ contains
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: position, rVec,  thisPos
     integer :: nSource, iSource, i, j
-    real(double) :: potential, mass, r, V, dm, dx
+    real(double) :: potential, mass, r, V, dm, dx, r1,r2
     
     V = 1.d30 * cellVolume(thisOctal, subcell)
     potential = 0.d0
@@ -512,6 +534,9 @@ contains
              do i = 1, 8
                 do j = 1, 8
                    dx = thisOctal%subcellSize/8.d0
+                   r1 = position%x + dble(i-1)/8.d0 *dx  - 4.d0*dx
+                   r2 = position%x + dble(i-1)/8.d0 *dx + dx - 4.d0*dx
+                   dm = thisOctal%rho(subcell) * 1.d30 * pi * (r2**2 - r1**2) * dx
                    thisPos = position + VECTOR(position%x + dble(i-1)/8.d0 *dx + dx/2.d0 - 4.d0*dx, &
                         0.d0, position%z + dble(j-1)/8.d0 * dx + dx/2.d0 - 4.d0*dx)
                    rVec = source(isource)%position - thisPos

@@ -2547,7 +2547,7 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                  smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
 
@@ -5916,22 +5916,21 @@ end subroutine sumFluxes
           call checkBoundaryPartners(grid%octreeRoot, grid)
           call writeInfo("Initial Boundary Partner Check Passed", TRIVIAL)
 
+       if (doselfgrav) then
+          if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+          call zeroPhiGas(grid%octreeRoot)
+          if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
 
-          if (doselfgrav) then
-             if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-             call zeroPhiGas(grid%octreeRoot)
-             if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+          call zeroSourcepotential(grid%octreeRoot)
+          call sumGasStarGravity(grid%octreeRoot)
+          if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+       endif
 
-             call zeroSourcepotential(grid%octreeRoot)
-!             if (globalnSource > 0) then
-!                call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
-!             endif
-             call sumGasStarGravity(grid%octreeRoot)
-             if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-          endif
 
        endif
     endif
+
+
 
     if(modelWasHydro) then
        print *, "MODEL WAS HYDRO"
@@ -6143,6 +6142,8 @@ end subroutine sumFluxes
 
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
+
+
 
 !dump simulation data if the simulation time exceeds the next dump time
        if (currentTime .ge. nextDumpTime) then
@@ -13986,7 +13987,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
   recursive subroutine performGasAccretion(thisOctal, accretedMass, accretedLinMomentum, accretedAngMomentum, &
        source, nSource)
     use mpi
-    use inputs_mod, only : rhoThreshold, geometry
+    use inputs_mod, only : rhoThreshold, geometry, smallestCellSize
     type(SOURCETYPE) :: source(:)
     real(double) :: accretedMass(:), thisCellVolume
     type(VECTOR) :: accretedLinMomentum(:), accretedAngMomentum(:), cellCentre, cellVelocity
@@ -13996,6 +13997,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iSource
+    logical :: onAxis, cellBound
  
 
     do subcell = 1, thisoctal%maxchildren
@@ -14013,13 +14015,18 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           if (thisOctal%ghostCell(subcell)) cycle
 
           iSource = nint(thisOctal%chiLine(subcell))
-          
           if (iSource > 0) then
              rhoLocal = thisOctal%rho(subcell)
              cellCentre = subcellCentre(thisOctal, subcell)
              
              thisCellVolume = cellVolume(thisOctal, subcell) * 1.d30
              cellMass = thisOctal%rho(subcell) * thisCellVolume
+
+
+             onAxis = .false.
+             if (cylindricalHydro) then
+                onAxis = .not.(cellCentre%x - thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize < 0.d0)
+             endif
 
 
              if (thisOctal%threeD) then
@@ -14032,10 +14039,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      rv, &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
-!!!!!!!!!!!!!!!
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      0.d0, &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
+                if (onAxis) cellVelocity = VECTOR(0.d0, 0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))
              endif
 
 
@@ -14049,7 +14056,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-             if ((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold)) then
+	     cellBound = .not.((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold))
+             if (cylindricalHydro) CellBound = .true.
+             if (.not.cellBound) then
                 write(*,*) "Cell in accretion radius but not bound ",eKinetic+eGrav+eThermal
                 write(*,*) "eGrav ",eGrav
                 write(*,*) "ethermal ",eThermal
@@ -14058,7 +14067,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              localAccretedMass = 0.d0
              localAccretedMom = VECTOR(0.d0, 0.d0, 0.d0)
              localAngMom = VECTOR(0.d0, 0.d0, 0.d0)
-             if (eKinetic + eThermal + eGrav < 0.d0) then
+             if (cellBound) then
                 if (rhoLocal > rhoThreshold) then
                    
                    localaccretedMass = (rhoLocal - rhoThreshold) * cellVolume(thisOctal,Subcell)*1.d30
