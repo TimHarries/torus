@@ -4690,7 +4690,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
     maxFracChange = MAXVAL(maxFracChangePerLevel(1:max(2,minlevel-2))) 
 
 ! Output text to std out re convergence  
-    write(message,'(a,1x,f11.7,1x,a,1x,f6.3,1x,a,2x,l1,1x,a,1x,i6,1x,a,1x,i6)') &
+    write(message,'(a,1x,f11.7,1x,a,1x,f6.3,1x,a,2x,l1,1x,a,1x,i6,1x,a,1x,i8)') &
          "Maximum fractional change this iteration ", maxFracChange, "tolerance", tolerance, "fixed rays", fixedrays, &
          "nray", nray
     call writeInfo(message,FORINFO)
@@ -6297,37 +6297,37 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
     integer :: i
     character(len=*) :: filename
     integer :: nr, nOctals
-    real(double), allocatable :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:)
+    real(double), allocatable :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:), tauRadex(:)
 
     call countVoxels(grid%octreeRoot, nOctals, nr)
-    allocate(rArray(1:nr), tArray(1:nr), rhoArray(1:nr),TexArray(1:nr), tauArray(1:nr))
+    allocate(rArray(1:nr), tArray(1:nr), rhoArray(1:nr),TexArray(1:nr), tauArray(1:nr), tauRadex(1:nr))
     nr = 0
-    call getRadialMolecular(grid%octreeRoot, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray)
+    call getRadialMolecular(grid%octreeRoot, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray, tauRadex)
 
     if (writeoutput) then
        open(33, file=filename, status="unknown", form="formatted")
        if (spherical) then
-          write(33,'(a)') "# radius (AU), dust temperature (K), density N(H_2), Tex, tau"
+          write(33,'(a)') "# radius (AU), dust temperature (K), density N(H_2), Tex, tau torus"
        else
-          write(33,'(a)') "# x (AU), dust temperature (K), density N(H_2), Tex, tau"
+          write(33,'(a)') "# x (AU), dust temperature (K), density N(H_2), Tex, tau torus"
        endif
        do i = 1, nr
-          write(33,'(1p,e13.3,e13.3,e13.3,e13.3,e13.3)') rArray(i)*1.d10/autocm,tArray(i),rhoArray(i)/(2.d0*mHydrogen), &
+          write(33,'(1p,e13.3,e13.3,e13.3,e13.3,e13.3,e13.3)') rArray(i)*1.d10/autocm,tArray(i),rhoArray(i)/(2.d0*mHydrogen), &
                texArray(i), tauArray(i)
        enddo
        close(33)
     endif
-    deallocate(rArray, tArray, rhoArray, TExArray, tauArray)
+    deallocate(rArray, tArray, rhoArray, TExArray, tauArray, tauRadex)
   end subroutine writeRadialMolecular
 
 
 
-  recursive subroutine getRadialMolecular(thisOctal, thisMolecule, itrans, nr, rArray, rhoArray, tArray, TexArray, tauArray)
+  recursive subroutine getRadialMolecular(thisOctal, thisMolecule, itrans, nr, rArray, rhoArray, tArray, TexArray, tauArray, tauRadex)
     use inputs_mod, only : ncol, vturb, molAbundance
     type(MOLECULETYPE) :: thisMolecule
     integer :: itrans
     type(VECTOR) :: rVec
-  real(double) :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:)
+  real(double) :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:),tauRadex(:)
   integer :: nr
   integer :: iUpper, iLower
   real(double) :: nLower, nUpper, lineFreq, nmol, wavenumber, alpha
@@ -6347,7 +6347,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call  getRadialMolecular(child, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray)
+                call  getRadialMolecular(child, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray, tauRadex)
                 exit
              end if
           end do
@@ -6363,8 +6363,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            nupper = thisOctal%molecularLevel(iUpper,subcell)
            TexArray(nr) = 1.d0/(-kev * log((nUpper/nLower)*(thisMolecule%g(iLower)/thisMolecule%g(iUpper)))/&
                 (thisMolecule%energy(iUpper) - thisMolecule%energy(iLower)))
-           tauArray(nr) = thisMolecule%einsteinA(iUpper) / (8.d0 * pi * wavenumber**3) * &
-                (ncol * molAbundance)/(vturb*1.d5) * &
+           tauRadex(nr) = thisMolecule%einsteinA(iUpper) / (8.d0 * pi * wavenumber**3) * &
+                (ncol * molAbundance)/((vturb/0.6d0)*1.d5) * &
                 (nLower * (thisMolecule%g(iUpper)/thisMolecule%g(iLower)) - nUpper)
 
            alpha = hCgsOVerFourPi * (nLower * thisMolecule%einsteinBlu(iTrans) - &
