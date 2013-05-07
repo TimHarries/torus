@@ -767,7 +767,7 @@ contains
         if (splitOverMPI) call gatherSinks()
 #endif 
 #endif
-        if (nbodyPhysics.and.hosokawaTracks) call setSourceArrayProperties(globalsourceArray, globalnSource)
+        if (nbodyPhysics.and.hosokawaTracks) call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
         call writeSourceList(globalsourceArray, globalnSource)
      endif
 

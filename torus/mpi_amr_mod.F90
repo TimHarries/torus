@@ -3288,7 +3288,7 @@ end subroutine writeRadialFile
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE), ierr
-    real :: kappap
+    real(double) :: kappaRoss
     logical :: stillLooping
     integer :: sendThread
     logical :: hitGrid
@@ -3365,14 +3365,14 @@ end subroutine writeRadialFile
 
                 sOctal => thisOctal
                 call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
-                call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-                tau = tau + dble(kappap) * tval *1.e10
+                call returnKappa(grid, thisOctal, subcell, rosselandKappa = kappaRoss)
+                tau = tau + dble(kappaRoss) * thisOctal%rho(subcell) * tval *1.e10
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
-
+!                if (Writeoutput) write(*,*) "pos ",position, "tau ",tau
                 if (tau > tauWanted) then
                    tauRad = modulus(position)
                    tempStorage(1) = 1.d30
-                   tempStorage(2) = tauRad
+                   tempStorage(2) = tauRad 
                    exit
                 endif
 

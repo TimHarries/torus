@@ -533,6 +533,8 @@ module molecular_mod
 ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
 ! *2 because using 1/e definition of thermal line width
 ! molebench has vturb already
+                 write(*,*) "sound  ",sqrt(2.d-10 * kerg * thisOctal%temperature(subcell) / &
+                      (thisMolecule%molecularWeight * amu))
               endif
 
 ! Fill cells with molecular abundance data
@@ -6328,7 +6330,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
   real(double) :: rArray(:), rhoArray(:), tArray(:), TexArray(:), tauArray(:)
   integer :: nr
   integer :: iUpper, iLower
-  real(double) :: nLower, nUpper, lineFreq, nmol, wavenumber
+  real(double) :: nLower, nUpper, lineFreq, nmol, wavenumber, alpha
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i
@@ -6357,13 +6359,21 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
           tArray(nr) = dble(thisOctal%temperature(subcell))
           rhoArray(nr) = thisOctal%rho(subcell)
            nmol = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-           nlower = thisOctal%molecularLevel(iLower,subcell) !* nMol
-           nupper = thisOctal%molecularLevel(iUpper,subcell) !* nMol
+           nlower = thisOctal%molecularLevel(iLower,subcell)
+           nupper = thisOctal%molecularLevel(iUpper,subcell)
            TexArray(nr) = 1.d0/(-kev * log((nUpper/nLower)*(thisMolecule%g(iLower)/thisMolecule%g(iUpper)))/&
                 (thisMolecule%energy(iUpper) - thisMolecule%energy(iLower)))
            tauArray(nr) = thisMolecule%einsteinA(iUpper) / (8.d0 * pi * wavenumber**3) * &
-                (ncol * molAbundance)/(2.35d0*vturb*1.d5) * &
+                (ncol * molAbundance)/(vturb*1.d5) * &
                 (nLower * (thisMolecule%g(iUpper)/thisMolecule%g(iLower)) - nUpper)
+
+           alpha = hCgsOVerFourPi * (nLower * thisMolecule%einsteinBlu(iTrans) - &
+            nUpper * thisMolecule%einsteinBul(iTrans)) * nMol *  phiProf(0.d0, thisOctal%molmicroturb(subcell))
+           tauArray(nr) = 0.
+           if (nr > 1) then
+              tauArray(nr) = tauArray(nr-1) + alpha * thisOctal%subcellSize * 1.d10
+           endif
+
        endif
     enddo
   end subroutine getRadialMolecular

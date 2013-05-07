@@ -14056,7 +14056,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              if (geometry == "bondi") ethermal = 0.d0
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
-	     cellBound = .not.((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold))
+             cellBound = .not.((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold))
              if (cylindricalHydro) CellBound = .true.
              if (.not.cellBound) then
                 write(*,*) "Cell in accretion radius but not bound ",eKinetic+eGrav+eThermal

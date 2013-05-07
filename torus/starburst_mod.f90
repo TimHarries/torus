@@ -271,17 +271,17 @@ contains
 
     end subroutine setSourceProperties
 
-    subroutine setSourceArrayProperties(source, nSource)
+    subroutine setSourceArrayProperties(source, nSource, fractionOfAccretionLum)
       type(SOURCETYPE) :: source(:)
       integer :: nSource, i
-      real(double) :: lumAcc, tAcc
+      real(double) :: lumAcc, tAcc, fractionOfAccretionLum
 
 
       do i = 1, nSource
          source(i)%age = 1.e5
          source(i)%initialmass = source(i)%mass/msol
          call getHosokawaProperties(source(i))
-         lumAcc = bigG *source(i)%mass * source(i)%mdot / (source(i)%radius*1.d10)
+         lumAcc = bigG *source(i)%mass * source(i)%mdot / (source(i)%radius*1.d10) * fractionOfAccretionLum
          source(i)%luminosity = source(i)%luminosity + lumAcc
          tAcc = (lumAcc / (fourPi*stefanBoltz*source(i)%radius**2*1.d20))**0.25d0
          if (Writeoutput) then

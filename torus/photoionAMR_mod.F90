@@ -101,7 +101,7 @@ contains
     integer :: stageCounter=1,  nPhase, nstep
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
-    real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt
+    real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
     logical :: noPhoto=.false., tmpCylindricalHydro
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
@@ -153,13 +153,11 @@ contains
 !    deltaTforDump = 3.14d10 !1kyr
 !    if (grid%geometry == "hii_test") deltaTforDump = 2.d10
 
-
+    fractionOfAccretionLum = 0.d0
 
     if(.not. readGrid) then
        grid%currentTime = 0.d0
-       grid%iDump = 0
-       deltaTforDump = 3.14d10 !1kyr
-
+       grid%iDump = -1
        deltaTforDump = tdump
 
        if (grid%geometry == "hii_test") deltaTforDump = 9.d10
@@ -385,7 +383,7 @@ contains
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call resetnh(grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
-                   call  setSourceArrayProperties(globalsourceArray, globalnSource)
+                   call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
@@ -398,7 +396,7 @@ contains
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
-                   call  setSourceArrayProperties(globalsourceArray, globalnSource)
+                   call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
@@ -466,11 +464,7 @@ contains
 !                ,"phi          " /))
                 
                 call zeroPhiGas(grid%octreeRoot)
-                if (.not.cylindricalHydro) then
-                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
-                else
-                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-                endif
+                call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
                 
                 if(.not. dirichlet) then
                    call periodBoundary(grid, justGrav = .true.)
@@ -478,7 +472,7 @@ contains
                 end if
                                 
                 call zeroSourcepotential(grid%octreeRoot)
-                if (globalnSource > 0) then
+                if ((globalnSource > 0).and.(.not.cylindricalHydro)) then
                    call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, &
                         smallestCellSize/2.d0)
                 endif
@@ -642,6 +636,9 @@ contains
           dumpThisTime = .true.
        endif
 
+       fractionOfAccretionlum = min(1.d0, grid%currentTime / 3.1d9)
+
+
 !       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
@@ -703,7 +700,7 @@ contains
 !               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
                 if (nbodyPhysics.and.hosokawaTracks) then
-                   call  setSourceArrayProperties(globalsourceArray, globalnSource)
+                   call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
@@ -869,6 +866,12 @@ contains
 !            "hydrovelocity","sourceCont   ", "pressure     "/))
 !       nPhase = nPhase + 1
        if (dumpThisTime) then
+
+          timeOfNextDump = timeOfNextDump + deltaTForDump
+          grid%iDump = grid%iDump + 1
+
+
+          
           if(mod(real(grid%iDump), real(vtuToGrid)) == 0.0) then
              write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
              call writeAmrGrid(mpiFilename, .false., grid)
@@ -876,7 +879,6 @@ contains
           if(grid%geometry == "SB_WNHII") then
              call dumpWhalenNormanTest(grid)
           end if
-          
 !          if(grid%geometry == "SB_offCen") then
           if(0 == 1) then
              if(myRankGlobal == 0) then
@@ -916,9 +918,6 @@ contains
           if(grid%geometry == "hii_test" .and. grid%currentTime >= (1.d11)) then
              deltaTForDump = 1.d11
           end if
-
-          timeOfNextDump = timeOfNextDump + deltaTForDump
-          grid%iDump = grid%iDump + 1
 
 
 
@@ -987,7 +986,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest,  zBoundaryReflecting
+         radPressureTest
     use inputs_mod, only : resetDiffusion, usePacketSplitting
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1149,6 +1148,7 @@ end subroutine radiationHydro
     integer :: nScatBigPacket, j, nScatSmallPacket
     logical :: sourceInThickCell, tempLogical
     logical :: undersampled, flushBuffer, containsLastPacket
+    logical, save :: splitThisTime = .false.
     real(double) :: maxDiffRadius, maxDiffRadius1, maxDiffRadius2
     integer :: receivedStackSize, nToSend
     !AMR
@@ -1499,12 +1499,14 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       call tauRadius(grid, VECTOR(1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1)
+       call tauRadius(grid, VECTOR(-1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1)
        call MPI_BCAST(maxDiffRadius1, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-       call tauRadius(grid, VECTOR(0.d0, 0.d0, 1.d0), 1.d0, maxDiffRadius2)
+       call tauRadius(grid, VECTOR(0.d0, 0.d0, -1.d0), 1.d0, maxDiffRadius2)
        call MPI_BCAST(maxDiffRadius2, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-       maxDiffRadius = min(maxDiffRadius1, maxDiffRadius2)
+       if (splitThisTime) sourceInThickCell = .true.
+
+       maxDiffRadius = max(maxDiffRadius1, maxDiffRadius2)
        if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
 
        if (myrankGlobal /= 0) then
@@ -1622,12 +1624,6 @@ end subroutine radiationHydro
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
-
-                if (zBoundaryReflecting) then
-                   rHat%z = abs(rHat%z)
-                   rVec%z = abs(rVec%z)
-                   uHat%z = abs(uHat%z)
-                endif
 
                 !re-weighting for corner sources, edges still need work
                 if(source(iSource)%onCorner) then
@@ -2494,10 +2490,24 @@ end subroutine radiationHydro
                   real(nScatSmallPacket)/real(nThreadMonte*nSmallPackets), " scatters per small photon packet"
           endif
 
-          call MPI_ALLREDUCE(nScatBigPacket, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
-          nScatBigPacket = i
-          if (writeoutput) write(*,*) "Iteration had ",&
-               real(nScatBigPacket)/real(nThreadMonte), " scatters per big photon packet"
+          
+          if (nSmallPackets > 0) then
+             call MPI_ALLREDUCE(nScatBigPacket, i, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+             nScatBigPacket = i
+             if (writeoutput) write(*,*) "Iteration had ",&
+                  real(nScatBigPacket)/real(nThreadMonte), " scatters per big photon packet"
+             if (real(nScatBigPacket)/real(nThreadMonte) > 20.) splitThisTime = .true.
+          endif
+
+          if (nSmallPackets == 0) then
+             if (real(nTotScat)/real(nThreadMonte) > 20.) then
+                splitThisTime = .true.
+             else
+                splitThisTime = .false.
+             endif
+          endif
+
+
        endif
 
 
@@ -2889,7 +2899,7 @@ end subroutine radiationHydro
         if (myRankWorldGlobal == 0) write(*,*) "Exceeded maxiter iterations, forcing convergence"
         converged = .true.
      endif
-     write(*,*) "myrank ",myrankGlobal, " converged ",converged, " undersampled ",undersampled
+!     write(*,*) "myrank ",myrankGlobal, " converged ",converged, " undersampled ",undersampled
 
 !       if (myRankGlobal /= 0) then
 !          iOctal_beg = 1
@@ -3030,15 +3040,15 @@ end subroutine radiationHydro
 !        write(*,*) "monteCheck ",monteCheck
 !     endif
 
-     write(*,*) myrankglobal, " calling vtk writer"
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-     call writeVtkFile(grid, mpiFilename, &
-          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-          "hydrovelocity","sourceCont   ","pressure     ", &
-          "crossings    ", &
-          "chiline      ", &
-          "dust1        ", &
-          "diff         "/))
+!     write(*,*) myrankglobal, " calling vtk writer"
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!     call writeVtkFile(grid, mpiFilename, &
+!          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!          "hydrovelocity","sourceCont   ","pressure     ", &
+!          "crossings    ", &
+!          "chiline      ", &
+!          "dust1        ", &
+!          "diff         "/))
 
      if(singleMegaPhoto) then
 
@@ -3204,7 +3214,7 @@ end subroutine setDiffusionZoneOnRadius
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
-  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro, zBoundaryReflecting
+  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -3268,10 +3278,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !    write(*,*) "rVec ",rVec
 !    write(*,*) "uHat ",uHat
 
-    if (rVec%z < 0.d0) then
-       write(*,*) "rVec ",rVec
-       write(*,*) "uHat ",uHat
-    endif
+!    if (rVec%z < 0.d0) then
+!       write(*,*) "rVec ",rVec
+!       write(*,*) "uHat ",uHat
+!    endif
     call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
 !    write(*,*) "tval ",tval
     
@@ -3341,16 +3351,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           outOfTime = .true.
        endif
 
-
-
-          zBoundaryReflecting = .true.
-          if (zBoundaryReflecting) then
-             if (rVec%z < 0.d0) then
-                rVec = rVec - (2.d-3*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
-                uHat%z = -uHat%z
-                stillInGrid = .true.
-             endif
-          endif
 
 
 
@@ -3480,10 +3480,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 ! calculate the distance to the next cell
 
-          if (rVec%z < 0.d0) then
-             write(*,*) "rVec ",rVec
-             write(*,*) "uHat ",uHat
-          endif
+!          if (rVec%z < 0.d0) then
+!             write(*,*) "rVec ",rVec
+!             write(*,*) "uHat ",uHat
+!          endif
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
 
           octVec = rVec
