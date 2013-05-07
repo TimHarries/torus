@@ -6322,7 +6322,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
 
 
-  recursive subroutine getRadialMolecular(thisOctal, thisMolecule, itrans, nr, rArray, rhoArray, tArray, TexArray, tauArray, tauRadex)
+  recursive subroutine getRadialMolecular(thisOctal, thisMolecule, itrans, nr, rArray, rhoArray, tArray, TexArray, &
+       tauArray, tauRadex)
     use inputs_mod, only : ncol, vturb, molAbundance
     type(MOLECULETYPE) :: thisMolecule
     integer :: itrans
@@ -6347,7 +6348,8 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call  getRadialMolecular(child, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, tauArray, tauRadex)
+                call  getRadialMolecular(child, thisMolecule, iTrans, nr, rArray, rhoArray, tArray, TexArray, &
+                     tauArray, tauRadex)
                 exit
              end if
           end do
