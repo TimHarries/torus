@@ -636,7 +636,7 @@ contains
           dumpThisTime = .true.
        endif
 
-       fractionOfAccretionlum = min(1.d0, grid%currentTime / 3.1d9)
+       fractionOfAccretionlum = min(1.d0, grid%currentTime / 3.1d10)
 
 
 !       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"

@@ -3370,7 +3370,7 @@ end subroutine writeRadialFile
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
 !                if (Writeoutput) write(*,*) "pos ",position, "tau ",tau
                 if (tau > tauWanted) then
-                   tauRad = modulus(position)
+                   tauRad = modulus(position - tval * uHat)
                    tempStorage(1) = 1.d30
                    tempStorage(2) = tauRad 
                    exit
