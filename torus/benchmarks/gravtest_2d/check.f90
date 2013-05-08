@@ -61,13 +61,6 @@ program check
      write(*,*) "Torus test passed on phi_gas"
   endif
 
-  if (maxFrac_tot > 0.01d0) then
-     write(*,*) "Torus test failed on phi_i"
-     passed = .false.
-  else
-     write(*,*) "Torus test passed on phi_i"
-  endif
-
   if (passed) then
      write(*,*) "Torus gravity solver test successful."
   else
