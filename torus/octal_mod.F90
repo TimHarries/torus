@@ -791,7 +791,7 @@ CONTAINS
        endif
     else
        if(cart2d) then
-          cellcolume = thisOctal%subcellSize**3
+          v = thisOctal%subcellSize**3
        else
           rVec = subcellCentre(thisOctal,subcell)
           r1 = abs(rVec%x)-thisOctal%subcellSize/2.d0
