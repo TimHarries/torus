@@ -3040,10 +3040,10 @@ end subroutine radiationHydro
 !        write(*,*) "monteCheck ",monteCheck
 !     endif
 
-!     write(*,*) myrankglobal, " calling vtk writer"
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!     call writeVtkFile(grid, mpiFilename, &
-!          valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+     write(*,*) myrankglobal, " calling vtk writer"
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+     call writeVtkFile(grid, mpiFilename, &
+          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
 !          "hydrovelocity","sourceCont   ","pressure     ", &
 !          "crossings    ", &
 !          "chiline      ", &
@@ -3214,7 +3214,7 @@ end subroutine setDiffusionZoneOnRadius
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
-  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro
+  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro, amrgridcentrey
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -3300,7 +3300,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     usedMRW = .false.
     i = 0
     call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) then
+    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
        call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
        usedMRW = .true.
@@ -3352,11 +3352,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        endif
 
 
-
-
-
+       if(cart2d) then
+          if(abs(rVec%y - amrgridcentrey) > grid%halfsmallestsubcell) then
+             stillInGrid = .false.
+             escaped = .true.
+          end if
+       end if
 ! check whether the photon has escaped from the grid
-       if (inOctal(grid%octreeRoot,rVec)) then
+       if (inOctal(grid%octreeRoot,rVec) .and. stillInGrid) then
           nextOctal => thisOctal
           nextSubcell = subcell
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
@@ -5055,7 +5058,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
          + dble(distance) * dble(kappaabsdust) * photonPacketWeight
 
     uHatDash = uHat
-    if (thisOctal%twoD) then
+    if (thisOctal%twoD .and. .not. cart2d) then
        rHat = VECTOR(rVec%x, rVec%y, 0.d0)
        call normalize(rHat)
        zHat = VECTOR(0.d0, 0.d0, 1.d0)
@@ -8015,7 +8018,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
        thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
        uHatDash = uHat
-       if (thisOctal%twoD) then
+       if (thisOctal%twoD .and. .not. cart2d) then
           rHat = VECTOR(rVec%x, rVec%y, 0.d0)
           call normalize(rHat)
           zHat = VECTOR(0.d0, 0.d0, 1.d0)
