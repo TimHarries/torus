@@ -790,10 +790,14 @@ CONTAINS
           v = (dphi/dble(twoPi)) * dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
        endif
     else
-       rVec = subcellCentre(thisOctal,subcell)
-       r1 = abs(rVec%x)-thisOctal%subcellSize/2.d0
-       r2 = abs(rVec%x)+thisOctal%subcellSize/2.d0
-       v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+       if(cart2d) then
+          cellcolume = thisOctal%subcellSize**3
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          r1 = abs(rVec%x)-thisOctal%subcellSize/2.d0
+          r2 = abs(rVec%x)+thisOctal%subcellSize/2.d0
+          v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+       end if
     endif
 666 continue
   end function cellVolume
