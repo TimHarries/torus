@@ -2072,7 +2072,7 @@ end subroutine radiationHydro
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             uHat = randomUnitVector()
                             if(cart2d) then
-                               call Pseudo3DUnitVector(rVec, photonPacketWeight,grid%halfsmallestsubcell,&
+                               call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                     2.d0*grid%octreeRoot%subcellSize)
                             end if
 !                            if(grid%twoD) then
@@ -2227,7 +2227,7 @@ end subroutine radiationHydro
                             if (r < albedo) then
                                uHat = randomUnitVector() ! isotropic scattering
                                if(cart2d) then
-                                  call Pseudo3DUnitVector(rVec, photonPacketWeight,grid%halfsmallestsubcell,&
+                                  call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
                                !                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
@@ -2286,7 +2286,7 @@ end subroutine radiationHydro
 
                                uHat = randomUnitVector() ! isotropic emission
                                if(cart2d) then
-                                  call Pseudo3DUnitVector(rVec, photonPacketWeight,grid%halfsmallestsubcell,&
+                                  call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
                                if (radpressuretest) thisFreq = freq(1)
