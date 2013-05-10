@@ -2004,7 +2004,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend, containslastpacket) &
-               !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck) &
+               !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
@@ -2070,7 +2070,7 @@ end subroutine radiationHydro
                             rVec = smallPacketOrigin
                             thisFreq = smallPacketFreq
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
-                            uHat = randomUnitVector()
+                            Uhat = randomUnitVector()
                             if(cart2d) then
                                call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                     2.d0*grid%octreeRoot%subcellSize)
