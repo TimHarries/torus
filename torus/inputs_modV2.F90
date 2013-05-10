@@ -1198,6 +1198,7 @@ contains
 
 
   subroutine readGridInitParameters(cLine, fLine, nLines)
+    use octal_mod, only: cart2d
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
@@ -1212,6 +1213,8 @@ contains
     call getLogical("amr1d", amr1d, cLine, fLine, nLines, &
          "AMR grid is in one-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("cart2d", cart2d, cLine, fLine, nLines, &
+         "2d RHD in cartesians: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("spherical", spherical, cLine, fLine, nLines, &
          "AMR grid is one-dimension and spherical: ","(a,1l,1x,a)", .true., ok, .false.)
@@ -2056,7 +2059,7 @@ contains
   end subroutine readPhotoionEquilibriumParameters
 
   subroutine readHydrodynamicsParameters(cLine, fLine, nLines)
-    use octal_mod, only: cart2d
+
 
     character(len=80) :: cLine(:)
     logical :: fLine(:)
@@ -2086,8 +2089,7 @@ contains
     call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getLogical("cart2d", cart2d, cLine, fLine, nLines, &
-         "2d RHD in cartesians: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
     call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)

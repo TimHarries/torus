@@ -963,12 +963,12 @@ contains
 !Track the evolution of the ionization front with time
        if(grid%geometry == "hii_test") then
           write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
-          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.d9,  0.d0, 1.d9), &
-               VECTOR(2.d9, 0.d0, 2.d9), 1000)!
+          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
+               VECTOR(3.5d9, 0.d0, 3.5d9), 1000)!
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.d9,  0.d0, 1.d9), &
-               VECTOR(2.d9, 0.0d0, 2.d9), 1000)
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
+               VECTOR(3.5d9, 0.0d0, 3.5d9), 1000)
        end if
  
     endif
