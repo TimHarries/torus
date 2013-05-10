@@ -1023,7 +1023,7 @@ end subroutine radiationHydro
     real(double) :: epsOverDeltaT
     integer :: nIter, nPeriodic
     logical :: converged, thisThreadConverged, failed
-    real(double) :: photonPacketWeight
+    real(double) :: photonPacketWeight, spectrumweight
     real(double) :: tPhoton
     real(double) :: albedo
     integer :: maxIter
@@ -1624,7 +1624,10 @@ end subroutine radiationHydro
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
-
+                if(cart2d) then
+                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
+                        2.d0*grid%octreeRoot%subcellSize)
+                end if
                 !re-weighting for corner sources, edges still need work
                 if(source(iSource)%onCorner) then
                    if (grid%octreeRoot%threeD) then
@@ -1639,15 +1642,18 @@ end subroutine radiationHydro
                 end if
 
                 tPhoton = 0.d0
-
+                spectrumweight = 1.d0
                 if(monochromatic) then
                    thisFreq = ((13.60001)*evtoerg)/hcgs
                 else
-                   call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)                
+                   call getWavelength(thisSource%spectrum, wavelength, spectrumWeight)    
+                   photonPacketWeight = photonPacketWeight*spectrumweight
                    thisFreq = cSpeed/(wavelength / 1.e8)
                 end if
                 totalPower = totalPower + epsOverDeltaT*photonPacketWeight
                 
+!                print *, "weight ", photonpacketweight, spectrumweight
+
                 if(binPhotons) then
                    do i = 1, nFreq
                       if((wavelength/1.e8) < lams(i+1) .and. (wavelength/1.e8) > lams(i)) then
@@ -2065,6 +2071,10 @@ end subroutine radiationHydro
                             thisFreq = smallPacketFreq
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             uHat = randomUnitVector()
+                            if(cart2d) then
+                               call Pseudo3DUnitVector(rVec, photonPacketWeight,grid%halfsmallestsubcell,&
+                                    2.d0*grid%octreeRoot%subcellSize)
+                            end if
 !                            if(grid%twoD) then
 !                               thisOctal%
 !                            end if
@@ -2216,6 +2226,10 @@ end subroutine radiationHydro
                             call randomNumberGenerator(getDouble=r)
                             if (r < albedo) then
                                uHat = randomUnitVector() ! isotropic scattering
+                               if(cart2d) then
+                                  call Pseudo3DUnitVector(rVec, photonPacketWeight,grid%halfsmallestsubcell,&
+                                       2.d0*grid%octreeRoot%subcellSize)
+                               end if
                                !                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
                             else
                                
@@ -2269,7 +2283,12 @@ end subroutine radiationHydro
 !                                  close(68)
                                endif
                                thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+
                                uHat = randomUnitVector() ! isotropic emission
+                               if(cart2d) then
+                                  call Pseudo3DUnitVector(rVec, photonPacketWeight,grid%halfsmallestsubcell,&
+                                       2.d0*grid%octreeRoot%subcellSize)
+                               end if
                                if (radpressuretest) thisFreq = freq(1)
 
                             endif
@@ -3301,7 +3320,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     i = 0
     call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
     if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
-       call  modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+       call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
             freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
        usedMRW = .true.
        thisLam = (cspeed/thisFreq)*1.d8
@@ -5985,10 +6004,13 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
 !  write(mpiFilename,'(a, i4.4, a)') "lexington",niter,".grid"
 !  call writeAmrGrid(mpiFilename, .false., grid)
 
-
-  startPoint = vector(0.d0, 0.d0, 0.d0)
-  endPoint = vector(4.4d9, 0.d0, 0.d0)
-
+  if(grid%octreeroot%twod) then
+     startPoint = vector(4.4d9, 0.d0, 4.4d9)
+     endPoint = vector(8.8d9, 0.d0, 8.8d9)
+  else
+     startPoint = vector(0.d0, 0.d0, 0.d0)
+     endPoint = vector(4.4d9, 0.d0, 0.d0)
+  end if
   thisOctal => grid%octreeRoot
   position = startPoint
   direction = endPoint - startPoint

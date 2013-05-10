@@ -355,6 +355,124 @@ contains
   end subroutine melvinUnitVector
 
 
+!thaw
+  subroutine Pseudo3DUnitVector(rVec, photonAngleWeight,dx, L)
+    use constants_mod, only: pi, degToRad, twopi
+    real(double) :: r1, r2, u, v, w, percentInGrid, openingAngle, biasPhiDir, ang, t
+    real(double) :: r, ang2
+    real(double), intent(inout) :: photonAngleWeight
+    real(double), intent(in) :: dx, L
+    type(VECTOR), intent(out) :: rVec
+
+    percentInGrid = 0.95d0
+    
+    openingAngle = atan(dx/(2.d0*L))
+    
+!    call randomNumberGenerator(getDouble=r)
+!    if (r < percentInGrid) then   !% of photons in pseudo-3d grid
+!       call randomNumberGenerator(getDouble=r)
+!       if(r < 0.5) then
+!          call randomNumberGenerator(getDouble=r)
+!          v = cos(openingAngle) + (r * (1.0- cos(openingAngle)))
+!       else
+!!          call randomNumberGenerator(getDouble=r)
+ !         v = -cos(openingAngle) + (r*(-1.0 + cos(openingAngle)))
+ !      end if
+ !      photonAngleWeight = photonAngleWeight*(1.0 - cos(openingAngle)) / percentInGrid 
+ !   else  !rest go elsewhere
+ !      call randomNumberGenerator(getDouble=r)
+ !      v = -cos(openingAngle) + (r * 2.0 * cos(openingAngle))
+ !      photonAngleWeight = photonAngleWeight*(cos(openingAngle) / (1.0 - percentInGrid))
+ !  end if
+ !  
+ !   call randomNumberGenerator(getDouble=r)
+ !   u = 2.d0*r - 1.d0
+ !   call randomNumberGenerator(getDouble=r)
+!    w = 2.d0*r - 1.d0
+!    rVec = VECTOR(u,v,w)
+
+    !      ! simply treating as a point source                                 
+!    position = source%position
+!    direction = randomUnitVector()
+!    if (biasPhiDirection > 0.d0) then
+
+
+    biasPhiDir = 0.d0
+    call randomNumberGenerator(getDouble=r1)
+!    v = (2.d0*r1-1.d0)
+
+    call randomNumberGenerator(getDouble=r)
+    if (r < percentInGrid) then
+       call randomNumberGenerator(getDouble=r2)
+       ang = biasPhiDir + (r2-0.5d0) * openingAngle
+       photonAngleWeight = photonAngleWeight*(openingAngle/pi) / percentInGrid       
+    else
+       ang = biasPhiDir       
+
+       call randomNumberGenerator(getDouble=r)
+       if(r2 > 0.5d0) then
+          call randomNumberGenerator(getDouble=r2)
+          ang = openingAngle + r2*(pi - openingAngle)
+       else
+          ang = -openingAngle - r2*(pi - openingAngle)
+       end if
+!       do while (abs(ang-biasPhiDir) < openingAngle)
+!          call randomNumberGenerator(getDouble=r2)
+!          ang = r2 * twopi
+!       enddo
+       photonAngleWeight = photonAngleWeight*(1.d0-(openingAngle/pi)) / (1.d0-percentInGrid)
+    endif
+
+    v = sin(ang)
+    t = sqrt(1.d0-v*v)
+
+    call randomNumberGenerator(getDouble=r2)
+    ang2 = pi*(2.d0*r2-1.d0)
+
+    u = t*cos(ang2)
+    w = t*sin(ang2)
+!t*sin(ang)
+
+!    u = t*cos(ang)
+!    call randomNumberGenerator(getDouble=r)
+!    u = 2.d0*r-1.d0
+!    call randomNumberGenerator(getDouble=r)
+!    w = 2.d0*r-1.d0
+!
+!    t = sqrt(1.d0 - (w*w) - (u*u))
+
+!    v = t*sin(ang)
+    rVec = VECTOR(u, v, w)
+!    call normalize(rvec)
+    
+
+!    v = t*sin(ang)!
+!
+!    call randomNumberGenerator(getDouble=r)
+!    w = 2.d0*r-1.d0
+!    call randomNumberGenerator(getDouble=r)
+!    u = 2.d0*r-1.d0
+!   call randomNumberGenerator(getDouble=r)
+ !   v = 2.d0*r-1.d0
+   
+
+
+
+
+
+!!!!
+!    call randomNumberGenerator(getDouble=r1)
+!    w = 2.d0*r1 - 1.d0
+!    t = sqrt(1.d0-w*w)
+!    call randomNumberGenerator(getDouble=r2)
+!    ang = pi*(2.d0*r2-1.d0)
+!    u = t*cos(ang)
+!    v = t*sin(ang)
+
+
+  end subroutine pseudo3DUnitVector
+
+
   type(VECTOR) function randomUnitVector()
     use constants_mod, only: pi
     real(double) :: r1, r2, u, v, w, t, ang

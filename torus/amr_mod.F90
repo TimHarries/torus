@@ -7789,15 +7789,15 @@ endif
 !    centre(4) = VECTOR(-10.d0, 0.d0, 0.d0)
 !    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
 
-    centre(1) = VECTOR(6.2d9, 0.d0, 5.d9)
-    centre(2) = VECTOR(2.d9, 0.d0, 2.d9)
-    centre(3) = VECTOR(6.d9, 0.d0, 1.d9)
-    centre(4) = VECTOR(3.d9, 0.d0, 8.d9)
+    centre(1) = VECTOR(2.1d9, 0.d0, 2.d9)
+    centre(2) = VECTOR(1.5d9, 0.d0, 3.d9)
+    centre(3) = VECTOR(2.5d9, 0.d0, 1.d9)
+    centre(4) = VECTOR(1.d9, 0.d0, 1.25d9)
 !    centre(1) = VECTOR(7.5d8, 0.d0, 5.d9)
 
-    do j = 1, numClouds
-       centre(j) = (centre(j) * pctocm)/1.d10
-    end do
+!    do j = 1, numClouds
+!       centre(j) = (centre(j) * pctocm)/1.d10
+ !   end do
 
     if (firstTime) then
        firstTime = .false.
