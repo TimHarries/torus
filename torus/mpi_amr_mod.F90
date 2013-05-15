@@ -3153,23 +3153,28 @@ end subroutine writeRadialFile
   end subroutine dumpValuesAlongLine
 
 
-  subroutine dumpDensitySpectrumZero(filename)
+  subroutine dumpDensitySpectrumZero(filename, filenameB)
     use mpi 
+    use inputs_mod, only : normFac
     implicit none
     real(double) :: rho
-    character(len=*) :: filename
+    character(len=*) :: filename, filenameB
     integer :: ierr
     integer, parameter :: nBins = 14
-    real(double) :: tempSTorage(2), mass, logrho
+    real(double) :: tempSTorage(3), mass, logrho, totalmass
     integer, parameter :: tag = 50
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillRecving!, found
     integer :: i    
     real(double) :: dv, binIDs(nBins+1), massSpec(nBins), dRho
+    real(double) :: ionizedmass, neutralmass
+
+    if (myHydroSetGlobal /= 0) goto 333
 
    ! print *, "ENTERED"
     if(myrankglobal == 0) then
        open(22, file=filename, form="formatted", status="replace")
+       open(23, file=filenameB, form="formatted", status="replace")
 
        binIDs(1) = -25.
        dRho = 0.5
@@ -3178,10 +3183,12 @@ end subroutine writeRadialFile
        end do
   !     print *, "BIN IDS SET UP"
        massSpec = 0.d0
+       ionizedmass = 0.d0
+       neutralmass = 0.d0
        stillRecving=.true.
        do while (stillRecving)
 !          print *, "WAITING TO RECV"
-          call MPI_RECV(tempStorage, 2, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, &
+          call MPI_RECV(tempStorage, 3, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, &
                tag, localWorldCommunicator, status, ierr)       
  !         print *, "RECVD ONE"
           rho = tempStorage(1)
@@ -3195,11 +3202,16 @@ end subroutine writeRadialFile
              
 !             Found = .false.
              
-             
+
  !            do while (.not. found)
              do i=1, nBins
                 if(logrho > binIDs(i) .and. logrho < binIDs(i+1)) then
                    massSpec(i) = massSpec(i) + mass                   
+                   if(tempstorage(3) < 0.5d0) then
+                      ionizedmass = ionizedmass + mass
+                   else
+                      neutralmass = neutralmass + mass
+                   end if
                    !                      found = .true.
                 end if
              end do
@@ -3207,6 +3219,14 @@ end subroutine writeRadialFile
              !          end do
           end if
        end do
+       totalmass = sum(massSpec)
+       print *, "totalmass is ", totalmass
+       if(normfac /= 1.d0) then 
+          massspec = massspec/normfac
+       else
+          massspec = massspec/totalmass
+       end if
+
        print *, "DONE, preparing to dump data"
        print *, binIDs
        print *, massSpec
@@ -3214,9 +3234,12 @@ end subroutine writeRadialFile
           write(22,'(1p,7e14.2)') binIDs(i), massSpec(i)
           write(22,'(1p,7e14.2)') binIDs(i+1), massSpec(i)
        end do
+       write(23,'(1p,7e14.2)') ionizedmass, neutralmass
+       close(23)
        close(22)
    end if
-
+   
+   333 continue
 
  end subroutine dumpDensitySpectrumZero
 
@@ -3229,10 +3252,12 @@ end subroutine writeRadialFile
     integer :: subcell!, childSubcell
     integer :: ierr
     integer, parameter :: nBins = 10
-    real(double) :: tempSTorage(2), dv
+    real(double) :: tempSTorage(3)!, dv
     integer, parameter :: tag = 50
     integer :: i    
 !    real(double) :: binIDs(nBins+1), massSpec(nBins)
+
+    if (myHydroSetGlobal /= 0) goto 444
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3247,18 +3272,22 @@ end subroutine writeRadialFile
        else 
           if(.not. thisoctal%ghostcell(subcell)) then
              tempStorage(1) = thisOctal%rho(subcell)
-             if(thisOctal%twoD) then
-                tempStorage(2) = (thisOctal%subcellSize**2)*griddistancescale**2
-             else
-                dv = cellVolume(thisOctal, subcell)*1.d30
-             end if
+!             if(thisOctal%twoD) then
+!                tempStorage(2) = (thisOctal%subcellSize**2)*griddistancescale**2
+!             else.
+             tempstorage(2) = cellVolume(thisOctal, subcell)*1.d30
+             tempstorage(3) = thisOctal%ionfrac(subcell, 1)
+!             end if
 !             print *, "SENDING"
-             call MPI_SEND(tempStorage, 2, MPI_DOUBLE_PRECISION, 0, &
+             call MPI_SEND(tempStorage, 3, MPI_DOUBLE_PRECISION, 0, &
                   tag, localWorldCommunicator, ierr) 
 !             print *, "SENT"
           end if
        end if
     end do
+
+444 continue
+
 !    print *, "DONE"
  end subroutine dumpDensitySpectrumOther
 
@@ -3267,13 +3296,15 @@ end subroutine writeRadialFile
    implicit none
    integer, parameter :: tag = 50
    integer :: ierr
-   real(double) :: tempSTorage(2)
+   real(double) :: tempSTorage(3)
 
+   if (myHydroSetGlobal /= 0) goto 555
    tempStorage(1) = 1.d25
    tempStorage(2) = 0.d0
-   call MPI_SEND(tempStorage, 2, MPI_DOUBLE_PRECISION, 0, &
+   tempStorage(3) = 0.d0
+   call MPI_SEND(tempStorage, 3, MPI_DOUBLE_PRECISION, 0, &
         tag, localWorldCommunicator, ierr)   
-
+555 continue
  end subroutine killDensitySpectrumDumper
 
   subroutine tauRadius(grid, uHat, tauWanted, tauRad)

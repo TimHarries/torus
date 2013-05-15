@@ -49,6 +49,7 @@
   integer :: iModel               ! current model number
   logical :: justDump             !Dump a vtk file for the read in grid and exit
   logical :: densitySpectrum      !Dump a density spectrum for the read in grid and exit
+  real(double) :: normfac         ! density spectrum normalization factor
   logical :: dumpBisbas           !Dump the grid for use in the Bisbas+ 3D-PDR code
   logical :: singleMegaPhoto             !Do an extensive photoionization calculation
   character(len=80) :: gridInputFilename, gridOutputFilename ! File names for reading/writing AMR grid

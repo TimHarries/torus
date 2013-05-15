@@ -142,12 +142,12 @@ module amr_utils_mod
          endif
          denom(4) = -denom(1)
 
-!         if(direction%y .ne. 0.d0) then            
-!            denom(2) = 1.d0 / direction%y
-!         else
-!            denom(2) = 0.d0
-!         endif
-!         denom(5) = -denom(2)
+         if(direction%y .ne. 0.d0) then            
+            denom(2) = 1.d0 / direction%y
+         else
+            denom(2) = 0.d0
+         endif
+         denom(5) = -denom(2)
 
          if(direction%z .ne. 0.d0) then            
             denom(3) = 1.d0 / direction%z
@@ -159,10 +159,10 @@ module amr_utils_mod
          normdiff = subcen - posvec
          t = 0.d0
          t(1) =  (normdiff%x + subcellsize) * denom(1)
- !        t(2) =  (normdiff%y + subcellsize) * denom(2)
+         t(2) =  (normdiff%y + subcellsize) * denom(2)
          t(3) =  (normdiff%z + subcellsize) * denom(3)
          t(4) =  (normdiff%x - subcellsize) * denom(1)
-!         t(5) =  (normdiff%y - subcellsize) * denom(2)
+         t(5) =  (normdiff%y - subcellsize) * denom(2)
          t(6) =  (normdiff%z - subcellsize) * denom(3)
 
          thisOk = .true.
@@ -1306,12 +1306,12 @@ module amr_utils_mod
           endif
           denom(4) = -denom(1)
 
-!          if(direction%y .ne. 0.d0) then            
-!             denom(2) = 1.d0 / direction%y
-!          else
-!             denom(2) = 0.d0
-!          endif
-!          denom(5) = -denom(2)
+          if(direction%y .ne. 0.d0) then            
+             denom(2) = 1.d0 / direction%y
+          else
+             denom(2) = 0.d0
+          endif
+          denom(5) = -denom(2)
           
           if(direction%z .ne. 0.d0) then            
              denom(3) = 1.d0 / direction%z

@@ -188,8 +188,11 @@ contains
     if(readgrid) call getLogical("justdump", justDump, cLine, fLine, nLines, &
          "Dump a vtk file and abort: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if(readgrid) call getLogical("rhospec", densitySpectrum, cLine, fLine, nLines, &
+    call getLogical("rhospec", densitySpectrum, cLine, fLine, nLines, &
          "Dump a density spectrum and abort: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getDouble("normfac", normFac, 1.d0, cLine, fLine, nLines, &
+            "RhoSpec normalization factor: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
 
     if(readgrid) call getLogical("dumpBisbas", dumpBisbas, cLine, fLine, nLines, &
          "Dump the grid for use in 3D-PDR: ","(a,1l,1x,a)", .false., ok, .false.)

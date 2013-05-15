@@ -83,7 +83,7 @@ contains
     integer :: nSource
     integer :: nLambda
     real :: lamArray(:)
-    character(len=80) :: mpiFilename, datFilename
+    character(len=80) :: mpiFilename, datFilename, mpifilenameB
     real(double) :: dt, cfl, gamma, mu
     integer :: iUnrefine
     integer :: ierr
@@ -108,6 +108,10 @@ contains
     integer :: iterStack(3)
     integer :: optID
     logical, save :: firstWN=.true.
+    integer :: niter
+    real(double) :: epsoverdeltat
+
+
     
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter
@@ -199,12 +203,21 @@ contains
        timeofNextDump = nextDumpTime
        if(justDump) then 
 
+
+          if(grid%geometry == "lexington") then
+             niter = 0
+             epsoverdeltat = 1.d0
+             call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+             call torus_abort("lexington.dat dump completed. Aborting...")
+          end if
+
           if(densitySpectrum) then
   !           print *, "DUMPING DENSITY SPECTRUM"
              if(myRankGlobal == 0) then
                 write(mpiFilename,'(a, i4.4, a)') "rhoSpectrum.dat"
+                write(mpiFilenameB,'(a, i4.4, a)') "io_neut_mass.dat"
 !                print *, "RANK ", myrankglobal, " GOING IN"
-                call dumpDensitySpectrumZero(mpiFilename)
+                call dumpDensitySpectrumZero(mpiFilename, mpifilenameB)
              else
  !               print *, "RANK ", myrankglobal, " GOING IN"
                 call dumpDensitySpectrumOther(grid%octreeRoot)
@@ -930,6 +943,27 @@ contains
                "vphi         ","jnu          "/))
 
 
+          if(densitySpectrum) then
+             !           print *, "DUMPING DENSITY SPECTRUM"
+             if(myRankGlobal == 0) then
+                write(mpiFilename,'(a, i4.4, a)') "rhoSpectrum_",grid%iDump,".dat"
+                write(mpiFilenameB,'(a, i4.4, a)') "io_neu_mass_",grid%iDump,".dat"
+                !                print *, "RANK ", myrankglobal, " GOING IN"
+                call dumpDensitySpectrumZero(mpiFilename, mpiFilenameB)
+             else
+                !               print *, "RANK ", myrankglobal, " GOING IN"
+                call dumpDensitySpectrumOther(grid%octreeRoot)
+                print *, "RANK ", myrankglobal, "IS OUT"
+                call MPI_BARRIER(amrCommunicator, ierr)
+                if(myRankGlobal == 1) then
+                   call killDensitySpectrumDumper()
+                   print *, "killing zero"
+                end if
+             end if
+             !         print *, "RANK ", myrankglobal, "IS AT FINAL GATE"
+             call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          end if
+
 
           write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
           call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename)
@@ -964,11 +998,15 @@ contains
        if(grid%geometry == "hii_test") then
           write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
           call dumpValuesAlongLine(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
-               VECTOR(3.5d9, 0.d0, 3.5d9), 1000)!
+               VECTOR(3.5d9, 0.d0, 1.75d9), 1000)!
+
+!          write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
+!          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
+!               VECTOR(3.5d9, 0.0d0, 1.75d9), 1000)
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
-               VECTOR(3.5d9, 0.0d0, 3.5d9), 1000)
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(2.2d9,  0.d0, 2.2d9), &
+               VECTOR(4.4d9, 0.0d0, 4.4d9), 1000)
        end if
  
     endif
@@ -986,7 +1024,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest
+         radPressureTest, justdump
     use inputs_mod, only : resetDiffusion, usePacketSplitting
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1163,6 +1201,13 @@ end subroutine radiationHydro
     !end if
     
     if (globalnSource == 0) goto 666
+
+
+    if(justdump .and. grid%geometry == "lexington") then
+       niter = 0
+       epsoverdeltaT = 0.5d0
+      call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+   end if
     
     if(stacklimit == 0) then
        stacklimit = 200
@@ -1351,8 +1396,18 @@ end subroutine radiationHydro
     do i = 1, nSource
        !If outside the grid then correct for the flux attenuation due to distance of star from grid
        if(source(i)%outsideGrid) then
-          lCore = lCore + source(i)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
-               (fourPi*source(i)%distance**2)
+          if(cart2d) then             
+             if(grid%octreeroot%oned) then
+                lCore = lCore + source(i)%luminosity * (1.d20* &
+                     2.d0*grid%halfsmallestsubcell)**2 / (fourPi*source(i)%distance**2)
+             else
+                lCore = lCore + source(i)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d20* &
+                     2.d0*grid%halfsmallestsubcell) / (fourPi*source(i)%distance**2)
+             end if
+          else
+             lCore = lCore + source(i)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
+                  (fourPi*source(i)%distance**2)
+          end if
        else
           lCore = lCore + source(i)%luminosity
        end if
@@ -1543,9 +1598,19 @@ end subroutine radiationHydro
 
        if(monochromatic) then
           if (source(1)%outsidegrid) then
-             
-             epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
-                  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte))                         
+             if(cart2d) then
+                if(grid%octreeroot%oned) then
+                   epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                        (1.d20*2.d0*grid%halfsmallestsubcell)**2)/dble(nMonte))
+                else
+                   epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                        (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
+                        grid%halfsmallestsubcell))/dble(nMonte))
+                end if
+             else
+                epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                     (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte)) 
+             end if
           else
              epsoverdeltat = (nIonizingPhotons*((13.60001)*evtoerg))/ &
                   dble(nMonte)
@@ -1624,7 +1689,7 @@ end subroutine radiationHydro
                 call randomSource(source, nSource, iSource, photonPacketWeight)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
-                if(cart2d) then
+                if(cart2d .and. .not. source(1)%outsidegrid) then
                    call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                         2.d0*grid%octreeRoot%subcellSize)
                 end if
@@ -2071,7 +2136,8 @@ end subroutine radiationHydro
                             thisFreq = smallPacketFreq
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             Uhat = randomUnitVector()
-                            if(cart2d) then
+!                            if(cart2d) then
+                            if(cart2d .and. .not. source(1)%outsidegrid) then
                                call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                     2.d0*grid%octreeRoot%subcellSize)
                             end if
@@ -2226,7 +2292,8 @@ end subroutine radiationHydro
                             call randomNumberGenerator(getDouble=r)
                             if (r < albedo) then
                                uHat = randomUnitVector() ! isotropic scattering
-                               if(cart2d) then
+!                               if(cart2d) then
+                               if(cart2d .and. .not. source(1)%outsidegrid) then
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
@@ -2285,7 +2352,8 @@ end subroutine radiationHydro
                                thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
 
                                uHat = randomUnitVector() ! isotropic emission
-                               if(cart2d) then
+!                               if(cart2d) then
+                               if(cart2d .and. .not. source(1)%outsidegrid) then
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
@@ -2484,9 +2552,19 @@ end subroutine radiationHydro
        if(monochromatic) then
           if (source(1)%outsidegrid) then
 
-             epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
-                  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte))
-
+             if(cart2d) then
+                if(grid%octreeroot%oned) then
+                   epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                        (1.d20*2.d0*grid%halfsmallestsubcell)**2)/dble(nMonte))
+                else
+                   epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                        (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
+                        grid%halfsmallestsubcell))/dble(nMonte))                   
+                end if
+             else
+                epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                     (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte))
+             end if
           else
              epsoverdeltat = (nIonizingPhotons*((13.60001)*evtoerg))/ &
                   dble(nMonte)
@@ -3234,6 +3312,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
   use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro, amrgridcentrey
+  use inputs_mod, only : amrgridcentrez
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -3372,9 +3451,17 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 
        if(cart2d) then
-          if(abs(rVec%y - amrgridcentrey) > grid%halfsmallestsubcell) then
-             stillInGrid = .false.
-             escaped = .true.
+          if(grid%octreeroot%oned) then
+             if(abs(rVec%y - amrgridcentrey) > grid%halfsmallestsubcell &
+                  .and. abs(rVec%z - amrgridcentrez) > grid%halfsmallestsubcell) then
+                stillInGrid = .false.
+                escaped = .true.
+             end if
+          else
+             if(abs(rVec%y - amrgridcentrey) > grid%halfsmallestsubcell) then
+                stillInGrid = .false.
+                escaped = .true.
+             end if
           end if
        end if
 ! check whether the photon has escaped from the grid
@@ -6006,7 +6093,7 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
 
   if(grid%octreeroot%twod) then
      startPoint = vector(4.4d9, 0.d0, 4.4d9)
-     endPoint = vector(8.8d9, 0.d0, 8.8d9)
+     endPoint = vector(8.8d9, 0.d0, 4.4d9)
   else
      startPoint = vector(0.d0, 0.d0, 0.d0)
      endPoint = vector(4.4d9, 0.d0, 0.d0)
@@ -6023,8 +6110,15 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
         open(22,file="ne.dat",form="formatted",status="unknown")
 
         do i=1, 500
-           r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
-           position = vector(r, 0.d0, 0.d0)
+
+           
+           if(grid%octreeroot%twod) then
+              r = 4.4d9 + ((1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10)
+              position = vector(r, 0.d0, 4.4d9)
+           else
+              r = (1.+7.d0*dble(i-1)/499.d0)*pctocm/1.e10
+              position = vector(r, 0.d0, 0.d0)
+           end if
            call findSubcellLocal(position, thisOctal, subcell)
            sendThread = thisOctal%mpiThread(subcell)
            
@@ -6061,10 +6155,14 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
            tVal = tempStorage(23)
            t = tempStorage(24)
 
-        write(21,'(f6.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
+           if(grid%octreeroot%twod) then
+              write(21,'(f6.3,1p,6e12.3,0p)') (r*1.e10/pctocm)-4.4e19/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
+           else
+              write(21,'(f6.3,1p,6e12.3,0p)') (r*1.e10/pctocm),heating,cooling,oirate,oiirate,oiiirate,oivrate
+           end if
 
         write(20,'(f6.3,f9.1,  14f8.3)') &
-             r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+             (r*1.e10/pctocm)-4.4e19/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
         write(22,*) r*1.e10/pctocm,netot
   
      end do
@@ -6096,7 +6194,11 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
         call randomNumberGenerator(getDouble=phi)
         phi = phi * twoPi
 
-        octVec = VECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
+        if(grid%octreeroot%oned) then
+           octVec = VECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
+        else
+           octVec = VECTOR(r, 0.d0, 4.4d9)
+        end if
 
         call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
 

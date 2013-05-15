@@ -458,9 +458,15 @@ module source_mod
 !THaw - new
            if (.not.source(i)%outsideGrid) then                                                    
               tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
-           else                                                                                    
-              tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &                  
-                   (source(i)%radius*1.d10)**2 / (source(i)%distance**2)                           
+           else                          
+              if(cart2d) then
+                 tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
+                      grid%halfsmallestsubcell) * &                  
+                      (source(i)%radius*1.d10)**2 / (source(i)%distance**2)                 
+              else
+                 tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &                  
+                      (source(i)%radius*1.d10)**2 / (source(i)%distance**2)
+              end if
            endif                 
 
         endif
@@ -616,7 +622,8 @@ module source_mod
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
-      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
+      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval 
+      use inputs_mod, only : amrgridcentrey, amrgridcentrex, amrgridcentrez
       type(GRIDTYPE) :: grid
       real(double) :: r, t, u, v, w, ang
       real(double), optional :: weight
@@ -710,14 +717,20 @@ module source_mod
             !direction%x = abs(direction%x)
          end if
       else
-         position%x = -grid%octreeRoot%subcellSize+1.d-10*grid%octreeRoot%subcellSize
+         position%x = amrgridcentrex-grid%octreeRoot%subcellSize+(1.d-10*grid%halfsmallestsubcell)
          call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
-         position%y = r * grid%octreeRoot%subcellSize
+         position%y = r * grid%octreeRoot%subcellSize*2.d0
          call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
-         position%z = r * grid%octreeRoot%subcellSize
+         position%z = r * grid%octreeRoot%subcellSize*2.d0
          direction = VECTOR(1.d0, 0.d0, 0.d0)
+         if(grid%octreeroot%twod) then
+            position%y = amrgridcentrey
+         else if(grid%octreeroot%oned) then
+            position%z = amrgridcentrez
+            position%y = amrgridcentrey
+         end if
       endif
       !Thaw - photons from corner sources should be directed into the grid
 
