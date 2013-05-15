@@ -642,8 +642,8 @@ module angularImage
         if ( thermalLineWidth ) then 
            ! Calculate thermal line width in cm/s.
            sigma_thermal = real(sqrt (  (kErg * thisOctal%temperature(subcell)) / (thisMolecule%molecularWeight * amu) ))
-           ! Add turbulent line width 
-           sigma_thermal = real(sigma_thermal + ( vturb * 1.0d5) )
+           ! Add turbulent line width in quadrature with thermal line width. vturb is in km/s so 1e5 converts to cm/s
+           sigma_thermal = real( sqrt ( sigma_thermal**2 + (vturb*1.0d5)**2 ) )
            ! Convert to Torus units (v/c)
            sigma_thermal = real(sigma_thermal / cspeed)
            dvAcrossCell = abs(dvAcrossCell / sigma_thermal)

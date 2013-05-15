@@ -35,7 +35,9 @@ contains
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics
     use disc_class, only:  new
+#ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
+#endif
     use inputs_mod, only : xplusbound, yplusbound, zplusbound
     use inputs_mod, only : xminusbound, yminusbound, zminusbound
 #ifdef STATEQ
@@ -322,9 +324,11 @@ contains
           if (ttauriwind)  call addDiscWind(grid)
              
           call checkAMRgrid(grid, .false.)
+#ifdef ATOMIC
           call writeInfo("Checking velocity interpolation...",TRIVIAL)
           call checkVelocityInterp(grid%octreeRoot, grid)
           call writeInfo("Done.",TRIVIAL)
+#endif
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
           ! Finding the total mass in the accretion flow
