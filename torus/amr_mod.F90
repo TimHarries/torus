@@ -7775,7 +7775,7 @@ endif
     integer, parameter :: nr = 1000
     real(double), save :: r(nr), rho(nr)
     integer :: i, j
-    integer, parameter :: numClouds=1
+    integer, parameter :: numClouds=4
     type(VECTOR) :: centre(numClouds)
 !    logical :: inSphere = .false.
 
@@ -7789,11 +7789,11 @@ endif
 !    centre(4) = VECTOR(-10.d0, 0.d0, 0.d0)
 !    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
 
-    centre(1) = VECTOR(7.5d8, 0.d0, 2.d9)
-!    centre(1) = VECTOR(2.1d9, 0.d0, 2.d9)
-!    centre(2) = VECTOR(1.5d9, 0.d0, 3.d9)
-!    centre(3) = VECTOR(2.5d9, 0.d0, 1.d9)
-!    centre(4) = VECTOR(1.d9, 0.d0, 1.25d9)
+!    centre(1) = VECTOR(7.5d8, 0.d0, 2.d9)
+    centre(1) = VECTOR(2.1d9, 0.d0, 2.d9)
+    centre(2) = VECTOR(1.5d9, 0.d0, 3.d9)
+    centre(3) = VECTOR(2.5d9, 0.d0, 1.d9)
+    centre(4) = VECTOR(1.d9, 0.d0, 1.25d9)
 !    centre(1) = VECTOR(7.5d8, 0.d0, 5.d9)
 
 !    do j = 1, numClouds

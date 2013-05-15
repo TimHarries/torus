@@ -2074,7 +2074,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
                !$OMP SHARED(dfreq, endLoop, nIter, spectrum) &
-               !$OMP SHARED(nSaved, maxStackLimit) &
+               !$OMP SHARED(nSaved, maxStackLimit, source) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal, nToNextEventPhoto, nNotEscaped)
                
