@@ -6164,11 +6164,16 @@ subroutine dumpLexingtonMPI(grid, epsoverdt, nIter)
               write(20,'(f6.3,f9.1,  14f8.3)') &
                    (r*1.e10/pctocm),t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
            end if
+           if(grid%octreeroot%twod) then
+              write(20,'(f6.3,f9.1,  14f8.3)') &
+                   (r*1.e10/pctocm)-4.4e19/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+              write(22,*) r*1.e10/pctocm,netot
+           else
+              write(20,'(f6.3,f9.1,  14f8.3)') &
+                   (r*1.e10/pctocm),t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+              write(22,*) r*1.e10/pctocm,netot
+           end if
 
-        write(20,'(f6.3,f9.1,  14f8.3)') &
-             (r*1.e10/pctocm)-4.4e19/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
-        write(22,*) r*1.e10/pctocm,netot
-  
      end do
      do sendThread = 1, nHydroThreadsGlobal
         r = 1.d30
