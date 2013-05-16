@@ -1005,8 +1005,8 @@ contains
 !               VECTOR(3.5d9, 0.0d0, 1.75d9), 1000)
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-          call dumpStromgrenRadius(grid, datFileName, VECTOR(2.2d9,  0.d0, 2.2d9), &
-               VECTOR(4.4d9, 0.0d0, 4.4d9), 1000)
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(2d9,  0.d0, 2d9), &
+               VECTOR(4.d9, 0.0d0, 4.d9), 1000)
        end if
  
     endif
@@ -3453,7 +3453,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if(cart2d) then
           if(grid%octreeroot%oned) then
              if(abs(rVec%y - amrgridcentrey) > grid%halfsmallestsubcell &
-                  .and. abs(rVec%z - amrgridcentrez) > grid%halfsmallestsubcell) then
+                  .or. abs(rVec%z - amrgridcentrez) > grid%halfsmallestsubcell) then
                 stillInGrid = .false.
                 escaped = .true.
              end if
@@ -3471,7 +3471,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call findSubcellLocal(rVec, nextOctal, nextSubcell)
        else
 
-          if(.not. crossedPeriodic .and. neverInteracted) then
+          if(.not. crossedPeriodic .and. neverInteracted .and. .not. cart2d) then
              !Give photon packets a second chance if they haven't interacted
              stillingrid = .false.
              crossedPeriodic = .true.
