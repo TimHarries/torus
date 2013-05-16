@@ -1769,7 +1769,7 @@ module amr_utils_mod
     cen = subcellCentre(sOctal,ssubcell)
 
     tVal = 1.d30
-    if (amr3d) then
+    if (amr3d .or. cart2d) then
        tVal = min((cen%x + d) - posVec%x, tVal)
        tVal = min((cen%y + d) - posVec%y, tVal)
        tVal = min((cen%z + d) - posVec%z, tVal)
@@ -1777,7 +1777,7 @@ module amr_utils_mod
        tVal = min(posVec%x - (cen%x - d), tVal)
        tVal = min(posVec%y - (cen%y - d), tVal)
        tVal = min(posVec%z - (cen%z - d), tVal)
-    else if (amr2d) then
+    else if (amr2d .and. .not. cart2d) then
        r = sqrt(posVec%x**2 + posVec%y**2)
        tVal = min((cen%x + d) - r, tVal)
        tVal = min((cen%z + d) - posVec%z, tVal)

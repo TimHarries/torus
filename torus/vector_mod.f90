@@ -410,11 +410,12 @@ contains
        ang = biasPhiDir       
 
        call randomNumberGenerator(getDouble=r)
-       if(r2 > 0.5d0) then
+       if(r > 0.5d0) then
           call randomNumberGenerator(getDouble=r2)
-          ang = openingAngle + r2*(pi - openingAngle)
+          ang = openingAngle + r2*((pi/2.d0) - openingAngle)
        else
-          ang = -openingAngle - r2*(pi - openingAngle)
+          call randomNumberGenerator(getDouble=r2)
+          ang = -openingAngle - r2*((pi/2.d0) - openingAngle)
        end if
 !       do while (abs(ang-biasPhiDir) < openingAngle)
 !          call randomNumberGenerator(getDouble=r2)

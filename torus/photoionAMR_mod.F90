@@ -217,7 +217,7 @@ contains
                 write(mpiFilename,'(a, i4.4, a)') "rhoSpectrum.dat"
                 write(mpiFilenameB,'(a, i4.4, a)') "io_neut_mass.dat"
 !                print *, "RANK ", myrankglobal, " GOING IN"
-                call dumpDensitySpectrumZero(mpiFilename, mpifilenameB)
+                call dumpDensitySpectrumZero(mpiFilename, mpifilenameB, grid%currentTime)
              else
  !               print *, "RANK ", myrankglobal, " GOING IN"
                 call dumpDensitySpectrumOther(grid%octreeRoot)
@@ -947,9 +947,9 @@ contains
              !           print *, "DUMPING DENSITY SPECTRUM"
              if(myRankGlobal == 0) then
                 write(mpiFilename,'(a, i4.4, a)') "rhoSpectrum_",grid%iDump,".dat"
-                write(mpiFilenameB,'(a, i4.4, a)') "io_neu_mass_",grid%iDump,".dat"
+                write(mpiFilenameB,'(a, i4.4, a)') "io_neu_mass.dat"
                 !                print *, "RANK ", myrankglobal, " GOING IN"
-                call dumpDensitySpectrumZero(mpiFilename, mpiFilenameB)
+                call dumpDensitySpectrumZero(mpiFilename, mpiFilenameB, grid%currentTime)
              else
                 !               print *, "RANK ", myrankglobal, " GOING IN"
                 call dumpDensitySpectrumOther(grid%octreeRoot)

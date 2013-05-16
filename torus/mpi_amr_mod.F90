@@ -3153,7 +3153,7 @@ end subroutine writeRadialFile
   end subroutine dumpValuesAlongLine
 
 
-  subroutine dumpDensitySpectrumZero(filename, filenameB)
+  subroutine dumpDensitySpectrumZero(filename, filenameB, time)
     use mpi 
     use inputs_mod, only : normFac
     implicit none
@@ -3167,15 +3167,25 @@ end subroutine writeRadialFile
     logical :: stillRecving!, found
     integer :: i    
     real(double) :: dv, binIDs(nBins+1), massSpec(nBins), dRho
-    real(double) :: ionizedmass, neutralmass
+    real(double) :: ionizedmass, neutralmass, time
+    logical, save :: firsttime = .true.
 
     if (myHydroSetGlobal /= 0) goto 333
 
+    if (myrankWorldGlobal == 0) then
+       if(firstTime) then
+          !Overwrite any existing file
+          open(23, file=filenameB, form="formatted", status="unknown")
+          write(23,*) " "
+          close(23)
+          firstTime = .false.
+       end if
+    end if
    ! print *, "ENTERED"
     if(myrankglobal == 0) then
        open(22, file=filename, form="formatted", status="replace")
-       open(23, file=filenameB, form="formatted", status="replace")
-
+!       open(23, file=filenameB, form="formatted", status="replace")
+       open(23, file=filenameB, form="formatted", status="unknown", position="append")
        binIDs(1) = -25.
        dRho = 0.5
        do i = 2, nBins+1
@@ -3234,7 +3244,7 @@ end subroutine writeRadialFile
           write(22,'(1p,7e14.2)') binIDs(i), massSpec(i)
           write(22,'(1p,7e14.2)') binIDs(i+1), massSpec(i)
        end do
-       write(23,'(1p,7e14.2)') ionizedmass, neutralmass
+       write(23,'(1p,7e14.3)') time, ionizedmass, neutralmass
        close(23)
        close(22)
    end if
