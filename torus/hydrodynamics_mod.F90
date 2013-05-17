@@ -14661,7 +14661,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
           rMod = modulus(subcellCentre(thisOctal, subcell))
-          thisOctal%temperature(subcell) = max(20.d0,500.d0*sqrt(smallestCellSize/rMod))
+          thisOctal%temperature(subcell) = max(20.0,5000*real(sqrt(smallestCellSize/rMod)))
 
 
 

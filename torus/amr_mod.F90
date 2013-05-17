@@ -8056,7 +8056,7 @@ endif
     thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
     if (rMod < sphereRadius) then
        thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)
-       thisOctal%temperature(subcell) = max(20.d0,500.d0*sqrt(smallestCellSize/rMod))
+       thisOctal%temperature(subcell) = max(20.0,50.0*real(sqrt(smallestCellSize/rMod)))
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
        if (cylindricalHydro) then
           thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
