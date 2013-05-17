@@ -292,6 +292,7 @@ contains
             write(*,*) "teff: ",source(i)%teff
             write(*,*) "accretion temp: ",tacc
             write(*,*) "accretion lum: ",lumAcc/lsol
+            write(*,*) "fraction ",fractionOfAccretionLum
          endif
          if (i < nSource) then
             call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)

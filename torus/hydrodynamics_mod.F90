@@ -577,6 +577,8 @@ contains
     integer :: subcell, i, nr
     type(GRIDTYPE) :: grid
     real(double) :: alpha, HoverR, r, mass, omegaK, rAxis(:), mr(:)
+    real(double), parameter :: Qcrit = 2.d0
+    real(double) :: toomreQ, cs, sigma, fac
     type(VECTOR) :: rVec
     
 
@@ -605,7 +607,23 @@ contains
              mass = mr(i) + (mr(i+1)-mr(i))*(r - rAxis(i))/(rAxis(i+1)-rAxis(i))
              mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
              omegaK = sqrt(bigG * mass / (r*gridDistanceScale)**3)
-             thisOctal%etaLine(subcell) = alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
+
+             sigma = thisOctal%rho(subcell) * thisOctal%subcellSize * gridDistanceScale
+             cs =soundSpeed(thisOctal, subcell)
+             toomreQ = (cs * omegaK) / (pi * bigG * sigma)
+
+             fac = 1.d0
+             if (toomreQ < Qcrit) then
+                fac = (Qcrit**2 / toomreQ**2)
+!                write(*,*) "q ",toomreQ,thisOctal%rho(subcell)
+             endif
+
+             thisOctal%etaLine(subcell) = fac * alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2
+
+
+             if (alpha < 0.d0) then
+                thisOctal%etaLine(subcell) = -alpha
+             endif
 
           endif
        endif
@@ -2244,11 +2262,11 @@ contains
        else
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle                                                                                                                                                             
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
-
-!Get pressure, independent of viscosity
-          thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
-
-!          if(0 == 1) then
+          if (.not.thisOctal%ghostCell(subcell)) then
+             !Get pressure, independent of viscosity
+             thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
+             
+             !          if(0 == 1) then
              if (.not.useTensorViscosity) then
                 !Calculate viscosity contribution to cell pressure
                 biggamma = 0.d0
@@ -2275,10 +2293,11 @@ contains
  !                  biggamma = 0.d0
  !               end if
 
-                thisoctal%pressure_i(subcell) = thisoctal%pressure_i(subcell) + biggamma
-             end if
+                   thisoctal%pressure_i(subcell) = thisoctal%pressure_i(subcell) + biggamma
+                end if
+             endif
           endif
-
+          
           if (isnan(thisoctal%pressure_i(subcell))) then
              write(*,*) "pressureu has nan"
              write(*,*) "velocity: ",thisoctal%rhou(subcell),thisoctal%rhov(subcell), thisoctal%rhow(subcell)
@@ -4218,18 +4237,16 @@ end subroutine sumFluxes
     integer :: idir, thisBound
     selfGravity = doSelfGrav
 
-       !boundary conditions
-       call imposeBoundary(grid%octreeRoot, grid)
-       call transferTempStorage(grid%octreeRoot)
+    !boundary conditions
+    call computepressureGeneral(grid, grid%octreeroot, .false.) 
+    call imposeBoundary(grid%octreeRoot, grid)
+    call transferTempStorage(grid%octreeRoot)
+
 
     if (selfGravity) then
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-!       if (dogasgravity)  call multiGrid(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call zeroSourcepotential(grid%octreeRoot)
-!       if (globalnSource > 0) then
-!          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, 2.5d0*smallestCellSize)
-!       endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
@@ -4314,8 +4331,10 @@ end subroutine sumFluxes
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
     enddo
    if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
+
+
+    call computepressureGeneral(grid, grid%octreeroot, .false.) 
     call imposeBoundary(grid%octreeRoot, grid)
-!    call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
@@ -5926,7 +5945,6 @@ end subroutine sumFluxes
           if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
        endif
 
-
        endif
     endif
 
@@ -5975,7 +5993,6 @@ end subroutine sumFluxes
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-          call computeDivV(grid%octreeRoot, grid)
           if (includePressureTerms) call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescaleCylindrical(grid%octreeRoot, grid, dt_viscous)
        endif
@@ -6072,7 +6089,10 @@ end subroutine sumFluxes
           if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
           call writeInfo("calling hydro step",TRIVIAL)
 
+
+
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
 
 !perform a hydrodynamics step in the x and z directions
           call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -11074,6 +11094,7 @@ end subroutine refineGridGeneric2
   end subroutine gSweep2level
 
   recursive subroutine gSweep2new(thisOctal, grid, fracChange)
+    use inputs_mod, only : smallestCellSize
     use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -11084,7 +11105,7 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
     real(double) :: x1, x2
-    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
     integer :: nd
     real(double) :: tauMin, dfdrbyr
@@ -11144,7 +11165,7 @@ end subroutine refineGridGeneric2
              thisR = returnCodeUnitLength(locator%x*gridDistanceScale)
              do n = 1, nDir
                 
-                locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+                locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize)
                 neighbourOctal => grid%octreeRoot
 
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -11152,7 +11173,7 @@ end subroutine refineGridGeneric2
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
-                
+                ptemp(n) = phigas
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
 
@@ -11220,11 +11241,22 @@ end subroutine refineGridGeneric2
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
 
-
              oldPhi = thisOctal%phi_gas(subcell)
              newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
 
+!             if (newerPhi < -1.d12) then
+!                write(*,*) SOR, oldphi, newerPhi,deltaT, sumd2phidx2,thisOctal%rho(subcell)
+!                write(*,'(a,1p,4e12.2)') "phigas ",ptemp(1:4)
+!                write(*,'(a,1p,4e12.2)') "dx ",dxArray(1:4)
+!                write(*,'(a,1p,4e12.2)') "interface ",phiInterface(1:4)
+!                write(*,'(a,1p,4e12.2)') "g ",g(1:4)
+!                write(*,'(a,1p,4e12.2)') "g2 ",g2(1:4)
+!                write(*,'(a,1p,2e12.2)') "d2phidx2 ",d2phidx2(1:2)
+!             endif
+
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
+
+
 
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
@@ -11766,7 +11798,6 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=30) :: plotfile
 
 
     tol = 1.d-5
@@ -11887,6 +11918,7 @@ end subroutine refineGridGeneric2
 
     fracChange = 1.d30
     it =0 
+
     do while (ANY(fracChange(1:nHydrothreads) > tol2))
        fracChange = 0.d0
 
@@ -11924,6 +11956,9 @@ end subroutine refineGridGeneric2
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreads))
 
+!       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!             call writeVtkFile(grid, plotfile, &
+!                  valueTypeString=(/"phigas ", "rho    "/))
 
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
@@ -11992,7 +12027,7 @@ end subroutine refineGridGeneric2
              
           endif
           
-
+!          if (writeoutput) write(*,*) "mu ",mu
 !          mu = 1.d0
 
           getPressure =  thisOctal%rho(subcell)
@@ -14604,6 +14639,35 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     ffunc = (u**(4.d0/(gamma+1.d0)))*(0.5d0 + (1.d0/(gamma-1.d0)) * (1.d0/u**2))
   end function ffunc
 
+
+  recursive subroutine imposeTstructure(thisOctal)
+    use inputs_mod, only : smallestCellSize
+    real(double) :: rMod
+    TYPE(OCTAL),pointer :: thisOctal
+    TYPE(OCTAL),pointer :: child
+    integer :: i, subcell
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call imposeTstructure(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+          rMod = modulus(subcellCentre(thisOctal, subcell))
+          thisOctal%temperature(subcell) = max(20.d0,500.d0*sqrt(smallestCellSize/rMod))
+
+
+
+       end if
+    end do
+  end subroutine imposeTstructure
 
 
   recursive subroutine calculateTemperatureFromEnergy(thisOctal)

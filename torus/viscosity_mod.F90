@@ -28,11 +28,16 @@ contains
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir_x, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+    if (abs(rhov) < 1.d-30) rhov = sign(1.d-30,rhov)
     cen_i_minus_1 = VECTOR(px,py,pz)
     if (cylindricalHydro) then
        r = sqrt(px**2 + py**2)*gridDistanceScale
-       u_i_minus_1 = (VECTOR(rhou,rhov/r,rhow).dot.dir_u)/rho
+       u_i_minus_1 = 0.d0
+       if (rho /= 0.d0) &
+       u_i_minus_1 = (VECTOR(rhou/rho,rhov/(r*rho),rhow/rho).dot.dir_u)
     else
+       u_i_minus_1 = 0.d0
+       if (rho /= 0.d0) &
        u_i_minus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
     endif
 !    r = cen%x * gridDistanceScale
@@ -45,11 +50,16 @@ contains
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir_x, q, rho, rhoe, &
          rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+    if (abs(rhov) < 1.d-30) rhov = sign(1.d-30,rhov)
     cen_i_plus_1 = VECTOR(px,py,pz)
     if (cylindricalHydro) then
        r = sqrt(px**2 + py**2)*gridDistanceScale
+       u_i_plus_1 = 0.d0
+       if (rho /= 0.d0) &
        u_i_plus_1 = (VECTOR(rhou,rhov/r,rhow).dot.dir_u)/rho
     else
+       u_i_plus_1 = 0.d0
+       if (rho /= 0.d0) &
        u_i_plus_1 = (VECTOR(rhou,rhov,rhow).dot.dir_u)/rho
     endif
 
@@ -472,6 +482,12 @@ contains
                   thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*r) +  &
                   dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid)
 
+!             if (thisOctal%rho(subcell) > 1.d-15) then
+!                write(*,*) "dvphi/dr ", &
+!                     dudx(thisOctal, subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid), &
+!                     -0.5d0*sqrt(bigG * mSol) * r**(-1.5d0)
+!             endif
+
 ! now tau_rr
 
              thisOctal%qViscosity(subcell,1,1) = thisOctal%etaline(subcell) *  thisOctal%rho(subcell) * &
@@ -590,7 +606,7 @@ contains
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 !             acc = max(abs(fVisc%x), abs(fVisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
-             acc = max(abs(fVisc%x), 0.d0)/ thisOctal%rho(subcell)
+             acc = max(abs(fVisc%x), 1.d-30)/ thisOctal%rho(subcell)
 
              thisTime = sqrt(smallestCellSize*gridDistanceScale/acc)
              dt = min(thisTime, dt)

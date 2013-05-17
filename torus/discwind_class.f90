@@ -16,7 +16,6 @@ module discwind_class
  
   public::  &
        &   new, &
-       &   adddiscwind, &
        &   get_parameters, &
        &   component, &
        &   in_discwind, &
@@ -24,18 +23,15 @@ module discwind_class
        &   discwind_density, &
        &   discwind_Vr, &
        &   discwind_Vphi, &
+       &   discwind_velocity, &
        &   ave_discwind_density, &
-       &   add_discwind, &
        &   turn_on_discwind, &
        &   turn_off_discwind
 
   private::  &
        &   int_discwind, &
        &   need_to_split, &
-       &   need_to_split2, &
-       &   fill_velocity_corners, &
        &   speed_of_sound, &
-       &   add_new_children_discwind, &
        &   escape_velocity,&
        &   temperature_disc, &
        &   mdot_on_disc,&
@@ -45,7 +41,6 @@ module discwind_class
 
   !----------------------------------------------------------
   type discwind
-     private  ! DO NOT MAKE THE COMPONENTS PUBLIC!!!!!
      ! disc wind conditions
      real(double) :: d           ![10^10cm] displacement of souce point from the center of star
      real(double) :: Rmin        ! the inner most radius of the disc [10^10cm]
@@ -101,7 +96,8 @@ module discwind_class
 !     module procedure ave_discwind_density_fast
 !     module procedure ave_discwind_density_slow
   end interface
-  
+
+  type(DISCWIND) :: globalDiscWind
 
 contains
   ! =====================================================================
@@ -658,103 +654,6 @@ contains
 
   
 
-  !
-  !  Given a grid object, this routine will add extra grid and assign density (and etc) 
-  !  to the grid using the density function defined in this module.
-  !  
-
-
-  subroutine addDiscWind(grid)
-    use inputs_mod, only : DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
-       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, limitscalar, ttauriMstar
-    real(double) :: DW_Hdisc
-    type(GRIDTYPE) :: grid
-    type(DISCWIND) :: myDiscWind
-
-    call new(mydiscWind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
-       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, dble(ttauriMstar)/msol, DW_Hdisc)
-    call add_discwind(grid%octreeRoot, grid, myDiscWind, limitscalar)
-    call assignDensitiesDiscwind(grid, grid%octreeRoot, myDiscWind)
-
-  end subroutine addDiscWind
-
-
-
-  RECURSIVE SUBROUTINE add_discwind(thisOctal,grid,this, limitscalar)
-    ! uses an external function to decide whether to split a subcell of
-    !   the current octal. 
-
-    use inputs_mod, only : maxDepthAMR
-    IMPLICIT NONE
-    TYPE(OCTAL), POINTER :: thisOctal
-    TYPE(gridtype), INTENT(INOUT) :: grid   ! need to pass the grid through to the 
-    type(discwind), intent(in)  :: this     
-    ! the value the decideSplit function uses to  decide whether or not to split cell.
-    real(double), intent(in) :: limitscalar 
-    !
-    !
-    TYPE(OCTAL), POINTER :: child
-    INTEGER              :: i, j, k    ! loop counters
-    integer :: iindex
-    integer :: isubcell
-
-
-    DO iSubcell = 1, thisOctal%maxChildren
-
-       if (thisOctal%hasChild(isubcell)) cycle
-       IF ((need_to_split2(thisOctal,isubcell,this).and.(thisOctal%nDepth < maxDepthAMR))) then
-
-          if (thisOctal%dPhi*radtodeg > 44.d0) then
-             CALL add_new_children_discwind(thisOctal, isubcell, grid, this, splitAzimuthally=.true.)
-          else
-             CALL add_new_children_discwind(thisOctal, isubcell, grid, this)
-          endif
-
-          if (.not.thisOctal%hasChild(isubcell)) then
-             write(*,*) "add child failed in splitGrid"
-             do
-             enddo
-          endif
-          
-       END IF
-       
-    END DO
-
-  do i = 1, thisOctal%nChildren
-     if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
-        write(*,*) "octal children messed up"
-        do ; enddo
-        endif
-     enddo
-
-    do i = 1, thisOctal%maxChildren
-      k = -99
-      if (thisOctal%hasChild(i)) then
-        do j = 1, thisOctal%nChildren
-          if (thisOctal%indexChild(j) == i) then
-            k = j
-            exit
-          endif
-       enddo
-       if (k==-99) then
-          write(*,*) "subcell screwup"
-          do
-          enddo
-       endif
-    endif
- enddo
-
-   if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
-      write(*,*) "nchildren screw up"
-      do;enddo
-      endif
-    
-    DO iIndex = 1, thisOctal%nChildren
-       child => thisOctal%child(iIndex)
-       CALL add_discwind(child,grid,this,limitscalar)      
-   END DO
-  END SUBROUTINE add_discwind
-
 
   !
   !
@@ -790,71 +689,6 @@ contains
                
 
   end function need_to_split
-
-
-  !
-  ! Split using the log-scaled radial grid.
-  logical function need_to_split2(thisOctal,subcell, this)
-    use utils_mod, only: locate 
-
-    IMPLICIT NONE
-
-    TYPE(octal), POINTER       :: thisOctal
-    INTEGER, INTENT(IN)        :: subcell
-    type(discwind), intent(in) :: this
-    
-    real(oct)  :: cellSize, d
-    TYPE(VECTOR)     :: cellCentre
-!    integer, parameter :: nr = 150  ! normal resolution
-!    integer, parameter :: nr = 180  ! normal resolution
-    integer, parameter :: nr = 40  ! low resolution
-
-    real(double) :: r
-    integer :: i
-    !
-    logical, save :: first_time = .true.
-    real(double) , save:: rGrid(nr)
-    real(double) :: Rmax = 1.5d3  ! [10^10cm] = 1 AU
-    TYPE(VECTOR)     :: VecInnerEdge
-    real(double) :: wi
-
-    need_to_split2 = .false.
-
-    if (first_time) then  ! setup ref. r grid
-       do i = 1, nr
-          ! this should not depend on the size of the model boundary box.
-          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%Rmin))
-!          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(this%Rmax)-log10(this%Rmin))
-       enddo
-       do i = 1, nr
-          rGrid(i) = 10.d0**rGrid(i)
-       end do
-       first_time = .false.
-    end if
-
-    cellSize = (thisOctal%subcellSize)*2.0d0
-    cellCentre = subcellCentre(thisOctal, subcell)
-
-
-!    if (.not.in_jet_flow(this, cellCentre) ) then
-    if (.not.in_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z, thisOctal%subcellSize) ) then
-       need_to_split2 = .false.
-    else
-       ! get the size and the position of the centre of the current cell
-!       r = modulus(cellCentre)  ! used in the paper
-       wi = sqrt(cellCentre%x*cellCentre%x + cellCentre%y*cellCentre%y)
-       VecInnerEdge = VECTOR(cellCentre%x, cellCentre%y, 0.0d0)* (this%Rmin/wi)
-       r = modulus(cellCentre-VecInnerEdge)  ! shift it to the inner edge of the disc
-!       r = ABS(wi-this%Rmin)  ! just a cylindical radius
-       call locate(rGrid,nr,r,i)
-       if (i > (nr-1)) i = nr-1
-       d = rGrid(i+1) - rGrid(i)
-       if (cellSize > d ) then
-          need_to_split2 = .true.
-       end if
-    endif
-  end function need_to_split2
-
 
   
 
@@ -1094,389 +928,6 @@ contains
   END SUBROUTINE turn_on_discwind
 
 
-  SUBROUTINE fill_Velocity_Corners(this,thisOctal, debug)
-    ! store the velocity values at the subcell corners of an octal so
-    !   that they can be used for interpolation.
-
-    IMPLICIT NONE
-    type(discwind) :: this
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    logical, optional :: debug
-    logical :: writedebug
-    real(oct)      :: r1, r2, r3
-    real(oct)      :: phi1, phi2, phi3
-    real(oct)      :: x1, x2, x3
-    real(oct)      :: y1, y2, y3
-    real(oct)      :: z1, z2, z3
-    
-
-    writedebug = .false.
-    if (present(debug)) writedebug=debug
-
-    if (thisOctal%oneD) then
-       x1 = thisOctal%centre%x - thisOctal%subcellSize
-       x2 = thisOctal%centre%x
-       x3 = thisOctal%centre%x + thisOctal%subcellSize
-       y1 = 0.d0
-       z1 = 0.d0
-       thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,y1,z1))
-       thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,y1,z1))
-       thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,y1,z1))
-       goto 666
-    endif
-
-
-    if (thisOctal%threed) then
-       if (.not.thisOctal%cylindrical) then ! 3d cartesian case
-          ! we first store the values we use to assemble the position vectors
-          
-          x1 = thisOctal%centre%x - thisOctal%subcellSize
-          x2 = thisOctal%centre%x
-          x3 = thisOctal%centre%x + thisOctal%subcellSize
-          
-          y1 = thisOctal%centre%y - thisOctal%subcellSize
-          y2 = thisOctal%centre%y
-          y3 = thisOctal%centre%y + thisOctal%subcellSize
-          
-          z1 = thisOctal%centre%z - thisOctal%subcellSize
-          z2 = thisOctal%centre%z
-          z3 = thisOctal%centre%z + thisOctal%subcellSize
-                    
-           ! now store the 'base level' values
-          
-          thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,y1,z1))
-          thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,y1,z1))
-          thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,y1,z1))
-          thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(x1,y2,z1))
-          thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(x2,y2,z1))
-          thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(x3,y2,z1))
-          thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(x1,y3,z1))
-          thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(x2,y3,z1))
-          thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(x3,y3,z1))
-          
-          ! middle level
-          
-          thisOctal%cornerVelocity(10) = discwind_velocity(this,vector(x1,y1,z2))
-          thisOctal%cornerVelocity(11) = discwind_velocity(this,vector(x2,y1,z2))
-          thisOctal%cornerVelocity(12) = discwind_velocity(this,vector(x3,y1,z2))
-          thisOctal%cornerVelocity(13) = discwind_velocity(this,vector(x1,y2,z2))
-          thisOctal%cornerVelocity(14) = discwind_velocity(this,vector(x2,y2,z2))
-          thisOctal%cornerVelocity(15) = discwind_velocity(this,vector(x3,y2,z2))
-          thisOctal%cornerVelocity(16) = discwind_velocity(this,vector(x1,y3,z2))
-          thisOctal%cornerVelocity(17) = discwind_velocity(this,vector(x2,y3,z2))
-          thisOctal%cornerVelocity(18) = discwind_velocity(this,vector(x3,y3,z2))
-          
-          ! top level
-          
-          thisOctal%cornerVelocity(19) = discwind_velocity(this,vector(x1,y1,z3))
-          thisOctal%cornerVelocity(20) = discwind_velocity(this,vector(x2,y1,z3))
-          thisOctal%cornerVelocity(21) = discwind_velocity(this,vector(x3,y1,z3))
-          thisOctal%cornerVelocity(22) = discwind_velocity(this,vector(x1,y2,z3))
-          thisOctal%cornerVelocity(23) = discwind_velocity(this,vector(x2,y2,z3))
-          thisOctal%cornerVelocity(24) = discwind_velocity(this,vector(x3,y2,z3))
-          thisOctal%cornerVelocity(25) = discwind_velocity(this,vector(x1,y3,z3))
-          thisOctal%cornerVelocity(26) = discwind_velocity(this,vector(x2,y3,z3))
-          thisOctal%cornerVelocity(27) = discwind_velocity(this,vector(x3,y3,z3))
-
-       else ! cylindrical 
-          if (thisOctal%splitAzimuthally) then
-             z1 = thisOctal%centre%z - thisOctal%subcellSize
-             z2 = thisOctal%centre%z
-             z3 = thisOctal%centre%z + thisOctal%subcellSize
-             phi1 = thisOctal%phiMin
-             phi2 = thisOctal%phi 
-             phi3 = thisOctal%phiMax
-             r1 = thisOctal%r - thisOctal%subcellSize
-             r2 = thisOctal%r
-             r3 = thisOctal%r + thisOctal%subcellSize
-
-             ! bottom level
-
-             thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z1))
-             thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z1))
-             thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(r3*cos(phi1),r3*sin(phi1),z1))
-             thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(r1*cos(phi2),r1*sin(phi2),z1))
-             thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z1))
-             thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z1))
-             thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(r1*cos(phi3),r1*sin(phi3),z1))
-             thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(r2*cos(phi3),r2*sin(phi3),z1))
-             thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(r3*cos(phi3),r3*sin(phi3),z1))
-
-             thisOctal%cornerVelocity(10) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z2))
-             thisOctal%cornerVelocity(11) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z2))
-             thisOctal%cornerVelocity(12) = discwind_velocity(this,vector(r3*cos(phi1),r3*sin(phi1),z2))
-             thisOctal%cornerVelocity(13) = discwind_velocity(this,vector(r1*cos(phi2),r1*sin(phi2),z2))
-             thisOctal%cornerVelocity(14) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z2))
-             thisOctal%cornerVelocity(15) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z2))
-             thisOctal%cornerVelocity(16) = discwind_velocity(this,vector(r1*cos(phi3),r1*sin(phi3),z2))
-             thisOctal%cornerVelocity(17) = discwind_velocity(this,vector(r2*cos(phi3),r2*sin(phi3),z2))
-             thisOctal%cornerVelocity(18) = discwind_velocity(this,vector(r3*cos(phi3),r3*sin(phi3),z2))
-
-             thisOctal%cornerVelocity(19) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z3))
-             thisOctal%cornerVelocity(20) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z3))
-             thisOctal%cornerVelocity(21) = discwind_velocity(this,vector(r3*cos(phi1),r3*sin(phi1),z3))
-             thisOctal%cornerVelocity(22) = discwind_velocity(this,vector(r1*cos(phi2),r1*sin(phi2),z3))
-             thisOctal%cornerVelocity(23) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z3))
-             thisOctal%cornerVelocity(24) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z3))
-             thisOctal%cornerVelocity(25) = discwind_velocity(this,vector(r1*cos(phi3),r1*sin(phi3),z3))
-             thisOctal%cornerVelocity(26) = discwind_velocity(this,vector(r2*cos(phi3),r2*sin(phi3),z3))
-             thisOctal%cornerVelocity(27) = discwind_velocity(this,vector(r3*cos(phi3),r3*sin(phi3),z3))
-
-
-          else
-
-             z1 = thisOctal%centre%z - thisOctal%subcellSize
-             z2 = thisOctal%centre%z
-             z3 = thisOctal%centre%z + thisOctal%subcellSize
-             phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
-             phi2 = thisOctal%phi + thisOctal%dPhi/2.d0
-             r1 = thisOctal%r - thisOctal%subcellSize
-             r2 = thisOctal%r
-             r3 = thisOctal%r + thisOctal%subcellSize
-
-
-             ! bottom level
-
-             thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z1))
-             thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z1))
-             thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z1))
-             thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z1))
-             thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z1))
-             thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z1))
-
-             ! middle level
-
-             thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z2))
-             thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z2))
-             thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z2))
-             thisOctal%cornerVelocity(10) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z2))
-             thisOctal%cornerVelocity(11) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z2))
-             thisOctal%cornerVelocity(12) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z2))
-
-             ! top level
-
-             thisOctal%cornerVelocity(13) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z3))
-             thisOctal%cornerVelocity(14) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z3))
-             thisOctal%cornerVelocity(15) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z3))
-             thisOctal%cornerVelocity(16) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z3))
-             thisOctal%cornerVelocity(17) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z3))
-             thisOctal%cornerVelocity(18) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z3))
-
-          endif
-       endif
-    else       
-       
-    ! we first store the values we use to assemble the position vectors
-       
-       x1 = thisOctal%centre%x - thisOctal%subcellSize
-       x2 = thisOctal%centre%x
-       x3 = thisOctal%centre%x + thisOctal%subcellSize
-       
-       z1 = thisOctal%centre%z - thisOctal%subcellSize
-       z2 = thisOctal%centre%z
-       z3 = thisOctal%centre%z + thisOctal%subcellSize
-       
-       ! now store the 'base level' values
-       
-       thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,0.d0,z1))
-       thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,0.d0,z1))
-       thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,0.d0,z1))
-       thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(x1,0.d0,z2))
-       thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(x2,0.d0,z2))
-       thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(x3,0.d0,z2))
-       thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(x1,0.d0,z3))
-       thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(x2,0.d0,z3))
-       thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(x3,0.d0,z3))
-    endif
-666 continue
-
-!    if(isnan(thisOctal%cornerVelocity(1)%x)) then
-!          write(*,*) "cornervel",thisOctal%cornerVelocity(1)
-!          write(*,*) discwind_velocity(this,vector(x1,0.d0,z1),grid)
-!          write(*,*) x1,z1
-!          write(*,*) x2,z2
-!          write(*,*) x3,z3
-!       enddo
-!    endif
-    
-  END SUBROUTINE fill_Velocity_Corners
-
-  SUBROUTINE add_new_children_discwind(parent, ichild, grid, this, splitAzimuthally)
-    use memory_mod
-    use inputs_mod, only : cylindrical, vturb
-    use amr_mod, only : growChildArray, allocateOctalAttributes, setSmallestSubcell
-    ! adds all eight new children to an octal
-    IMPLICIT NONE
-    logical, optional :: splitAzimuthally
-    type(VECTOR) :: rVec
-    TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
-    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
-                                          !   calculate the variables stored in
-                                          !   the tree.
-    TYPE(discwind), INTENT(IN)  :: this
-    INTEGER       :: subcell           ! loop counter
-                                       ! - this isn't very clever. might change it. 
-    INTEGER       :: newChildIndex     ! the storage location for the new child
-    INTEGER       :: iChild
-    integer :: parentSubcell
-    integer :: nChildren
-    TYPE(OCTAL), POINTER :: thisOctal
-
-    nChildren = parent%nChildren
-
-    parentSubcell = iChild
-
-    ! safety checks of child array
-    IF ( ASSOCIATED(parent%child) ) THEN
-      IF ( ( nChildren == 0 ) .OR.                  &
-           ( nChildren /= SIZE(parent%child) ) ) THEN
-        PRINT *, 'Panic: in addNewChild, %child array wrong size'
-        PRINT *, 'nChildren:',nChildren,' SIZE %child:', SIZE(parent%child)
-        STOP
-      END IF
-    END IF
-    IF ( (.NOT. ASSOCIATED(parent%child)) .AND. (nChildren > 0) ) THEN
-      PRINT *, 'Panic: in addNewChild, %child array wrong size'
-      PRINT *, 'nChildren:',nChildren,' ASSOCIATED %child:', ASSOCIATED(parent%child)
-      STOP
-    END IF
-
-    ! check that new child does not already exist
-    IF ( parent%hasChild(iChild) .EQV. .TRUE. ) THEN
-      PRINT *, 'Panic: in addNewChild, attempted to add a child ',&
-               '       that already exists'
-      STOP
-    ENDIF
-
-!    call interpFromParent(subcellCentre(parent, iChild, parent%subcellSize, &
-!         grid, temperature, density, dusttypeFraction)
-
-    CALL growChildArray(parent, nNewChildren=1, grid=grid )
-
-    ! update the bookkeeping
-    nChildren = nChildren + 1
-    newChildIndex = nChildren
-
-    ! update the parent octal
-    parent%nChildren = nChildren
-    parent%hasChild(iChild) = .TRUE.
-    parent%indexChild(newChildIndex) = iChild
-
-    NULLIFY(parent%child(newChildIndex)%child)
-
-    parent%child(newChildIndex)%nDepth = parent%nDepth + 1
-    if (parent%child(newChildIndex)%nDepth  > grid%maxDepth) then
-       grid%maxDepth = grid%maxDepth + 1
-       CALL setSmallestSubcell(grid)
-    endif
-    ! set up the new child's variables
-    parent%child(newChildIndex)%threeD = parent%threeD
-    parent%child(newChildIndex)%twoD = parent%twoD
-    parent%child(newChildIndex)%oneD = parent%oneD
-    parent%child(newChildIndex)%maxChildren = parent%maxChildren
-    parent%child(newChildIndex)%cylindrical = parent%cylindrical
-
-    if (cylindrical) then  
-       if (parent%splitAzimuthally) then
-          rVec =  subcellCentre(parent,iChild)
-          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-          if (parent%child(newChildIndex)%phi < 0.d0) then
-              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
-          endif
-          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
-          parent%child(newChildIndex)%phimin = parent%child(newChildIndex)%phi - parent%dPhi/4.d0
-          parent%child(newChildIndex)%phimax = parent%child(newChildIndex)%phi + parent%dPhi/4.d0
-       else
-          parent%child(newChildIndex)%phi = parent%phi
-          parent%child(newChildIndex)%dphi = parent%dphi
-          parent%child(newChildIndex)%phimin = parent%phimin
-          parent%child(newChildIndex)%phimax = parent%phimax
-       endif
-       if (parent%child(newChildIndex)%phimin < 1.d-10) parent%child(newChildIndex)%phimin = 0.d0 ! fixed!!!!
-       parent%child(newChildIndex)%splitAzimuthally = .false.
-       parent%child(newChildIndex)%maxChildren = 4
-
-       if (PRESENT(splitAzimuthally)) then
-          if (splitAzimuthally) then
-             parent%child(newChildIndex)%splitAzimuthally = .true.
-             parent%child(newChildIndex)%maxChildren = 8
-             rVec =  subcellCentre(parent,iChild)
-             parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-             if (parent%child(newChildIndex)%phi < 0.d0) then
-                parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
-             endif
-             if (parent%splitAzimuthally) then
-                parent%child(newChildIndex)%dphi = parent%dphi/2.d0
-             else
-                parent%child(newChildIndex)%dphi = parent%dphi
-             endif
-          else
-             if (parent%splitAzimuthally) then
-                rVec =  subcellCentre(parent,iChild)
-                parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-                if (parent%child(newChildIndex)%phi < 0.d0) then
-                   parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
-                endif
-                parent%child(newChildIndex)%dphi = parent%dphi/2.d0
-             else
-                parent%child(newChildIndex)%phi = parent%phi
-                parent%child(newChildIndex)%dphi = parent%dphi
-             endif
-             parent%child(newChildIndex)%splitAzimuthally = .false.
-             parent%child(newChildIndex)%maxChildren = 4
-          endif
-       endif
-    endif
-    
-
-    parent%child(newChildIndex)%inFlow = parent%inFlow
-    parent%child(newChildIndex)%parent => parent
-    parent%child(newChildIndex)%parentSubcell = iChild
-    parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
-    parent%child(newChildIndex)%hasChild = .false.
-    parent%child(newChildIndex)%nChildren = 0
-    parent%child(newChildIndex)%indexChild = -999 ! values are undefined
-    parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
-    if (parent%cylindrical) then
-       parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
-    endif
-
-
-    parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
-    parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
-    parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
-
-    parent%child(newChildIndex)%xMax = parent%child(newChildIndex)%centre%x + parent%child(newChildIndex)%subcellSize
-    parent%child(newChildIndex)%yMax = parent%child(newChildIndex)%centre%y + parent%child(newChildIndex)%subcellSize
-    parent%child(newChildIndex)%zMax = parent%child(newChildIndex)%centre%z + parent%child(newChildIndex)%subcellSize
-
-
-    thisOctal => parent%child(newChildIndex)
-    call allocateOctalAttributes(grid, thisOctal)
-
-    globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
-
-    call fill_velocity_corners(this, thisOctal)
-
-
-    do subcell = 1, thisOctal%maxChildren
-       thisOctal%temperature(subcell) = parent%temperature(parentSubcell)
-       thisOctal%rho(subcell) = parent%rho(parentSubcell)
-       thisOctal%velocity(subcell) = parent%velocity(parentSubcell)
-
-!       rVec = subcellCentre(thisOctal, subcell)
-!       x = rVec%x
-!       y = rVec%y
-!       z = rVec%z
-!       if (all_in_discwind(thisOctal, subcell, this)) then
-!          thisOctal%inFlow(subcell) = .true.
-!          thisOctal%temperature(subcell) = real(this%Twind)
-!          thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, this)
-!          thisOctal%velocity(subcell) = discwind_velocity(this, vector(x,y,z))
-!          if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
-!       endif
-    enddo
-  end SUBROUTINE add_new_children_discwind
 
 
   recursive subroutine assignDensitiesDiscwind(grid, thisOctal, thisWind)
@@ -1505,6 +956,7 @@ contains
           z = rVec%z
           if (all_in_discwind(thisOctal, subcell, thisWind)) then
              thisOctal%inFlow(subcell) = .true.
+             thisOctal%iAnalyticalVelocity(subcell) = 1
              thisOctal%temperature(subcell) = real(thisWind%Twind)
              thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, thisWind)
              thisOctal%velocity(subcell) = discwind_velocity(thisWind, vector(x,y,z))
@@ -1514,7 +966,6 @@ contains
        endif
     enddo
   end subroutine assignDensitiesDiscwind
-
 
 
 end module discwind_class

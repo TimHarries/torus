@@ -59,7 +59,7 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine
+    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -68,9 +68,9 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, zerosourcepotential, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource, computedivV, hydroStep2dCylindrical, &
+         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
-         hydrostep1d
+         hydrostep1d, setupAlphaViscosity
 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
@@ -278,8 +278,8 @@ contains
        call readAmrGrid(mpiFilename,.false.,grid)
     endif
 
-    call writeVtkFile(grid, "preghosts.vtk", &
-         valueTypeString=(/"ghosts     " /))
+!    call writeVtkFile(grid, "preghosts.vtk", &
+!         valueTypeString=(/"ghosts     ", "mpithread  " /))
 
     if (myrankGlobal /= 0) then
        call writeInfo("Setting up even up array", TRIVIAL)
@@ -288,8 +288,8 @@ contains
 !       call evenUpGridMPI(grid, .false., .true., evenuparray)
        call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
     endif
-    call writeVtkFile(grid, "inighosts.vtk", &
-         valueTypeString=(/"ghosts     " /))
+!    call writeVtkFile(grid, "inighosts.vtk", &
+!         valueTypeString=(/"ghosts     " /))
 
     if (myRankWorldGlobal == 1) write(*,*) "CFL set to ", cfl
 
@@ -507,6 +507,16 @@ contains
           call calculateRhoE(grid%octreeRoot, direction)          
        endif
     end if
+
+
+    if (myrankGlobal /= 0) then
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+       call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
+       if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+       call setupCylindricalViscosity(grid%octreeRoot, grid)
+    endif
+
     
     if(grid%geometry == "SB_instblt") then
        print *, "PERTURBING I FRONT "
@@ -566,7 +576,6 @@ contains
                globalsourceArray, gasSourceDt)
           if (radiationPressure) call radpressureTimeStep(grid%octreeRoot, raddt)
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-          call computeDivV(grid%octreeRoot, grid)
           call pressureGradientTimeStep(grid, pressureDt, nPairs, thread1, thread2, nBound, group, nGroup)
           if (timeDependentRT) then
              call getRecombinationTime(grid%octreeRoot, recombinationDt)
@@ -577,6 +586,11 @@ contains
           if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
           endif
+          if (cylindricalHydro) then
+             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
+          endif
+
+
        endif
 
 
@@ -622,8 +636,7 @@ contains
           write(*,"(a30,1p,e12.3)") "Pressure gradient courant time: ", pressuredt
           write(*,"(a30,1p,e12.3)") "Max bulk velocity: ", vBulk/1.d5
           write(*,"(a30,1p,e12.3)") "Max sound speed: ", vSound/1.d5
-          if (useTensorViscosity) &
-               write(*,"(a30,1p,e12.3)") "Viscous time: ", viscdt
+          write(*,"(a30,1p,e12.3)") "Viscous time: ", viscdt
        endif
        
 
@@ -649,7 +662,7 @@ contains
           dumpThisTime = .true.
        endif
 
-       fractionOfAccretionlum = min(1.d0, grid%currentTime / 3.1d10)
+       fractionOfAccretionlum = 1.d0 !min(1.d0, grid%currentTime / 3.1d10)
 
 
 !       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
@@ -762,6 +775,11 @@ contains
 
        if (myrankGlobal /= 0) then
           if (cylindricalHydro) then
+             call writeInfo("Calling cylindrical coord hydro step", TRIVIAL)
+
+
+
+
              call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           else
              if(grid%currentTime==0.d0 .and. grid%geometry == "SB_WNHII")then
@@ -939,7 +957,7 @@ contains
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         ","dust1        ",  &
-               "phi          ","rhou         ","rhov         ","rhow         ", &
+               "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
                "vphi         ","jnu          "/))
 
 
@@ -2382,6 +2400,14 @@ end subroutine radiationHydro
                                   smallPacketOrigin = rVec
                                   smallPacketFreq = thisFreq
                                   startNewSmallPacket = .true.
+                                  thisLam = real(cSpeed / thisFreq) * 1.e8
+                                  call locate(lamArray, nLambda, real(thisLam), iLam)
+                                  
+                                  call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
+                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb)
+
+!                                  write(*,*) "small packet wavelength ", thisLam
+!                                  write(*,*) "optical depth of cell ",(kappaAbsDb+kappaScadb)*thisOctal%subcellSize
                                endif
                                
                                
@@ -3416,7 +3442,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     else
        thisTau = 1.0e-28
     end if
-       
+
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 

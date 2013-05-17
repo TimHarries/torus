@@ -512,8 +512,8 @@ contains
 
           if (nHydroThreadsGlobal == 4) then
              if ((thisOctal%nDepth == 1) .and. (myRankGlobal==0)) then
-                tempNChildren = 2
-                do i = 1, 2
+                tempNChildren = 4
+                do i = 1, 4
                    tempIndexChild(i) = i
                 enddo
                 tempHasChild = .true.
@@ -735,6 +735,8 @@ contains
           
           call writeAttributePointerFlexi(20, "iEquationOfState", thisOctal%iEquationOfState, fileFormatted)
 
+          call writeAttributePointerFlexi(20, "iAnalyticalVelocity", thisOctal%iAnalyticalVelocity, fileFormatted)
+
           call writeAttributePointerFlexi(20, "gamma", thisOctal%gamma, fileFormatted)
 
 
@@ -838,9 +840,9 @@ contains
 !             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
 !             grid%nOctals = nOctals
 !          endif
-!          call torus_mpi_barrier
 !       enddo
        call grid_info_mpi(grid, "info_grid.dat")
+       call torus_mpi_barrier
     endif
 #endif
 
@@ -3419,11 +3421,11 @@ contains
          
          character(len=80) :: message
          logical :: fileFormatted
-         integer :: iThread, nOctal, nOctals, nVoxels, iSet, ierr
+         integer :: iThread, nOctal, nOctals, nVoxels, ierr
 
 
-         do iSet = 0, nHydroSetsGlobal - 1
-            if (myHydroSetGlobal == iSet) then
+!         do iSet = 0, nHydroSetsGlobal - 1
+!            if (myHydroSetGlobal == iSet) then
                
                if (associated(grid%octreeRoot)) then
                   call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
@@ -3444,7 +3446,7 @@ contains
                   grid%octreeRoot%nDepth = 1
                   nOctal = 0
                   call getBranchOverMPI(grid%octreeRoot, null())
-                  write(message, '(a,i3.3)') "AMR grid read for thread: ",myrankGlobal
+                  write(message, '(a,i3.3,a,i3.3)') "AMR grid read for thread: ",myrankGlobal, " set ",myHydroSetGlobal
                   write(*,*) trim(message)
                else
                   call openGridFile(gridFilename, fileformatted)
@@ -3461,9 +3463,9 @@ contains
                grid%nOctals = nOctals
                !         call checkAMRgrid(grid, .false.)
                close(20)
-            endif
-            call torus_mpi_barrier
-         enddo
+!            endif
+!            call torus_mpi_barrier
+!         enddo
 
        end subroutine readGridSplitOverMPI
 
@@ -3519,7 +3521,7 @@ contains
 !            allocate(child)
 !            do while (.true.)
 !               call readOctalViaTags(child, fileFormatted)
-!               write(*,*) "from tags depth: ",child%ndepth, child%mpiThread
+!               write(*,*) "from tags depth: ",child%ndepth, child%mpiThread, child%nchildren
 !            enddo
 
             do i = 1, nHydroThreadsGlobal
@@ -4255,6 +4257,11 @@ contains
 
          case("iEquationOfState")
             call readPointerFlexi(20, thisOctal%iEquationOfState, fileFormatted)
+
+
+         case("iAnalyticalVelocity")
+            call readPointerFlexi(20, thisOctal%iAnalyticalVelocity, fileFormatted)
+
          case("gamma")
             call readPointerFlexi(20, thisOctal%gamma, fileFormatted)
 
@@ -4579,6 +4586,10 @@ contains
 
          case("iEquationOfState")
             call receivePointerFlexi(thisOctal%iEquationOfState)
+
+         case("iAnalyticalVelocity")
+            call receivePointerFlexi(thisOctal%iAnalyticalVelocity)
+
          case("gamma")
             call receivePointerFlexi(thisOctal%gamma)
 
@@ -4777,6 +4788,8 @@ contains
       call sendAttributePointerFlexi(iThread, "rLimit", thisOctal%rLimit)
 
       call sendAttributePointerFlexi(iThread, "iEquationOfState", thisOctal%iEquationOfState)
+
+      call sendAttributePointerFlexi(iThread, "iAnalyticalVelocity", thisOctal%iAnalyticalVelocity)
 
       call sendAttributePointerFlexi(iThread, "gamma", thisOctal%gamma)
 

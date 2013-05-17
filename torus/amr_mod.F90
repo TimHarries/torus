@@ -6,6 +6,7 @@ module amr_mod
   ! twod stuff added by tjh started 25/08/04
 
   use amr_utils_mod
+  use discwind_class
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute, returndphi, subcellCorners
   use utils_mod, only: blackbody, logint, loginterp, locate, solvequaddble, spline, splint, regular_tri_quadint
@@ -39,6 +40,551 @@ module amr_mod
   TYPE(octal), POINTER :: recentOctal
 
 CONTAINS
+  SUBROUTINE fill_Velocity_Corners(this,thisOctal, debug)
+    ! store the velocity values at the subcell corners of an octal so
+    !   that they can be used for interpolation.
+
+    IMPLICIT NONE
+    type(discwind) :: this
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    logical, optional :: debug
+    logical :: writedebug
+    real(oct)      :: r1, r2, r3
+    real(oct)      :: phi1, phi2, phi3
+    real(oct)      :: x1, x2, x3
+    real(oct)      :: y1, y2, y3
+    real(oct)      :: z1, z2, z3
+    
+
+    writedebug = .false.
+    if (present(debug)) writedebug=debug
+
+    if (thisOctal%oneD) then
+       x1 = thisOctal%centre%x - thisOctal%subcellSize
+       x2 = thisOctal%centre%x
+       x3 = thisOctal%centre%x + thisOctal%subcellSize
+       y1 = 0.d0
+       z1 = 0.d0
+       thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,y1,z1))
+       goto 666
+    endif
+
+
+    if (thisOctal%threed) then
+       if (.not.thisOctal%cylindrical) then ! 3d cartesian case
+          ! we first store the values we use to assemble the position vectors
+          
+          x1 = thisOctal%centre%x - thisOctal%subcellSize
+          x2 = thisOctal%centre%x
+          x3 = thisOctal%centre%x + thisOctal%subcellSize
+          
+          y1 = thisOctal%centre%y - thisOctal%subcellSize
+          y2 = thisOctal%centre%y
+          y3 = thisOctal%centre%y + thisOctal%subcellSize
+          
+          z1 = thisOctal%centre%z - thisOctal%subcellSize
+          z2 = thisOctal%centre%z
+          z3 = thisOctal%centre%z + thisOctal%subcellSize
+                    
+           ! now store the 'base level' values
+          
+          thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,y1,z1))
+          thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,y1,z1))
+          thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,y1,z1))
+          thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(x1,y2,z1))
+          thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(x2,y2,z1))
+          thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(x3,y2,z1))
+          thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(x1,y3,z1))
+          thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(x2,y3,z1))
+          thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(x3,y3,z1))
+          
+          ! middle level
+          
+          thisOctal%cornerVelocity(10) = discwind_velocity(this,vector(x1,y1,z2))
+          thisOctal%cornerVelocity(11) = discwind_velocity(this,vector(x2,y1,z2))
+          thisOctal%cornerVelocity(12) = discwind_velocity(this,vector(x3,y1,z2))
+          thisOctal%cornerVelocity(13) = discwind_velocity(this,vector(x1,y2,z2))
+          thisOctal%cornerVelocity(14) = discwind_velocity(this,vector(x2,y2,z2))
+          thisOctal%cornerVelocity(15) = discwind_velocity(this,vector(x3,y2,z2))
+          thisOctal%cornerVelocity(16) = discwind_velocity(this,vector(x1,y3,z2))
+          thisOctal%cornerVelocity(17) = discwind_velocity(this,vector(x2,y3,z2))
+          thisOctal%cornerVelocity(18) = discwind_velocity(this,vector(x3,y3,z2))
+          
+          ! top level
+          
+          thisOctal%cornerVelocity(19) = discwind_velocity(this,vector(x1,y1,z3))
+          thisOctal%cornerVelocity(20) = discwind_velocity(this,vector(x2,y1,z3))
+          thisOctal%cornerVelocity(21) = discwind_velocity(this,vector(x3,y1,z3))
+          thisOctal%cornerVelocity(22) = discwind_velocity(this,vector(x1,y2,z3))
+          thisOctal%cornerVelocity(23) = discwind_velocity(this,vector(x2,y2,z3))
+          thisOctal%cornerVelocity(24) = discwind_velocity(this,vector(x3,y2,z3))
+          thisOctal%cornerVelocity(25) = discwind_velocity(this,vector(x1,y3,z3))
+          thisOctal%cornerVelocity(26) = discwind_velocity(this,vector(x2,y3,z3))
+          thisOctal%cornerVelocity(27) = discwind_velocity(this,vector(x3,y3,z3))
+
+       else ! cylindrical 
+          if (thisOctal%splitAzimuthally) then
+             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z2 = thisOctal%centre%z
+             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             phi1 = thisOctal%phiMin
+             phi2 = thisOctal%phi 
+             phi3 = thisOctal%phiMax
+             r1 = thisOctal%r - thisOctal%subcellSize
+             r2 = thisOctal%r
+             r3 = thisOctal%r + thisOctal%subcellSize
+
+             ! bottom level
+
+             thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(r3*cos(phi1),r3*sin(phi1),z1))
+             thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(r1*cos(phi2),r1*sin(phi2),z1))
+             thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z1))
+             thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z1))
+             thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(r1*cos(phi3),r1*sin(phi3),z1))
+             thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(r2*cos(phi3),r2*sin(phi3),z1))
+             thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(r3*cos(phi3),r3*sin(phi3),z1))
+
+             thisOctal%cornerVelocity(10) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerVelocity(11) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerVelocity(12) = discwind_velocity(this,vector(r3*cos(phi1),r3*sin(phi1),z2))
+             thisOctal%cornerVelocity(13) = discwind_velocity(this,vector(r1*cos(phi2),r1*sin(phi2),z2))
+             thisOctal%cornerVelocity(14) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z2))
+             thisOctal%cornerVelocity(15) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z2))
+             thisOctal%cornerVelocity(16) = discwind_velocity(this,vector(r1*cos(phi3),r1*sin(phi3),z2))
+             thisOctal%cornerVelocity(17) = discwind_velocity(this,vector(r2*cos(phi3),r2*sin(phi3),z2))
+             thisOctal%cornerVelocity(18) = discwind_velocity(this,vector(r3*cos(phi3),r3*sin(phi3),z2))
+
+             thisOctal%cornerVelocity(19) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerVelocity(20) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(21) = discwind_velocity(this,vector(r3*cos(phi1),r3*sin(phi1),z3))
+             thisOctal%cornerVelocity(22) = discwind_velocity(this,vector(r1*cos(phi2),r1*sin(phi2),z3))
+             thisOctal%cornerVelocity(23) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerVelocity(24) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerVelocity(25) = discwind_velocity(this,vector(r1*cos(phi3),r1*sin(phi3),z3))
+             thisOctal%cornerVelocity(26) = discwind_velocity(this,vector(r2*cos(phi3),r2*sin(phi3),z3))
+             thisOctal%cornerVelocity(27) = discwind_velocity(this,vector(r3*cos(phi3),r3*sin(phi3),z3))
+
+
+          else
+
+             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z2 = thisOctal%centre%z
+             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
+             phi2 = thisOctal%phi + thisOctal%dPhi/2.d0
+             r1 = thisOctal%r - thisOctal%subcellSize
+             r2 = thisOctal%r
+             r3 = thisOctal%r + thisOctal%subcellSize
+
+
+             ! bottom level
+
+             thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z1))
+             thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z1))
+             thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z1))
+             thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z1))
+             thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z1))
+
+             ! middle level
+
+             thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z2))
+             thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z2))
+             thisOctal%cornerVelocity(10) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z2))
+             thisOctal%cornerVelocity(11) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z2))
+             thisOctal%cornerVelocity(12) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z2))
+
+             ! top level
+
+             thisOctal%cornerVelocity(13) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerVelocity(14) = discwind_velocity(this,vector(r1*cos(phi1),r1*sin(phi1),z3))
+             thisOctal%cornerVelocity(15) = discwind_velocity(this,vector(r2*cos(phi1),r2*sin(phi1),z3))
+             thisOctal%cornerVelocity(16) = discwind_velocity(this,vector(r2*cos(phi2),r2*sin(phi2),z3))
+             thisOctal%cornerVelocity(17) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z3))
+             thisOctal%cornerVelocity(18) = discwind_velocity(this,vector(r3*cos(phi2),r3*sin(phi2),z3))
+
+          endif
+       endif
+    else       
+       
+    ! we first store the values we use to assemble the position vectors
+       
+       x1 = thisOctal%centre%x - thisOctal%subcellSize
+       x2 = thisOctal%centre%x
+       x3 = thisOctal%centre%x + thisOctal%subcellSize
+       
+       z1 = thisOctal%centre%z - thisOctal%subcellSize
+       z2 = thisOctal%centre%z
+       z3 = thisOctal%centre%z + thisOctal%subcellSize
+       
+       ! now store the 'base level' values
+       
+       thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,0.d0,z1))
+       thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,0.d0,z1))
+       thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,0.d0,z1))
+       thisOctal%cornerVelocity(4) = discwind_velocity(this,vector(x1,0.d0,z2))
+       thisOctal%cornerVelocity(5) = discwind_velocity(this,vector(x2,0.d0,z2))
+       thisOctal%cornerVelocity(6) = discwind_velocity(this,vector(x3,0.d0,z2))
+       thisOctal%cornerVelocity(7) = discwind_velocity(this,vector(x1,0.d0,z3))
+       thisOctal%cornerVelocity(8) = discwind_velocity(this,vector(x2,0.d0,z3))
+       thisOctal%cornerVelocity(9) = discwind_velocity(this,vector(x3,0.d0,z3))
+    endif
+666 continue
+
+!    if(isnan(thisOctal%cornerVelocity(1)%x)) then
+!          write(*,*) "cornervel",thisOctal%cornerVelocity(1)
+!          write(*,*) discwind_velocity(this,vector(x1,0.d0,z1),grid)
+!          write(*,*) x1,z1
+!          write(*,*) x2,z2
+!          write(*,*) x3,z3
+!       enddo
+!    endif
+    
+  END SUBROUTINE fill_Velocity_Corners
+
+  RECURSIVE SUBROUTINE add_discwind(thisOctal,grid,this, limitscalar)
+    ! uses an external function to decide whether to split a subcell of
+    !   the current octal. 
+
+    use inputs_mod, only : maxDepthAMR
+    IMPLICIT NONE
+    TYPE(OCTAL), POINTER :: thisOctal
+    TYPE(gridtype), INTENT(INOUT) :: grid   ! need to pass the grid through to the 
+    type(discwind), intent(in)  :: this     
+    ! the value the decideSplit function uses to  decide whether or not to split cell.
+    real(double), intent(in) :: limitscalar 
+    !
+    !
+    TYPE(OCTAL), POINTER :: child
+    INTEGER              :: i, j, k    ! loop counters
+    integer :: iindex
+    integer :: isubcell
+
+
+    DO iSubcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%hasChild(isubcell)) cycle
+       IF ((need_to_split2(thisOctal,isubcell,this).and.(thisOctal%nDepth < maxDepthAMR))) then
+
+          CALL add_new_children_discwind(thisOctal, isubcell, grid, this)
+
+          if (.not.thisOctal%hasChild(isubcell)) then
+             write(*,*) "add child failed in splitGrid"
+             do
+             enddo
+          endif
+          
+       END IF
+       
+    END DO
+
+  do i = 1, thisOctal%nChildren
+     if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
+        write(*,*) "octal children messed up"
+        do ; enddo
+        endif
+     enddo
+
+    do i = 1, thisOctal%maxChildren
+      k = -99
+      if (thisOctal%hasChild(i)) then
+        do j = 1, thisOctal%nChildren
+          if (thisOctal%indexChild(j) == i) then
+            k = j
+            exit
+          endif
+       enddo
+       if (k==-99) then
+          write(*,*) "subcell screwup"
+          do
+          enddo
+       endif
+    endif
+ enddo
+
+   if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
+      write(*,*) "nchildren screw up"
+      do;enddo
+      endif
+    
+    DO iIndex = 1, thisOctal%nChildren
+       child => thisOctal%child(iIndex)
+       CALL add_discwind(child,grid,this,limitscalar)      
+   END DO
+  END SUBROUTINE add_discwind
+
+
+
+  !
+  !  Given a grid object, this routine will add extra grid and assign density (and etc) 
+  !  to the grid using the density function defined in this module.
+  !  
+
+
+  subroutine addDiscWind(grid)
+    use inputs_mod, only : DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, limitscalar, ttauriMstar
+    real(double) :: DW_Hdisc
+    type(GRIDTYPE) :: grid
+    type(DISCWIND) :: myDiscWind
+
+    call new(mydiscWind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, dble(ttauriMstar)/msol, DW_Hdisc)
+    globalDiscWind = myDiscWind
+    call add_discwind(grid%octreeRoot, grid, myDiscWind, limitscalar)
+    call assignDensitiesDiscwind(grid, grid%octreeRoot, myDiscWind)
+
+  end subroutine addDiscWind
+
+
+
+  !
+  ! Split using the log-scaled radial grid.
+  logical function need_to_split2(thisOctal,subcell, this)
+    use utils_mod, only: locate 
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER       :: thisOctal
+    INTEGER, INTENT(IN)        :: subcell
+    type(discwind), intent(in) :: this
+    
+    real(oct)  :: cellSize, d
+    TYPE(VECTOR)     :: cellCentre
+!    integer, parameter :: nr = 150  ! normal resolution
+!    integer, parameter :: nr = 180  ! normal resolution
+    integer, parameter :: nr = 40  ! low resolution
+
+    real(double) :: r
+    integer :: i
+    !
+    logical, save :: first_time = .true.
+    real(double) , save:: rGrid(nr)
+    real(double) :: Rmax = 1.5d3  ! [10^10cm] = 1 AU
+    TYPE(VECTOR)     :: VecInnerEdge
+    real(double) :: wi
+
+    need_to_split2 = .false.
+
+    if (first_time) then  ! setup ref. r grid
+       do i = 1, nr
+          ! this should not depend on the size of the model boundary box.
+          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%Rmin))
+!          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(this%Rmax)-log10(this%Rmin))
+       enddo
+       do i = 1, nr
+          rGrid(i) = 10.d0**rGrid(i)
+       end do
+       first_time = .false.
+    end if
+
+    cellSize = (thisOctal%subcellSize)*2.0d0
+    cellCentre = subcellCentre(thisOctal, subcell)
+
+
+!    if (.not.in_jet_flow(this, cellCentre) ) then
+    if (.not.in_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z, thisOctal%subcellSize) ) then
+       need_to_split2 = .false.
+    else
+       ! get the size and the position of the centre of the current cell
+!       r = modulus(cellCentre)  ! used in the paper
+       wi = sqrt(cellCentre%x*cellCentre%x + cellCentre%y*cellCentre%y)
+       VecInnerEdge = VECTOR(cellCentre%x, cellCentre%y, 0.0d0)* (this%Rmin/wi)
+       r = modulus(cellCentre-VecInnerEdge)  ! shift it to the inner edge of the disc
+!       r = ABS(wi-this%Rmin)  ! just a cylindical radius
+       call locate(rGrid,nr,r,i)
+       if (i > (nr-1)) i = nr-1
+       d = rGrid(i+1) - rGrid(i)
+       if (cellSize > d ) then
+          need_to_split2 = .true.
+       end if
+    endif
+  end function need_to_split2
+
+
+
+
+  SUBROUTINE add_new_children_discwind(parent, ichild, grid, this, splitAzimuthally)
+    use memory_mod
+    use inputs_mod, only : cylindrical, vturb
+    ! adds all eight new children to an octal
+    IMPLICIT NONE
+    logical, optional :: splitAzimuthally
+    type(VECTOR) :: rVec
+    TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
+    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
+                                          !   calculate the variables stored in
+                                          !   the tree.
+    TYPE(discwind), INTENT(IN)  :: this
+    INTEGER       :: subcell           ! loop counter
+                                       ! - this isn't very clever. might change it. 
+    INTEGER       :: newChildIndex     ! the storage location for the new child
+    INTEGER       :: iChild
+    integer :: parentSubcell
+    integer :: nChildren
+    TYPE(OCTAL), POINTER :: thisOctal
+
+    nChildren = parent%nChildren
+
+    parentSubcell = iChild
+
+    ! safety checks of child array
+    IF ( ASSOCIATED(parent%child) ) THEN
+      IF ( ( nChildren == 0 ) .OR.                  &
+           ( nChildren /= SIZE(parent%child) ) ) THEN
+        PRINT *, 'Panic: in addNewChild, %child array wrong size'
+        PRINT *, 'nChildren:',nChildren,' SIZE %child:', SIZE(parent%child)
+        STOP
+      END IF
+    END IF
+    IF ( (.NOT. ASSOCIATED(parent%child)) .AND. (nChildren > 0) ) THEN
+      PRINT *, 'Panic: in addNewChild, %child array wrong size'
+      PRINT *, 'nChildren:',nChildren,' ASSOCIATED %child:', ASSOCIATED(parent%child)
+      STOP
+    END IF
+
+    ! check that new child does not already exist
+    IF ( parent%hasChild(iChild) .EQV. .TRUE. ) THEN
+      PRINT *, 'Panic: in addNewChild, attempted to add a child ',&
+               '       that already exists'
+      STOP
+    ENDIF
+
+!    call interpFromParent(subcellCentre(parent, iChild, parent%subcellSize, &
+!         grid, temperature, density, dusttypeFraction)
+
+    CALL growChildArray(parent, nNewChildren=1, grid=grid )
+
+    ! update the bookkeeping
+    nChildren = nChildren + 1
+    newChildIndex = nChildren
+
+    ! update the parent octal
+    parent%nChildren = nChildren
+    parent%hasChild(iChild) = .TRUE.
+    parent%indexChild(newChildIndex) = iChild
+
+    NULLIFY(parent%child(newChildIndex)%child)
+
+    parent%child(newChildIndex)%nDepth = parent%nDepth + 1
+    if (parent%child(newChildIndex)%nDepth  > grid%maxDepth) then
+       grid%maxDepth = grid%maxDepth + 1
+       CALL setSmallestSubcell(grid)
+    endif
+    ! set up the new child's variables
+    parent%child(newChildIndex)%threeD = parent%threeD
+    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%oneD = parent%oneD
+    parent%child(newChildIndex)%maxChildren = parent%maxChildren
+    parent%child(newChildIndex)%cylindrical = parent%cylindrical
+
+    if (cylindrical) then  
+       if (parent%splitAzimuthally) then
+          rVec =  subcellCentre(parent,iChild)
+          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+          if (parent%child(newChildIndex)%phi < 0.d0) then
+              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+          endif
+          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+          parent%child(newChildIndex)%phimin = parent%child(newChildIndex)%phi - parent%dPhi/4.d0
+          parent%child(newChildIndex)%phimax = parent%child(newChildIndex)%phi + parent%dPhi/4.d0
+       else
+          parent%child(newChildIndex)%phi = parent%phi
+          parent%child(newChildIndex)%dphi = parent%dphi
+          parent%child(newChildIndex)%phimin = parent%phimin
+          parent%child(newChildIndex)%phimax = parent%phimax
+       endif
+       if (parent%child(newChildIndex)%phimin < 1.d-10) parent%child(newChildIndex)%phimin = 0.d0 ! fixed!!!!
+       parent%child(newChildIndex)%splitAzimuthally = .false.
+       parent%child(newChildIndex)%maxChildren = 4
+
+       if (PRESENT(splitAzimuthally)) then
+          if (splitAzimuthally) then
+             parent%child(newChildIndex)%splitAzimuthally = .true.
+             parent%child(newChildIndex)%maxChildren = 8
+             rVec =  subcellCentre(parent,iChild)
+             parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+             if (parent%child(newChildIndex)%phi < 0.d0) then
+                parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+             endif
+             if (parent%splitAzimuthally) then
+                parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+             else
+                parent%child(newChildIndex)%dphi = parent%dphi
+             endif
+          else
+             if (parent%splitAzimuthally) then
+                rVec =  subcellCentre(parent,iChild)
+                parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+                if (parent%child(newChildIndex)%phi < 0.d0) then
+                   parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+                endif
+                parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+             else
+                parent%child(newChildIndex)%phi = parent%phi
+                parent%child(newChildIndex)%dphi = parent%dphi
+             endif
+             parent%child(newChildIndex)%splitAzimuthally = .false.
+             parent%child(newChildIndex)%maxChildren = 4
+          endif
+       endif
+    endif
+    
+
+    parent%child(newChildIndex)%inFlow = parent%inFlow
+    parent%child(newChildIndex)%parent => parent
+    parent%child(newChildIndex)%parentSubcell = iChild
+    parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
+    parent%child(newChildIndex)%hasChild = .false.
+    parent%child(newChildIndex)%nChildren = 0
+    parent%child(newChildIndex)%indexChild = -999 ! values are undefined
+    parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
+    if (parent%cylindrical) then
+       parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
+    endif
+
+
+    parent%child(newChildIndex)%xMin = parent%child(newChildIndex)%centre%x - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMin = parent%child(newChildIndex)%centre%y - parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMin = parent%child(newChildIndex)%centre%z - parent%child(newChildIndex)%subcellSize
+
+    parent%child(newChildIndex)%xMax = parent%child(newChildIndex)%centre%x + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%yMax = parent%child(newChildIndex)%centre%y + parent%child(newChildIndex)%subcellSize
+    parent%child(newChildIndex)%zMax = parent%child(newChildIndex)%centre%z + parent%child(newChildIndex)%subcellSize
+
+
+    thisOctal => parent%child(newChildIndex)
+    call allocateOctalAttributes(grid, thisOctal)
+
+    globalMemoryFootprint = globalMemoryFootprint + octalMemory(thisOctal)
+
+    call fill_velocity_corners(this, thisOctal)
+
+
+    do subcell = 1, thisOctal%maxChildren
+       thisOctal%temperature(subcell) = parent%temperature(parentSubcell)
+       thisOctal%rho(subcell) = parent%rho(parentSubcell)
+       thisOctal%velocity(subcell) = parent%velocity(parentSubcell)
+
+!       rVec = subcellCentre(thisOctal, subcell)
+!       x = rVec%x
+!       y = rVec%y
+!       z = rVec%z
+!       if (all_in_discwind(thisOctal, subcell, this)) then
+!          thisOctal%inFlow(subcell) = .true.
+!          thisOctal%temperature(subcell) = real(this%Twind)
+!          thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, this)
+!          thisOctal%velocity(subcell) = discwind_velocity(this, vector(x,y,z))
+!          if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+!       endif
+    enddo
+  end SUBROUTINE add_new_children_discwind
+
 
   SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, inherit, interp, &
        romData, stream)
@@ -95,6 +641,10 @@ CONTAINS
        if (associated(thisOctal%gamma)) thisOctal%gamma(subcell)  = parentOctal%gamma(parentSubcell)
        if (associated(thisOctal%iEquationOfState)) &
             thisOctal%iEquationOfState(subcell)  = parentOctal%iEquationOfState(parentSubcell)
+
+       if (associated(thisOctal%iAnalyticalVelocity)) &
+            thisOctal%iAnalyticalVelocity(subcell)  = parentOctal%iAnalyticalVelocity(parentSubcell)
+
        thisOctal%rho(subcell) = parentOctal%rho(parentSubcell)
        thisOctal%temperature(subcell) = parentOctal%temperature(parentSubcell)
        if (associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
@@ -2492,503 +3042,6 @@ CONTAINS
   END SUBROUTINE amrGridValues
 
 
-  FUNCTION amrGridVelocity(octalTree,point,startOctal,foundOctal,&
-                                        foundSubcell,actualSubcell, linearinterp, debug) 
-    ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
-    !
-
-    ! returns the velocity at a given point in the grid.
-    ! this function can be called with just the first two arguments.
-    !   and it will start at the root of the octal tree to locate
-    !   the correct octal.
-    ! if the foundOctal argument is supplied, it is made to point to 
-    !   the octal containing 'point'.
-    ! if the foundSubcell argument is supplied, it is made to point to 
-    !   the subcell containing 'point'.
-    ! if the startOctal argument is supplied, the function uses a 
-    !   local search for the correct octal starting at that octal.
-    ! if actualSubcell and startSubcell are both supplied, these 
-    !   locations are assumed to be correct and no search is performed.
-
-    IMPLICIT NONE
-
-    TYPE(vector)                   :: amrGridVelocity
-    TYPE(octal), POINTER           :: octalTree
-    TYPE(vector), INTENT(IN)  :: point
-    TYPE(octal), OPTIONAL, POINTER :: startOctal
-    TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    logical, optional :: debug
-    logical :: writedebug
-    INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
-    INTEGER, INTENT(IN),  OPTIONAL :: actualSubcell
-
-    TYPE(octal), POINTER           :: resultOctal
-    INTEGER                        :: subcell
-
-    TYPE(vector)              :: centre, rVec
-    real(oct)           :: fac, inc, thisPhi
-    real(oct)           :: t1, t2, t3
-    real(double)        :: dt1, dt2, dt3
-    real(oct)           :: r1, r2, phi1, phi2
-    real(double) :: phi
-    type(vector) :: newvec
-    TYPE(vector) :: point_local, vvec, rHat
-
-    real(double) :: weights(27)
-    logical, optional :: linearinterp
-    logical :: linear
-    logical, save :: firstTime = .true.
-
-    writedebug = .false.
-    if (present(debug)) writedebug = debug
-
-    amrGridVelocity = VECTOR(0.d0, 0.d0, 0.d0)
-
-    weights = 0.d0
-    if(present(linearinterp)) then
-       linear = linearinterp
-    else
-       linear = .true.
-    endif
-       
-    if (octalTree%threeD) then
-       point_local = point
-    elseif (octalTree%twoD) then
-       ! roate "point" back to z-x plane!
-       point_local = projectToXZ(point)
-    else 
-       ! assume it's threeD for now
-       point_local = point
-    end if
-    if (octalTree%oneD) then
-       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-    endif
-
-    IF (PRESENT(startOctal)) THEN
-      IF (PRESENT(actualSubcell)) THEN
-        subcell = actualSubcell
-      ELSE 
-         ! called with rotated point if necessary for 2d
-        CALL findSubcellLocal(point_local,startOctal,subcell)
-        IF (PRESENT(foundOctal))   foundOctal   => startOctal
-        IF (PRESENT(foundSubcell)) foundSubcell =  subcell
-      END IF
-      resultOctal => startOctal
-      
-   ELSE
-         ! called with rotated point if necessary for 2d
-      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
-      IF (PRESENT(foundOctal))   foundOctal   => resultOctal
-      IF (PRESENT(foundSubcell)) foundSubcell =  subcell
-
-   END IF
-
-   if (.not.associated(resultOctal%cornerVelocity)) then
-      if(firstTime) then
-         call writeWarning("Corner velocities not allocated! ! ! ")      
-         firstTime = .false.
-      end if
-      goto 666
-   end if
-      inc = 0.5 * resultOctal%subcellSize
-      centre = subcellCentre(resultOctal,subcell)
-      fac = 1. / resultOctal%subcellsize
-      
-      t1 = MAX(0.0_oc, fac * (point_local%x - (centre%x - inc)))
-      t2 = MAX(0.0_oc, fac * (point_local%y - (centre%y - inc)))
-      t3 = MAX(0.0_oc, fac * (point_local%z - (centre%z - inc)))
-
-      if (resultOctal%oneD) then
-
-         select case(subcell)
-         case(1)
-            vvec = (1.d0-t1) * resultOctal%cornerVelocity(1) + &
-                 (   t1) * resultOctal%cornerVelocity(2)
-         case(2)
-            vvec = (1.d0-t1) * resultOctal%cornerVelocity(2) + &
-                 (   t1) * resultOctal%cornerVelocity(3)
-         end select
-         rHat = point
-         call normalize(rHat)
-         if (vvec%x >= 0.d0) then
-            amrGridVelocity = modulus(vvec) * rHat
-         else
-            amrGridVelocity = modulus(vvec) * ((-1.d0)*rHat)
-         endif
-         goto 666
-      endif
-
-      if (resultOctal%threed) then
-         if (.not.resultOctal%cylindrical) then
-            if(linear) then
-
-            SELECT CASE(subcell)
-               
-            CASE(1)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14)
-               
-            CASE(2)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(12) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15)
-               
-            CASE(3)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17)
-               
-            CASE(4)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
-               
-            CASE(5)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(19) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23)
-               
-            CASE(6)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(21) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(24)
-            
-            CASE(7)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(16) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(25) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26)
-               
-            CASE(8)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(18) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(24) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(27)
-            CASE DEFAULT
-               PRINT *, 'Invalid subcell in amrGridVelocity'
-               
-            end SELECT
-         else
-
-            inc = resultOctal%subcellSize
-            centre = resultoctal%centre
-            fac = 0.5d0 / resultOctal%subcellsize
-      
-            dt1 = fac * (point_local%x - (centre%x - inc))
-            dt2 = fac * (point_local%y - (centre%y - inc))
-            dt3 = fac * (point_local%z - (centre%z - inc))
-
-            call regular_tri_quadint(dt1,dt2,dt3,weights)
-            amrgridvelocity = &
-            VECTOR(sum(weights(:) * resultoctal%cornervelocity(:)%x), &
-                   sum(weights(:) * resultoctal%cornervelocity(:)%y), &
-                   sum(weights(:) * resultoctal%cornervelocity(:)%z))
-         endif
-
-         else ! cylindrical
-            if (resultOctal%splitAzimuthally) then
-
-               centre = subcellCentre(resultOctal,subcell)
-               r1 = sqrt(point_local%x**2 + point_local%y**2)
-               r2 = sqrt(centre%x**2 + centre%y**2)
-               phi1 = atan2(point_local%y, point_local%x)
-               if (phi1 < 0.d0) phi1 = phi1 + twoPi
-               phi2 = atan2(centre%y, centre%x)
-               if (phi2 < 0.d0) phi2 = phi2 + twoPi
-
-               inc = resultOctal%subcellSize / 2.0               
-
-               t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
-               t2 = (phi1 - (phi2 - resultOctal%dPhi/4.d0))/(resultOctal%dPhi/2.d0)
-               t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
-               select case(subcell)
-            CASE(1)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14)
-               
-            CASE(2)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(12) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15)
-               
-            CASE(3)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17)
-               
-            CASE(4)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
-               
-            CASE(5)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(19) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23)
-               
-            CASE(6)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(21) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(24)
-            
-            CASE(7)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(16) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(25) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26)
-               
-            CASE(8)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(18) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(24) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(27)
-
-            CASE DEFAULT
-               PRINT *, 'Invalid subcell in amrGridVelocity'
-               end select
-            else 
-
-               centre = subcellCentre(resultOctal,subcell)
-               r1 = sqrt(point_local%x**2 + point_local%y**2)
-               r2 = sqrt(centre%x**2 + centre%y**2)
-               phi1 = atan2(point_local%y, point_local%x)
-               if (phi1 < 0.d0) phi1 = phi1 + twoPi
-               phi2 = atan2(centre%y, centre%x)
-               if (phi2 < 0.d0) phi2 = phi2 + twoPi
-
-               inc = resultOctal%subcellSize * 0.5_oc               
-
-               t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
-               t2 = (phi1 - (phi2 - resultOctal%dPhi*0.5d0))/(resultOctal%dPhi)
-               t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
-
-               select case(subcell)
-            CASE(1)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(7) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(8) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(9) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(10)
-               if (writedebug) then
-                     write(*,*) "case 1: ", resultOctal%inflow(subcell)
-                     write(*,*) "vel( 1): ",resultOctal%cornerVelocity( 1)
-                     write(*,*) "vel( 2): ",resultOctal%cornerVelocity( 2)
-                     write(*,*) "vel( 3): ",resultOctal%cornerVelocity( 3)
-                     write(*,*) "vel( 4): ",resultOctal%cornerVelocity( 4)
-                     write(*,*) "vel( 7): ",resultOctal%cornerVelocity( 7)
-                     write(*,*) "vel( 8): ",resultOctal%cornerVelocity( 8)
-                     write(*,*) "vel( 9): ",resultOctal%cornerVelocity( 9)
-                     write(*,*) "vel(10): ",resultOctal%cornerVelocity(10)
-               endif
-               
-            CASE(2)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity( 9) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(12)
-               
-            CASE(3)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16)
-
-
-               
-            CASE(4)
-               amrGridVelocity = &
-                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
-                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
-                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
-                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
-                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
-                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
-                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
-                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
-
-
-            CASE DEFAULT
-               PRINT *, 'Invalid subcell in amrGridVelocity'
-               end select
-
-            endif
-            if (resultOctal%dphi > piby2) then
-               amrGridVelocity = resultOctal%velocity(subcell)
-               rVec = subcellCentre(resultOctal, subcell)
-               thisPhi = atan2(rVec%y, rVec%x)
-               phi = thisPhi - atan2(point%y, point%x)
-               newVec = rotateZ(amrGridVelocity, phi)
-               amrGridVelocity = newVec
-            endif
-
-         endif
-
-   else if (resultOctal%twoD) then
-      select case(subcell)
-         CASE(1)
-            amrGridVelocity = &
-                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
-                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 4) + &
-                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 5)
-
-         CASE(2)
-            amrGridVelocity = &
-                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
-                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
-                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 5) + &
-                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 6)
-         CASE(3)
-            amrGridVelocity = &
-                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
-                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 7) + &
-                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 8)
-
-         CASE(4)
-            amrGridVelocity = &
-                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
-                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
-                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 8) + &
-                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 9)
-         end select
-
-         phi = atan2(point%y, point%x)
-         newVec = rotateZ(amrGridVelocity, -phi)
-         amrGridVelocity = newVec
-
-   else ! one-d
-      select case(subcell)
-         CASE(1)
-            amrGridVelocity = &
-                 (1.d0-t1) * resultOctal%cornerVelocity( 1) + &
-                 (     t1) * resultOctal%cornerVelocity( 2)
-
-         CASE(2)
-            amrGridVelocity = &
-                 (1.d0-t1) * resultOctal%cornerVelocity( 2) + &
-                 (     t1) * resultOctal%cornerVelocity( 3) 
-         end select
-
-         phi = atan2(point%y, point%x)
-         newVec = rotateZ(amrGridVelocity, -phi)
-         phi = atan2(point%z, point%x)
-         newVec = rotateY(newVec, phi)
-         amrGridVelocity = newVec
-         write(*,*) modulus(amrgridvelocity)*cspeed/1.e5
-      endif
-666   continue
-
-!    endif
-  END FUNCTION amrGridVelocity
 
   FUNCTION amrGridDirectionalDeriv(grid,position,direction,startOctal,&
                                    foundOctal,foundSubcell) 
@@ -3669,10 +3722,6 @@ CONTAINS
         
              if (inflow) then
                 if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
-                if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 19.d0)) then
-                   split = .true.
-                   splitInAzimuth = .true.
-                endif
                 !           if (abs(cellCentre%z) < 0.5*DW_rMax) then
                 !              if ((cellSize/(DW_rMax-DW_rMin)) > 0.02) split = .true.
                 !           endif
@@ -7985,6 +8034,7 @@ endif
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
     use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro
+    use inputs_mod, only : smallestCellSize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -8006,7 +8056,7 @@ endif
     thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
     if (rMod < sphereRadius) then
        thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)
-       thisOctal%temperature(subcell) = 20.d0
+       thisOctal%temperature(subcell) = max(20.d0,500.d0*sqrt(smallestCellSize/rMod))
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
        if (cylindricalHydro) then
           thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
@@ -8372,7 +8422,7 @@ endif
     real(double) :: rhoRing, Tring
 
     rhoRing = 1.d-14
-    rhoAmbient = 1.d-19
+    rhoAmbient = 1.d-17
     tRing = 1.e-2
     tAmbient = 1.e-2
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
@@ -10250,6 +10300,429 @@ end function readparameterfrom2dmap
   end FUNCTION ostarVelocity
 
 
+
+  SUBROUTINE checkAMRgrid(grid,checkNoctals)
+    ! does some checking that the cells in an AMR grid are
+    !   set up and linked to correctly.
+
+    TYPE(gridType), INTENT(IN) :: grid
+    LOGICAL, INTENT(IN) :: checkNoctals ! whether to confirm grid%nOctals
+    
+    TYPE(OCTAL), POINTER :: rootOctal
+    INTEGER :: nOctals
+
+    nOctals = 1
+    rootOctal => grid%octreeRoot
+    
+    CALL checkAMRgridPrivate(grid=grid,              &
+                             thisOctal=rootOctal,    &
+                             thisDepth=1,            &
+                             thisParent=NULL(),      &
+                             thisParentSubcell=-999, &
+                             nOctals=nOctals)
+
+    IF ( checkNoctals .AND. nOctals /= grid%nOctals ) THEN
+      PRINT *, "In checkAMRgrid, nOctals mismatch:"
+      PRINT *, "  nOctals = ", nOctals
+      PRINT *, "  grid%nOctals = ", grid%nOctals
+      PRINT *, "Ignoring..."
+    END IF
+
+  CONTAINS
+  
+    RECURSIVE SUBROUTINE checkAMRgridPrivate(grid,thisOctal, thisDepth ,&
+                                             thisParent,thisParentSubcell,  &
+                                             nOctals)
+      TYPE(gridType), INTENT(IN) :: grid
+      TYPE(OCTAL), INTENT(IN), TARGET :: thisOctal
+      INTEGER, INTENT(IN) :: thisDepth
+      TYPE(OCTAL), POINTER :: thisParent
+      INTEGER, INTENT(IN) :: thisParentSubcell
+      INTEGER, INTENT(INOUT) :: nOctals
+
+      INTEGER :: iSubcell, iIndex
+      TYPE(OCTAL), POINTER :: thisOctalPointer
+      REAL(oct) :: sizeRatio
+
+      nOctals = nOctals + 1
+      
+      IF ( thisOctal%nDepth /= thisDepth ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, depth mismatch"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      END IF
+      
+      ! check parent (except at root of tree)
+      IF ( thisDepth /= 1 ) THEN
+        IF ( .NOT. ASSOCIATED(thisOctal%parent,thisParent) ) THEN
+          PRINT *, "Error: In checkAMRgridPrivate, mismatch with parent argument"
+          CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+        END IF
+      END IF
+       
+      IF ( thisDepth /= 1 ) THEN
+         IF ( thisOctal%parentSubcell /= thisParentSubcell ) THEN
+            PRINT *, "Error: In checkAMRgridPrivate, parentSubcell mismatch"
+            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+         END IF
+      END IF
+      
+      IF ( thisOctal%nDepth > grid%maxDepth ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, maxDepth exceeded"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      END IF
+      
+      IF ( thisOctal%subcellSize < grid%halfSmallestSubcell ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, halfSmallestSubcell exceeded"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
+      END IF
+       
+      IF ( thisOctal%nChildren > thisOctal%maxChildren ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, maxChildren exceeded"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
+      END IF
+
+      IF ( ASSOCIATED(thisOctal%child) .AND. (thisOctal%nChildren == 0) ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, thisOctal%child shouldn't be associated"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      END IF
+      
+      IF ( .NOT. ASSOCIATED(thisOctal%child) .AND. (thisOctal%nChildren > 0) ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, thisOctal%child should be associated"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      END IF
+
+      ! check that invalid children are not set:
+      IF ( ANY( thisOctal%hasChild(thisOctal%maxChildren+1:SIZE(thisOctal%hasChild)) )) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, invalid hasChild variables set"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
+      END IF
+      
+      ! check that the number of children agree 
+      IF ( COUNT(thisOctal%hasChild) /= thisOctal%nChildren ) THEN
+        PRINT *, "Error: In checkAMRgridPrivate, nChildren does not match hasChild"
+        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
+      END IF
+
+      IF ( thisOctal%nChildren > 0 ) THEN
+
+        ! see if %child is sized correctly
+        IF ( SIZE(thisOctal%child) /= thisOctal%nChildren ) THEN
+          PRINT *, "Error: In checkAMRgridPrivate, %child has wrong size"
+          CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
+        END IF
+
+        DO iSubcell = 1, thisOctal%maxChildren
+
+          IF ( .NOT. thisOctal%hasChild(iSubcell) ) CYCLE
+          
+          ! find the correct index of %child for this child
+          DO iIndex = 1, thisOctal%nChildren
+            IF ( thisOctal%indexChild(iIndex) == iSubcell ) EXIT
+            
+            IF ( iIndex == thisOctal%nChildren ) THEN
+              ! shouldn't get here
+              PRINT *, "Error: In checkAMRgridPrivate, indexChild not found"
+              PRINT *, "       for iSubcell = ",iSubcell
+              CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
+            END IF
+          END DO
+
+          ! now we know the correct %child variable, let's do some tests
+
+          IF ( thisOctal%child(iIndex)%parentSubcell /= iSubcell ) THEN
+            PRINT *, "Error: In checkAMRgridPrivate, child's parentSubcell doesn't match:"
+            PRINT *, "       thisOctal%child(iIndex)%parentSubcell = ",thisOctal%child(iIndex)%parentSubcell
+            print *,         thisOctal%child(1:thisOctal%nChildren)%parentSubcell
+            PRINT *, "       iIndex = ", iIndex
+            PRINT *, "       iSubcell = ", iSubcell
+            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+          END IF
+
+          ! see if the child's coordinates really lie in the parent subcell
+          IF ( .NOT. inSubcell(thisOctal,iSubcell,point=thisOctal%child(iIndex)%centre) ) THEN
+            PRINT *, "Error: In checkAMRgridPrivate, child isn't in parentSubcell"
+            PRINT *, "       thisOctal%centre = ",thisOctal%centre 
+            PRINT *, "       iSubcell = ", iSubcell
+            PRINT *, "       subcellCentre(thisOctal,iSubcell) = ",subcellCentre(thisOctal,iSubcell)
+            PRINT *, "       thisOctal%child(iIndex)%centre = ",thisOctal%child(iIndex)%centre 
+            PRINT *, "       iIndex = ", iIndex
+            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+          END IF
+
+          ! see if the child is of the correct size
+          sizeRatio = thisOctal%subcellSize / thisOctal%child(iIndex)%subcellSize
+          sizeRatio = sizeRatio / 2.0_oc
+          IF ( ABS(sizeRatio-1.0_oc) > 0.1 ) THEN
+            PRINT *, "Error: In checkAMRgridPrivate, size of child wrong:"
+            PRINT *, "       thisOctal%subcellSize = ", thisOctal%subcellSize
+            PRINT *, "       thisOctal%child(iIndex)%subcellSize = ", thisOctal%child(iIndex)%subcellSize
+          END IF
+
+          ! check the child's parent pointer
+          IF ( .NOT. ASSOCIATED(thisOctal%child(iIndex)%parent,thisOctal) ) THEN
+            PRINT *, "Error: In checkAMRgridPrivate, child has wrong %parent"
+            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+          END IF
+
+          ! call recursively on this child
+          thisOctalPointer => thisOctal
+          CALL checkAMRgridPrivate(grid,                              &
+                                   thisOctal=thisOctal%child(iIndex), &
+                                   thisDepth=thisDepth+1,             &
+                                   thisParent=thisOctalPointer,       &
+                                   thisParentSubcell=iSubcell,        &
+                                   nOctals=nOctals)
+                                   
+        END DO                           
+                                   
+      END IF ! ( thisOctal%nChildren > 0 )
+      
+    END SUBROUTINE checkAMRgridPrivate
+    
+    SUBROUTINE printErrorPrivate(grid,thisOctal,thisDepth,nOctals)  
+        
+      TYPE(gridType), INTENT(IN) :: grid
+      TYPE(OCTAL), INTENT(IN) :: thisOctal
+      INTEGER, INTENT(IN) :: thisDepth
+      INTEGER, INTENT(IN) :: nOctals
+
+      PRINT *, "  thisOctal%nDepth = ", thisOctal%nDepth
+      PRINT *, "  thisDepth = ", thisDepth
+      PRINT *, "  grid%maxDepth = ", grid%maxDepth
+      PRINT *, "  grid%halfSmallestSubcell = ", grid%halfSmallestSubcell
+      PRINT *, "  thisOctal%subcellSize = ", thisOctal%subcellSize
+      PRINT *, "  thisOctal%nChildren = ", thisOctal%nChildren
+      PRINT *, "  thisOctal%maxChildren = ", thisOctal%maxChildren
+      PRINT *, "  thisOctal%twoD = ", thisOctal%twoD
+      PRINT *, "  thisOctal%threeD = ", thisOctal%threeD
+      PRINT *, "  thisOctal%hasChild = ", thisOctal%hasChild
+      PRINT *, " ASSOCIATED(thisOctal%child) = ", ASSOCIATED(thisOctal%child) 
+      IF ( ASSOCIATED(thisOctal%child) ) THEN
+        PRINT *, "  SIZE(thisOctal%child) = ", SIZE(thisOctal%child)
+      END IF
+      PRINT *, "  grid%nOctals = ", grid%nOctals
+      PRINT *, "  nOctals (counted so far) = ", nOctals
+      !STOP
+      PRINT *, "Entering infinite loop..."
+      DO ; END DO
+      
+    END SUBROUTINE printErrorPrivate       
+    
+  END SUBROUTINE checkAMRgrid
+
+  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, converged)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: ilambda
+    real(double) :: kappaAbs, kappaSca, tau
+    integer :: subcell, i
+    logical :: unrefine, converged
+    kappaAbs =0.d0; kappaSca = 0.d0
+    unrefine = .true.
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unrefineThinCells(child, grid, ilambda, converged)
+                exit
+             end if
+          end do
+       else
+          if (.not.ASSOCIATED(thisOctal%dustTypeFraction)) then
+             write(*,*) "unalloc dusttypefraction!!"
+          endif
+          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
+          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
+          if (tau > 1.e-10) unrefine = .false.
+       endif
+    enddo
+
+    if ((thisOctal%nChildren == 0).and.unrefine.and.converged) then
+       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+            grid = grid, adjustGridInfo = .true.)
+       converged = .false.
+    endif
+
+  end subroutine unrefineThinCells
+
+  SUBROUTINE shrinkChildArray(parent, childrenToDelete, adjustParent )
+    ! removes children from an octal.
+    ! you probably don't want to call this directly - use the 'deleteChild' wrapper instead.
+    ! NB this subroutine doesn't update grid%nOctals etc.
+
+    IMPLICIT NONE
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    LOGICAL, INTENT(IN), DIMENSION(parent%maxChildren) :: childrenToDelete
+      ! mask defining which children to get rid of 
+      ! NB childrenToDelete does not map to the index number in the 
+      !   %child array, it is the "real" number of the children (the 
+      !   number of the subcell that was refined when the child was
+      !   created).
+    LOGICAL, INTENT(IN) :: adjustParent 
+      ! whether the physical parameters stored in the parent's subcells
+      !   should be filled with data derived from the children being deleted.
+    
+    TYPE(wrapperArray) :: tempChildStorage  
+      ! holder for remaining children, while we shrink the %child array 
+                                       
+    LOGICAL, DIMENSION(parent%maxChildren) :: checkMask 
+      ! used for testing the validity of the 'childrenToDelete' input
+      
+    INTEGER, DIMENSION(SIZE(parent%indexChild)) :: temporaryIndexChild
+      ! used for assembling a valid indexChild array, to be used after
+      !   the children have been deleted
+      
+    LOGICAL, DIMENSION(parent%maxChildren) :: deleteMask
+      ! which of the elements of %child will be deleted
+        
+    INTEGER :: iChild ! loop counter
+    INTEGER :: nChildren ! number of children the parent octal has
+    INTEGER :: error
+    INTEGER :: nChildrenToDelete
+    TYPE(octal), POINTER :: thisChild ! convenient alias to current child 
+    LOGICAL :: deleteALLchildren ! are we getting rid of ALL the children
+    INTEGER :: nChildrenStay ! how many children will be left when done
+    INTEGER :: insertLocation ! the next location to use in tempChildStorage
+    
+    NULLIFY(thisChild)
+    temporaryIndexChild = -999
+    
+    ! setup some useful accounting variables
+    nChildren = parent%nChildren
+    nChildrenToDelete = COUNT(childrenToDelete)
+    nChildrenStay = ( nChildren - nChildrenToDelete )
+    deleteALLchildren = ( nChildrenStay == 0 )
+    
+    ! some safety checks
+    error = 0
+    
+    IF ( nChildrenStay < 0 ) error = -1
+
+    ! the following lines check that all the children to be deleted have 
+    !   their %hasChild flag set.
+    checkMask = childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
+    checkMask = checkMask .NEQV. childrenToDelete ! (exclusive OR operation)
+    IF ( ANY(checkMask) ) error = -2
+
+    IF (error /= 0) THEN
+      PRINT *, "In shrinkChildArray, attempting to delete a "
+      PRINT *, "child that doesn't exist."
+      PRINT *, error, childrenToDelete
+      write(*,*) "nchildren ",parent%nChildren
+      write(*,*) "haschild ",parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "mask ",checkmask
+      write(*,*) " and ",childrenToDelete(1:SIZE(childrenToDelete)) .AND. parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "xor ",childrentodelete.neqv.(childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete)))
+      write(*,*) nChildrentodelete,nchildrenstay,deleteallchildren
+
+      STOP
+    END IF
+ 
+    ! we transform 'childrenToDelete' which is of SIZE(1:maxChildren) into
+    !   an array of SIZE(1:nChildren), so that it matches the %child
+    !   array
+    deleteMask(:) = .FALSE.
+    FORALL ( iChild = 1:parent%nChildren ) &
+      deleteMask(iChild) = childrenToDelete(parent%indexChild(iChild))
+    
+    IF ( .NOT. deleteALLchildren ) THEN
+      ! we need to allocate some temporary storage for the children that 
+      !   are not going to be deleted so that we can reposition them
+      !   in the %child array.
+      ALLOCATE(tempChildStorage%wrappers(nChildrenStay), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in shrinkChildArray. (A)'
+        STOP
+      END IF
+      
+      FORALL ( iChild = 1:nChildrenStay ) &
+        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
+        
+      insertlocation = 1
+        
+    END IF  
+      
+    DO iChild = 1, parent%nChildren
+      thisChild => parent%child(iChild)
+
+      IF ( deleteMask(iChild) ) THEN
+        ! we want to delete this octal from the %child array
+
+        CALL deleteOctal(thisChild, deleteChildren=.TRUE.,     &
+                         adjustParent=adjustParent, adjustMem=.true. )
+
+     ELSE 
+        ! we do not want to delete this child. 
+        ! instead we move it to the temporary storage array.
+
+        ALLOCATE(tempChildStorage%wrappers(insertlocation)%content, STAT=error)
+        IF ( error /= 0 ) THEN
+          PRINT *, 'Panic: allocation failed in shrinkChildArray. (B)'
+          STOP
+        END IF           
+        tempChildStorage%wrappers(insertlocation)%inUse = .TRUE.
+               
+        CALL deleteOctreeBranch(thisOctal=thisChild,                           &
+               onlyChildren=.FALSE.,                                           &
+               deletedBranch=tempChildStorage%wrappers(insertlocation)%content,&
+               adjustParent=.FALSE.)
+               
+        temporaryIndexChild(insertLocation) = parent%indexChild(iChild)
+        
+        insertlocation = insertlocation + 1
+
+      END IF
+      
+    END DO
+   
+    ! all the unwanted children have now been deleted.
+    ! we now get rid of the old %child array.
+    DEALLOCATE(parent%child)
+    NULLIFY(parent%child) 
+    
+    ! if there are any remaining children, we need to create a new
+    !   %child array, and copy them back there.
+    IF ( .NOT. deleteALLchildren ) THEN    
+      
+      ALLOCATE(parent%child(nChildrenStay), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in shrinkChildArray. (C)'
+        STOP
+      END IF
+
+      DO iChild = 1, nChildrenStay, 1
+        
+        CALL insertOctreeBranch(parent%child(iChild),               &
+               branch=tempChildStorage%wrappers(iChild)%content,    &
+               onlyChildren=.FALSE.)                              
+               
+        parent%child(iChild)%parent => parent
+               
+        DEALLOCATE(tempChildStorage%wrappers(iChild)%content)
+        NULLIFY(tempChildStorage%wrappers(iChild)%content)
+        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
+
+      END DO
+      
+      ! can now clean up the temporary storage
+      DEALLOCATE(tempChildStorage%wrappers)
+      NULLIFY(tempChildStorage%wrappers)
+
+    END IF
+
+    ! some bookkeeping
+    parent%nChildren = nChildrenStay
+    parent%indexChild(:) = temporaryIndexChild(:)
+
+    parent%hasChild( 1:SIZE(childrenToDelete) ) =  &
+         parent%hasChild(1:SIZE(childrenToDelete)) .NEQV. childrenToDelete
+
+  END SUBROUTINE shrinkChildArray
+  
   SUBROUTINE deleteOctreeBranch(thisOctal,onlyChildren,deletedBranch,&
                                 adjustParent, grid, adjustGridInfo)
     ! recursively deletes an octal's contents (and any children it has). 
@@ -10808,6 +11281,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
 
+    call copyAttribute(dest%iAnalyticalVelocity, source%iAnalyticalVelocity)
+
     call copyAttribute(dest%uDens, source%udens)
     call copyAttribute(dest%aDot, source%aDot)
     call copyAttribute(dest%distancegridaDot, source%distancegridaDot)
@@ -10875,428 +11350,6 @@ end function readparameterfrom2dmap
 
   END SUBROUTINE copyOctalComponents
 
-  SUBROUTINE checkAMRgrid(grid,checkNoctals)
-    ! does some checking that the cells in an AMR grid are
-    !   set up and linked to correctly.
-
-    TYPE(gridType), INTENT(IN) :: grid
-    LOGICAL, INTENT(IN) :: checkNoctals ! whether to confirm grid%nOctals
-    
-    TYPE(OCTAL), POINTER :: rootOctal
-    INTEGER :: nOctals
-
-    nOctals = 1
-    rootOctal => grid%octreeRoot
-    
-    CALL checkAMRgridPrivate(grid=grid,              &
-                             thisOctal=rootOctal,    &
-                             thisDepth=1,            &
-                             thisParent=NULL(),      &
-                             thisParentSubcell=-999, &
-                             nOctals=nOctals)
-
-    IF ( checkNoctals .AND. nOctals /= grid%nOctals ) THEN
-      PRINT *, "In checkAMRgrid, nOctals mismatch:"
-      PRINT *, "  nOctals = ", nOctals
-      PRINT *, "  grid%nOctals = ", grid%nOctals
-      PRINT *, "Ignoring..."
-    END IF
-
-  CONTAINS
-  
-    RECURSIVE SUBROUTINE checkAMRgridPrivate(grid,thisOctal, thisDepth ,&
-                                             thisParent,thisParentSubcell,  &
-                                             nOctals)
-      TYPE(gridType), INTENT(IN) :: grid
-      TYPE(OCTAL), INTENT(IN), TARGET :: thisOctal
-      INTEGER, INTENT(IN) :: thisDepth
-      TYPE(OCTAL), POINTER :: thisParent
-      INTEGER, INTENT(IN) :: thisParentSubcell
-      INTEGER, INTENT(INOUT) :: nOctals
-
-      INTEGER :: iSubcell, iIndex
-      TYPE(OCTAL), POINTER :: thisOctalPointer
-      REAL(oct) :: sizeRatio
-
-      nOctals = nOctals + 1
-      
-      IF ( thisOctal%nDepth /= thisDepth ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, depth mismatch"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-      END IF
-      
-      ! check parent (except at root of tree)
-      IF ( thisDepth /= 1 ) THEN
-        IF ( .NOT. ASSOCIATED(thisOctal%parent,thisParent) ) THEN
-          PRINT *, "Error: In checkAMRgridPrivate, mismatch with parent argument"
-          CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-        END IF
-      END IF
-       
-      IF ( thisDepth /= 1 ) THEN
-         IF ( thisOctal%parentSubcell /= thisParentSubcell ) THEN
-            PRINT *, "Error: In checkAMRgridPrivate, parentSubcell mismatch"
-            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-         END IF
-      END IF
-      
-      IF ( thisOctal%nDepth > grid%maxDepth ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, maxDepth exceeded"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-      END IF
-      
-      IF ( thisOctal%subcellSize < grid%halfSmallestSubcell ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, halfSmallestSubcell exceeded"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
-      END IF
-       
-      IF ( thisOctal%nChildren > thisOctal%maxChildren ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, maxChildren exceeded"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
-      END IF
-
-      IF ( ASSOCIATED(thisOctal%child) .AND. (thisOctal%nChildren == 0) ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, thisOctal%child shouldn't be associated"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-      END IF
-      
-      IF ( .NOT. ASSOCIATED(thisOctal%child) .AND. (thisOctal%nChildren > 0) ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, thisOctal%child should be associated"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-      END IF
-
-      ! check that invalid children are not set:
-      IF ( ANY( thisOctal%hasChild(thisOctal%maxChildren+1:SIZE(thisOctal%hasChild)) )) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, invalid hasChild variables set"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
-      END IF
-      
-      ! check that the number of children agree 
-      IF ( COUNT(thisOctal%hasChild) /= thisOctal%nChildren ) THEN
-        PRINT *, "Error: In checkAMRgridPrivate, nChildren does not match hasChild"
-        CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
-      END IF
-
-      IF ( thisOctal%nChildren > 0 ) THEN
-
-        ! see if %child is sized correctly
-        IF ( SIZE(thisOctal%child) /= thisOctal%nChildren ) THEN
-          PRINT *, "Error: In checkAMRgridPrivate, %child has wrong size"
-          CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
-        END IF
-
-        DO iSubcell = 1, thisOctal%maxChildren
-
-          IF ( .NOT. thisOctal%hasChild(iSubcell) ) CYCLE
-          
-          ! find the correct index of %child for this child
-          DO iIndex = 1, thisOctal%nChildren
-            IF ( thisOctal%indexChild(iIndex) == iSubcell ) EXIT
-            
-            IF ( iIndex == thisOctal%nChildren ) THEN
-              ! shouldn't get here
-              PRINT *, "Error: In checkAMRgridPrivate, indexChild not found"
-              PRINT *, "       for iSubcell = ",iSubcell
-              CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals) 
-            END IF
-          END DO
-
-          ! now we know the correct %child variable, let's do some tests
-
-          IF ( thisOctal%child(iIndex)%parentSubcell /= iSubcell ) THEN
-            PRINT *, "Error: In checkAMRgridPrivate, child's parentSubcell doesn't match:"
-            PRINT *, "       thisOctal%child(iIndex)%parentSubcell = ",thisOctal%child(iIndex)%parentSubcell
-            print *,         thisOctal%child(1:thisOctal%nChildren)%parentSubcell
-            PRINT *, "       iIndex = ", iIndex
-            PRINT *, "       iSubcell = ", iSubcell
-            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-          END IF
-
-          ! see if the child's coordinates really lie in the parent subcell
-          IF ( .NOT. inSubcell(thisOctal,iSubcell,point=thisOctal%child(iIndex)%centre) ) THEN
-            PRINT *, "Error: In checkAMRgridPrivate, child isn't in parentSubcell"
-            PRINT *, "       thisOctal%centre = ",thisOctal%centre 
-            PRINT *, "       iSubcell = ", iSubcell
-            PRINT *, "       subcellCentre(thisOctal,iSubcell) = ",subcellCentre(thisOctal,iSubcell)
-            PRINT *, "       thisOctal%child(iIndex)%centre = ",thisOctal%child(iIndex)%centre 
-            PRINT *, "       iIndex = ", iIndex
-            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-          END IF
-
-          ! see if the child is of the correct size
-          sizeRatio = thisOctal%subcellSize / thisOctal%child(iIndex)%subcellSize
-          sizeRatio = sizeRatio / 2.0_oc
-          IF ( ABS(sizeRatio-1.0_oc) > 0.1 ) THEN
-            PRINT *, "Error: In checkAMRgridPrivate, size of child wrong:"
-            PRINT *, "       thisOctal%subcellSize = ", thisOctal%subcellSize
-            PRINT *, "       thisOctal%child(iIndex)%subcellSize = ", thisOctal%child(iIndex)%subcellSize
-          END IF
-
-          ! check the child's parent pointer
-          IF ( .NOT. ASSOCIATED(thisOctal%child(iIndex)%parent,thisOctal) ) THEN
-            PRINT *, "Error: In checkAMRgridPrivate, child has wrong %parent"
-            CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
-          END IF
-
-          ! call recursively on this child
-          thisOctalPointer => thisOctal
-          CALL checkAMRgridPrivate(grid,                              &
-                                   thisOctal=thisOctal%child(iIndex), &
-                                   thisDepth=thisDepth+1,             &
-                                   thisParent=thisOctalPointer,       &
-                                   thisParentSubcell=iSubcell,        &
-                                   nOctals=nOctals)
-                                   
-        END DO                           
-                                   
-      END IF ! ( thisOctal%nChildren > 0 )
-      
-    END SUBROUTINE checkAMRgridPrivate
-    
-    SUBROUTINE printErrorPrivate(grid,thisOctal,thisDepth,nOctals)  
-        
-      TYPE(gridType), INTENT(IN) :: grid
-      TYPE(OCTAL), INTENT(IN) :: thisOctal
-      INTEGER, INTENT(IN) :: thisDepth
-      INTEGER, INTENT(IN) :: nOctals
-
-      PRINT *, "  thisOctal%nDepth = ", thisOctal%nDepth
-      PRINT *, "  thisDepth = ", thisDepth
-      PRINT *, "  grid%maxDepth = ", grid%maxDepth
-      PRINT *, "  grid%halfSmallestSubcell = ", grid%halfSmallestSubcell
-      PRINT *, "  thisOctal%subcellSize = ", thisOctal%subcellSize
-      PRINT *, "  thisOctal%nChildren = ", thisOctal%nChildren
-      PRINT *, "  thisOctal%maxChildren = ", thisOctal%maxChildren
-      PRINT *, "  thisOctal%twoD = ", thisOctal%twoD
-      PRINT *, "  thisOctal%threeD = ", thisOctal%threeD
-      PRINT *, "  thisOctal%hasChild = ", thisOctal%hasChild
-      PRINT *, " ASSOCIATED(thisOctal%child) = ", ASSOCIATED(thisOctal%child) 
-      IF ( ASSOCIATED(thisOctal%child) ) THEN
-        PRINT *, "  SIZE(thisOctal%child) = ", SIZE(thisOctal%child)
-      END IF
-      PRINT *, "  grid%nOctals = ", grid%nOctals
-      PRINT *, "  nOctals (counted so far) = ", nOctals
-      !STOP
-      PRINT *, "Entering infinite loop..."
-      DO ; END DO
-      
-    END SUBROUTINE printErrorPrivate       
-    
-  END SUBROUTINE checkAMRgrid
-
-  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, converged)
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    integer :: ilambda
-    real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i
-    logical :: unrefine, converged
-    kappaAbs =0.d0; kappaSca = 0.d0
-    unrefine = .true.
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call unrefineThinCells(child, grid, ilambda, converged)
-                exit
-             end if
-          end do
-       else
-          if (.not.ASSOCIATED(thisOctal%dustTypeFraction)) then
-             write(*,*) "unalloc dusttypefraction!!"
-          endif
-          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
-          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          if (tau > 1.e-10) unrefine = .false.
-       endif
-    enddo
-
-    if ((thisOctal%nChildren == 0).and.unrefine.and.converged) then
-       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
-            grid = grid, adjustGridInfo = .true.)
-       converged = .false.
-    endif
-
-  end subroutine unrefineThinCells
-
-  SUBROUTINE shrinkChildArray(parent, childrenToDelete, adjustParent )
-    ! removes children from an octal.
-    ! you probably don't want to call this directly - use the 'deleteChild' wrapper instead.
-    ! NB this subroutine doesn't update grid%nOctals etc.
-
-    IMPLICIT NONE
-    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
-    LOGICAL, INTENT(IN), DIMENSION(parent%maxChildren) :: childrenToDelete
-      ! mask defining which children to get rid of 
-      ! NB childrenToDelete does not map to the index number in the 
-      !   %child array, it is the "real" number of the children (the 
-      !   number of the subcell that was refined when the child was
-      !   created).
-    LOGICAL, INTENT(IN) :: adjustParent 
-      ! whether the physical parameters stored in the parent's subcells
-      !   should be filled with data derived from the children being deleted.
-    
-    TYPE(wrapperArray) :: tempChildStorage  
-      ! holder for remaining children, while we shrink the %child array 
-                                       
-    LOGICAL, DIMENSION(parent%maxChildren) :: checkMask 
-      ! used for testing the validity of the 'childrenToDelete' input
-      
-    INTEGER, DIMENSION(SIZE(parent%indexChild)) :: temporaryIndexChild
-      ! used for assembling a valid indexChild array, to be used after
-      !   the children have been deleted
-      
-    LOGICAL, DIMENSION(parent%maxChildren) :: deleteMask
-      ! which of the elements of %child will be deleted
-        
-    INTEGER :: iChild ! loop counter
-    INTEGER :: nChildren ! number of children the parent octal has
-    INTEGER :: error
-    INTEGER :: nChildrenToDelete
-    TYPE(octal), POINTER :: thisChild ! convenient alias to current child 
-    LOGICAL :: deleteALLchildren ! are we getting rid of ALL the children
-    INTEGER :: nChildrenStay ! how many children will be left when done
-    INTEGER :: insertLocation ! the next location to use in tempChildStorage
-    
-    NULLIFY(thisChild)
-    temporaryIndexChild = -999
-    
-    ! setup some useful accounting variables
-    nChildren = parent%nChildren
-    nChildrenToDelete = COUNT(childrenToDelete)
-    nChildrenStay = ( nChildren - nChildrenToDelete )
-    deleteALLchildren = ( nChildrenStay == 0 )
-    
-    ! some safety checks
-    error = 0
-    
-    IF ( nChildrenStay < 0 ) error = -1
-
-    ! the following lines check that all the children to be deleted have 
-    !   their %hasChild flag set.
-    checkMask = childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
-    checkMask = checkMask .NEQV. childrenToDelete ! (exclusive OR operation)
-    IF ( ANY(checkMask) ) error = -2
-
-    IF (error /= 0) THEN
-      PRINT *, "In shrinkChildArray, attempting to delete a "
-      PRINT *, "child that doesn't exist."
-      PRINT *, error, childrenToDelete
-      write(*,*) "nchildren ",parent%nChildren
-      write(*,*) "haschild ",parent%hasChild(1:SIZE(childrenToDelete))
-      write(*,*) "mask ",checkmask
-      write(*,*) " and ",childrenToDelete(1:SIZE(childrenToDelete)) .AND. parent%hasChild(1:SIZE(childrenToDelete))
-      write(*,*) "xor ",childrentodelete.neqv.(childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete)))
-      write(*,*) nChildrentodelete,nchildrenstay,deleteallchildren
-
-      STOP
-    END IF
- 
-    ! we transform 'childrenToDelete' which is of SIZE(1:maxChildren) into
-    !   an array of SIZE(1:nChildren), so that it matches the %child
-    !   array
-    deleteMask(:) = .FALSE.
-    FORALL ( iChild = 1:parent%nChildren ) &
-      deleteMask(iChild) = childrenToDelete(parent%indexChild(iChild))
-    
-    IF ( .NOT. deleteALLchildren ) THEN
-      ! we need to allocate some temporary storage for the children that 
-      !   are not going to be deleted so that we can reposition them
-      !   in the %child array.
-      ALLOCATE(tempChildStorage%wrappers(nChildrenStay), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed in shrinkChildArray. (A)'
-        STOP
-      END IF
-      
-      FORALL ( iChild = 1:nChildrenStay ) &
-        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
-        
-      insertlocation = 1
-        
-    END IF  
-      
-    DO iChild = 1, parent%nChildren
-      thisChild => parent%child(iChild)
-
-      IF ( deleteMask(iChild) ) THEN
-        ! we want to delete this octal from the %child array
-
-        CALL deleteOctal(thisChild, deleteChildren=.TRUE.,     &
-                         adjustParent=adjustParent, adjustMem=.true. )
-
-     ELSE 
-        ! we do not want to delete this child. 
-        ! instead we move it to the temporary storage array.
-
-        ALLOCATE(tempChildStorage%wrappers(insertlocation)%content, STAT=error)
-        IF ( error /= 0 ) THEN
-          PRINT *, 'Panic: allocation failed in shrinkChildArray. (B)'
-          STOP
-        END IF           
-        tempChildStorage%wrappers(insertlocation)%inUse = .TRUE.
-               
-        CALL deleteOctreeBranch(thisOctal=thisChild,                           &
-               onlyChildren=.FALSE.,                                           &
-               deletedBranch=tempChildStorage%wrappers(insertlocation)%content,&
-               adjustParent=.FALSE.)
-               
-        temporaryIndexChild(insertLocation) = parent%indexChild(iChild)
-        
-        insertlocation = insertlocation + 1
-
-      END IF
-      
-    END DO
-   
-    ! all the unwanted children have now been deleted.
-    ! we now get rid of the old %child array.
-    DEALLOCATE(parent%child)
-    NULLIFY(parent%child) 
-    
-    ! if there are any remaining children, we need to create a new
-    !   %child array, and copy them back there.
-    IF ( .NOT. deleteALLchildren ) THEN    
-      
-      ALLOCATE(parent%child(nChildrenStay), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed in shrinkChildArray. (C)'
-        STOP
-      END IF
-
-      DO iChild = 1, nChildrenStay, 1
-        
-        CALL insertOctreeBranch(parent%child(iChild),               &
-               branch=tempChildStorage%wrappers(iChild)%content,    &
-               onlyChildren=.FALSE.)                              
-               
-        parent%child(iChild)%parent => parent
-               
-        DEALLOCATE(tempChildStorage%wrappers(iChild)%content)
-        NULLIFY(tempChildStorage%wrappers(iChild)%content)
-        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
-
-      END DO
-      
-      ! can now clean up the temporary storage
-      DEALLOCATE(tempChildStorage%wrappers)
-      NULLIFY(tempChildStorage%wrappers)
-
-    END IF
-
-    ! some bookkeeping
-    parent%nChildren = nChildrenStay
-    parent%indexChild(:) = temporaryIndexChild(:)
-
-    parent%hasChild( 1:SIZE(childrenToDelete) ) =  &
-         parent%hasChild(1:SIZE(childrenToDelete)) .NEQV. childrenToDelete
-
-  END SUBROUTINE shrinkChildArray
-  
     
   SUBROUTINE deleteChild(parent, childToDelete, adjustParent, &
                          grid, adjustGridInfo)
@@ -14578,6 +14631,7 @@ end function readparameterfrom2dmap
     thisOctal%temperature = TMinGlobal
 
     if (atomicPhysics.or.molecularPhysics.or.h21cm) then
+       call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%cornerVelocity, 27)
     endif
 
@@ -14641,6 +14695,7 @@ end function readparameterfrom2dmap
 
 
     if (atomicPhysics) then
+       call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%atomAbundance, thisOctal%maxChildren, nAtom)
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
@@ -14665,6 +14720,7 @@ end function readparameterfrom2dmap
     endif
 
     if (molecular) then
+       call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
        thisOctal%molAbundance(:) = 1.e-30
        call allocateAttribute(thisOctal%temperatureGas, thisOctal%maxChildren)
@@ -14842,6 +14898,7 @@ end function readparameterfrom2dmap
     type(OCTAL) :: thisOctal
 
     call deallocateAttribute(thisOctal%iEquationOfState)
+    call deallocateAttribute(thisOctal%iAnalyticalVelocity)
     call deallocateAttribute(thisOctal%gamma)
     call deallocateAttribute(thisOctal%neighbourOctal)
     call deallocateAttribute(thisOctal%neighbourSubcell)
@@ -16118,6 +16175,8 @@ end function readparameterfrom2dmap
     thisOctal%boundaryCell = parentOctal%boundaryCell(parentSubcell)
     thisOctal%gamma = parentOctal%gamma(parentSubcell)
     thisOctal%iEquationOfState = parentOctal%iEquationofState(parentSubcell)
+
+    thisOctal%iAnalyticalVelocity = parentOctal%iAnalyticalVelocity(parentSubcell)
     thisOctal%velocity = parentOctal%velocity(parentSubcell)
     thisOctal%dustTypeFraction = parentOctal%dustTypeFraction
     if (thisOctal%oneD) then

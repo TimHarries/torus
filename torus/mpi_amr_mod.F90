@@ -3329,7 +3329,7 @@ end subroutine writeRadialFile
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE), ierr
-    real(double) :: kappaRoss
+    real :: kappap
     logical :: stillLooping
     integer :: sendThread
     logical :: hitGrid
@@ -3406,12 +3406,12 @@ end subroutine writeRadialFile
 
                 sOctal => thisOctal
                 call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
-                call returnKappa(grid, thisOctal, subcell, rosselandKappa = kappaRoss)
-                tau = tau + dble(kappaRoss) * thisOctal%rho(subcell) * tval *1.e10
+                call returnKappa(grid, thisOctal, subcell, kappap = kappap)
+                tau = tau + dble(kappap) * tval * 1.d10
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
-!                if (Writeoutput) write(*,*) "pos ",position, "tau ",tau
+!		write(*,*) "pos ",position, "tau ",tau
                 if (tau > tauWanted) then
-                   tauRad = modulus(position - tval * uHat)
+                   tauRad = modulus(position)
                    tempStorage(1) = 1.d30
                    tempStorage(2) = tauRad 
                    exit
@@ -4498,7 +4498,6 @@ end subroutine writeRadialFile
     !7 is the identifier for whether or not to use topOctal. In this routine this will always be the case
     loc(7) = 1.d0
     call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-
     call MPI_RECV(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr) 
 !    if (abs(position%x-0.5d0)<0.05) then
 !       write(*,*) myrankGlobal, " got ",nVals, " from ",ithread
@@ -4767,7 +4766,7 @@ end subroutine writeRadialFile
 
     else
 
-      iThread = thisOctal%mpiThread(subcell)
+       iThread = thisOctal%mpiThread(subcell)
        loc(1) = position%x
        loc(2) = position%y
        loc(3) = position%z
@@ -4779,9 +4778,9 @@ end subroutine writeRadialFile
        else
           loc(7) = 0.d0
        end if
-!       print *, "RANK ", myRankGlobal, "SENDING TO ", iThread
+!       print *, "RANK ", myRankGlobal, "SENDING TO ", iThread, " usetop ",usetop,octalOnThread(thisOctal,subcell, myrankGlobal), thisOctal%nDepth
        call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
- !      print *, "RANK ", myRankGlobal, "SENT"
+!       print *, "RANK ", myRankGlobal, "SENT"
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
   !     print *, "RANK ", myRankGlobal, "RECVING"
        nd = nint(tempStorage(1))
@@ -5311,7 +5310,9 @@ recursive subroutine distributeMPIthreadLabels(thisOctal)
         do i = 1, thisoctal%nchildren, 1
            if (thisoctal%indexchild(i) == subcell) then
               call labelSingleSubcellMPI(thisOctal, subcell, i)
-!              print *, "thisOctal%mpiThread(subcell) ", thisOctal%mpiThread(subcell)
+!              write(*,'(a,i3,a,i3,a,i3,a,i3,a,i3)'), &
+!                   "rank ",myrankglobal," depth ",thisOctal%nDepth , " subcell ", subcell, &
+!                   " thisOctal%mpiThread(subcell) ", thisOctal%mpiThread(subcell)
               child => thisoctal%child(i)
               call distributeMPIthreadLabels(child)
               exit

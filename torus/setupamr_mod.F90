@@ -108,6 +108,13 @@ contains
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI
+
+!       do i = 1, 8
+!          grid%octreeRoot%mpiThread(i) = i
+!       enddo
+
+!       call distributeMPIthreadLabels(grid%octreeRoot)
+
 #ifdef PHOTOION
 
        if (photoionPhysics) then

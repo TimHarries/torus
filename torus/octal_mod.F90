@@ -169,6 +169,8 @@ MODULE octal_mod
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
+
+    integer, pointer :: iAnalyticalVelocity(:)  => null()
     integer, pointer :: iEquationOfState(:)  => null()
     real(double), pointer :: gamma(:) => null()
     real(double), pointer :: divV(:) => null()

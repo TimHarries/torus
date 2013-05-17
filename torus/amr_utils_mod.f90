@@ -13,6 +13,512 @@ module amr_utils_mod
 
   contains
 
+  FUNCTION amrGridVelocity(octalTree,point,startOctal,foundOctal,&
+                                        foundSubcell,actualSubcell, linearinterp, debug) 
+    ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
+    !
+
+    ! returns the velocity at a given point in the grid.
+    ! this function can be called with just the first two arguments.
+    !   and it will start at the root of the octal tree to locate
+    !   the correct octal.
+    ! if the foundOctal argument is supplied, it is made to point to 
+    !   the octal containing 'point'.
+    ! if the foundSubcell argument is supplied, it is made to point to 
+    !   the subcell containing 'point'.
+    ! if the startOctal argument is supplied, the function uses a 
+    !   local search for the correct octal starting at that octal.
+    ! if actualSubcell and startSubcell are both supplied, these 
+    !   locations are assumed to be correct and no search is performed.
+
+    use analytical_velocity_mod, only : analyticalVelocity
+    use utils_mod
+    IMPLICIT NONE
+
+    TYPE(vector)                   :: amrGridVelocity
+    TYPE(octal), POINTER           :: octalTree
+    TYPE(vector), INTENT(IN)  :: point
+    TYPE(octal), OPTIONAL, POINTER :: startOctal
+    TYPE(octal), OPTIONAL, POINTER :: foundOctal
+    logical, optional :: debug
+    logical :: writedebug
+    INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
+    INTEGER, INTENT(IN),  OPTIONAL :: actualSubcell
+
+    TYPE(octal), POINTER           :: resultOctal
+    INTEGER                        :: subcell
+
+    TYPE(vector)              :: centre, rVec
+    real(oct)           :: fac, inc, thisPhi
+    real(oct)           :: t1, t2, t3
+    real(double)        :: dt1, dt2, dt3
+    real(oct)           :: r1, r2, phi1, phi2
+    real(double) :: phi
+    type(vector) :: newvec
+    TYPE(vector) :: point_local, vvec, rHat
+
+    real(double) :: weights(27)
+    logical, optional :: linearinterp
+    logical :: linear
+    logical, save :: firstTime = .true.
+
+    writedebug = .false.
+    if (present(debug)) writedebug = debug
+
+    amrGridVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+
+    weights = 0.d0
+    if(present(linearinterp)) then
+       linear = linearinterp
+    else
+       linear = .true.
+    endif
+       
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+    if (octalTree%oneD) then
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+    endif
+
+    IF (PRESENT(startOctal)) THEN
+      IF (PRESENT(actualSubcell)) THEN
+        subcell = actualSubcell
+      ELSE 
+         ! called with rotated point if necessary for 2d
+        CALL findSubcellLocal(point_local,startOctal,subcell)
+        IF (PRESENT(foundOctal))   foundOctal   => startOctal
+        IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+      END IF
+      resultOctal => startOctal
+      
+   ELSE
+         ! called with rotated point if necessary for 2d
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
+      IF (PRESENT(foundOctal))   foundOctal   => resultOctal
+      IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+
+   END IF
+
+   if (resultOctal%iAnalyticalVelocity(subcell) == 0) then
+   if (.not.associated(resultOctal%cornerVelocity)) then
+      if(firstTime) then
+         call writeWarning("Corner velocities not allocated! ! ! ")      
+         firstTime = .false.
+      end if
+      goto 666
+   end if
+      inc = 0.5 * resultOctal%subcellSize
+      centre = subcellCentre(resultOctal,subcell)
+      fac = 1. / resultOctal%subcellsize
+      
+      t1 = MAX(0.0_oc, fac * (point_local%x - (centre%x - inc)))
+      t2 = MAX(0.0_oc, fac * (point_local%y - (centre%y - inc)))
+      t3 = MAX(0.0_oc, fac * (point_local%z - (centre%z - inc)))
+
+      if (resultOctal%oneD) then
+
+         select case(subcell)
+         case(1)
+            vvec = (1.d0-t1) * resultOctal%cornerVelocity(1) + &
+                 (   t1) * resultOctal%cornerVelocity(2)
+         case(2)
+            vvec = (1.d0-t1) * resultOctal%cornerVelocity(2) + &
+                 (   t1) * resultOctal%cornerVelocity(3)
+         end select
+         rHat = point
+         call normalize(rHat)
+         if (vvec%x >= 0.d0) then
+            amrGridVelocity = modulus(vvec) * rHat
+         else
+            amrGridVelocity = modulus(vvec) * ((-1.d0)*rHat)
+         endif
+         goto 666
+      endif
+
+      if (resultOctal%threed) then
+         if (.not.resultOctal%cylindrical) then
+            if(linear) then
+
+            SELECT CASE(subcell)
+               
+            CASE(1)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14)
+               
+            CASE(2)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(12) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15)
+               
+            CASE(3)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17)
+               
+            CASE(4)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
+               
+            CASE(5)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(19) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23)
+               
+            CASE(6)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(21) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(24)
+            
+            CASE(7)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(16) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(25) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26)
+               
+            CASE(8)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(18) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(24) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(27)
+            CASE DEFAULT
+               PRINT *, 'Invalid subcell in amrGridVelocity'
+               
+            end SELECT
+         else
+
+            inc = resultOctal%subcellSize
+            centre = resultoctal%centre
+            fac = 0.5d0 / resultOctal%subcellsize
+      
+            dt1 = fac * (point_local%x - (centre%x - inc))
+            dt2 = fac * (point_local%y - (centre%y - inc))
+            dt3 = fac * (point_local%z - (centre%z - inc))
+
+            call regular_tri_quadint(dt1,dt2,dt3,weights)
+            amrgridvelocity = &
+            VECTOR(sum(weights(:) * resultoctal%cornervelocity(:)%x), &
+                   sum(weights(:) * resultoctal%cornervelocity(:)%y), &
+                   sum(weights(:) * resultoctal%cornervelocity(:)%z))
+         endif
+
+         else ! cylindrical
+            if (resultOctal%splitAzimuthally) then
+
+               centre = subcellCentre(resultOctal,subcell)
+               r1 = sqrt(point_local%x**2 + point_local%y**2)
+               r2 = sqrt(centre%x**2 + centre%y**2)
+               phi1 = atan2(point_local%y, point_local%x)
+               if (phi1 < 0.d0) phi1 = phi1 + twoPi
+               phi2 = atan2(centre%y, centre%x)
+               if (phi2 < 0.d0) phi2 = phi2 + twoPi
+
+               inc = resultOctal%subcellSize / 2.0               
+
+               t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
+               t2 = (phi1 - (phi2 - resultOctal%dPhi/4.d0))/(resultOctal%dPhi/2.d0)
+               t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
+               select case(subcell)
+            CASE(1)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14)
+               
+            CASE(2)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(12) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15)
+               
+            CASE(3)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17)
+               
+            CASE(4)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
+               
+            CASE(5)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(19) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23)
+               
+            CASE(6)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(21) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(24)
+            
+            CASE(7)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(16) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(25) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26)
+               
+            CASE(8)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(18) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(24) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(27)
+
+            CASE DEFAULT
+               PRINT *, 'Invalid subcell in amrGridVelocity'
+               end select
+            else 
+
+               centre = subcellCentre(resultOctal,subcell)
+               r1 = sqrt(point_local%x**2 + point_local%y**2)
+               r2 = sqrt(centre%x**2 + centre%y**2)
+               phi1 = atan2(point_local%y, point_local%x)
+               if (phi1 < 0.d0) phi1 = phi1 + twoPi
+               phi2 = atan2(centre%y, centre%x)
+               if (phi2 < 0.d0) phi2 = phi2 + twoPi
+
+               inc = resultOctal%subcellSize * 0.5_oc               
+
+               t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
+               t2 = (phi1 - (phi2 - resultOctal%dPhi*0.5d0))/(resultOctal%dPhi)
+               t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
+
+               select case(subcell)
+            CASE(1)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(7) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(8) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(9) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(10)
+               if (writedebug) then
+                     write(*,*) "case 1: ", resultOctal%inflow(subcell)
+                     write(*,*) "vel( 1): ",resultOctal%cornerVelocity( 1)
+                     write(*,*) "vel( 2): ",resultOctal%cornerVelocity( 2)
+                     write(*,*) "vel( 3): ",resultOctal%cornerVelocity( 3)
+                     write(*,*) "vel( 4): ",resultOctal%cornerVelocity( 4)
+                     write(*,*) "vel( 7): ",resultOctal%cornerVelocity( 7)
+                     write(*,*) "vel( 8): ",resultOctal%cornerVelocity( 8)
+                     write(*,*) "vel( 9): ",resultOctal%cornerVelocity( 9)
+                     write(*,*) "vel(10): ",resultOctal%cornerVelocity(10)
+               endif
+               
+            CASE(2)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity( 9) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(12)
+               
+            CASE(3)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16)
+
+
+               
+            CASE(4)
+               amrGridVelocity = &
+                    ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
+                    ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
+                    ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+                    ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
+                    ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
+                    ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
+                    ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
+                    ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
+
+
+            CASE DEFAULT
+               PRINT *, 'Invalid subcell in amrGridVelocity'
+               end select
+
+            endif
+            if (resultOctal%dphi > piby2) then
+               amrGridVelocity = resultOctal%velocity(subcell)
+               rVec = subcellCentre(resultOctal, subcell)
+               thisPhi = atan2(rVec%y, rVec%x)
+               phi = thisPhi - atan2(point%y, point%x)
+               newVec = rotateZ(amrGridVelocity, phi)
+               amrGridVelocity = newVec
+            endif
+
+         endif
+
+   else if (resultOctal%twoD) then
+      select case(subcell)
+         CASE(1)
+            amrGridVelocity = &
+                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
+                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 4) + &
+                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 5)
+
+         CASE(2)
+            amrGridVelocity = &
+                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
+                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 5) + &
+                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 6)
+         CASE(3)
+            amrGridVelocity = &
+                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 7) + &
+                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 8)
+
+         CASE(4)
+            amrGridVelocity = &
+                 ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+                 ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+                 ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 8) + &
+                 ((     t1) * (     t3)) * resultOctal%cornerVelocity( 9)
+         end select
+
+         phi = atan2(point%y, point%x)
+         newVec = rotateZ(amrGridVelocity, -phi)
+         amrGridVelocity = newVec
+
+   else ! one-d
+      select case(subcell)
+         CASE(1)
+            amrGridVelocity = &
+                 (1.d0-t1) * resultOctal%cornerVelocity( 1) + &
+                 (     t1) * resultOctal%cornerVelocity( 2)
+
+         CASE(2)
+            amrGridVelocity = &
+                 (1.d0-t1) * resultOctal%cornerVelocity( 2) + &
+                 (     t1) * resultOctal%cornerVelocity( 3) 
+         end select
+
+         phi = atan2(point%y, point%x)
+         newVec = rotateZ(amrGridVelocity, -phi)
+         phi = atan2(point%z, point%x)
+         newVec = rotateY(newVec, phi)
+         amrGridVelocity = newVec
+         write(*,*) modulus(amrgridvelocity)*cspeed/1.e5
+      endif
+
+   else
+
+      amrGridVelocity = analyticalVelocity(point, resultOctal%iAnalyticalVelocity(subcell))
+   endif
+
+666   continue
+
+!    endif
+  END FUNCTION amrGridVelocity
 
     real(double) function gridArea(grid)
       use inputs_mod, only : cylindrical, spherical
