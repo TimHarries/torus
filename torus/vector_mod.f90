@@ -368,7 +368,7 @@ contains
     
 !    openingAngle = atan(dx/(2.d0*L))
 !    openingAngle = atan(dx/(4.d0*L))
-    openingAngle = atan(dx/(2.d0*L))
+    openingAngle = atan(dx/(L))
     
 !    call randomNumberGenerator(getDouble=r)
 !    if (r < percentInGrid) then   !% of photons in pseudo-3d grid
@@ -406,9 +406,10 @@ contains
     call randomNumberGenerator(getDouble=r)
     if (r < percentInGrid) then
        call randomNumberGenerator(getDouble=r2)
-       ang = biasPhiDir + (r2-0.5d0) * openingAngle
-!       photonAngleWeight = photonAngleWeight*(openingAngle/pi) / percentInGrid    
-       photonAngleWeight = photonAngleWeight*sin(openingAngle/2.d0) / percentInGrid 
+       ang = biasPhiDir + ((2.d0*r2)-1.d0) * openingAngle
+!       photonAngleWeight = photonAngleWeight*(openingAngle/(pi/2.d0)) / percentInGrid    
+!       photonAngleWeight = photonAngleWeight*sin(openingAngle/2.d0) / percentInGrid 
+       photonAngleWeight = photonAngleWeight*sin(openingAngle) / percentInGrid 
     else
        ang = biasPhiDir       
 
@@ -425,7 +426,9 @@ contains
 !          call randomNumberGenerator(getDouble=r2)
 !          ang = r2 * twopi
 !       enddo
-       photonAngleWeight = photonAngleWeight*(1.d0-sin(openingAngle/2.d0)) / (1.d0-percentInGrid)
+       photonAngleWeight = photonAngleWeight*(1.d0-sin(openingAngle)) / (1.d0-percentInGrid)
+!       photonAngleWeight = photonAngleWeight*(1.d0-(openingAngle/(pi/2.d0))) / (1.d0-percentInGrid)
+!       photonAngleWeight = photonAngleWeight*(1.d0-sin(openingAngle/2.d0)) / (1.d0-percentInGrid)
     endif
 
     v = sin(ang)

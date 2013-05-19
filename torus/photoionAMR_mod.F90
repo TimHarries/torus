@@ -2142,7 +2142,7 @@ end subroutine radiationHydro
                    nNotEscaped = 0
                    do while(.not.escaped)
 
-                      if ((doingSmallPackets).and.(startNewSmallPacket)) then
+                      if ((doingSmallPackets).and.(startNewSmallPacket) .and. .not. cart2d) then
                          startNewSmallPacket = .false.
                          iSmallPhotonPacket = iSmallPhotonPacket + 1
                          if (iSmallPhotonPacket > nSmallPackets) then
@@ -2155,10 +2155,10 @@ end subroutine radiationHydro
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             Uhat = randomUnitVector()
 !                            if(cart2d) then
-                            if(cart2d .and. .not. source(1)%outsidegrid) then
-                               call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
-                                    2.d0*grid%octreeRoot%subcellSize)
-                            end if
+!                            if(cart2d .and. .not. source(1)%outsidegrid) then
+!                               call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
+!                                    2.d0*grid%octreeRoot%subcellSize)
+!                            end if
 !                            if(grid%twoD) then
 !                               thisOctal%
 !                            end if
@@ -2818,6 +2818,10 @@ end subroutine radiationHydro
 
     if(grid%geometry == "lexington") then
       call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+   end if
+
+    if(grid%geometry == "lexington" .and. 0 == 1) then
+      call dumpLexingtonMPI(grid, epsoverdeltat, niter)
 
       if(myrankGlobal /= 0) then
          call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)         
@@ -2875,7 +2879,7 @@ end subroutine radiationHydro
          call MPI_SEND(luminosity1, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator,  ierr)
          call getForbiddenLineLuminosity(grid, "S III", 9069.d0, luminosity2)
          call MPI_SEND(luminosity2, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator,  ierr)
-      else
+      else if (0 == 1) then
          zTemp = 0.d0
          do recCounter = 1, 27
             do threadCounter = 1, nHydroThreadsGlobal
@@ -2990,7 +2994,11 @@ end subroutine radiationHydro
      if(grid%geometry == "hii_test") then
         minCrossings = 1000
      else if(grid%geometry == "lexington") then
-        minCrossings = 50000
+        if(grid%octreeroot%oned) then
+           minCrossings = 50000
+        else
+           minCrossings = 1000
+        end if
 !     else if(singleMegaPhoto) then
 !        minCrossings = 50000 
 !     else

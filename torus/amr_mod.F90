@@ -2861,7 +2861,7 @@ CONTAINS
 !       point2 = lastpoint2
 !    else
        if (octaltree%twoD) then
-          if (.not.hydrodynamics) then
+          if (.not.hydrodynamics .or. .not. cart2d) then
              point2 = projectToXZ(point)
           else
              point2 = point
