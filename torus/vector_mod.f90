@@ -364,11 +364,11 @@ contains
     real(double), intent(in) :: dx, L
     type(VECTOR), intent(out) :: rVec
 
-    percentInGrid = 0.95d0
+    percentInGrid = 0.999d0
     
 !    openingAngle = atan(dx/(2.d0*L))
 !    openingAngle = atan(dx/(4.d0*L))
-    openingAngle = atan(dx/(L))
+    openingAngle = atan(dx/(2.d0*L))
     
 !    call randomNumberGenerator(getDouble=r)
 !    if (r < percentInGrid) then   !% of photons in pseudo-3d grid

@@ -2312,6 +2312,7 @@ end subroutine radiationHydro
                                uHat = randomUnitVector() ! isotropic scattering
 !                               if(cart2d) then
                                if(cart2d .and. .not. source(1)%outsidegrid) then
+!                                  photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
@@ -2372,6 +2373,7 @@ end subroutine radiationHydro
                                uHat = randomUnitVector() ! isotropic emission
 !                               if(cart2d) then
                                if(cart2d .and. .not. source(1)%outsidegrid) then
+!                                  photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
@@ -2996,8 +2998,8 @@ end subroutine radiationHydro
      else if(grid%geometry == "lexington") then
         if(grid%octreeroot%oned) then
            minCrossings = 50000
-        else
-           minCrossings = 1000
+!        else
+!           minCrossings = 1000
         end if
 !     else if(singleMegaPhoto) then
 !        minCrossings = 50000 
