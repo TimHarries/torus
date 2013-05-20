@@ -614,7 +614,7 @@ contains
 
              fac = 1.d0
              if (toomreQ < Qcrit) then
-                fac = (Qcrit**2 / toomreQ**2)
+                fac = max((Qcrit**2 / toomreQ**2),100.d0)
 !                write(*,*) "q ",toomreQ,thisOctal%rho(subcell)
              endif
 

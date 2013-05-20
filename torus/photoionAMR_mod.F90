@@ -1579,7 +1579,7 @@ end subroutine radiationHydro
 
        if (splitThisTime) sourceInThickCell = .true.
 
-       maxDiffRadius = max(maxDiffRadius1, maxDiffRadius2)
+       maxDiffRadius = min(maxDiffRadius1, maxDiffRadius2)
        if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
 
        if (myrankGlobal /= 0) then
@@ -3173,7 +3173,7 @@ end subroutine radiationHydro
 !        write(*,*) "monteCheck ",monteCheck
 !     endif
 
-     write(*,*) myrankglobal, " calling vtk writer"
+!     write(*,*) myrankglobal, " calling vtk writer"
      write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
      call writeVtkFile(grid, mpiFilename, &
           valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
