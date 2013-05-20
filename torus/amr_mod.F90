@@ -14645,7 +14645,7 @@ end function readparameterfrom2dmap
     end if
 
     if (mie.or.dustPhysics) then
-       call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildr
+       call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
        thisOctal%oldFrac = 1.d-30
