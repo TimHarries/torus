@@ -7493,11 +7493,11 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, fac, centre
-    logical, save :: firstTime = .true.
-    integer, parameter :: nr = 1000
-    real(double), save :: r(nr), rho(nr)
-    integer :: i
+    real(double) :: rMod!, fac, centre
+!    logical, save :: firstTime = .true.
+!    integer, parameter :: nr = 1000
+!    real(double), save :: r(nr), rho(nr)
+!    integer :: i
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
