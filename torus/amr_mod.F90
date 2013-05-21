@@ -796,6 +796,9 @@ CONTAINS
     CASE("bonnor")
        call calcBonnorEbertDensity(thisOctal, subcell)
 
+    CASE("bubble")
+       call calcBubbleDensity(thisOctal, subcell)
+
     CASE("SB_CD_1Da")
        call calcContactDiscontinuityOneDDensity(thisOctal, subcell, v1=.true.)
 
@@ -3949,7 +3952,7 @@ CONTAINS
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
-            "SB_coolshk", "SB_gasmix")
+            "SB_coolshk", "SB_gasmix", "bubble")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -7484,6 +7487,57 @@ endif
     yplusbound = 2
     yminusbound = 2
   end subroutine calcBonnorEbertDensity
+
+
+  subroutine calcBubbleDensity(thisOctal,subcell)
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, fac, centre
+    logical, save :: firstTime = .true.
+    integer, parameter :: nr = 1000
+    real(double), save :: r(nr), rho(nr)
+    integer :: i
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+    if (rMod < (1.5d-10*pctocm)) then
+       thisOctal%rho(subcell) = 10.d0
+       thisOctal%temperature(subcell) = 10.d0
+    else
+       thisOctal%rho(subcell) = 500.d0
+       thisOctal%temperature(subcell) = 10.d0
+    endif
+
+!THAW - temporary uniform density to check propagation stability
+!    thisOctal%rho(subcell) = rho(nr)
+
+!    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    !Thaw - will probably want to change this to use returnMu
+!    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+!    thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+!    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+!    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+!    thisOctal%phi_i(subcell) = -bigG * 6.d0 * mSol / (modulus(rVec)*1.d10)
+!    thisOctal%gamma(subcell) = 1.0
+!    thisOctal%iEquationOfState(subcell) = 1
+     
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+  end subroutine calcBubbleDensity
 
 
   subroutine calcOffCentreExpansionDensity(thisOctal, subcell)
