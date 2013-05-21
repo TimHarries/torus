@@ -4133,6 +4133,12 @@ end subroutine sumFluxes
     integer :: idir, thisBound
     logical, optional :: perturbPressure
 
+
+    !boundary conditions
+    call imposeBoundary(grid%octreeRoot, grid)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+    
     do iDir = 1, 3
 !       print *, " DOING DIRECTION ", iDir
        select case (iDir)
@@ -4150,12 +4156,6 @@ end subroutine sumFluxes
              thisBound = 2
        end select
        
-       !boundary conditions
-       call imposeBoundary(grid%octreeRoot, grid)
-       call periodBoundary(grid)
-       call transferTempStorage(grid%octreeRoot)
-
-
        call setupX(grid%octreeRoot, grid, direction)
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)

@@ -164,7 +164,8 @@ contains
        grid%iDump = -1
        deltaTforDump = tdump
 
-       if (grid%geometry == "hii_test") deltaTforDump = 9.d10
+!       if (grid%geometry == "hii_test") deltaTforDump = 9.d10
+       if (grid%geometry == "hii_test") deltaTforDump = 1.d5
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
 !       if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
@@ -776,10 +777,6 @@ contains
        if (myrankGlobal /= 0) then
           if (cylindricalHydro) then
              call writeInfo("Calling cylindrical coord hydro step", TRIVIAL)
-
-
-
-
              call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           else
              if(grid%currentTime==0.d0 .and. grid%geometry == "SB_WNHII")then
@@ -812,7 +809,7 @@ contains
                      perturbPressure=.false.)
              else
                 call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-!                call torus_abort("1d radhydro not supported")
+                !                call torus_abort("1d radhydro not supported")
              end if
              firstWN = .false.
              !          else
@@ -2312,7 +2309,7 @@ end subroutine radiationHydro
                                uHat = randomUnitVector() ! isotropic scattering
 !                               if(cart2d) then
                                if(cart2d .and. .not. source(1)%outsidegrid) then
-!                                  photonpacketweight = 1.d0
+                                  photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
@@ -2373,7 +2370,7 @@ end subroutine radiationHydro
                                uHat = randomUnitVector() ! isotropic emission
 !                               if(cart2d) then
                                if(cart2d .and. .not. source(1)%outsidegrid) then
-!                                  photonpacketweight = 1.d0
+                                  photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
@@ -2994,18 +2991,18 @@ end subroutine radiationHydro
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 1000
+        minCrossings = 10000
      else if(grid%geometry == "lexington") then
         if(grid%octreeroot%oned) then
            minCrossings = 50000
-!        else
-!           minCrossings = 1000
+        else
+           minCrossings = 30000
         end if
-!     else if(singleMegaPhoto) then
-!        minCrossings = 50000 
-!     else
-!        minCrossings = 5000
-!        minCrossings = 1000
+        !     else if(singleMegaPhoto) then
+        !        minCrossings = 50000 
+     else
+        !        minCrossings = 5000
+        minCrossings = 100
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
@@ -3494,7 +3491,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                 escaped = .true.
              end if
           else
-             if(abs(rVec%y - amrgridcentrey) > grid%halfsmallestsubcell) then
+             if(abs(rVec%y - amrgridcentrey) > (grid%halfsmallestsubcell)) then
+!             if(abs(rVec%y - amrgridcentrey) > (grid%octreeroot%subcellsize)) then
                 stillInGrid = .false.
                 escaped = .true.
              end if
