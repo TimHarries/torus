@@ -767,7 +767,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx, df, fv, area_i, area_i_plus_1
+    real(double) :: dt, dx, df
 
   
     do subcell = 1, thisoctal%maxchildren
