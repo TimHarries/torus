@@ -2618,7 +2618,11 @@ end subroutine radiationHydro
              nScatBigPacket = i
              if (writeoutput) write(*,*) "Iteration had ",&
                   real(nScatBigPacket)/real(nThreadMonte), " scatters per big photon packet"
-             if (real(nScatBigPacket)/real(nThreadMonte) > 20.) splitThisTime = .true.
+             if (real(nScatBigPacket)/real(nThreadMonte) > 20.) then
+                splitThisTime = .true.
+             else
+                splitThisTime = .false.
+             endif
           endif
 
           if (nSmallPackets == 0) then
@@ -3171,9 +3175,9 @@ end subroutine radiationHydro
 !     endif
 
 !     write(*,*) myrankglobal, " calling vtk writer"
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-     call writeVtkFile(grid, mpiFilename, &
-          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!     call writeVtkFile(grid, mpiFilename, &
+!          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
 !          "hydrovelocity","sourceCont   ","pressure     ", &
 !          "crossings    ", &
 !          "chiline      ", &

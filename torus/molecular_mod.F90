@@ -605,7 +605,15 @@ module molecular_mod
                        thisOctal%molecularLevel(1:maxlevel,subcell) = 1.d-10
                     endif
                  endif
+                 
+                 
+! OK we are going to start with LTE populations - TJH May 2013
 
+                 call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
+                      levelpops(1:maxlevel))
+                 thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
+
+!!!!!
               if (.not.associated(thisOctal%bnu)) &
                  allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
               do i = 1, maxtrans

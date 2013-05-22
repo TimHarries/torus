@@ -614,7 +614,7 @@ contains
 
              fac = 1.d0
              if (toomreQ < Qcrit) then
-                fac = max((Qcrit**2 / toomreQ**2),100.d0)
+!                fac = max((Qcrit**2 / toomreQ**2),100.d0)
 !                write(*,*) "q ",toomreQ,thisOctal%rho(subcell)
              endif
 
@@ -677,7 +677,6 @@ contains
                   (1.d0 - abs(thisoctal%u_interface(subcell) * dt / &
                    dx)) * &
                   thisoctal%philimit(subcell) * (thisoctal%q_i(subcell) - thisoctal%q_i_minus_1(subcell))
-
           endif
 !          if (thisoctal%flux_i(subcell) > 1.d-10) write(*,*) "flux ",thisoctal%flux_i(subcell),thisoctal%u_interface(subcell), &
 !               thisoctal%rho(subcell), thisoctal%rhou(subcell)
@@ -768,7 +767,7 @@ contains
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx, df
+    real(double) :: dt, dx, df, fv, area_i, area_i_plus_1
 
   
     do subcell = 1, thisoctal%maxchildren
@@ -792,8 +791,15 @@ contains
 !             dx = (thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell)) !new
 
              df = (thisoctal%flux_i_plus_1(subcell) - thisoctal%flux_i(subcell))
-
              thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dx)
+
+
+!             dv = cellVolume(thisOctal, subcell)*1.d30
+!             area_i_plus_1 = dx**2
+!             area_i = dx**2
+!             df = (thisoctal%flux_i_plus_1(subcell) * area_i_plus_1 - thisoctal%flux_i(subcell) * area_i)
+!             thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dv)
+
 
           endif
        endif
@@ -1249,7 +1255,6 @@ contains
              if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
              thisOctal%u_i(subcell) = thisRhou / thisOctal%rho(subcell)
 
-
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
              if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
 
@@ -1339,6 +1344,7 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%flux_i_minus_1(subcell) = flux
              
+
 
 !If this cell is finer than the cell from which material is streaming, then it is worth doing a coarse to fine flux interpolation
 
@@ -5446,6 +5452,9 @@ end subroutine sumFluxes
                valueTypeString=(/"rho          ",&
                "hydrovelocity", &
                "rhoe         ", &  
+               "rhou         ", &  
+               "rhov         ", &  
+               "rhow         ", &  
                "u_i          ", &
                "mpithread    ", &
                "phi          "/))
@@ -12588,9 +12597,6 @@ end subroutine minMaxDepth
               point = subcellCentre(thisOctal, subcell)
 
               if (thisOctal%threed.or.(thisOctal%twoD.and.(point%x > 0.d0))) then
-                 v = 0.d0
-                 m = 0.d0
-                 call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, m, level=6)
                  do iThread = 1, nHydroThreadsGlobal
                     
                     temp(1) = point%x
@@ -12600,6 +12606,9 @@ end subroutine minMaxDepth
                        call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                     endif
                  enddo
+                 v = 0.d0
+                 m = 0.d0
+                 call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, m, level=4)
                  do iThread = 1, nHydroThreadsGlobal
                     if (iThread /= myRankGlobal) then
                        call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
@@ -12818,10 +12827,6 @@ end subroutine minMaxDepth
 
            if (thisOctal%ghostCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
-              v = 0.d0
-              m = 0.d0
-              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, m, level=6)
-
               do iThread = 1, nHydroThreadsGlobal
 
                  temp(1) = point%x
@@ -12831,6 +12836,9 @@ end subroutine minMaxDepth
                     call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                  endif
               enddo
+              v = 0.d0
+              m = 0.d0
+              call multipoleExpansionLevel(grid%OctreeRoot, point, com, v, m, level=4)
               do iThread = 1, nHydroThreadsGlobal
                  if (iThread /= myRankGlobal) then
                     call mpi_recv(vgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)

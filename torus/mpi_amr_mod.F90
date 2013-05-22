@@ -1375,7 +1375,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 32
+    integer, parameter :: nStorage = 33
     real(double) :: loc(3), tempStorage(nStorage), qViscosity(3,3)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
@@ -2250,7 +2250,7 @@ contains
        rhow = fac*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)) + & 
             neighbourOctal%rhow(nSubcell(3)) + neighbourOctal%rhow(nSubcell(4)))
 
-       rhow = fac*(neighbourOctal%temperature(nSubcell(1)) + neighbourOctal%temperature(nSubcell(2)) + & 
+       temperature = fac*(neighbourOctal%temperature(nSubcell(1)) + neighbourOctal%temperature(nSubcell(2)) + & 
             neighbourOctal%temperature(nSubcell(3)) + neighbourOctal%temperature(nSubcell(4)))
 
        pressure = fac*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)) + & 
