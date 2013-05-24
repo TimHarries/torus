@@ -3348,6 +3348,15 @@ end subroutine readHeIIrecombination
     iEnd = nPhotons
 #endif
 
+!$OMP PARALLEL DEFAULT (NONE) &
+!$OMP PRIVATE (iPhoton, thisPhoton, thisSource, r, rhat, iSource, thisSourceWeight) &
+!$OMP PRIVATE (thisOctal, subcell, escaped, absorbed, observerPhoton, observerDirection) &
+!$OMP SHARED (iBeg, iEnd, powerPerPhoton, iLambdaPhoton, probSource, grid, source) &
+!$OMP SHARED (weightSource, weightEnv, nsource, thisImage) &
+!$OMP REDUCTION (+: totalFlux) 
+
+!$OMP DO
+
     mainloop: do iPhoton = iBeg, iEnd
 
        thisPhoton%weight = 1.d0
@@ -3395,6 +3404,8 @@ end subroutine readHeIIrecombination
        end do scatterloop
 
     end do mainloop
+!$OMP END DO
+!$OMP END PARALLEL
 
 #ifdef MPI
     call collateImages(thisImage,dest=1) ! writeoutput is set for rank 1 process 
