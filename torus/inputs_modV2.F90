@@ -183,7 +183,7 @@ contains
 !    endif
 
     call getLogical("rhofromtable", rhoFromTable, cLine, fLine, nLines, &
-         "Interpolate the density distribution from a table: ","(a,1l,1x,a)", .false., ok, .true.)
+         "Interpolate the density distribution from a table: ","(a,1l,1x,a)", .false., ok, .false.)
     
     if (rhoFromTable) call getString("rhofile", rhofile, cLine, fLine, nLines, &
          "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
