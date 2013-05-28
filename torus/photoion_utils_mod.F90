@@ -856,7 +856,10 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
   character(len=80) :: message
 
   write(message,*) "Setting up grid for "//trim(outputimageType)//" image."
+!  write(message,*) "Actually, I think its ",outputimageType
   call writeInfo(message, FORINFO)
+
+!  outputimagetype = trim(outputimageType)
 
   select case (outputimageType)
 
@@ -907,9 +910,15 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      endif
 
   case DEFAULT
-
-     call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
-     stop
+     print *, "IMAGETYPE NOT RECOGNISED, ASSUMING FREEFREE"
+     write(message,*) "Adding radio emissivity with lambda= ", lambdaImage*angstromToCm, " cm"
+     call writeInfo(message, FORINFO)
+     ilambdaPhoton = grid%nLambda
+     call  addRadioContinuumEmissivity(grid%octreeRoot,lambdaImage)
+     lcore = tiny(lcore)
+     
+!     call writeFatal("Imagetype "//trim(outputimageType)//" not recognised")
+!     stop
 
   end select
 

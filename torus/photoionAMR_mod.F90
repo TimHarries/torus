@@ -3006,7 +3006,7 @@ end subroutine radiationHydro
         !        minCrossings = 50000 
      else
         !        minCrossings = 5000
-        minCrossings = 100
+        minCrossings = 1000
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
@@ -3192,9 +3192,9 @@ end subroutine radiationHydro
 
 !     if(hydrodynamics) then
         call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-             "OI           ","HeI          ","HeII         ", "OI           ", "OII          ", &
-             "OIII         ","dust1        ","dust2        " /))
+             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  "/))
+!             "OI           ","HeI          ","HeII         ", "OI           ", "OII          ", &
+!             "OIII         ","dust1        ","dust2        " /))
      end if
 !
 !     if(hydrodynamics) then

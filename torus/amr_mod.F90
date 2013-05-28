@@ -858,6 +858,9 @@ CONTAINS
     CASE("triangle")
        call calcTriangle(thisOctal, subcell)
 
+    CASE("arbitrary")
+       call calcArbitrary(thisOctal, subcell)
+
     CASE("spiral")
        call calcSpiral(thisOctal, subcell)
 
@@ -7502,10 +7505,10 @@ endif
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
     if (rMod < (1.5d-10*pctocm)) then
-       thisOctal%rho(subcell) = 10.d0
+       thisOctal%rho(subcell) = 10.d0*mhydrogen
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 500.d0
+       thisOctal%rho(subcell) = 500.d0*mhydrogen
        thisOctal%temperature(subcell) = 10.d0
     endif
 
@@ -8921,6 +8924,110 @@ endif
 
   end subroutine calcTriangle
 
+
+  subroutine calcArbitrary(thisOctal,subcell)
+    use unix_mod, only: unixGetenv
+    use inputs_mod, only : molAbundance, tKinetic, vturb, nCol, n2max, amrGridSize
+    use inputs_mod, only : rhofile, nrholines
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real(double) :: x, bigL
+    integer :: ier, i
+    real(double) :: xpos(nrholines), rho(nrholines)
+    real(double) :: dx, grad
+    logical :: found
+    character(len=120) :: dataDirectory, file
+
+!not efficient, but minimal code modification
+!    filename = "./", rhofile
+!    rhofile = trim(rhofile)
+    call unixGetenv("WORKDIR", dataDirectory, i)
+    file = (trim(dataDirectory)//"/"//rhofile)
+    print *, "ATTEMPTING TO OPEN FILE"
+    rhofile = trim(file)
+   print *, rhofile
+
+!    open(1986, file=rhofile, status="old",  form="unformatted", position="rewind", iostat=ier)
+    open(unit=20, iostat=ier, file=rhofile, status="old")
+!    print *, "iostat = ", ier
+!    print *, "nrholines", nrholines
+    do i = 1, nrholines
+!       print *, "i ", i 
+       read(unit=20), xpos(i), rho(i)
+       if (ier /= 0) then
+          call torus_abort("read failure in arbitrary geometry")
+       end if
+!       print *, "x ", xpos(i)
+!       print *, "rho ", rho(i)
+!       print *, "nlines ", nrholines
+!       print *, "rhofile ", rhofile
+    end do
+
+    close(20)
+
+
+    bigL = amrGridSize
+
+    x = modulus(subcellCentre(thisOctal,subcell))
+    found = .false.
+!inefficient but itll do for now
+    i = 1
+    do while (i <  nrholines .and. .not. found)
+!       print *, "x ", x
+!       print *, "thisx ", xpos(i)
+       
+
+       if (x > xpos(i) .and. x < xpos(i+1)) then
+          dx = x - xpos(i)
+          grad = (rho(i+1) - rho(i))/(xpos(i+1) - xpos(i))
+          thisOctal%nh2(subcell) = rho(i) + (grad*dx)
+          found = .true.
+!          exit
+       end if  
+
+       if(x < xpos(1)) then
+          dx = xpos(1) - x
+          grad = (rho(2) - rho(1))/(xpos(2) - xpos(1))
+          thisOctal%nh2(subcell) = rho(1) - (grad*dx)
+          found = .true.
+       end if
+
+       if( x > xpos(nrholines)) then
+          dx = x - xpos(nrholines)
+          grad = (rho(nrholines) - rho(nrholines - 1))/(xpos(nrholines) - xpos(nrholines - 1))
+          thisOctal%nh2(subcell) = rho(nrholines) + (grad*dx)
+          found = .true.
+       end if
+       i = i + 1
+    end do
+
+    if(.not. found) then
+       print *, "x", x
+       print *, "xfilemin", xpos(1)
+       print *, "xfilemax", xpos(nrholines)
+       call torus_abort("Error setting up grid from inputrho file, tell tom h off")
+    end if
+
+    thisOctal%temperature(subcell) = real(tkinetic,si)
+    thisOctal%microTurb(subcell) = vturb*1.d5/cspeed
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    thisOctal%molAbundance(subcell) = molAbundance
+
+!    if (n2max < 0.d0) then
+!       thisOctal%nh2(subcell) = abs(n2max)
+!    else
+
+!       if (x < bigL/2.d0) then
+!          thisOctal%nh2(subcell) = 2.d0 * n2max * x / bigL
+!       else
+!          thisOctal%nh2(subcell) = 2.d0 * n2max * (bigL - x)/bigL
+!       endif
+!    endif
+    thisOctal%rho(subcell) = thisOctal%nh2(Subcell) * 2.d0 * mHydrogen
+
+  end subroutine calcArbitrary
+  
   subroutine WaterBenchmark1(thisOctal, subcell)
 
     use inputs_mod, only : molAbundance !, amr2d

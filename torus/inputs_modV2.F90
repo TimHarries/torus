@@ -175,11 +175,21 @@ contains
     call getLogical("readgrid", readGrid, cLine, fLine, nLines, &
          "Read grid file: ","(a,1l,1x,a)", .false., ok, .true.)
 
+
 !    if (multimodels.and.(.not.readgrid)) then
 !       write(message,*) "Multiple models specified by readgrid set to false"
 !       call writeFatal(message)
 !       stop
 !    endif
+
+    call getLogical("rhofromtable", rhoFromTable, cLine, fLine, nLines, &
+         "Interpolate the density distribution from a table: ","(a,1l,1x,a)", .false., ok, .true.)
+    
+    if (rhoFromTable) call getString("rhofile", rhofile, cLine, fLine, nLines, &
+         "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
+
+    if(rhofromtable)        call getInteger("nrholines", nrhoLines, cLine, fLine, nLines, &
+            "Number of lines in rhofile: ","(a,i7,a)", 1, ok, .true.)
 
     
     call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &

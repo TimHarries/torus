@@ -48,6 +48,9 @@
   integer :: nModelStart, nModelEnd ! start and end numbers for multiple models
   integer :: iModel               ! current model number
   logical :: justDump             !Dump a vtk file for the read in grid and exit
+  logical :: rhofromtable
+  character(len=80) :: rhofile
+  integer :: nrholines
   logical :: densitySpectrum      !Dump a density spectrum for the read in grid and exit
   real(double) :: normfac         ! density spectrum normalization factor
   logical :: dumpBisbas           !Dump the grid for use in the Bisbas+ 3D-PDR code
