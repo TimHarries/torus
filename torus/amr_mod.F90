@@ -8954,7 +8954,7 @@ endif
 !    print *, "nrholines", nrholines
     do i = 1, nrholines
 !       print *, "i ", i 
-       read(unit=20), xpos(i), rho(i)
+       read(unit=20) xpos(i), rho(i)
        if (ier /= 0) then
           call torus_abort("read failure in arbitrary geometry")
        end if
