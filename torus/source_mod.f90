@@ -460,9 +460,15 @@
               tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
            else                          
               if(cart2d) then
-                 tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
-                      grid%halfsmallestsubcell) * &                  
-                      (source(i)%radius*1.d10)**2 / (source(i)%distance**2)                 
+                 if(grid%octreeroot%twod) then
+                    tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
+                         grid%halfsmallestsubcell) * &                  
+                         (source(i)%radius*1.d10)**2 / (source(i)%distance**2)                 
+                 else
+                    tot = tot + flux *  (1.d20*(2.d0* &
+                         grid%halfsmallestsubcell)**2) * &  
+                         (source(i)%radius*1.d10)**2 / (source(i)%distance**2)    
+                 end if
               else
                  tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &                  
                       (source(i)%radius*1.d10)**2 / (source(i)%distance**2)

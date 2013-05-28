@@ -2877,7 +2877,10 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
               r = oldR + (newR-oldR) * (0.5 - oldHi)/(hi-oldhi)
 	     !print *, "Edge found"
 !             write(20,'(5e14.5)') grid%currentTime*secsToYears/1.d6, r*1.d10/(1000.d0*pctocm)
-             write(20,'(5e14.5)') grid%currentTime*secsToYears, r*1.d10/pctocm
+!              if(grid%octreeroot%oned .and. grid%geometry == "bonnor") then
+!                 r = r + (3.2951d9 - grid%octreeroot%subcellsize)
+!              end if
+              write(20,'(5e14.5)') grid%currentTime*secsToYears, r*1.d10/pctocm                 
              done = .true.
              goto 555
           end if

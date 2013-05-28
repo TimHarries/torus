@@ -762,10 +762,14 @@ CONTAINS
     if (thisOctal%oneD) then
 !       if(thisOctal%mpiThread(subcell) == 0) then
 !          !not domain decomposed
+       if(cart2d) then
+          v = (thisOctal%subcellSize**3)
+       else
           rVec = subcellCentre(thisOctal, subcell)
           r1 = rVec%x - thisOctal%subcellSize/2.d0
           r2 = rVec%x + thisOctal%subcellSize/2.d0
           v = (fourPi / 3.d0) * (r2**3-r1**3)
+       end if
 !       else
 !          v = thisOctal%subcellSize**3
 !          rVec = subcellCentre(thisOctal, subcell)

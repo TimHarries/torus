@@ -165,7 +165,7 @@ contains
        deltaTforDump = tdump
 
 !       if (grid%geometry == "hii_test") deltaTforDump = 9.d10
-       if (grid%geometry == "hii_test") deltaTforDump = 1.d5
+       if (grid%geometry == "hii_test") deltaTforDump = 1.d9
        if(grid%geometry == "bonnor") deltaTforDump = (1.57d11)!/5.d0 !5kyr
 !       if(grid%geometry == "radcloud") deltaTforDump = (1.57d11)!/5.d0 !5kyr
        if(grid%geometry == "starburst") deltaTforDump = tdump
@@ -1414,7 +1414,7 @@ end subroutine radiationHydro
           if(cart2d) then             
              if(grid%octreeroot%oned) then
                 lCore = lCore + source(i)%luminosity * (1.d20* &
-                     2.d0*grid%halfsmallestsubcell)**2 / (fourPi*source(i)%distance**2)
+                     (2.d0*grid%halfsmallestsubcell)**2) / (fourPi*source(i)%distance**2)
              else
                 lCore = lCore + source(i)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d20* &
                      2.d0*grid%halfsmallestsubcell) / (fourPi*source(i)%distance**2)
@@ -1442,7 +1442,7 @@ end subroutine radiationHydro
        if(.not. monteCheck .or. readGrid) then
           !waymaker photoionization loop
           if(grid%octreeRoot%twoD) then
-                nTotalMonte = int(4.d0**(maxDepthAMR))
+                nTotalMonte = int(4.d0**(maxDepthAMR))*100
              else if(grid%octreeRoot%threeD) then
                 !nMonte = (8.d0**(maxDepthAMR))
                 !nMonte = 5242880/2.
@@ -1616,7 +1616,7 @@ end subroutine radiationHydro
              if(cart2d) then
                 if(grid%octreeroot%oned) then
                    epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
-                        (1.d20*2.d0*grid%halfsmallestsubcell)**2)/dble(nMonte))
+                        (1.d20*(2.d0*grid%halfsmallestsubcell)**2))/dble(nMonte))
                 else
                    epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
                         (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
@@ -2995,7 +2995,7 @@ end subroutine radiationHydro
 
      anyUndersampled = .false.
      if(grid%geometry == "hii_test") then
-        minCrossings = 10000
+        minCrossings = 100
      else if(grid%geometry == "lexington") then
         if(grid%octreeroot%oned) then
            minCrossings = 50000
