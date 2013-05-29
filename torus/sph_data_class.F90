@@ -664,7 +664,7 @@ part_loop: do ipart=1, nlines
 ! Read in SPH data from an MPI dump file
 ! D. Acreman, June 2012
   subroutine read_sph_data_mpi(filename)
-    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks
 #ifdef MPI
     use mpi
 #endif
@@ -934,7 +934,7 @@ part_loop: do ipart=1, nlines
     i_pt_mass =0 
     do i=1, blocksum_npart
        if (iphase(i) > 0) then
-          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize)) then 
+          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize) .and. (.not.discardSinks)) then 
              i_pt_mass = i_pt_mass + 1
           endif
        endif
@@ -1001,7 +1001,7 @@ part_loop: do ipart=1, nlines
 
           endif
        else if(iphase(i) > 0) then
-          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize)) then 
+          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize).and. (.not.discardSinks)) then 
        
              iiisink=iiisink+1
 
