@@ -9,7 +9,8 @@
 #    7. make trace=yes   : Make torus with ITAC profiling
 #    8. make openmp=yes  : Make torus with OpenMP 
 #    9. make coverage=yes: Generate coverage statistics with gnu compilers 
-#   10. make zlib=yes:   : Use z-lib compression libary to produce vtu files
+#   10. make codecov=yes : Generate coverage statistics with ifort
+#   11. make zlib=yes:   : Use z-lib compression libary to produce vtu files
 #-------------------------------------------------------------------------
 
 USEMKL  = no
@@ -24,6 +25,7 @@ trace   = no
 openmp  = no 
 v2      = yes
 coverage = no
+codecov  = no
 withsphng = no
 hydro = yes
 molecular = yes
@@ -341,11 +343,19 @@ ifeq ($(profile), yes)
    ETCFLAG += -pg
 endif
 
+# Coverage flags for gfortran
 ifeq ($(coverage), yes)
    ETCFLAG +=  -fprofile-arcs -ftest-coverage
    FASTFLAG = 
 endif
 
+# Coverage flags for ifort
+ifeq ($(codecov), yes)
+   ETCFLAG += -prof-gen=srcpos
+   FASTFLAG = 
+endif
+
+# Intel Trace Analyser and Collector
 ifeq ($(trace), yes)
    TRACEFLAG = -trace
    ETCFLAG  += -tcollect
