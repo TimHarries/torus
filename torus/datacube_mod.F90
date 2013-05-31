@@ -51,16 +51,29 @@ module datacube_mod
   integer, save, private :: npixelsX ! number of spatial pixels in x-axis
   integer, save, private :: npixelsY ! number of spatial pixels in y-axis
 
+  logical, save, private :: useFixedBg
+  real, save, private    :: fixedBg
+
 contains
 
-  subroutine setCubeParams(npix_in, aspectratio)
+  subroutine setCubeParams(npix_in, aspectratio, WV_background)
     implicit none 
     integer, intent(in) :: npix_in
     real, intent(in)    :: aspectRatio 
+    real, intent(in)    :: WV_background
 
     npixelsX = int(npix_in * aspectratio)
     npixelsY = npixels
-    
+
+! Set background to subtract when generating moment maps
+! Negative values of WV_background set the bg to the minimum value in the data cube
+    if (WV_background < 0.0 ) then 
+       useFixedBg=.false.
+    else
+       useFixedBg=.true.
+       fixedBg=WV_background
+    endif
+
   end subroutine setCubeParams
 
 #ifdef USECFITSIO
@@ -429,9 +442,6 @@ contains
         real :: intensitySum, background
         integer :: i, j
         character(len=80) :: message
-
-        logical, parameter :: useFixedBg=.true.
-        real, parameter    :: fixedBg = 5.0
 
         allocate ( zeroMoment(thisCube%nx, thisCube%ny) )
         allocate ( firstMoment(thisCube%nx, thisCube%ny) )

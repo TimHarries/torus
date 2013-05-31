@@ -852,6 +852,10 @@ part_loop: do ipart=1, nlines
 ! Read in H2 fraction if required
        if ( ConvertRhoToHI ) then 
           READ (LUIN) ( h2ratio(i), i=iiigas+1,iiigas+blocknpart)
+          write(message,*) "Minimum H2 ratio: ", minval(h2ratio)
+          call writeInfo(message,TRIVIAL)
+          write(message,*) "Maximum H2 ratio: ", maxval(h2ratio)
+          call writeInfo(message,TRIVIAL)
           do j=1,nums(6)-10
              READ (LUIN)
           end do

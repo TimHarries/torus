@@ -2252,6 +2252,7 @@ contains
     TYPE(VECTOR) :: gridCentre
     character(len=100) :: message
     real :: cubeAspectRatio ! Aspect ratio of spatial axes
+    real :: WV_background ! background level for moment maps
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
@@ -2277,6 +2278,8 @@ contains
          "Calculate data cube of 21cm emission: ","(a,1l,a)", .false., ok, .false.)
     call getLogical("splitCubes", splitCubes, cLine, fLine, nLines, &
          "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
+    call getReal("wvbackground", WV_background, 1.0, cLine, fLine, nLines, &
+         "Background to subtract for moment maps: ","(a,f4.1,1x,a)", -1.0, ok, .false.)
 
     if (atomicPhysics) then
           call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
@@ -2428,7 +2431,7 @@ contains
     endif
        
 ! Set up values in datacube_mod
-    call setCubeParams(npixels, cubeAspectRatio)
+    call setCubeParams(npixels, cubeAspectRatio, WV_background)
 
   end subroutine readDataCubeParameters
 #endif
