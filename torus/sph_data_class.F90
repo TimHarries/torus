@@ -314,6 +314,8 @@ contains
     use inputs_mod, only: inputFileFormat, sphdatafilename
 
     select case (inputFileFormat)
+
+! If the mpi/binary routine is updated to handle CO then this subroutine is no longer required
     case("binarywithChem","galaxy")
        call read_sph_data_withChem(sphdatafilename)
        
@@ -364,7 +366,8 @@ contains
     logical :: useCO
     integer, parameter :: iCO = 15
     real(double)       :: COfrac
-! Do we need particle H2?
+! Do we need to store particle H2? convertRhoToHI converts density to HI density but doesn't 
+! store H2 fraction
     logical :: useH2
 
 ! Account for time in Galactic plane surveys
@@ -664,7 +667,8 @@ part_loop: do ipart=1, nlines
 ! Read in SPH data from an MPI dump file
 ! D. Acreman, June 2012
   subroutine read_sph_data_mpi(filename)
-    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
+         convertrhotohi
 #ifdef MPI
     use mpi
 #endif
@@ -699,6 +703,7 @@ part_loop: do ipart=1, nlines
     real(kind=8), allocatable    :: vxyzu(:,:)
     real(kind=8), allocatable    :: uoverTarray(:)
     real(kind=4), allocatable    :: rho(:)
+    real(kind=8), allocatable    :: h2ratio(:)
 
     integer,allocatable :: listpm(:)
     real(kind=8),allocatable    :: spinx(:)
@@ -716,6 +721,7 @@ part_loop: do ipart=1, nlines
 ! Mean molecular weight, used for calculating temperature from internal energy.
 ! This assumes a 10:1 H:He ratio by number
     real(double), parameter :: gmw = 14.0/11.0 
+    real(double) :: gmwWithH2
 
 #ifdef MPI
     if (myrankWorldGlobal == 0) then
@@ -758,6 +764,7 @@ part_loop: do ipart=1, nlines
     allocate( vxyzu(4,npart))
     allocate( uoverTarray(npart))
     allocate( rho(npart)    )
+    if (ConvertRhoToHI) allocate ( h2ratio(npart))
 
     do i=1,6
        read(LUIN)
@@ -842,9 +849,17 @@ part_loop: do ipart=1, nlines
           read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
-       do j=1,nums(6)-9
-          READ (LUIN)
-       end do
+! Read in H2 fraction if required
+       if ( ConvertRhoToHI ) then 
+          READ (LUIN) ( h2ratio(i), i=iiigas+1,iiigas+blocknpart)
+          do j=1,nums(6)-10
+             READ (LUIN)
+          end do
+       else
+          do j=1,nums(6)-9
+             READ (LUIN)
+          end do
+       end if
 
        read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
 
@@ -960,8 +975,15 @@ part_loop: do ipart=1, nlines
 
     if (nblocktypes.GE.3) then
        sphdata%codeEnergytoTemperature = 1.0
+    else if (convertRhoToHI) then
+       write(message,*) "Will convert density to HI density and set molecular weight accordingly"
+       call writeInfo(message,FORINFO)
+       sphdata%codeEnergytoTemperature = 1.0
     else
        sphdata%codeEnergytoTemperature = (2.0/3.0) * (gmw / Rgas) * ( (udist**2)/(utime**2) )
+       write(message,*) "Conversion factor between u and temperature (assumes molecular weight of", gmw,"): ", &
+            sphdata%codeEnergytoTemperature
+       call writeInfo(message,FORINFO)
     endif
 
     iiigas=0
@@ -976,7 +998,12 @@ part_loop: do ipart=1, nlines
 
              iiigas=iiigas+1
 
-             sphData%rhon(iiigas)  = rho(i)
+             if (convertRhoToHI) then
+                sphdata%rhon(iiigas) = (1.0-2.0*h2ratio(i))*rho(i)*5.0/7.0
+                sphdata%rhon(iiigas) = max(sphdata%rhon(iiigas),1.0e-60_db)
+             else
+                sphData%rhon(iiigas)  = rho(i)
+             endif
 
              sphdata%vxn(iiigas)         = vxyzu(1,i)
              sphdata%vyn(iiigas)         = vxyzu(2,i)
@@ -991,6 +1018,14 @@ part_loop: do ipart=1, nlines
                    stop
                 endif
                 sphData%temperature(iiigas) = sphData%temperature(iiigas) / uoverTarray(i)
+             endif
+
+! Convert internal energy to temperature using the mean molecular weight derived from the H2 fraction
+! sphdata%codeEnergytoTemperature = 1.0 so this needs to be temperature
+             if (convertRhoToHI) then
+                gmwWithH2 = (2.*h2ratio(i)+(1.-2.*h2ratio(i))+0.4) / (0.1+h2ratio(i)+(1.-2.*h2ratio(i)))
+                sphdata%temperature(iiigas) = (2.0/3.0) * sphData%temperature(iiigas) * ( gmwWithH2 / Rgas) &
+                     * ( (udist**2)/(utime**2) )
              endif
 
              sphData%xn(iiigas)          = xyzmh(1,i)
