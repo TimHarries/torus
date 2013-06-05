@@ -570,7 +570,7 @@ contains
           endif
        endif
 
-    case("triangle")
+    case("triangle", "arbitrary")
        call getDouble("ncol", nCol, 1.d0, cLine, fLine, nLines, &
             "Column density of H_2 (cm^-2): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
 

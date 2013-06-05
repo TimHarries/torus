@@ -8937,7 +8937,7 @@ endif
     real(double) :: xpos(nrholines), rho(nrholines)
     real(double) :: dx, grad
     logical :: found
-    character(len=120) :: dataDirectory, file
+    character(len=120) :: dataDirectory, file, thisrhofile
 
 !not efficient, but minimal code modification
 !    filename = "./", rhofile
@@ -8945,16 +8945,16 @@ endif
     call unixGetenv("WORKDIR", dataDirectory, i)
     file = (trim(dataDirectory)//"/"//rhofile)
     print *, "ATTEMPTING TO OPEN FILE"
-    rhofile = trim(file)
-   print *, rhofile
+    thisrhofile = trim(file)
+   print *, thisrhofile
 
-!    open(1986, file=rhofile, status="old",  form="unformatted", position="rewind", iostat=ier)
-    open(unit=20, iostat=ier, file=rhofile, status="old")
-!    print *, "iostat = ", ier
-!    print *, "nrholines", nrholines
+    open(20, file=thisrhofile, status="old",  form="formatted", position="rewind", iostat=ier)
+!    open(unit=20, iostat=ier, file=rhofile, form="unformatted", status="old")
+    print *, "iostat = ", ier
+    print *, "nrholines", nrholines
     do i = 1, nrholines
 !       print *, "i ", i 
-       read(unit=20) xpos(i), rho(i)
+       read(20, *, iostat=ier) xpos(i), rho(i)
        if (ier /= 0) then
           call torus_abort("read failure in arbitrary geometry")
        end if
