@@ -9,6 +9,9 @@ openmp  = yes
 cfitsio = no
 ETCFLAG  =
 
+# If the build is failing because cfitsio is not found you can add its location here e.g. 
+#ETCFLAG  = -L/sw/fits/lib
+
 # Set the SYSTEM environment variable to the name of your Fortran compiler
 
 ifeq ($(SYSTEM), g95)
