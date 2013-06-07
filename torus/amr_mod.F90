@@ -7493,6 +7493,7 @@ endif
 
 
   subroutine calcBubbleDensity(thisOctal,subcell)
+    use inputs_mod, only : amrgridcentrez, slabwidth
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7504,12 +7505,25 @@ endif
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
+!    if (rMod < (1.5d-10*pctocm)) then
+!       thisOctal%rho(subcell) = 10.d0*mhydrogen
+!       thisOctal%temperature(subcell) = 10.d0
+!    else
+!       thisOctal%rho(subcell) = 500.d0*mhydrogen
+!       thisOctal%temperature(subcell) = 10.d0
+!    endif
+
     if (rMod < (1.5d-10*pctocm)) then
        thisOctal%rho(subcell) = 10.d0*mhydrogen
        thisOctal%temperature(subcell) = 10.d0
     else
-       thisOctal%rho(subcell) = 500.d0*mhydrogen
-       thisOctal%temperature(subcell) = 10.d0
+       if(abs(rVec%z - amrgridcentrez) < slabwidth) then
+          thisOctal%rho(subcell) = 500.d0*mhydrogen
+          thisOctal%temperature(subcell) = 10.d0
+       else
+          thisOctal%rho(subcell) = 10.d-10*mhydrogen
+          thisOctal%temperature(subcell) = 10.d0
+       end if
     endif
 
 !THAW - temporary uniform density to check propagation stability
@@ -7735,32 +7749,37 @@ endif
     type(VECTOR) :: rVec, cen
     real(double) :: eThermal, R
 
-    cen = VECTOR(1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10)
-    rVec = subcellCentre(thisOctal, subcell)
+!    cen = VECTOR(1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10)
+!    rVec = subcellCentre(thisOctal, subcell)
+!
+!    rVec = rVec - cen
+!
+!    R = modulus(rVec)
+!
+!    if (R < (0.25d-10*pcToCm)) then
+!       thisOctal%rho(subcell) = 1.d4*1.4d0*mHydrogen
+!       thisOctal%temperature(subcell) = real(13.34d0)
+!       thisOctal%ionFrac(subcell,1) = 1.               !HI
+!       thisOctal%ionFrac(subcell,2) = 1.e-10           !HII!
+!       if (SIZE(thisOctal%ionFrac,2) > 2) then      !
+!          thisOctal%ionFrac(subcell,3) = 1.         !   !HeI
+!          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
+!       endif      
+!    else!
+!       t!hisOctal%rho(subcell) = 6.67d0*1.4d0*mHydrogen
+!       thisOctal%temperature(subcell) = real(10000.d0)
 
-    rVec = rVec - cen
+!       endif
+!    endif
 
-    R = modulus(rVec)
-
-    if (R < (0.25d-10*pcToCm)) then
-       thisOctal%rho(subcell) = 1.d4*1.4d0*mHydrogen
-       thisOctal%temperature(subcell) = real(13.34d0)
-       thisOctal%ionFrac(subcell,1) = 1.               !HI
-       thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
-       if (SIZE(thisOctal%ionFrac,2) > 2) then      
-          thisOctal%ionFrac(subcell,3) = 1.            !HeI
-          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
-       endif      
-    else
-       thisOctal%rho(subcell) = 6.67d0*1.4d0*mHydrogen
-       thisOctal%temperature(subcell) = real(10000.d0)
-       thisOctal%ionFrac(subcell,1) = 1.e-10               !HI
-       thisOctal%ionFrac(subcell,2) = 1.           !HII
-       if (SIZE(thisOctal%ionFrac,2) > 2) then      
-          thisOctal%ionFrac(subcell,3) = 1.e-10            !HeI
-          thisOctal%ionFrac(subcell,4) = 1.        !HeII          
-       endif
-    endif
+    thisOctal%rho(subcell) = 0.5d0*mhydrogen
+    thisOctal%temperature(subcell) = real(10000.d0)
+    thisOctal%ionFrac(subcell,1) = 1.e-10               !HI!
+    thisOctal%ionFrac(subcell,2) = 1.           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.e-10            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.        !HeII          
+    end if
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -7776,7 +7795,7 @@ endif
     thisOctal%inFlow(subcell) = .true.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhi(subcell) = 1.e-10
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
 !    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
     

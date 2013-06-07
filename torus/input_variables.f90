@@ -387,7 +387,7 @@
 !----------------------------------------------------------
 ! Geometry specific parameters (this is a large section !)
 !-----------------------------------------------------------
-
+  real(double) :: slabwidth ! width of slab in bubble calcs
   real(double) :: lXOverLbol ! ??? Sources for Ttauri geometry
   real(double) :: maxCellMass ! ??? Refinement control for Ttauri geometry
   real(double) :: mStarburst, clusterRadius ! ??? for starburst geometry

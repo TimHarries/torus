@@ -4145,21 +4145,22 @@ end subroutine sumFluxes
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
     
-    do iDir = 1, 3
+    do iDir = 1, 2
 !       print *, " DOING DIRECTION ", iDir
        select case (iDir)
           case(1)
              direction = VECTOR(1.d0, 0.d0, 0.d0)
-             dt = timeStep / 2.d0
+!             dt = timeStep / 2.d0
+             dt = timeStep
              thisBound = 2
           case(2)
              direction = VECTOR(0.d0, 0.d0, 1.d0)
              dt = timeStep
              thisBound = 3
-          case(3)
-             direction = VECTOR(1.d0, 0.d0, 0.d0)
-             dt = timeStep / 2.d0
-             thisBound = 2
+!          case(3)
+!             direction = VECTOR(1.d0, 0.d0, 0.d0)
+!             dt = timeStep / 2.d0
+!             thisBound = 2
        end select
        
        call setupX(grid%octreeRoot, grid, direction)
@@ -4989,9 +4990,9 @@ end subroutine sumFluxes
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     mu = 2.d0
-    if(grid%geometry == "SB_gasmix") then
-       mu = 1.4d0
-    end if
+!    if(grid%geometry == "SB_gasmix") then
+!       mu = 1.d0
+ !   end if
 
     viewVec = VECTOR(-1.d0,0.d0,0.d0)
     viewVec = rotateY(viewVec, 25.d0*degtorad)
@@ -5512,9 +5513,9 @@ end subroutine sumFluxes
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        mu = 2.d0
-       if(grid%geometry == "SB_gasmix") then
-          mu = 1.4d0
-       end if
+!       if(grid%geometry == "SB_gasmix") then
+!          mu = 1.d0
+ !      end if
 
 
        viewVec = VECTOR(-1.d0,0.d0,0.d0)
@@ -5851,9 +5852,9 @@ end subroutine sumFluxes
 
        direction = VECTOR(1.d0, 0.d0, 0.d0)
        mu = 2.d0
-       if(grid%geometry == "SB_gasmix") then
-          mu = 1.4d0
-       end if
+!       if(grid%geometry == "SB_gasmix") then
+!          mu = 1.d0
+ !      end if
 
 
        viewVec = VECTOR(-1.d0,0.d0,0.d0)
@@ -6960,7 +6961,7 @@ real(double) :: rho
     type(GRIDTYPE) :: grid
     integer :: subcell, i, bSubcell
     type(VECTOR) :: locator, dir, rVec
-    real(double) :: machNumber, Pr, rhor, gamma,  posFactor
+    real(double) :: machNumber, Pr, rhor, gamma,  posFactor, distance
 
     gamma = 5.d0/3.d0
     machNumber = 2.d0
@@ -7322,6 +7323,108 @@ real(double) :: rho
                    endif
 
                 case (8) ! stellar wind - do nothing added in addstellarwind
+
+
+                case(9) !gas mix
+                   locator = thisOctal%boundaryPartner(subcell)
+                   bOctal => thisOctal
+                   
+                  
+                    call findSubcellLocal(locator, bOctal, bSubcell)
+
+                   rVec = subcellcentre(thisoctal, subcell)
+
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+
+                   if(sqrt(dir%x**2) > 2.d0*grid%halfsmallestsubcell + 1.d-10) then
+                      if(locator%x > rvec%x) then
+                         locator%x = locator%x - (grid%halfsmallestsubcell + 1.d-10*grid%halfsmallestsubcell)
+
+                      else if(locator%x < rVec%x) then
+                         locator%x = locator%x + (grid%halfsmallestsubcell + 1.d-10*grid%halfsmallestsubcell)
+                      end if
+
+                   end if
+
+                   if(sqrt(dir%z**2) > 2.d0*grid%halfsmallestsubcell + 1.d-10) then
+                      if(locator%z > rvec%z) then
+                         locator%z = locator%z - (grid%halfsmallestsubcell + 1.d-10*grid%halfsmallestsubcell)
+
+                      else if(locator%z < rVec%z) then
+                         locator%z = locator%z + (grid%halfsmallestsubcell + 1.d-10*grid%halfsmallestsubcell)
+                      end if
+                   end if
+
+                   call findSubcellLocal(locator, bOctal, bSubcell)
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                   call normalize(dir)
+   
+   
+                   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+   
+                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
+
+                   thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                   thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                   thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+
+                   thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
+                   thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
+                   thisOctal%tempStorage(subcell,9) = bOctal%temperature(bSubcell)
+
+! NB confusion regarding 2d being x,z rather than x,y
+
+                   if (thisOctal%twod.or.thisOctal%oneD) then
+                      if (cylindricalHydro.and.doPhiGas) then
+                         thisOctal%tempStorage(subcell,1) = thisOctal%phi_gas(subcell)
+                        if (dir%x > 0.9d0) then
+                           thisOctal%tempStorage(subcell,1) = bOctal%phi_gas(bsubcell)
+                        endif
+                      endif
+
+                     if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                         thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                         thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
+                      endif
+!                      if ((abs(dir%x) > 0.5d0).and.abs(dir%z) > 0.5d0) then
+!                         thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
+!                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+!                         thisOctal%tempStorage(subcell,5) = -bOctal%rhow(bSubcell)
+!                      endif
+                   else if (thisOctal%threed) then
+                      if (abs(dir%x) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                         thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
+                      endif
+                      if (abs(dir%y) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                         thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
+                      endif
+                      if (abs(dir%z) > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                         thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
+                      endif
+                      if ((abs(dir%x) > 0.2d0).and.abs(dir%z) > 0.2d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                         thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
+                      endif
+                   endif
                    
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)
@@ -7807,7 +7910,7 @@ real(double) :: rho
                    
                    ! now a case to determine the boundary cell relations
                    select case (thisOctal%boundaryCondition(subcell))
-                   case(1, 5, 6)
+                   case(1, 5, 6, 9)
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
@@ -7971,7 +8074,7 @@ real(double) :: rho
                    
              ! now a case to determine the boundary cell relations
              select case (thisOctal%boundaryCondition(subcell))
-             case(1, 4, 5, 6)
+             case(1, 4, 5, 6, 9)
                  dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
                 
@@ -8452,7 +8555,7 @@ real(double) :: rho
 
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
-             case(1, 4, 5, 6)
+             case(1, 4, 5, 6, 9)
                 
                 if (thisOctal%edgeCell(subcell)) then
                    call locatorToNeighbour(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator)
@@ -8813,7 +8916,7 @@ real(double) :: rho
 
           if (thisOctal%ghostCell(subcell) .and. .not. thisOctal%corner(subcell) .and. trigger) then
              select case(thisOctal%boundaryCondition(subcell))
-             case(1, 4, 5, 6)
+             case(1, 4, 5, 6, 9)
                 
                 if (thisOctal%edgeCell(subcell)) then
                    call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator, nDepth)

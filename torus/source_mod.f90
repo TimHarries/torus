@@ -636,6 +636,7 @@
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
       type(VECTOR) :: cornerDir
+      logical :: ok
 
       if (PRESENT(weight)) weight = 1.d0
 
@@ -733,6 +734,25 @@
          direction = VECTOR(1.d0, 0.d0, 0.d0)
          if(grid%octreeroot%twod) then
             position%y = amrgridcentrey
+            if(grid%geometry == "SB_gasmix") then
+               ok = .true.
+               if(position%z < 2.6d-10*pctocm .and. position%z > 1.4d-10*pctocm) then                  
+                  !In the shadow
+                  ok = .false.
+               end if
+
+               if(.not. ok) then
+                  do while (.not. ok)
+                     call randomNumberGenerator(getDouble=r)
+                     r = 2.d0 * r - 1.d0
+                     position%z = r * grid%octreeRoot%subcellSize*2.d0
+                     if(position%z > 2.6d-10*pctocm .or. position%z < 1.4d-10*pctocm) then                  
+                        !In the shadow
+                        ok = .true.
+                     end if
+                  end do
+               end if
+            end if
          else if(grid%octreeroot%oned) then
             position%z = amrgridcentrez
             position%y = amrgridcentrey

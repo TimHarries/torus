@@ -250,6 +250,11 @@ contains
     call getDouble("lengthunit", lengthUnit, 1.d0, cLine, fLine, nLines, &
          "Code unit of length: ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
 
+    call getDouble("slabwidth", slabwidth, 1.d0, cLine, fLine, nLines, &
+         "Width of slab for bubble calc (pc): ","(a,e12.3,1x,a)", 1.d0, ok, .false.)
+
+    slabwidth = slabwidth*pctocm/1.d10
+
     call getbigInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
          "Number of photon packets","(a,i12,a)", 0, ok, .false.)
 
@@ -3421,6 +3426,8 @@ end subroutine getVector
          getBoundaryCode = 6
       case("inflowGrad") 
          getBoundaryCode = 7
+      case("gasmix") 
+         getBoundaryCode = 9
       case DEFAULT
          print *, "Unrecognised boundary string:", boundaryString
          print *, "Halting."

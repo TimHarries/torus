@@ -378,7 +378,7 @@ contains
        if (.not.timeDependentRT) then
           if (startFromNeutral) then
              call neutralGrid(grid%octreeRoot)
-          else if (grid%geometry /= "SB_gasmix") then
+          else
              call ionizeGrid(grid%octreeRoot)
           endif
        endif
@@ -2308,7 +2308,7 @@ end subroutine radiationHydro
                             if (r < albedo) then
                                uHat = randomUnitVector() ! isotropic scattering
 !                               if(cart2d) then
-                               if(cart2d .and. .not. source(1)%outsidegrid) then
+                               if(cart2d) then !.and. .not. source(1)%outsidegrid) then
                                   photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
@@ -2369,7 +2369,7 @@ end subroutine radiationHydro
 
                                uHat = randomUnitVector() ! isotropic emission
 !                               if(cart2d) then
-                               if(cart2d .and. .not. source(1)%outsidegrid) then
+                               if(cart2d) then !.and. .not. source(1)%outsidegrid) then
                                   photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
@@ -3006,7 +3006,7 @@ end subroutine radiationHydro
         !        minCrossings = 50000 
      else
         !        minCrossings = 5000
-        minCrossings = 1000
+        minCrossings = 10
      end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
@@ -3175,9 +3175,9 @@ end subroutine radiationHydro
 !     endif
 
 !     write(*,*) myrankglobal, " calling vtk writer"
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!     call writeVtkFile(grid, mpiFilename, &
-!          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+     call writeVtkFile(grid, mpiFilename, &
+          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
 !          "hydrovelocity","sourceCont   ","pressure     ", &
 !          "crossings    ", &
 !          "chiline      ", &
@@ -4522,7 +4522,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                   !write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
