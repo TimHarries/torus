@@ -6961,7 +6961,7 @@ real(double) :: rho
     type(GRIDTYPE) :: grid
     integer :: subcell, i, bSubcell
     type(VECTOR) :: locator, dir, rVec
-    real(double) :: machNumber, Pr, rhor, gamma,  posFactor, distance
+    real(double) :: machNumber, Pr, rhor, gamma,  posFactor!, distance
 
     gamma = 5.d0/3.d0
     machNumber = 2.d0
