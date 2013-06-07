@@ -7746,8 +7746,8 @@ endif
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    type(VECTOR) :: rVec, cen
-    real(double) :: eThermal, R
+!    type(VECTOR) :: rVec, cen
+    real(double) :: eThermal!, R
 
 !    cen = VECTOR(1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10, 1.d0*pcToCm/1.d10)
 !    rVec = subcellCentre(thisOctal, subcell)
