@@ -2786,7 +2786,7 @@ contains
     call getLogical("forbiddensed", forbiddenSED, cLine, fLine, nLines, &
          "Include forbidden line emission in SED: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getLogical("sedcospaced", UniformInCos, cLine, fLine, nLines, &
+    call getLogical("sedcosspaced", UniformInCos, cLine, fLine, nLines, &
          "SED inclinations are uniform in cos(inc): ","(a,1l,1x,a)", .true., ok, .false.)
 
     if (allocated(inclinations)) then 
