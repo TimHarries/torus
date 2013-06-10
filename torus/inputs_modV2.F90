@@ -585,16 +585,21 @@ contains
        call getDouble("n2max", n2max, 1.d0, cLine, fLine, nLines, &
             "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
 
-       if (n2max < 0.d0) then
-          amrGridSize  = real((nCol/abs(n2max))/1.d10)
-          amrGridCentreX = amrGridSize/2.0
+       if(geometry == "triangle") then
+          if (n2max < 0.d0) then
+             amrGridSize  = real((nCol/abs(n2max))/1.d10)
+             amrGridCentreX = amrGridSize/2.0
+          else
+             amrGridSize = real((2.d0*ncol/n2max)/1.d10)
+             amrGridCentreX = amrGridSize/2.0
+             amrGridCentreY = 0.d0 
+             amrGridCentreZ = 0.d0
+          endif
        else
-          amrGridSize = real((2.d0*ncol/n2max)/1.d10)
-          amrGridCentreX = amrGridSize/2.0
-          amrGridCentreY = 0.d0 
-          amrGridCentreZ = 0.d0
-       endif
-       
+             amrGridCentreX = amrGridSize/2.0
+             amrGridCentreY = 0.d0 
+             amrGridCentreZ = 0.d0
+       end if
        
 
 

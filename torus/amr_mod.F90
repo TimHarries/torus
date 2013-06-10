@@ -8963,9 +8963,9 @@ endif
 !    rhofile = trim(rhofile)
     call unixGetenv("WORKDIR", dataDirectory, i)
     file = (trim(dataDirectory)//"/"//rhofile)
-    print *, "ATTEMPTING TO OPEN FILE"
+!    print *, "ATTEMPTING TO OPEN FILE"
     thisrhofile = trim(file)
-   print *, thisrhofile
+!   print *, thisrhofile
 
     open(20, file=thisrhofile, status="old",  form="formatted", position="rewind", iostat=ier)
 !    open(unit=20, iostat=ier, file=rhofile, form="unformatted", status="old")
@@ -8997,7 +8997,7 @@ endif
 !       print *, "thisx ", xpos(i)
        
 
-       if (x > xpos(i) .and. x < xpos(i+1)) then
+       if (x >= xpos(i) .and. x <= xpos(i+1)) then
           dx = x - xpos(i)
           grad = (rho(i+1) - rho(i))/(xpos(i+1) - xpos(i))
           thisOctal%nh2(subcell) = rho(i) + (grad*dx)
