@@ -2675,8 +2675,8 @@ contains
     character(len=80) :: message
     logical :: sed, jansky, SIsed, uniformInCos
     integer :: nInclination
-    real    :: firstInclination
-    real    :: lastInclination=80.0
+    real    :: firstInclination, firstPA=0.0
+    real    :: lastInclination=80.0, lastPA=0.0
     real, allocatable :: inclinations(:)
     character(len=80) :: outFile 
 
@@ -2702,13 +2702,20 @@ contains
           inclinations(:) = inclinations(:) * real(degToRad)
        end if
     else
-       call getReal("firstinc", firstInclination, 1.0, cLine, fLine, nLines, &
+
+! firstinc is required if inclinations keyword is not present
+       call getReal("firstinc", firstInclination, real(degToRad), cLine, fLine, nLines, &
             "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
-       firstInclination = firstInclination * real(degToRad)
+! lasstinc is required if inclinations keyword is not present and there is >1 inclination to do
        if (nInclination > 1) &
-            call getReal("lastinc", lastInclination, 1.0, cLine, fLine, nLines, &
+            call getReal("lastinc", lastInclination, real(degToRad), cLine, fLine, nLines, &
             "Last inclination angle (deg): ","(a,f5.1,1x,a)", 80., ok, .true.)
-       lastInclination = lastInclination * real(degToRad)
+! Position angles default to zero, we don't need these for 2D geometries
+       call getReal("firstPA", firstPA, real(degToRad), cLine, fLine, nLines, &
+            "First position angle (deg): ","(a,f4.1,1x,a)", 0.0, ok, .false.)
+       call getReal("lastPA", lastPA, real(degToRad), cLine, fLine, nLines, &
+            "Last position angle (deg): ","(a,f5.1,1x,a)", 0.0, ok, .false.)
+
     end if
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
@@ -2797,10 +2804,10 @@ contains
          "SED inclinations are uniform in cos(inc): ","(a,1l,1x,a)", .true., ok, .false.)
 
     if (allocated(inclinations)) then 
-       call setSedParameters(outFile,jansky,SIsed,sed,incList=inclinations)
+       call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, incList=inclinations)
        deallocate(inclinations)
     else
-       call setSedParameters(outFile,jansky,SIsed,sed,nInclination=nInclination,&
+       call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
             firstInc=firstInclination,LastInc=LastInclination, cosSpacing=UniformInCos)
     end if
 

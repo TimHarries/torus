@@ -12,6 +12,7 @@ module sed_mod
 ! Which inclinations to use
   integer, private, save :: SedNInc 
   real, private, save, allocatable :: SedInclinations(:)
+  real, private, save, allocatable :: SedPositionAngles(:)
 
 ! Root for name of SED files
   character(len=80), save :: SedFileName
@@ -21,11 +22,12 @@ module sed_mod
   logical, save :: SEDwavLin
   integer, save :: SEDnumLam
 
-  public :: setSedParameters, getSedInc, getNumSedInc, getSedViewVec, writeSpectrum
+  public :: setSedParameters, getSedInc, getSedPA, getNumSedInc, getSedViewVec, writeSpectrum
 
 contains
 
-  subroutine setSedParameters(fileName,jansky,SIsed,sed,nInclination,firstInc,LastInc,cosSpacing,incList)
+  subroutine setSedParameters(fileName,jansky,SIsed,sed, firstPA, lastPA, &
+       nInclination,firstInc,LastInc,cosSpacing,incList)
     use kind_mod
     use messages_mod
     use constants_mod
@@ -33,6 +35,7 @@ contains
     logical, intent(in) :: jansky, SIsed, sed
     integer, intent(in), optional :: nInclination
     real, intent(in), optional    :: firstInc, LastInc
+    real, intent(in)              :: firstPA, lastPA ! Don't need to be optional, default to zero if not required
     logical, optional             :: cosSpacing
     real, intent(in), optional    :: incList(:)
     character(len=80), intent(in) :: fileName
@@ -43,6 +46,7 @@ contains
 ! If this is not the first call then deallocate allocatable arrays
     if (SedIsInitialised) then
        deallocate(SedInclinations)
+       deallocate(SedPositionAngles)
     end if
 
     SedIsInitialised   = .true.
@@ -56,7 +60,10 @@ contains
        call writeInfo("Using supplied list of SED inclinations", TRIVIAL)
        SedNInc = size(incList)
        allocate(SedInclinations(SedNInc))
+       allocate(SedPositionAngles(SedNInc))
        SedInclinations(:) = incList(:)
+       call writeInfo("Setting SED position angles to zero", FORINFO)
+       SedPositionAngles(:) = 0.0 
     else
 
 ! Check the required arguments are present
@@ -67,14 +74,19 @@ contains
        end if
 
 ! Check input values and issue a warning if anything is odd  
-       if (lastInc <= firstInc) call writeWarning("lastInc is not greater than firstInc")
+       if (lastInc < firstInc) call writeWarning("lastInc is less than firstInc")
+       if (lastPA < firstPA)   call writeWarning("lastPA is less than firstPA")
 
        SedNInc = nInclination
        allocate(SedInclinations(SedNInc))
+       allocate(SedPositionAngles(SedNInc))
 
-       SedInclinations(1) = firstInc
+       SedInclinations(1)   = firstInc
+       SedPositionAngles(1) = firstPA
        if ( nInclination > 1 ) then
           do i=2, SedNInc
+
+! Inclinations, either linear spaced or cos spaced in angle
              if (cosSpacing) then 
                 cos_inc_first = COS(firstInc)
                 cos_inc_last = COS(lastInc)
@@ -85,6 +97,11 @@ contains
                 SedInclinations(i) = firstInc + REAL(i-1) * &
                      (lastInc-firstInc)/REAL(nInclination-1)
              endif
+
+! Position angles, always linearly spaced
+             SedPositionAngles(i) = firstPA + REAL(i-1) * &
+                  (lastPA-firstPA)/REAL(nInclination-1)
+
           end do
        end if
     end if
@@ -102,6 +119,12 @@ contains
     integer, intent(in) :: i
     getSedInc = SedInclinations(i)
   end function getSedInc
+
+! Return position angle i from the list
+  real function getSedPA(i)
+    integer, intent(in) :: i
+    getSedPA = sedPositionAngles(i)
+  end function getSedPA
 
 ! Return the viewing vector for the ith SED
   function getSedViewVec(i)

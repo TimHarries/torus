@@ -225,7 +225,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer :: boundaryprobs   ! number of errors from integratePathAMR
   integer :: negativeOpacity ! number of errors from integratePathAMR
 
-  character(len=80) :: tempChar
+  character(len=80) :: tempChar, tempChar2
   character(len=80) :: phasePopFilename
   character(len=80) :: outFile, originalOutFile, filename
   character(len=80) :: specfile, obsfluxfile
@@ -1114,7 +1114,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            viewVec     = getImageViewVec(imNum)
         else
            inclination = getSedInc(iInclination)
-           imagePA     = 0.0
+           imagePA     = getSedPA(iInclination)
            viewVec     = getSedViewVec(iInclination)
         end if
 
@@ -1127,12 +1127,17 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            call writeInfo(message, TRIVIAL)
         end if
 
-
+! If the position angle is zero then just tag the SED file name with the inclination
+! For non-zero position angles tag with both inclination and position angle values
        if (iPhase == nStartPhase .and. iInclination == 1) originalOutFile = outFile
-         
        write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
-       outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
-       
+       write(tempChar2,'(i3.3)') NINT(imagePA*radToDeg)
+       if (imagePA == 0.0 ) then
+          outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
+       else
+          outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)//'_PA'//TRIM(tempChar2)
+       endif
+
        outVec = (-1.d0)*viewVec
        thisVec = viewVec
 
