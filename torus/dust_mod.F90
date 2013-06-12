@@ -534,7 +534,7 @@ contains
 
   end subroutine getRefractiveIndex
 
-  subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
+  subroutine fillGridMie(grid, aMin, aMax, a0, qDist, pDist, &
        ngrain, abundance, grainname, thisDust)
 !DEC$ NOOPTIMIZE
 ! This compiler directive disables optimisation in this subroutine, as  
@@ -550,7 +550,6 @@ contains
     integer :: thisDust
     real :: aMin, aMax,a0, qDist, pDist
     real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
-    real :: scale
     real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
     real :: meanParticleMass
@@ -570,7 +569,6 @@ contains
 #endif
 
 
-    scale = 1.
 
     allocate(sigmaAbs(1:grid%nLambda))
     allocate(sigmaSca(1:grid%nLambda))
@@ -704,7 +702,7 @@ contains
                       grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
                    endif
 
-                   !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k),scale
+                   !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k)
                 enddo
              enddo
           enddo
@@ -1460,7 +1458,7 @@ contains
     use mieDistPhaseMatrix_mod
     use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
-         grainname, x_grain, amin, amax, a0, qdist, pdist, scale, &
+         grainname, x_grain, amin, amax, a0, qdist, pdist, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
          ttau_disc_on, grainFrac
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
@@ -1503,7 +1501,7 @@ contains
 !          call writeInfo(message, FORINFO)
           do i = 1, nDustType
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-             call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+             call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                   ngrain, X_grain, grainname, i)
           enddo
        else
