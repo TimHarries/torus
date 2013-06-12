@@ -2630,10 +2630,10 @@ contains
           ! Inclination and position angle
           write(keyword,'(a)') "inclination"//iChar
           call getReal(keyword, thisInc, real(degtorad), cLine, fLine, nLines, &
-               "Inclination of image: ","(a,f4.1,1x,a)",inclination*real(radtodeg), ok, .false.)
+               "Inclination of image: ","(a,f6.1,1x,a)",inclination*real(radtodeg), ok, .false.)
           write(keyword,'(a)') "positionangle"//iChar
           call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
-               "Position angle (deg): ","(a,f4.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
+               "Position angle (deg): ","(a,f6.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
 
           ! Position of image centre
           write(keyword,'(a)') "imagecentrex"//iChar
@@ -2646,6 +2646,8 @@ contains
           call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
                thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance)
        enddo
+
+       call writeInfo(" ")
 
     end if
    
