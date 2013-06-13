@@ -1081,7 +1081,7 @@ module molecular_mod
 ! This is the loop that controls everything
 ! 1) istage = 1, fixed rays to reduce variance between cells or 
 ! 2) istage = 2, random rays to ensure sufficient spatial/frequency sampling
-      do iStage = 1, 2
+stage_loop: do iStage = 1, 2
          
          if (iStage .eq. 1) then
             fixedRays = .true.
@@ -1112,7 +1112,7 @@ module molecular_mod
 
 
 ! while grid not converged iteratively find level populations
-         do while (.not. gridConverged)
+grid_conv_loop: do while (.not. gridConverged)
 ! new iteration
             grand_iter = grand_iter + 1
 ! controls Ng Acceleration, pronounced do-ng-step, not dongstep
@@ -1246,7 +1246,7 @@ module molecular_mod
 
             !$OMP DO SCHEDULE(static)
 
-    do iOctal = ioctal_beg, ioctal_end
+octal_loop: do iOctal = ioctal_beg, ioctal_end
 !       if (writeoutput) then
 !          write(message,*) iOctal,ioctal_beg,ioctal_end
 !          call writeInfo(message,TRIVIAL)
@@ -1254,7 +1254,7 @@ module molecular_mod
 ! point thisoctal at the corresponding grid octal
        thisOctal => octalArray(ioctal)%content
 ! over all subcells in this octal
-       do subcell = 1, thisOctal%maxChildren
+subcell_loop: do subcell = 1, thisOctal%maxChildren
 ! at the tip of the branch find the level populations in all subcells...
           if (.not.thisOctal%hasChild(subcell)) then
 ! Actually, first thing is to get collision matrix because this doesn't require knowing npops
@@ -1302,7 +1302,7 @@ module molecular_mod
              iter = 0
              popsConverged = .false.
 ! Iterate between calculate jbar and solvelevels until converged
-             do while (.not. popsConverged)
+pops_conv_loop: do while (.not. popsConverged)
                 iter = iter + 1
 ! update levels so that current become old, old -> older etc.
 ! If not using ng then just store current levels for comparison
@@ -1384,10 +1384,10 @@ module molecular_mod
 !                   if(gettau) thisOctal%tau(1:mintrans,subcell) = &
 !                        calculatetau(grid, thisoctal, subcell, thismolecule, phi(1:nRay), ds(1:nRay))
                 endif
-             enddo ! while not converged
+             enddo pops_conv_loop ! while not converged
           endif ! if no child
-       enddo ! all subcells
-    enddo ! all octals
+       enddo subcell_loop ! all subcells
+    enddo octal_loop ! all octals
  !$OMP END DO
 
 !#ifdef MPI
@@ -1513,6 +1513,13 @@ module molecular_mod
            else
               call writeinfo("Convergence test not passed",TRIVIAL)
               call writeinfo(message,TRIVIAL)
+
+! To avoid the test suite hanging if molebench does not converge we'll bail out after 999 iterations. 
+              if (grand_iter > 999) then
+                 call writeWarning("molebench not converged after 999 iterations")
+                 exit stage_loop
+              endif
+
            endif
         endif
 ! Double number of rays if convergence criterion not met and not using fixed rays
@@ -1542,8 +1549,8 @@ module molecular_mod
            nRay = maxRay  ! stop when it's not practical to do more rays
            call writeWarning("Maximum number of rays exceeded - capping")
         endif
-     enddo
-  enddo
+     enddo grid_conv_loop
+  enddo stage_loop
   
   close(33)
 !  666 continue
