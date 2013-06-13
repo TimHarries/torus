@@ -3793,7 +3793,7 @@ CONTAINS
           endif          
 #ifdef USECFITSIO
        case("fitsfile")
-          split = checkFitsSplit(thisOctal)
+          split = checkFitsSplit(thisOctal,subcell)
 #endif
        case("runaway")
           

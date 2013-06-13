@@ -2,10 +2,6 @@
 
 ! Module for setting up a Torus grid from data held in a FITS file
 
-! To do: 
-! 1: Set filename as an input parameter
-! 2. Interpolation for when cell centres don't match axes in FITS file
-
 module gridFromFitsFile
   use kind_mod 
   use messages_mod
@@ -17,8 +13,9 @@ module gridFromFitsFile
 
   logical, private, save :: isRequired = .false.
 
-! Filename
+! Filename and type (VH1, pion)
   character(len=80), private, save :: filename="none"
+  character(len=80), private, save :: filetype
 
 ! Arrays to hold data from fits files
 ! Number of pixels
@@ -74,7 +71,7 @@ module gridFromFitsFile
       integer :: status, unit, blocksize
       integer, parameter :: readwrite=0 ! Open file read only 
       integer, parameter :: group=0
-      character(len=80) :: record, comment, filetype
+      character(len=80) :: record, comment
       logical :: found_file
 
 
@@ -515,31 +512,64 @@ npd_loop:            do n=1,npd
     end subroutine assign_from_fitsfile_nointerp
 
 !-------------------------------------------------------------------------------
-    logical function checkFitsSplit(thisOctal)
-!      use inputs_mod, only : amr2d, amr3d
+    logical function checkFitsSplit(thisOctal, subcell)
       use octal_mod
       use utils_mod, only : locate
 
-
       TYPE(OCTAL), intent(inout) :: thisOctal
+      integer, intent(in) :: subcell
       type(VECTOR) :: rVec
-      logical :: inPionDomain
-      rVec = thisOctal%centre
 
-      if (amr2d) then
-         inPionDomain = (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2))).and. &
-              (rVec%z >= xAxis(1)).and.(rVec%z <= xAxis(axis_size(1)))
-      else if (amr3d) then
-         inPionDomain = (rVec%x >= xAxis(1)).and.(rVec%x <= xAxis(axis_size(1))).and. &
-              (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
-              (rVec%z >= xAxis(3)).and.(rVec%z <= zAxis(axis_size(3)))
-      endif
-      checkFitsSplit = .false.
-      if (inPionDomain) then
-         if (amr2d) then
-            if (thisOctal%subcellSize > 0.5d0*min(dx,dy)) checkFitsSplit = .true.
-         endif
-      endif
+      select case(fileType)
+         case("VH1")
+            call checkFitsSplit_vh1
+         case("pion")
+            call checkFitsSplit_pion
+         case DEFAULT
+            call writeFatal("Fits file type not recognised")
+            stop
+      end select
+
+    contains 
+
+      subroutine checkFitsSplit_vh1
+        integer :: thisI, thisJ, thisK
+        real(double) :: cell_temperature
+
+        rvec = subcellCentre(thisOctal, subcell)
+        thisI = int( ( (rVec%x-xMin) / dx) + 0.5 )
+        thisJ = int( ( (rVec%y-yMin) / dy) + 0.5 )
+        thisK = int( ( (rVec%z-zMin) / dz) + 0.5 )
+
+        thisI = max( min(thisI,axis_size(1)), 1)
+        thisJ = max( min(thisJ,axis_size(2)), 1)
+        thisK = max( min(thisK,axis_size(3)), 1)
+
+! Split where temperature is below 1500K i.e where dust will be present
+        cell_temperature = temperature(thisI, thisJ, thisK)
+        checkFitsSplit = (cell_temperature < 1500.0) 
+
+      end subroutine checkFitsSplit_vh1
+
+      subroutine checkFitsSplit_pion
+        logical :: inPionDomain
+        rVec = thisOctal%centre
+        if (amr2d) then
+           inPionDomain = (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2))).and. &
+                (rVec%z >= xAxis(1)).and.(rVec%z <= xAxis(axis_size(1)))
+        else if (amr3d) then
+           inPionDomain = (rVec%x >= xAxis(1)).and.(rVec%x <= xAxis(axis_size(1))).and. &
+                (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
+                (rVec%z >= xAxis(3)).and.(rVec%z <= zAxis(axis_size(3)))
+        endif
+        checkFitsSplit = .false.
+        if (inPionDomain) then
+           if (amr2d) then
+              if (thisOctal%subcellSize > 0.5d0*min(dx,dy)) checkFitsSplit = .true.
+           endif
+        endif
+      end subroutine checkFitsSplit_pion
+
     end function checkFitsSplit
 
 !-------------------------------------------------------------------------------
