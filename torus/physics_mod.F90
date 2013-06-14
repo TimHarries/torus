@@ -812,9 +812,10 @@ contains
 end subroutine setupGlobalSources
 
 subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
-  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile
+  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile, includeGasOpacity
   use phasematrix_mod
   use dust_mod
+  use gas_opacity_mod
   type(GRIDTYPE) :: grid
   real, pointer :: xArray(:)
   character(len=*), optional :: fileStart
@@ -861,6 +862,12 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
   end if
   call allocateMemoryForDust(grid%octreeRoot)
+    if (includeGasOpacity) then
+       call createAllMolecularTables(100, 10.0, 2000.0, nLambda, xArray)
+    endif
+
+
+
 end subroutine setupDust
 
 subroutine testSuiteRandom()

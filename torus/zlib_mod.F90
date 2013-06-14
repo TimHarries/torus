@@ -348,9 +348,9 @@ contains
     nBytesInteger = 4
     
 #ifdef MEMCHECK
-       nbytesReal = sizeof(testreal)
-       nbytesDouble = sizeof(testDouble)
-       nbytesInteger = sizeof(testInteger)
+       nbytesReal = int(sizeof(testreal))
+       nbytesDouble = int(sizeof(testDouble))
+       nbytesInteger = int(sizeof(testInteger))
 #endif
 
     

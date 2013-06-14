@@ -7,6 +7,16 @@ use gridtype_mod, only : GRIDTYPE
 use messages_mod
 implicit none
 
+type lineListType
+   integer :: nLines
+   real(double), pointer :: wavelength(:) => null()
+   real(double), pointer :: logGF(:) => null()
+   real(double), pointer :: Jlower(:) => null()
+   real(double), pointer :: eLower(:) => null()
+   real(double), pointer :: JUpper(:) => null()
+   real(double), pointer :: eUpper(:) => null()
+end type lineListType
+
 type molecularKappaGrid
    character(len=80) :: filename
    character(len=80) :: source
@@ -16,7 +26,7 @@ type molecularKappaGrid
    integer :: nTemps
    real, pointer :: lamArray(:) => null()
    real, pointer :: tempArray(:) => null()
-   real, pointer :: kapArray(:,:) => null()
+   real(double), pointer :: kapArray(:,:) => null()
 end type molecularKappaGrid
 
 type tsujiPPtable
@@ -75,8 +85,8 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
 
 
   open(20,file="/home/th/plez/TiO.dat",status="old",form="formatted")
-
-  write(*,*) "Reading all ",nLines," TiO transitions..."
+  
+  if (writeoutput) write(*,*) "Reading all ",nLines," TiO transitions..."
 
   do i = 1, nLines
 
@@ -106,7 +116,7 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
 
   kappa(1:nLines) = kappa(1:nLines) * 1.e10 ! to code units
 
-  write(*,*) "Done."
+  if (writeoutput) write(*,*) "Done."
 
 end subroutine readTio
 
@@ -121,7 +131,7 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
   integer :: i1, i2
   integer :: nLines
   real :: lamArray(:)
-  real :: kapArray(:)
+  real(double) :: kapArray(:)
   real :: lambda(:)
   real :: kappa(:)
   real :: g(:)
@@ -178,14 +188,14 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
 
   nLines = 0
 
-  write(*,*) "Creating opacity look-up table..."
+  if (writeoutput) write(*,*) "Creating opacity look-up table..."
 
-  write(*,*) "Attempting to read a previous look-up table: ",trim(lookuptable%filename)
+  if (Writeoutput) write(*,*) "Attempting to read a previous look-up table: ",trim(lookuptable%filename)
 
   call readKappaGrid(lookuptable,nTemps, nLam, gridReadFromDisc)
 
   if (.not.gridReadFromDisc) then
-     write(*,*) "Correct lookup table not available, creating..."
+     if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
      LookupTable%nTemps = nTemps
      LookupTable%nLam = nLam
      
@@ -229,12 +239,12 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
         call createSample(LookupTable%tempArray(i), lamArray, LookupTable%kapArray(i,1:nLam), nLam, &
              nLines, lambda, kappa, g, excitation, lookuptable%mu)
      enddo
-     call writeKappaGrid(lookuptable)
+     if (writeoutput) call writeKappaGrid(lookuptable)
      deallocate(lambda, g, kappa, excitation)
   endif
 
 
-  write(*,*) lookuptable%molecule," opacity lookup table complete."
+  if (writeoutput) write(*,*) lookuptable%molecule," opacity lookup table complete."
 end subroutine createKappaGrid
 
 subroutine readKappaGrid(lookuptable,  wantedntemps, wantednlam, gridreadfromdisc)
@@ -255,8 +265,8 @@ subroutine readKappaGrid(lookuptable,  wantedntemps, wantednlam, gridreadfromdis
      goto 666
   endif
 
-  TioLookupTable%nTemps = nTemps
-  TioLookupTable%nLam = nLam
+  LookupTable%nTemps = nTemps
+  LookupTable%nLam = nLam
      
   allocate(LookupTable%tempArray(1:nTemps))
   allocate(LookupTable%lamArray(1:nLam))
@@ -286,20 +296,22 @@ end subroutine writeKappaGrid
 
 subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
   type(molecularKappaGrid) :: lookuptable 
-  real :: temperature
-  real,optional :: kappaAbs(:),kappaSca(:)
+  real :: temperature, thisTemp
+  real(double),optional :: kappaAbs(:),kappaSca(:)
   real :: fac
   integer :: i
 
-  if ((temperature < LookupTable%tempArray(1)).or.(temperature > LookupTable%tempArray(LookupTable%nTemps))) then
-     write(*,*) "! temperature is outside opacity array bounds"
-     write(*,*) "temperature",temperature,LookupTable%temparray(1), LookupTable%temparray(LookupTable%nTemps)
-     stop
-  endif
-  
-  call locate(LookupTable%tempArray, LookupTable%nTemps, temperature, i)
+  thisTemp = max(LookupTable%tempArray(1), min(temperature, LookupTable%tempArray(LookupTable%nTemps)))
 
-  fac = (temperature-LookupTable%tempArray(i))/(LookupTable%tempArray(i+1)-LookupTable%tempArray(i))
+!  if ((temperature < LookupTable%tempArray(1)).or.(temperature > LookupTable%tempArray(LookupTable%nTemps))) then
+!     write(*,*) "! temperature is outside opacity array bounds"
+!     write(*,*) "temperature",temperature,LookupTable%temparray(1), LookupTable%temparray(LookupTable%nTemps)
+!     stop
+!  endif
+  
+  call locate(LookupTable%tempArray, LookupTable%nTemps, thisTemp, i)
+
+  fac = (thisTemp-LookupTable%tempArray(i))/(LookupTable%tempArray(i+1)-LookupTable%tempArray(i))
   if (PRESENT(kappaAbs)) then 
      kappaAbs(1:LookupTable%nLam) = LookupTable%kapArray(i,1:LookupTable%nLam) + &
           fac*(LookupTable%kapArray(i+1,1:LookupTable%nLam)-LookupTable%kapArray(i,1:LookupTable%nLam))
@@ -309,14 +321,16 @@ subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
   endif
 end subroutine returnKappaArray
 
-subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSca, kappaAbsArray, kappaScaArray)
+subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSca, kappaAbsArray, kappaScaArray, ilambda)
   type(GRIDTYPE) :: grid
   real :: temperature
   real, optional :: lambda
   real(double) :: rho
   logical, save :: firstTime = .true.
+  integer,optional :: iLambda
   real, allocatable,save :: rayScatter(:)
   real(double), optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
+  real(double),allocatable :: tArray(:)
   real(double) :: nhi !, nh, ne,freq
   integer :: i
   !$OMP THREADPRIVATE (firstTime, rayScatter)
@@ -326,22 +340,18 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 !  nHI = nh - ne
 
   nhi = rho/mhydrogen
-  if (PRESENT(kappaAbs)) kappaAbs = 0.d0
+  if (PRESENT(kappaAbs)) then
+     allocate(tarray(1:coLookupTable%nlam))
+     call returnKappaArray(temperature, coLookupTable, kappaAbs=tArray)
+     kappaAbs = tArray(ilambda)
+     deallocate(tArray)
+  endif
+     
+
   if (PRESENT(kappaAbsArray)) then
      kappaAbsArray = 0.d0
-     if (firsttime) then 
-        write(*,*) "returnGasKappaValue: kappaAbsArray is set to zero ", &
-        "temperature=", temperature, "is not used"
-        firstTime = .false.
-     end if
-!     do i = 1, grid%nLambda
-!        freq = cspeed/(grid%lamArray(i)*angstromtocm)
-!        kappaAbsArray(i) = kappaAbsArray(i) +  ne * nhI * &
-!            alpkk_hyd(freq,dble(temperature)) * (1.d0-exp(-(hcgs*freq)/(kerg*temperature)))
 
-
-
-!     enddo
+     call returnKappaArray(temperature, coLookupTable, kappaAbs=kappaAbsArray)
   endif
 
   if (PRESENT(kappaSca)) then
@@ -358,6 +368,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
         firstTime = .false.
      endif
      kappaScaArray = rayScatter
+     kappaScaArray = 1.d-30
 !     kappaSca = kappaSca + ne * sigmaE * 1.d10
   endif
 
@@ -650,7 +661,7 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
 
 
 
-  write(*,*) "Reading from ",trim(filename)
+  if (writeoutput) write(*,*) "Reading from ",trim(filename)
 
   do i = 1, nLines
 
@@ -677,7 +688,7 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
 
   call wavenumberToEv(excitation, nLines)
 
-  write(*,*) "Done."
+  if (writeoutput) write(*,*) "Done."
 
 end subroutine readKurucz
 
@@ -690,23 +701,23 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
   dataDirectory = " "
   ! h2o
 
-  h2oLookupTable%molecule = "H2O"
-  h2oLookupTable%mu = 1.+1.+16.
-  h2oLookupTable%filename = "h2olookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"h2o.dat"
-  h2oLookupTable%source = filename 
-  call createKappaGrid(h2olookuptable, nTemps, t1, t2, nLam, lamArray)
+!  h2oLookupTable%molecule = "H2O"
+!  h2oLookupTable%mu = 1.+1.+16.
+!  h2oLookupTable%filename = "h2olookuptable.dat"
+!  call unixGetenv("TORUS_DATA", dataDirectory, i)
+!  filename = trim(dataDirectory)//"/"//"h2o.dat"
+!  h2oLookupTable%source = filename 
+!  call createKappaGrid(h2olookuptable, nTemps, t1, t2, nLam, lamArray)
 
   ! tio
 
-  tioLookupTable%molecule = "TiO"
-  tioLookupTable%mu = 48.+16.
-  tioLookupTable%filename = "tiolookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"tio.dat"
-  tioLookupTable%source = filename 
-  call createKappaGrid(tiolookuptable, nTemps, t1, t2, nLam, lamArray)
+!  tioLookupTable%molecule = "TiO"
+!  tioLookupTable%mu = 48.+16.
+!  tioLookupTable%filename = "tiolookuptable.dat"
+!  call unixGetenv("TORUS_DATA", dataDirectory, i)
+!  filename = trim(dataDirectory)//"/"//"tio.dat"
+!  tioLookupTable%source = filename 
+!  call createKappaGrid(tiolookuptable, nTemps, t1, t2, nLam, lamArray)
 
 
   ! ch
@@ -811,7 +822,7 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 
   do i = 1, nLines
 
-     if (mod(i,nLines/10) == 0) write(*,*) i 
+     if (writeoutput.and.(mod(i,nLines/10) == 0)) write(*,*) i 
 
      READ(20,REC=i) ibyte(1:4) , ibyte2(1:2), ibyte3(1:2)
 
@@ -854,9 +865,9 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
   enddo
   close(20)
 
-  write(*,*) "Associating statistical weights..."
+  if (Writeoutput) write(*,*) "Associating statistical weights..."
   do i = 1, nLines
-     if (mod(i,nLines/10) == 0) write(*,*) i 
+     if ((mod(i,nLines/10) == 0).and.writeoutput) write(*,*) i 
      call locate(e, 273201, wavenumber(i),j)
      g(i) = wt(j)
   enddo
@@ -868,8 +879,10 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 
   call wavenumberToEv(excitation, nLines)
 
-  write(*,*) "Done."
+  if (writeoutput) write(*,*) "Done."
 
 end subroutine readH2O
+
+  
 
 end module gas_opacity_mod

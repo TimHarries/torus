@@ -12259,7 +12259,7 @@ end function readparameterfrom2dmap
     real :: frac
     real :: tlambda
 !    real, parameter :: sublimationTemp = 1500., subRange = 100.
-!    real :: tArray(1000)
+    real(double) :: tArray(1000)
     real(double) :: freq, dfreq, norm !,  bnutot
     integer :: i,j,m,itemp
     real :: fac
@@ -12356,10 +12356,10 @@ end function readparameterfrom2dmap
       else
          kappaAbsArray(1:nlambda) = thisOctal%kappaAbs(subcell,:)
       endif
-!       if (includeGasOpacity) then
-!          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
-!          kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
-!       endif
+       if (includeGasOpacity) then
+          call returnGasKappaValue(grid,thisOctal%temperature(subcell), thisOctal%rho(subcell),  kappaAbsArray=tarray)
+          kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+       endif
 !       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
 
     endif
@@ -12567,13 +12567,21 @@ end function readparameterfrom2dmap
       endif
       kappaP = 0.d0
       norm = 0.d0
-      do i = grid%nLambda,2,-1
+      if (includeGasOpacity) then
+         call returnGasKappaValue(grid,real(temperature), thisOctal%rho(subcell),  kappaAbsArray=tarray)
+      endif
+      do i = 2, grid%nLambda
          freq = cSpeed / (grid%lamArray(i)*1.e-8)
-         dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
+         dfreq = cSpeed / (grid%lamArray(i-1)*1.e-8) - cSpeed / (grid%lamArray(i)*1.e-8)
          do j = 1, nDustType
             kappaP = kappaP + real(thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  thisOctal%rho(subcell) *&
                  dble(bnu(dble(freq),dble(temperature)))  * dfreq)
+
+            if (includeGasOpacity) then
+               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(dble(freq),dble(temperature)))  * dfreq
+            endif
+
          enddo
          norm = norm + dble(bnu(dble(freq),dble(temperature)))  * dfreq
       enddo

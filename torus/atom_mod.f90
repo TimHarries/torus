@@ -351,7 +351,7 @@ contains
     else
        fac2 = 1.d0/(exp(fac3) - 1.d0)
     endif
-    bNu = fac1 * fac2
+    bNu = max(fac1 * fac2,0.d0)
   end function bNu
 
 

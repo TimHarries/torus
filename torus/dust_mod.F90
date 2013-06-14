@@ -892,8 +892,8 @@ contains
        else
           fac = 1.
 
-          if ((grid%geometry == "shakara").or. &
-               ((grid%geometry == "ttauri").and.ttauriDisc)) then
+!          if ((grid%geometry == "shakara").or. &
+           if (((grid%geometry == "ttauri").and.ttauriDisc)) then
               rVec = subCellCentre(thisOctal, Subcell)
               r = sqrt(rVec%x**2 + rVec%y**2)
               if (r < 1.01d0*rSublimation) then

@@ -15,6 +15,7 @@ module lucy_mod
   use vtk_mod, only: writeVtkFile
   use mpi_global_mod, only: myRankGlobal
   use memory_mod
+  use gas_opacity_mod
   implicit none
 
 #ifdef USEMKL
