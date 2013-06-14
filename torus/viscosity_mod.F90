@@ -621,7 +621,7 @@ contains
              dt = min(thisTime, dt)
 
 
-	     acc = (thisOctal%rhov(subcell)**2) &
+             acc = (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)**2*r**3)
 
              thisTime = 0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc)

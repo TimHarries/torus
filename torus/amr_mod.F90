@@ -12579,7 +12579,7 @@ end function readparameterfrom2dmap
                  dble(bnu(dble(freq),dble(temperature)))  * dfreq)
 
             if (includeGasOpacity) then
-               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(dble(freq),dble(temperature)))  * dfreq
+               kappaP = kappaP + real(tarray(i)*thisOctal%rho(subcell) * dble(bnu(dble(freq),dble(temperature)))  * dfreq)
             endif
 
          enddo

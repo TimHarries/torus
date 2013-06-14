@@ -1688,8 +1688,10 @@ end subroutine radiationHydro
           if (myRankGlobal == 0) then
              if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              mainloop: do iMonte = iMonte_beg, iMonte_end
-                   if ((myHydroSetGlobal == 0).and.&
-                        (mod(iMonte,max(1,(imonte_end-imonte_beg+1)/10)) == 0)) write(*,*) "imonte ",imonte
+!                   if ((myHydroSetGlobal == 0).and.&
+!                        (mod(iMonte,max(int(1,kind=bigint),(imonte_end-imonte_beg+1)/int(10,kind=bigint),&
+!                        kind=bigint) == 0))) &
+!                        write(*,*) "imonte ",imonte
 !                   if ((myHydroSetGlobal == 1).and.&
 !                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte1 ",imonte
 !                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
