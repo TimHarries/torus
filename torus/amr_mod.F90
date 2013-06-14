@@ -7514,15 +7514,16 @@ endif
 !    endif
 
     if (rMod < (1.5d-10*pctocm)) then
+       print *, "GOT ONE"
        thisOctal%rho(subcell) = 10.d0*mhydrogen
-       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%temperature(subcell) = 10000.d0
     else
        if(abs(rVec%z - amrgridcentrez) < slabwidth) then
           thisOctal%rho(subcell) = 500.d0*mhydrogen
-          thisOctal%temperature(subcell) = 10.d0
+          thisOctal%temperature(subcell) = 10000.d0
        else
           thisOctal%rho(subcell) = 10.d-10*mhydrogen
-          thisOctal%temperature(subcell) = 10.d0
+          thisOctal%temperature(subcell) = 10000.d0
        end if
     endif
 
@@ -7772,7 +7773,7 @@ endif
 !       endif
 !    endif
 
-    thisOctal%rho(subcell) = 0.5d0*mhydrogen
+    thisOctal%rho(subcell) = 5.d0*mhydrogen
     thisOctal%temperature(subcell) = real(10000.d0)
     thisOctal%ionFrac(subcell,1) = 1.e-10               !HI!
     thisOctal%ionFrac(subcell,2) = 1.           !HII

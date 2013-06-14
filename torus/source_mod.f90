@@ -724,19 +724,24 @@
             !direction%x = abs(direction%x)
          end if
       else
-         position%x = amrgridcentrex-grid%octreeRoot%subcellSize+(1.d-10*grid%halfsmallestsubcell)
+         position%x = amrgridcentrex-grid%octreeRoot%subcellSize-(1.d-10*grid%halfsmallestsubcell)
          call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%y = r * grid%octreeRoot%subcellSize*2.d0
          call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%z = r * grid%octreeRoot%subcellSize*2.d0
+!         direction = VECTOR(1.d0, 0.d0, 0.d0)
          direction = VECTOR(1.d0, 0.d0, 0.d0)
          if(grid%octreeroot%twod) then
             position%y = amrgridcentrey
             if(grid%geometry == "SB_gasmix") then
                ok = .true.
-               if(position%z < 2.6d-10*pctocm .and. position%z > 1.4d-10*pctocm) then                  
+!               if(position%z < 2.6d-10*pctocm .and. position%z > 1.4d-10*pctocm) then                  
+!               if(position%z < 2.625d-10*pctocm .and. position%z > 1.375d-10*pctocm) then              
+               if(position%z < (6.d8 + (10.d0*6.d8/32.d0)) .and. position%z > &
+                    (6.d8 - (10.d0*6.d8/32.d0))) then
+!               if(position%z < 2.75d-10*pctocm .and. position%z > 4.312d8) then              
                   !In the shadow
                   ok = .false.
                end if
@@ -746,7 +751,10 @@
                      call randomNumberGenerator(getDouble=r)
                      r = 2.d0 * r - 1.d0
                      position%z = r * grid%octreeRoot%subcellSize*2.d0
-                     if(position%z > 2.6d-10*pctocm .or. position%z < 1.4d-10*pctocm) then                  
+!                     if(position%z > 2.6d-10*pctocm .or. position%z < 1.4d-10*pctocm) then                  
+!                     if(position%z > 2.75d-10*pctocm .or. position%z < 1.25d-10*pctocm) then                  
+                     if(position%z > (6.d8 + (10.d0*6.d8/32.d0)) .or. position%z < &
+                          (6.d8 - (10.d0*6.d8/32.d0))) then
                         !In the shadow
                         ok = .true.
                      end if

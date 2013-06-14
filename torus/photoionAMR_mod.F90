@@ -3178,24 +3178,27 @@ end subroutine radiationHydro
      write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
      call writeVtkFile(grid, mpiFilename, &
           valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+!, &
+!             "OI           ","HeI          ","HeII         ", "OI           ", "OII          "/))
+
 !          "hydrovelocity","sourceCont   ","pressure     ", &
 !          "crossings    ", &
 !          "chiline      ", &
 !          "dust1        ", &
 !          "diff         "/))
 
-     if(singleMegaPhoto) then
+!     if(singleMegaPhoto) then
 
         write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
         call writeAmrGrid(mpiFilename, .false., grid)
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
 
 !     if(hydrodynamics) then
-        call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  "/))
+ !       call writeVtkFile(grid, mpiFilename, &
+  !           valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  "/))
 !             "OI           ","HeI          ","HeII         ", "OI           ", "OII          ", &
 !             "OIII         ","dust1        ","dust2        " /))
-     end if
+!     end if
 !
 !     if(hydrodynamics) then
 !        call writeVtkFile(grid, mpiFilename, &

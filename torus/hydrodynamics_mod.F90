@@ -1283,10 +1283,14 @@ contains
                 dpdx_i_minus_1 = (pressure_i - pressure_i_minus_2) / (2.d0*dx)
 
 
-                thisOctal%u_interface(subcell) = 0.5d0*(u_i + u_i_minus_1) - &
-                     (dt/(0.5d0*(rho_i_minus_1 + rho_i)))*dpdx_i_minus_half + &
-                     0.5d0 * ((dt/rho_i)*dpdx_i + (dt/rho_i_minus_1)*dpdx_i_minus_1)
-
+                if(dpdx_i_minus_1 /= 0.d0 .and. dpdx_i_minus_half /= 0.d0 .and. &
+                     dpdx_i /= 0.d0) then
+!the approximation screws up if applied to cells that are symmetric on one side only
+!i.e. in a model with zero gradient boundaries you get preferential flow in in - direction
+                   thisOctal%u_interface(subcell) = 0.5d0*(u_i + u_i_minus_1) - &
+                        (dt/(0.5d0*(rho_i_minus_1 + rho_i)))*dpdx_i_minus_half + &
+                        0.5d0 * ((dt/rho_i)*dpdx_i + (dt/rho_i_minus_1)*dpdx_i_minus_1)
+                end if
 
              endif
 
@@ -4145,22 +4149,22 @@ end subroutine sumFluxes
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
     
-    do iDir = 1, 2
+    do iDir = 1, 3
 !       print *, " DOING DIRECTION ", iDir
        select case (iDir)
           case(1)
              direction = VECTOR(1.d0, 0.d0, 0.d0)
-!             dt = timeStep / 2.d0
-             dt = timeStep
+             dt = timeStep / 2.d0
+!             dt = timeStep
              thisBound = 2
           case(2)
              direction = VECTOR(0.d0, 0.d0, 1.d0)
              dt = timeStep
              thisBound = 3
-!          case(3)
-!             direction = VECTOR(1.d0, 0.d0, 0.d0)
-!             dt = timeStep / 2.d0
-!             thisBound = 2
+          case(3)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
        end select
        
        call setupX(grid%octreeRoot, grid, direction)
@@ -4172,6 +4176,14 @@ end subroutine sumFluxes
        !set up grid values
 !       call computepressureGeneral(grid, grid%octreeroot, .true.) 
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
+
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+    !boundary conditions
+    call imposeBoundary(grid%octreeRoot, grid)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+
+
        if(present(perturbPressure)) then
           continue ! do nothing but avoid compiler warning
 !          call PerturbPressureGrid(grid%octreeRoot)
@@ -4184,6 +4196,7 @@ end subroutine sumFluxes
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
        call setupUi(grid%octreeRoot, grid, direction, dt)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setupUpm(grid%octreeRoot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)   
 
@@ -4200,8 +4213,13 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
        !calculate and set up pressures   
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+    !boundary conditions
+    call imposeBoundary(grid%octreeRoot, grid)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
@@ -4212,6 +4230,14 @@ end subroutine sumFluxes
        call setupUpm(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .true.)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+
+    !boundary conditions
+    call imposeBoundary(grid%octreeRoot, grid)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupRhoPhi(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupPressure(grid%octreeRoot, grid, direction)
@@ -4226,6 +4252,7 @@ end subroutine sumFluxes
        !modify rhou and rhoe due to pressure/gravitational potential gradient
        call pressureForce(grid%octreeRoot, dt, grid, direction)
     enddo
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
     call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
@@ -7344,9 +7371,8 @@ real(double) :: rho
                          locator%x = locator%x + (grid%halfsmallestsubcell + 1.d-10*grid%halfsmallestsubcell)
                       end if
 
-                   end if
 
-                   if(sqrt(dir%z**2) > 2.d0*grid%halfsmallestsubcell + 1.d-10) then
+                      elseif(sqrt(dir%z**2) > 2.d0*grid%halfsmallestsubcell + 1.d-10) then
                       if(locator%z > rvec%z) then
                          locator%z = locator%z - (grid%halfsmallestsubcell + 1.d-10*grid%halfsmallestsubcell)
 
@@ -7395,9 +7421,9 @@ real(double) :: rho
                          thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
                       endif
 !                      if ((abs(dir%x) > 0.5d0).and.abs(dir%z) > 0.5d0) then
-!                         thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
+!                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
 !                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
-!                         thisOctal%tempStorage(subcell,5) = -bOctal%rhow(bSubcell)
+!                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
 !                      endif
                    else if (thisOctal%threed) then
                       if (abs(dir%x) > 0.9d0) then
