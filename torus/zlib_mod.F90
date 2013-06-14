@@ -338,6 +338,21 @@ contains
     integer(kind=1), pointer :: outBuffer(:), inBuffer(:)
     integer :: nBytes, i, iByte
     integer(kind=bigInt) :: nout
+    real(double), parameter :: testDouble  = 0.d0
+    real, parameter :: testReal = 0.
+    integer, parameter :: testInteger = 0
+    integer :: nBytesDouble, nBytesReal, nBytesInteger
+
+    nBytesReal = 4
+    nBytesDouble = 8
+    nBytesInteger = 4
+    
+#ifdef MEMCHECK
+       nbytesReal = sizeof(testreal)
+       nbytesDouble = sizeof(testDouble)
+       nbytesInteger = sizeof(testInteger)
+#endif
+
     
     if (present(cString)) then
        nbytes = len(cString)
@@ -347,7 +362,7 @@ contains
     endif
 
     if (present(intValue)) then
-       nbytes = 4
+       nbytes = nBytesInteger
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(intValue, inputBuffer(1:nBytes))
     endif
@@ -369,20 +384,20 @@ contains
     endif
 
     if (present(realArray1d)) then
-       nbytes = SIZE(realArray1d)*4
+       nbytes = SIZE(realArray1d)*nBytesReal
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(realArray1d, inputBuffer(1:nBytes))
     endif
 
     if (present(vectorArray1d)) then
-       nbytes = SIZE(vectorArray1d)*8*3
+       nbytes = SIZE(vectorArray1d)*nBytesDouble*3
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(vectorArray1d, inputBuffer(1:nBytes))
     endif
 
 
     if (present(vectorValue)) then
-       nbytes = 8*3
+       nbytes = nBytesDouble*3
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(vectorValue, inputBuffer(1:nBytes))
     endif
@@ -397,38 +412,38 @@ contains
 
 
     if (present(integerArray1d)) then
-       nbytes = size(integerArray1d)*4
+       nbytes = size(integerArray1d)*nBytesInteger
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(integerArray1d, inputBuffer(1:nBytes))
     endif
 
 
     if (present(doubleArray1d)) then
-       nbytes = size(doubleArray1d)*8
+       nbytes = size(doubleArray1d)*nBytesDouble
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(doubleArray1d, inputBuffer(1:nBytes))
     endif
 
     if (present(doubleArray2d)) then
-       nbytes = size(doubleArray2d,1)*size(doubleArray2d,2)*8
+       nbytes = size(doubleArray2d,1)*size(doubleArray2d,2)*nBytesdouble
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(doubleArray2d, inputBuffer(1:nBytes))
     endif
 
     if (present(realArray2d)) then
-       nbytes = size(realArray2d,1)*size(realArray2d,2)*8
+       nbytes = size(realArray2d,1)*size(realArray2d,2)*nBytesReal
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(realArray2d, inputBuffer(1:nBytes))
     endif
 
     if (present(doubleArray3d)) then
-       nbytes = size(doubleArray3d,1)*size(doubleArray3d,2)*size(doubleArray3d,3)*8
+       nbytes = size(doubleArray3d,1)*size(doubleArray3d,2)*size(doubleArray3d,3)*nBytesDouble
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(doubleArray3d, inputBuffer(1:nBytes))
     endif
 
     if (present(doubleValue)) then
-       nbytes = 8
+       nbytes = nBytesDouble
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(doubleValue, inputBuffer(1:nBytes))
     endif

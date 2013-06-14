@@ -1408,7 +1408,7 @@ contains
        enddo
     enddo
 
-endif
+ endif
 
 
     close(lunit)
@@ -2418,6 +2418,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   endif
 
   if (writeheader) then
+     write(*,*) myrankGlobal, " opening ",trim(vtkFilename), " as stream"
      open(lunit, file=vtkFilename, form="unformatted",access="stream",status="replace")
      buffer = '<?xml version="1.0"?>'//lf
      write(lunit) trim(buffer)

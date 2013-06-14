@@ -610,12 +610,23 @@ contains
 
              thisTime = sqrt(smallestCellSize*gridDistanceScale/acc)
              dt = min(thisTime, dt)
+
+
+
              
              rVec = subcellCentre(thisOCtal, subcell)
              r = rVec%x * gridDistanceScale
              torque = abs(fVisc%y) * r
              thisTime = max(1.d4,thisOctal%rhov(subcell)) / max(torque,1.d-20)
              dt = min(thisTime, dt)
+
+
+	     acc = (thisOctal%rhov(subcell)**2) &
+                     / (thisOctal%rho(subcell)**2*r**3)
+
+             thisTime = 0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc)
+             dt = min(thisTime, dt)
+
 
              thisTime = (twoPi*r)/sqrt(bigG*mSol/r)
              dt = min(thisTime, dt)

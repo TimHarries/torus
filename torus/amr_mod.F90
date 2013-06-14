@@ -8440,8 +8440,11 @@ endif
     real(double) :: inertia, beta, rCloud, mCloud, eGrav
 
 
-    mCloud = 1.d0 * msol
-    rCloud = 5.d16
+!    mCloud = 1.d0 * msol
+!    rCloud = 5.d16
+
+    mCloud = 100.d0 * msol
+    rCloud = 0.1d0 * pctocm
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
     beta = 0.16d0
@@ -8479,12 +8482,17 @@ endif
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
-    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
-    thisOctal%pressure_i(subcell) = kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/(2.33d0*mHydrogen)
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-    thisOctal%boundaryCondition(subcell) = 4
+    thisOctal%temperature(subcell) = 20.d0
+    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 2.d0
 
-    thisOctal%iEquationOfState(subcell) = 4
+!    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+!    thisOctal%pressure_i(subcell) = kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/(2.33d0*mHydrogen)
+!    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+!    thisOctal%boundaryCondition(subcell) = 4
+
 
   end subroutine calcProtoBinDensity
 

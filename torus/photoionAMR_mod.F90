@@ -1040,7 +1040,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump
-    use inputs_mod, only : resetDiffusion, usePacketSplitting
+    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
@@ -1599,7 +1599,7 @@ end subroutine radiationHydro
     call mpi_allreduce(sourceInThickCell, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
     sourceInThickCell = tempLogical
     if (sourceInThickCell.and.usePacketSplitting) then
-       nSmallPackets = 100
+       nSmallPackets = inputNSmallPackets
        smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
     endif
     if (radPressureTest) nSmallPackets = 0
@@ -1689,7 +1689,7 @@ end subroutine radiationHydro
              if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              mainloop: do iMonte = iMonte_beg, iMonte_end
                    if ((myHydroSetGlobal == 0).and.&
-                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte ",imonte
+                        (mod(iMonte,max(1,(imonte_end-imonte_beg+1)/10)) == 0)) write(*,*) "imonte ",imonte
 !                   if ((myHydroSetGlobal == 1).and.&
 !                        (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0)) write(*,*) "imonte1 ",imonte
 !                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
@@ -2411,8 +2411,8 @@ end subroutine radiationHydro
                                
                                
                             endif
-                         if (nScat > 100000) then
-                            write(*,*) "Nscat exceeded 10000, forcing escape"
+                         if (nScat > 1000000) then
+                            write(*,*) "Nscat exceeded 1000000, forcing escape"
                             write(*,*) 1.e8*cspeed/thisFreq
                             write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
                             
@@ -3020,19 +3020,22 @@ end subroutine radiationHydro
      call MPI_ALLREDUCE(undersampled, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
      undersampled = tempLogical
 
+     undersampled = .false.
+
      converged = .false.
      if (myrankWorldGlobal == 0) write(*,*) "Maximum fractional change in T is ",maxDeltaT
      if (maxDeltaT < 0.05d0) converged = .true.
-     if (undersampled) then
-        converged = .false.
-        nTotalMonte = nTotalMonte * 2
-        if (myrankWorldGlobal == 0) write(*,*) "Undersampled cells found. Increasing nMonte to ",nTotalMonte
-     endif
      if ((maxiter > 1).and.(niter <= 8).and.variableDustSublimation) converged = .false.
      if (nIter >= maxIter) then
         if (myRankWorldGlobal == 0) write(*,*) "Exceeded maxiter iterations, forcing convergence"
         converged = .true.
+     else if (undersampled) then
+        converged = .false.
+        nTotalMonte = nTotalMonte * 2
+        if (myrankWorldGlobal == 0) write(*,*) "Undersampled cells found. Increasing nMonte to ",nTotalMonte
      endif
+
+
 !     write(*,*) "myrank ",myrankGlobal, " converged ",converged, " undersampled ",undersampled
 
 !       if (myRankGlobal /= 0) then
@@ -3147,9 +3150,7 @@ end subroutine radiationHydro
 !          if (myrankGlobal == 0) maxDeltaT = -1.d30
 !          call mpi_allreduce(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
 !          maxDeltaT = tempDouble
-          
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-     
      deallocate(octalArray)    
      
      !     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

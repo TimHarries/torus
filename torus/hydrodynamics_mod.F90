@@ -2588,6 +2588,10 @@ contains
                 if (includePressureTerms) then
                    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
+
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "u speed over 200 after pressure forces"
+                   endif
                    if (debug) then
                       write(*,*) "change in mom from pressure in x ",- dt * &
                            (p_i_plus_half - p_i_minus_half) / dx
@@ -2597,6 +2601,11 @@ contains
 ! alpha viscosity
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
+
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "u speed over 200 after viscous forces"
+                   endif
+
                 if (debug) then
                    write(*,*) "change in mom from viscosity in x ", dt * fVisc%x
                 endif
@@ -2605,8 +2614,16 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "u speed over 200 after gas gravity forces"
+                   endif
+
+
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
 
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "u speed over 200 after sink gravity forces"
+                   endif
 
                 if (debug) then
                    write(*,*) "change in mom from gravity in x ", dt * & !gravity due to gas
@@ -2619,8 +2636,16 @@ contains
                 ! now centrifugal term
 
 
+                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
+
+
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
+
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "u speed over 200 after centrifugal forces"
+                      write(*,*) "rho ",thisOctal%rho(subcell)
+                   endif
 
 
 
@@ -2645,6 +2670,9 @@ contains
                    if (debug) then
                       write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
 
+                   endif
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "u speed over 200 after rad pressure forces"
                    endif
 
                 endif
@@ -2680,6 +2708,12 @@ contains
                 if (includePressureTerms) then
                    thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
+
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "w speed over 200 after pressure forces"
+                   endif
+
+
                 endif
                 if (debug) then
                    write(*,*) "change in mom from pressure in z ",- dt * &
@@ -2689,7 +2723,10 @@ contains
 ! alpha viscosity
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
-                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "w speed over 200 after viscous forces"
+                   endif
+
 
 !                write(*,*) "ratio vr/vtheta: ",thisOctal%rhou(subcell)/(thisOctal%rhov(subcell)/r), thisOctal%rho(subcell),r/1e14
 
@@ -2702,6 +2739,11 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "w speed over 200 after gas gravity forces"
+                   endif
+
+
                 thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + dt * gravForceFromSinks%z ! grav due to sinks
 
 
@@ -2710,10 +2752,17 @@ contains
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 endif
 
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "w speed over 200 after sink gravity forces"
+                   endif
 
                 if (radiationPressure) then
                    thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
                         dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                      write(*,*) "w speed over 200 after rad pressure forces"
+                   endif
 
                    if (debug) then
                       write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
@@ -3932,16 +3981,16 @@ end subroutine sumFluxes
     call transferTempStorage(grid%octreeRoot)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
-    if (selfGravity) then
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call zeroSourcepotential(grid%octreeRoot)
-       if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
-       endif
-       call sumGasStarGravity(grid%octreeRoot)
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-    endif
+!    if (selfGravity) then
+!       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+!       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!       call zeroSourcepotential(grid%octreeRoot)
+!       if (globalnSource > 0) then
+!          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+!       endif
+!       call sumGasStarGravity(grid%octreeRoot)
+!       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+!    endif
 
 !self gravity (periodic)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
@@ -4466,7 +4515,7 @@ end subroutine sumFluxes
                 call normalize(rHat)
                 acc = acc + ((-1.d0)*(bigG * source(isource)%mass*rMod/(rMod**2 + eps**2)**1.5d0))*rHat
              enddo
-             tc = min(tc, sqrt(dx/modulus(acc)))
+             tc = min(tc, sqrt(dx/max(modulus(acc),1.d-30)))
 
           endif
  
@@ -11925,7 +11974,7 @@ end subroutine refineGridGeneric2
   end subroutine multiGrid
 
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
-    use inputs_mod, only :  maxDepthAMR, dirichlet
+    use inputs_mod, only :  maxDepthAMR, dirichlet, amr3d
     use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid
@@ -11940,6 +11989,11 @@ end subroutine refineGridGeneric2
 
     tol = 1.d-5
     tol2 = 1.d-6
+
+    if (amr3d) then
+       tol = 1.d-4
+       tol2 = 1.d-5
+    endif
 
 
     nHydroThreads = nHydroThreadsGlobal
@@ -12624,7 +12678,7 @@ end subroutine minMaxDepth
                  point%y = temp(2)
                  point%z = temp(3)
                  v = 0.d0
-                 call multipoleExpansionLevel(grid%octreeRoot, point, com, v, m, level=6)
+                 call multipoleExpansionLevel(grid%octreeRoot, point, com, v, m, level=4)
                  call mpi_send(v, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
               endif
            enddo

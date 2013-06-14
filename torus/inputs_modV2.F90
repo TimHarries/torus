@@ -302,6 +302,8 @@ contains
             "Use just dust opacities: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("packetsplitting", usePacketSplitting, cLine, fLine, nLines, &
             "Use photon packet splitting: ", "(a,1l,1x,a)", .true., ok, .false.)
+       call getInteger("nsmallpackets", inputnSmallPackets, cLine, fLine, nLines, &
+            "Number of small packets per big packet: ","(a,i8,a)", 100, ok, .false.)
     end if
 
     if (molecularPhysics.and.atomicPhysics) then
@@ -1153,10 +1155,10 @@ contains
             "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
        call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
-            "Core mass (solar masses): ","(a,f6.4,a)", 0.5, ok, .true.)
+            "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
 
        call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
-            "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+            "Disc mass (solar masses): ","(a,f8.4,a)", 1.e-4, ok, .true.)
 
        call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
             "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)

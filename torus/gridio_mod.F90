@@ -190,7 +190,7 @@ contains
              endif
           endif
 
-             call writeAmrGridSingle(filename, fileFormatted, grid)
+          call writeAmrGridSingle(filename, fileFormatted, grid)
 
           if (.not.uncompressedDumpFiles) then
              if (iThread < nHydroThreadsGlobal) then
@@ -2186,7 +2186,9 @@ contains
             call readCompressedFile(lunit, n)
             call readCompressedFile(lunit, m)
             allocate(value(1:n,1:m))
+!            write(*,*) "allocated array ",n,m
             call readCompressedFile(lunit,value)
+!            write(*,*) "found ",value(1:n,1:m)
          endif
       endif
     end subroutine readRealPointer2DFlexi
@@ -3844,11 +3846,11 @@ contains
                endif
             endif
             tag = ADJUSTL(tag)
+!            write(*,*) myrankglobal," tag: ",trim(tag)
 
             if (tag == "GRIDBEGINS") cycle
             if (tag == "GRIDENDS") exit
 
-!               write(*,*) "tag: ",trim(tag)
             select case (trim(tag))
             case("version")
                call readSingleFlexi(20, grid%version, fileFormatted)

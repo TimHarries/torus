@@ -109,11 +109,11 @@ contains
        grid%splitOverMPI = splitOverMPI
 #ifdef MPI
 
-!       do i = 1, 8
-!          grid%octreeRoot%mpiThread(i) = i
-!       enddo
+       do i = 1, 8
+          grid%octreeRoot%mpiThread(i) = i
+       enddo
 
-!       call distributeMPIthreadLabels(grid%octreeRoot)
+       call distributeMPIthreadLabels(grid%octreeRoot)
 
 #ifdef PHOTOION
 
