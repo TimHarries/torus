@@ -581,8 +581,11 @@ contains
           if (timeDependentRT) then
              call getRecombinationTime(grid%octreeRoot, recombinationDt)
              call getIonizationTime(grid%octreeRoot, grid, ionizationDt, globalepsOverDeltaT)
-             call getThermalTime(grid%octreeRoot, grid, thermalDt, globalepsOverDeltaT)
+             if(.not. cart2d) then
+                call getThermalTime(grid%octreeRoot, grid, thermalDt, globalepsOverDeltaT)
+             end if
           endif
+
 
           if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
@@ -1569,23 +1572,25 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       call tauRadius(grid, VECTOR(-1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1)
-       call MPI_BCAST(maxDiffRadius1, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-       call tauRadius(grid, VECTOR(0.d0, 0.d0, -1.d0), 1.d0, maxDiffRadius2)
-       call MPI_BCAST(maxDiffRadius2, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
-       if (splitThisTime) sourceInThickCell = .true.
-
-       maxDiffRadius = min(maxDiffRadius1, maxDiffRadius2)
-       if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
-
-       if (myrankGlobal /= 0) then
-          call setDiffusionZoneOnRadius(grid%octreeRoot, maxDiffRadius)
-          do i = 1, globalnSource
-             if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
-          enddo
-       endif
-       
+       if(.not. cart2d) then
+          call tauRadius(grid, VECTOR(-1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1)
+          call MPI_BCAST(maxDiffRadius1, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+          call tauRadius(grid, VECTOR(0.d0, 0.d0, -1.d0), 1.d0, maxDiffRadius2)
+          call MPI_BCAST(maxDiffRadius2, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+          
+          if (splitThisTime) sourceInThickCell = .true.
+          
+          maxDiffRadius = min(maxDiffRadius1, maxDiffRadius2)
+          if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
+          
+          if (myrankGlobal /= 0) then
+             call setDiffusionZoneOnRadius(grid%octreeRoot, maxDiffRadius)
+             do i = 1, globalnSource
+                if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
+             enddo
+          endif
+          
 !    do i = 1, globalnSource
 !       call findSubcellTD(globalSourceArray(i)%position, grid%octreeRoot,thisOctal, subcell)
 !       if (octalOnThread(thisOctal,subcell,myrankGlobal)) then
@@ -1596,13 +1601,14 @@ end subroutine radiationHydro
 !       endif
 !    enddo
 
-    call mpi_allreduce(sourceInThickCell, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
-    sourceInThickCell = tempLogical
-    if (sourceInThickCell.and.usePacketSplitting) then
-       nSmallPackets = inputNSmallPackets
-       smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
-    endif
-    if (radPressureTest) nSmallPackets = 0
+          call mpi_allreduce(sourceInThickCell, tempLogical, 1, MPI_LOGICAL, MPI_LOR, localWorldCommunicator, ierr)
+          sourceInThickCell = tempLogical
+          if (sourceInThickCell.and.usePacketSplitting) then
+             nSmallPackets = inputNSmallPackets
+             smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
+          endif
+       end if
+       if (radPressureTest) nSmallPackets = 0
     if (writeoutput) then
        write(*,*) "Setting nSmallPackets to ",nSmallPackets
     endif
