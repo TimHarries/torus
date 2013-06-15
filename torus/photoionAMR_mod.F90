@@ -3198,9 +3198,9 @@ end subroutine radiationHydro
 
 !     if(singleMegaPhoto) then
 
-        write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
-        call writeAmrGrid(mpiFilename, .false., grid)
-        write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!        write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
+!        call writeAmrGrid(mpiFilename, .false., grid)
+!        write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
 
 !     if(hydrodynamics) then
  !       call writeVtkFile(grid, mpiFilename, &
