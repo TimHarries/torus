@@ -12509,15 +12509,20 @@ end function readparameterfrom2dmap
 
    if (includeGasOpacity.and.(.not.PRESENT(rosselandkappa))) then
 
-!      if (PRESENT(kappaAbs)) then
-!         if (.not.PRESENT(lambda)) then
-!            tlambda = grid%lamArray(iLambda)
-!         else
-!            tlambda = lambda
-!         endif
-!         call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, kappaAbs=tGas)
-!         kappaAbs = kappaAbs + tGas*thisOctal%rho(subcell)
-!      endif
+      if (PRESENT(kappaAbs)) then
+         temperature = thisOctal%temperature(subcell)
+         
+         if (PRESENT(atthistemperature)) then
+            temperature = atthistemperature
+         endif
+         if (.not.PRESENT(lambda)) then
+            tlambda = grid%lamArray(iLambda)
+         else
+            tlambda = lambda
+         endif
+         call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, ilambda = ilambda, kappaAbs=tGas)
+         kappaAbs = kappaAbs + tGas*thisOctal%rho(subcell)
+      endif
       
       if (PRESENT(kappaSca)) then
          if (.not.PRESENT(lambda)) then

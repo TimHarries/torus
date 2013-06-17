@@ -21,6 +21,7 @@ type molecularKappaGrid
    character(len=80) :: filename
    character(len=80) :: source
    character(len=3) :: molecule
+   real :: abundance ! relative to N(H)
    real :: mu
    integer :: nLam
    integer :: nTemps
@@ -121,7 +122,7 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
 end subroutine readTio
 
 subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
-     kappa, g, excitation, mu)
+     kappa, g, excitationLower, excitationUpper, mu, abundance)
   real :: temperature
   real :: vTherm
   real(double):: partFunc
@@ -135,11 +136,12 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
   real :: lambda(:)
   real :: kappa(:)
   real :: g(:)
-  real :: excitation(:)
+  real :: excitationLower(:),excitationUpper(:)
   real :: dv
   real :: gaussFac
   real :: fac
   real :: mu
+  real :: abundance
   
 
 
@@ -148,7 +150,7 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
 
   partFunc = 0.
   do i = 1, nLines
-     partFunc = partFunc + dble(g(i))*exp(-dble(excitation(i)/(kEv * temperature)))
+     partFunc = partFunc + dble(g(i))*exp(-dble(excitationLower(i)/(kEv * temperature)))
  enddo
 
   kapArray(1:nLam)  = 0.
@@ -162,13 +164,15 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
         dv = real(cSpeed * (lambda(i)-lamArray(j))/lamArray(j))
         gaussFac = real(1./(vTherm*sqrt(2.*pi))*exp(-(dv**2)/(2.*vTherm**2)))
         if (partfunc /= 0.) then
-           fac =  real(exp(-dble(excitation(i)/(kEv * temperature))) / partFunc * dble(g(i)))
+           fac =  real(exp(-dble((excitationLower(i)/(kEv * temperature))) / partFunc))
+           fac = fac * (1.d0 - exp(-(excitationUpper(i) - excitationLower(i))/(kEv * temperature)))
         else
            fac = 0.
         endif
         kapArray(j) = kapArray(j) + kappa(i)*fac*gaussFac
      enddo
   enddo
+  kapArray(1:nLam) = kapArray(1:nLam) * abundance 
 end subroutine createSample
 
 subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
@@ -179,11 +183,12 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
   real :: t1, t2
   integer :: i
   integer :: nLines
-  real, allocatable :: excitation(:)
+  real, allocatable :: excitationLower(:),excitationUpper(:)
   real, allocatable  :: g(:)
   real, allocatable :: kappa(:)
   real, allocatable :: lambda(:)
   logical :: gridReadFromdisc
+  character(len=80) :: fname
   gridReadFromDisc = .false.
 
   nLines = 0
@@ -193,6 +198,15 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
   if (Writeoutput) write(*,*) "Attempting to read a previous look-up table: ",trim(lookuptable%filename)
 
   call readKappaGrid(lookuptable,nTemps, nLam, gridReadFromDisc)
+
+  if (gridreadfromdisc.and.writeoutput) then
+     write(fname,'(a,a)') trim(lookuptable%molecule),"_kappa.dat"
+     open(69,file=fname,status="unknown",form="formatted")
+     do i = 1, nLam
+        write(69,*) lamArray(i),lookupTable%kapArray(nTemps/2,i)
+     enddo
+     close(69)
+  endif
 
   if (.not.gridReadFromDisc) then
      if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
@@ -208,27 +222,21 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
 
      select case(Lookuptable%molecule)
 
-        case("TiO")
-
-           allocate(lambda(1:12000000))
-           allocate(g(1:12000000))
-           allocate(kappa(1:12000000))
-           allocate(excitation(1:12000000))
-           call readTio(nLines, lambda, kappa, excitation, g)
 
         case("H2O")
            allocate(lambda(1:65912356))
            allocate(g(1:65912356))
            allocate(kappa(1:65912356))
-           allocate(excitation(1:65912356))
-           call readh2o(nLines, lambda, kappa, excitation, g)
+           allocate(excitationLower(1:65912356))
+           call readh2o(nLines, lambda, kappa, excitationLower, g)
 
         case DEFAULT
-           allocate(lambda(1:12000000))
-           allocate(g(1:12000000))
-           allocate(kappa(1:12000000))
-           allocate(excitation(1:12000000))
-           call readKurucz(lookuptable%source, nLines, lambda, kappa, excitation, g, lookuptable%mu)
+           allocate(lambda(1:38000000))
+           allocate(g(1:38000000))
+           allocate(kappa(1:38000000))
+           allocate(excitationLower(1:38000000))
+           allocate(excitationUpper(1:38000000))
+           call readKurucz(lookuptable%source, nLines, lambda, kappa, excitationlower, excitationUpper, g)
 
      end select
      
@@ -237,10 +245,10 @@ subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
      enddo
      do i = 1, nTemps
         call createSample(LookupTable%tempArray(i), lamArray, LookupTable%kapArray(i,1:nLam), nLam, &
-             nLines, lambda, kappa, g, excitation, lookuptable%mu)
+             nLines, lambda, kappa, g, excitationLower, excitationUpper, lookuptable%mu, lookuptable%abundance)
      enddo
      if (writeoutput) call writeKappaGrid(lookuptable)
-     deallocate(lambda, g, kappa, excitation)
+     deallocate(lambda, g, kappa, excitationLower, excitationUpper)
   endif
 
 
@@ -258,6 +266,7 @@ subroutine readKappaGrid(lookuptable,  wantedntemps, wantednlam, gridreadfromdis
   open(21, file=lookuptable%filename, status="old", form="unformatted",err=666)
   read(21) lookuptable%molecule
   read(21) lookuptable%mu
+  read(21) lookuptable%abundance
   read(21) nTemps, nLam
 
   if ((nTemps /= wantedNtemps).or.(nLam /= wantednLam)) then
@@ -285,6 +294,7 @@ subroutine writeKappaGrid(lookuptable)
   open(21, file=lookuptable%filename, status="unknown", form="unformatted")
   write(21) LookupTable%molecule
   write(21) lookupTable%mu
+  write(21) lookupTable%abundance
   write(21) LookupTable%nTemps, LookupTable%nLam
   write(21) LookupTable%tempArray(1:LookupTable%nTemps)
   write(21) LookupTable%lamArray(1:LookupTable%nLam)
@@ -341,8 +351,8 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 
   nhi = rho/mhydrogen
   if (PRESENT(kappaAbs)) then
-     allocate(tarray(1:coLookupTable%nlam))
-     call returnKappaArray(temperature, coLookupTable, kappaAbs=tArray)
+     allocate(tarray(1:tioLookupTable%nlam))
+     call returnKappaArray(temperature, tioLookupTable, kappaAbs=tArray)
      kappaAbs = tArray(ilambda)
      deallocate(tArray)
   endif
@@ -351,12 +361,13 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
   if (PRESENT(kappaAbsArray)) then
      kappaAbsArray = 0.d0
 
-     call returnKappaArray(temperature, coLookupTable, kappaAbs=kappaAbsArray)
+     call returnKappaArray(temperature, tioLookupTable, kappaAbs=kappaAbsArray)
   endif
 
   if (PRESENT(kappaSca)) then
      kappaSca = nhI * atomhydrogenRayXsection(dble(lambda))*1.e10
 !     kappaSca = kappaSca + ne * sigmaE * 1.d10
+     kappaSca = 1.d-30
   endif
   if (PRESENT(kappaScaArray)) then
      if (firstTime) then
@@ -634,13 +645,13 @@ real function fracMolecule(temperature, pressure, nMol)
 
  end function fracMolecule
 
-subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
+subroutine readKurucz(filename,nLines,lambda,kappa,excitationLower,excitationUpper,g)
   use utils_mod, only: wavenumbertoEv
 
   implicit none
   character(len=*) :: filename
   integer :: nLines
-  real :: lambda(:),kappa(:),excitation(:),g(:)
+  real :: lambda(:),kappa(:),excitationLower(:),excitationUpper(:),g(:),junk
   integer :: i
   real, allocatable :: jLow(:)
   real, allocatable :: gf(:),alpha(:)
@@ -650,7 +661,6 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
 
   real, parameter :: cSpeed = 2.99792458e10  ! cm/s
   real, parameter :: pi = 3.141592654
-  real :: mu
 
   open(20,file=filename,status="old",form="formatted")
 
@@ -665,11 +675,10 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
 
   do i = 1, nLines
 
-     if (mod(i,nLines/10) == 0) write(*,*) i 
+     if (writeoutput.and.(mod(i,nLines/10) == 0)) write(*,*) i 
 
-     read(20,'(f10.4,f7.3,f5.1,f10.3)') &
-          lambda(i), gf(i),  jLow(i), excitation(i)
-
+     read(20,'(f10.4,f7.3,f5.1,f10.3,f5.1,f11.3)') &
+          lambda(i), gf(i),  jLow(i), excitationLower(i), junk, excitationUpper(i)
   enddo
 
   close(20)
@@ -678,16 +687,18 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
 
   g(1:nLines) = (2.*real(Jlow(1:nLines))+1.)
 
-  alpha(1:nLines) = ((pi*eCharge**2)/(mElectron*cSpeed)) * gf(1:nLines) / g(1:nLines)
+  alpha(1:nLines) = ((pi*eCharge**2)/(mElectron*cSpeed)) * (10.d0**gf(1:nLines))
 
-  kappa(1:nLines) = alpha(1:nLines) / (mu * mHydrogen) ! divide by mass of molecule
+  kappa(1:nLines) = alpha(1:nLines) / (mHydrogen) ! divide by mass of H molecule
 
   kappa(1:nLines) = kappa(1:nLines) * 1.e10 ! to code units
-  
-  excitation(1:Nlines) = abs(excitation(1:Nlines)) ! get rid of negative flags
+  excitationUpper(1:Nlines) = abs(excitationUpper(1:Nlines)) ! get rid of negative flags
+  excitationLower(1:Nlines) = abs(excitationLower(1:Nlines)) ! get rid of negative flags
 
-  call wavenumberToEv(excitation, nLines)
+  call wavenumberToEv(excitationLower, nLines)
+  call wavenumberToEv(excitationUpper, nLines)
 
+  write(*,*) "kappa ",kappa(1:nLines)
   if (writeoutput) write(*,*) "Done."
 
 end subroutine readKurucz
@@ -711,19 +722,21 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
 
   ! tio
 
-!  tioLookupTable%molecule = "TiO"
-!  tioLookupTable%mu = 48.+16.
-!  tioLookupTable%filename = "tiolookuptable.dat"
-!  call unixGetenv("TORUS_DATA", dataDirectory, i)
-!  filename = trim(dataDirectory)//"/"//"tio.dat"
-!  tioLookupTable%source = filename 
-!  call createKappaGrid(tiolookuptable, nTemps, t1, t2, nLam, lamArray)
+  tioLookupTable%molecule = "TiO"
+  tioLookupTable%mu = 48.+16.
+  tioLookupTable%abundance = 1.e-6
+  tioLookupTable%filename = "tiolookuptable.dat"
+  call unixGetenv("TORUS_DATA", dataDirectory, i)
+  filename = "tioschwenke.asc" !trim(dataDirectory)//"/"//"tio.dat"
+  tioLookupTable%source = filename 
+  call createKappaGrid(tiolookuptable, nTemps, t1, t2, nLam, lamArray)
 
 
   ! ch
 
   chLookupTable%molecule = "CH"
   chLookupTable%mu = 12.+1.
+  chLookupTable%abundance = 1.e-6
   chLookupTable%filename = "chlookuptable.dat"
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"ch.asc"
@@ -734,6 +747,7 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
 
   nhLookupTable%molecule = "NH"
   nhLookupTable%mu = 14.+1.
+  nhLookupTable%abundance = 1.e-6
   nhLookupTable%filename = "nhlookuptable.dat"
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"nh.asc"
@@ -744,6 +758,7 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
 
   ohLookupTable%molecule = "OH"
   ohLookupTable%mu = 16.+1.
+  ohLookupTable%abundance = 1.e-6
   ohLookupTable%filename = "ohlookuptable.dat"
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"oh.asc"
@@ -754,6 +769,7 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
 
   h2LookupTable%molecule = "H2"
   h2LookupTable%mu = 2.
+  h2LookupTable%abundance = 0.5
   h2LookupTable%filename = "h2lookuptable.dat"
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"h2.asc"
@@ -764,6 +780,7 @@ subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
 
   coLookupTable%molecule = "CO"
   coLookupTable%mu = 12.+16.
+  coLookuptable%abundance = 1.e-6
   coLookupTable%filename = "colookuptable.dat"
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//"co.asc"
