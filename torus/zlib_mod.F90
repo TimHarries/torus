@@ -168,7 +168,7 @@ contains
 !          allocate(outBuffer(1:i))
           allocate(inBuffer(1:maxBuffer))
           inBuffer = buffer
-          call compressBytes(inbuffer, int(maxBuffer, kind=c_long), outBuffer, nOut)
+          call compressBytes(inbuffer, int(maxBuffer, kind=bigInt), outBuffer, nOut)
           write(lunit) nout
           write(lunit) outBuffer(1:nOut)
           deallocate(outBuffer, inBuffer)
@@ -459,7 +459,7 @@ contains
 !          allocate(outBuffer(1:i))
           allocate(inBuffer(1:maxBuffer))
           inBuffer = buffer
-          call compressBytes(inbuffer, int(maxBuffer, kind=c_long), outBuffer, nOut)
+          call compressBytes(inbuffer, int(maxBuffer, kind=bigInt), outBuffer, nOut)
           write(lunit) nout
           write(lunit) outBuffer(1:nOut)
           deallocate(outBuffer, inBuffer)
@@ -477,7 +477,7 @@ contains
 !          allocate(outBuffer(1:i))
           allocate(inBuffer(1:maxBuffer))
           inBuffer = buffer
-          call compressBytes(inBuffer, int(maxBuffer, kind=c_long), outBuffer, nOut)
+          call compressBytes(inBuffer, int(maxBuffer, kind=bigInt), outBuffer, nOut)
           write(lunit) nout
           write(lunit) outBuffer(1:nOut)
           deallocate(outBuffer, inBuffer)
