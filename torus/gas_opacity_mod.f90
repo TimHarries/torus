@@ -165,7 +165,7 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
         gaussFac = real(1./(vTherm*sqrt(2.*pi))*exp(-(dv**2)/(2.*vTherm**2)))
         if (partfunc /= 0.) then
            fac =  real(exp(-dble((excitationLower(i)/(kEv * temperature))) / partFunc))
-           fac = fac * (1.d0 - exp(-(excitationUpper(i) - excitationLower(i))/(kEv * temperature)))
+           fac = fac * (1.e0 - exp(-(excitationUpper(i) - excitationLower(i))/(real(kEv) * temperature)))
         else
            fac = 0.
         endif
@@ -687,7 +687,7 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitationLower,excitationUpp
 
   g(1:nLines) = (2.*real(Jlow(1:nLines))+1.)
 
-  alpha(1:nLines) = ((pi*eCharge**2)/(mElectron*cSpeed)) * (10.d0**gf(1:nLines))
+  alpha(1:nLines) = ((pi*eCharge**2)/(mElectron*cSpeed)) * (10.e0**gf(1:nLines))
 
   kappa(1:nLines) = alpha(1:nLines) / (mHydrogen) ! divide by mass of H molecule
 
