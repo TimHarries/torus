@@ -60,6 +60,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
+    use inputs_mod, only : UV_vector
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -264,6 +265,9 @@ contains
 !turn everything on and run a long calculation
        if(singleMegaPhoto) then
           maxPhotoionIter = 200
+
+       else if(UV_vector) then
+          maxPhotoionIter = 12
        end if
     end if
 
@@ -369,13 +373,13 @@ contains
        endif
     end if
 
-    if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto) then
+    if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto .or. UV_vector) then
 !       if (startFromNeutral) then
 !          call neutralGrid(grid%octreeRoot) 
 !       else
 !          call ionizeGrid(grid%octreeRoot)
 !       endif
-       if (.not.timeDependentRT) then
+       if (.not.timeDependentRT .and. .not. uv_vector) then
           if (startFromNeutral) then
              call neutralGrid(grid%octreeRoot)
           else
@@ -427,7 +431,9 @@ contains
           end do
        end if
 
-       if(singleMegaPhoto) then
+       if(singleMegaPhoto .or. UV_vector) then
+          write(mpiFilename,'(a, i4.4, a)') "singlemegaphot.grid"
+          call writeAmrGrid(mpiFilename, .false., grid)
           call torus_abort("Finished single photo calculation, ending...")
        end if
 
@@ -1042,7 +1048,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump
+         radPressureTest, justdump, uv_vector, inputEV
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1331,6 +1337,9 @@ end subroutine radiationHydro
           if(grid%geometry == "SB_WNHII") then
              nuStart = (18.60001*evtoerg/hcgs)
              nuEnd =  (18.60001*evtoerg/hcgs)
+          elseif(uv_vector) then
+             nustart = inputEV*evtoerg/hcgs
+             nuend = (inputEV+1.d-10)*evtoerg/hcgs
           else
              nuStart = (13.60001*evtoerg/hcgs)
              nuEnd =  (13.60001*evtoerg/hcgs)
@@ -1629,11 +1638,11 @@ end subroutine radiationHydro
                         grid%halfsmallestsubcell))/dble(nMonte))
                 end if
              else
-                epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                epsoverdeltat = (((nIonizingPhotons*((inputEV)*evtoerg))*&
                      (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte)) 
              end if
           else
-             epsoverdeltat = (nIonizingPhotons*((13.60001)*evtoerg))/ &
+             epsoverdeltat = (nIonizingPhotons*((inputEV)*evtoerg))/ &
                   dble(nMonte)
           endif
        else
@@ -1732,7 +1741,7 @@ end subroutine radiationHydro
                 tPhoton = 0.d0
                 spectrumweight = 1.d0
                 if(monochromatic) then
-                   thisFreq = ((13.60001)*evtoerg)/hcgs
+                   thisFreq = ((inputEV)*evtoerg)/hcgs
                 else
                    call getWavelength(thisSource%spectrum, wavelength, spectrumWeight)    
                    photonPacketWeight = photonPacketWeight*spectrumweight
@@ -2595,11 +2604,11 @@ end subroutine radiationHydro
                         grid%halfsmallestsubcell))/dble(nMonte))                   
                 end if
              else
-                epsoverdeltat = (((nIonizingPhotons*((13.60001)*evtoerg))*&
+                epsoverdeltat = (((nIonizingPhotons*((inputEV)*evtoerg))*&
                      (2.d0*grid%octreeRoot%subcellSize*1.d10)**2)/dble(nMonte))
              end if
           else
-             epsoverdeltat = (nIonizingPhotons*((13.60001)*evtoerg))/ &
+             epsoverdeltat = (nIonizingPhotons*((inputEV)*evtoerg))/ &
                   dble(nMonte)
           endif
        else
@@ -2744,6 +2753,7 @@ end subroutine radiationHydro
              enddo
 
           else             
+             if(.not. uv_vector) then
              if(timeDep) then
                 do i = 1, nTimes
                    call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
@@ -2787,6 +2797,7 @@ end subroutine radiationHydro
 
              
           endif
+       end if
           if (nHydroSetsGlobal > 1) tempCell(iOctal,1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
           if (nHydroSetsGlobal > 1) tempIon(iOctal,1:thisOctal%maxChildren,:) = real(thisOctal%ionFrac(1:thisOctal%maxChildren,:))
        enddo
@@ -2819,7 +2830,9 @@ end subroutine radiationHydro
     call adjustChiline(grid%octreeRoot)
     
     call calculateKappaTimesFlux(grid%octreeRoot, epsOverDeltaT)
-
+    if(uv_vector) then
+       call calculateUVfluxVec(grid%octreeroot, epsoverdeltaT)
+    end if
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     if (writeoutput) &
@@ -3184,9 +3197,13 @@ end subroutine radiationHydro
 !     endif
 
 !     write(*,*) myrankglobal, " calling vtk writer"
-!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-!     call writeVtkFile(grid, mpiFilename, &
-!          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+
+     if(uv_vector .or. singlemegaphoto) then
+        write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+        call writeVtkFile(grid, mpiFilename, &
+             valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec"/))
+     end if
+
 !, &
 !             "OI           ","HeI          ","HeII         ", "OI           ", "OII          "/))
 
@@ -4154,7 +4171,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           if (.not.associated(thisOctal%kappaTimesFlux)) then
              allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
           endif
+          if (.not.associated(thisOctal%UVvector)) then
+             allocate(thisOctal%UVvector(1:thisOctal%maxChildren))
+          endif
           thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%UVvector(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -5136,7 +5157,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, &
        photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
-    use inputs_mod,only : dustOnly, radPressureTest
+    use inputs_mod,only : dustOnly, radPressureTest, UV_vector
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat
@@ -5225,6 +5246,13 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
          + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
     if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
+    if(uv_vector) then
+       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
+          thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell)&
+               + (dble(distance) * photonpacketweight*uHatdash)
+          !            + (dble(distance) *dble(kappaExt)* photonPacketWeight)*uHatDash
+       end if
+    end if
   end subroutine updategrid
 
 subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOverdeltaT)
@@ -6969,7 +6997,7 @@ subroutine readHeIIrecombination()
 end subroutine readHeIIrecombination
 
 recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-     kappaTimesFlux)
+     kappaTimesFlux, uvVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -6979,6 +7007,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
   real(double) :: distanceGrid(:)
   type(VECTOR) :: radMomVec(:)
   type(VECTOR) :: kappaTimesFlux(:)
+  type(VECTOR) :: uvVec(:)
   
   integer :: nIndex
   integer :: subcell, i
@@ -6989,7 +7018,8 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
+                   kappaTimesFlux, uvVec)
               exit
            end if
         end do
@@ -7003,12 +7033,13 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
         radMomVec(nIndex) = thisOctal%radiationMomentum(subcell)
         kappaTimesFlux(nIndex) = thisOctal%kappaTimesFlux(subcell)
+        uvVec(nIndex) = thisOctal%uvVector(subcell)
      endif
   enddo
 end subroutine packvalues
 
 recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-     kappaTimesFlux)
+     kappaTimesFlux, uvVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
@@ -7018,6 +7049,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
   real(double) :: distanceGrid(:)
   type(VECTOR) :: radMomVec(:)
   type(VECTOR) :: kappaTimesFlux(:)
+  type(VECTOR) :: uvvec(:)
 
   integer :: nIndex
   integer :: subcell, i
@@ -7029,7 +7061,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-                     kappaTimesFlux)
+                     kappaTimesFlux, uvvec)
                 exit
              end if
           end do
@@ -7043,6 +7075,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex) 
           thisOctal%radiationMomentum(subcell) = radMomVec(nIndex)
           thisOctal%kappaTimesFlux(subcell) = kappaTimesFlux(nIndex)
+          thisOctal%uvvector(subcell) = uvvec(nIndex)
        endif
     enddo
   end subroutine unpackvalues
@@ -7312,6 +7345,33 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
     enddo
   end subroutine calculateKappaTimesFlux
+
+
+  recursive subroutine calculateUVfluxVec(thisOctal, epsOverDeltaT)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: v, epsOverDeltaT
+
+    do subcell = 1, thisOctal%maxChildren
+       if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateUVfluxVec(child, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          V = cellVolume(thisOctal, subcell)*1.d30
+          thisOctal%UVvector(subcell) = epsOverDeltaT * thisOctal%Uvvector(subcell) / V
+!          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
+       endif
+    enddo
+  end subroutine calculateUVfluxVec
+
 
   subroutine createImageSplitGrid(grid, nSource, source, imageNum)
     use inputs_mod, only: nPhotons, gridDistance
@@ -8059,6 +8119,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     real(double), allocatable :: distanceGrid(:)
     type(VECTOR), allocatable :: radMomVec(:)
     type(VECTOR), allocatable :: kappaTimesFlux(:)
+    type(VECTOR), allocatable :: uvvec(:)
     integer :: ierr, nIndex
 
     ! FOR MPI IMPLEMENTATION=======================================================
@@ -8072,9 +8133,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
     allocate(radMomVec(1:nVoxels))
     allocate(kappaTimesFlux(1:nVoxels))
+    allocate(uvvec(1:nVoxels))
 
     nIndex = 0
-    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, kappaTimesFlux)
+    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
+         kappaTimesFlux, uvvec)
 
 !    write(*,*) myrankWorldGlobal, " packed ",nVoxels, " data"
     allocate(tempDoubleArray(nVoxels))
@@ -8138,8 +8201,20 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     kappaTimesFlux(1:nVoxels)%z = tempDoubleArray 
 
 
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(uvvec(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    uvvec(1:nVoxels)%x = tempDoubleArray 
 
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(uvvec(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    uvvec(1:nVoxels)%y = tempDoubleArray 
 
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(uvvec(1:nVoxels)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    uvvec(1:nVoxels)%z = tempDoubleArray 
 
     deallocate(tempRealArray, tempDoubleArray)
      
@@ -8147,8 +8222,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     
     nIndex = 0
     call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-         kappaTimesFlux)
-    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec, kappaTimesFlux)
+         kappaTimesFlux, uvvec)
+    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec, kappaTimesFlux, uvvec)
 
   end subroutine updateGridMPIphoto
 
@@ -8211,6 +8286,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
        endif
        thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
+       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
        rVec = rVec + uHat * r0
        uHat = randomUnitVector()
        call distanceToNearestWall(rVec, r0, thisOctal, subcell)

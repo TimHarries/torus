@@ -729,6 +729,7 @@ contains
           call writeAttributePointerFlexi(20, "boundaryCell", thisOctal%boundaryCell, fileFormatted)
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
           call writeAttributePointerFlexi(20, "kappaTimesFlux", thisOctal%kappaTimesFlux, fileFormatted)
+          call writeAttributePointerFlexi(20, "UVvector", thisOctal%UVvector, fileFormatted)
 
           call writeAttributePointerFlexi(20, "gravboundaryPartner", thisOctal%GravboundaryPartner, fileFormatted)
           call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
@@ -4251,6 +4252,8 @@ contains
             call readPointerFlexi(20, thisOctal%radiationMomentum, fileFormatted)
          case("kappaTimesFlux")
             call readPointerFlexi(20, thisOctal%kappaTimesFlux, fileFormatted)
+         case("UVvector")
+            call readPointerFlexi(20, thisOctal%UVvector, fileFormatted)
          case("gravboundaryPartner")
             call readPointerFlexi(20, thisOctal%gravboundaryPartner, fileFormatted)
          case("changed")
@@ -4582,6 +4585,8 @@ contains
             call receivePointerFlexi(thisOctal%radiationMomentum)
          case("kappaTimesFlux")
             call receivePointerFlexi(thisOctal%kappaTimesFlux)
+         case("UVvector")
+            call receivePointerFlexi(thisOctal%UVvector)
          case("changed")
             call receivePointerFlexi(thisOctal%changed)
          case("rLimit")
@@ -4787,6 +4792,7 @@ contains
       call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
       call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
       call sendAttributePointerFlexi(iThread, "kappaTimesFlux", thisOctal%kappaTimesFlux)
+      call sendAttributePointerFlexi(iThread, "UVvector", thisOctal%UVvector)
       call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)
       call sendAttributePointerFlexi(iThread, "rLimit", thisOctal%rLimit)
 

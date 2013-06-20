@@ -678,7 +678,8 @@ contains
 
 
     select case (valueType)
-       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
+       case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom", &
+            "radforce", "uvvec")
           scalarvalue = .false.
           vectorvalue = .true.
        case DEFAULT
@@ -2589,7 +2590,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
   do ivalues = 1, nValueType
      select case (valueType(iValues))
-     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
+     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
+          "radforce", "uvvec")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -2981,6 +2983,18 @@ end subroutine writeXMLVtkFileAMR
                         rArray(3, n) = 0.
                      endif
 
+               case("uvvec")
+                     v = cellVolume(thisOctal, subcell)*1.d30
+                     if (thisOctal%threed) then
+                        rArray(1, n) = real(thisOctal%uvvector(subcell)%x)
+                        rArray(2, n) = real(thisOctal%uvvector(subcell)%y)
+                        rArray(3, n) = real(thisOctal%uvvector(subcell)%z)
+                     else
+                        rArray(1, n) = real(thisOctal%uvvector(subcell)%x)
+                        rArray(2, n) = real(thisOctal%uvvector(subcell)%z)
+                        rArray(3, n) = 0.
+                     endif
+
                case("fvisc1")
                         rArray(1, n) = real(thisOctal%fViscosity(subcell)%x)
                case("fvisc2")
@@ -3232,7 +3246,8 @@ end subroutine writeXMLVtkFileAMR
 
 
      select case (valueType)
-     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
+     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
+          "radforce", "uvvec")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -3561,7 +3576,8 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      write(lunit) '    <PCellData Scalars="scalars">'//lf
      do i = 1, nValueType
         select case (valueType(i))
-        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
+        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
+             "radforce", "uvvec")
            scalarvalue = .false.
            vectorvalue = .true.
         case DEFAULT
@@ -3733,7 +3749,8 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
   do ivalues = 1, nValueType
      select case (valueType(iValues))
-     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom","radforce")
+     case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
+          "radforce", "uvvec")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT

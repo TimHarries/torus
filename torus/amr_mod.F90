@@ -7871,21 +7871,43 @@ endif
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
-    if ((rMod*1.d10) < 1.6d0*pcToCm) then
-       thisOctal%rho(subcell) = 100.d0*mHydrogen
+    if ((rMod*1.d10) < 1.6d0*pcToCm .and. (rMod*1.d10) > 1.5d0*pcToCm) then
+       thisOctal%rho(subcell) = 200.d0*mHydrogen
+       thisOctal%temperature(subcell) = 500.d0
+       thisOctal%ionFrac(subcell,1) = 0.5               !HI
+       thisOctal%ionFrac(subcell,2) = 0.5           !HII
+       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+          thisOctal%ionFrac(subcell,3) = 1.            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
+       endif       
+    else if((rMod*1.d10) < 1.5d0*pcToCm) then
+       thisOctal%rho(subcell) = 2000.d0*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
+       thisOctal%ionFrac(subcell,1) = 1.               !HI
+       thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+          thisOctal%ionFrac(subcell,3) = 1.            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
+       endif       
     else
-       thisOctal%rho(subcell) = 1.d-30*mHydrogen
-       thisOctal%temperature(subcell) = 10.d0
+       thisOctal%rho(subcell) = 100.d0*mHydrogen
+       thisOctal%temperature(subcell) = 1.d4
+       thisOctal%ionFrac(subcell,1) = 1.e-10               !HI
+       thisOctal%ionFrac(subcell,2) = 1.           !HII
+       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+          thisOctal%ionFrac(subcell,3) = 1.e-10            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.        !HeII       
+       endif
     endif
 
-    thisOctal%ionFrac(subcell,1) = 1.               !HI
-    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
-    if (SIZE(thisOctal%ionFrac,2) > 2) then      
-       thisOctal%ionFrac(subcell,3) = 1.            !HeI
-       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
-       
-    endif
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 1)
+    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
+!    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+
     thisOctal%etaCont(subcell) = 0.
 
   end subroutine calcIsoSphereDensity
@@ -11486,6 +11508,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%radiationMomentum, source%radiationMomentum)
 
     call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
+    call copyAttribute(dest%UVvector, source%UVvector)
 
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
@@ -14981,6 +15004,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
@@ -15093,6 +15117,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UVvector,thisOctal%maxChildren)
 
     endif
   end  subroutine allocateOctalAttributes
@@ -15225,6 +15250,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%gravboundaryPartner)
     call deallocateAttribute(thisOctal%radiationMomentum)
     call deallocateAttribute(thisOctal%kappaTimesFlux)
+    call deallocateAttribute(thisOctal%UVvector)
     call deallocateAttribute(thisOctal%phi_i)
     call deallocateAttribute(thisOctal%phi_i_plus_1)
     call deallocateAttribute(thisOctal%phi_i_minus_1)

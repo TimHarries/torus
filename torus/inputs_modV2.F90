@@ -1847,10 +1847,15 @@ contains
     call getLogical("radpresstest", radPressureTest, cLine, fLine, nLines, &
          "Radiation-pressure test (on-the-spot absorption): ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("UV_vector", UV_vector, cLine, fLine, nLines, &
+         "Dump UV vectors to file for 3D-PDR: ","(a,1l,a)", .false., ok, .false.)
 
-    if(nodiffusefield) then
+    if(nodiffusefield .or. UV_vector) then
        call getLogical("monochromatic", monochromatic, cLine, fLine, nLines, &
             "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("inputEV", inputEV, 1.d0, cLine, fLine, nLines, &
+            "Energy of monochromatic photons (eV):  ","(a,e12.3,1x,a)", 5.d0, ok, .false.)
     end if
 
 

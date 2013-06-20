@@ -73,6 +73,7 @@
   logical :: usemetals         !Include species heavier than Helium
   logical :: checkForPhoto     !Check whether or not a photoionization loop is necessary
   logical :: monochromatic     !Use a monochromatic radiation field
+  real(double) :: inputEV     !energy of monochromatic photons
   logical :: quickThermal      !Use a simplified thermal balance calculation
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
   logical :: addSinkParticles  ! add new sink particles
@@ -800,6 +801,7 @@
   character(len=10) :: geometry
   integer(kind=bigInt) :: nPhotons ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
+  logical :: UV_vector
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity
   real    :: TMinGlobal   ! globally applied minimum temperature
