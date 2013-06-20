@@ -3201,7 +3201,7 @@ end subroutine radiationHydro
      if(uv_vector .or. singlemegaphoto) then
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
         call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec"/))
+             valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        "/))
      end if
 
 !, &

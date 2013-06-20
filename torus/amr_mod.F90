@@ -3960,7 +3960,7 @@ CONTAINS
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isophsphere")
-          if(thisOctal%nDepth < 7) split = .true.
+          if(thisOctal%nDepth < maxdepthamr) split = .true.
 
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -7871,26 +7871,17 @@ endif
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
-    if ((rMod*1.d10) < 1.6d0*pcToCm .and. (rMod*1.d10) > 1.5d0*pcToCm) then
-       thisOctal%rho(subcell) = 200.d0*mHydrogen
-       thisOctal%temperature(subcell) = 500.d0
-       thisOctal%ionFrac(subcell,1) = 0.5               !HI
-       thisOctal%ionFrac(subcell,2) = 0.5           !HII
-       if (SIZE(thisOctal%ionFrac,2) > 2) then      
-          thisOctal%ionFrac(subcell,3) = 1.            !HeI
-          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
-       endif       
-    else if((rMod*1.d10) < 1.5d0*pcToCm) then
-       thisOctal%rho(subcell) = 2000.d0*mHydrogen
+    if ((rMod*1.d10) < 5.d0*pcToCm) then
+       thisOctal%rho(subcell) = 1.d4*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
-       thisOctal%ionFrac(subcell,1) = 1.               !HI
-       thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+       thisOctal%ionFrac(subcell,1) = 1.d0               !HI
+       thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
        if (SIZE(thisOctal%ionFrac,2) > 2) then      
           thisOctal%ionFrac(subcell,3) = 1.            !HeI
           thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
        endif       
     else
-       thisOctal%rho(subcell) = 100.d0*mHydrogen
+       thisOctal%rho(subcell) = 10.d0*mHydrogen
        thisOctal%temperature(subcell) = 1.d4
        thisOctal%ionFrac(subcell,1) = 1.e-10               !HI
        thisOctal%ionFrac(subcell,2) = 1.           !HII
@@ -7904,7 +7895,7 @@ endif
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 1)
-    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
+    thisOctal%nhii(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
 !    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
 
