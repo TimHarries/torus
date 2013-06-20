@@ -590,9 +590,9 @@ contains
           if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
           endif
-          if (cylindricalHydro) then
-             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
-          endif
+!          if (cylindricalHydro) then
+!             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
+!          endif
 
 
        endif
@@ -3184,9 +3184,9 @@ end subroutine radiationHydro
 !     endif
 
 !     write(*,*) myrankglobal, " calling vtk writer"
-     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
-     call writeVtkFile(grid, mpiFilename, &
-          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+!     write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
+!     call writeVtkFile(grid, mpiFilename, &
+!          valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
 !, &
 !             "OI           ","HeI          ","HeII         ", "OI           ", "OII          "/))
 
@@ -3197,6 +3197,7 @@ end subroutine radiationHydro
 !          "diff         "/))
 
 !     if(singleMegaPhoto) then
+
 
 !        write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
 !        call writeAmrGrid(mpiFilename, .false., grid)
@@ -4534,7 +4535,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif

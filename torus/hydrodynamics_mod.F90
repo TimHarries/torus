@@ -2589,7 +2589,7 @@ contains
                    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after pressure forces"
                    endif
                    if (debug) then
@@ -2602,7 +2602,7 @@ contains
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after viscous forces"
                    endif
 
@@ -2614,14 +2614,14 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after gas gravity forces"
                    endif
 
 
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after sink gravity forces"
                    endif
 
@@ -2642,7 +2642,7 @@ contains
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after centrifugal forces"
                       write(*,*) "rho ",thisOctal%rho(subcell)
                    endif
@@ -2671,7 +2671,7 @@ contains
                       write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
 
                    endif
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after rad pressure forces"
                    endif
 
@@ -2709,7 +2709,7 @@ contains
                    thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after pressure forces"
                    endif
 
@@ -2723,7 +2723,7 @@ contains
 ! alpha viscosity
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after viscous forces"
                    endif
 
@@ -2739,7 +2739,7 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after gas gravity forces"
                    endif
 
@@ -2752,7 +2752,7 @@ contains
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 endif
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after sink gravity forces"
                    endif
 
@@ -2760,7 +2760,7 @@ contains
                    thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
                         dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 200.d0) then
+                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after rad pressure forces"
                    endif
 
@@ -4412,8 +4412,8 @@ end subroutine sumFluxes
 
        !modify rhou and rhoe due to pressure/gravitational potential gradient
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
+       if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
     enddo
-   if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
 
 
     call computepressureGeneral(grid, grid%octreeroot, .false.) 
@@ -5694,7 +5694,7 @@ end subroutine sumFluxes
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
           call computeDivV(grid%octreeRoot, grid)
           call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
-          call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
+!          call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
        endif
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
