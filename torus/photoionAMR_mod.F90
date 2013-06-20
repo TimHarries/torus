@@ -2106,7 +2106,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
                !$OMP SHARED(dfreq, endLoop, nIter, spectrum) &
-               !$OMP SHARED(nSaved, maxStackLimit, source) &
+               !$OMP SHARED(nSaved, maxStackLimit, source, uv_vector) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal, nToNextEventPhoto, nNotEscaped)
                
@@ -2732,7 +2732,7 @@ end subroutine radiationHydro
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
        !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion) &
-       !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT) &
+       !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT, uv_vector) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
