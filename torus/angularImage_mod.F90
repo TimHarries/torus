@@ -883,8 +883,17 @@ module angularImage
     character(len=30)   :: outfilename
     integer, parameter  :: LUIN = 10 ! unit number of output file
 
+    logical :: havesphfile
+
 ! Don't do this if the user only wants column densities.
     if (nColOnly) return
+
+! Check that the SPH file exists. If this is a run set up some other way then there won't be a valid SPH dump
+    inquire (file=sphdatafilename, exist=havesphfile)
+    if (.not. havesphfile) then 
+       call writeInfo("sphdatafilename does not specifiy an SPH dump so will assume no mapping to particles required.", forInfo)
+       return
+    end if
 
     call writeVtkFile(grid, "ray_info.vtk", valueTypeString=(/"dI      ", "galLon  ", "galLat  ", "crossing"/) )
 

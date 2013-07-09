@@ -601,6 +601,7 @@ CONTAINS
 #ifdef USECFITSIO
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
+    use angularImage_utils, only: calcAngImgTest
 
     IMPLICIT NONE
 
@@ -746,6 +747,8 @@ CONTAINS
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
 
+    CASE("angImgTest")
+       call calcAngImgTest(thisOctal, subcell)
 
     CASE("starburst")
        CALL calcStarburst(thisOctal, subcell)
