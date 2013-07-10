@@ -1,0 +1,62 @@
+! Parameters file for angular image test case 
+
+geometry angImgTest
+readgrid F
+writegrid F
+
+datacube T
+h21cm T
+internalView T
+
+! 
+! Grid parameters
+!
+
+amrgridsize 8e12
+amr3d T
+mindepthamr     6
+maxdepthamr     6
+dosmoothgrid F
+
+! 
+! Data cube parameters
+! 
+
+datacubefile angImgTest.fits
+
+! Image centre in galactic co-ordinates
+centrevecx 180.0
+centrevecy   0.0
+cubeaspectratio 15.0
+
+! Minimum velocity channel
+minVel -120.0
+
+! Maximum velocity channel
+maxVel 30.0
+
+! Number of velocity channels
+nv 76
+
+! Image size in degrees
+imageside 12.0
+
+npixels 90
+nSubpixels 1
+
+! Use density subsampling when ray tracing? 
+densitysubsample F
+
+! Position of the internal observer in units of 10^10 cm
+intPosX 0.0e12
+intPosY 2.2e12
+intPosZ 0.0e12
+
+obsVelFromGrid T
+
+! Produce +ve and -ve components of image?
+splitCubes T
+wanttau T
+
+galaxyInclination 0.0
+
