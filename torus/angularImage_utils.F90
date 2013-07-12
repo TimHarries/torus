@@ -69,7 +69,12 @@ module angularImage_utils
 
       thisVel = VECTOR(vx,vy,0.0)
       thisOctal%velocity= thisVel
-      thisoctal%cornervelocity = thisVel
+
+! Set corner values from first subcell. This test case uses uniform values so they don't vary across an octal.
+      if (subcell == 1) then 
+         thisoctal%cornervelocity(:) = thisoctal%velocity(1)
+         thisoctal%cornerrho(:)      = thisoctal%rho(1)
+      endif
 
       call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
            thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
