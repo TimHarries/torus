@@ -2284,9 +2284,9 @@ contains
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)
     call getInteger("ncubes", ncubes, cLine, fLine, nLines, &
-         "Number of data cubes ","(a,i4,a)", 1, ok, .false.)
+         "Number of data cubes: ","(a,i4,a)", 1, ok, .false.)
     call getInteger("nv", nv, cLine, fLine, nLines, &
-         "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
+         "Number of velocity bins: ","(a,i4,a)", 50, ok, .true.)
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &
          "Maximum Velocity Channel (km/s): ","(a,f8.1,1x,a)", 1.0d0, ok, .true.)
     call getDouble("minVel", minVel, 1.0_db, cLine, fLine, nLines, &
@@ -2320,18 +2320,18 @@ contains
        call getLogical("obsVelFromGrid", obsVelFromGrid, cLine, fLine, nLines, &
             "Set observer velocity from grid:", "(a,1l,1x,a)", .false., ok, .true.)
 
-       call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm)", &
+       call getDouble("intPosX", intPosX,  1.0_db, cLine, fLine, nLines, "Observer x position (x10^10cm):", &
             "(a,e10.4,1x,a)", 0.d0, ok, .false.)
-       call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm)", &
+       call getDouble("intPosY", intPosY,  1.0_db, cLine, fLine, nLines, "Observer y position (x10^10cm):", &
             "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
-       call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm)", &
+       call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm):", &
             "(a,e10.4,1x,a)", 0.d0, ok, .false.)
           
-       call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s)", &
+       call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s):", &
             "(a,f8.2,1x,a)", 0.d0, ok, .false.)
-       call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s)", &
+       call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s):", &
             "(a,f8.2,1x,a)", 0.d0, ok, .false.)
-       call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s)", &
+       call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s):", &
                "(a,f8.2,1x,a)", 0.d0, ok, .false.)
 
        call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
@@ -3249,7 +3249,7 @@ end subroutine getBigInteger
     default = " (default)"
  endif
  if (ok) then
-    write(output,format) trim(message),dval,default
+    write(output,format) trim(message)//" ",dval,default
     call writeInfo(output, TRIVIAL)
  endif
  dval = dval  * unitConversion
