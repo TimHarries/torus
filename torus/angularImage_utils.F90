@@ -50,17 +50,23 @@ module angularImage_utils
       if (.not. associated(thisoctal%cornerrho)      ) allocate(thisoctal%cornerrho(27))
 
       if ( r < r_gal .and. z < z_gal ) then 
-         thisOctal%rho          = rho_in
+         thisOctal%rho(subcell) = rho_in
          thisoctal%cornerrho(:) = rho_in
-         thisOctal%temperature  = 30.0
+         thisOctal%temperature(subcell) = 30.0
       else
-         thisOctal%rho          = rho_out
+         thisOctal%rho(subcell) = rho_out
          thisoctal%cornerrho(:) = rho_out
-         thisOctal%temperature  = 1.0e4_db
+         thisOctal%temperature(subcell) = 1.0e4_db
       end if
 
-      vx = (v_circ*1.0e5/cspeed) * sin(theta)
-      vy = (v_circ*1.0e5/cspeed) * cos(theta)
+      if (thisCentre%x > 0.0 ) then
+         vx =        (v_circ*1.0e5/cspeed) * sin(theta)
+         vy = -1.0 * (v_circ*1.0e5/cspeed) * cos(theta)
+      else
+         vx =        (v_circ*1.0e5/cspeed) * sin(theta)
+         vy =        (v_circ*1.0e5/cspeed) * cos(theta)
+      endif
+
       thisVel = VECTOR(vx,vy,0.0)
       thisOctal%velocity= thisVel
       thisoctal%cornervelocity = thisVel
