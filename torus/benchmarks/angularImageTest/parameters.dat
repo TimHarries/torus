@@ -41,7 +41,7 @@ nv 76
 ! Image size in degrees
 imageside 12.0
 
-npixels 90
+npixels 48
 nSubpixels 1
 
 ! Use density subsampling when ray tracing? 
