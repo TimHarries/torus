@@ -25,7 +25,10 @@ program check
 
 ! This is a not a monte-carlo test so set the tolerance just above the error seen 
 ! when this test was first developed. If it gets any worse then something has gone wrong.
-  real(db), parameter :: tolerance=1.1e21
+! This is for AMR depth 6:
+  real(db), parameter :: tolerance=2.4e21
+! This is for AMR depth 7:
+!  real(db), parameter :: tolerance=1.1e21
 
   logical :: fail
   fail=.false.
