@@ -376,12 +376,10 @@ ifeq ($(openmp), yes)
      OPENMPFLAG = -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
      STARLIBS += -static-libgcc
-     FASTFLAG = 
   endif
   ifeq ($(SYSTEM), ompiosx)
      OPENMPFLAG = -fopenmp 
      STARLIBS += -static-libgcc
-     FASTFLAG = 
   endif
   ETCFLAG += $(OPENMPFLAG)
 endif
