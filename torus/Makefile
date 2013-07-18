@@ -136,14 +136,17 @@ endif
 # ifort based builds #
 ######################
 
-ifeq ($(SYSTEM), linuxintel)
-    F95COMP  = ifort 
-    DEBUGFLAG= -g
-#    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-#    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-#    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
+ifeq ($(SYSTEM), ifort)
+    ifeq ($(mpi), yes)
+        F95COMP = mpiifort
+        MPIFLAG = -DMPI
+    else
+        F95COMP  = ifort 
+    endif
+    DEBUGFLAG= -g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     CFITSIOLIBS = -lcfitsio
-    EXE = torus.linuxintel
+    ZLIBLIBS = -lz
+    EXE = torus.ifort
     KNOWN_SYSTEM = yes
 endif
 
