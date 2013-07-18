@@ -145,6 +145,13 @@ ${TORUS_FC} -o check check.f90
 ./check
 }
 
+check_angImg()
+{
+echo "Compiling check.f90 for angular image test"
+nagfor -o check -lcfitsio -L/Users/acreman/cfitsio_nagfor check.f90 
+./check
+}
+
 # Check that Torus completed OK. For some tests the results file can be written 
 # even if Torus has bugged out. 
 check_completion()
@@ -358,6 +365,13 @@ for sys in ${SYS_TO_TEST}; do
     ln -s ../disc/lucy_grid_tmp.dat
     run_bench
     check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    echo
+
+    echo "Running angular imaging test"
+    export THIS_BENCH=angularImageTest
+    run_bench
+    check_angImg > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt
     echo
 

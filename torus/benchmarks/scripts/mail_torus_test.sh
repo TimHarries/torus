@@ -160,6 +160,17 @@ else
     suite_status="FAILED"
 fi
 
+# Test for success of angular image test
+num_success=`/usr/bin/grep -c "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/angularImageTest/check_log_ompiosx_angularImageTest.txt`
+num_success2=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/angularImageTest/check_log_gfortran_angularImageTest.txt`
+num_success3=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/angularImageTest/check_log_ompiosx_angularImageTest.txt`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]; then
+    echo "Angular image test successful" >> header 
+else
+    echo "!! Angular image test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
 # Extract timing information
 rm -f timings
 echo >> timings
