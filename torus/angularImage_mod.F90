@@ -8,7 +8,7 @@ module angularImage
   use gridtype_mod, only: GRIDTYPE
   use molecular_mod, only:  moleculetype
   use datacube_mod, only: datacube
-
+  use angularImage_utils
   use timing, only: tune
   
   implicit none 
@@ -49,9 +49,8 @@ module angularImage
 
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube, convertVelocityAxis
       use amr_mod, only: amrGridVelocity
-      use h21cm_mod, only: h21cm_lambda
-      use inputs_mod, only: intPosX, intPosY, intPosZ, nv, minVel, maxVel, intDeltaVx, intDeltaVy, intDeltaVz, &
-           galaxyPositionAngle, galaxyInclination, splitCubes, obsVelFromGrid, h21cm, wanttau
+      use h21cm_mod, only: h21cm_lambda, h21cm
+      use inputs_mod, only: nv, minVel, maxVel, wanttau
       use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
       use datacube_mod, only : writeDataCube, dataCubeFilename
@@ -180,7 +179,7 @@ module angularImage
 
     subroutine createAngImage(cube, grid, thisMolecule)
 
-      use inputs_mod, only : nv, nsubpixels, splitCubes, wantTau, itrans
+      use inputs_mod, only : nv, nsubpixels, wantTau, itrans
       use molecular_mod, only: calculateOctalParams
       use atom_mod, only: bnu
       use vector_mod
@@ -298,7 +297,7 @@ module angularImage
 
     subroutine makeAngImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, imagegrid, ix1, ix2)
 
-      use inputs_mod, only: imageside, centrevecx, centrevecy, galaxyPositionAngle, galaxyInclination, nv
+      use inputs_mod, only: imageside, centrevecx, centrevecy, nv
       use vector_mod
       
       type(GRIDTYPE), intent(IN) :: grid
@@ -488,7 +487,8 @@ module angularImage
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
         nCol, nCol_H2, nCol_CO, observerVelocity)
 
-     use inputs_mod, only : useDust, h21cm, densitysubsample, nv, thermalLineWidth, vturb, dssMinSample
+     use inputs_mod, only : useDust, densitysubsample, nv, vturb
+     use h21cm_mod, only: h21cm
      use octal_mod, only: OCTAL
      use atom_mod, only: Bnu
      use amr_mod, only: inOctal, distanceToGridFromOutside, distanceToCellBoundary, findSubcelllocal
@@ -857,8 +857,7 @@ module angularImage
 
    subroutine map_dI_to_particles(grid)
 
-    use inputs_mod, only: sphdatafilename, galaxyPositionAngle, galaxyInclination, &
-         inputFileFormat
+    use inputs_mod, only: sphdatafilename
     use sph_data_class, only: sphdata, read_sph_data_wrapper
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD

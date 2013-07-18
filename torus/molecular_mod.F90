@@ -17,6 +17,7 @@ module molecular_mod
    use math_mod
    use datacube_mod, only: DATACUBE, TELESCOPE, initCube, npixels, &
         addspatialaxes, addvelocityaxis, convertspatialaxes
+   use h21cm_mod, only: h21cm
 #ifdef USECFITSIO
    use datacube_mod, only : writeDataCube
 #endif
@@ -2898,7 +2899,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use inputs_mod, only : gridDistance, beamsize, nv, imageside, &
-          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, h21cm
+          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune
 #ifdef USECFITSIO
     use inputs_mod, only : writetempfits
     use fits_utils_mod
@@ -3252,7 +3253,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
  subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
                               tau,tautest,rhomax, i0max, nCol, observerVelocity)
 
-   use inputs_mod, only : useDust, h21cm, densitysubsample
+   use inputs_mod, only : useDust, densitysubsample
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3713,7 +3714,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
    recursive subroutine calculateOctalParams(grid, thisOctal, thisMolecule)
 
-     use inputs_mod, only : iTrans, h21cm, lowmemory, doCOchemistry, x_D, noturb
+     use inputs_mod, only : iTrans, lowmemory, doCOchemistry, x_D, noturb
 
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -5231,7 +5232,7 @@ end subroutine compare_molbench
 subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity, startI0, startTau, lengthOfRay)
 
-     use inputs_mod, only : useDust, h21cm, densitysubsample, lowmemory
+     use inputs_mod, only : useDust, densitysubsample, lowmemory
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -5747,7 +5748,7 @@ endif
 subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity)
 
-     use inputs_mod, only : useDust, h21cm, densitysubsample, lowmemory
+     use inputs_mod, only : useDust, densitysubsample, lowmemory
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule

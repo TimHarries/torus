@@ -239,22 +239,6 @@
 
 !-----------------------------
 
-
-!------------------------------------------
-! Galactic plane survey (angularImage_mod) 
-!------------------------------------------
-
-  logical :: h21cm ! also used in molecular_mod
-  logical :: internalView ! observer is internal to the galaxy
-  logical :: refineQ2Only ! Limit grid refinement to 2nd quadrant
-  logical :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
-  logical :: thermalLineWidth ! Use thermal line width? 
-  real(double) :: intPosX, intPosY, intPosZ ! Position of internal observer
-  real(double) :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
-  real(double) :: galaxyInclination, galaxyPositionAngle 
-  integer :: dssMinSample ! Minimum number of samples per cell when density subsample is used
-  logical :: SplitCubes ! Split cube into +ve and -ve contributions? 
-
 !----------------------------  
 ! Lucy radiative equilibrium
 !----------------------------

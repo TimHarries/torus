@@ -9,6 +9,9 @@ module h21cm_mod
 
   implicit none
 
+! Is this module in use?
+  logical, public, save :: h21cm=.false.
+
   real(double), public, parameter :: h21cm_lambda = 21.12
 
   public :: hi_emop
@@ -35,16 +38,8 @@ contains
     real(double), intent(in) :: dens
     real(double), intent(out):: emis, opac
 
-! minimum density threshold for non-zero emissivity and opacity 
-    real(double), parameter :: min_dens = 1.0e-99_db 
-
-    if ( dens < min_dens ) then 
-       opac = 0.0
-       emis = 0.0
-    else
-       opac = 1.5472d+09 * dens / temp
-       emis = 9.586d-10 * dens
-    end if
+    opac = 1.5472d+09 * dens / temp
+    emis = 9.586d-10 * dens
 
   end subroutine hi_emop
 

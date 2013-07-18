@@ -5,9 +5,23 @@
 
 module angularImage_utils
 
+  use kind_mod
+
   implicit none
 
-  public calcAngImgTest
+  public :: calcAngImgTest
+
+! Is the angular image module in use? 
+  logical, public, save :: internalView=.false.
+
+  logical, public, save :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
+  logical, public, save :: thermalLineWidth ! Use thermal line width? 
+  logical, public, save :: SplitCubes ! Split cube into +ve and -ve contributions? 
+  logical, public, save :: refineQ2Only ! Limit grid refinement to 2nd quadrant
+  real(double), public, save :: intPosX, intPosY, intPosZ ! Position of internal observer
+  real(double), public, save :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
+  real(double), public, save :: galaxyInclination, galaxyPositionAngle
+  integer, public, save :: dssMinSample ! Minimum number of samples per cell when density subsample is used
 
   contains
 

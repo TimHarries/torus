@@ -3247,11 +3247,10 @@ CONTAINS
     use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
     use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
          maxdepthamr, vturbmultiplier, rGapInner, rGapOuter
-    use inputs_mod, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, internalView
-    use inputs_mod, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, ttauriRstar
+    use inputs_mod, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, ttauriRstar
     use inputs_mod, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
          ttauriRinner, amr2d
-    use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell, refineQ2Only
+    use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, smoothinneredge
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
@@ -3263,6 +3262,7 @@ CONTAINS
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1, vh1FileRequired
     use density_mod, only: density
+    use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
 #endif
@@ -4422,7 +4422,7 @@ CONTAINS
              end if
 
 ! Limit refinement to the second quadrant of a Galactic plane survey
-             if ( grid%geometry == "theGalaxy" .and. internalView .and. refineQ2Only) then                 
+             if ( grid%geometry == "theGalaxy" .and. refineQ2Only) then                 
 
                 ! Find this point on the unmodified grid
                 cellCentre  = subcellCentre(thisOctal,subCell)
@@ -14837,10 +14837,11 @@ end function readparameterfrom2dmap
 
   subroutine allocateOctalAttributes(grid, thisOctal)
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
-         photoionization, hydrodynamics, h21cm, timeDependentRT, nAtom, &
+         photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
     use inputs_mod, only : grainFrac
     use gridtype_mod, only: statEqMaxLevels
+    use h21cm_mod, only: h21cm
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10

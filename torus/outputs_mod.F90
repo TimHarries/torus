@@ -30,11 +30,13 @@ contains
 #endif
 !    use inputs_mod, only : rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
     use inputs_mod, only : cmf, lamline, ttauriRouter,amrgridsize
+    use h21cm_mod, only: h21cm
     use physics_mod, only : setupXarray, setupDust
 #ifdef MOLECULAR
     use molecular_mod
     use angularImage
-    use inputs_mod, only : molecularPhysics, useDust, realdust, h21cm, internalView
+    use angularImage_utils, only: internalView
+    use inputs_mod, only : molecularPhysics, useDust, realdust
     use datacube_mod, only: dataCubeFilename
 #endif 
     use phasematrix_mod

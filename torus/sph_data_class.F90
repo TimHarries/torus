@@ -334,8 +334,8 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
-    use inputs_mod, only: internalView, convertRhoToHI, ih2frac, sphwithchem
-    use inputs_mod, only : iModel, galaxyPositionAngle, galaxyInclination, discardSinks
+    use inputs_mod, only: convertRhoToHI, ih2frac, sphwithchem, iModel, discardSinks
+    use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
 
     implicit none
@@ -1256,7 +1256,7 @@ part_loop: do ipart=1, nlines
 
 ! Read in SPH data from dump file with Chemistry. Errors reading from file could be due to incorrect endian. 
   subroutine read_sph_data_withChem(filename)
-    use inputs_mod, only: internalView, galaxyPositionAngle, galaxyInclination
+    use angularImage_utils, only: internalView, galaxyPositionAngle, galaxyInclination
 
     implicit none
     

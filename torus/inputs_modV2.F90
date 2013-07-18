@@ -2262,6 +2262,9 @@ contains
 #ifdef FITSCUBE
   subroutine readDataCubeParameters(cLine, fLine, nLines)
     use datacube_mod, only: cubePositionAngle, datacubeFilename, setCubeParams, npixels
+    use angularImage_utils
+    use h21cm_mod, only: h21cm
+
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
