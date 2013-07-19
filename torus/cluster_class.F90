@@ -302,7 +302,6 @@ contains
     use sph_data_class, only: Clusterparameter, sphData
     use constants_mod, only: mhydrogen
     use inputs_mod, only: tMinGlobal,doCOchemistry, x_D
-    use h21cm_mod
 
     IMPLICIT NONE
 
@@ -321,6 +320,9 @@ contains
     else
        thisOctal%temperature(subcell) =  real(max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4)))
     end if
+
+! Initialise to zero, will be set later in this subroutine if required
+    thisOctal%molabundance = 0.0
 
 ! Set H2 number density from SPH particles if present
     if ( associated(thisOctal%nh2) ) then
@@ -341,11 +343,6 @@ contains
     
     if( associated(thisOctal%etaline)) thisOctal%etaLine(subcell) = 1.e-30
     if( associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = 1.e-30
-    if ( h21cm ) then 
-       call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
-                   thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
-       thisOctal%molabundance = 0.0
-    end if
 
 ! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
     if ( associated (sphData%rhoCO) ) then 

@@ -1866,6 +1866,7 @@ CONTAINS
 #ifdef SPH
     USE cluster_class, ONLY:    assign_grid_values 
 #endif
+    use h21cm_mod
 
     IMPLICIT NONE
 
@@ -1928,7 +1929,7 @@ CONTAINS
 
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return. 
-          if(.not. modelWasHydro) then
+          if(.not. (modelWasHydro.or.h21cm)) then
              goto 666
           end if
           
@@ -1952,6 +1953,12 @@ CONTAINS
              endif
           end if
        end if
+
+       if (h21cm) then
+          call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
+               thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
+       endif
+
     END DO
     
    

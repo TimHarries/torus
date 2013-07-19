@@ -2389,10 +2389,19 @@ contains
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, fLine, nLines, &
             "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
-       call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
-       call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-            "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+
+       if (internalView) then
+          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (lon): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
+       else
+          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+          call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+       endif
+
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
        itrans = 1 ! always 1 for the 21cm line

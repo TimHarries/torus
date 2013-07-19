@@ -28,7 +28,6 @@ module angularImage_utils
 ! Set up octals for the angular image test case
     subroutine calcAngImgTest(thisOctal, subcell)
 
-      use h21cm_mod
       use octal_mod
 
 ! Arguments
@@ -89,9 +88,6 @@ module angularImage_utils
          thisoctal%cornervelocity(:) = thisoctal%velocity(1)
          thisoctal%cornerrho(:)      = thisoctal%rho(1)
       endif
-
-      call hi_emop(thisOctal%rho(subcell),    thisOctal%temperature(subcell), &
-           thisOctal%etaLine(subcell), thisOctal%chiLine(subcell)      )
 
     end subroutine calcAngImgTest
 
