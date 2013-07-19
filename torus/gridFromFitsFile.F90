@@ -1,8 +1,8 @@
-#ifdef USECFITSIO
-
 ! Module for setting up a Torus grid from data held in a FITS file
 
 module gridFromFitsFile
+
+#ifdef USECFITSIO
   use kind_mod 
   use messages_mod
   use constants_mod
@@ -65,7 +65,6 @@ module gridFromFitsFile
     subroutine read_fits_file_for_grid
 
       use fits_utils_mod, only: printFitsError
-      use constants_mod, only: Rgas
 
 ! FITS file variables and parameters
       integer :: status, unit, blocksize
@@ -275,7 +274,6 @@ npd_loop:            do n=1,npd
     subroutine read_fits_file_for_grid_pion
 
       use fits_utils_mod, only: printFitsError
-      use constants_mod, only: Rgas
 
       character(len=80) :: message
 
@@ -670,6 +668,6 @@ npd_loop:            do n=1,npd
       if (allocated (ionfrac_double))     deallocate(ionfrac_double)
 
     end subroutine deallocate_gridFromFitsFile
-
-end module gridFromFitsFile
 #endif
+end module gridFromFitsFile
+

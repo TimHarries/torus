@@ -5,7 +5,8 @@
 # Default options
 SYSTEM = gfortran
 memcheck = yes
-openmp  = yes
+openmp  = no
+mpi = no 
 cfitsio = no
 ETCFLAG  =
 
@@ -14,16 +15,13 @@ ETCFLAG  =
 
 # Set the SYSTEM environment variable to the name of your Fortran compiler
 
-ifeq ($(SYSTEM), g95)
-    F95COMP  = g95
-    FASTFLAG = -O3
-    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
-    EXE = torus.g95
-    KNOWN_SYSTEM = yes
-endif
-
 ifeq ($(SYSTEM), gfortran)
-    F95COMP = gfortran
+    ifeq ($(mpi), yes)
+        F95COMP = mpif90
+        MPIFLAG = -DMPI
+    else
+        F95COMP = gfortran
+    endif
     FASTFLAG = -O2
     DEBUGFLAG= -ggdb -fbacktrace -fbounds-check -Wunderflow -Wall -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     EXE = torus.gfortran
@@ -31,11 +29,34 @@ ifeq ($(SYSTEM), gfortran)
 endif
 
 ifeq ($(SYSTEM), ifort)
-    F95COMP= ifort
+    ifeq ($(mpi), yes)
+        F95COMP = mpiifort
+        MPIFLAG = -DMPI
+    else
+        F95COMP= ifort
+    endif
     FASTFLAG= -O2
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     EXE=torus.ifort
     KNOWN_SYSTEM=yes
+endif
+
+ifeq ($(SYSTEM), nagfor)
+    F95COMP  = nagfor
+    F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN -DUSEUNIXENV
+    DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
+    FASTFLAG = -O4
+    EXE = torus.nagfor
+    KNOWN_SYSTEM = yes
+    memcheck = no
+endif
+
+ifeq ($(SYSTEM), g95)
+    F95COMP  = g95
+    FASTFLAG = -O3
+    DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
+    EXE = torus.g95
+    KNOWN_SYSTEM = yes
 endif
 
 #
@@ -77,7 +98,8 @@ else
 endif
 
 # For zlib
-ETCFLAG += -lz -DUSEZLIB
+ETCFLAG += -DUSEZLIB
+STARLIBS += -lz
 
 #
 # Source files

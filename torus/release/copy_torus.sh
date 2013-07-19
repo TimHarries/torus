@@ -14,7 +14,7 @@ fi
 # Get the subversion revision string from the top level of the repository
 cd ..
 svnstring=`svnversion`
-export TORUS_TAR_FILE=torus2.0-${svnstring}_public_alpha.tar
+export TORUS_TAR_FILE=torus2.0-${svnstring}_public.tar
 echo "Making ${TORUS_TAR_FILE}"
 cd release
 
@@ -26,7 +26,7 @@ echo "Removing files not for release"
 rm hydrodynamics_mod.?90 photoionAMR_mod.?90 photoion_mod.?90
 rm photoion_utils_mod.?90 angularImage_mod.?90 molecular_mod.?90 
 rm torusMod.?90 ion_mod.?90 nbody_mod.?90 qShep*90 timedep_mod.?90
-rm cluster_class.?90 sph_data_class.?90 
+rm cluster_class.?90 sph_data_class.?90 datacube_mod.?90
 rm phfit2.?90 cmf_mod.?90 modelatom_mod.?90
 rm isochrone_class.?90 viscosity_mod.?90 stateq_mod.?90
 rm math_mod2.?90
