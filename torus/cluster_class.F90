@@ -322,7 +322,7 @@ contains
     end if
 
 ! Initialise to zero, will be set later in this subroutine if required
-    thisOctal%molabundance = 0.0
+    if(associated(thisOctal%molabundance))thisOctal%molabundance = 0.0
 
 ! Set H2 number density from SPH particles if present
     if ( associated(thisOctal%nh2) ) then
