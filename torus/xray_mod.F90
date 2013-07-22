@@ -29,22 +29,35 @@ end type AUGER
 contains
 
 
+!
+!we are going to be as good as cloudy but not as comprehensive as mocassin (at least for now)
+!
+
+!
+!treat only inner-shell photoionization following a primary photoionization
+!
+
 !Read in auger yield data
 subroutine setUpAugerData()
   implicit none
   integer, parameter :: nAtoms=5 !C, O, Mg, Si and Fe
   integer, parameter :: maxShells=5 !m23 shell for iron
   character(len=200):: dataDirectory
-  type(AUGER) :: augerArray(nAtoms,maxShells)
+  character(len=200) :: message
+  logical :: infile
+  type(AUGER) :: augerArray(nAtoms, maxShells)
+  integer :: ier
     
   augerArray%yield = 0.d0
   augerArray%energy = 0.d0
+  infile = .true.
 
   call unixGetenv("TORUS_DATA", dataDirectory)
-  open(1, file=trim(dataDirectory)//'auger_yields.dat', status="old", position="rewind")
-
-  
-  
+  open(1, file=trim(dataDirectory)//'auger_yields.dat', status="old", position="rewind", iostat=ier)
+  if(ier /= 0) then
+     message = trim("trouble opening file auger_yields.dat in xray_mod")
+     call torus_abort(message)
+  end if
 
 end subroutine setUpAugerData
 
