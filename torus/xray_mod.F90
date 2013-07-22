@@ -23,7 +23,8 @@ implicit none
 
 type AUGER
    real(double) :: yield
-   real(double) energy     
+   real(double) :: energy     
+   real(double) :: ionizthresh
 end type AUGER
 
 contains
@@ -42,14 +43,19 @@ subroutine setUpAugerData()
   implicit none
   integer, parameter :: nAtoms=5 !C, O, Mg, Si and Fe
   integer, parameter :: maxShells=5 !m23 shell for iron
+  integer, parameter :: nLines=50
   character(len=200):: dataDirectory
   character(len=200) :: message
   logical :: infile
-  type(AUGER) :: augerArray(nAtoms, maxShells)
-  integer :: ier
-    
+  type(AUGER) :: augerArray(nAtoms, maxShells, 10)
+  integer :: ier, i
+  integer :: elem, shell, ishell
+  real(double) :: ionizthresh, energy, yield
+
+
   augerArray%yield = 0.d0
   augerArray%energy = 0.d0
+  augerArray%ionizthresh = 1.d30
   infile = .true.
 
   call unixGetenv("TORUS_DATA", dataDirectory)
@@ -58,6 +64,15 @@ subroutine setUpAugerData()
      message = trim("trouble opening file auger_yields.dat in xray_mod")
      call torus_abort(message)
   end if
+
+  do i = 1, nLines
+     read(*,*) elem, shell, ionizthresh, energy, yield, ishell
+     augerArray(elem, shell, ishell)%ionizthresh = ionizthresh
+     augerArray(elem, shell, ishell)%energy = energy
+     augerArray(elem, shell, ishell)%yield = yield
+  end do
+
+  call writeInfo("Auger array filled", TRIVIAL)
 
 end subroutine setUpAugerData
 
