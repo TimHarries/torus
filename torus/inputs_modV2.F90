@@ -2696,7 +2696,7 @@ contains
     integer :: nInclination
     real    :: firstInclination, firstPA=0.0
     real    :: lastInclination=80.0, lastPA=0.0
-    real, allocatable :: inclinations(:)
+    real, allocatable :: inclinations(:), posangs(:)
     character(len=80) :: outFile 
 
 
@@ -2706,7 +2706,8 @@ contains
     call getInteger("ninc", nInclination, cLine, fLine, nLines, &
          "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-    if (checkPresent("inclinations", cline, nlines)) then
+incStyle: if (checkPresent("inclinations", cline, nlines)) then
+! Inclinations and postion angles range style
        call parameterDefinesRange("inclinations", firstInclination, lastInclination, isRange, cLine, fLine, nLines)
        if (isRange) then 
           write(message,'(a,f6.2,a,f6.2,a)') &
@@ -2714,14 +2715,37 @@ contains
           call writeInfo(message,TRIVIAL)
           firstInclination = firstInclination * real(degToRad)
           lastInclination = lastInclination * real(degToRad)
+
+          if (checkPresent("posangs", cline, nlines)) then 
+             call parameterDefinesRange("posangs", firstPA, lastPA, isRange, cLine, fLine, nLines)
+             if (isRange) then 
+                write(message,'(a,f6.2,a,f6.2,a)') &
+                     "SED PA range is from ", firstPA, " to ", lastPA, " degrees"
+                call writeInfo(message,TRIVIAL)
+                firstPA = firstPA * real(degToRad)
+                lastPA = lastPA * real(degToRad)
+             else
+                call writewarning("Position angles and inclinations should be specified in the same format")
+             endif
+          else
+             firstPA=0.0; lastPA=0.0
+          endif
+
        else
+! Inclinations and position angles list style
           allocate(inclinations(nInclination))
           call getRealArray("inclinations", inclinations, 1.0, cLine, fLine, nLines, &
                "Inclinations (deg): ",90., ok, .false.)
           inclinations(:) = inclinations(:) * real(degToRad)
+          allocate(posangs(nInclination))
+          call getRealArray("posangs", posangs, 1.0, cLine, fLine, nLines, &
+               "Position angles (deg): ",0., ok, .false.)
+          posangs(:) = posangs(:) * real(degToRad)
        end if
+
     else
 
+! Inclinations and postion angles "first and last" style
 ! firstinc is required if inclinations keyword is not present
        call getReal("firstinc", firstInclination, real(degToRad), cLine, fLine, nLines, &
             "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
@@ -2735,7 +2759,7 @@ contains
        call getReal("lastPA", lastPA, real(degToRad), cLine, fLine, nLines, &
             "Last position angle (deg): ","(a,f5.1,1x,a)", 0.0, ok, .false.)
 
-    end if
+    end if incStyle
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
@@ -2823,8 +2847,9 @@ contains
          "SED inclinations are uniform in cos(inc): ","(a,1l,1x,a)", .true., ok, .false.)
 
     if (allocated(inclinations)) then 
-       call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, incList=inclinations)
+       call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, incList=inclinations, PAlist=posangs)
        deallocate(inclinations)
+       deallocate(posangs)
     else
        call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
             firstInc=firstInclination,LastInc=LastInclination, cosSpacing=UniformInCos)

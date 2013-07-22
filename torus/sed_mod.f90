@@ -27,7 +27,7 @@ module sed_mod
 contains
 
   subroutine setSedParameters(fileName,jansky,SIsed,sed, firstPA, lastPA, &
-       nInclination,firstInc,LastInc,cosSpacing,incList)
+       nInclination,firstInc,LastInc,cosSpacing,incList,PAlist)
     use kind_mod
     use messages_mod
     use constants_mod
@@ -37,7 +37,7 @@ contains
     real, intent(in), optional    :: firstInc, LastInc
     real, intent(in)              :: firstPA, lastPA ! Don't need to be optional, default to zero if not required
     logical, optional             :: cosSpacing
-    real, intent(in), optional    :: incList(:)
+    real, intent(in), optional    :: incList(:), PAlist(:)
     character(len=80), intent(in) :: fileName
 
     real(double) :: cos_inc_first, cos_inc_last, d_cos_inc, cos_inc
@@ -61,9 +61,9 @@ contains
        SedNInc = size(incList)
        allocate(SedInclinations(SedNInc))
        allocate(SedPositionAngles(SedNInc))
-       SedInclinations(:) = incList(:)
-       call writeInfo("Setting SED position angles to zero", FORINFO)
-       SedPositionAngles(:) = 0.0 
+       SedInclinations(:)   = incList(:)
+       SedPositionAngles(:) = PAlist(:)
+
     else
 
 ! Check the required arguments are present
