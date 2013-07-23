@@ -84,30 +84,43 @@ end subroutine setUpAugerData
 !
 !Compton scattering stuff
 !
-!Use Klein-Nishina formula to get the Compton cross section
-!Heating and cooling contributions from Compton from Rybicki and Lightman (2004), radiative 
-!processes in astrophysics
 
-
-!calculate compton cross section using Klein-Nishina formula
+!this is the same as is used by cloudy and mocassin. 
 subroutine getComptonThomsonXsec(freq, nfreq)
   implicit none
   real(double), parameter :: sigma_thom = 6.65d-25
   real(double), parameter :: xraycutoff = 20.6d0*rydbergtoev
   real(double) :: freq
-  real(double), allocatable :: CT_KN_Xsec(:)
+  real(double), allocatable :: CT_KN_Xsec(:), CT_heating(:), CT_cooling(:)
   real(double) :: x  !x is h*nu/(m*c^2)
+  real(double) :: alpha, beta
   integer :: i, nfreq
 
   nfreq = 1000
 
-  allocate(CTrecoilXsec(nfreq))
+  if(.not. allocated(CT_KN_Xsec)) allocate(CT_KN_Xsec(nfreq))
+  if(.not. allocated(CT_heating)) allocate(CT_heating(nfreq))
+  if(.not. allocated(CT_cooling)) allocate(CT_cooling(nfreq))
 
   do i = 1, nfreq    
+
+     !Compton exchange factors from
+     !C. B. Tarter, W. H. Tucker, and E. E. Salpeter. 
+     !The Interaction of X-Ray Sources with Optically Thin Environments. 
+     !ApJ, 156:943, June 1969. doi: 10.1086/150026.
+     alpha = 1.d0/(1.d0+freq(i)*(1.1792d-4+7.084d-10*freq(i)))
+     beta = (1.d0 - alpha*freq(i)*(1.1792d-4+2.d0*7.084d-10*freq(i))/4.d0)
+
+     !heating rate
+     CT_heating(i) = alpha*freq(i)*freq(i)*3.858d-25 
+     !cooling rate
+     CT_cooling(i) = alpha*beta*freq(i)*3.858d-25 
      
      if(freq(i)*hConst <= xraycutoff) then
         CT_KN_Xsec(i) = sigma_thom
      else
+
+        !calculate compton cross section using Klein-Nishina formula
         !equation 7.5 of Rynicki and Lightman (2004), page 197
         CT_KN_Xsec(i) = sigma_thom * ((3.d0/4.d0)* ( &
              ((1.d0+x)/(x**3)) * ( &
@@ -117,7 +130,7 @@ subroutine getComptonThomsonXsec(freq, nfreq)
   end do
 
 
-end subroutine getComptonXsec
+end subroutine getComptonThomsonXsec
 
 
 !x-ray specific ionization balance (not yet working)
