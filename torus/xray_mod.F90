@@ -43,8 +43,9 @@ subroutine setUpAugerData(augerArray)
   implicit none
   integer, parameter :: nAtoms=5 !C, O, Mg, Si and Fe
   integer, parameter :: maxShells=5 !m23 shell for iron
-  integer, parameter :: nLines=50
-  character(len=200):: dataDirectory
+  integer, parameter :: nLines=49
+  character(len=16), parameter :: file="auger_yields.dat"  
+  character(len=200):: dataDirectory, path
   character(len=200) :: message
   logical :: infile
   type(AUGER), intent(out) :: augerArray(nAtoms, maxShells, 10)
@@ -59,14 +60,17 @@ subroutine setUpAugerData(augerArray)
   infile = .true.
 
   call unixGetenv("TORUS_DATA", dataDirectory)
-  open(1, file=trim(dataDirectory)//'auger_yields.dat', status="old", position="rewind", iostat=ier)
+  dataDirectory = trim(dataDirectory)  
+
+  path = trim(dataDirectory)//"/"//file
+  open(1, file=path, status="old", position="rewind", iostat=ier)
   if(ier /= 0) then
      message = trim("trouble opening file auger_yields.dat in xray_mod")
      call torus_abort(message)
   end if
 
   do i = 1, nLines
-     read(*,*) elem, shell, ionizthresh, energy, yield, ishell
+     read(1,*) elem, shell, ionizthresh, energy, yield, ishell
      augerArray(elem, shell, ishell)%ionizthresh = ionizthresh   !eV
      augerArray(elem, shell, ishell)%energy = energy  !eV
      augerArray(elem, shell, ishell)%yield = yield   !average number of electrons

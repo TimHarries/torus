@@ -1051,7 +1051,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1216,6 +1216,11 @@ end subroutine radiationHydro
     logical, save :: splitThisTime = .false.
     real(double) :: maxDiffRadius, maxDiffRadius1, maxDiffRadius2
     integer :: receivedStackSize, nToSend
+
+
+    !xray stuff
+    type(AUGER) :: augerArray(5, 5, 10)
+
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
@@ -1418,6 +1423,10 @@ end subroutine radiationHydro
        call readHeIRecombinationLinesFit()
 
        call readHeIIrecombination()
+
+       if(xraycalc) then
+          call setUpAugerData(augerArray)
+       end if
 
        firstTimeTables = .false.
     endif
