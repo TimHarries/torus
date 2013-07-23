@@ -349,7 +349,7 @@ contains
 
   subroutine verticalHydrostatic(grid, mStar, sigma0,  miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope)
-    use inputs_mod, only : variableDustsublimation, rGap
+    use inputs_mod, only : variableDustsublimation, rGap, rSublimation
     use messages_mod, only: myRankIsZero
     use parallel_mod, only: torus_mpi_barrier
     use source_mod, only: SOURCETYPE
@@ -410,6 +410,10 @@ contains
 
        call torus_mpi_barrier()
 
+       if (.not.variableDustSublimation) then
+          call clearDustToSublimation(grid%octreeRoot, dble(rSublimation))
+       endif
+
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
             nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled)
 
@@ -447,6 +451,8 @@ contains
 
        call getBetaValue(grid, betaEstimate, heightEstimate)
        call getSublimationRadius(grid, rSub)
+       if (.not.variableDustSublimation) rSub = rSublimation
+
        write(message, '(a, f7.3,a )') "After hydro adjustment: Dust Sublimation radius is: ",(1.d10*rSub/rSol), " solar radii"
        call writeInfo(message, FORINFO)
        write(message, '(a, f7.3,a )') "After hydro adjustment: Dust Sublimation radius is: ",(rSub/rCore), " core radii"
@@ -579,10 +585,16 @@ contains
        call setTemperature(grid%octreeRoot, temp)
     endif
 
+
  enddo
 
 
  ! final call to sort out temperature
+
+    if (.not.variableDustSublimation) then
+       call clearDustToSublimation(grid%octreeRoot, dble(rSublimation))
+    endif
+
 
  temp = 20.
  call setTemperature(grid%octreeRoot, temp)
@@ -630,6 +642,35 @@ end subroutine verticalHydrostatic
     end do
 
   end subroutine setTemperature
+
+  recursive subroutine clearDustToSublimation(thisOctal, rSub)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: rSub, r
+    type(VECTOR) :: rvec
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call clearDustToSublimation(child, rSub)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          r = sqrt(rVec%x**2 + rVec%z**2)
+          if (r < rSub) then
+             thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+          endif
+       end if
+    end do
+
+  end subroutine clearDustToSublimation
 
   recursive subroutine zeroChiline(thisOctal)
   type(octal), pointer   :: thisOctal

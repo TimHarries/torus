@@ -8609,7 +8609,8 @@ endif
 
   subroutine calcBondiHoyleDensity(thisOctal,subcell)
 
-    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe, &
+         inflowTemp
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -8624,7 +8625,7 @@ endif
     n = 2.d0
     ethermal = 0.1d0
     rVec = subcellCentre(thisOctal, subcell)
-
+    inflowTemp = 10.d0
     thisOctal%temperature(subcell) = 10.d0
     thisOCtal%rho(subcell) = 1.d-23
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
@@ -8798,16 +8799,14 @@ endif
   end subroutine calcShuDensity
 
   subroutine setupInflowParameters()
-    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe, inflowTemp
     real(double) :: soundSpeed, pressure, temperature
-    inflowRho = 1.d-25
-    temperature = 10.d0
+    temperature = inflowTemp
     pressure = (inflowRho/(2.33d0*mHydrogen))*kerg*temperature
     soundSpeed = sqrt(pressure / inflowRho)
     inflowSpeed = 3.d0*soundSpeed
 
     inflowPressure = pressure
-    inflowRho = 1.d-25
     inflowMomentum = inflowRho * inflowSpeed
     inflowEnergy = kerg * temperature/(2.33d0*mHydrogen) + 0.5d0*inflowSpeed**2
     inflowRhoE = inflowEnergy * inflowRho

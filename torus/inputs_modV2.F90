@@ -59,6 +59,7 @@ contains
     nBlobs = 0
     nLines = 0
     inputnMonte = 0
+    inflowTemp = 10.d0
 
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
 !   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
@@ -2097,7 +2098,7 @@ contains
     character(len=80) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
-    real(double) :: dx
+    real(double) :: dx, cs
     logical :: ok
 
     call getReal("cfl", cflNumber, 1., cLine, fLine, nLines, &
@@ -2236,6 +2237,25 @@ contains
 
     call getLogical("zslope", zslope, cLine, fLine, nLines, &
          "Inflow gradient varies along z-direction: ","(a,1l,a)", .false., ok, .false.)
+
+    call getDouble("inflowrho", inflowRho, 1.d0, cLine, fLine, nLines, &
+         "Density for inflow boundary conditions: ","(a,e12.3,1x,a)", 1.d-23, ok, .false.)
+
+    call getDouble("inflowtemp", inflowtemp, 1.d0, cLine, fLine, nLines, &
+         "Temperature for inflow boundary conditions: ","(a,e12.3,1x,a)", 10.d0, ok, .false.)
+    
+    inflowPressure = (inflowrho / (2.33d0 * mHydrogen)) * kerg * inflowTemp
+    cs = sqrt(inflowPressure/inflowRho)
+
+    call getDouble("inflowspeed", inflowSpeed, 1.d0, cLine, fLine, nLines, &
+         "Mach number of speed for inflow boundary conditions: ","(a,e12.3,1x,a)", 3.d0, ok, .false.)
+
+    inflowSpeed = inflowSpeed * cs
+
+    inflowMomentum = inflowSpeed * inflowRho
+    inflowEnergy = kerg * inflowTemp/(2.33d0*mHydrogen)
+    inflowEnergy = inflowEnergy + 0.5d0*(inflowSpeed)**2
+    inflowRhoE = inflowEnergy * inflowRho
 
   end subroutine readHydrodynamicsParameters
 

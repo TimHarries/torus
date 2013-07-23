@@ -4117,24 +4117,28 @@ end subroutine sumFluxes
    call periodBoundary(grid)
    call imposeBoundary(grid%octreeRoot, grid)
    call transferTempStorage(grid%octreeRoot)
+   if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
    !periodic self gravity boundary conditions
    if (selfGravity .and. .not. dirichlet) then
       call periodBoundary(grid, justGrav = .true.)
       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
    endif
-
+ 
+   if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
    endif
+   if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
 
+   if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
    else
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
+   if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
    
-   if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
    if (selfGravity) then
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -5045,7 +5049,7 @@ end subroutine sumFluxes
     integer :: nGroup, group(5120)
 !    logical :: doRefine
     integer :: evenUpArray(nHydroThreadsGlobal)
-    logical :: doSelfGrav
+    logical :: doSelfGrav, refinedSomeCells
     logical, save  :: firstStep = .true.
     integer :: ierr
 
@@ -5456,10 +5460,12 @@ end subroutine sumFluxes
              if (myrankWorldGlobal == 1)call tune(6, "Refine grid")
                 call writeInfo("Refining grid part 2", TRIVIAL)    
                 call setAllUnchanged(grid%octreeRoot)
-                call refineGridGeneric(grid, amrTolerance, evenuparray)
-                call writeInfo("Done the refine part", TRIVIAL)                 
-                call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
-                call writeInfo("Done the even up part", TRIVIAL)    
+                call refineGridGeneric(grid, amrTolerance, evenuparray, refinedSomeCells=refinedSomeCells)
+                if (refinedSomeCells) then
+                   call writeInfo("Done the refine part", TRIVIAL)                 
+                   call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
+                   call writeInfo("Done the even up part", TRIVIAL)    
+                endif
              if (myrankWorldGlobal == 1)call tune(6, "Refine grid")
 !                iRefine = 0
 !             endif
@@ -9147,10 +9153,11 @@ real(double) :: rho
    end function getNWorking
 
 
-  subroutine refineGridGeneric(grid, tol, evenupArray)
+  subroutine refineGridGeneric(grid, tol, evenupArray, refinedSomeCells)
     use inputs_mod, only : minDepthAMR, maxDepthAMR
     use mpi
     type(GRIDTYPE) :: grid
+    logical, optional :: refinedSomeCells
     logical :: globalConverged(512), tConverged(512)
     integer :: ierr, k, j
     real(double) :: tol
@@ -9161,8 +9168,10 @@ real(double) :: rho
 !    character(len=80) :: plotfile
 
     globalConverged = .false.
+    if (PRESENT(refinedSomeCells)) refinedSomeCells = .false.
     if (myrankGlobal == 0) goto 666
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
+
 
     endloop = getEndLoop(evenuparray)
 
@@ -9212,7 +9221,11 @@ real(double) :: rho
 !                  "mpithread    ", &
 !                  "q_i          "/))
 
-       if (ALL(tConverged(1:nHydrothreadsGlobal))) exit
+       if (ALL(tConverged(1:nHydrothreadsGlobal))) then
+          exit
+       else
+          if (PRESENT(refinedSomeCells)) refinedSomeCells = .true.
+       endif
     enddo
 
 

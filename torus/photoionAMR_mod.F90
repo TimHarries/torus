@@ -79,7 +79,7 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum
+    use inputs_mod, only: densitySpectrum, cflNumber
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -106,7 +106,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
-    logical :: noPhoto=.false., tmpCylindricalHydro
+    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
@@ -136,7 +136,7 @@ contains
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
-    cfl = 0.3d0
+    cfl = cflNumber
     globalEpsOverDeltaT = 0.d0
     mu = 1.d0
 
@@ -837,12 +837,21 @@ contains
           if (myRankGlobal /= 0) then
              
              call setAllUnchanged(grid%octreeRoot)
-             call evenUpGridMPI(grid,.false.,.true., evenuparray)
 
-             call refineGridGeneric(grid, amrtolerance, evenuparray)
+!             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+!             call evenUpGridMPI(grid,.false.,.true., evenuparray)
+!             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
 
-             call writeInfo("Evening up grid", TRIVIAL)
-             call evenUpGridMPI(grid, .false.,.true., evenuparray)
+             if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
+             call refineGridGeneric(grid, amrtolerance, evenuparray, refinedSomeCells=refinedSomeCells)
+             if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
+
+             if (refinedSomeCells) then
+                if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+                call writeInfo("Evening up grid", TRIVIAL)
+                call evenUpGridMPI(grid, .false.,.true., evenuparray)
+                if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+             endif
              if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
 !             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -853,6 +862,7 @@ contains
 
 
 !add/merge sink particles where necessary
+       if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
        if (myrankGlobal /= 0) then
           if (nbodyPhysics.and.addSinkParticles) call addSinks(grid, globalsourceArray, globalnSource)       
           if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
@@ -863,6 +873,7 @@ contains
           enddo
 
        endif
+       if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
 
 
 !       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
@@ -1602,7 +1613,7 @@ end subroutine radiationHydro
           
           if (splitThisTime) sourceInThickCell = .true.
           
-          maxDiffRadius = min(maxDiffRadius1, maxDiffRadius2)
+          maxDiffRadius = max(maxDiffRadius1, maxDiffRadius2)
           if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
           
           if (myrankGlobal /= 0) then
