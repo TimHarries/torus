@@ -32,11 +32,9 @@ contains
 
 !
 !we are going to be as good as cloudy but not as comprehensive as mocassin (at least for now)
+!we will be lacking in some atomic species
 !
 
-!
-!treat only inner-shell photoionization following a primary photoionization
-!
 
 !Read in auger yield data
 subroutine setUpAugerData(augerArray)
@@ -121,7 +119,7 @@ subroutine getComptonThomsonXsec(freq, nfreq)
      else
 
         !calculate compton cross section using Klein-Nishina formula
-        !equation 7.5 of Rynicki and Lightman (2004), page 197
+        !equation 7.5 of Rybicki and Lightman (2004), page 197
         CT_KN_Xsec(i) = sigma_thom * ((3.d0/4.d0)* ( &
              ((1.d0+x)/(x**3)) * ( &
              (2.d0*x*(1.d0+x)/(1.d0+2.d0*x)) - log(1.d0+2.d0*x)) + &
@@ -212,6 +210,11 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
      thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
 
 end subroutine solveIonizationBalance_Xray
+
+
+
+
+
 
 end module xray_mod
 #endif

@@ -2756,7 +2756,8 @@ end subroutine radiationHydro
        !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
        !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT, uv_vector) &
-       !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal)
+       !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal) &
+       !$OMP SHARED(augerArray)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end
@@ -5176,7 +5177,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     endif
 
     call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-       
     dustCooling = fourPi * kappaP * (stefanBoltz/pi) * temperature**4
 
     coolingRate = coolingRate + dustCooling
