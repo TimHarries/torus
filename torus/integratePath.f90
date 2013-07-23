@@ -2623,7 +2623,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(*,*) '   Error encountered in test towards observer!!! (error = ',error,')'
   end if     
      
-
+  if (nTau > 2) then 
      write(message,'(a,1pe10.3)') "Optical depth to observer from centre: ",tauExt(ntau)
      call writeInfo(message, TRIVIAL)
      write(message,'(a,1pe10.3)') "Absorption depth to observer from centre: ",tauAbs(ntau)
@@ -2634,6 +2634,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      call writeInfo(message, TRIVIAL)
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
+  end if
 
   !
   !

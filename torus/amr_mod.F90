@@ -5002,7 +5002,11 @@ CONTAINS
    if (thisOctal%nDepth == maxDepthAmr) then
       split = .false.
       if (firstTime) then
-         call writeWarning("AMR cell depth capped")
+         if (minDepthAmr == maxDepthAmr) then 
+            call writeInfo("Splitting grid to uniform depth")
+         else
+            call writeWarning("AMR cell depth capped")
+         endif
          firstTime = .false.
       endif
    endif
