@@ -319,7 +319,7 @@ contains
     case("binarywithChem","galaxy")
        call read_sph_data_withChem(sphdatafilename)
        
-    case("mpi")
+    case("mpi","binary")
        call read_sph_data_mpi(sphdatafilename)
 
     case("ascii")

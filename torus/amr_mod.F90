@@ -914,7 +914,7 @@ CONTAINS
     CASE ("wind")
        CALL WindSubcell(thisOctal, subcell)
        
-    CASE("cluster","molcluster","theGalaxy","wr104")
+    CASE("sphfile","cluster","molcluster","theGalaxy","wr104")
 
        ! Flag as missing data to be filled in by FinishGrid
        thisoctal%rho(subcell) = -9.9d99
@@ -1203,7 +1203,7 @@ CONTAINS
 
     select case (grid%geometry)
 #ifdef SPH
-       case("cluster","molcluster","theGalaxy","wr104")
+       case("sphfile","cluster","molcluster","theGalaxy","wr104")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
           ! to the subcells if the particles are in the subcells.
@@ -1905,9 +1905,11 @@ CONTAINS
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
 
 #ifdef SPH
-       CASE ("cluster","wr104")
+! Without corner velocities
+       CASE ("sphfile","cluster","wr104")
           call assign_grid_values(thisOctal,subcell)
-          
+
+! With corner velocities
        CASE ("molcluster", "theGalaxy")
           if( .not. thisoctal%haschild(subcell)) then 
 
@@ -4304,7 +4306,7 @@ CONTAINS
                (cellSize > (r_cmfgen(2)-r_cmfgen(1))) ) split = .true.
           
 #ifdef SPH
-       case ("cluster","molcluster","theGalaxy")
+       case ("sphfile","cluster","molcluster","theGalaxy")
           pOctal => thisOctal
           if (octalOnThread(pOctal, subcell, myrankGlobal).and.(get_npart() > 0)) then
 
@@ -4449,7 +4451,7 @@ CONTAINS
              end if
 
 ! Limit refinement to the second quadrant of a Galactic plane survey
-             if ( grid%geometry == "theGalaxy" .and. refineQ2Only) then                 
+             if ( refineQ2Only ) then                 
 
                 ! Find this point on the unmodified grid
                 cellCentre  = subcellCentre(thisOctal,subCell)

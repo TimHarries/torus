@@ -177,16 +177,8 @@ contains
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-       case("theGalaxy")
-          call read_sph_data_wrapper
-
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-
-
-       case("molcluster")
+! General case of setting up a grid from an SPH file
+       case("molcluster","theGalaxy","sphfile")
           if (.not.grid%splitOverMPI) then
              call read_sph_data_wrapper
           else
@@ -199,7 +191,6 @@ contains
           endif
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-!          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
@@ -1525,7 +1516,7 @@ contains
        call testAMRmass(grid, dble(mdisc))
 
 #ifdef SPH
-    case("molcluster", "theGalaxy", "cluster")
+    case("molcluster", "theGalaxy", "cluster","sphfile")
        totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0
        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"

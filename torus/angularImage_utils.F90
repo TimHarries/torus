@@ -17,7 +17,7 @@ module angularImage_utils
   logical, public, save :: obsVelFromGrid ! Is observer velocity taken from Torus grid?
   logical, public, save :: thermalLineWidth ! Use thermal line width? 
   logical, public, save :: SplitCubes ! Split cube into +ve and -ve contributions? 
-  logical, public, save :: refineQ2Only ! Limit grid refinement to 2nd quadrant
+  logical, public, save :: refineQ2Only=.false. ! Limit grid refinement to 2nd quadrant
   real(double), public, save :: intPosX, intPosY, intPosZ ! Position of internal observer
   real(double), public, save :: intDeltaVx, intDeltaVy, intDeltaVz ! Additional velocity applied to internal observer
   real(double), public, save :: galaxyInclination, galaxyPositionAngle

@@ -209,7 +209,7 @@ contains
     case ("proto")
        call initProtoAMR(grid)
 
-    case("cluster","wr104","molcluster", "theGalaxy")
+    case("sphfile","cluster","wr104","molcluster", "theGalaxy")
        grid%lineEmission = .false.
        grid%rCore        = rCore
        
