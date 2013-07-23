@@ -90,24 +90,30 @@ end subroutine setUpAugerData
 
 
 !calculate compton cross section using Klein-Nishina formula
-subroutine getComptonXsec(freq, nfreq)
+subroutine getComptonThomsonXsec(freq, nfreq)
   implicit none
   real(double), parameter :: sigma_thom = 6.65d-25
-  real(double), parameter :: xraycutoffnu = 20.6d0*rydbergtoev*cspeed
+  real(double), parameter :: xraycutoff = 20.6d0*rydbergtoev
   real(double) :: freq
-  real(double) :: comptonXsec
+  real(double), allocatable :: CT_KN_Xsec(:)
   real(double) :: x  !x is h*nu/(m*c^2)
   integer :: i, nfreq
 
   nfreq = 1000
 
+  allocate(CTrecoilXsec(nfreq))
+
   do i = 1, nfreq    
      
-     !equation 7.5 of Rynicki and Lightman (2004), page 197
-     comptonXsec = sigma_thom * ((3.d0/4.d0)* ( &
-          ((1.d0+x)/(x**3)) * ( &
-          (2.d0*x*(1.d0+x)/(1.d0+2.d0*x)) - log(1.d0+2.d0*x)) + &
-          (1.d0/2.d0*x)*log(1.d0+2.d0*x) - (1.d0-3.d0*x/(1.d0+2.d0*x)**2)))
+     if(freq(i)*hConst <= xraycutoff) then
+        CT_KN_Xsec(i) = sigma_thom
+     else
+        !equation 7.5 of Rynicki and Lightman (2004), page 197
+        CT_KN_Xsec(i) = sigma_thom * ((3.d0/4.d0)* ( &
+             ((1.d0+x)/(x**3)) * ( &
+             (2.d0*x*(1.d0+x)/(1.d0+2.d0*x)) - log(1.d0+2.d0*x)) + &
+             (1.d0/2.d0*x)*log(1.d0+2.d0*x) - (1.d0-3.d0*x/(1.d0+2.d0*x)**2)))
+     end if
   end do
 
 
