@@ -111,9 +111,9 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
 
 
   v = cellVolume(thisOctal, subcell)
-!  print *, "auger array", augerArray
-!
-!  stop
+  print *, "auger array", augerArray
+
+  stop
 !currently just old photoion stuff, under development
     k = 1
   allocate(newFrac(1:SIZE(thisOctal%ionFrac,2)))
