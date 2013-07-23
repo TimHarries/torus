@@ -21,6 +21,7 @@
   logical :: radiativeEquilibrium
   logical :: statisticalEquilibrium
   logical :: photoionEquilibrium
+  logical :: xrayCalc
   logical :: hydrodynamics
   logical :: timeDependentRT
   logical :: donBodyOnly

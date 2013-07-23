@@ -39,7 +39,7 @@ contains
 !
 
 !Read in auger yield data
-subroutine setUpAugerData()
+subroutine setUpAugerData(augerArray)
   implicit none
   integer, parameter :: nAtoms=5 !C, O, Mg, Si and Fe
   integer, parameter :: maxShells=5 !m23 shell for iron
@@ -47,7 +47,7 @@ subroutine setUpAugerData()
   character(len=200):: dataDirectory
   character(len=200) :: message
   logical :: infile
-  type(AUGER) :: augerArray(nAtoms, maxShells, 10)
+  type(AUGER), intent(out) :: augerArray(nAtoms, maxShells, 10)
   integer :: ier, i
   integer :: elem, shell, ishell
   real(double) :: ionizthresh, energy, yield
@@ -67,9 +67,9 @@ subroutine setUpAugerData()
 
   do i = 1, nLines
      read(*,*) elem, shell, ionizthresh, energy, yield, ishell
-     augerArray(elem, shell, ishell)%ionizthresh = ionizthresh
-     augerArray(elem, shell, ishell)%energy = energy
-     augerArray(elem, shell, ishell)%yield = yield
+     augerArray(elem, shell, ishell)%ionizthresh = ionizthresh   !eV
+     augerArray(elem, shell, ishell)%energy = energy  !eV
+     augerArray(elem, shell, ishell)%yield = yield   !average number of electrons
   end do
 
   call writeInfo("Auger array filled", TRIVIAL)
@@ -82,10 +82,11 @@ end subroutine setUpAugerData
 
 
 !x-ray specific ionization balance (not yet working)
-subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, epsOverdeltaT)
+subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, epsOverdeltaT, augerArray)
   implicit none
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
+  type(AUGER) :: augerArray(5, 5, 10)
   real(double) :: epsOverDeltaT, V
   real :: temperature
   integer :: subcell
@@ -98,7 +99,9 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
   real(double), parameter :: underCorrection = 0.6d0
 
   v = cellVolume(thisOctal, subcell)
+  print *, "auger array", augerArray
 
+  stop
 !currently just old photoion stuff, under development
     k = 1
   allocate(newFrac(1:SIZE(thisOctal%ionFrac,2)))

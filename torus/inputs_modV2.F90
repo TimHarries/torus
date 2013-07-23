@@ -339,6 +339,9 @@ contains
     call getLogical("photoioneq", photoionEquilibrium, cLine, fLine, nLines, &
          "Perform a photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("xray", xraycalc, cLine, fLine, nLines, &
+         "Include x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
     if (hydrodynamics.and.spherical.and.amr1d) then

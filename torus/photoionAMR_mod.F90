@@ -23,6 +23,9 @@ use photon_mod
 use phasematrix_mod
 use phfit_mod, only : phfit2
 use vtk_mod
+#ifdef XRAY
+use xray_mod
+#endif
 
 implicit none
 
