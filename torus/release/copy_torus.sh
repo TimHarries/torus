@@ -26,9 +26,8 @@ echo "Removing files not for release"
 rm hydrodynamics_mod.?90 photoionAMR_mod.?90 photoion_mod.?90
 rm photoion_utils_mod.?90 angularImage_mod.?90 molecular_mod.?90 
 rm torusMod.?90 ion_mod.?90 nbody_mod.?90 qShep*90 timedep_mod.?90
-rm cluster_class.?90 sph_data_class.?90 datacube_mod.?90
-rm phfit2.?90 cmf_mod.?90 modelatom_mod.?90
-rm isochrone_class.?90 viscosity_mod.?90 stateq_mod.?90
+rm datacube_mod.?90 phfit2.?90 cmf_mod.?90 modelatom_mod.?90
+rm viscosity_mod.?90 stateq_mod.?90
 rm math_mod2.?90
 
 # Fix permissions
