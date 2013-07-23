@@ -11,6 +11,11 @@ module inputs_mod
 
   include "input_variables.f90"
 
+! Maximum line length in parameters file 
+    integer, parameter, private :: lencLine=200
+! Corresponding format specifier in read statement
+    character(len=*), parameter, private :: clineFormat="(a200)"
+
 contains
   
   subroutine  inputs()
@@ -26,8 +31,9 @@ contains
 #endif 
     logical :: ok
     logical :: compresseddumpfiles
-    character(len=80), allocatable :: cLine(:) 
-    character(len=80) :: message, thisLine
+    character(len=lencLine), allocatable :: cLine(:) 
+    character(len=lencLine) :: thisLine
+    character(len=80) :: message
     logical :: done
     logical, allocatable :: fLine(:)
 
@@ -103,7 +109,7 @@ contains
 
     do
        nLines = nLines + 1
-       read(32,'(a80)',end=10) cLine(nLines)
+       read(32,cLineFormat,end=10) cLine(nLines)
        thisLine = trim(adjustl(cLine(nLines)))
        if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) nLines = nLines - 1   ! % or ! is a comment
        if (thisLine(1:1) == " ") nLines = nLines - 1
@@ -522,7 +528,8 @@ contains
   end subroutine writeUnusedKeywords
 
   subroutine readGeometrySpecificParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:), message
+    character(len=lencLine) :: cLine(:)
+    character(len=80) :: message
     integer :: nLines
     logical :: fLine(:)
     logical :: ok
@@ -1228,7 +1235,7 @@ contains
 
   subroutine readGridInitParameters(cLine, fLine, nLines)
     use octal_mod, only: cart2d
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -1436,7 +1443,7 @@ contains
   end subroutine readGridInitParameters
 
   subroutine readDustPhysicsParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -1539,7 +1546,7 @@ contains
 
   subroutine readAtomicPhysicsParameters(cLine, fLine, nLines)
     use atom_mod, only: setVoigtParams
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     integer :: i 
@@ -1593,7 +1600,8 @@ contains
   end subroutine readAtomicPhysicsParameters
 
   subroutine readSourceParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:), message
+    character(len=lencLine) :: cLine(:)
+    character(len=80) :: message
     logical :: fLine(:)
     integer :: nLines
     integer :: i 
@@ -1736,7 +1744,7 @@ contains
   end subroutine readSourceParameters
 
   subroutine readMolecularPhysicsParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -1830,7 +1838,7 @@ contains
 #ifdef PHOTOION
   subroutine readPhotoionPhysicsParameters(cLine, fLine, nLines)
     use ion_mod, only: setAbundances
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines, thisStackLim, numMPIthreads, i
     character(len=4)  :: iChar
@@ -1969,7 +1977,7 @@ contains
 #endif
 
   subroutine readMolecularLoopParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -1980,7 +1988,7 @@ contains
   end subroutine readMolecularLoopParameters
 
   subroutine readAtomicLoopParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -1995,7 +2003,7 @@ contains
   end subroutine readAtomicLoopParameters
 
   subroutine readRadiativeEquilibriumParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -2069,7 +2077,7 @@ contains
   end subroutine readRadiativeEquilibriumParameters
 
   subroutine readPhotoionEquilibriumParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -2100,7 +2108,7 @@ contains
   subroutine readHydrodynamicsParameters(cLine, fLine, nLines)
 
 
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     real(double) :: dx, cs
@@ -2266,7 +2274,7 @@ contains
 
 
   subroutine readPhotometryParameters(cLine, fLine, nLines)
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -2293,7 +2301,7 @@ contains
     use angularImage_utils
     use h21cm_mod, only: h21cm
 
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -2496,7 +2504,8 @@ contains
   subroutine readImageParameters(cLine, fLine, nLines)
     use image_utils_mod
 
-    character(len=80) :: cLine(:), message
+    character(len=lencLine) :: cLine(:)
+    character(len=80) :: message
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -2702,7 +2711,7 @@ contains
 
   subroutine readFitsParameters(cLine, fLine, nLines)
     use fits_utils_mod, only: fitsBitpix
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
@@ -2715,7 +2724,7 @@ contains
   subroutine readSpectrumParameters(cLine, fLine, nLines)
     use sed_mod, only:  setSedParameters,  SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
 
-    character(len=80) :: cLine(:)
+    character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok, isRange
@@ -2893,7 +2902,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -2906,7 +2915,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
   if ((trim(cLine(i)(1:k)) .eq. name(1:j)).and.(j==k)) then
      if (.not.ok) then
         ok = .true.
-        read(cLine(i)(j+1:80),*) value
+        read(cLine(i)(j+1:lencline),*) value
         fLine(i) = .true.
      else
         call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
@@ -2920,7 +2929,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real(double) :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -2933,7 +2942,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
   if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
      if (.not.ok) then
         ok = .true.
-        read(cLine(i)(j+1:80),*) value
+        read(cLine(i)(j+1:lencline),*) value
         fLine(i) = .true.
      else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
@@ -2947,7 +2956,7 @@ end do
  implicit none
  character(len=*) :: name
  real(double) :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  character(len=*) :: unit 
  logical :: fLine(:)
  integer :: nLines
@@ -2961,9 +2970,9 @@ end do
   if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
      if (.not.ok) then
         ok = .true.
-        read(cLine(i)(j+1:80),*,iostat=readstat) value, unit
+        read(cLine(i)(j+1:lencline),*,iostat=readstat) value, unit
         if(readstat /= 0) then
-           read(cLine(i)(j+1:80),*,iostat=readstat) value
+           read(cLine(i)(j+1:lencline),*,iostat=readstat) value
            if(readstat /= 0) then
               write(*,*) "parameters.dat entry with no value given!!" //name
               stop
@@ -2984,7 +2993,7 @@ end do
  implicit none
  character(len=*) :: name
  type(VECTOR) :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -2997,7 +3006,7 @@ end do
   if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
      if (.not.ok) then
         ok = .true.
-        read(cLine(i)(j+1:80),*) value%x, value%y, value%z
+        read(cLine(i)(j+1:lencline),*) value%x, value%y, value%z
         fline(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
@@ -3013,7 +3022,7 @@ subroutine findInteger(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  integer :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -3041,7 +3050,7 @@ end subroutine findInteger
    character(len=*) :: name
    logical :: fLine(:)
    integer(kind=bigInt) :: value
-   character(len=80) :: cLine(:)
+   character(len=lencLine) :: cLine(:)
    integer :: nLines
    logical :: ok
    integer :: i, j, k
@@ -3067,7 +3076,7 @@ subroutine findLogical(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  logical :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -3094,7 +3103,7 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  character(len=*) :: value
- character(len=80) :: cLine(:), tmp
+ character(len=lencLine) :: cLine(:), tmp
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -3129,8 +3138,8 @@ endif
 subroutine findLine(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
- character(len=80) :: value
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: value
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -3158,7 +3167,7 @@ subroutine findRealArray(name, value, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real :: value(:)
- character(len=80) :: cLine(:)
+ character(len=lencLine) :: cLine(:)
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -3185,7 +3194,7 @@ endif
                        musthave)
   character(len=*) :: name
   integer :: ival
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: Fline(:)
   character(len=100) :: output
   integer :: nLines
@@ -3215,7 +3224,7 @@ endif
                        musthave)
   character(len=*) :: name
   integer(kind=bigInt) :: ival
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -3247,7 +3256,7 @@ end subroutine getBigInteger
   real :: rval
   real :: unitConversion
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -3275,7 +3284,7 @@ end subroutine getBigInteger
 
  logical function checkPresent(keyword, cline, nlines)
    character(len=*) :: keyword
-   character(len=80) :: cLine(:)
+   character(len=lencLine) :: cLine(:)
    integer :: nLines
    integer :: i, j 
    checkPresent = .false.
@@ -3294,7 +3303,7 @@ end subroutine getBigInteger
   character(len=*) :: name
   real(double) :: dval, unitConversion
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -3326,7 +3335,7 @@ end subroutine getBigInteger
   character(len=*) :: name
   real(double) :: dval
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   character(len=10) :: unitString
@@ -3363,7 +3372,7 @@ end subroutine getBigInteger
   real(double) :: unitConversion
   type(VECTOR) :: dval, ddef
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -3394,7 +3403,7 @@ end subroutine getVector
   character(len=*) :: name
   character(len=*) :: rval
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: Fline(:)
   character(len=100) :: output
   integer :: nLines
@@ -3425,7 +3434,7 @@ end subroutine getVector
   character(len=*) :: name
   logical :: rval
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
   integer :: nLines
@@ -3469,9 +3478,9 @@ end subroutine getVector
   character(len=*) :: name
   real :: rval(:), unitConversion
   logical :: musthave
-  character(len=80) :: cLine(:)
+  character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
-  character(len=100) :: output
+  character(len=lencLine+200) :: output
   integer :: nLines
   character(len=*) :: message
   character(len=10) :: default
@@ -3562,20 +3571,20 @@ end subroutine getVector
     real, intent(out)             :: firstVal
     real, intent(out)             :: lastVal
     logical, intent(out)          :: isRange
-    character(len=80), intent(in) :: cLine(:)
+    character(len=lencLine), intent(in) :: cLine(:)
     logical, intent(in)           :: fLine(:)
     integer, intent(in)           :: nLines
 
-    character(len=80) :: thisString
+    character(len=lencline) :: thisString
     logical           :: ok 
     integer           :: i, j
 
     call findLine(name, thisString, cLine, fLine, nLines, ok)
 
 ! Look for .. to determine if this is a range of values 
-! The parameters file is 80 column maximum
+! The parameters file is lencLine in length
     isRange = .false. 
-    do i=1, 76
+    do i=1, lencLine-4 
        if (thisString(i:i+1) == "..") then 
           isRange = .true.
           thisString(i:i+1) = "  "
@@ -3585,7 +3594,7 @@ end subroutine getVector
 
     if (isRange) then 
        j = len_trim(name)
-       read(thisString(j+1:80),*) firstVal, lastVal
+       read(thisString(j+1:lencLine),*) firstVal, lastVal
     else
        firstVal = -1.0e-33
        lastVal  =  -1.0e-33
