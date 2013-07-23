@@ -410,7 +410,9 @@ contains
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 if (.not.timedependentRT) &
-                     call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                     call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
+                     maxPhotoionIter, &
+                     loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
@@ -423,7 +425,8 @@ contains
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 if (.not.timeDependentRT) &
-                     call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                     call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
+                     maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)

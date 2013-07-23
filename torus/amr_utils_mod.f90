@@ -110,7 +110,6 @@ module amr_utils_mod
    if (.not.associated(resultOctal%cornerVelocity)) then
       if(firstTime) then
          call writeWarning("Corner velocities not allocated! ! ! ")      
-         inc = sqrt(-1.)
          firstTime = .false.
       end if
      goto 666

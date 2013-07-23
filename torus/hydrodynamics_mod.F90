@@ -13531,10 +13531,14 @@ end subroutine minMaxDepth
           call mpi_recv(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%radius,     nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%mdot,      nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
-          call mpi_recv(source(1:nSource)%accretionRadius, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
-          call mpi_recv(source(1:nSource)%angMomentum%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
-          call mpi_recv(source(1:nSource)%angMomentum%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
-          call mpi_recv(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%accretionRadius, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, &
+               status, ierr)
+          call mpi_recv(source(1:nSource)%angMomentum%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, &
+               status, ierr)
+          call mpi_recv(source(1:nSource)%angMomentum%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, &
+               ierr)
+          call mpi_recv(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, &
+               ierr)
           call mpi_recv(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
        enddo

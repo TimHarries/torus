@@ -2775,7 +2775,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30/mSol)
 
                case("mu")
-                  rArray(1, n) = returnMu(thisOctal, subcell, grid%ion, grid%nion)
+                  rArray(1, n) = real(returnMu(thisOctal, subcell, grid%ion, grid%nion))
                case("J=0")
                   rArray(1, n) = real(thisOctal%molecularlevel(1,subcell))
 

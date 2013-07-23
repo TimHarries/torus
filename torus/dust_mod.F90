@@ -457,7 +457,8 @@ contains
 
        meanParticleMass = 0.
        do i = 1, ngrain
-          meanParticleMass = meanParticleMass + getMeanMass2(aMin, aMax, a0, qDist, pDist, grainname(i),graindensity(i))*abundance(i)
+          meanParticleMass = meanParticleMass + getMeanMass2(aMin, aMax, a0, qDist, pDist, &
+               grainname(i),graindensity(i))*abundance(i)
        enddo
        grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
        grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
