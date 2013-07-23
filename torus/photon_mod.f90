@@ -225,6 +225,7 @@ contains
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
         miePhase, nDustType, nLambda, lamArray, nMuMie, ttau_disc_on, alpha_disc_param, &
         currentOctal, currentSubcell)
+    use inputs_mod, only : atomicPhysics, molecularPhysics
     use phasematrix_mod
     use utils_mod, only: locate
     use grid_mod, only: getIndices
@@ -456,8 +457,12 @@ contains
           pointOctalVec = outPhoton%position
           if (.not.grid%resonanceLine) then
                   
-             outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec, &
-                         foundOctal=octalLocation,foundSubcell=subcellLocation) 
+             if (molecularPhysics.or.atomicPhysics) then
+                outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec, &
+                     foundOctal=octalLocation,foundSubcell=subcellLocation) 
+             else
+                outPhoton%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+             endif
 
              if (.not.mie_scattering) then
                 outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &

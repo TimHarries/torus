@@ -3320,13 +3320,13 @@ end subroutine writeRadialFile
 555 continue
  end subroutine killDensitySpectrumDumper
 
-  subroutine tauRadius(grid, uHat, tauWanted, tauRad)
+  subroutine tauRadius(grid, rVec, uHat, tauWanted, tauRad)
     use mpi
     use inputs_mod, only : smallestCellsize
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
-    type(VECTOR) :: uHat, position
+    type(VECTOR) :: uHat, position, rVec
     real(double) :: loc(4), tauRad, tauWanted, tau, flag
     integer, parameter :: nStorage = 5
     real(double) :: tempSTorage(nStorage), tval
@@ -3338,7 +3338,7 @@ end subroutine writeRadialFile
     logical :: hitGrid
 
     thisOctal => grid%octreeRoot
-    position = (-10.d0*grid%octreeRoot%subcellSize) * uHat
+    position = rVec + ((-10.d0*grid%octreeRoot%subcellSize) * uHat)
     tval = distanceToGridFromOutside(grid, position, uHat, hitGrid)
     if (hitGrid) then
        position = position + (tval+0.01d0*smallestcellsize)*uHat
@@ -3716,6 +3716,12 @@ end subroutine writeRadialFile
        enddo
     endif
 
+    if (associated(parent%ne)) then
+       do iSubcell = 1, thisOctal%maxChildren
+          thisOctal%ne(isubcell) = parent%ne(parentSubcell)
+       enddo
+    endif
+
     topOctal => thisOctal%parent
     topOctalSubcell = thisOctal%parentsubcell
     do while(topOctal%changed(topOctalSubcell))
@@ -3749,7 +3755,7 @@ end subroutine writeRadialFile
           radius = thisOctal%subcellSize*4.d0
           nPoints = 0
 
-          do while (nPoints < 10)
+          do while (nPoints < 32)
              call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                   rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
              radius = radius * 2.d0
@@ -4070,6 +4076,7 @@ end subroutine writeRadialFile
 !
 !    ! momentum (v)
 !
+
     if (thisOctal%threed) then
        oldMom = abs(parent%rhov(parentSubcell))
        newMom = SUM(abs(thisOctal%rhov(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
@@ -4924,7 +4931,7 @@ end subroutine writeRadialFile
        searchRadius = loc(6)
        topID = loc(7)
 
-       if(loc(7) == 1.d0) then
+       if(loc(7) > 0.d0) then
           useTop = .true.
        else
           useTop = .false.

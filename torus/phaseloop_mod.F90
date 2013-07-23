@@ -1755,7 +1755,10 @@ CONTAINS
   
     iInner_beg = myRankGlobal * (nInnerLoop/nThreadsGlobal) + 1
     iInner_end = (myrankGlobal+1) * (nInnerLoop/nThreadsGlobal) 
-!  write(*,*) "rank ", myrankglobal, " doing ", iInner_beg, " to " , iinner_end
+
+    if (myrankGlobal == (nThreadsGlobal -1)) then
+       iInner_end = nInnerLoop
+    endif
 
 
 !  ! No need to use some processors if there are more processors

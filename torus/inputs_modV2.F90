@@ -1442,7 +1442,7 @@ contains
     logical :: ok
     real :: grainFracTotal
     integer :: i
-    character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, &
+    character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, grainDensityLabel, &
          aMaxLabel, qDistLabel, pdistLabel, a0label
 
        oneKappa = .true.
@@ -1484,6 +1484,7 @@ contains
           do i = 1, nDustType
              write(grainTypeLabel, '(a,i1.1)') "graintype",i
              write(grainFracLabel, '(a,i1.1)') "grainfrac",i
+             write(grainDensityLabel, '(a,i1.1)') "graindensity",i
              write(aMinLabel, '(a,i1.1)') "amin",i
              write(aMaxLabel, '(a,i1.1)') "amax",i
              write(qDistLabel, '(a,i1.1)') "qdist",i
@@ -1500,6 +1501,10 @@ contains
                   "Grain fractional abundance: ","(a,f8.5,1x,a)",0.01 , ok, .false.)
              grainFracTotal = grainFracTotal + grainFrac(i)
              
+
+             call getReal(grainDensityLabel, grainFrac(i), 1., cLine, fLine, nLines, &
+                  "Grain density (g/cc): ","(a,f8.5,1x,a)",3.6 , ok, .false.)
+
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
                   "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)

@@ -11,7 +11,6 @@ use constants_mod
 use messages_mod
 use parallel_mod
 use amr_mod
-use vtk_mod
 use mpi_amr_mod
 use mpi_global_mod
 use grid_mod

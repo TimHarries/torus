@@ -22,10 +22,10 @@ use unix_mod, only: unixGetenv
 use photon_mod
 use phasematrix_mod
 use phfit_mod, only : phfit2
-use vtk_mod
 #ifdef XRAY
 use xray_mod
 #endif
+use vtk_mod
 
 implicit none
 
@@ -74,7 +74,7 @@ contains
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
-         hydrostep1d, setupAlphaViscosity
+         hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral
 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
@@ -121,7 +121,7 @@ contains
 !    integer :: gridVtuCounter
 !    gridVtuCounter = 0
     dumpThisTime = .false.
-
+    i = nsource
 
     call mpi_barrier(MPI_COMM_WORLD,ierr)
 
@@ -354,6 +354,7 @@ contains
 !          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
           call evenUpGridMPI(grid,.false.,.true., evenuparray)      
+          call setAllUnchanged(grid%octreeRoot)
           call refineGridGeneric(grid, amrtolerance, evenuparray)
           call writeInfo("Evening up grid", TRIVIAL)    
           call evenUpGridMPI(grid, .false.,.true., evenuparray)
@@ -409,7 +410,7 @@ contains
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 if (.not.timedependentRT) &
-                     call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                     call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
@@ -422,7 +423,7 @@ contains
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
                 if (.not.timeDependentRT) &
-                     call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
+                     call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
@@ -466,6 +467,7 @@ contains
              endif
              
              call evenUpGridMPI(grid,.false.,.true., evenuparray)      
+             call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrtolerance, evenuparray)
              call writeInfo("Evening up grid", TRIVIAL)    
              call evenUpGridMPI(grid, .false.,.true., evenuparray)
@@ -519,7 +521,7 @@ contains
     end if
 
 
-    if (myrankGlobal /= 0) then
+    if ((myrankGlobal /= 0).and.cylindricalHydro) then
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
        call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
@@ -745,7 +747,7 @@ contains
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-                call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, 1, loopLimitTime, &
+                call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, 1, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 cylindricalHydro = tmpCylindricalHydro
 
@@ -831,17 +833,17 @@ contains
 !    endif
 
 
+
+
 !       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
 
 
           if (myRankGlobal /= 0) then
              
              call setAllUnchanged(grid%octreeRoot)
-
 !             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
 !             call evenUpGridMPI(grid,.false.,.true., evenuparray)
 !             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
-
              if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
              call refineGridGeneric(grid, amrtolerance, evenuparray, refinedSomeCells=refinedSomeCells)
              if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
@@ -873,8 +875,7 @@ contains
           enddo
 
        endif
-       if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
-
+       call sendSinksToZerothThread(globalnSource, globalsourceArray)
 
 !       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &
@@ -971,14 +972,14 @@ contains
           end if
 
 
-
+          call computepressureGeneral(grid, grid%octreeRoot, .false.)
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         ","dust1        ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
-               "vphi         ","jnu          "/))
+               "vphi         ","jnu          ","mu           "/))
 
 
           if(densitySpectrum) then
@@ -1063,7 +1064,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc
-    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets
+    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
@@ -1225,7 +1226,10 @@ end subroutine radiationHydro
     logical :: sourceInThickCell, tempLogical
     logical :: undersampled, flushBuffer, containsLastPacket
     logical, save :: splitThisTime = .false.
-    real(double) :: maxDiffRadius, maxDiffRadius1, maxDiffRadius2
+    logical, save :: firstWarning = .true.
+    real(double) :: maxDiffRadius(1:100)
+    real(double) :: maxDiffRadius1(1:100), maxDiffRadius2(1:100)
+    real(double) :: maxDiffRadius3(1:100)
     integer :: receivedStackSize, nToSend
 
 
@@ -1604,22 +1608,32 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-
        if(.not. cart2d) then
-          call tauRadius(grid, VECTOR(-1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1)
-          call MPI_BCAST(maxDiffRadius1, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-          call tauRadius(grid, VECTOR(0.d0, 0.d0, -1.d0), 1.d0, maxDiffRadius2)
-          call MPI_BCAST(maxDiffRadius2, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-          
+          maxDiffRadius3  = 1.d30
+          do isource = 1, globalnSource
+             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1(iSource))
+             call MPI_BCAST(maxDiffRadius1(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+             call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), 1.d0, maxDiffRadius2(iSource))
+             call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+             if (amr3D) then
+                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), 1.d0, maxDiffRadius3(iSource))
+                call MPI_BCAST(maxDiffRadius3(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+             endif
+             call MPI_BARRIER(localWorldCommunicator, ierr)
+          enddo
           if (splitThisTime) sourceInThickCell = .true.
           
-          maxDiffRadius = max(maxDiffRadius1, maxDiffRadius2)
-          if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius
+          do isource = 1, globalnSource
+             maxDiffRadius(iSource) = min(maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource))
+             if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
+          enddo
+
           
           if (myrankGlobal /= 0) then
-             call setDiffusionZoneOnRadius(grid%octreeRoot, maxDiffRadius)
+             call unsetDiffusion(grid%octreeRoot)
              do i = 1, globalnSource
-                if (maxDiffRadius*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
+                call setDiffusionZoneOnRadius(grid%octreeRoot, globalSourceArray(i)%position, maxDiffRadius(i))
+                if (maxDiffRadius(i)*1.d10 > globalSourceArray(i)%accretionRadius) sourceInThickCell = .true.
              enddo
           endif
           
@@ -2812,7 +2826,8 @@ end subroutine radiationHydro
                    !                         write(*,*) i, "temp, frac ",thisOctal%temperature(1),thisOctal%ionFrac(1,1)
                    !                      endif
                    if (iter > 100) then
-                      write(*,*) "temperature/ionization fraction not converged after 100 iterations "!,thisOctal%ghostCell(subcell)
+                      if (firstWarning) write(*,*) "temperature/ionization fraction not converged after 100 iterations "!,thisOctal%ghostCell(subcell)
+                      firstWarning = .false.
                       converged = .true.
                    endif
                    !                   write(*,*) "ion/thermal converged after ",iter
@@ -3284,6 +3299,7 @@ end subroutine radiationHydro
         if(doPhotoRefine) then!
            dprCounter = dprCounter + 1
            if(dprCounter == 4) then
+              call setAllUnchanged(grid%octreeRoot)
               call refineGridGeneric(grid, amrtolerance, evenuparray) 
               call evenUpGridMPI(grid, .true., dorefine, evenuparray)
               dprCounter = 0
@@ -3344,7 +3360,7 @@ recursive subroutine defineDiffusionZone(grid, maxRadius)
        amrCommunicator, ierr)
   maxRadius = temp
   if (myrankWorldGlobal == 1) write(*,*) "Maximum diffusion radius ",maxRadius
-  call setDiffusionZoneOnRadius(grid%octreeRoot, maxRadius)
+  call setDiffusionZoneOnRadius(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), maxRadius)
 end subroutine defineDiffusionZone
 
 recursive subroutine findMaxRadiusToDiffusionCell(thisOctal, maxRadius)
@@ -3372,9 +3388,10 @@ recursive subroutine findMaxRadiusToDiffusionCell(thisOctal, maxRadius)
   end do
 end subroutine findMaxRadiusToDiffusionCell
 
-recursive subroutine  setDiffusionZoneOnRadius(thisOctal, maxRadius)
+recursive subroutine  setDiffusionZoneOnRadius(thisOctal, position, maxRadius)
   TYPE(OCTAL),pointer :: thisOctal
   TYPE(OCTAL),pointer :: child
+  type(VECTOR) :: position
   integer :: i, subcell
   real(double) :: maxRadius
   
@@ -3384,14 +3401,13 @@ recursive subroutine  setDiffusionZoneOnRadius(thisOctal, maxRadius)
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call setDiffusionZoneOnRadius(child, maxRadius)
+              call setDiffusionZoneOnRadius(child, position, maxRadius)
               exit
            end if
         end do
      else
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-           thisOctal%diffusionApprox(subcell) = .false.
-        if (modulus(subcellCentre(thisOctal, subcell) - globalSourceArray(1)%position) < maxRadius) then
+        if (modulus(subcellCentre(thisOctal, subcell) - position) < maxRadius) then
            thisOctal%diffusionApprox(subcell) = .true.
         endif
      end if
@@ -4253,7 +4269,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           thisOctal%ionFrac(subcell,1) = 1.e-10
           thisOctal%ionFrac(subcell,2) = 1.
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
-          thisOctal%temperature(subcell) = 10.
+          thisOctal%temperature(subcell) = 20.
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.e-10
              thisOctal%ionFrac(subcell,4) = 1.       
@@ -4263,6 +4279,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end subroutine ionizeGrid
 
   recursive subroutine neutralGrid(thisOctal)
+    use inputs_mod, only : tMinGlobal
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i
@@ -4282,6 +4299,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           thisOctal%ionFrac(subcell,1) = 1.
           thisOctal%ne(subcell) = 1.d-10
           thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%temperature = tminglobal
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.
              thisOctal%ionFrac(subcell,4) = 1.e-10       

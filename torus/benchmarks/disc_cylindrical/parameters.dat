@@ -41,7 +41,7 @@ rho 8.16136e-18  ! density at inner edge midplane (g/cc)
 ! Dust grain properties
 
 iso_scatter T      ! Assume isotropic scattering (assumed by benchmark)
-graintype1 sil_dl  ! Drain and Lee silicates
+graintype1 draine_sil  ! Draine silicates
 amin1 0.12         ! minimum grain size (microns)
 amax1 0.1201       ! maximum grain size (microns)
 qdist1 0.01        ! power law index (flat)

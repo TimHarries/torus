@@ -20,6 +20,7 @@ module vtk_mod
   use mpi_global_mod
   use zlib_mod
 #ifdef PHOTOION
+  use ion_mod, only : returnMu
   use ion_mod, only: returnIonNumber
 #endif
 
@@ -2419,7 +2420,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   endif
 
   if (writeheader) then
-     write(*,*) myrankGlobal, " opening ",trim(vtkFilename), " as stream"
+!     write(*,*) myrankGlobal, " opening ",trim(vtkFilename), " as stream"
      open(lunit, file=vtkFilename, form="unformatted",access="stream",status="replace")
      buffer = '<?xml version="1.0"?>'//lf
      write(lunit) trim(buffer)
@@ -2773,6 +2774,8 @@ end subroutine writeXMLVtkFileAMR
                case("mass")
                   rArray(1, n) = real(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30/mSol)
 
+               case("mu")
+                  rArray(1, n) = returnMu(thisOctal, subcell, grid%ion, grid%nion)
                case("J=0")
                   rArray(1, n) = real(thisOctal%molecularlevel(1,subcell))
 

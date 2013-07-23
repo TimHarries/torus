@@ -1095,6 +1095,29 @@ end subroutine gaussSeidelSweep
 
   end subroutine unsetOnDirect
 
+  recursive subroutine unsetDiffusion(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unsetDiffusion(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%diffusionApprox(subcell) = .false.
+       end if
+    end do
+
+  end subroutine unsetDiffusion
+
 #ifdef MPI
       subroutine packEdens(octalArray, nEdens, eArray, octalsBelongRank)
         use mpi_global_mod, only : myRankGlobal

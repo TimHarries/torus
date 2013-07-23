@@ -169,6 +169,7 @@ contains
     endif
 #endif
 
+
     if (.not.grid%splitOverMPI) then
        if (writeFile) call writeAMRgridSingle(filename, fileFormatted, grid)
        goto 666
@@ -243,7 +244,7 @@ contains
     if (grid%splitOverMPI) then
        if (myrankGlobal == 0) then 
           writeHeader = .true.
-          positionStatus = "rewind"
+          positionStatus = "newfile"
        else
           writeHeader = .false.
           positionStatus = "append"
@@ -256,10 +257,12 @@ contains
        open(unit=20,iostat=error, file=updatedfilename, form="formatted", status="unknown", position=positionStatus)
     else 
        if (uncompressedDumpFiles) then
-          open(unit=20,iostat=error, file=updatedfilename, form="unformatted", status="unknown", position=positionStatus)
+          open(unit=20, file=updatedfilename, form="unformatted", status="unknown", position=positionStatus)
        else
 #ifdef USEZLIB
+!          write(*,*) myrankGlobal, " attempting to open ",trim(updatedFilename)
           call openCompressedFile(20, updatedFilename, positionStatus=positionStatus)
+!          write(*,*) myrankGlobal, " has opened ",trim(updatedFilename)
 #else
           call writeFatal("zlib is needed to read compressed files")
 #endif
@@ -3692,6 +3695,7 @@ contains
                nOctals = 0
                call getBranchOverMPI(grid%octreeRoot, null())
             endif
+            write(message,'(a,i3,a)') "Thread ",ithread, " read"
          else
 !            do iThread = 0, nThreadsGlobal - 1
 !               if (myrankGlobal == iThread) call readAmrGridSingle(gridfilename, fileFormatted, grid)
@@ -3701,7 +3705,6 @@ contains
 !            enddo
             
             call readAmrGridSingle(gridfilename, fileFormatted, grid)
-            write(message,'(a,i3,a)') "Thread ",ithread, " read"
             call writeInfo(message,TRIVIAL)
 
          endif

@@ -139,11 +139,23 @@ contains
     integer :: lunit
     character(len=*), optional :: positionStatus
     character(len=*) :: thisFilename
-    
+    logical :: fileExists
+    logical :: luOpened
 
     if (PRESENT(positionStatus)) then
-       open(lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
+       if (trim(positionStatus)=="append") then
+!          write(*,*) "opening ",trim(thisFilename), " with pos status ",trim(positionStatus)
+          open(lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
+          else if (trim(positionStatus)=="newfile") then
+!          write(*,*) "opening ",trim(thisFilename), " as a new file"
+          inquire(file=thisFilename, exist=fileExists)
+!          write(*,*) "inquire says file exists ",fileExists
+          inquire(unit=lunit, opened=luOpened)
+!          write(*,*) "inquire says logical unit opened ",luOpened
+          open(lunit, file=thisFilename, form="unformatted", status="replace")
+       endif
     else
+!       write(*,*) "opening ",trim(thisFilename), " without a position status"
        open(lunit, file=thisFilename, form="unformatted", status="unknown")
        buffer = 0 
        nbuffer = 0

@@ -3907,8 +3907,8 @@ end subroutine sumFluxes
 !    call advectTemperature(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     !if running a radiation hydrodynamics calculation, advect the ion fraction
     if(photoionPhysics .and. hydrodynamics) then
-       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
-       call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+!       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
+!       call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     end if
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     
@@ -3981,16 +3981,16 @@ end subroutine sumFluxes
     call transferTempStorage(grid%octreeRoot)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
-!    if (selfGravity) then
-!       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-!       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!       call zeroSourcepotential(grid%octreeRoot)
-!       if (globalnSource > 0) then
-!          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
-!       endif
-!       call sumGasStarGravity(grid%octreeRoot)
-!       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-!    endif
+    if (selfGravity) then
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call zeroSourcepotential(grid%octreeRoot)
+       if (globalnSource > 0) then
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+       endif
+       call sumGasStarGravity(grid%octreeRoot)
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+   endif
 
 !self gravity (periodic)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
@@ -4059,8 +4059,8 @@ end subroutine sumFluxes
 
        !if running a radiation hydrodynamics calculation, advect the ion fraction
        if(photoionPhysics .and. hydrodynamics) then
-          call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-          call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+!          call advectIonFrac(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+!          call advectDust(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        end if
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
@@ -4260,8 +4260,8 @@ end subroutine sumFluxes
        call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        !if running a radiation hydrodynamics calculation, advect the ion fraction
        if(photoionPhysics .and. hydrodynamics) then
-          call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-          call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+!          call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+!          call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        end if
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
@@ -5489,6 +5489,8 @@ end subroutine sumFluxes
              if (myrankWorldGlobal == 1) call tune(6, "Loop refine")                  
           end if
        endif
+
+       call sendSinksToZerothThread(globalnSource, globalsourceArray)
 
        if (doSelfGrav) then
           call zeroSourcepotential(grid%octreeRoot)
@@ -13454,10 +13456,10 @@ end subroutine minMaxDepth
              if (.not.createSink) then
                 write(*,*) "Create source failed on converging flow test"
              endif
-!             if (divV < 0.d0) then
-!                write(*,*) "Source passed divV < 0 test so creating away!"
-!                createSink = .true.
-!             endif
+             if (divV < 0.d0) then
+                write(*,*) "Source passed divV < 0 test so creating away!"
+                createSink = .true.
+             endif
           endif
 
           if (createSink) then
@@ -13509,6 +13511,60 @@ end subroutine minMaxDepth
     enddo
   end subroutine recursaddSinks
 
+  subroutine sendSinksToZerothThread(nSource, source)
+    use mpi
+    integer :: nSource, iSource, ierr
+    type(SOURCETYPE) :: source(:)
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 32
+    if (myrankGlobal == 0) then
+
+     call mpi_recv(nSource, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
+  
+       do iSource = 1, nSource
+          call mpi_recv(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%mass,       nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%radius,     nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%mdot,      nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%accretionRadius, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%angMomentum%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%angMomentum%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
+       enddo
+  
+    endif
+
+    if (myrankGlobal == 1) then
+
+       call mpi_send(nSource, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
+  
+       do iSource = 1, nSource
+          call mpi_send(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%mass,       nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%radius,     nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%mdot,       nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%accretionRadius, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%angMomentum%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%angMomentum%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+       enddo
+    endif
+  end subroutine sendSinksToZerothThread
+
 !  subroutine returnControlVolumeCells(grid, sendToThisThread, pos, radius)
 !    use mpi
 !    type(GRIDTYPE) :: grid
@@ -13530,7 +13586,7 @@ end subroutine minMaxDepth
 !    if (myrankGlobal == sendToThisThread) then
 !       do i = 1, nHydroThreadsGlobal
 !          if (myrankGlobal /= i) then
-!             call mpi_recv(nCellsFromThread, 1, MPI_INTEGER, i, tag, localWorldCommunicator, status, ierr)
+ !             call mpi_recv(nCellsFromThread, 1, MPI_INTEGER, i, tag, localWorldCommunicator, status, ierr)
 !             if (nCellsFromThread > 0) then
 !                call mpi_recv(rhoFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)
 !                call mpi_recv(csFromThread, ncellsFromThread, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, status, ierr)

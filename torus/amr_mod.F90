@@ -2687,7 +2687,7 @@ CONTAINS
                         maxSamples,usePops,iLambda,error,lambda,kappaAbs,      &
                         kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
                         temperature,Ne,inFlow,etaCont,etaLine) 
-  
+    use inputs_mod, only : molecularPhysics, atomicPhysics
     use jets_mod, only: JetsVelocity, get_jets_parameter, dV_dn_jets    
     use density_mod, only: density
 
@@ -2762,23 +2762,40 @@ CONTAINS
                          inFlow=inFlow(nSamples)                       &
                          )
     ELSE
-      CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
-                         actualSubcell=subcell,                        &
-                         iLambda=iLambda,                              &
-                         direction=directionReal,                      &
-                         velocity=velocity(nSamples),                  &
-                         velocityDeriv=velocityDeriv(nSamples),        &
-                         kappaAbs=kappaAbs(nSamples),                  &
-                         kappaSca=kappaSca(nSamples),                  &
-                         rho=rho(nSamples),                            &
-                         chiLine=chiLine(nSamples),                    &
-                         grid=grid,                                    &
-                         temperature=temperature(nSamples),            &
-                         Ne=Ne(nSamples),                              &
-                         inFlow=inFlow(nSamples),                      &
-                         etaCont=etaCont(nSamples),                    &
-                         etaLine=etaLine(nSamples)                     &                         
-                         )
+       if (molecularPhysics.or.atomicPhysics) then
+          CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
+               actualSubcell=subcell,                        &
+               iLambda=iLambda,                              &
+               direction=directionReal,                      &
+               velocity=velocity(nSamples),                  &
+               velocityDeriv=velocityDeriv(nSamples),        &
+               kappaAbs=kappaAbs(nSamples),                  &
+               kappaSca=kappaSca(nSamples),                  &
+               rho=rho(nSamples),                            &
+               chiLine=chiLine(nSamples),                    &
+               grid=grid,                                    &
+               temperature=temperature(nSamples),            &
+               Ne=Ne(nSamples),                              &
+               inFlow=inFlow(nSamples),                      &
+               etaCont=etaCont(nSamples),                    &
+               etaLine=etaLine(nSamples)                     &                         
+               )
+       else
+          CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
+               actualSubcell=subcell,                        &
+               iLambda=iLambda,                              &
+               direction=directionReal,                      &
+               kappaAbs=kappaAbs(nSamples),                  &
+               kappaSca=kappaSca(nSamples),                  &
+               rho=rho(nSamples),                            &
+               grid=grid,                                    &
+               temperature=temperature(nSamples),            &
+               Ne=Ne(nSamples),                              &
+               inFlow=inFlow(nSamples),                      &
+               etaCont=etaCont(nSamples),                    &
+               etaLine=etaLine(nSamples)                     &                         
+               )
+       endif
     END IF
 
     
@@ -14430,6 +14447,7 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer :: thisOctal, sOctal
     type(OCTAL), pointer, optional :: startOctal
     integer, optional :: startSubcell
+    integer :: nArray
     real(double) :: fudgeFac = 1.d-1
     real(double) :: kappaSca, kappaAbs, kappaExt
     real(double) :: r, rStart
@@ -14450,6 +14468,7 @@ end function readparameterfrom2dmap
        xArray = 0.d0
        tauArray = 0.d0
        ntau = 1
+       nArray = size(tauArray)
     endif
     planetGap  = .false.
     if (grid%geometry == "planetgap") planetgap = .true.
@@ -14520,6 +14539,10 @@ end function readparameterfrom2dmap
        tau = tau + distToNextCell*kappaExt
        if (PRESENT(nTau)) then
           nTau = nTau + 1
+          if (nTau > nArray) then
+             call writeFatal("Tau array size exceeded")
+             stop
+          endif
           xArray(nTau) = xArray(nTau-1) + distToNextCell
           tauArray(nTau) = tau
        endif
