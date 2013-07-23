@@ -2794,7 +2794,7 @@ end subroutine radiationHydro
                 iter = 0
                 do while(.not.converged)
                    iter = iter + 1
-                   call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
+                   call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, augerArray)
                    if (quickThermal) then
                       call quickThermalCalc(thisOctal)
                    else
@@ -4556,9 +4556,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end subroutine getThermalTime
 
 
-  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
-    use inputs_mod, only : hydrodynamics
+  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, augerArray)
+    use inputs_mod, only : hydrodynamics, xraycalc
     type(gridtype) :: grid
+    type(AUGER) :: augerArray(5, 5, 10)
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
     integer :: subcell
@@ -4573,8 +4574,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
-                call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
-               
+                if(xraycalc) then
+                   call solveIonizationBalance_xray(grid, thisOctal, subcell, thisOctal%temperature(subcell), &
+                        epsOverdeltaT, augerArray)
+                else
+                   call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
+                end if
              else
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30

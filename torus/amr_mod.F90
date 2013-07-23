@@ -995,6 +995,9 @@ CONTAINS
    CASE ("runaway")
       call calcRunaway
 
+   CASE("NLR")
+      call calcNarrowLineRegion(thisOctal, subcell)
+
 #ifdef USECFITSIO
    CASE("fitsfile")
       call assign_from_fitsfile(thisOctal, subcell)
@@ -3781,7 +3784,7 @@ CONTAINS
                      (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
              endif
           endif
-       case("lexington")
+       case("lexington", "NLR")
           if (thisOctal%nDepth < mindepthamr) then
              split = .true.
           else
@@ -6229,6 +6232,9 @@ endif
 
   end subroutine calcPathTestDensity
 
+
+
+
   subroutine calcLexington(thisOctal,subcell,grid)
 
     use inputs_mod, only : hydrodynamics
@@ -6282,6 +6288,46 @@ endif
        thisOctal%boundaryCondition(subcell) = 4
     endif
   end subroutine calcLexington
+
+
+!Ercolano+2008/Pequignot+2001 
+  subroutine calcNarrowLineRegion(thisOctal,subcell)
+
+    use inputs_mod, only : hydrodynamics
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell   
+    TYPE(vector) :: rVec
+    real(double) :: ethermal, gamma
+
+    ethermal  = 0.
+    gamma = 5.d0/3.d0
+
+    rVec = subcellCentre(thisOctal,subcell)
+
+    thisOctal%temperature(subcell) = 10000.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+
+    thisOctal%rho(subcell) = 1.d4*mHydrogen
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.e-10
+    thisOctal%ionFrac(subcell,2) = 1.
+    thisOctal%ionFrac(subcell,3) = 1.e-10
+    thisOctal%ionFrac(subcell,4) = 1.       
+
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+  end subroutine calcNarrowLineRegion
 
   subroutine calcPointSource(thisOctal, subcell)
     TYPE(octal), INTENT(INOUT) :: thisOctal

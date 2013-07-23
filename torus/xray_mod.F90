@@ -81,7 +81,13 @@ subroutine setUpAugerData(augerArray)
 end subroutine setUpAugerData
 
 
+!
 !Compton scattering stuff
+!
+!Use Klein-Nishina formula to get the Compton cross section
+!Heating and cooling contributions from Compton from Rybicki and Lightman (2004), radiative 
+!processes in astrophysics
+
 
 
 
@@ -101,16 +107,20 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
   real(double), allocatable :: newFrac(:)
   real(double), allocatable :: xplus1overx(:)
   real(double), parameter :: underCorrection = 0.6d0
+!  real(double) :: source, sink, bet
+
 
   v = cellVolume(thisOctal, subcell)
-  print *, "auger array", augerArray
-
-  stop
+!  print *, "auger array", augerArray
+!
+!  stop
 !currently just old photoion stuff, under development
     k = 1
   allocate(newFrac(1:SIZE(thisOctal%ionFrac,2)))
   newFrac = thisOctal%ionFrac(subcell,:)
   do while(k <= grid%nIon)
+
+     !For hydrogen and helium there is no inner shell photoionization
 
      iStart = k
      iEnd = k+1
@@ -120,7 +130,7 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
      iEnd = iEnd - 1
      nIonizationStages = iEnd - iStart + 1
           
-     allocate(xplus1overx(1:nIonizationStages-1))
+     allocate(xplus1overx(1:nIonizationStages-1))     
      do i = 1, nIonizationStages-1
         iIon = iStart+i-1
         call getChargeExchangeRecomb(grid%ion(iion+1), temperature, &
@@ -131,6 +141,7 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
            
+
         xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
              max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
      enddo
