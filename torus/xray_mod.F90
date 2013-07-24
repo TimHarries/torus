@@ -126,7 +126,7 @@ end subroutine doComptonXsecs
 subroutine inititateComptonScatterArray(KN_sigmaT, KN_sigmaArray, KN_PDF, freq)
   implicit none
   
-/  real(double) :: Eini_over_Enew
+  real(double) :: Eini_over_Enew
   integer, parameter :: ntheta=180
   real(double), allocatable :: KN_sigmaT(:), KN_sigmaArray(:,:), KN_PDF(:,:)
   real(double) :: freq(1000), thisTheta
