@@ -2775,7 +2775,7 @@ end subroutine radiationHydro
        !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT, uv_vector) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal) &
-       !$OMP SHARED(augerArray)
+       !$OMP SHARED(augerArray, firstwarning)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end

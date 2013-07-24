@@ -28,13 +28,6 @@ end type AUGER
 
 contains
 
-
-!
-!we are going to be as good as cloudy but not as comprehensive as mocassin (at least for now)
-!we will be lacking in some atomic species
-!
-
-
 !Read in auger yield data
 subroutine setUpAugerData(augerArray)
   implicit none
@@ -133,7 +126,7 @@ end subroutine doComptonXsecs
 subroutine inititateComptonScatterArray(KN_sigmaT, KN_sigmaArray, KN_PDF, freq)
   implicit none
   
-  real(double) :: Eini_over_Enew
+/  real(double) :: Eini_over_Enew
   integer, parameter :: ntheta=180
   real(double), allocatable :: KN_sigmaT(:), KN_sigmaArray(:,:), KN_PDF(:,:)
   real(double) :: freq(1000), thisTheta
@@ -217,17 +210,18 @@ end function calcComptonScatterAngleProb
 
 
 !!!get new photon direction and frequency following compton scattering
-!subroutine scatterCompton(newDirection, newFreq, oldfreq, KN_sigmaArray, KN_PDF)
+!subroutine scatterCompton(newDirection, newFreq, oldfreq, KN_sigmaArray, KN_PDF, freq)
 !  implicit none
 !  type(vector) :: newDirection
 !  real(double) :: u, v, w, t, r1, r2, newtheta, newfreq, oldfreq
 !  integer :: i, index
-!  integer :: nfreq, ifreq
-!  real(double) :: KN_sigmaArray(:,:), KN_PDF(:,:)
+!  integer :: nfreq, ifreq, freqID
+!  integer, parameter :: ntheta = 180
+!  real(double) :: KN_sigmaArray(:,:), KN_PDF(:,:), freq(1000)
 !
 !  nfreq = 1000
 !  newfreq = 0.d0
-!
+!  call locate(freq, nFreq, oldFreq, iFreq)
 !  !get a random scattering angle from Klein-Nishina PDF  -------------
 !  call random_number(r2)
 !  do i = 1, 10000
@@ -241,9 +235,13 @@ end function calcComptonScatterAngleProb
 !     call torus_abort("random number selection broken in xray_mod")
 !  end if
 !
-!  do i = 1, nfreq
-!     if (r2 >= KN_sigmaArray(oldFreq ,i)) then
-!        index = i
+!!
+!!find the frequency bin that this photon resides in
+!!
+!
+!  do thisTheta = 1, ntheta
+!     if (r2 >= KN_sigmaArray(freqID ,thisTheta)) then
+!        index = thisTheta
 !     else
 !        exit
 !     end if
@@ -267,7 +265,7 @@ end function calcComptonScatterAngleProb
 !
 !!get the new frequency------------------------------------------------
 !
-!  newFreq = oldfreq * KN_PDF(oldfreq , newtheta)
+!  newFreq = oldfreq * KN_PDF(freqID, newtheta)
 !!  call locate(freq, nFreq, thisFreq, iFreq)
 !!  newfreq = thisFreq
 !
