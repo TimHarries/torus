@@ -2773,9 +2773,10 @@ end subroutine writeXMLVtkFileAMR
 
                case("mass")
                   rArray(1, n) = real(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30/mSol)
-
+#ifdef PHOTOION
                case("mu")
                   rArray(1, n) = real(returnMu(thisOctal, subcell, grid%ion, grid%nion))
+#endif
                case("J=0")
                   rArray(1, n) = real(thisOctal%molecularlevel(1,subcell))
 
