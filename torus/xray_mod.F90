@@ -94,7 +94,7 @@ subroutine doComptonXsecs(freq, nfreq)
   integer :: i, nfreq
 
   nfreq = 1000
-
+  x= 0.d0
   if(.not. allocated(CT_KN_Xsec)) allocate(CT_KN_Xsec(nfreq))
   if(.not. allocated(CT_heating)) allocate(CT_heating(nfreq))
   if(.not. allocated(CT_cooling)) allocate(CT_cooling(nfreq))
@@ -118,6 +118,7 @@ subroutine doComptonXsecs(freq, nfreq)
         !calculate compton cross section using Klein-Nishina formula
         !equation 7.5 of Rybicki and Lightman (2004), page 197
         !This is for recoil ionization
+        x = hConst*freq(i)/(mElectron*cspeed**2)
         CT_KN_Xsec(i) = sigma_thom * ((3.d0/4.d0)* ( &
              ((1.d0+x)/(x**3)) * ( &
              (2.d0*x*(1.d0+x)/(1.d0+2.d0*x)) - log(1.d0+2.d0*x)) + &
@@ -183,7 +184,6 @@ end subroutine inititateComptonScatterArray
 
 
 
-
 !calculate the ratio of incoming to outgoing photon energy in a compton scattering event
 !This is equation 7.2 of Rybicki and Lightman 2004
 real(double) function calcComptonEnergyChange(frequency, angle)
@@ -191,6 +191,8 @@ real(double) function calcComptonEnergyChange(frequency, angle)
   real(double) :: frequency
   real(double) :: angle
   real(double), parameter :: constant=37557.66267
+
+!const = m_electron / c^2 * erg-->rydbergs
   
   calcComptonEnergyChange = 1.d0/(1.d0+ (frequency/constant)*(1.d0 - cos(angle)))
 
@@ -215,10 +217,60 @@ end function calcComptonScatterAngleProb
 
 
 !get new photon direction and frequency following compton scattering
-subroutine scatterCompton()
-implicit none
+subroutine scatterCompton(newDirection, newFreq, oldfreq, KN_sigmaArray, KN_PDF)
+  implicit none
+  type(vector) :: newDirection
+  real(double) :: u, v, w, t, r1, r2, newtheta, newfreq, oldfreq
+  integer :: i, index
+  integer :: nfreq 
+  real(double) :: KN_sigmaArray(:,:), KN_PDF(:,:)
+
+  nfreq = 1000
+  newfreq = 0.d0
+
+  !get a random scattering angle from Klein-Nishina PDF  -------------
+  call random_number(r2)
+  do i = 1, 10000
+     if(r2 == 0.d0 .or. r2 == 1.d0) then
+        call random_number(r2)
+     else
+        exit
+     end if
+  end do
+  if(i >= 10000) then
+     call torus_abort("random number selection broken in xray_mod")
+  end if
+
+  do i = 1, nfreq
+     if (r2 >= KN_sigmaArray(oldFreq ,i)) then
+        index = i
+     else
+        exit
+     end if
+  end do
+
+  newtheta = index * pi/180.d0
+!---------------------------------------------------------------------
 
 
+!usual random direction stuff-----------------------------------------
+  call random_number(r1)
+  w = 2.d0*r1 - 1.d0
+  t = sqrt(1.d0 - w*w)
+  u = t*cos(newTheta)
+  v = t*sin(newTheta)
+
+  newDirection = VECTOR(u, v, w)
+  
+!---------------------------------------------------------------------
+
+
+!get the new frequency------------------------------------------------
+
+  newFreq = oldfreq * KN_PDF(oldfreq , newtheta)
+
+
+!---------------------------------------------------------------------
 
 end subroutine
 
