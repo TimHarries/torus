@@ -83,7 +83,7 @@ end subroutine setUpAugerData
 !
 
 !this is the same as is used by cloudy and mocassin. 
-subroutine getComptonThomsonXsec(freq, nfreq)
+subroutine doComptonXsecs(freq, nfreq)
   implicit none
   real(double), parameter :: sigma_thom = 6.65d-25
   real(double), parameter :: xraycutoff = 20.6d0*rydbergtoev
@@ -100,7 +100,6 @@ subroutine getComptonThomsonXsec(freq, nfreq)
   if(.not. allocated(CT_cooling)) allocate(CT_cooling(nfreq))
 
   do i = 1, nfreq    
-
      !Compton exchange factors from
      !C. B. Tarter, W. H. Tucker, and E. E. Salpeter. 
      !The Interaction of X-Ray Sources with Optically Thin Environments. 
@@ -108,17 +107,17 @@ subroutine getComptonThomsonXsec(freq, nfreq)
      alpha = 1.d0/(1.d0+freq(i)*(1.1792d-4+7.084d-10*freq(i)))
      beta = (1.d0 - alpha*freq(i)*(1.1792d-4+2.d0*7.084d-10*freq(i))/4.d0)
 
-     !heating rate
+     !heating xsec
      CT_heating(i) = alpha*freq(i)*freq(i)*3.858d-25 
-     !cooling rate
+     !cooling xsec
      CT_cooling(i) = alpha*beta*freq(i)*3.858d-25 
      
      if(freq(i)*hConst <= xraycutoff) then
         CT_KN_Xsec(i) = sigma_thom
      else
-
         !calculate compton cross section using Klein-Nishina formula
         !equation 7.5 of Rybicki and Lightman (2004), page 197
+        !This is for recoil ionization
         CT_KN_Xsec(i) = sigma_thom * ((3.d0/4.d0)* ( &
              ((1.d0+x)/(x**3)) * ( &
              (2.d0*x*(1.d0+x)/(1.d0+2.d0*x)) - log(1.d0+2.d0*x)) + &
@@ -126,8 +125,102 @@ subroutine getComptonThomsonXsec(freq, nfreq)
      end if
   end do
 
+end subroutine doComptonXsecs
 
-end subroutine getComptonThomsonXsec
+!set up stuff for determing photon properties post compton-scatter
+!uses Klein Nishina formula
+subroutine inititateComptonScatterArray(KN_sigmaT, KN_sigmaArray, KN_PDF, freq)
+  implicit none
+  
+  real(double) :: Eini_over_Enew
+  integer, parameter :: ntheta=180
+  real(double), allocatable :: KN_sigmaT(:), KN_sigmaArray(:,:), KN_PDF(:,:)
+  real(double) :: freq(1000), thisTheta
+  integer :: nfreq, i, j
+
+  nfreq = 1000
+  
+  allocate(KN_sigmaT(nfreq))
+  allocate(KN_sigmaArray(nfreq, ntheta))
+  allocate(KN_PDF(nfreq, ntheta))
+
+  KN_sigmaT = 0.d0
+  KN_sigmaArray = 0.d0
+  KN_PDF = 0.d0
+
+  thisTheta = 0.d0
+
+  do i = 1, nfreq
+     do j = 1, ntheta
+        thisTheta = dble(j)*pi/180.d0
+        Eini_over_Enew = calcComptonEnergyChange(freq(i), thisTheta)
+
+!the ratio of initial to final photon energies
+        KN_PDF(i, j) = Eini_over_Enew
+
+!scattering angle probability distribution
+        KN_sigmaArray(i, j) = calcComptonScatterAngleProb(Eini_over_Enew, thisTheta)
+
+!The total probability
+        KN_sigmaT(i) = KN_SigmaT(i) + KN_sigmaArray(i,j)*2.d0*pi*sin(thisTheta)*pi/180.d0
+     end do
+  end do
+
+  !Complete the PDF
+  do i = 1, nfreq
+     KN_sigmaArray(i,1) = KN_sigmaArray(i, 1)*2.d0*pi*sin(pi/180.d0)*pi/180.d0
+     do j = 2, ntheta
+        thisTheta = dble(j)*pi/180.d0
+        KN_sigmaArray(i, j) = KN_sigmaArray(i, j-1) + KN_sigmaArray(i, j)* &
+             2.d0*pi*sin(thistheta)*pi/180.d0
+     end do
+     KN_sigmaArray(i,:) = KN_sigmaArray(i,:)/KN_sigmaT(i)
+     KN_sigmaArray(i, nTheta) = 1.d0
+  end do
+
+
+end subroutine inititateComptonScatterArray
+
+
+
+
+!calculate the ratio of incoming to outgoing photon energy in a compton scattering event
+!This is equation 7.2 of Rybicki and Lightman 2004
+real(double) function calcComptonEnergyChange(frequency, angle)
+  implicit none
+  real(double) :: frequency
+  real(double) :: angle
+  real(double), parameter :: constant=37557.66267
+  
+  calcComptonEnergyChange = 1.d0/(1.d0+ (frequency/constant)*(1.d0 - cos(angle)))
+
+end function calcComptonEnergyChange
+
+
+
+!uses Klein-Nishina formula
+! dsigma/dOmega = 0.5 r_e^2 (P(E,theta)- P(E,theta)^2 Sin(theta)^2 + P(E,theta)^3)
+!P = Eini/Enew
+real(double) function calcComptonScatterAngleProb(Erat, theta)
+  implicit none
+
+  real(double) :: Erat, theta
+  
+  real(double), parameter :: electronRadius= 2.8179403267d-13 !not 10^10cm
+  
+  calcComptonScatterAngleProb = (0.5d0*electronRadius**2)* &
+       (Erat - (Erat**2)*sin(theta**2)+Erat**3)
+
+end function calcComptonScatterAngleProb
+
+
+!get new photon direction and frequency following compton scattering
+subroutine scatterCompton()
+implicit none
+
+
+
+end subroutine
 
 
 !x-ray specific ionization balance (not yet working)
