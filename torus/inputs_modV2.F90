@@ -1509,7 +1509,7 @@ contains
              grainFracTotal = grainFracTotal + grainFrac(i)
              
 
-             call getReal(grainDensityLabel, grainFrac(i), 1., cLine, fLine, nLines, &
+             call getReal(grainDensityLabel, grainDensity(i), 1., cLine, fLine, nLines, &
                   "Grain density (g/cc): ","(a,f8.5,1x,a)",3.6 , ok, .false.)
 
              if (.not. readDustFromFile) &
