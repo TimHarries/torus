@@ -258,8 +258,8 @@ contains
           nIon = nIon + 1
           call createIon(ionArray(nIon), 12, 10, 24, 118.769)     !Mg III
 
-          nIon = nIon + 1
-          call createIon(ionArray(nIon), 12, 9, 24, 118.847)     !Mg IV
+!          nIon = nIon + 1
+!          call createIon(ionArray(nIon), 12, 9, 24, 118.847)     !Mg IV
 
 
 
@@ -497,6 +497,35 @@ subroutine addLevels(thisIon)
   case("S IV")
      call addLevel(thisIon, "2P^0_1/2", 0.d0, 0.5)
      call addLevel(thisIon, "2P^0_3/2", 0.117962d0, 1.5)
+
+
+!Thaw - now for the x-ray metals (25/07/2013)
+     
+  case("Mg I")
+     call addLevel(thisIon, "1S_0", 0.d0, 0.0)
+     call addLevel(thisIon, "3P^0_0", 2.7091048d0, 0.)
+     call addLevel(thisIon, "3P^0_1", 2.7115918d0, 1.)
+     call addLevel(thisIon, "3P^0_2", 2.7166397d0, 2.)
+     call addLevel(thisIon, "1P^0_1", 4.3458026d0, 2.)
+
+  case("Mg II")
+     call addLevel(thisIon, "2S_1/2", 0.d0, 0.5)
+     call addLevel(thisIon, "2P_1/2", 4.422431d0, 0.5)
+     call addLevel(thisIon, "2P_3/2", 4.433784d0, 1.5)
+     call addLevel(thisIon, "2S_1/2", 8.654710d0, 0.5)
+
+
+  case("Mg III")
+     call addLevel(thisIon, "1S_0", 0.d0, 0.0)
+     call addLevel(thisIon, "3P^0_2", 52.77267d0, 2.0)
+     call addLevel(thisIon, "3P^0_1", 52.92490d0, 1.0)
+     call addLevel(thisIon, "3P^0_0", 53.04690d0, 0.0)
+
+
+!  case("Ar I")
+!     call addLevel(thisIon, "1S_0", 0.d0, 0.0)
+
+     
 
   case DEFAULT
   end select
