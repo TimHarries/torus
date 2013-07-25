@@ -736,7 +736,7 @@ contains
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
      real :: fAccretion
-
+     character(len=80) :: message
 
      if (associated(globalsourceArray)) then
         deallocate(globalSourceArray)
@@ -753,6 +753,10 @@ contains
      if (grid%geometry == "theGalaxy") then
 #ifdef SPH
         globalnSource = get_nptmass()
+        if ( globalnSource > size(globalSourceArray)) then 
+           write(message,*) "Number of sources exceeds size of source array", globalnSource, size(globalSourceArray)
+           call writeFatal(message)
+        endif
         do i = 1, globalnSource
            globalSourceArray(i)%stellar = .true.
            globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()

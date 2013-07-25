@@ -867,7 +867,9 @@ module molecular_mod
      type(MOLECULETYPE) :: thisMolecule
      type(VECTOR) :: position, direction
      integer :: nOctal, iOctal, subcell
+#ifdef PHOTOION
      character(len=80) :: mpiFilename
+#endif
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
      integer, parameter :: maxIter = 50
