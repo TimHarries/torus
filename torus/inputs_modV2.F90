@@ -1855,6 +1855,9 @@ contains
     call getLogical("usemetals", usemetals, cLine, fLine, nLines, &
          "Use metals in photoionization calculation: ","(a,1l,a)", .true., ok, .false.)
 
+    call getLogical("xraymetals", usexraymetals, cLine, fLine, nLines, &
+         "Use x-ray metals in photoionization calculation: ","(a,1l,a)", .false., ok, .false.)
+
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 

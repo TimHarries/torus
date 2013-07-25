@@ -144,8 +144,8 @@ contains
        endif
   end function returnXsec
 
-  subroutine addIons(ionArray, nIon, usemetals, hOnly)
-    logical, intent(in) :: usemetals, hOnly
+  subroutine addIons(ionArray, nIon, usemetals, usexraymetals, hOnly)
+    logical, intent(in) :: usemetals, hOnly, usexraymetals
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
 
@@ -245,6 +245,42 @@ contains
 
        nIon = nIon + 1
        call createIon(ionArray(nIon), 16, 13, 32, 4.722e1) ! S IV
+
+       if(useXrayMetals) then        
+
+          !Iron
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 26, 56, 7.903)     !Fe I 
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 25, 56, 16.188)     !Fe II
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 24, 56, 30.651)     !Fe III
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 23, 56, 54.91)     !Fe IV
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 22, 56, 75.0)     !Fe V
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 21, 56, 98.985)     !Fe VI
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 20, 56, 124.98)     !Fe VII
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 19, 56, 151.06)     !Fe VIII
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 18, 56, 233.60)     !Fe IX
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 26, 17, 56, 262.10)     !Fe X
+
+       end if
+
     endif
     if (writeoutput) &
          write(*,*) "Added ",nion," species to photoionization calculation"

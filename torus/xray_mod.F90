@@ -210,69 +210,66 @@ end function calcComptonScatterAngleProb
 
 
 !!!get new photon direction and frequency following compton scattering
-!subroutine scatterCompton(newDirection, newFreq, oldfreq, KN_sigmaArray, KN_PDF, freq)
-!  implicit none
-!  type(vector) :: newDirection
-!  real(double) :: u, v, w, t, r1, r2, newtheta, newfreq, oldfreq
-!  integer :: i, index
-!  integer :: nfreq, ifreq, freqID
-!  integer, parameter :: ntheta = 180
-!  real(double) :: KN_sigmaArray(:,:), KN_PDF(:,:), freq(1000)
-!
-!  nfreq = 1000
-!  newfreq = 0.d0
-!  call locate(freq, nFreq, oldFreq, iFreq)
-!  !get a random scattering angle from Klein-Nishina PDF  -------------
-!  call random_number(r2)
-!  do i = 1, 10000
-!     if(r2 == 0.d0 .or. r2 == 1.d0) then
-!        call random_number(r2)
-!     else
-!        exit
-!     end if
-!  end do
-!  if(i >= 10000) then
-!     call torus_abort("random number selection broken in xray_mod")
-!  end if
-!
-!!
-!!find the frequency bin that this photon resides in
-!!
-!
-!  do thisTheta = 1, ntheta
-!     if (r2 >= KN_sigmaArray(freqID ,thisTheta)) then
-!        index = thisTheta
-!     else
-!        exit
-!     end if
-!  end do
-!
-!  newtheta = index * pi/180.d0
-!!---------------------------------------------------------------------
-!
-!
-!!usual random direction stuff-----------------------------------------
-!  call random_number(r1)
-!  w = 2.d0*r1 - 1.d0
-!  t = sqrt(1.d0 - w*w)
-!  u = t*cos(newTheta)
-!  v = t*sin(newTheta)
-!
-!  newDirection = VECTOR(u, v, w)
-!  
-!!---------------------------------------------------------------------
-!
-!
-!!get the new frequency------------------------------------------------
-!
-!  newFreq = oldfreq * KN_PDF(freqID, newtheta)
-!!  call locate(freq, nFreq, thisFreq, iFreq)
-!!  newfreq = thisFreq
-!
-!!---------------------------------------------------------------------!
-!
-!end subroutine
+subroutine scatterCompton(newDirection, newFreq, oldfreq, KN_sigmaArray, KN_PDF, freq)
+  implicit none
+  type(vector) :: newDirection
+  real(double) :: u, v, w, t, r1, r2, newtheta, newfreq, oldfreq
+  integer :: i, index
+  integer :: nfreq, ifreq, thisTheta
+  integer, parameter :: ntheta = 180
+  real(double) :: KN_sigmaArray(:,:), KN_PDF(:,:), freq(1000)
 
+  nfreq = 1000
+  newfreq = 0.d0
+  call locate(freq, nFreq, oldFreq, iFreq)
+  !get a random scattering angle from Klein-Nishina PDF  -------------
+  call random_number(r2)
+  do i = 1, 10000
+     if(r2 == 0.d0 .or. r2 == 1.d0) then
+        call random_number(r2)
+     else
+        exit
+     end if
+  end do
+  if(i >= 10000) then
+     call torus_abort("random number selection broken in xray_mod")
+  end if
+
+!
+!find the frequency bin that this photon resides in
+!
+
+  do thisTheta = 1, ntheta
+     if (r2 >= KN_sigmaArray(iFreq ,thisTheta)) then
+        index = thisTheta
+     else
+        exit
+     end if
+  end do
+
+  newtheta = index * pi/180.d0
+!---------------------------------------------------------------------
+
+
+!usual random direction stuff-----------------------------------------
+  call random_number(r1)
+  w = 2.d0*r1 - 1.d0
+  t = sqrt(1.d0 - w*w)
+  u = t*cos(newTheta)
+  v = t*sin(newTheta)
+
+  newDirection = VECTOR(u, v, w)
+  
+!---------------------------------------------------------------------
+
+
+!get the new frequency------------------------------------------------
+
+  newFreq = oldfreq * KN_PDF(iFreq, index)
+  call locate(freq, nFreq, newFreq, index)
+!---------------------------------------------------------------------!
+
+end subroutine
 
 !x-ray specific ionization balance (not yet working)
 subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, epsOverdeltaT, augerArray)
