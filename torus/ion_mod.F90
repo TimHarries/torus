@@ -248,6 +248,52 @@ contains
 
        if(useXrayMetals) then        
 
+          !Magnesium
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 12, 12, 24, 68.869)     !Mg I 
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 12, 11, 24, 68.538)     !Mg II
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 12, 10, 24, 118.769)     !Mg III
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 12, 9, 24, 118.847)     !Mg IV
+
+
+
+          !Silicon
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 14, 14, 28, 8.187)     !Si I 
+
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 14, 13, 28, 22.883)     !Si II
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 14, 12, 28, 42.39)     !Si III
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 14, 11, 28, 45.142)     !Si IV
+
+
+
+          !Argon
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 18, 18, 40, 15.760)     !Ar I 
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 18, 18, 40, 27.630)     !Ar II
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 18, 18, 40, 40.735)     !Ar III
+
+          nIon = nIon + 1
+          call createIon(ionArray(nIon), 18, 18, 40, 59.58)     !Ar IV
+
+          
+
           !Iron
           nIon = nIon + 1
           call createIon(ionArray(nIon), 26, 26, 56, 7.903)     !Fe I 
