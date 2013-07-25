@@ -45,7 +45,7 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: read_sph_data_wrapper, sphdata
+    use sph_data_class, only: read_sph_data_wrapper
 #endif
 #ifdef MPI 
     use mpi_amr_mod
@@ -370,6 +370,7 @@ contains
         call howmanysplits()
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
+        call fixParentPointers(grid%octreeRoot)
         call finishGrid(grid%octreeRoot, grid, romData=romData)
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
