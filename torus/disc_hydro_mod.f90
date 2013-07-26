@@ -497,7 +497,7 @@ contains
                 gridConverged = .true.
                 call putTau(grid, grid%lamArray(j))
                 call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                     inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                     inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                 
                 if (gridConverged) exit
              end do
@@ -544,7 +544,7 @@ contains
                 call putTau(grid, grid%lamArray(j))
                 gridConverged = .true.
                 call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                     inheritProps = .false., interpProps = .true., photospheresplit = .true.)
+                     inheritProps = .false., interpProps = .true.)!, photospheresplit = .true.)
 
                 if (gridConverged) exit
              end do

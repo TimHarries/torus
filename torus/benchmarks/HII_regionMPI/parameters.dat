@@ -47,7 +47,7 @@ photoioneq   T
 ! Dust parameters
 !
 
-graintype1 sil_dl
+graintype1 draine_sil
 grainfrac1 1.d-20
 amin1 0.1
 amax1 0.11

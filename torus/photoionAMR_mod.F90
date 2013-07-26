@@ -1615,12 +1615,12 @@ end subroutine radiationHydro
        if(.not. cart2d) then
           maxDiffRadius3  = 1.d30
           do isource = 1, globalnSource
-             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 1.d0, maxDiffRadius1(iSource))
+             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 10.d0, maxDiffRadius1(iSource))
              call MPI_BCAST(maxDiffRadius1(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-             call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), 1.d0, maxDiffRadius2(iSource))
+             call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), 10.d0, maxDiffRadius2(iSource))
              call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              if (amr3D) then
-                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), 1.d0, maxDiffRadius3(iSource))
+                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), 10.d0, maxDiffRadius3(iSource))
                 call MPI_BCAST(maxDiffRadius3(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              endif
              call MPI_BARRIER(localWorldCommunicator, ierr)
@@ -1628,7 +1628,9 @@ end subroutine radiationHydro
           if (splitThisTime) sourceInThickCell = .true.
           
           do isource = 1, globalnSource
-             maxDiffRadius(iSource) = min(maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource))
+             maxDiffRadius(iSource) = max(maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource))
+             if (writeoutput) write(*,*) "r1, r2, r3 ",maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource)
+             maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource) + maxDiffRadius3(iSource))/3.d0
              if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
 
