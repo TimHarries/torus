@@ -2448,9 +2448,9 @@ contains
        if ( .not. internalView ) then 
           ! Far field h21cm case
           call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
-               "Galaxy Inclination:", "(a,f4.1,1x,a)", 50.d0, ok, .false.)
+               "Galaxy Inclination:", "(a,f5.1,1x,a)", 50.d0, ok, .false.)
           call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
-               "Galaxy position angle:", "(a,f4.1,1x,a)", 20.d0, ok, .false.)
+               "Galaxy position angle:", "(a,f5.1,1x,a)", 20.d0, ok, .false.)
 ! In molecular_mod the observer is looking along the y-axis
           rotateViewAboutX = 90.0 - galaxyInclination
           rotateViewAboutY = galaxyPositionAngle - 90.0
