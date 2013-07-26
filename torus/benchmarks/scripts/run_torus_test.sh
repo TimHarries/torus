@@ -52,7 +52,7 @@ export TORUS_JOB_DIR=./
 case ${SYSTEM} in
     ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
     gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 &;;
+    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
@@ -326,29 +326,23 @@ for sys in ${SYS_TO_TEST}; do
     echo "Running disc benchmark"
     export THIS_BENCH=disc
     run_bench 
-    if [[ ${SYSTEM} != "nagfor" ]]; then
-	check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-	cat check_log_${SYSTEM}_${THIS_BENCH}.txt
-    fi
+    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
     echo
 
     echo "Running HII region benchmark"
     export THIS_BENCH=HII_region
     run_bench
-    if [[ ${SYSTEM} != "nagfor" ]]; then
-	check_hII > check_log_${SYSTEM}_hII.txt 2>&1 
-	cat check_log_${SYSTEM}_hII.txt
-    fi
+    check_hII > check_log_${SYSTEM}_hII.txt 2>&1 
+    cat check_log_${SYSTEM}_hII.txt
     echo
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
     run_bench
-    if [[ ${SYSTEM} != "nagfor" ]]; then
-	check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-	tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
-	check_completion
-    fi
+    check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
+    check_completion
     echo
 
     echo "Running SPH to grid test"
@@ -375,39 +369,14 @@ for sys in ${SYS_TO_TEST}; do
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt
     echo
 
-# Only run this test for MPI systems and not in the daily test
+# Don't run in the daily test
     if [[ ${MODE} != daily ]]; then
-	if [[ ${SYSTEM} != "nagfor" ]]; then 
-	    echo "Running cylindrical polar disc benchmark"
-	    export THIS_BENCH=disc_cylindrical
-	    run_bench
-	    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
-	    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
-	    echo 
-	fi
-    fi
-
-    if [[ $SYSTEM == nagfor ]]; then
-	echo "Waiting for nagfor runs to complete"
-	echo
-	wait
-
-	cd ${WORKING_DIR}/benchmarks/disc
-	check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+	echo "Running cylindrical polar disc benchmark"
+	export THIS_BENCH=disc_cylindrical
+	run_bench
+	check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
 	cat check_log_${SYSTEM}_${THIS_BENCH}.txt
-	echo
-
-	cd ${WORKING_DIR}/benchmarks/HII_region
-	check_hII > check_log_${SYSTEM}_hII.txt 2>&1 
-	cat check_log_${SYSTEM}_hII.txt
-	echo
-
-	cd ${WORKING_DIR}/benchmarks/molebench
-	check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-	tail check_log_${SYSTEM}_${THIS_BENCH}.txt
-	check_completion
 	echo 
-
     fi
 
 done
@@ -526,7 +495,7 @@ case ${MODE} in
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    stable) export SYS_TO_TEST="nagfor gfortran ompiosx ompiosx-openmp"
+    stable) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
 	    export BUILD_ONLY=""
             export DEBUG_OPTS="yes no"
 	    export TORUS_FC="gfortran -g -fcheck=all"
