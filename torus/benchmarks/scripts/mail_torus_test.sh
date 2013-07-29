@@ -1,13 +1,54 @@
 #!/bin/ksh
 
-mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
-#mail_to="acreman@astro.ex.ac.uk"
+# This script processes the output from a torus test run and reports whether the tests have passed
+# D. Acreman
 
+# To do: Handle debug=yes and debug=no directories for stable version tests
+#        Write the zen section
+
+# Default mode is daily test
+export MODE=daily
 export BASE_DIR=/Users/acreman
-export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
-export LOG_FILE=${BASE_DIR}/torus_daily_test_log
-export PATH=/Users/acreman/bin:${PATH}
+mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
 
+# Parse command line arguments
+while [ $# -gt 0 ]
+do
+    case "$1" in 
+	-s) export MODE=stable;;
+	-d) export MODE=daily;;
+	-z) export MODE=zen;;
+	-test) mail_to="acreman@astro.ex.ac.uk";;
+    esac
+shift
+done
+
+case ${MODE} in 
+
+    daily) export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_daily_test
+	export LOG_FILE=${BASE_DIR}/torus_daily_test_log
+# This is probably run from cron so set up PATH
+	export PATH=/Users/acreman/bin:${PATH};;
+
+    stable) export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_stable_version_tests/debug=no
+	export LOG_FILE=${BASE_DIR}/torus_stable_test_log;
+# There may not be a log file already so create it so that it can be appended to
+	touch ${LOG_FILE};;
+
+    zen) echo "Zen version not written yet ..."
+	 exit 1;;
+
+    *)  echo "ERROR: unrecognised mode"
+	exit 1;;
+esac
+
+# Check that we have a test directory
+if [[ ! -d ${TORUS_TEST_DIR} ]]; then 
+    echo "Test directory ${TORUS_TEST_DIR} not found"
+    exit 1
+fi
+
+# Check that the test run completed OK 
 if [[ -e ${TORUS_TEST_DIR}/lock ]]; then
   for user in ${mail_to}; do
      /sw/bin/mutt -s "Torus test suite: FAILED (did not complete)" ${user} < ${LOG_FILE}
@@ -15,35 +56,45 @@ if [[ -e ${TORUS_TEST_DIR}/lock ]]; then
   done
 fi
 
-# Process output from coverage analysis
+#
+# Process output from coverage analysis. This is from the ompiosx build only.
+#
+cd ${TORUS_TEST_DIR}/benchmarks_ompiosx/build
 echo "--------------------------" >> ${LOG_FILE}
 echo "Processing coverage output" >> ${LOG_FILE}
 echo "--------------------------" >> ${LOG_FILE}
-cd ${TORUS_TEST_DIR}/benchmarks_ompiosx/build
 process_gcov.sh >> ${LOG_FILE}
 
+#
+# Make tar file with attachments (daily tests only)
+#
 cd  ${TORUS_TEST_DIR}
+if [[ ${MODE} == "daily" ]]; then
+    attach_list=""
 
-attach_list=""
-
-for file in svn_log.txt build_only_*/*/compile_log* benchmarks_*/*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt benchmarks_*/build/coverage_sorted.dat
+    for file in svn_log.txt */*/compile_log* benchmarks_*/benchmarks/*/run_log* benchmarks_*/benchmarks/*/check_log*  benchmarks_*/benchmarks/*/tune_*.txt benchmarks_*/build/coverage_sorted.dat
  
-do
-    if [[ ! -e ${file} ]]; then 
-	echo "${file} does not exist"
-    else
-	file_size=`du -ks ${file} | awk '{print $1}'`
-	if [[ ${file_size} -gt 1000 ]]; then
-	    echo "Warning: file ${file} has size ${file_size} k" >> ${LOG_FILE}
-	    echo "This file will not be mailed." >> ${LOG_FILE}
+    do
+	if [[ ! -e ${file} ]]; then 
+	    echo "${file} does not exist"
 	else
-	    attach_list="${attach_list} ${file}"
+	    file_size=`du -ks ${file} | awk '{print $1}'`
+	    if [[ ${file_size} -gt 1000 ]]; then
+		echo "Warning: file ${file} has size ${file_size} k" >> ${LOG_FILE}
+		echo "This file will not be mailed." >> ${LOG_FILE}
+	    else
+		attach_list="${attach_list} ${file}"
+	    fi
 	fi
-    fi
-done
+    done
 
-tar cf torus_test_output.tar ${attach_list}
+    tar cf torus_test_output.tar ${attach_list}
+    gzip torus_test_output.tar
+fi
 
+#
+# Check each benchmark in turn. If any have failed then fail the suite.
+#
 suite_status="PASSED"
 
 echo "Summary of test results: " > header
@@ -58,6 +109,19 @@ if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]
 else
     echo "!! Disc benchmark FAILED !!" >> header
     suite_status="FAILED"
+fi
+
+if [[ ${MODE} == "stable" ]]; then
+    # Test for success of 3D disc benchmark
+    num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc_cylindrical/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
+    num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc_cylindrical/check_log_gfortran_disc.txt | /usr/bin/wc -l`
+    num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc_cylindrical/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
+    if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
+	echo "3D Disc benchmark successful" >> header 
+    else
+	echo "!! 3D Disc benchmark FAILED !!" >> header
+	suite_status="FAILED"
+    fi
 fi
 
 # Test for success of molebench
@@ -185,17 +249,20 @@ for tunefile in `find . -name 'tune*.txt'`; do
     echo >> timings
 done
 
+# Send mail for daily test or write to terminal for other modes
+if [[ ${MODE} == "daily" ]]; then
 # Set up the message body 
-echo  >> header
-mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log~
-cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ timings > ${TORUS_TEST_DIR}/torus_daily_test_log 
-export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
-
-# Send mail 
-gzip torus_test_output.tar
-for user in ${mail_to}; do
-    /sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar.gz ${user} < ${LOG_FILE}
-done
+    echo  >> header
+    mv ${LOG_FILE} ${TORUS_TEST_DIR}/torus_daily_test_log~
+    cat header ${TORUS_TEST_DIR}/torus_daily_test_log~ timings > ${TORUS_TEST_DIR}/torus_daily_test_log 
+    export LOG_FILE=${TORUS_TEST_DIR}/torus_daily_test_log
+    for user in ${mail_to}; do
+	/sw/bin/mutt -s "Torus test suite: ${suite_status}" -a torus_test_output.tar.gz ${user} < ${LOG_FILE}
+    done
+else
+    echo "Torus test suite: ${suite_status}"
+    cat header
+fi
 
 exit
 
