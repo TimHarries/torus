@@ -70,6 +70,28 @@ contains
        close(20)
 
 
+    case("sil_dl")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"eps_Sil.txt"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       read(20,*) cjunk
+       read(20,*) cjunk
+       read(20,*) cjunk
+       read(20,*) cjunk
+       read(20,*) cjunk
+       read(20,*) cjunk
+       nRef = 1201
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       do i = nRef, 1, -1
+          read(20,*) lamRef(i), junk1, junk2, tempReal(i), tempIm(i)
+          tempReal(i) = tempReal(i) + 1.
+       enddo
+       close(20)
+
+
     case("am_olivine")
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        filename = trim(dataDirectory)//"/"//"am_olivine.txt"
