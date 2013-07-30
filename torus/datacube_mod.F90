@@ -439,9 +439,11 @@ contains
         real, allocatable :: zeroMoment(:,:), firstMoment(:,:), secondMoment(:,:)
         real, allocatable :: S(:) ! background subtracted intensity
         real, allocatable :: vAxis_sp(:)
-        real :: intensitySum, background
+        real :: intensitySum, background, deltaV
         integer :: i, j
         character(len=80) :: message
+
+        real, parameter :: blankVal=-1.0e33
 
         allocate ( zeroMoment(thisCube%nx, thisCube%ny) )
         allocate ( firstMoment(thisCube%nx, thisCube%ny) )
@@ -449,6 +451,7 @@ contains
         allocate ( S(thisCube%nv) )
         allocate ( vAxis_sp(thisCube%nv) )
         vAxis_sp(:) = real(thisCube%vAxis(:))
+        deltaV      = vAxis_sp(2) - vAxis_sp(1)
 
         if (useFixedBg) then 
            background = fixedBg
@@ -466,22 +469,27 @@ contains
 
               S = thisCube%intensity(i,j,:) - background
               where (S<0.0) S=0.0
-              intensitySum     = sum( S(:) )
+              intensitySum = sum( S(:) )
 
-              zeroMoment(i,j) = intensitySum
+! Multiply intensity sum by channel width to get zero moment in K.km/s
+              if (intensitySum /= 0.0 ) then 
+                 zeroMoment(i,j) = intensitySum * deltaV
+              else
+                 zeroMoment(i,j) = blankVal
+              endif
 
               firstMoment(i,j) = sum( S(:)*vAxis_sp(:) )
               if (intensitySum /= 0.0 ) then 
                  firstMoment(i,j) = firstMoment(i,j) / intensitySum
               else
-                 firstMoment(i,j) = 0.0
+                 firstMoment(i,j) = blankVal
               endif
 
               secondMoment(i,j) = sum (S(:) * ( (vAxis_sp(:)-firstMoment(i,j))**2 ) )
               if ( intensitySum /= 0.0 ) then
                  secondMoment(i,j) = sqrt(secondMoment(i,j) / intensitySum)
               else
-                 secondMoment(i,j) = 0.0
+                 secondMoment(i,j) = blankVal
               end if
 
            end do
@@ -499,13 +507,13 @@ contains
         
         ! Write the required header keywords.
         call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-        call ftpkys(unit,'BUNIT',"km/s","Velocity unit",status)
+        call ftpkys(unit,'BUNIT',"K km/s","Velocity unit",status)
 
         call addScalingKeywords(maxval(zeroMoment), minval(zeroMoment), unit, FitsBitpix)
         call addWCSinfo
 
        !  Write the array to the FITS file.
-        call ftppre(unit,group,fpixel,nelements,zeroMoment,status)
+        call ftppne(unit,group,fpixel,nelements,zeroMoment,blankVal,status)
         call printFitsError(status)
 
 ! First moment 
@@ -519,7 +527,7 @@ contains
         call addWCSinfo
 
        !  Write the array to the FITS file.
-        call ftppre(unit,group,fpixel,nelements,firstMoment,status)
+        call ftppne(unit,group,fpixel,nelements,firstMoment,blankVal,status)
         call printFitsError(status)
 
 ! Second moment
@@ -533,7 +541,7 @@ contains
         call addWCSinfo
 
        !  Write the array to the FITS file.
-        call ftppre(unit,group,fpixel,nelements,secondMoment,status)
+        call ftppne(unit,group,fpixel,nelements,secondMoment,blankVal,status)
         call printFitsError(status)
 
         deallocate (zeroMoment)
