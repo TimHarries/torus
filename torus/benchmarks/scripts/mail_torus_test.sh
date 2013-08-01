@@ -3,13 +3,11 @@
 # This script processes the output from a torus test run and reports whether the tests have passed
 # D. Acreman
 
-# To do: Handle debug=yes and debug=no directories for stable version tests
-#        Write the zen section
-
 # Default mode is daily test
 export MODE=daily
 export BASE_DIR=/Users/acreman
-mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
+#mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
+mail_to="acreman@astro.ex.ac.uk"
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -17,7 +15,6 @@ do
     case "$1" in 
 	-s) export MODE=stable;;
 	-d) export MODE=daily;;
-	-z) export MODE=zen;;
 	-test) mail_to="acreman@astro.ex.ac.uk";;
     esac
 shift
@@ -30,13 +27,10 @@ case ${MODE} in
 # This is probably run from cron so set up PATH
 	export PATH=/Users/acreman/bin:${PATH};;
 
-    stable) export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_stable_version_tests/debug=no
+    stable) export TORUS_TEST_DIR=${BASE_DIR}/SCRATCH/torus_stable_version_tests/debug=yes
 	export LOG_FILE=${BASE_DIR}/torus_stable_test_log;
 # There may not be a log file already so create it so that it can be appended to
 	touch ${LOG_FILE};;
-
-    zen) echo "Zen version not written yet ..."
-	 exit 1;;
 
     *)  echo "ERROR: unrecognised mode"
 	exit 1;;
@@ -49,11 +43,13 @@ if [[ ! -d ${TORUS_TEST_DIR} ]]; then
 fi
 
 # Check that the test run completed OK 
-if [[ -e ${TORUS_TEST_DIR}/lock ]]; then
-  for user in ${mail_to}; do
-     /sw/bin/mutt -s "Torus test suite: FAILED (did not complete)" ${user} < ${LOG_FILE}
-    exit 1
-  done
+if [[ ${MODE} == "daily" ]]; then
+    if [[ -e ${TORUS_TEST_DIR}/lock ]]; then
+	for user in ${mail_to}; do
+	    /sw/bin/mutt -s "Torus test suite: FAILED (did not complete)" ${user} < ${LOG_FILE}
+	    exit 1
+	done
+    fi
 fi
 
 #
@@ -113,10 +109,11 @@ fi
 
 if [[ ${MODE} == "stable" ]]; then
     # Test for success of 3D disc benchmark
-    num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc_cylindrical/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
-    num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc_cylindrical/check_log_gfortran_disc.txt | /usr/bin/wc -l`
-    num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc_cylindrical/check_log_ompiosx_disc.txt | /usr/bin/wc -l`
-    if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
+    num_success=`/usr/bin/grep -c "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/disc_cylindrical/check_log_ompiosx_disc_cylindrical.txt`
+    num_success2=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/disc_cylindrical/check_log_gfortran_disc_cylindrical.txt`
+    num_success3=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/disc_cylindrical/check_log_ompiosx_disc_cylindrical.txt`
+# SEDs only, no image so look for 2 successful results
+    if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
 	echo "3D Disc benchmark successful" >> header 
     else
 	echo "!! 3D Disc benchmark FAILED !!" >> header
@@ -125,9 +122,9 @@ if [[ ${MODE} == "stable" ]]; then
 fi
 
 # Test for success of molebench
-num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
-num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_gfortran_molebench.txt | /usr/bin/wc -l`
-num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_ompiosx_molebench.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep -c "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/molebench/check_log_ompiosx_molebench.txt`
+num_success2=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/check_log_gfortran_molebench.txt`
+num_success3=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/check_log_ompiosx_molebench.txt`
 if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]]; then
     echo "Molecular benchmark successful." >> header
 else

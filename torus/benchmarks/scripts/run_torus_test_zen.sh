@@ -1,18 +1,18 @@
 #!/usr/bin/ksh
 
-write_qsub_hydro()
+write_qsub_dd()
 {
 cat <<EOF > torus.pbs
 #!/usr/bin/ksh
-#PBS -l nodes=1
-#PBS -l walltime=1:00:00
+#PBS -l nodes=1:ppn=${1}
+#PBS -l walltime=8:00:00
 #PBS -q all
 #PBS -o stdout_torus
 #PBS -e stderr_torus
-#PBS -N Torus_MPI
+#PBS -N Torus_${THIS_CONFIG}
 
 export NUMBEROFNODES=1
-export NUMPROCS=3
+export NUMPROCS=${1}
 
 export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
@@ -30,12 +30,12 @@ write_qsub_mpi()
 {
 cat << EOF > torus.pbs
 #!/usr/bin/ksh
-#PBS -l nodes=2
+#PBS -l nodes=2:ppn=12
 #PBS -l walltime=12:00:00
 #PBS -q all
 #PBS -o stdout_torus
 #PBS -e stderr_torus
-#PBS -N Torus_MPI
+#PBS -N Torus_${THIS_CONFIG}
 
 export NUMBEROFNODES=2
 export NUMPROCS=24
@@ -56,16 +56,16 @@ write_qsub_hybrid()
 {
 cat << EOF > torus.pbs
 #!/usr/bin/ksh
-#PBS -l nodes=2
+#PBS -l nodes=2:ppn=12
 #PBS -l walltime=12:00:00
 #PBS -q all
 #PBS -o stdout_torus
 #PBS -e stderr_torus
-#PBS -N Torus_hybrid
+#PBS -N Torus_${THIS_CONFIG}
 
 export NUMBEROFNODES=2
 export NUMPROCS=2
-export OMP_NUM_THREADS 12
+export OMP_NUM_THREADS=12
 
 export TORUS_DATA=${TORUS_DATA}
 cd \${PBS_O_WORKDIR}
@@ -83,11 +83,11 @@ write_qsub_openmp()
 {
 cat << EOF > torus.pbs
 #!/usr/bin/ksh
-#PBS -l nodes=1
-#PBS -q mpiexpress
+#PBS -l nodes=1:ppn=12
+#PBS -q all
 #PBS -o stdout_torus
 #PBS -e stderr_torus
-#PBS -N Torus_OpenMP
+#PBS -N Torus_${THIS_CONFIG}
 
 export OMP_NUM_THREADS=12
 export TORUS_DATA=${TORUS_DATA}
@@ -98,9 +98,6 @@ EOF
 }
 
 #######################################################################################
-
-# To do: 1. Redirect stderr from build to record failures (check build results?)
-#        2. Add new benchmarks
 
 test_list="mpi mpi_db openmp openmp_db hybrid hybrid_db"
 test_dir=/data/${USER}/torus_tests
@@ -118,9 +115,15 @@ else
     exit 1
 fi
 
+# Set up directories for running the tests
+echo
 cd $test_dir
-
 for test in ${test_list}; do
+    echo "Setting up directory for ${test}"
+    if [[ -e ${test} ]]; then
+	echo "${test} already exists. Aborting ..."
+	exit 1
+    fi
     mkdir ${test}
     cp -r torus/benchmarks ${test}
     mkdir ${test}/build
@@ -129,99 +132,121 @@ for test in ${test_list}; do
     cd ../..
 done
 
-echo "Building Torus for openmp test"
-cd ${test_dir}/openmp/build 
-export SYSTEM=zensingle
-make depends > compile_log
-make debug=no openmp=yes >> compile_log
+# Build executables for the various different configurations we will be testing
+echo 
+for config in ${test_list}; do
 
-echo "Building Torus for openmp_db test"
-cd ${test_dir}/openmp_db/build
-export SYSTEM=zensingle
-make depends > compile_log
-make debug=yes openmp=yes >> compile_log
+    case ${config} in
+	openmp) export SYSTEM=zensingle
+	    dodebug=no
+	    doopenmp=yes;;
+        openmp_db) export SYSTEM=zensingle
+            dodebug=yes
+            doopenmp=yes;;
+        mpi) export SYSTEM=zen
+            dodebug=no
+            doopenmp=no;;
+        mpi_db) export SYSTEM=zen
+            dodebug=yes
+            doopenmp=no;;
+        hybrid) export SYSTEM=zen
+            dodebug=no
+            doopenmp=yes;;
+        hybrid_db) export SYSTEM=zen
+            dodebug=yes
+            doopenmp=yes;;
+	*) echo "Unrecognised configuration. Aborting ..."
+	    exit 1;;
+    esac
 
-echo "Building Torus for mpi test"
-cd ${test_dir}/mpi/build
-export SYSTEM=zen
-make depends > compile_log
-make debug=no openmp=no >> compile_log
+    echo "Building Torus for ${config} test"
+    cd ${test_dir}/${config}/build 
+    make depends > compile_log
+    make debug=${dodebug} openmp=${doopenmp} >> compile_log
 
-echo "Building Torus for mpi_db test"
-cd /${test_dir}/mpi_db/build
-export SYSTEM=zen
-make depends > compile_log
-make debug=yes openmp=no >> compile_log
+    if [[ -x torus.${SYSTEM} ]]; then
+	echo "Found executable torus.${SYSTEM}"
+    else
+	echo "Did not find  executable torus.${SYSTEM}.  Aborting ..."
+	exit 1
+    fi
+done
 
-echo "Building Torus for hybrid test"
-cd ${test_dir}/hybrid/build
-export SYSTEM=zen
-make depends > compile_log
-make debug=no openmp=yes >> compile_log
-
-echo "Building Torus for hybrid_db test"
-cd ${test_dir}/hybrid_db/build
-export SYSTEM=zen
-make depends > compile_log
-make debug=yes openmp=yes >> compile_log
 
 # Submit jobs
+echo 
 echo "Submitting jobs to queue"
 
-echo "Submitting mpi runs"
-for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${test_dir}/mpi/benchmarks/${bench}
-    ln -s ../../build/torus.zen 
-    write_qsub_mpi
-    qsub torus.pbs
-done
-cd ${test_dir}/mpi/benchmarks/hydro
-ln -s ../../build/torus.zen
-write_qsub_hydro
-qsub torus.pbs
+# gfortran is required for setting up sphbench
+export  LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/sw/gcc/lib64:/sw/gcc/lib
+export  PATH=${PATH}:/sw/gcc/bin
 
-echo "Submitting mpi_db runs"
-for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${test_dir}/mpi_db/benchmarks/${bench}
-    ln -s ../../build/torus.zen
-    write_qsub_mpi
-    qsub torus.pbs
-done
-cd ${test_dir}/mpi_db/benchmarks/hydro
-ln -s ../../build/torus.zen
-write_qsub_hydro
-qsub torus.pbs
+# Non-domain decomposed benchamrks
+for config in mpi mpi_db openmp openmp_db hybrid hybrid_db; do 
+    echo "Submitting ${config} runs"
+    export THIS_CONFIG=${config}
 
-echo "Submitting openmp runs"
-for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${test_dir}/openmp/benchmarks/${bench}
-    ln -s ../../build/torus.zensingle
-    write_qsub_openmp
-    qsub torus.pbs
-done
+    case ${config} in
+        openmp) export SYSTEM=zensingle;;
+        openmp_db) export SYSTEM=zensingle;;
+        mpi) export SYSTEM=zen;;
+        mpi_db) export SYSTEM=zen;;
+        hybrid) export SYSTEM=zen;;
+        hybrid_db) export SYSTEM=zen;;
+        *) echo "Unrecognised configuration. Aborting ..."
+            exit 1;;
+    esac
 
-echo "Submitting openmp_db runs"
-for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${test_dir}/openmp_db/benchmarks/${bench}
-    ln -s ../../build/torus.zensingle
-    write_qsub_openmp
-    qsub torus.pbs
-done
+# Leave the restart test as it relies on the disc benchmark finishing first. This could be set up with a qsub dependency.
 
-echo "Submitting hybrid runs"
-for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${test_dir}/hybrid/benchmarks/${bench}
-    ln -s ../../build/torus.zen
-    write_qsub_hybrid
-    qsub torus.pbs
-done
+# Set up sphbench
+    echo "Preparing sphbench"
+    cd ${test_dir}/${config}/benchmarks/sphbench
+    ./setup_write_sph_file
 
-echo "Submitting hybrid_db runs"
-for bench in disc disc_cylindrical HII_region molebench; do
-    cd ${test_dir}/hybrid_db/benchmarks/${bench}
-    ln -s ../../build/torus.zen
-    write_qsub_hybrid
-    qsub torus.pbs
+    for bench in disc disc_cylindrical HII_region molebench nbody angularImageTest sphbench; do
+	cd ${test_dir}/${config}/benchmarks/${bench}
+	ln -s ../../build/torus.${SYSTEM}
+	case ${config} in
+            openmp) write_qsub_openmp;;
+            openmp_db) write_qsub_openmp;;
+            mpi) write_qsub_mpi;;
+            mpi_db) write_qsub_mpi;;
+            hybrid) write_qsub_hybrid;;
+            hybrid_db) write_qsub_hybrid;;
+            *) echo "Unrecognised configuration. Aborting ..."
+		exit 1;;
+	esac
+	qsub torus.pbs
+    done
+
+# Domain decomposed benchmarks (MPI only)
+    if [[ $config == "mpi" || $config == "mpi_db" ]]; then 
+	echo "Submitting domain decomposed benchmarks"
+# 1D
+	for bench in HII_regionMPI hydro; do
+	    cd ${test_dir}/${config}/benchmarks/${bench}
+	    ln -s ../../build/torus.zen
+	    write_qsub_dd 3
+	    qsub torus.pbs
+	done
+
+# 2D
+        for bench in gravtest_2d; do
+            cd ${test_dir}/${config}/benchmarks/${bench}
+            ln -s ../../build/torus.zen
+            write_qsub_dd 5
+            qsub torus.pbs
+        done
+
+# 3D
+        for bench in gravtest cylinder_image_test; do
+            cd ${test_dir}/${config}/benchmarks/${bench}
+            ln -s ../../build/torus.zen
+            write_qsub_dd 9
+            qsub torus.pbs
+        done
+    fi
 done
 
 echo "All done"

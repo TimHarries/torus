@@ -1,1 +1,1 @@
-character(len=20), parameter :: svnversion = "-public-alpha"
+character(len=20), parameter :: svnversion = "-public"

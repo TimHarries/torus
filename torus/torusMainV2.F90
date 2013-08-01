@@ -84,7 +84,7 @@ program torus
 
   call writeTorusBanner()
 
-  call setVersion("V2.0")
+  call setVersion("V3.0.0")
   grid%version = torusVersion
   verbosityLevel = 5
   call writeBanner("TORUS "//trim(torusVersion)//" model","-",IMPORTANT)

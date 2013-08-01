@@ -9,10 +9,15 @@ openmp  = no
 mpi = no 
 cfitsio = no
 sph = yes
+debug = no
+
+# Unset each of these to start with
 ETCFLAG  =
+LINKFLAGS  =
+LINKEXTRAFLAGS =
 
 # If the build is failing because cfitsio is not found you can add its location here e.g. 
-#ETCFLAG  = -L/sw/fits/lib
+#CFITSIOLIBS = -L/sw/fits/lib
 
 # Set the SYSTEM environment variable to the name of your Fortran compiler
 
@@ -69,10 +74,8 @@ ifeq ($(mpi), yes)
    ETCFLAG += -DMPI
 endif
 
-ifeq ($(cfitsio), no)
-   CFITSIOLIBS  =
-else
-   CFITSIOLIBS = -lcfitsio
+ifeq ($(cfitsio), yes)
+   LINKFLAGS = ${CFITSIOLIBS} -lcfitsio
    ETCFLAG += -DUSECFITSIO
 endif
 
@@ -95,16 +98,16 @@ ifeq ($(openmp), yes)
   ifeq ($(SYSTEM), gfortran)
      OPENMPFLAG = -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
-     STARLIBS += -static-libgcc
+     LINKEXTRAFLAGS += -static-libgcc
   endif
   ETCFLAG += $(OPENMPFLAG)
 else
-  STARLIBS= 
+  LINKEXTRAFLAGS= 
 endif
 
 # For zlib
 ETCFLAG += -DUSEZLIB
-STARLIBS += -lz
+LINKFLAGS += -lz
 
 #
 # Source files
@@ -158,7 +161,7 @@ all: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) -o $(EXE) \
 	    $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS)
+	    $(LINKEXTRAFLAGS) $(LINKFLAGS) 
 	    @echo "...done"
     else
 	    @echo ""
@@ -195,9 +198,7 @@ link: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
-	    $(F90) $(TRACEFLAG) -o $(EXE) \
-	    $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	    $(F90) -o $(EXE) $(F90OBJ) $(CAPF90OBJ) $(LINKEXTRAFLAGS) $(LINKFLAGS)
 	    @echo "...done"
     else
 	    @echo ""
