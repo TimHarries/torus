@@ -1652,7 +1652,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
 !           call writeImage(obsImageSet(i1), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
-           if (torusVersion(2:2) == "2") specfile = originaloutfile
+           if (torusVersion(2:2) /= "1") specfile = originaloutfile
 
 
 #ifdef USECFITSIO
