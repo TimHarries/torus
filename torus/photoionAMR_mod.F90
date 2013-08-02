@@ -1628,9 +1628,13 @@ end subroutine radiationHydro
           if (splitThisTime) sourceInThickCell = .true.
           
           do isource = 1, globalnSource
-             maxDiffRadius(iSource) = max(maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource))
-             if (writeoutput) write(*,*) "r1, r2, r3 ",maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource)
-             maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource) + maxDiffRadius3(iSource))/3.d0
+             if (amr3d) then
+                if (writeoutput) write(*,*) "r1, r2, r3 ",maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource)
+                maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource) + maxDiffRadius3(iSource))/3.d0
+             else
+                if (writeoutput) write(*,*) "r1, r2 ",maxDiffRadius1(isource), maxDiffRadius2(iSource)
+                maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource))/2.d0
+             endif
              if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
 

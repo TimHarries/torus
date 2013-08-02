@@ -2600,7 +2600,7 @@ contains
 
 ! alpha viscosity
 
-                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
+!                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
                    if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after viscous forces"
@@ -2721,7 +2721,7 @@ contains
                 endif
 
 ! alpha viscosity
-                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
+!                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
                    if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after viscous forces"
@@ -6287,6 +6287,7 @@ end subroutine sumFluxes
                "q11          ", &
                "q22          ", &
                "temperature  ", &
+               "fvisc2       ", &
                "q_i          "/))
 
 !          write(plotfile,'(a,i4.4,a)') "visc_",it,".vtk"

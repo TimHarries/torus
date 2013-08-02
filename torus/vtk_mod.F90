@@ -3002,7 +3002,10 @@ end subroutine writeXMLVtkFileAMR
                case("fvisc1")
                         rArray(1, n) = real(thisOctal%fViscosity(subcell)%x)
                case("fvisc2")
-                        rArray(1, n) = real(thisOctal%fViscosity(subcell)%y)
+                  rVec = subcellCentre(thisOctal,subcell)
+                  r = rVec%x * gridDistanceScale
+                  
+                  rArray(1, n) = real(thisOctal%fViscosity(subcell)%y*r)
                case("fvisc3")
                         rArray(1, n) = real(thisOctal%fViscosity(subcell)%z)
 
