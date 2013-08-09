@@ -119,6 +119,7 @@
   real(double) :: etaViscosity        !Artificial viscosity parameter
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
+  logical :: sphericalHydro           ! perform the hydrodynamics in spherical coordinates
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed

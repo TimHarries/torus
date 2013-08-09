@@ -63,7 +63,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector
+    use inputs_mod, only : UV_vector, sphericalhydro
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -74,7 +74,7 @@ contains
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
-         hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral
+         hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -402,7 +402,7 @@ contains
           iterTime = 1.e30
           do irefine = 1, 1
              if (irefine == 1) then
-                call writeInfo("Calling photoionization loop",TRIVIAL)
+                call writeInfo("Calling photoionization loop B",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call resetnh(grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
@@ -418,7 +418,7 @@ contains
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
              else
-                call writeInfo("Calling photoionization loop",TRIVIAL)
+                call writeInfo("Calling photoionization loop C",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
@@ -731,7 +731,7 @@ contains
        end if
 
        if(photoLoopGlobal .and. .not. noPhoto) then
-          call writeInfo("Calling photoionization loop",TRIVIAL)
+          call writeInfo("Calling photoionization loop A",TRIVIAL)
 !          call ionizeGrid(grid%octreeRoot)
           if(dt /= 0.d0) then
              loopLimitTime = grid%currentTime+dt
@@ -826,7 +826,11 @@ contains
                 call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
                      perturbPressure=.false.)
              else
-                call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+                if(sphericalhydro) then
+                   call hydroStep1dspherical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+                else
+                   call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+                end if
                 !                call torus_abort("1d radhydro not supported")
              end if
              firstWN = .false.
@@ -1038,18 +1042,26 @@ contains
 
           
 !Track the evolution of the ionization front with time
-       if(grid%geometry == "hii_test") then
+       if(grid%geometry == "hii_test" .or. grid%geometry == "SB_Dtype") then
           write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
-          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
-               VECTOR(3.5d9, 0.d0, 1.75d9), 1000)!
+          call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+               VECTOR(3.86d8, 0.d0, 0.d0), 1000)
 
-!          write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-!          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
-!               VECTOR(3.5d9, 0.0d0, 1.75d9), 1000)
 
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
-          call dumpStromgrenRadius(grid, datFileName, VECTOR(2d9,  0.d0, 2d9), &
-               VECTOR(4.d9, 0.0d0, 4.d9), 1000)
+          call dumpStromgrenRadius(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+               VECTOR(3.86d8, 0.d0, 0.d0), 1000)!
+!          write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
+!          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
+!               VECTOR(3.5d9, 0.d0, 1.75d9), 1000)!
+!
+!!          write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
+!!          call dumpStromgrenRadius(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &!
+!               VECTOR(3.5d9, 0.0d0, 1.75d9), 1000)!
+!
+!          write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
+!          call dumpStromgrenRadius(grid, datFileName, VECTOR(2d9,  0.d0, 2d9), &
+!               VECTOR(4.d9, 0.0d0, 4.d9), 1000)
        end if
  
     endif
@@ -1067,7 +1079,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1612,7 +1624,7 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       if(.not. cart2d) then
+       if(.not. cart2d .and. .not. sphericalHydro) then
           maxDiffRadius3  = 1.d30
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 10.d0, maxDiffRadius1(iSource))

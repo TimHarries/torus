@@ -2139,6 +2139,9 @@ contains
     call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("sphericalhydro", sphericalHydro, cLine, fLine, nLines, &
+         "Hydrodynamics in spherical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
 
     call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &

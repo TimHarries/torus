@@ -823,6 +823,9 @@ CONTAINS
     CASE("SB_WNHII")
        call calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
 
+    CASE("SB_Dtype")
+       call DtypeDensity(thisOctal, subcell)
+
     CASE("SB_offCen")
        call calcOffCentreExpansionDensity(thisOctal, subcell)
        
@@ -3987,7 +3990,7 @@ CONTAINS
           
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" & 
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
-            "SB_coolshk", "SB_gasmix", "bubble")
+            "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -7883,7 +7886,50 @@ endif
     thisOctal%etaCont(subcell) = 0.
   end subroutine calcMixingGasDensity
 
+  subroutine DtypeDensity(thisOctal, subcell)
 
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod, rand
+    real(double), parameter :: rInner = 0.2*(pcTocm/1.d10)
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+
+    thisOctal%rho(subcell) = 5.21d-21
+    thisOctal%temperature(subcell) = 1.d4
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+
+    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%phi_i(subcell) = 0.d0
+
+    thisOctal%gamma(subcell) = 1.0
+    thisOctal%iEquationOfState(subcell) = 1
+     
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+!    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%ionFrac(subcell,1) = 1.               !HI
+    thisOctal%ionFrac(subcell,2) = 1.e-10           !HII
+    if (SIZE(thisOctal%ionFrac,2) > 2) then      
+       thisOctal%ionFrac(subcell,3) = 1.            !HeI
+       thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII
+       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+
+  end subroutine DtypeDensity
 
 !for StarBench code comparison workshop
   subroutine calcWhalenNormanHIIExpansionDensity(thisOctal, subcell)
