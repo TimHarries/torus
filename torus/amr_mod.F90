@@ -7891,7 +7891,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod, rand
+    real(double) :: eThermal, rMod
     real(double), parameter :: rInner = 0.2*(pcTocm/1.d10)
 
     rVec = subcellCentre(thisOctal, subcell)
