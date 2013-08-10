@@ -1542,6 +1542,7 @@ module amr_utils_mod
     ! true if the point lies within the boundaries of the current octal
   
     use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics, spherical
+    use inputs_mod, only : sphericalhydro
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal
@@ -1621,13 +1622,27 @@ module amr_utils_mod
     endif
 
     if (thisOctal%oneD) then
-       if (spherical) then
+       if (spherical .and. .not. sphericalHydro) then
           r = modulus(point)
           if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
           else
              inOctal = .true.
           endif
+
+       elseif(sphericalhydro) then
+          r = point%x
+          IF (r < thisOctal%xMin) THEN ; inOctal = .FALSE. 
+          ELSEIF (r > thisOctal%xMax) THEN ; inOctal = .FALSE.
+          ELSE
+             inOctal = .true.
+          ENDIF
+!          if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
+!          else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
+ !         else
+ !            inOctal = .true.
+  !        endif
+
        else
           if ( point%x < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (point%x > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.

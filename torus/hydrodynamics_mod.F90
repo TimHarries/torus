@@ -1365,10 +1365,10 @@ contains
                 if (.not.octalonthread(neighbouroctal, neighboursubcell, myrankGlobal)) then
                    print *, "AND IT WASNT ON THREAD"
                 end if
-                print *, "EDGE", thisOctal%edgecell(subcell)
-                print *, "GHOST", thisOctal%ghostcell(subcell)
-!             else
-!                print *, "good at u_i"
+!                print *, "EDGE", thisOctal%edgecell(subcell)
+ !               print *, "GHOST", thisOctal%ghostcell(subcell)
+             else
+ !               print *, "good at u_i"
              endif
              weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
 
@@ -9071,10 +9071,22 @@ real(double) :: rho
                   (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
 
 !             if(rVec%x < 1.d8 .and. iProbe == 2) then
- !               print *, "EDGE LOC IS ", locator
-  !              print *, "rVEC is ", rVec
-   !          end if
+!                print *, "EDGE LOC IS ", locator
+!                print *, "rVEC is ", rVec
+!             end if
+!
 
+!             if(grid%octreeroot%oned .and. locator%x < 0.d0) then
+!                nProbeOutside =  1
+!                   if (iProbe == 1) then
+!                      boundary = "xplus"
+!                   else
+!                      boundary = "xminus"
+!                   endif
+!             end if
+
+!             print *, "checking ", locator
+!             print *, "pos should be ", locator%x-6031250.0
              if (.not.inOctal(grid%octreeRoot, locator)) then
                 nProbeOutside = nProbeOutside + 1
                 thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
@@ -9083,8 +9095,10 @@ real(double) :: rho
                 if (thisOctal%oneD) then
                    if (iProbe == 1) then
                       boundary = "xplus"
+!                      print *, "found xplus"
                    else
                       boundary = "xminus"
+!                      print *, "found xminus"
                    endif
                 endif
                 if (thisOctal%twoD) then
@@ -9118,6 +9132,9 @@ real(double) :: rho
              endif
           enddo
  
+
+
+
           if (nProbeOutside >= 1) then
              thisOctal%edgeCell(subcell) = .true.
              thisOctal%boundaryCondition(subcell) = getBoundary(boundary)
@@ -9127,9 +9144,9 @@ real(double) :: rho
              else if (thisOctal%threeD .and. nProbeOutside == 3) then
                 thisOctal%corner(subcell) = .true.
              end if
-
-   !       else if(rVec%x < 1.d8) then
-    !         print *, "EDGE SHOULD HAVE BEEN FOUND"
+!             print *, "found an edge ", subcellCentre(thisOctal, subcell)
+!          else if(rVec%x < 1.d1) then
+!             print *, "EDGE SHOULD HAVE BEEN FOUND"
                 
           endif
        endif
@@ -9350,6 +9367,7 @@ real(double) :: rho
                       currentDirection = (-1.d0)*probe(iProbe)
                       thisOctal%boundaryCondition(subcell) = &
                            neighbourOctal%boundaryCondition(neighbourSubcell)
+                      print *, "found a ghost ", subcellCentre(thisOctal, subcell)
                       exit
                    endif
                 endif
@@ -9388,6 +9406,7 @@ real(double) :: rho
                    thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                    thisOctal%gravboundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                    currentDirection = (-1.d0)*probe(iProbe)
+                   print *, "EDGE IS GHOST ", subcellCentre(thisOctal, subcell)
                    exit
                 endif
              enddo

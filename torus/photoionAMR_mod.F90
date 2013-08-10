@@ -107,7 +107,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
-    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells
+    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells, tmpsphericalhydro
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
@@ -410,6 +410,8 @@ contains
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
                 tmpcylindricalhydro=cylindricalhydro
+                tmpsphericalhydro=sphericalhydro
+                sphericalhydro=.false.
                 cylindricalHydro = .false.
                 if (.not.timedependentRT) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
@@ -417,6 +419,7 @@ contains
                      loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
+                sphericalhydro = tmpsphericalhydro
                 call writeInfo("Done",TRIVIAL)
              else
                 call writeInfo("Calling photoionization loop C",TRIVIAL)
@@ -425,18 +428,27 @@ contains
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
                 tmpcylindricalhydro=cylindricalhydro
+                tmpsphericalhydro=sphericalhydro
+                sphericalhydro=.false.
                 cylindricalHydro = .false.
                 if (.not.timeDependentRT) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
+                sphericalhydro = tmpsphericalhydro
                 call writeInfo("Done",TRIVIAL)
              endif
              
              call writeInfo("Dumping post-photoionization data", TRIVIAL)
              call writeVtkFile(grid, "start.vtk", &
              valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     " /))
+             if(grid%octreeroot%oned) then
+                write(datFilename, '(a, i4.4, a)') "start.dat"
+                call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+                     VECTOR(3.86d8, 0.d0, 0.d0), 1000)
+                
+             end if
           end do
        end if
 
@@ -751,10 +763,13 @@ contains
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
+                tmpsphericalhydro=sphericalhydro
+                sphericalhydro=.false.
                 cylindricalHydro = .false.
                 call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, 1, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 cylindricalHydro = tmpCylindricalHydro
+                sphericalhydro = tmpsphericalhydro
 
          call writeInfo("Done",TRIVIAL)
           timeSinceLastRecomb = 0.d0

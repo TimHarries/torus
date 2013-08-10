@@ -2157,12 +2157,12 @@ contains
     endif
 
 
-    if (sphericalHydro) then
-       amrGridCentreX = amrgridsize/2.
-       dx = dble(amrgridSize)/dble(2**4-4)
-       amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       vtkIncludeGhosts = .false.
-    endif
+!    if (sphericalHydro) then
+!       amrGridCentreX = amrgridsize/2.
+!       dx = dble(amrgridSize)/dble(2**4-4)
+!       amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
+!       vtkIncludeGhosts = .false.
+ !  endif
 
     call getDouble("griddistancescale", gridDistanceScale, 1.d0, cLine, fLine, nLines, &
          "Distance grid scale: ","(a,e12.3,1x,a)", 1.d10, ok, .true.)
