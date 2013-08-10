@@ -5320,11 +5320,11 @@ end subroutine sumFluxes
              speed = sqrt(speed)/thisOctal%rho(subcell)
              tc = min(tc, dx / max(1.d-30,(cs + speed)) )
              
-             print *, "COURANT GAS", tc
-             print *, "speed ", speed
-             print *, "dx", dx
-             print *, "cs ", cs
-             print *, "thisOctal%rhou(subcell)", thisOctal%rhou(subcell)
+!             print *, "COURANT GAS", tc
+!             print *, "speed ", speed
+!             print *, "dx", dx
+!             print *, "cs ", cs
+!             print *, "thisOctal%rhou(subcell)", thisOctal%rhou(subcell)
           endif
  
        endif

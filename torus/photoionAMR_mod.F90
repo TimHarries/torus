@@ -388,6 +388,7 @@ contains
           if (startFromNeutral) then
              call neutralGrid(grid%octreeRoot)
           else
+             print *, "ionizing grid"
              call ionizeGrid(grid%octreeRoot)
           endif
        endif
