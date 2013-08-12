@@ -353,8 +353,6 @@ contains
 
       integer, intent(in) :: lunit
       character(len=*), intent(in) :: thisFilename
-      logical :: fileExists
-      logical :: luOpened
       
       if (trim(positionStatus)=="append") then
          open(unit=lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
