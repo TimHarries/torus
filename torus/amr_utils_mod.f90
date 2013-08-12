@@ -1622,7 +1622,7 @@ module amr_utils_mod
     endif
 
     if (thisOctal%oneD) then
-       if (spherical .and. .not. sphericalHydro) then
+       if (spherical) then !@.and. .not. sphericalHydro) then
           r = modulus(point)
           if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
@@ -1630,13 +1630,14 @@ module amr_utils_mod
              inOctal = .true.
           endif
 
-       elseif(sphericalhydro) then
-          r = point%x
-          IF (r < thisOctal%xMin) THEN ; inOctal = .FALSE. 
-          ELSEIF (r > thisOctal%xMax) THEN ; inOctal = .FALSE.
-          ELSE
-             inOctal = .true.
-          ENDIF
+!       elseif(sphericalhydro) then
+!          r = point%x
+!          IF (r < thisOctal%xMin) THEN ; inOctal = .FALSE. 
+!          ELSEIF (r > thisOctal%xMax) THEN ; inOctal = .FALSE.
+!          ELSE
+!             inOctal = .true.
+!          ENDIF
+
 !          if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
 !          else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
  !         else
