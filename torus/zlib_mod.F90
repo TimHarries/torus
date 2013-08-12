@@ -146,7 +146,7 @@ contains
        if (trim(positionStatus)=="append") then
 !          write(*,*) "opening ",trim(thisFilename), " with pos status ",trim(positionStatus)
           open(lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
-          else if (trim(positionStatus)=="newfile") then
+       else if (trim(positionStatus)=="newfile") then
 !          write(*,*) "opening ",trim(thisFilename), " as a new file"
           inquire(file=thisFilename, exist=fileExists)
 !          write(*,*) "inquire says file exists ",fileExists

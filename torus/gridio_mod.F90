@@ -254,10 +254,10 @@ contains
           
 
     if (fileFormatted) then 
-       open(unit=20,iostat=error, file=updatedfilename, form="formatted", status="unknown", position=positionStatus)
+       call openUncompressedFile(20, updatedFilename)
     else 
        if (uncompressedDumpFiles) then
-          open(unit=20, file=updatedfilename, form="unformatted", status="unknown", position=positionStatus)
+          call openUncompressedFile(20, updatedFilename)
        else
 #ifdef USEZLIB
 !          write(*,*) myrankGlobal, " attempting to open ",trim(updatedFilename)
@@ -348,6 +348,22 @@ contains
     
   contains
   
+! Conterpart to openCompressedFile for uncompressed files
+    subroutine openUncompressedFile(lunit, thisFilename)
+
+      integer, intent(in) :: lunit
+      character(len=*), intent(in) :: thisFilename
+      logical :: fileExists
+      logical :: luOpened
+      
+      if (trim(positionStatus)=="append") then
+         open(unit=lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
+      else if (trim(positionStatus)=="newfile") then
+         open(unit=lunit, file=thisFilename, form="unformatted", status="replace")
+      endif
+
+    end subroutine openUncompressedFile
+
     recursive subroutine writeOctreePrivateFlexi(thisOctal,fileFormatted, grid)
        ! writes out an octal from the grid octree
 
