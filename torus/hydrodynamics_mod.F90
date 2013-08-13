@@ -94,6 +94,7 @@ contains
        else
           if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
           maxDev = max(maxDev, abs((thisOctal%phi_gas(subcell) - &
+
                thisOctal%biasLine3d(subcell))/thisOctal%biasline3d(subcell)))
        endif
     enddo

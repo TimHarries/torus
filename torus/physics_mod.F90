@@ -350,6 +350,7 @@ contains
 
 #ifdef PDR
     use nrayshealpix, only : donrayshealpix
+    use pdr_mod, only : firetestrays, castAllRaysOverGrid
 #endif
 
 #ifdef MPI
@@ -481,9 +482,11 @@ contains
 
 
 #ifdef PDR
-
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
         call donrayshealpix()
+!        call firetestrays(grid)
+        call writeInfo("Casting rays over grid.", TRIVIAL)
+        call castAllRaysOverGrid(grid%octreeRoot, grid)
      end if
 
 #endif
