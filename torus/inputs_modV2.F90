@@ -349,6 +349,14 @@ contains
     call getLogical("xray", xraycalc, cLine, fLine, nLines, &
          "Include x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("pdr", pdrcalc, cLine, fLine, nLines, &
+         "Include pdr treatment with healpix: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if(pdrcalc) then
+       call getInteger("hlevel", hlevel, cLine, fLine, nLines, &
+            "Level of healpix refinement : ","(a,i8,a)", 2, ok, .false.)
+    end if
+
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 

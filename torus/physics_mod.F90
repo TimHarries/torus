@@ -29,6 +29,7 @@ contains
     use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals
 #endif
 
+
     type(GRIDTYPE) :: grid
 
 #ifdef MOLECULAR
@@ -347,6 +348,10 @@ contains
 #endif
 #endif
 
+#ifdef PDR
+    use nrayshealpix_mod, only : donrayshealpix
+#endif
+
 #ifdef MPI
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR
@@ -472,6 +477,15 @@ contains
         call writeVTKfile(grid, "eta.vtk", valueTypeString=(/"etaline   ",&
              "sourceline"/))
      endif
+#endif
+
+
+#ifdef PDR
+
+     if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
+        call donrayshealpix()
+     end if
+
 #endif
 
 #ifdef PHOTOION
