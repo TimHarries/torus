@@ -27,6 +27,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
+pdr = yes
 hydro = yes
 molecular = yes
 photoion = yes
@@ -397,6 +398,10 @@ ifeq ($(hydro), yes)
   ETCFLAG += -DHYDRO
 endif
 
+ifeq ($(pdr), yes)
+  ETCFLAG += -DPDR
+endif
+
 ifeq ($(molecular), yes)
   ETCFLAG += -DMOLECULAR
   datacube = yes
@@ -471,14 +476,15 @@ CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 uni
 	         gridFromFlash.F90 fits_utils_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 TTauri_mod.F90 angularImage_utils.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
-	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 viscosity_mod.F90 xray_mod.F90 $(TORUSMAINSOURCE)
+	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 viscosity_mod.F90 xray_mod.F90 \
+                 healpix_modules.F90 healpix.F90 nrayshealpix.F90 $(TORUSMAINSOURCE)
 
 CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90 setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 \
 	hydrodynamics_mod.F90 angularImage_mod.F90 \
 	photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F90 \
 	          diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	          parallel_mod.F90 stateq_mod.F90 torusMod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
-                  phaseloop_mod.F90 gridio_mod.F90 xray_mod.F90
+                  phaseloop_mod.F90 gridio_mod.F90 xray_mod.F90 healpix_modules.F90 healpix.F90 nrayshealpix.F90
 
 # Object files
 #
