@@ -29,7 +29,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   type(octal), pointer :: child
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat
-  real(double) :: tVal, totalLength, totalRho
+  real(double) :: tVal!, !totalRho
   integer :: nside, i  
 
 
@@ -64,8 +64,8 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
            rVec = VECTOR(vectors(1, i), vectors(2, i), vectors(3, i))
            uhat = rVec
            call normalize(uhat)
-           totalLength = 0.d0
-           totalRho = 0.d0
+!           totalLength = 0.d0
+!           totalRho = 0.d0
            testPosition = startPosition
            
            do while (inOctal(grid%octreeRoot, testPosition))
@@ -75,15 +75,18 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
               if(thisOctal%ionFrac(subcell,2) > 0.9d0) exit
                  
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
+              sOctal%columnRho(ssubcell) = sOctal%columnRho(ssubcell) + (sOctal%rho(ssubcell)*tval)
+!              totalLength = totalLength + (tVal)
               
-              totalLength = totalLength + (tVal)
+!              totalRho = totalRho + sOctal%rho(ssubcell)*tval
               
-              totalRho = totalRho + sOctal%rho(ssubcell)*tval
-              
+             
            end do
            
         end do
        
+        sOctal%columnRho(ssubcell) = sOctal%columnRho(ssubcell)/dble(nrays)
+
      end if
   end do
      

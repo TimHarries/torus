@@ -1110,6 +1110,9 @@ contains
                case("q_i-1")
                   write(lunit, *) real(thisOctal%q_i_minus_1(subcell))
 
+               case("columnRho")
+                  write(lunit, *) real(thisOctal%columnRho(subcell))
+
                case("ghosts")
                   if (thisOctal%ghostCell(subcell)) then
                      write(lunit, *) 1.
@@ -3191,6 +3194,9 @@ end subroutine writeXMLVtkFileAMR
                case("rhov")
                   rArray(1, n) = real(thisOctal%rhov(subcell))
 
+               case("columnRho")
+                  rArray(1, n) = real(thisOctal%columnRho(subcell))
+
                case("vphi")
                   rVec = subcellCentre(thisOctal,subcell)
                   r = rVec%x * gridDistanceScale
@@ -3208,6 +3214,8 @@ end subroutine writeXMLVtkFileAMR
                   else
                      rArray(1, n) =  0.
                   endif
+
+                  
 
                case("edges")
                   if (thisOctal%edgeCell(subcell)) then

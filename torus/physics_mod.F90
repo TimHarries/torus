@@ -487,6 +487,8 @@ contains
 !        call firetestrays(grid)
         call writeInfo("Casting rays over grid.", TRIVIAL)
         call castAllRaysOverGrid(grid%octreeRoot, grid)
+        call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
+             "columnRho "/))
      end if
 
 #endif

@@ -168,6 +168,7 @@ MODULE octal_mod
     real(double)                       :: xMax, xMin, yMax, yMin, zMax, zMin
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
+!    REAL(double)         :: columnRho            ! density
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
 
     integer, pointer :: iAnalyticalVelocity(:)  => null()
@@ -316,8 +317,9 @@ MODULE octal_mod
     logical, pointer :: edgeCell(:) => null(), refinedLastTime(:) => null()
     real(double), pointer :: rhou(:) => null(),  rhov(:) => null(), rhow(:) => null(), rhoE(:) => null(), energy(:) => null()
     real(double), pointer :: pressure_i(:) => null(), pressure_i_plus_1(:) => null(), pressure_i_minus_1(:) => null()
-    !THAW - temporary
+
     real(double), pointer :: rhoeLastTime(:) => null()
+    real(double), pointer :: columnRho(:) => null()
     real(double), pointer :: tempStorage(:,:) => null()
     type(vECTOR), pointer :: boundaryPartner(:) => null()
     type(vECTOR), pointer :: gravboundaryPartner(:) => null()

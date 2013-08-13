@@ -11603,7 +11603,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%newatomLevel, source%newatomLevel)
 
     call copyAttribute(dest%ionFrac, source%ionFrac)
-
+    call copyAttribute(dest%columnRho, source%columnRho)
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
 
@@ -14966,7 +14966,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
-    use inputs_mod, only : grainFrac
+    use inputs_mod, only : grainFrac, pdrcalc
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
     type(OCTAL), pointer :: thisOctal
@@ -15040,6 +15040,10 @@ end function readparameterfrom2dmap
 
 
     endif
+
+    if(pdrcalc) then
+       call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
+    end if
 
 
 
@@ -15352,6 +15356,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%phiLimit)
     call deallocateAttribute(thisOctal%rLimit)
     call deallocateAttribute(thisOctal%ghostCell)
+    call deallocateAttribute(thisOctal%columnRho)
     call deallocateAttribute(thisOctal%feederCell)
     call deallocateAttribute(thisOctal%corner)
     call deallocateAttribute(thisOctal%edgeCell)
