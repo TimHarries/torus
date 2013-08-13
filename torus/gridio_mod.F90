@@ -353,11 +353,13 @@ contains
 
       integer, intent(in) :: lunit
       character(len=*), intent(in) :: thisFilename
+      integer :: returnVal
       
-      if (trim(positionStatus)=="append") then
-         open(unit=lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
-      else if (trim(positionStatus)=="newfile") then
+      if (trim(positionStatus)=="newfile") then
          open(unit=lunit, file=thisFilename, form="unformatted", status="replace")
+      else
+         open(unit=lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus, iostat=returnVal)
+         if (returnVal /= 0) call writeWarning("Error opening file with position "//trim(positionStatus))
       endif
 
     end subroutine openUncompressedFile
