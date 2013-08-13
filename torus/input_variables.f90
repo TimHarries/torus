@@ -22,9 +22,13 @@
   logical :: statisticalEquilibrium
   logical :: photoionEquilibrium
   logical :: xrayCalc
+  logical :: pdrCalc
   logical :: hydrodynamics
   logical :: timeDependentRT
   logical :: donBodyOnly
+
+!pdr param
+  integer :: hlevel !level of healpix refinement
 
 !-------------------------------
 ! Type of output to be generated

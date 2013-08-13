@@ -316,7 +316,7 @@ contains
     use phasematrix_mod
     use dust_mod
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
-    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium
+    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, pdrcalc
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
@@ -349,7 +349,7 @@ contains
 #endif
 
 #ifdef PDR
-    use nrayshealpix_mod, only : donrayshealpix
+    use nrayshealpix, only : donrayshealpix
 #endif
 
 #ifdef MPI
