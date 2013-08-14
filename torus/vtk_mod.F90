@@ -1113,6 +1113,10 @@ contains
                case("columnRho")
                   write(lunit, *) real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
 
+               case("UV")
+                  write(lunit, *) real(thisOctal%UV(subcell))
+
+
                case("ghosts")
                   if (thisOctal%ghostCell(subcell)) then
                      write(lunit, *) 1.
@@ -3196,6 +3200,11 @@ end subroutine writeXMLVtkFileAMR
 
                case("columnRho")
                   rArray(1, n) = real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
+
+               case("UV")
+                  rArray(1, n) = real(thisOctal%UV(subcell))
+
+
 
                case("vphi")
                   rVec = subcellCentre(thisOctal,subcell)

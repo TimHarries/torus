@@ -116,6 +116,12 @@ module constants_mod
 
   real(double) :: nAir = 1.000277
 
+  !UV stuff
+  real(double), parameter :: Habing = 1.6d-3 !erg cm-2 s-1
+  real(double), parameter :: draine = 1.71*Habing
+  real(double), parameter :: AV_fac = 6.289d-22
+  real(double), parameter :: UV_fac = 3.02
+
 end module constants_mod
 
 

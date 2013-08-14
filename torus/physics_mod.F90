@@ -318,7 +318,7 @@ contains
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, pdrcalc
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics
+         lucy_undersampled, molecularPhysics, hydrodynamics, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
@@ -483,7 +483,6 @@ contains
 
 #ifdef PDR
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
-
         call PDR_MAIN(grid)
 !        call donrayshealpix()
  !       call castAllRaysOverGrid(grid%octreeRoot, grid)
@@ -491,6 +490,20 @@ contains
   !           "columnRho "/))
      end if
 
+     if(pdrcalc .and. photoionEquilibrium .and. .not. hydrodynamics .and. UV_vector) then
+        if (.not.grid%splitOverMPI) then
+           call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
+        else
+#ifdef MPI 
+           !           call setupevenuparray(grid, evenuparray)
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
+                1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)          
+#else
+           call writeFatal("Domain decomposed grid requires MPI")
+#endif        
+        end if
+        call PDR_MAIN(grid)
+     end if
 #endif
 
 #ifdef PHOTOION

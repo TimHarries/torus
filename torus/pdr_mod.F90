@@ -14,8 +14,19 @@ use amr_mod
 use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
+use definitions
+use healpix_types
+use vector_mod
 
 implicit none
+
+
+
+! REAL(kind=dp), save :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
+
+
+! real(kind=dp),allocatable :: all_heating(:,:)
+! real(kind=dp),allocatable :: allheating(:) 
 
 contains
 
@@ -37,7 +48,7 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call castAllRaysOverGrid(grid%octreeRoot, grid)
   call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
-       "columnRho "/))
+       "columnRho ", "UV        ", "uvvec        "/))
 
 end subroutine PDR_MAIN
 
@@ -52,7 +63,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   type(octal), pointer :: thisoctal, soctal
   type(octal), pointer :: child
   integer :: j
-  type(vector) :: testPosition, rVec, startPosition, uhat
+  type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal
   integer :: nside, i 
 
@@ -83,68 +94,89 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
         call findSubcellLocal(testPosition, sOctal, ssubcell)
         sOctal%columnRho(ssubcell) = 0.d0
 !        thisOctal%columnRho(subcell) = 1.d-30 
+
+        thisOctal%uv(subcell) = 0.d0
+        thisOctal%av(subcell, :) = 0.d0           
+        thisOctal%radsurface(subcell, :) = 0.d0           
         if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
-        do i = 0, nrays-1
-           
-           !transfer healpix vectors to the test position
-           !     rVec = startPosition + VECTOR(vectors(1, i), vectors(2, i), vectors(3, i))
-           rVec = VECTOR(vectors(1, i), vectors(2, i), vectors(3, i))
-!           mag = modulus(rVec)
+!        do i = 0, nrays-1
+        do i = 1, nrays
+
+           rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
+
            uhat = rVec
            call normalize(uhat)
-!           print *, "uhat", uhat%x
-!           totalLength = 0.d0
-!           totalRho = 0.d0
+
+!           print *, "WORKING ON CELL AT"           
+!           print *, "ray",  i
+!           print *, subcellCentre(thisOctal, subcell)
+!           print *, thisOctal%nDepth
+!           print *, subcell
+!           print *, size(thisOctal%av(subcell,:))
+!           print *, size(thisOctal%radsurface(subcell,:))
+!           print *, thisOctal%AV(subcell, 0) 
            testPosition = startPosition
-           
+           thisOctal%columnrho(subcell)  = 0.d0
            do while (inOctal(grid%octreeRoot, testPosition))
               
               call findSubcellLocal(testPosition, sOctal, ssubcell)
-   !           print *, " "
-!              print *, "DTCB "
-!              print *, "ray ", i
-!              print *, testposition
-!              print *, uhat              
-!              print *, sOctal%temperature(ssubcell)
-!              print *, " "
+
               tval = 0.d0
-!              print *, "depth ", soctal%ndepth
+
              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
  
-   !              print *, "TVAL ", tval/(sqrt(2.d0)*2.d0*grid%halfsmallestsubcell)
- 
-              if(thisOctal%ionFrac(subcell,2) > 0.9d0) exit
+              if(sOctal%ionFrac(ssubcell,2) > 0.9d0) then
+                 thisUVvector = sOctal%uvVector(ssubcell)
+                 call normalize(thisUVvector)
+!                 print *, "thisUVvector ", thisUVvector
+                 thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
+!                 print *, "thisOctal%radsurface(subcell, i)", thisOctal%radsurface(subcell, i)
+                 if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
+                 exit
+              end if
 
+
+                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
+                 
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
-
-!              print *, "pre", sOctal%columnRho(ssubcell)
-              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
- !             print *, "post ", sOctal%columnRho(ssubcell)
-  !            print *, sOctal%Rho(ssubcell)
-
-
-!              totalLength = totalLength + (tVal)
-
-              
-!              totalRho = totalRho + sOctal%rho(ssubcell)*tval              
              
            end do
-           
-        end do
-     else
+ 
+          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
+
+
+          if(thisOctal%radsurface(subcell, i) > 0.d0) then
+             thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
+                  thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+
+!             print *, "UV ", thisOctal%UV(subcell)
+!             print *, "exp(-(thisOctal%AV(subcell, i)*UV_fac", exp(-(thisOctal%AV(subcell, i)*UV_fac))
+!             print *, "radsurface", thisOctal%radsurface(subcell, i)
+!             print *,thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+          end if
+       end do
+!       print *, "DONE ONE "
+
+       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
+       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
+ !      print *, "AV ", thisOctal%AV(subcell,:)
+  !     print *, "UV ", thisOctal%UV(subcell)
+       
+!       stop
+
+       if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
+    else
         thisOctal%columnRho(subcell) = 0.d0
+        thisOctal%UV(subcell) = 0.d0
+        thisOctal%AV(subcell,:) = 0.d0
+        thisOctal%radsurface(subcell,:) = 0.d0
      end if
-
-!        stop
-        thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
-
-     end if
-  end do
-     
+        
+  end if
+end do
+  
 
 end subroutine castAllRaysOverGrid
-
-
 
 
 
@@ -230,6 +262,10 @@ subroutine fireTestRays(grid)
   close(1)
 
 end subroutine fireTestRays
+
+!subroutine
+
+
 
 
 end module pdr_mod

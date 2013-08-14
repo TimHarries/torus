@@ -7989,6 +7989,7 @@ endif
 
   subroutine calcIsoSphereDensity(thisOctal,subcell)
     use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : pdrcalc
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -8001,7 +8002,7 @@ endif
     rVec%z = rVec%z - amrgridcentrez
     rMod = modulus(rVec)
     if ((rMod*1.d10) < 5.d0*pcToCm) then
-       thisOctal%rho(subcell) = 1.d4*mHydrogen
+       thisOctal%rho(subcell) = 1.d3*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
        thisOctal%ionFrac(subcell,1) = 1.d0               !HI
        thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
@@ -8009,6 +8010,13 @@ endif
           thisOctal%ionFrac(subcell,3) = 1.            !HeI
           thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
        endif       
+
+       if(pdrcalc) then
+          thisOctal%uvvector(subcell)%x = 0.d0
+          thisOctal%uvvector(subcell)%y = 0.d0
+          thisOctal%uvvector(subcell)%z = 0.d0
+       end if
+       
     else
        thisOctal%rho(subcell) = 10.d0*mHydrogen
        thisOctal%temperature(subcell) = 1.d4
@@ -8018,7 +8026,16 @@ endif
           thisOctal%ionFrac(subcell,3) = 1.e-10            !HeI
           thisOctal%ionFrac(subcell,4) = 1.        !HeII       
        endif
-    endif
+       
+       if(pdrcalc) then
+          if(rVec%x < (amrgridcentrex- 2.5d0*pcToCm/1.d10))then 
+             thisOctal%uvvector(subcell)%x = 1.d0*Draine/1.d10
+             thisOctal%uvvector(subcell)%y = 0.d0
+             thisOctal%uvvector(subcell)%z = 0.d0         
+          end if
+       endif
+    end if
+
 
     thisOctal%inFlow(subcell) = .true.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
@@ -11607,6 +11624,9 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%newatomLevel, source%newatomLevel)
 
     call copyAttribute(dest%ionFrac, source%ionFrac)
+    call copyAttribute(dest%AV, source%AV)
+    call copyAttribute(dest%radsurface, source%radsurface)    
+    call copyAttribute(dest%UV, source%UV)
     call copyAttribute(dest%columnRho, source%columnRho)
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
@@ -14970,16 +14990,19 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
-    use inputs_mod, only : grainFrac, pdrcalc
+    use inputs_mod, only : grainFrac, pdrcalc, hlevel
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10
-    integer :: i
+    integer :: i, nrays, nside
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
+
+
+    
 
     if (atomicPhysics.or.molecularPhysics.or.h21cm) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
@@ -15044,10 +15067,6 @@ end function readparameterfrom2dmap
 
 
     endif
-
-    if(pdrcalc) then
-       call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
-    end if
 
 
 
@@ -15143,6 +15162,16 @@ end function readparameterfrom2dmap
        allocate(thisOctal%normSourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
 
     endif
+
+    if(pdrcalc) then
+       nside=2**hlevel
+       nrays = 12*nside**2
+       call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UV, thisOctal%maxChildren)
+!       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
+       allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))
+       allocate(thisOctal%AV(1:thisOctal%maxchildren, 1:nrays))
+    end if
 
     if (lineEmission) then
        call allocateAttribute(thisOctal%probDistLine, thisOctal%maxChildren)
@@ -15333,6 +15362,9 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%Hheating)
     call deallocateAttribute(thisOctal%Heheating)
     call deallocateAttribute(thisOctal%ionFrac)
+    call deallocateAttribute(thisOctal%AV)
+    call deallocateAttribute(thisOctal%UV)
+    call deallocateAttribute(thisOctal%radsurface)
     call deallocateAttribute(thisOctal%photoIonCoeff)
     call deallocateAttribute(thisOctal%sourceContribution)
     call deallocateAttribute(thisOctal%diffuseContribution)

@@ -393,8 +393,8 @@ subroutine mk_pix2xy()
     iy_low = MODULO(iy,128)
     iy_hi  =     iy/128
 
-    ipf =  (x2pix(ix_hi +1)+y2pix(iy_hi +1)) * (128 * 128) &
-         &     + (x2pix(ix_low+1)+y2pix(iy_low+1))
+    ipf =  int((x2pix(ix_hi +1)+y2pix(iy_hi +1)) * (128 * 128) &
+         &     + (x2pix(ix_low+1)+y2pix(iy_low+1)))
 
     if (ns_max.eq.0.or.nside.eq.0) stop 'insane ns_max and/or nside @ _IF'
     !ipf = (ipf / ( ns_max/nside ))/(ns_max/nside)  ! in {0, nside**2 - 1}
