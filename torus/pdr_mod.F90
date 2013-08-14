@@ -137,11 +137,9 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
 !          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
           thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*AV_fac/mhydrogen
 
-
           if(thisOctal%radsurface(subcell, i) > 0.d0) then
              thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
                   thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
-
 !             print *, "UV ", thisOctal%UV(subcell)
 !             print *, "exp(-(thisOctal%AV(subcell, i)*UV_fac", exp(-(thisOctal%AV(subcell, i)*UV_fac))
 !             print *, "radsurface", thisOctal%radsurface(subcell, i)

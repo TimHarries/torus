@@ -8,7 +8,7 @@ contains
 
   subroutine setupPDR()
     use unix_mod, only: unixGetenv
-    use read_input
+    use read_inputs, only: readinput
     implicit none
     character(len=200) :: dataDirectory, dataPath
     character(len=400) :: C12Oinput, CIIinput, CIinput, OIinput
