@@ -48,7 +48,7 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call castAllRaysOverGrid(grid%octreeRoot, grid)
   call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
-       "columnRho ", "UV        ", "uvvec        "/))
+       "columnRho ", "UV        ", "uvvec     "/))
 
 end subroutine PDR_MAIN
 
