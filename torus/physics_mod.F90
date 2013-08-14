@@ -484,11 +484,11 @@ contains
 #ifdef PDR
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
 
-!        call PDR_MAIN(grid)
-        call donrayshealpix()
-        call castAllRaysOverGrid(grid%octreeRoot, grid)
-        call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
-             "columnRho "/))
+        call PDR_MAIN(grid)
+!        call donrayshealpix()
+ !       call castAllRaysOverGrid(grid%octreeRoot, grid)
+   !     call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
+  !           "columnRho "/))
      end if
 
 #endif
