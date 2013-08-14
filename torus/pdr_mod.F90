@@ -107,14 +107,6 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
            uhat = rVec
            call normalize(uhat)
 
-!           print *, "WORKING ON CELL AT"           
-!           print *, "ray",  i
-!           print *, subcellCentre(thisOctal, subcell)
-!           print *, thisOctal%nDepth
-!           print *, subcell
-!           print *, size(thisOctal%av(subcell,:))
-!           print *, size(thisOctal%radsurface(subcell,:))
-!           print *, thisOctal%AV(subcell, 0) 
            testPosition = startPosition
            thisOctal%columnrho(subcell)  = 0.d0
            do while (inOctal(grid%octreeRoot, testPosition))
@@ -136,7 +128,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
               end if
 
 
-                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
+              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
                  
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
              

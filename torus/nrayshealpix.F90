@@ -17,7 +17,7 @@ subroutine donrayshealpix()
   
   implicit none
 
-  integer::i	
+  integer :: i
   
   level=hlevel !<---- ONLY THIS IS NEEDED FOR INPUT PARAMETERS
   nside=2**level
