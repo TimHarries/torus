@@ -7988,6 +7988,7 @@ endif
   end subroutine calcWhalenNormanHIIExpansionDensity
 
   subroutine calcIsoSphereDensity(thisOctal,subcell)
+    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7995,6 +7996,9 @@ endif
 
 
     rVec = subcellCentre(thisOctal, subcell)
+    rVec%x = rVec%x - amrgridcentrex
+    rVec%y = rVec%y - amrgridcentrey
+    rVec%z = rVec%z - amrgridcentrez
     rMod = modulus(rVec)
     if ((rMod*1.d10) < 5.d0*pcToCm) then
        thisOctal%rho(subcell) = 1.d4*mHydrogen

@@ -1111,7 +1111,7 @@ contains
                   write(lunit, *) real(thisOctal%q_i_minus_1(subcell))
 
                case("columnRho")
-                  write(lunit, *) real(thisOctal%columnRho(subcell))
+                  write(lunit, *) real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
 
                case("ghosts")
                   if (thisOctal%ghostCell(subcell)) then
@@ -3195,7 +3195,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%rhov(subcell))
 
                case("columnRho")
-                  rArray(1, n) = real(thisOctal%columnRho(subcell))
+                  rArray(1, n) = real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
 
                case("vphi")
                   rVec = subcellCentre(thisOctal,subcell)

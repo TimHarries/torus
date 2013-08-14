@@ -350,7 +350,7 @@ contains
 
 #ifdef PDR
     use nrayshealpix, only : donrayshealpix
-    use pdr_mod, only : firetestrays, castAllRaysOverGrid
+    use pdr_mod, only : PDR_MAIN, castAllRaysOverGrid
 #endif
 
 #ifdef MPI
@@ -483,9 +483,9 @@ contains
 
 #ifdef PDR
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
+
+!        call PDR_MAIN(grid)
         call donrayshealpix()
-!        call firetestrays(grid)
-        call writeInfo("Casting rays over grid.", TRIVIAL)
         call castAllRaysOverGrid(grid%octreeRoot, grid)
         call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
              "columnRho "/))

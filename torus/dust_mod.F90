@@ -20,7 +20,6 @@ contains
 
   subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
     use unix_mod, only: unixGetenv
-
     real :: lambda(:)
     integer :: nLambda, nRef
     real, allocatable :: tempIm(:), tempReal(:), lamRef(:)

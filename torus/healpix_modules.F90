@@ -119,19 +119,19 @@ MODULE healpix_types
   real(kind=dp), parameter, public :: iKvS = 1.0_dp / KvS  ! inverse of KvS
 
 !!parameters for 3DPDR
-!  real(kind=dp), parameter, public ::  KB = 1.38065040D-16 !Boltzmann constant cgs
-!  real(kind=dp), parameter, public ::  C  = 2.99792458D+10 !speed of light cgs
-!  real(kind=dp), parameter, public ::  MP = 1.67262164D-24 !proton mass cgs
-!  real(kind=dp), parameter, public ::  HP = 6.62606896D-27 !Planck's constant cgs
-!  real(kind=dp), parameter, public ::  HB = 1.05457163D-27 !Planck's constant / 2pi
-!  real(kind=dp), parameter, public ::  HK = 4.79923734D-11 !Planck's constant / Boltzmann constant
-!  real(kind=dp), parameter, public ::  NA = 6.02214179D+23 !Avogadro's number
-!  real(kind=dp), parameter, public ::  AU = 1.66053878D-24 !atomic mass unit
-!  real(kind=dp), parameter, public ::  MH = 1.67372346D-24 !hydrogen mass cgs
-!  real(kind=dp), parameter, public ::  ME = 9.10938215D-28 !electron mass cgs
-!  real(kind=dp), parameter, public ::  EC = 4.80320427D-10 !elementary charge in esu
-!  real(kind=dp), parameter, public ::  PC = 3.08568025D+18 !pc in cm
-!  real(kind=dp), parameter, public ::  EV = 1.60217646D-12 !electron volt in erg
+  real(kind=dp), parameter, public ::  KB = 1.38065040D-16 !Boltzmann constant cgs
+  real(kind=dp), parameter, public ::  C  = 2.99792458D+10 !speed of light cgs
+  real(kind=dp), parameter, public ::  MP = 1.67262164D-24 !proton mass cgs
+  real(kind=dp), parameter, public ::  HP = 6.62606896D-27 !Planck's constant cgs
+  real(kind=dp), parameter, public ::  HB = 1.05457163D-27 !Planck's constant / 2pi
+  real(kind=dp), parameter, public ::  HK = 4.79923734D-11 !Planck's constant / Boltzmann constant
+  real(kind=dp), parameter, public ::  NA = 6.02214179D+23 !Avogadro's number
+  real(kind=dp), parameter, public ::  AU = 1.66053878D-24 !atomic mass unit
+  real(kind=dp), parameter, public ::  MH = 1.67372346D-24 !hydrogen mass cgs
+  real(kind=dp), parameter, public ::  ME = 9.10938215D-28 !electron mass cgs
+  real(kind=dp), parameter, public ::  EC = 4.80320427D-10 !elementary charge in esu
+  real(kind=dp), parameter, public ::  PC = 3.08568025D+18 !pc in cm
+  real(kind=dp), parameter, public ::  EV = 1.60217646D-12 !electron volt in erg
 !#ifdef XRAYS
 !  real(kind=dp), parameter, public :: SIGMA = 5.50D-23 !2.27D-22
 !#endif

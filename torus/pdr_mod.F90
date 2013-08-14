@@ -9,15 +9,39 @@ use gridio_mod
 use source_mod
 use timing
 use grid_mod
+use vtk_mod
 use amr_mod
 use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
 
+implicit none
+
 contains
 
+subroutine PDR_MAIN(grid)
+  use unix_mod, only: unixGetenv
+  use setuppdr_mod
+  use nrayshealpix
+  implicit none
+  type(gridtype) :: grid
 
-!This is the main routine that loops over the grid and calls the ray caster
+
+  call donrayshealpix()
+
+!set up the data/allocate what needs allocated
+  call writeInfo("Setting up for PDR calculation.", TRIVIAL)
+  call setupPDR()
+
+!do the ray casting
+  call writeInfo("Casting rays over grid.", TRIVIAL)
+  call castAllRaysOverGrid(grid%octreeRoot, grid)
+  call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
+       "columnRho "/))
+
+end subroutine PDR_MAIN
+
+!This is the main routine that loops over the grid and does the ray casting
 recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   use inputs_mod, only : hlevel, maxdepthamr
   use healpix_module, only : vectors, nrays
@@ -29,9 +53,11 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   type(octal), pointer :: child
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat
-  real(double) :: tVal!, !totalRho
-  integer :: nside, i  
+  real(double) :: tVal
+  integer :: nside, i 
 
+  nside = 2**hlevel
+  nrays = 12*nside**2
 
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
@@ -45,25 +71,28 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
         end do
      else
 !        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-        print *, "thisOctal%ndepth", thisOctal%ndepth
-        print *, "casting rays at", subcell!, subcellCentre(thisOctal, subcell)
+!        print *, "thisOctal%ndepth", thisOctal%ndepth
+ !       print *, "casting rays at", subcell!, subcellCentre(thisOctal, subcell)
 
 !        call doSingleCellRays(thisOctal, subcell, grid)
  
-        nside = 2**hlevel
-        nrays = 12*nside**2
         sOctal=> thisOctal
         
         startPosition = subcellCentre(thisOctal, subcell)
         testPosition = startPosition
-        
+        call findSubcellLocal(testPosition, sOctal, ssubcell)
+        sOctal%columnRho(ssubcell) = 0.d0
+!        thisOctal%columnRho(subcell) = 1.d-30 
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
         do i = 0, nrays-1
            
            !transfer healpix vectors to the test position
            !     rVec = startPosition + VECTOR(vectors(1, i), vectors(2, i), vectors(3, i))
            rVec = VECTOR(vectors(1, i), vectors(2, i), vectors(3, i))
+!           mag = modulus(rVec)
            uhat = rVec
            call normalize(uhat)
+!           print *, "uhat", uhat%x
 !           totalLength = 0.d0
 !           totalRho = 0.d0
            testPosition = startPosition
@@ -71,21 +100,43 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
            do while (inOctal(grid%octreeRoot, testPosition))
               
               call findSubcellLocal(testPosition, sOctal, ssubcell)
-              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal)
+   !           print *, " "
+!              print *, "DTCB "
+!              print *, "ray ", i
+!              print *, testposition
+!              print *, uhat              
+!              print *, sOctal%temperature(ssubcell)
+!              print *, " "
+              tval = 0.d0
+!              print *, "depth ", soctal%ndepth
+             call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
+ 
+   !              print *, "TVAL ", tval/(sqrt(2.d0)*2.d0*grid%halfsmallestsubcell)
+ 
               if(thisOctal%ionFrac(subcell,2) > 0.9d0) exit
-                 
+
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
-              sOctal%columnRho(ssubcell) = sOctal%columnRho(ssubcell) + (sOctal%rho(ssubcell)*tval)
+
+!              print *, "pre", sOctal%columnRho(ssubcell)
+              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
+ !             print *, "post ", sOctal%columnRho(ssubcell)
+  !            print *, sOctal%Rho(ssubcell)
+
+
 !              totalLength = totalLength + (tVal)
+
               
-!              totalRho = totalRho + sOctal%rho(ssubcell)*tval
-              
+!              totalRho = totalRho + sOctal%rho(ssubcell)*tval              
              
            end do
            
         end do
-       
-        sOctal%columnRho(ssubcell) = sOctal%columnRho(ssubcell)/dble(nrays)
+     else
+        thisOctal%columnRho(subcell) = 0.d0
+     end if
+
+!        stop
+        thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
 
      end if
   end do
