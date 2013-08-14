@@ -13,7 +13,7 @@ MODULE definitions
   integer, parameter :: SP = selected_real_kind(p=6)  ! single precision
   integer, parameter :: ILP = 4                       ! Integer long precision
 
-END MODULE definitions
+end module definitions
 
 
 ! ============================================================================
@@ -49,7 +49,7 @@ END MODULE definitions
 !  For more information about HEALPix see http://healpix.jpl.nasa.gov
 !
 !-----------------------------------------------------------------------------
-MODULE healpix_types
+
   ! This module sets the types used in the Fortran 90 modules
   ! of the HEALPIX distribution and follows the example of Numerical Recipes
   !
@@ -61,6 +61,7 @@ MODULE healpix_types
   !            Jan 2005, explicit form of max_i1b because of ifc 8.1.021
   !            June 2005, redefine i8b as 16 digit integer because of Nec f90 compiler
 
+module healpix_types
 ! Include definitions module for universal definition of DP, PR, SP
   use definitions
 
@@ -143,8 +144,8 @@ END MODULE healpix_types
 ! ============================================================================
 ! ============================================================================
 ! ============================================================================
+module healpix_module
 
-MODULE healpix_module
 
 !T.Bisbas
   use definitions

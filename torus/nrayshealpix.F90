@@ -9,9 +9,9 @@ implicit none
 contains
 
 subroutine donrayshealpix()
-  use definitions
+!  use definitions
   use healpix
-  use healpix_types
+!  use healpix_types
   use healpix_module
   use inputs_mod, only : hlevel
   

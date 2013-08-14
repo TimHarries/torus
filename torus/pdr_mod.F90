@@ -15,7 +15,7 @@ use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
 use definitions
-use healpix_types
+!use healpix_module
 use vector_mod
 
 implicit none
@@ -118,8 +118,8 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
  
               if(sOctal%ionFrac(ssubcell,2) > 0.9d0) then
-                 thisUVvector = sOctal%uvVector(ssubcell)
-                 call normalize(thisUVvector)
+                 thisUVvector = sOctal%uvVector(ssubcell)*1.d10/draine
+!                 call normalize(thisUVvector)
 !                 print *, "thisUVvector ", thisUVvector
                  thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
 !                 print *, "thisOctal%radsurface(subcell, i)", thisOctal%radsurface(subcell, i)
@@ -134,7 +134,8 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
              
            end do
  
-          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
+!          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
+          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*AV_fac/mhydrogen
 
 
           if(thisOctal%radsurface(subcell, i) > 0.d0) then
