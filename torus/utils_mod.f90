@@ -2862,7 +2862,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     !    *******************************************************************
 
     INTEGER     MAXN, MAXCAN, MAXVER
-    PARAMETER ( MAXN = 2000, MAXCAN = 4000, MAXVER = 500 )
+    PARAMETER ( MAXN = 10000, MAXCAN = 4000, MAXVER = 500 )
     logical :: success
     REAL(double)        RX(:), RY(:), AREA(:)
 
@@ -2919,6 +2919,8 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     totArea = 0.
 
 !    if (writeoutput) open(33, file="plot.gnu",status="unknown",form="formatted")
+
+    if (N > MAXN) call writeFatal("VORON2: N > MAXN")
 
     DO J = 1, N
 

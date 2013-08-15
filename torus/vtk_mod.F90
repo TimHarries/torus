@@ -911,6 +911,9 @@ contains
                case("jnu10")
                   write(lunit, *) thisOctal%jnu(1,subcell)
 
+               case("jnu")
+                  write(lunit, *) real(thisOctal%biasLine3d(subcell))
+
                case("dust1")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))
 
@@ -996,6 +999,13 @@ contains
 
                case("inflow")
                   if (thisOctal%inflow(subcell)) then
+                     write(lunit, *) 1.
+                  else
+                     write(lunit, *) 0.
+                  endif
+
+               case("haschild")
+                  if (thisOctal%haschild(subcell)) then
                      write(lunit, *) 1.
                   else
                      write(lunit, *) 0.
