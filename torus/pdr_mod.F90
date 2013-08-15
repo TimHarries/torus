@@ -22,7 +22,7 @@ implicit none
 
 
 
- REAL(double) :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
+! REAL(double) :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
 
 
 ! real(kind=dp),allocatable :: all_heating(:,:)
