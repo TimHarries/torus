@@ -405,7 +405,7 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
         end if
      end if
   end do
-     
+    
      
 end subroutine calculateColumnToStar
 

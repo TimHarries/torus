@@ -349,6 +349,12 @@ contains
     call getLogical("xray", xraycalc, cLine, fLine, nLines, &
          "Include x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
 
+!    if(xraycalc) then
+    call getLogical("useionparam", useionparam, cLine, fLine, nLines, &
+         "Use ionization parameter in x-ray treatment: ","(a,1l,1x,a)", .true., ok, .false.)
+!    end if
+   
+
     call getLogical("pdr", pdrcalc, cLine, fLine, nLines, &
          "Include pdr treatment with healpix: ","(a,1l,1x,a)", .false., ok, .false.)
 

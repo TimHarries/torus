@@ -14990,7 +14990,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
-    use inputs_mod, only : grainFrac, pdrcalc, hlevel
+    use inputs_mod, only : grainFrac, pdrcalc, hlevel, xraycalc
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
     type(OCTAL), pointer :: thisOctal
@@ -15163,10 +15163,13 @@ end function readparameterfrom2dmap
 
     endif
 
+    if(xraycalc .or. pdrcalc) then
+       call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
+    end if
+
     if(pdrcalc) then
        nside=2**hlevel
        nrays = 12*nside**2
-       call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UV, thisOctal%maxChildren)
 !       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
        allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))

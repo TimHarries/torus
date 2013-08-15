@@ -80,7 +80,7 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -403,7 +403,7 @@ contains
           iterTime = 1.e30
           do irefine = 1, 1
              if (irefine == 1) then
-                call writeInfo("Calling photoionization loop B",TRIVIAL)
+                call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 call resetnh(grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
@@ -421,8 +421,13 @@ contains
                 cylindricalHydro = tmpCylindricalHydro
                 sphericalhydro = tmpsphericalhydro
                 call writeInfo("Done",TRIVIAL)
+                if(useionparam) then
+                   call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
+
+                   call writeInfo("Done",TRIVIAL)
+                end if
              else
-                call writeInfo("Calling photoionization loop C",TRIVIAL)
+                call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
@@ -772,6 +777,12 @@ contains
                 sphericalhydro = tmpsphericalhydro
 
          call writeInfo("Done",TRIVIAL)
+         if(useionparam) then
+            call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
+            
+            call writeInfo("Done",TRIVIAL)
+         end if
+         
           timeSinceLastRecomb = 0.d0
        else
           timeSinceLastRecomb = timeSinceLastRecomb + dt
@@ -1095,7 +1106,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1471,7 +1482,7 @@ end subroutine radiationHydro
 
        call readHeIIrecombination()
 
-       if(xraycalc) then
+       if(xraycalc .and. .not. useionparam) then
           call setUpAugerData(augerArray)
        end if
 
@@ -4614,7 +4625,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
 
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, augerArray)
-    use inputs_mod, only : hydrodynamics, xraycalc
+    use inputs_mod, only : hydrodynamics, xraycalc, useionparam
     type(gridtype) :: grid
     type(AUGER) :: augerArray(5, 5, 10)
     type(octal), pointer   :: thisOctal
@@ -4631,7 +4642,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
-                if(xraycalc) then
+                if(xraycalc .and. .not. useionparam) then
                    call solveIonizationBalance_xray(grid, thisOctal, subcell, thisOctal%temperature(subcell), &
                         epsOverdeltaT, augerArray)
                 else
