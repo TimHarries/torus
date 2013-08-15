@@ -440,7 +440,7 @@ recursive subroutine iniTempGuess(thisOctal)
         if(.not. thisOCtal%ionfrac(subcell, 2) > 0.9d0) then
            Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
            thisOctal%TLast(subcell) = Tguess
-           thisOctal%temperature(subcell) = Tguess
+           thisOctal%temperature(subcell) = real(Tguess)
            
            thisOctal%Tmin(subcell) = Tguess/2.0D0
            thisOctal%tMax(subcell) = Tguess*1.5D0

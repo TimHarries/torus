@@ -392,7 +392,8 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
            do while (inOctal(grid%octreeRoot, testPosition))
               
               call findSubcellLocal(testPosition, sOctal, ssubcell)
-              
+!              if(.not octalonthread(thisoctal, myrankglobal)) then
+
               tval = 0.d0
               
               call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
