@@ -4813,8 +4813,116 @@ end subroutine writeRadialFile
     endif
   end subroutine getHydroValues
 
+  subroutine getRayTracingValues(grid, position, rho, uvx, uvy, uvz)
+!       radially, searchRadius)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: rho, uvx, uvy, uvz
+    type(VECTOR) :: position, rVec
+    real(double) :: loc(4)
+    type(OCTAL), pointer :: thisOctal
+    integer :: iThread
+    integer, parameter :: nStorage = 4
+    real(double) :: tempStorage(nStorage)
+    integer :: subcell
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+!    logical :: useTop
+
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(position, thisOctal, subcell)
+   
+    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
+
+       rVec = subcellCentre(thisOctal, subcell)
+       rho = thisOctal%rho(subcell)
+       uvx = thisOctal%uvvector(subcell)%x
+       uvy = thisOctal%uvvector(subcell)%y
+       uvz = thisOctal%uvvector(subcell)%z
+       
+    else
+
+       iThread = thisOctal%mpiThread(subcell)
+       loc(1) = position%x
+       loc(2) = position%y
+       loc(3) = position%z
+       loc(4) = dble(myRankGlobal)
+
+       call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+
+       rho = tempStorage(1)
+       uvx = tempstorage(2)
+       uvy = tempstorage(3)
+       uvz = tempstorage(4)
+
+    endif
+  end subroutine getRayTracingValues
 
 
+  subroutine rayTracingServer(grid, nworking)
+    use mpi
+    type(GRIDTYPE) :: grid
+    logical :: stillServing
+    real(double) :: loc(4)
+    type(VECTOR) :: position, rVec
+    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: topOctal
+    integer :: subcell, nworking, topOctalSubcell
+    integer :: iThread, servingArray, workingTHreads(nworking)
+    integer, parameter :: nStorage = 4
+    real(double) :: tempStorage(nStorage)
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr, j
+
+    stillServing = .true.
+    servingArray = 0
+    workingTHreads = 0
+    thisOctal => grid%octreeroot
+    do while (stillServing)
+
+!       do iThread = 1, nThreadsGlobal-1
+!       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+       
+       call MPI_RECV(loc, 4, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+       position%x = loc(1)
+       position%y = loc(2)
+       position%z = loc(3)
+       iThread = int(loc(4))
+       if (position%x > 1.d29) then          
+          do j=1, nworking
+             if(workingThreads(j) == 0) then
+                workingThreads(j) = 1
+                exit
+             end if
+          end do
+          if(SUM(workingTHreads) == nworking) then
+             workingThreads = 0
+             stillServing= .false.
+          end if
+       else
+
+          call findSubcellLocal(position, thisOctal, subcell)
+          topOctal => thisOctal
+          topOctalSubcell = subcell
+          do while(topOctal%changed(topOctalSubcell))
+             topOctalSubcell = topOctal%parentSubcell
+             topOctal => topOctal%parent
+          enddo
+
+          rVec = subcellCentre(topOctal, topOctalsubcell)
+          tempStorage(1) = topOctal%rho(topOctalsubcell)
+          tempStorage(2) = thisOctal%UVvector(subcell)%x
+          tempStorage(3) = thisOctal%UVvector(subcell)%y
+          tempStorage(4) = thisOctal%UVvector(subcell)%z
+
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine rayTracingServer
 
   subroutine hydroValuesServer(grid, nworking)
     use mpi

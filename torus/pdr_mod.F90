@@ -422,7 +422,7 @@ END SUBROUTINE CALCULATE_DUST_TEMPERATURES
 recursive subroutine iniTempGuess(thisOctal)
   integer :: subcell, i
   type(octal), pointer :: thisOctal, child
-  real :: tguess
+  real(double) :: tguess
   real(double), parameter :: tmin = 10.d0
   real(double), parameter :: tmax = 1.d4
 
