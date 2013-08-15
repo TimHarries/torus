@@ -156,7 +156,7 @@ module healpix_module
   real(kind=DP) :: x2pix(0:1023)          ! ..
   real(kind=DP) :: y2pix(0:1023)          ! ..
   real(kind=DP), allocatable :: vertex(:,:)      ! ..
-  real(kind=DP), allocatable :: vector(:)      ! ..
+!  real(kind=DP), allocatable :: vector(:)      ! ..
 
   real(kind=DP), allocatable :: vectors(:,:) ! Healpix rays
   integer(kind=i4b)::level,nrays,nside,ipix

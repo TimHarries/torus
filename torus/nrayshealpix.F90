@@ -18,13 +18,13 @@ subroutine donrayshealpix()
   implicit none
 
   integer :: i
-  
+  real(kind=dp) :: vector(1:3)
   level=hlevel !<---- ONLY THIS IS NEEDED FOR INPUT PARAMETERS
   nside=2**level
   nrays = 12*nside**2
   ns_max=8192
   
-  allocate(vector(1:3))
+
   allocate(vertex(1:3,1:4))
   allocate(vectors(1:3,0:nrays-1))
   

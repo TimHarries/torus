@@ -48,12 +48,14 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call castAllRaysOverGrid(grid%octreeRoot, grid)
   call writeInfo("Done.", TRIVIAL)
+
   call writeInfo("Calculating dust temperature.", TRIVIAL)
   call calculate_Dust_Temperatures(grid%octreeRoot)
-  call writeInfo("Done.", TRIVIAL)
+  call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
+  call iniTempGuess(grid%octreeroot)
 
   call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
-       "columnRho ", "UV        ", "uvvec     ", "dust_T    "/))
+       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   "/))
 
 end subroutine PDR_MAIN
 
@@ -76,7 +78,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal
-  integer :: nside, i, ncontributed, k
+  integer ::  i, ncontributed, k
 
 
 
@@ -96,7 +98,8 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
  !       print *, "casting rays at", subcell!, subcellCentre(thisOctal, subcell)
 
 !        call doSingleCellRays(thisOctal, subcell, grid)
- 
+
+        nrays = nray_func()
         sOctal=> thisOctal
         
         startPosition = subcellCentre(thisOctal, subcell)
@@ -416,7 +419,43 @@ recursive SUBROUTINE CALCULATE_DUST_TEMPERATURES(thisOctal)
 END SUBROUTINE CALCULATE_DUST_TEMPERATURES
 !=======================================================================
 
+recursive subroutine iniTempGuess(thisOctal)
+  integer :: subcell, i
+  type(octal), pointer :: thisOctal, child
+  real(double) :: tguess
+  real(double), parameter :: tmin = 10.d0
+  real(double), parameter :: tmax = 1.d4
 
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do i = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(i) == subcell) then
+              child => thisoctal%child(i)
+              call iniTempGuess(child)
+              exit
+           end if
+        end do
+     else
+        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.9d0) then
+           Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
+           thisOctal%TLast(subcell) = Tguess
+           thisOctal%temperature(subcell) = Tguess
+           
+           thisOctal%Tmin(subcell) = Tguess/2.0D0
+           thisOctal%tMax(subcell) = Tguess*1.5D0
+           
+           IF (thisOctal%tmin(subcell).LT.Tmin)  thisOctal%tmin(subcell)  = Tmin
+           IF (thisOctal%tmax(subcell).GT.Tmax) thisOctal%tmax(subcell) = Tmax
+           
+           thisOctal%Tminarray(subcell) =  thisOctal%tmin(subcell)/3.0D0 ! Bound minimum
+           thisOCtal%tmaxarray(subcell) = thisOctal%tmax(subcell)*2.0D0 ! Bound maximum
+           IF (thisOctal%tminarray(subcell).LT.Tmin) thisOctal%tminarray(subcell) = Tmin
+           IF (thisOctal%tmaxarray(subcell).GT.Tmax) thisOctal%tmaxarray(subcell) = Tmax
+        end if
+     end if
+  ENDDO
+end subroutine iniTempGuess
 
 
 end module pdr_mod

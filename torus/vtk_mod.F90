@@ -1034,6 +1034,9 @@ contains
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
+               case("pdrtemp")
+                  write(lunit, *) real(thisOctal%temperature(subcell))
+
                case("chiline")
                   write(lunit, *) real(thisOctal%chiline(subcell))
 
@@ -3108,6 +3111,9 @@ end subroutine writeXMLVtkFileAMR
                case("temperature")
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
+               case("pdrtemp")
+                  rArray(1, n) = real(real(thisOctal%temperature(subcell)))
+                  
                case("chiline")
                   if (.not.associated(thisOctal%chiline)) then
                      rArray(1, n) = 0.d0

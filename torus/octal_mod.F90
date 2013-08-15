@@ -304,6 +304,7 @@ MODULE octal_mod
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
 
+#ifdef PDR
     !PDR
     real(double), dimension(:,:), pointer  :: AV=> null()
     real(double), dimension (:, :), pointer :: radsurface=>null()
@@ -311,6 +312,13 @@ MODULE octal_mod
     real(double), dimension (:, :, :), pointer :: thisColRho=>null()
     real(double), pointer :: UV(:)=>null()
     real(double), pointer :: dust_T(:)=>null()
+!    real(double), pointer :: TPDR(:)=>null()     
+    real(double), pointer :: TLast(:)=>null()     
+    real(double), pointer :: TMin(:)=>null()     
+    real(double), pointer :: TMax(:)=>null()     
+    real(double), pointer :: TMinArray(:)=>null()     
+    real(double), pointer :: TMaxArray(:)=>null()     
+#endif
 
     ! hydrodynamics
     real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()
