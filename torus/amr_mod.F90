@@ -8028,11 +8028,23 @@ endif
        endif
        
        if(pdrcalc) then
-          if(rVec%x < (amrgridcentrex)) then!- 2.5d0*pcToCm/1.d10))then 
+          if(rVec%x < (amrgridcentrex)- 2.5d0*pcToCm/1.d10) then! .and. &
+ !              rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then 
              thisOctal%uvvector(subcell)%x = 1.d0*Draine/1.d10
              thisOctal%uvvector(subcell)%y = 0.d0
              thisOctal%uvvector(subcell)%z = 0.d0
+!1.d0*Draine/1.d10
+
+             
+!          else if (rVec%x > (amrgridcentrex)+ 2.5d0*pcToCm/1.d10 .and. &
+!               rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then 
+!             thisOctal%uvvector(subcell)%x = -1.d0*Draine/1.d10
+!!             thisOctal%uvvector(subcell)%y = 0.d0
+ !            thisOctal%uvvector(subcell)%z = 1.d0*Draine/1.d10
+
           end if
+          
+
        endif
     end if
 

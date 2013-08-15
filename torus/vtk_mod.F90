@@ -2997,12 +2997,12 @@ end subroutine writeXMLVtkFileAMR
                case("uvvec")
                      v = cellVolume(thisOctal, subcell)*1.d30
                      if (thisOctal%threed) then
-                        rArray(1, n) = real(thisOctal%uvvector(subcell)%x)
-                        rArray(2, n) = real(thisOctal%uvvector(subcell)%y)
-                        rArray(3, n) = real(thisOctal%uvvector(subcell)%z)
+                        rArray(1, n) = real(thisOctal%uvvector(subcell)%x*1.d10/draine)
+                        rArray(2, n) = real(thisOctal%uvvector(subcell)%y*1.d10/draine)
+                        rArray(3, n) = real(thisOctal%uvvector(subcell)%z*1.d10/draine)
                      else
-                        rArray(1, n) = real(thisOctal%uvvector(subcell)%x)
-                        rArray(2, n) = real(thisOctal%uvvector(subcell)%z)
+                        rArray(1, n) = real(thisOctal%uvvector(subcell)%x*1.d10/draine)
+                        rArray(2, n) = real(thisOctal%uvvector(subcell)%z*1.d10/draine)
                         rArray(3, n) = 0.
                      endif
 

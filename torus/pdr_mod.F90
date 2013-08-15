@@ -65,7 +65,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal
-  integer :: nside, i 
+  integer :: nside, i, ncontributed
 
   nside = 2**hlevel
   nrays = 12*nside**2
@@ -98,7 +98,9 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
         thisOctal%uv(subcell) = 0.d0
         thisOctal%av(subcell, :) = 0.d0           
         thisOctal%radsurface(subcell, :) = 0.d0           
+
         if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+           ncontributed = 0
 !        do i = 0, nrays-1
         do i = 1, nrays
 
@@ -122,9 +124,11 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
 !                 call normalize(thisUVvector)
 !                 print *, "thisUVvector ", thisUVvector
                  thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
-!                 thisOctal%radsurface(subcell, i) = dotprod(uHat,thisUVvector)     
+!                 thisOctal%radsurface(subcell, i) =  dotprod(uHat,thisUVvector)     
 !                 print *, "thisOctal%radsurface(subcell, i)", thisOctal%radsurface(subcell, i)
+!                 print *, "radsurface", thisOctal%radsurface(subcell, i)
                  if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
+
                  exit
               end if
 
@@ -134,22 +138,32 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
              
            end do
- 
+
+
 !          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
-          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*AV_fac/mhydrogen
+          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
+
 
           if(thisOctal%radsurface(subcell, i) > 0.d0) then
              thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
                   thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+             ncontributed = ncontributed + 1
 !             print *, "UV ", thisOctal%UV(subcell)
 !             print *, "exp(-(thisOctal%AV(subcell, i)*UV_fac", exp(-(thisOctal%AV(subcell, i)*UV_fac))
-!             print *, "radsurface", thisOctal%radsurface(subcell, i)
+
 !             print *,thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
           end if
+          
        end do
 !       print *, "DONE ONE "
-
-       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
+!       print *, 'ncontributed ', ncontributed
+       if(ncontributed /= 0) then
+!          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
+          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(ncontributed)
+       else
+          thisOctal%UV(subcell) = 0.d0
+       end if
+!       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
        thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
  !      print *, "AV ", thisOctal%AV(subcell,:)
   !     print *, "UV ", thisOctal%UV(subcell)
