@@ -122,6 +122,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
 !                 call normalize(thisUVvector)
 !                 print *, "thisUVvector ", thisUVvector
                  thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
+!                 thisOctal%radsurface(subcell, i) = dotprod(uHat,thisUVvector)     
 !                 print *, "thisOctal%radsurface(subcell, i)", thisOctal%radsurface(subcell, i)
                  if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
                  exit
