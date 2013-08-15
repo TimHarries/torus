@@ -2871,7 +2871,10 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
     REAL(double)        RXVER(MAXVER), RYVER(MAXVER)
     INTEGER     IVER(MAXVER), JVER(MAXVER)
-    INTEGER     NABLST(MAXVER,MAXN), NNAB(MAXN), INAB, JNAB
+    INTEGER     NNAB(MAXN), INAB, JNAB
+
+! NABLST has been made allocatable to avoid segfaults with OpenMP 
+    integer, allocatable :: NABLST(:,:)
 
     INTEGER     NCAN, NVER, NCOORD, NEDGE
     INTEGER     I, J, CAN, VER, N
@@ -2910,6 +2913,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
     NNAB = 0
 
+    allocate ( NABLST(MAXVER,MAXN) )
     NABLST = 0
 
     !    *******************************************************************
@@ -3135,6 +3139,9 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 !10003     FORMAT(/1X,'INDEX    NABS    ... NEIGHBOUR INDICES ... ')
 
 666 continue
+
+          deallocate(NABLST)
+
        end subroutine voron2
 
 !!$       SUBROUTINE READCN ( CNFILE, N, BOX )
