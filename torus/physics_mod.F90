@@ -483,7 +483,10 @@ contains
 
 #ifdef PDR
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
+        print *, "BLA"
+        call writeInfo("Calling PDR main.", TRIVIAL)
         call PDR_MAIN(grid)
+
 !        call donrayshealpix()
  !       call castAllRaysOverGrid(grid%octreeRoot, grid)
    !     call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
@@ -492,6 +495,7 @@ contains
 
      if(pdrcalc .and. photoionEquilibrium .and. .not. hydrodynamics .and. UV_vector) then
         if (.not.grid%splitOverMPI) then
+           call writeInfo("Calling photo loop.", TRIVIAL)
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
         else
 #ifdef MPI 

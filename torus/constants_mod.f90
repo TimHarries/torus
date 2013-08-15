@@ -121,6 +121,7 @@ module constants_mod
   real(double), parameter :: draine = 1.71*Habing
   real(double), parameter :: AV_fac = 6.289d-22
   real(double), parameter :: UV_fac = 3.02
+  real(double), parameter :: zeta = 5.d-17/1.3d-17 !numerator is hardwired (would be user defined)
 
 end module constants_mod
 

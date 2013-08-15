@@ -35,6 +35,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation
+    use inputs_mod, only : uv_vector
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -274,7 +275,7 @@ contains
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
        !$OMP PRIVATE (thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
-       !$OMP SHARED (nlambda, writeoutput)
+       !$OMP SHARED (nlambda, writeoutput, UV_vector)
 
 
        !$OMP DO SCHEDULE (STATIC)
@@ -476,7 +477,9 @@ contains
     !$OMP END PARALLEL
 
 #ifdef MPI
-
+    if(uv_vector) then
+       call calculateUVfluxVec(grid%octreeroot, epsoverdeltaT)
+    end if
 
 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -785,7 +788,8 @@ end subroutine photoIonizationloop
 
 ! update the distance grid
 
-       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq)
+       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, &
+            freq, uhat)
           
 
 
@@ -889,7 +893,8 @@ end subroutine photoIonizationloop
 
 !          lambda = cSpeed*1.e8/thisFreq
 !          call locate(lamArray, nLambda, lambda, ilambda)
-          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, &
+               freq, uhat)
 
           oldOctal => thisOctal
           
@@ -994,6 +999,31 @@ end subroutine photoIonizationloop
        endif
     enddo
   end subroutine getHbetaluminosity
+
+  recursive subroutine calculateUVfluxVec(thisOctal, epsOverDeltaT)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: v, epsOverDeltaT
+
+    do subcell = 1, thisOctal%maxChildren
+       if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateUVfluxVec(child, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          V = cellVolume(thisOctal, subcell)*1.d30
+          thisOctal%UVvector(subcell) = epsOverDeltaT * thisOctal%Uvvector(subcell) / V
+!          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
+       endif
+    enddo
+  end subroutine calculateUVfluxVec
 
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, sumDeltaNe, numDeltaNe)
     type(gridtype) :: grid
@@ -1276,8 +1306,9 @@ end subroutine photoIonizationloop
 
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, freq)
-
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, &
+       freq, uhat)
+    use inputs_mod, only : UV_vector
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: nFreq, iFreq
@@ -1288,6 +1319,8 @@ end subroutine photoIonizationloop
     real(double) :: photonPacketWeight
     integer :: i 
     real(double) :: fac, xSec
+    type(vector) :: uhat
+
     kappaAbs = 0.d0; kappaAbsDust = 0.d0
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
@@ -1337,7 +1370,13 @@ end subroutine photoIonizationloop
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
          + distance * kappaabsdust * photonPacketWeight
 
-
+    if(uv_vector) then
+       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
+          thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell)&
+               + (dble(distance) * photonpacketweight*uHat)
+          !            + (dble(distance) *dble(kappaExt)* photonPacketWeight)*uHatDash
+       end if
+    end if
   end subroutine updategrid
 
 subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOverdeltaT)
