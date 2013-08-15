@@ -352,8 +352,62 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
 end subroutine solveIonizationBalance_Xray
 
 
+!subroutine simpleXRay()!
 
+!get the column density from the cell to the star
+!for use with the ionization parameter scheme used
+!by James Owen
+recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
+  integer :: j
+  type(octal), pointer :: thisOctal, child, soctal
+  integer :: subcell, ssubcell
+  type(vector) :: testposition, startposition, uhat, starpos
+  real(double) :: tval
+  type(gridtype) :: grid
 
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call calculateColumnToStar(child, grid, starpos)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+           
+           sOctal=> thisOctal
+           
+           startPosition = subcellCentre(thisOctal, subcell)
+           testPosition = startPosition
+           call findSubcellLocal(testPosition, sOctal, ssubcell)
+           sOctal%columnRho(ssubcell) = 0.d0
+           
+           uhat = startposition - starpos
+           
+           
+           do while (inOctal(grid%octreeRoot, testPosition))
+              
+              call findSubcellLocal(testPosition, sOctal, ssubcell)
+              
+              tval = 0.d0
+              
+              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
+              
+              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
+              
+              testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
+              
+           end do
+        end if
+     end if
+  end do
+     
+     
+end subroutine calculateColumnToStar
 
 
 end module xray_mod
