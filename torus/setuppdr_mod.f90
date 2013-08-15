@@ -1,15 +1,17 @@
 module setuppdr_mod
 use healpix_module
+use grid_mod
 implicit none
 
 
 
 contains
 
-  subroutine setupPDR()
+  subroutine setupPDR(grid)
     use unix_mod, only: unixGetenv
 !    use read_input, only: readinput
     implicit none
+    type(gridtype) :: grid
     character(len=200) :: dataDirectory, dataPath
     character(len=400) :: C12Oinput, CIIinput, CIinput, OIinput
     integer :: i
@@ -75,7 +77,7 @@ contains
   real(kind=dp) :: SCO_GRID(1:8, 1:6)
 
   integer :: nspec
-  real(kind=dp), allocatable :: dummyAbundance(:)
+  real(double) :: dummyAbundance(1:33)
   
   integer, parameter :: nreac=329
   real, allocatable :: rate(:), alpha(:), beta(:), gamma(:)
@@ -195,11 +197,12 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
 
 !This is hardwired for species_reduced ! ! ! ! ! ! ! 
     nspec = 33
-    allocate(dummyAbundance(1:nspec))
+!    allocate(dummyAbundance(1:nspec))
     print *, "READING SPECIES"
     call read_species(nspec, dummyAbundance)
-    print *, dummyAbundance(1:10)
-
+    call setupDummyAbundances(grid%octreeroot, dummyabundance)
+!    print *, dummyAbundance(1:10)
+    
     allocate(reactant(1:nreac,1:3))
     allocate(product(1:nreac,1:4))
     allocate(alpha(1:nreac))
@@ -235,7 +238,31 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
 
   end subroutine setupPDR
 
+  recursive subroutine setupDummyAbundances(thisOctal, dummyabundance)
+    type(octal), pointer :: thisOctal, child
+    real(double), intent(in) :: dummyabundance(1:33)
+    integer :: subcell, i
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setupDummyAbundances(child, dummyabundance)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+             thisOctal%abundance(subcell,:) = dummyabundance(:)
+          else
+             thisOctal%abundance(subcell, :) = 0.d0
+          end if
 
+       end if
+
+    end do
+  end subroutine setupDummyAbundances
 
 !C***********************************************************************
 !C     Read in the chemical reaction rates and the species, masses and

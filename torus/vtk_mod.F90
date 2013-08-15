@@ -1116,6 +1116,9 @@ contains
                case("UV")
                   write(lunit, *) real(thisOctal%UV(subcell))
 
+               case("dust_T")
+                  write(lunit, *) real(thisOctal%dust_T(subcell))
+
 
                case("ghosts")
                   if (thisOctal%ghostCell(subcell)) then
@@ -3203,6 +3206,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("UV")
                   rArray(1, n) = real(thisOctal%UV(subcell))
+
+               case("dust_T")
+                  rArray(1, n) = real(thisOctal%dust_T(subcell))
 
 
 

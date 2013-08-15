@@ -653,6 +653,7 @@ contains
           call writeAttributePointerFlexi(20, "AV", thisOctal%AV, fileFormatted)
           call writeAttributePointerFlexi(20, "UV", thisOctal%UV, fileFormatted)
           call writeAttributePointerFlexi(20, "radsurface", thisOctal%radsurface, fileFormatted)
+          call writeAttributePointerFlexi(20, "dust_T", thisOctal%dust_T, fileFormatted)
           call writeAttributePointerFlexi(20, "photoIonCoeff", thisOctal%photoIonCoeff, fileFormatted)
           
           call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
@@ -4104,6 +4105,8 @@ contains
             call readPointerFlexi(20, thisOctal%UV, fileFormatted)
          case("radsurface")
             call readPointerFlexi(20, thisOctal%radsurface, fileFormatted)
+         case("dust_T")
+            call readPointerFlexi(20, thisOctal%dust_T, fileFormatted)
          case("photoIonCoeff")
             call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
          case("distanceGrid")
@@ -4462,6 +4465,8 @@ contains
             call receivePointerFlexi(thisOctal%UV)
          case("radsurface")
             call receivePointerFlexi(thisOctal%radsurface)
+         case("dust_T")
+            call receivePointerFlexi(thisOctal%dust_T)
          case("photoIonCoeff")
             call receivePointerFlexi(thisOctal%photoIonCoeff)
          case("distanceGrid")
@@ -4735,6 +4740,7 @@ contains
       call sendAttributePointerFlexi(iThread, "AV", thisOctal%AV)
       call sendAttributePointerFlexi(iThread, "UV", thisOctal%UV)
       call sendAttributePointerFlexi(iThread, "radsurface", thisOctal%radsurface)
+      call sendAttributePointerFlexi(iThread, "dust_T", thisOctal%dust_T)
       call sendAttributePointerFlexi(iThread, "photoIonCoeff", thisOctal%photoIonCoeff)
 
       call sendAttributePointerFlexi(iThread, "distanceGrid", thisOctal%distanceGrid)

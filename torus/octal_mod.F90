@@ -307,7 +307,10 @@ MODULE octal_mod
     !PDR
     real(double), dimension(:,:), pointer  :: AV=> null()
     real(double), dimension (:, :), pointer :: radsurface=>null()
+    real(double), dimension (:, :), pointer :: abundance=>null()
+    real(double), dimension (:, :, :), pointer :: thisColRho=>null()
     real(double), pointer :: UV(:)=>null()
+    real(double), pointer :: dust_T(:)=>null()
 
     ! hydrodynamics
     real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()

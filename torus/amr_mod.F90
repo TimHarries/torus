@@ -8030,7 +8030,7 @@ endif
        if(pdrcalc) then
           if(rVec%x < (amrgridcentrex)- 2.5d0*pcToCm/1.d10) then! .and. &
  !              rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then 
-             thisOctal%uvvector(subcell)%x = 1.d0*Draine/1.d10
+             thisOctal%uvvector(subcell)%x = pi*Draine/1.d10
              thisOctal%uvvector(subcell)%y = 0.d0
              thisOctal%uvvector(subcell)%z = 0.d0
 !1.d0*Draine/1.d10
@@ -11637,8 +11637,11 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%ionFrac, source%ionFrac)
     call copyAttribute(dest%AV, source%AV)
+    call copyAttribute(dest%thisColRho, source%thisColRho)
+    call copyAttribute(dest%abundance, source%abundance)
     call copyAttribute(dest%radsurface, source%radsurface)    
     call copyAttribute(dest%UV, source%UV)
+    call copyAttribute(dest%dust_T, source%dust_T)
     call copyAttribute(dest%columnRho, source%columnRho)
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
@@ -15183,9 +15186,12 @@ end function readparameterfrom2dmap
        nside=2**hlevel
        nrays = 12*nside**2
        call allocateAttribute(thisOctal%UV, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dust_T, thisOctal%maxChildren)
 !       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
        allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))
        allocate(thisOctal%AV(1:thisOctal%maxchildren, 1:nrays))
+       allocate(thisOctal%abundance(1:thisOctal%maxchildren, 1:33))
+       allocate(thisOctal%thisColRho(1:thisOctal%maxchildren, 1:33, 1:nrays))
     end if
 
     if (lineEmission) then
@@ -15377,8 +15383,10 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%Hheating)
     call deallocateAttribute(thisOctal%Heheating)
     call deallocateAttribute(thisOctal%ionFrac)
-    call deallocateAttribute(thisOctal%AV)
+    call deallocateAttribute(thisOctal%thisColRho)
+    call deallocateAttribute(thisOctal%abundance)
     call deallocateAttribute(thisOctal%UV)
+    call deallocateAttribute(thisOctal%dust_T)
     call deallocateAttribute(thisOctal%radsurface)
     call deallocateAttribute(thisOctal%photoIonCoeff)
     call deallocateAttribute(thisOctal%sourceContribution)

@@ -42,16 +42,27 @@ subroutine PDR_MAIN(grid)
 
 !set up the data/allocate what needs allocated
   call writeInfo("Setting up for PDR calculation.", TRIVIAL)
-  call setupPDR()
+  call setupPDR(grid)
 
 !do the ray casting
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call castAllRaysOverGrid(grid%octreeRoot, grid)
+  call writeInfo("Done.", TRIVIAL)
+  call writeInfo("Calculating dust temperature.", TRIVIAL)
+  call calculate_Dust_Temperatures(grid%octreeRoot)
+  call writeInfo("Done.", TRIVIAL)
+
   call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
-       "columnRho ", "UV        ", "uvvec     "/))
+       "columnRho ", "UV        ", "uvvec     ", "dust_T    "/))
 
 end subroutine PDR_MAIN
 
+integer function nray_func()
+  use inputs_mod, only : hlevel
+  integer :: nside
+  nside = 2**hlevel
+  nray_func = 12*nside**2
+end function nray_func
 !This is the main routine that loops over the grid and does the ray casting
 recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   use inputs_mod, only : hlevel, maxdepthamr
@@ -65,10 +76,9 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal
-  integer :: nside, i, ncontributed
+  integer :: nside, i, ncontributed, k
 
-  nside = 2**hlevel
-  nrays = 12*nside**2
+
 
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
@@ -98,7 +108,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
         thisOctal%uv(subcell) = 0.d0
         thisOctal%av(subcell, :) = 0.d0           
         thisOctal%radsurface(subcell, :) = 0.d0           
-
+        thisOctal%thisColRho(subcell, :, :) = 0.d0
         if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
            ncontributed = 0
 !        do i = 0, nrays-1
@@ -132,11 +142,18 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
                  exit
               end if
 
-
+              
               thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
+              !loop over all species
+              do k = 1, 33
+                thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
+                     thisOctal%abundance(subcell, k)*tval*1.d10*soctal%rho(subcell)/mhydrogen
                  
+              enddo
+!              print *, "RAY ", I, "HAS"
+!              print *, thisOctal%thiscolRho(subcell, :, i)
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
-             
+              
            end do
 
 
@@ -270,6 +287,134 @@ subroutine fireTestRays(grid)
 end subroutine fireTestRays
 
 !subroutine
+
+
+!=======================================================================
+!
+!  Calculate the dust temperature for each particle using the treatment
+!  of Hollenbach, Takahashi & Tielens (1991, ApJ, 377, 192, eqns 5 & 6)
+!  for the heating due to the incident FUV photons and the treatment of
+!  Meijerink & Spaans (2005, A&A, 436, 397, eqn B.6) for heating due to
+!  the incident flux of X-ray photons.
+!
+!  Among other things, the dust temperature can influence:
+!
+!     1) Cooling budget by emitting FIR photons that
+!        interact with the line radiative transfer;
+!     2) Gas-grain collisional heating or cooling rate;
+!     3) H2 formation by changing the sticking probability;
+!     4) Evaporation and condensation of molecules on grains.
+!
+!  The formula derived by Hollenbach, Takahashi & Tielens (1991) has
+!  been modified to include the attenuation of the IR radiation. The
+!  incident FUV radiation is absorbed and re-emitted in the infrared
+!  by dust at the surface of the cloud (up to Av ~ 1mag). In the HTT
+!  derivation, this IR radiation then serves as a second heat source
+!  for dust deeper into the cloud. However, in their treatment, this
+!  second re-radiated component is not attenuated with distance into
+!  the cloud so it is *undiluted* with depth, leading to higher dust
+!  temperatures deep within the cloud which in turn heat the gas via
+!  collisions to unrealistically high temperatures. Models with high
+!  gas densities and high incident FUV fluxes (e.g. n_H = 10^5 cm-3,
+!  X_0 = 10^8 Draine) can produce T_gas ~ 100 K at Av ~ 50 mag!
+!
+!  Attenuation of the FIR radiation has therefore been introduced by
+!  using an approximation for the infrared-only dust temperature from
+!  Rowan-Robinson (1980, eqn 30b):
+!
+!  T_dust = T_0*(r/r_0)^(-0.4)
+!
+!  where r_0 is the cloud depth at which T_dust = T_0, corresponding
+!  to an A_V of ~ 1 mag, the assumed size of the outer region of the
+!  cloud that processes the incident FUV radiation and then re-emits
+!  it in the FIR (see the original HTT 1991 paper for details). This
+!  should prevent the dust temperature from dropping off too rapidly
+!  with distance and maintain a larger warm dust region (~50-100 K).
+!
+!-----------------------------------------------------------------------
+recursive SUBROUTINE CALCULATE_DUST_TEMPERATURES(thisOctal)
+
+   USE HEALPIX_TYPES
+!   USE MAINCODE_MODULE
+
+   IMPLICIT NONE
+
+   INTEGER :: J, i
+   type(octal), pointer :: thisOctal, child
+   integer :: subcell, nrays
+   REAL(double) :: NU_0,R_0,T_0,TAU_100
+   REAL(double) :: T_CMB
+
+!  Parameters used in the HHT equations (see their paper for details)
+   NU_0=2.65D15
+   TAU_100=1.0D-3
+   R_0=1.0D0/AV_FAC
+   T_CMB=2.73D0
+
+   nrays = nray_func()
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do i = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(i) == subcell) then
+              child => thisoctal%child(i)
+              call calculate_dust_temperatures(child)
+              exit
+           end if
+        end do
+     else
+!        P=IDlist_pdr(pp)
+        !     Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
+!        PDR(P)%DUST_T=8.9D-11*NU_0*(1.71D0*PDR(P)%UVfield)+T_CMB**5
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+           thisOctal%DUST_T(subcell)=8.9D-11*NU_0*(1.71D0*thisOctal%UV(subcell))+T_CMB**5
+           
+           DO J=1,NRAYS ! Loop over rays
+              
+              !        The minimum dust temperature is related to the incident FUV flux along each ray
+              !        Convert the incident FUV flux from Draine to Habing units by multiplying by 1.7
+              T_0=12.2*(1.71D0*thisOctal%RADSURFACE(subcell, j))**0.2
+              
+!!$!        Attenuate the FIR radiation produced in the surface layer
+!!$         IF(PARTICLE(P)%TOTAL_COLUMN(J).GT.R_0) THEN
+!!$            T_0=T_0*(PDR(P)%TOTAL_COLUMN(J)/R_0)**(-0.4)
+!!$         END IF
+              
+              !        Add the contribution to the dust temperature from the FUV flux incident along this ray
+              IF(T_0.GT.0) thisOctal%DUST_T(subcell)=thisOctal%DUST_T(subcell) &
+                   & + (0.42-LOG(3.45D-2*TAU_100*T_0))*(3.45D-2*TAU_100*T_0)*T_0**5
+              
+           END DO ! End of loop over rays
+           
+           !     Convert from total dust emission intensity to dust temperature
+           thisOctal%DUST_T(subcell)=thisOctal%DUST_T(subcell)**0.2
+           
+           !#ifdef XRAYS2
+           !        STOP '[dust_t.F90] not coded for XRAYS=ON'
+           !!       !     Calculate the contribution to the dust temperature from the local X-ray flux (assuming a fixed grain abundance of 1.6E-8)
+           !       PDR(P)%DUST_T=PDR(P)%DUST_T+1.5D4*(PDR(P)%XRAY_ENERGY_DEPOSITION_RATE/1.6D-8)**0.2
+           !#endif
+           !     Impose a lower limit on the dust temperature, since values below 10 K can dramatically
+           !     limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
+           IF(thisOctal%DUST_T(subcell).LT.10) THEN
+              thisOctal%DUST_T(subcell)=10.0D0
+           END IF
+           
+           !     Check that the dust temperature is physical
+           IF(thisOctal%DUST_T(subcell).GT.1000) THEN
+              WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
+              STOP
+           END IF
+        else
+           thisOctal%Dust_T(subcell) = 0.d0
+        end if
+
+     end if
+  END DO ! End of loop over particles
+     
+END SUBROUTINE CALCULATE_DUST_TEMPERATURES
+!=======================================================================
 
 
 
