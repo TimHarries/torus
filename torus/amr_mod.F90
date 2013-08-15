@@ -8162,7 +8162,7 @@ endif
     real(double) :: t, rho0
     integer :: nr
     real(double) :: r(:), rho(:)
-    real(double), allocatable :: zeta(:), phi(:)
+    real(double), allocatable :: zetaB(:), phi(:)
     real(double) ::  r0
     real(double) :: mu, soundSpeed, mass, zinner, eThermal, eGrav, dv
     integer :: i
@@ -8170,15 +8170,15 @@ endif
     character(len=80) :: message
 
     zinner = 0.001d0
-    allocate(zeta(1:nr), phi(1:nr))
-    zeta = 0.d0
+    allocate(zetaB(1:nr), phi(1:nr))
+    zetaB = 0.d0
     phi = 0.d0
 
     do i = 1, nr
-      zeta(i) = log10(zinner) + (log10(zetacutoff)-log10(zinner))*dble(i-1)/dble(nr-1)
+      zetaB(i) = log10(zinner) + (log10(zetacutoff)-log10(zinner))*dble(i-1)/dble(nr-1)
    enddo
-   zeta(1:nr) = 10.d0**zeta(1:nr)
-   zeta(1) = 0.d0
+   zetaB(1:nr) = 10.d0**zetaB(1:nr)
+   zetaB(1) = 0.d0
    soundSpeed = sqrt((kErg*t) /(mu*mHydrogen))
 
 !Thaw - Gritschneder is @ 1.6pc
@@ -8187,7 +8187,7 @@ endif
 
 
    do i = 1, nr
-      r(i) = zeta(i) * r0
+      r(i) = zetaB(i) * r0
    enddo
    
    drhodr  = 0.d0
