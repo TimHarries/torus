@@ -348,10 +348,10 @@ contains
 #endif
 #endif
 
-!#ifdef PDR
+#ifdef PDR
 !!    use nrayshealpix, only : donrayshealpix
-!    use pdr_mod, only : PDR_MAIN!, castAllRaysOverGrid
-!#endif
+    use pdr_mod, only : PDR_MAIN!, castAllRaysOverGrid
+#endif
 
 #ifdef MPI
 #ifdef PHOTOION
@@ -480,36 +480,8 @@ contains
      endif
 #endif
 
-
-!#ifdef PDR
-!     if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
-!        call writeInfo("Calling PDR main.", TRIVIAL)
-!        call PDR_MAIN(grid)
-!     end if
-!!#ifdef MPI
-!#ifdef PHOTOION
-!     if(pdrcalc .and. photoionEquilibrium .and. .not. hydrodynamics .and. UV_vector) then
-!        call setupevenuparray(grid, evenuparray)
-!        call ionizeGrid(grid%octreeRoot)
-!        call setupXarray(grid, xArray, nLambda,photoion=.true.)
-!        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-!        if (.not.grid%splitOverMPI) then
-!           call writeInfo("Calling photo loop.", TRIVIAL)
-!           call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
-!        else
-!           !           call setupevenuparray(grid, evenuparray)
-!           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
-!                1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)          
-!        end if
-!        call PDR_MAIN(grid)
-!     end if
-!#endif
-!#endif        
-!#endif
-
-
 #ifdef PHOTOION
-     if (photoionPhysics.and.photoionEquilibrium.and. .not. hydrodynamics) then 
+     if (photoionPhysics.and.photoionEquilibrium.and. .not. hydrodynamics) then
         sign = 1
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -517,22 +489,20 @@ contains
         if (.not.grid%splitOverMPI) then
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
         else
-#ifdef MPI 
+#ifdef MPI
            call setupevenuparray(grid, evenuparray)
-!           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, 1.d40, .false., &
-!                .true., evenuparray, sublimate=.false.)
-!           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 200, 1.d40, 1.d40, .false., &
-!                iterTime, .true., evenuparray, sign, sublimate=.false.)
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)
-
-        endif
-     end if
 
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
+        endif
+     end if
+#endif
 
+#ifdef PDR
+     call PDR_MAIN(grid)     
 #endif
 
 #ifdef HYDRO
@@ -575,6 +545,7 @@ contains
      deallocate(miePhase)
      nullify(miePhase)
   end if
+
 
    end subroutine doPhysics
 
