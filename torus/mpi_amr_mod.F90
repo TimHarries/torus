@@ -4632,6 +4632,21 @@ end subroutine writeRadialFile
     enddo
   end subroutine shutdownServers
 
+  subroutine shutdownServersXRAY_PDR()
+    use mpi
+    integer :: iThread
+    real(double) :: loc(7)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    do iThread = 1, nHydroThreadsGlobal
+       if (iThread /= myrankGlobal) then
+          loc = 1.d30
+          call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine shutdownServersXRAY_PDR
+
   subroutine shutdownServers2(check, k, endloop)
     use mpi
     integer :: iThread
@@ -4813,17 +4828,17 @@ end subroutine writeRadialFile
     endif
   end subroutine getHydroValues
 
-  subroutine getRayTracingValues(grid, position, rho, uvx, uvy, uvz)
+  subroutine getRayTracingValues(grid, position, direction, rho, uvx, uvy, uvz, tval)
 !       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: rho, uvx, uvy, uvz
-    type(VECTOR) :: position, rVec
-    real(double) :: loc(4)
+    type(VECTOR) :: position, rVec, direction
+    real(double) :: loc(7)
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
-    integer, parameter :: nStorage = 4
-    real(double) :: tempStorage(nStorage)
+    integer, parameter :: nStorage = 5
+    real(double) :: tempStorage(nStorage), tval
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -4840,7 +4855,7 @@ end subroutine writeRadialFile
        uvx = thisOctal%uvvector(subcell)%x
        uvy = thisOctal%uvvector(subcell)%y
        uvz = thisOctal%uvvector(subcell)%z
-       
+       call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
     else
 
        iThread = thisOctal%mpiThread(subcell)
@@ -4848,81 +4863,199 @@ end subroutine writeRadialFile
        loc(2) = position%y
        loc(3) = position%z
        loc(4) = dble(myRankGlobal)
+       loc(5) = direction%x
+       loc(6) = direction%y
+       loc(7) = direction%z
 
-       call MPI_SEND(loc, 4, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-
+       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
 
        rho = tempStorage(1)
        uvx = tempstorage(2)
        uvy = tempstorage(3)
        uvz = tempstorage(4)
+       tval = tempstorage(5)
 
     endif
   end subroutine getRayTracingValues
 
 
-  subroutine rayTracingServer(grid, nworking)
+  subroutine rayTracingServer(grid)
     use mpi
     type(GRIDTYPE) :: grid
     logical :: stillServing
-    real(double) :: loc(4)
-    type(VECTOR) :: position, rVec
+    real(double) :: loc(7)
+    type(VECTOR) :: position, rVec, direction
     type(OCTAL), pointer :: thisOctal
-    type(OCTAL), pointer :: topOctal
-    integer :: subcell, nworking, topOctalSubcell
-    integer :: iThread, servingArray, workingTHreads(nworking)
-    integer, parameter :: nStorage = 4
-    real(double) :: tempStorage(nStorage)
+!    type(OCTAL), pointer :: topOctal
+    integer :: subcell!, nworking!, topOctalSubcell
+    integer :: iThread!, servingArray!, workingTHreads(nworking)
+    integer, parameter :: nStorage = 5
+    real(double) :: tempStorage(nStorage), tval
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
-    integer :: ierr, j
+    integer :: ierr
 
     stillServing = .true.
-    servingArray = 0
-    workingTHreads = 0
+!    servingArray = 0
+!    workingTHreads = 0
     thisOctal => grid%octreeroot
     do while (stillServing)
 
 !       do iThread = 1, nThreadsGlobal-1
 !       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
        
-       call MPI_RECV(loc, 4, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
        iThread = int(loc(4))
+       direction%x = loc(5)
+       direction%y = loc(6)
+       direction%z = loc(7)
        if (position%x > 1.d29) then          
-          do j=1, nworking
-             if(workingThreads(j) == 0) then
-                workingThreads(j) = 1
-                exit
-             end if
-          end do
-          if(SUM(workingTHreads) == nworking) then
-             workingThreads = 0
-             stillServing= .false.
-          end if
+          !          do j=1, nworking
+          !             if(workingThreads(j) == 0) then
+          !                workingThreads(j) = 1
+          !                exit
+          !             end if
+          !         end do
+          !         if(SUM(workingTHreads) == nworking) then
+          !            workingThreads = 0
+          stillServing= .false.
+!       end if
        else
 
           call findSubcellLocal(position, thisOctal, subcell)
-          topOctal => thisOctal
-          topOctalSubcell = subcell
-          do while(topOctal%changed(topOctalSubcell))
-             topOctalSubcell = topOctal%parentSubcell
-             topOctal => topOctal%parent
-          enddo
-
-          rVec = subcellCentre(topOctal, topOctalsubcell)
-          tempStorage(1) = topOctal%rho(topOctalsubcell)
+!          topOctal => thisOctal
+!          topOctalSubcell = subcell
+!          Do while(topOctal%changed(topOctalSubcell))
+!             topOctalSubcell = topOctal%parentSubcell
+!             topOctal => topOctal%parent
+!          enddo
+          call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+          rVec = subcellCentre(thisOctal, subcell)
+          tempStorage(1) = thisOctal%rho(subcell)
           tempStorage(2) = thisOctal%UVvector(subcell)%x
           tempStorage(3) = thisOctal%UVvector(subcell)%y
           tempStorage(4) = thisOctal%UVvector(subcell)%z
+          tempStorage(5) = tval
 
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine rayTracingServer
+
+
+  subroutine getRayTracingValuesXRAY(grid, position, direction, rho, tval)
+!       radially, searchRadius)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: rho
+    type(VECTOR) :: position, rVec, direction
+    real(double) :: loc(7)
+    type(OCTAL), pointer :: thisOctal
+    integer :: iThread
+    integer, parameter :: nStorage = 2
+    real(double) :: tempStorage(nStorage), tval
+    integer :: subcell
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+!    logical :: useTop
+
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(position, thisOctal, subcell)
+   
+    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
+
+       rVec = subcellCentre(thisOctal, subcell)
+       rho = thisOctal%rho(subcell)
+       call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+    else
+
+       iThread = thisOctal%mpiThread(subcell)
+       loc(1) = position%x
+       loc(2) = position%y
+       loc(3) = position%z
+       loc(4) = dble(myRankGlobal)
+       loc(5) = direction%x
+       loc(6) = direction%y
+       loc(7) = direction%z
+
+       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+
+       rho = tempStorage(1)
+       tval = tempstorage(2)
+
+    endif
+  end subroutine getRayTracingValuesXRAY
+
+
+  subroutine rayTracingServerXRAY(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    logical :: stillServing
+    real(double) :: loc(7)
+    type(VECTOR) :: position, rVec, direction
+    type(OCTAL), pointer :: thisOctal
+!    type(OCTAL), pointer :: topOctal
+    integer :: subcell!, nworking!, topOctalSubcell
+    integer :: iThread!, servingArray, workingTHreads(nworking)
+    integer, parameter :: nStorage = 2
+    real(double) :: tempStorage(nStorage), tval
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    stillServing = .true.
+ !   servingArray = 0
+ !   workingTHreads = 0
+    thisOctal => grid%octreeroot
+    do while (stillServing)
+
+!       do iThread = 1, nThreadsGlobal-1
+!       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+       
+       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+       position%x = loc(1)
+       position%y = loc(2)
+       position%z = loc(3)
+       iThread = int(loc(4))
+       direction%x = loc(5)
+       direction%y = loc(6)
+       direction%z = loc(7)
+       if (position%x > 1.d29) then          
+!          do j=1, nworking
+!             if(workingThreads(j) == 0) then
+!                workingThreads(j) = 1
+!                exit
+!             end if
+!          end do
+!          if(SUM(workingTHreads) == nworking) then
+!             workingThreads = 0
+             stillServing= .false.
+!          end if
+       else
+
+          call findSubcellLocal(position, thisOctal, subcell)
+!          topOctal => thisOctal
+!          topOctalSubcell = subcell
+!          do while(topOctal%changed(topOctalSubcell))
+!             topOctalSubcell = topOctal%parentSubcell
+!             topOctal => topOctal%parent
+!          enddo
+          call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+          rVec = subcellCentre(thisOctal, subcell)
+          tempStorage(1) = thisOctal%rho(subcell)
+          tempStorage(2) = tval
+
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine rayTracingServerXRAY
+
 
   subroutine hydroValuesServer(grid, nworking)
     use mpi

@@ -419,11 +419,11 @@ contains
                      loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
-                sphericalhydro = tmpsphericalhydro
+                sphericalhydro = tmpsphericalhydro                
                 call writeInfo("Done",TRIVIAL)
                 if(useionparam) then
                    call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
-
+                   call simpleXRAY(grid, source(1))
                    call writeInfo("Done",TRIVIAL)
                 end if
              else
@@ -777,11 +777,17 @@ contains
                 sphericalhydro = tmpsphericalhydro
 
          call writeInfo("Done",TRIVIAL)
+         
          if(useionparam) then
             call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
-            
+            call simpleXRAY(grid, source(1))
             call writeInfo("Done",TRIVIAL)
          end if
+!         if(useionparam) then
+!            call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
+!            
+!            call writeInfo("Done",TRIVIAL)
+!         end if
          
           timeSinceLastRecomb = 0.d0
        else

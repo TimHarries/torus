@@ -351,7 +351,7 @@ contains
 
 !    if(xraycalc) then
     call getLogical("useionparam", useionparam, cLine, fLine, nLines, &
-         "Use ionization parameter in x-ray treatment: ","(a,1l,1x,a)", .true., ok, .false.)
+         "Use ionization parameter in x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
 !    end if
    
 

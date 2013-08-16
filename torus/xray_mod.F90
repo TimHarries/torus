@@ -351,8 +351,55 @@ subroutine solveIonizationBalance_Xray(grid, thisOctal, subcell, temperature, ep
 
 end subroutine solveIonizationBalance_Xray
 
+!SIMPLIFIED XRAY treatment using the ionization parameter scheme of Owen+2010
+subroutine simpleXRay(grid, thisSource)!
+  use mpi
+  implicit none
 
-!subroutine simpleXRay()!
+  type(gridtype) :: grid
+  type(sourcetype) :: thisSource
+  integer :: i, ier
+
+  if(myrankglobal /= 0) then
+     do i = 1, nhydrothreadsglobal
+        if(myrankglobal == i) then
+           call calculateColumnToStar(grid%octreeRoot, grid, thisSource%position)
+           call shutdownserversXRAY_PDR()
+        else
+           call raytracingserverXRAY(grid)
+        end if
+     end do            
+  end if
+  call calcIonParamTemperature(grid%octreeRoot)
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
+
+end subroutine simpleXRay
+
+recursive subroutine calcIonParamTemperature(thisOctal)
+  integer :: j
+  type(octal), pointer :: thisOctal, child!, soctal
+  integer :: subcell!, ssubcell
+!  type(gridtype) :: grid
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call calcIonParamTemperature(child)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        if(.not. thisOctal%ionfrac(subcell,2 ) > 0.9d0) then
+           thisOCtal%temperature(subcell) = 10.d0 ! until I get the zeta(T) relation from James
+        end if
+     end if
+  end do
+
+end subroutine calcIonParamTemperature
 
 !get the column density from the cell to the star
 !for use with the ionization parameter scheme used
@@ -362,7 +409,7 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
   type(octal), pointer :: thisOctal, child, soctal
   integer :: subcell, ssubcell
   type(vector) :: testposition, startposition, uhat, starpos
-  real(double) :: tval
+  real(double) :: tval, rho
   type(gridtype) :: grid
 
   do subcell = 1, thisoctal%maxchildren
@@ -386,19 +433,16 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
            call findSubcellLocal(testPosition, sOctal, ssubcell)
            sOctal%columnRho(ssubcell) = 0.d0
            
-           uhat = startposition - starpos
+           uhat = startposition - starpos           
            
-           
-           do while (inOctal(grid%octreeRoot, testPosition))
-              
-              call findSubcellLocal(testPosition, sOctal, ssubcell)
+           do while (inOctal(grid%octreeRoot, testPosition))            
+!              call findSubcellLocal(testPosition, sOctal, ssubcell)
 !              if(.not octalonthread(thisoctal, myrankglobal)) then
-
               tval = 0.d0
+              call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval)    
+!              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
               
-              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
-              
-              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (sOctal%rho(ssubcell)*tval)
+              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
               
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
               
