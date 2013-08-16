@@ -4828,16 +4828,16 @@ end subroutine writeRadialFile
     endif
   end subroutine getHydroValues
 
-  subroutine getRayTracingValues(grid, position, direction, rho, uvx, uvy, uvz, tval)
+  subroutine getRayTracingValuesPDR(grid, position, direction, rho, uvx, uvy, uvz, Hplusfrac, tval)
 !       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
-    real(double), intent(out) :: rho, uvx, uvy, uvz
+    real(double), intent(out) :: rho, uvx, uvy, uvz, HplusFrac
     type(VECTOR) :: position, rVec, direction
     real(double) :: loc(7)
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
-    integer, parameter :: nStorage = 5
+    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
@@ -4855,6 +4855,7 @@ end subroutine writeRadialFile
        uvx = thisOctal%uvvector(subcell)%x
        uvy = thisOctal%uvvector(subcell)%y
        uvz = thisOctal%uvvector(subcell)%z
+       Hplusfrac = thisOctal%ionfrac(subcell, 2)
        call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
     else
 
@@ -4875,12 +4876,12 @@ end subroutine writeRadialFile
        uvy = tempstorage(3)
        uvz = tempstorage(4)
        tval = tempstorage(5)
-
+       Hplusfrac = tempstorage(6)
     endif
-  end subroutine getRayTracingValues
+  end subroutine getRayTracingValuesPDR
 
 
-  subroutine rayTracingServer(grid)
+  subroutine rayTracingServerPDR(grid)
     use mpi
     type(GRIDTYPE) :: grid
     logical :: stillServing
@@ -4890,7 +4891,7 @@ end subroutine writeRadialFile
 !    type(OCTAL), pointer :: topOctal
     integer :: subcell!, nworking!, topOctalSubcell
     integer :: iThread!, servingArray!, workingTHreads(nworking)
-    integer, parameter :: nStorage = 5
+    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -4940,11 +4941,12 @@ end subroutine writeRadialFile
           tempStorage(3) = thisOctal%UVvector(subcell)%y
           tempStorage(4) = thisOctal%UVvector(subcell)%z
           tempStorage(5) = tval
+          tempStorage(6) = thisOctal%ionfrac(subcell, 2)
 
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
-  end subroutine rayTracingServer
+  end subroutine rayTracingServerPDR
 
 
   subroutine getRayTracingValuesXRAY(grid, position, direction, rho, tval)

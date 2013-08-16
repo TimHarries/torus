@@ -8001,7 +8001,7 @@ endif
     rVec%y = rVec%y - amrgridcentrey
     rVec%z = rVec%z - amrgridcentrez
     rMod = modulus(rVec)
-    if ((rMod*1.d10) < 5.d0*pcToCm) then
+    if ((rMod*1.d10) < 3.5d0*pcToCm) then
        thisOctal%rho(subcell) = 1.d3*mHydrogen
        thisOctal%temperature(subcell) = 10.d0
        thisOctal%ionFrac(subcell,1) = 1.d0               !HI

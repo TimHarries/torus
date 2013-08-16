@@ -17,7 +17,9 @@ use unix_mod, only: unixGetenv
 use definitions
 !use healpix_module
 use vector_mod
-
+#ifdef MPI
+use mpi
+#endif
 implicit none
 
 
@@ -45,19 +47,174 @@ subroutine PDR_MAIN(grid)
   call setupPDR(grid)
 
 !do the ray casting
+#ifdef MPI
   call writeInfo("Casting rays over grid.", TRIVIAL)
-  call castAllRaysOverGrid(grid%octreeRoot, grid)
+  call castAllRaysOverGridMPI(grid%octreeRoot, grid)
+  call writeInfo("Done.", TRIVIAL)
+
+  call writeInfo("Calculating dust temperature.", TRIVIAL)
+  call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
+  call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
+  call iniTempGuessMPI(grid%octreeroot)
+
+#else
+  call writeInfo("Casting rays over grid.", TRIVIAL)
+  call rayTraceMPI(grid)
   call writeInfo("Done.", TRIVIAL)
 
   call writeInfo("Calculating dust temperature.", TRIVIAL)
   call calculate_Dust_Temperatures(grid%octreeRoot)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
   call iniTempGuess(grid%octreeroot)
-  
+#endif
   call writeVTKfile(grid, "PDR_CALC.vtk", valueTypeString=(/"rho       ",&
        "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   "/))
 
 end subroutine PDR_MAIN
+
+
+#ifdef MPI
+subroutine rayTraceMPI(grid)
+
+  implicit none
+
+  type(gridtype) :: grid
+!  type(sourcetype) :: thisSource
+  integer :: i, ier
+
+  if(myrankglobal /= 0) then
+     do i = 1, nhydrothreadsglobal
+        if(myrankglobal == i) then
+           call castAllRaysOverGridMPI(grid%octreeRoot, grid)
+           call shutdownserversXRAY_PDR()
+        else
+           call raytracingserverPDR(grid)
+        end if
+     end do            
+  end if
+!  call calcIonParamTemperature(grid%octreeRoot)
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
+
+end subroutine rayTraceMPI
+
+
+!This is the main routine that loops over the grid and does the ray casting
+recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
+!  use mpi
+  use inputs_mod, only : hlevel, maxdepthamr
+  use healpix_module, only : vectors, nrays
+  implicit none
+  
+  type(gridtype) :: grid
+  integer :: subcell, ssubcell
+  type(octal), pointer :: thisoctal, soctal
+  type(octal), pointer :: child
+  integer :: j
+  type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
+  real(double) :: tVal, rho, uvx, uvy, uvz, HplusFrac
+  integer ::  i, ncontributed!, k
+
+
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call castAllRaysOverGrid(child, grid)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+
+        nrays = nray_func()
+        sOctal=> thisOctal
+        
+        startPosition = subcellCentre(thisOctal, subcell)
+        testPosition = startPosition
+        call findSubcellLocal(testPosition, sOctal, ssubcell)
+        sOctal%columnRho(ssubcell) = 0.d0
+!        thisOctal%columnRho(subcell) = 1.d-30 
+
+        thisOctal%uv(subcell) = 0.d0
+        thisOctal%av(subcell, :) = 0.d0           
+        thisOctal%radsurface(subcell, :) = 0.d0           
+        thisOctal%thisColRho(subcell, :, :) = 0.d0
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+           ncontributed = 0
+!        do i = 0, nrays-1
+        do i = 1, nrays
+
+           rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
+
+           uhat = rVec
+           call normalize(uhat)
+
+           testPosition = startPosition
+           thisOctal%columnrho(subcell)  = 0.d0
+           do while (inOctal(grid%octreeRoot, testPosition))
+              
+              tval = 0.d0
+              call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval)  
+
+
+              if(Hplusfrac > 0.9d0) then
+                 thisUVvector = VECTOR(uvx, uvy, uvz)
+                 thisUVvector = thisUVvector*1.d10/draine
+
+                 thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
+                 if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
+
+                 exit
+              end if
+              
+              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
+
+              testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
+           end do
+
+          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
+
+
+          if(thisOctal%radsurface(subcell, i) > 0.d0) then
+             thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
+                  thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+             ncontributed = ncontributed + 1
+
+          end if
+          
+       end do
+!       print *, "DONE ONE "
+!       print *, 'ncontributed ', ncontributed
+       if(ncontributed /= 0) then
+!          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
+          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(ncontributed)
+       else
+          thisOctal%UV(subcell) = 0.d0
+       end if
+!       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
+       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
+ !      print *, "AV ", thisOctal%AV(subcell,:)
+  !     print *, "UV ", thisOctal%UV(subcell)
+       
+!       stop
+
+       if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
+    else
+        thisOctal%columnRho(subcell) = 0.d0
+        thisOctal%UV(subcell) = 0.d0
+        thisOctal%AV(subcell,:) = 0.d0
+        thisOctal%radsurface(subcell,:) = 0.d0
+     end if
+        
+  end if
+end do
+  
+
+end subroutine castAllRaysOverGridMPI
+#endif
 
 integer function nray_func()
   use inputs_mod, only : hlevel
@@ -457,6 +614,132 @@ recursive subroutine iniTempGuess(thisOctal)
   ENDDO
 end subroutine iniTempGuess
 
+#ifdef MPI
+recursive subroutine iniTempGuessMPI(thisOctal)
+  integer :: subcell, i
+  type(octal), pointer :: thisOctal, child
+  real(double) :: tguess
+  real(double), parameter :: tmin = 10.d0
+  real(double), parameter :: tmax = 1.d4
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do i = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(i) == subcell) then
+              child => thisoctal%child(i)
+              call iniTempGuess(child)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.9d0) then
+           Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
+           thisOctal%TLast(subcell) = Tguess
+           thisOctal%temperature(subcell) = real(Tguess)
+           
+           thisOctal%Tmin(subcell) = Tguess/2.0D0
+           thisOctal%tMax(subcell) = Tguess*1.5D0
+           
+           IF (thisOctal%tmin(subcell).LT.Tmin)  thisOctal%tmin(subcell)  = Tmin
+           IF (thisOctal%tmax(subcell).GT.Tmax) thisOctal%tmax(subcell) = Tmax
+           
+           thisOctal%Tminarray(subcell) =  thisOctal%tmin(subcell)/3.0D0 ! Bound minimum
+           thisOCtal%tmaxarray(subcell) = thisOctal%tmax(subcell)*2.0D0 ! Bound maximum
+           IF (thisOctal%tminarray(subcell).LT.Tmin) thisOctal%tminarray(subcell) = Tmin
+           IF (thisOctal%tmaxarray(subcell).GT.Tmax) thisOctal%tmaxarray(subcell) = Tmax
+        end if
+     end if
+  ENDDO
+end subroutine iniTempGuessMPI
+
+recursive SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI(thisOctal)
+
+   USE HEALPIX_TYPES
+!   USE MAINCODE_MODULE
+
+   IMPLICIT NONE
+
+   INTEGER :: J, i
+   type(octal), pointer :: thisOctal, child
+   integer :: subcell, nrays
+   REAL(double) :: NU_0,R_0,T_0,TAU_100
+   REAL(double) :: T_CMB
+
+!  Parameters used in the HHT equations (see their paper for details)
+   NU_0=2.65D15
+   TAU_100=1.0D-3
+   R_0=1.0D0/AV_FAC
+   T_CMB=2.73D0
+
+   nrays = nray_func()
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do i = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(i) == subcell) then
+              child => thisoctal%child(i)
+              call calculate_dust_temperaturesMPI(child)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+!        P=IDlist_pdr(pp)
+        !     Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
+!        PDR(P)%DUST_T=8.9D-11*NU_0*(1.71D0*PDR(P)%UVfield)+T_CMB**5
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+           thisOctal%DUST_T(subcell)=8.9D-11*NU_0*(1.71D0*thisOctal%UV(subcell))+T_CMB**5
+           
+           DO J=1,NRAYS ! Loop over rays
+              
+              !        The minimum dust temperature is related to the incident FUV flux along each ray
+              !        Convert the incident FUV flux from Draine to Habing units by multiplying by 1.7
+              T_0=12.2*(1.71D0*thisOctal%RADSURFACE(subcell, j))**0.2
+              
+!!$!        Attenuate the FIR radiation produced in the surface layer
+!!$         IF(PARTICLE(P)%TOTAL_COLUMN(J).GT.R_0) THEN
+!!$            T_0=T_0*(PDR(P)%TOTAL_COLUMN(J)/R_0)**(-0.4)
+!!$         END IF
+              
+              !        Add the contribution to the dust temperature from the FUV flux incident along this ray
+              IF(T_0.GT.0) thisOctal%DUST_T(subcell)=thisOctal%DUST_T(subcell) &
+                   & + (0.42-LOG(3.45D-2*TAU_100*T_0))*(3.45D-2*TAU_100*T_0)*T_0**5
+              
+           END DO ! End of loop over rays
+           
+           !     Convert from total dust emission intensity to dust temperature
+           thisOctal%DUST_T(subcell)=thisOctal%DUST_T(subcell)**0.2
+           
+           !#ifdef XRAYS2
+           !        STOP '[dust_t.F90] not coded for XRAYS=ON'
+           !!       !     Calculate the contribution to the dust temperature from the local X-ray flux (assuming a fixed grain abundance of 1.6E-8)
+           !       PDR(P)%DUST_T=PDR(P)%DUST_T+1.5D4*(PDR(P)%XRAY_ENERGY_DEPOSITION_RATE/1.6D-8)**0.2
+           !#endif
+           !     Impose a lower limit on the dust temperature, since values below 10 K can dramatically
+           !     limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
+           IF(thisOctal%DUST_T(subcell).LT.10) THEN
+              thisOctal%DUST_T(subcell)=10.0D0
+           END IF
+           
+           !     Check that the dust temperature is physical
+           IF(thisOctal%DUST_T(subcell).GT.1000) THEN
+              WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
+              STOP
+           END IF
+        else
+           thisOctal%Dust_T(subcell) = 0.d0
+        end if
+
+     end if
+  END DO ! End of loop over particles
+     
+END SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI
+!=======================================================================
+
+#endif
 
 
 !=======================================================================

@@ -355,7 +355,7 @@ contains
 
 #ifdef MPI
 #ifdef PHOTOION
-    use photoionAMR_mod, only: photoionizationLoopAMR
+    use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
     use inputs_mod, only : optimizeStack
 #ifdef HYDRO
     use photoionAMR_mod, only: radiationHydro
@@ -492,8 +492,11 @@ contains
    !     call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
   !           "columnRho "/))
      end if
-
+#ifdef PHOTOION
      if(pdrcalc .and. photoionEquilibrium .and. .not. hydrodynamics .and. UV_vector) then
+        call ionizeGrid(grid%octreeRoot)
+        call setupXarray(grid, xArray, nLambda,photoion=.true.)
+        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
         if (.not.grid%splitOverMPI) then
            call writeInfo("Calling photo loop.", TRIVIAL)
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
@@ -508,6 +511,7 @@ contains
         end if
         call PDR_MAIN(grid)
      end if
+#endif
 #endif
 
 #ifdef PHOTOION
