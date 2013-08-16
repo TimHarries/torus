@@ -309,6 +309,9 @@ contains
             "Use just dust opacities: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("packetsplitting", usePacketSplitting, cLine, fLine, nLines, &
             "Use photon packet splitting: ", "(a,1l,1x,a)", .true., ok, .false.)
+
+       call getLogical("regularVTU", dumpregularVTUS, cLine, fLine, nLines, &
+            "Dump VTU files regularly: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getInteger("nsmallpackets", inputnSmallPackets, cLine, fLine, nLines, &
             "Number of small packets per big packet: ","(a,i8,a)", 100, ok, .false.)
     end if

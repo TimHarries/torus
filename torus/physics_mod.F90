@@ -349,8 +349,8 @@ contains
 #endif
 
 #ifdef PDR
-    use nrayshealpix, only : donrayshealpix
-    use pdr_mod, only : PDR_MAIN, castAllRaysOverGrid
+!    use nrayshealpix, only : donrayshealpix
+    use pdr_mod, only : PDR_MAIN!, castAllRaysOverGrid
 #endif
 
 #ifdef MPI
@@ -483,18 +483,13 @@ contains
 
 #ifdef PDR
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
-!        print *, "BLA"
         call writeInfo("Calling PDR main.", TRIVIAL)
         call PDR_MAIN(grid)
-
-!        call donrayshealpix()
- !       call castAllRaysOverGrid(grid%octreeRoot, grid)
-   !     call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
-  !           "columnRho "/))
      end if
 #ifdef MPI
 #ifdef PHOTOION
      if(pdrcalc .and. photoionEquilibrium .and. .not. hydrodynamics .and. UV_vector) then
+        call setupevenuparray(grid, evenuparray)
         call ionizeGrid(grid%octreeRoot)
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
@@ -509,11 +504,9 @@ contains
         call PDR_MAIN(grid)
      end if
 #endif
-#else
-     call writeFatal("Domain decomposed grid requires MPI")
 #endif        
 #endif
-
+!  endif
 
 #ifdef PHOTOION
      if (photoionPhysics.and.photoionEquilibrium.and. .not. hydrodynamics) then 
@@ -582,7 +575,7 @@ contains
      deallocate(miePhase)
      nullify(miePhase)
   end if
-
+!endif
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)

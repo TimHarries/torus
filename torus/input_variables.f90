@@ -85,6 +85,7 @@
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
   logical :: addSinkParticles  ! add new sink particles
   logical :: stellarWinds      ! include stellar winds in hydro calc
+  logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation 
 
   !Stack optimization

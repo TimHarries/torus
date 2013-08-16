@@ -1112,7 +1112,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam, dumpregularVTUS
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -2846,7 +2846,7 @@ end subroutine radiationHydro
              enddo
 
           else             
-             if(.not. uv_vector) then
+!             if(.not. uv_vector) then
              if(timeDep) then
                 do i = 1, nTimes
                    call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
@@ -2891,7 +2891,7 @@ end subroutine radiationHydro
 
              
           endif
-       end if
+       !end if
           if (nHydroSetsGlobal > 1) tempCell(iOctal,1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
           if (nHydroSetsGlobal > 1) tempIon(iOctal,1:thisOctal%maxChildren,:) = real(thisOctal%ionFrac(1:thisOctal%maxChildren,:))
        enddo
@@ -3292,7 +3292,7 @@ end subroutine radiationHydro
 
 !     write(*,*) myrankglobal, " calling vtk writer"
 
-     if(uv_vector .or. singlemegaphoto) then
+     if(uv_vector .or. singlemegaphoto .or. dumpRegularVTUS) then
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
         call writeVtkFile(grid, mpiFilename, &
              valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        "/))
