@@ -49,8 +49,9 @@ subroutine PDR_MAIN(grid)
 !do the ray casting
 #ifdef MPI
   call writeInfo("Casting rays over grid.", TRIVIAL)
-  call castAllRaysOverGridMPI(grid%octreeRoot, grid)
+  call rayTraceMPI(grid)
   call writeInfo("Done.", TRIVIAL)
+
 
   call writeInfo("Calculating dust temperature.", TRIVIAL)
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
@@ -59,7 +60,7 @@ subroutine PDR_MAIN(grid)
 
 #else
   call writeInfo("Casting rays over grid.", TRIVIAL)
-  call rayTraceMPI(grid)
+  call castAllRaysOverGrid(grid%octreeRoot, grid)
   call writeInfo("Done.", TRIVIAL)
 
   call writeInfo("Calculating dust temperature.", TRIVIAL)

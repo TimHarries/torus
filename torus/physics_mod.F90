@@ -483,7 +483,7 @@ contains
 
 #ifdef PDR
      if(pdrcalc .and. .not. photoionEquilibrium .and. .not. hydrodynamics) then
-        print *, "BLA"
+!        print *, "BLA"
         call writeInfo("Calling PDR main.", TRIVIAL)
         call PDR_MAIN(grid)
 
@@ -492,6 +492,7 @@ contains
    !     call writeVTKfile(grid, "columnDensity.vtk", valueTypeString=(/"rho       ",&
   !           "columnRho "/))
      end if
+#ifdef MPI
 #ifdef PHOTOION
      if(pdrcalc .and. photoionEquilibrium .and. .not. hydrodynamics .and. UV_vector) then
         call ionizeGrid(grid%octreeRoot)
@@ -501,18 +502,18 @@ contains
            call writeInfo("Calling photo loop.", TRIVIAL)
            call photoIonizationloop(grid, globalsourceArray, globalnSource, nLambda, xArray )
         else
-#ifdef MPI 
            !           call setupevenuparray(grid, evenuparray)
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)          
-#else
-           call writeFatal("Domain decomposed grid requires MPI")
-#endif        
         end if
         call PDR_MAIN(grid)
      end if
 #endif
+#else
+     call writeFatal("Domain decomposed grid requires MPI")
+#endif        
 #endif
+
 
 #ifdef PHOTOION
      if (photoionPhysics.and.photoionEquilibrium.and. .not. hydrodynamics) then 
@@ -532,11 +533,13 @@ contains
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)
 
+        endif
+     end if
+
 #else
            call writeFatal("Domain decomposed grid requires MPI")
 #endif
-        endif
-     end if
+
 #endif
 
 #ifdef HYDRO
