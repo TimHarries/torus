@@ -1,5 +1,6 @@
 #ifdef XRAY
 module xray_mod
+#ifdef MPI
 !
 !Started by Thaw - 22/07/2013
 !
@@ -17,8 +18,11 @@ use grid_mod
 use source_mod
 use timing
 use photoion_utils_mod
+use mpi
+
 
 implicit none
+
 
 type AUGER
    real(double) :: yield
@@ -353,7 +357,7 @@ end subroutine solveIonizationBalance_Xray
 
 !SIMPLIFIED XRAY treatment using the ionization parameter scheme of Owen+2010
 subroutine simpleXRay(grid, thisSource)!
-  use mpi
+
   implicit none
 
   type(gridtype) :: grid
@@ -376,6 +380,7 @@ subroutine simpleXRay(grid, thisSource)!
 end subroutine simpleXRay
 
 recursive subroutine calcIonParamTemperature(thisOctal)
+
   integer :: j
   type(octal), pointer :: thisOctal, child!, soctal
   integer :: subcell!, ssubcell
@@ -405,6 +410,7 @@ end subroutine calcIonParamTemperature
 !for use with the ionization parameter scheme used
 !by James Owen
 recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
+
   integer :: j
   type(octal), pointer :: thisOctal, child, soctal
   integer :: subcell, ssubcell
@@ -454,6 +460,6 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
      
 end subroutine calculateColumnToStar
 
-
+#endif
 end module xray_mod
 #endif
