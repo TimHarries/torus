@@ -3119,6 +3119,8 @@ end subroutine radiationHydro
         end if
         !     else if(singleMegaPhoto) then
         !        minCrossings = 50000 
+     else if(.not. hOnly) then
+        minCrossings = 3000
      else
         !        minCrossings = 5000
         minCrossings = 10

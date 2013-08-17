@@ -467,7 +467,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             cmfgen_class.f90 modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 units_mod.f90 interferometry_mod.f90 \
-            qShep3D_mod.f90 qShep2D_mod.f90 setuppdr_mod.f90 $(VERSIONSOURCE)
+            qShep3D_mod.f90 qShep2D_mod.f90 $(VERSIONSOURCE)
             
 
 
@@ -477,7 +477,7 @@ CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 uni
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 TTauri_mod.F90 angularImage_utils.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 viscosity_mod.F90 xray_mod.F90 \
-                 healpix_modules.F90 healpix.F90 nrayshealpix.F90 pdr_mod.F90 $(TORUSMAINSOURCE)
+                 healpix_modules.F90 healpix.F90 nrayshealpix.F90 pdr_mod.F90 setuppdr_mod.F90 $(TORUSMAINSOURCE)
 
 CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90 setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 \
 	hydrodynamics_mod.F90 angularImage_mod.F90 \
@@ -485,7 +485,7 @@ CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90
 	          diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	          parallel_mod.F90 stateq_mod.F90 torusMod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
                   phaseloop_mod.F90 gridio_mod.F90 xray_mod.F90 healpix_modules.F90 healpix.F90 nrayshealpix.F90 \
-                  pdr_mod.F90
+                  pdr_mod.F90 setuppdr_mod.F90
 
 # Object files
 #

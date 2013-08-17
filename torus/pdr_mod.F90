@@ -51,8 +51,6 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call rayTraceMPI(grid)
   call writeInfo("Done.", TRIVIAL)
-
-
   call writeInfo("Calculating dust temperature.", TRIVIAL)
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
