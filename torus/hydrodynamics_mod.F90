@@ -9368,7 +9368,7 @@ real(double) :: rho
                       currentDirection = (-1.d0)*probe(iProbe)
                       thisOctal%boundaryCondition(subcell) = &
                            neighbourOctal%boundaryCondition(neighbourSubcell)
-                      print *, "found a ghost ", subcellCentre(thisOctal, subcell)
+!                      print *, "found a ghost ", subcellCentre(thisOctal, subcell)
                       exit
                    endif
                 endif
@@ -9407,7 +9407,7 @@ real(double) :: rho
                    thisOctal%boundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                    thisOctal%gravboundaryPartner(subcell) = (-1.d0)*probe(iProbe)
                    currentDirection = (-1.d0)*probe(iProbe)
-                   print *, "EDGE IS GHOST ", subcellCentre(thisOctal, subcell)
+!                   print *, "EDGE IS GHOST ", subcellCentre(thisOctal, subcell)
                    exit
                 endif
              enddo

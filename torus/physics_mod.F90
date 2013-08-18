@@ -502,7 +502,9 @@ contains
 #endif
 
 #ifdef PDR
-     call PDR_MAIN(grid)     
+     if(pdrcalc) then
+        call PDR_MAIN(grid)     
+     end if
 #endif
 
 #ifdef HYDRO
