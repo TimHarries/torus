@@ -4828,7 +4828,8 @@ end subroutine writeRadialFile
     endif
   end subroutine getHydroValues
 
-  subroutine getRayTracingValuesPDR(grid, position, direction, rho, uvx, uvy, uvz, Hplusfrac, tval)
+  subroutine getRayTracingValuesPDR(grid, position, direction, rho, uvx, uvy, uvz, Hplusfrac, tval, &
+       abundanceArray)
 !       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
@@ -4837,8 +4838,8 @@ end subroutine writeRadialFile
     real(double) :: loc(7)
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
-    integer, parameter :: nStorage = 6
-    real(double) :: tempStorage(nStorage), tval
+    integer, parameter :: nStorage = 39
+    real(double) :: tempStorage(nStorage), tval, abundanceArray(1:33)
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -4856,6 +4857,7 @@ end subroutine writeRadialFile
        uvy = thisOctal%uvvector(subcell)%y
        uvz = thisOctal%uvvector(subcell)%z
        Hplusfrac = thisOctal%ionfrac(subcell, 2)
+       abundanceArray(:) = thisOctal%abundance(subcell, :)
        call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
     else
 
@@ -4877,6 +4879,10 @@ end subroutine writeRadialFile
        uvz = tempstorage(4)
        tval = tempstorage(5)
        Hplusfrac = tempstorage(6)
+       abundancearray(1:33) = tempstorage(7:39)
+!       do i = 1, 33
+!          abundancearray(i) = tempstorage(i+6)
+!       end do
     endif
   end subroutine getRayTracingValuesPDR
 
@@ -4891,7 +4897,7 @@ end subroutine writeRadialFile
 !    type(OCTAL), pointer :: topOctal
     integer :: subcell!, nworking!, topOctalSubcell
     integer :: iThread!, servingArray!, workingTHreads(nworking)
-    integer, parameter :: nStorage = 6
+    integer, parameter :: nStorage = 39
     real(double) :: tempStorage(nStorage), tval
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
@@ -4942,7 +4948,7 @@ end subroutine writeRadialFile
           tempStorage(4) = thisOctal%UVvector(subcell)%z
           tempStorage(5) = tval
           tempStorage(6) = thisOctal%ionfrac(subcell, 2)
-
+          tempStorage(7:39) = thisOctal%ionfrac(subcell, :)
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo

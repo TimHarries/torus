@@ -7,13 +7,13 @@
 ! ============================================================================
 !T.Bisbas -- taken from SEREN/HEALPix
 
-MODULE definitions
-
+MODULE healpix_guts
+  use constants_mod
   integer, parameter :: DP = selected_real_kind(p=15) ! double precision
   integer, parameter :: SP = selected_real_kind(p=6)  ! single precision
   integer, parameter :: ILP = 4                       ! Integer long precision
 
-end module definitions
+!end module definitions
 
 
 ! ============================================================================
@@ -61,9 +61,9 @@ end module definitions
   !            Jan 2005, explicit form of max_i1b because of ifc 8.1.021
   !            June 2005, redefine i8b as 16 digit integer because of Nec f90 compiler
 
-module healpix_types
+!module healpix_types
 ! Include definitions module for universal definition of DP, PR, SP
-  use definitions
+!  use definitions
 
   INTEGER, PARAMETER, public :: i8b = SELECTED_INT_KIND(16)
   INTEGER, PARAMETER, public :: i4b = SELECTED_INT_KIND(9)
@@ -85,9 +85,9 @@ module healpix_types
   ! Numerical Constant (Double precision)
   REAL(kind=dp), PARAMETER, public :: QUARTPI=0.785398163397448309615660845819875721049_dp
   REAL(kind=dp), PARAMETER, public :: HALFPI= 1.570796326794896619231321691639751442099_dp
-  REAL(kind=dp), PARAMETER, public :: PI    = 3.141592653589793238462643383279502884197_dp
-  REAL(kind=dp), PARAMETER, public :: TWOPI = 6.283185307179586476925286766559005768394_dp
-  REAL(kind=dp), PARAMETER, public :: FOURPI=12.56637061435917295385057353311801153679_dp
+!  REAL(kind=dp), PARAMETER, public :: PI    = 3.141592653589793238462643383279502884197_dp
+!  REAL(kind=dp), PARAMETER, public :: TWOPI = 6.283185307179586476925286766559005768394_dp
+!  REAL(kind=dp), PARAMETER, public :: FOURPI=12.56637061435917295385057353311801153679_dp
   REAL(kind=dp), PARAMETER, public :: SQRT2 = 1.41421356237309504880168872420969807856967_dp
 !  REAL(kind=dp), PARAMETER, public :: EULER = 0.5772156649015328606065120900824024310422_dp
   REAL(kind=dp), PARAMETER, public :: SQ4PI_INV = 0.2820947917738781434740397257803862929220_dp
@@ -138,18 +138,18 @@ module healpix_types
 !#endif
 
 
-END MODULE healpix_types
+!END MODULE healpix_types
 
 ! ============================================================================
 ! ============================================================================
 ! ============================================================================
 ! ============================================================================
-module healpix_module
+!module healpix_module
 
 
 !T.Bisbas
-  use definitions
-  use healpix_types
+!  use definitions
+!  use healpix_types
   integer(kind=i4b):: ns_max                      ! ..
   integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
   integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
@@ -160,6 +160,6 @@ module healpix_module
 
   real(kind=DP), allocatable :: vectors(:,:) ! Healpix rays
   integer(kind=i4b)::level,nrays,nside,ipix
-END MODULE healpix_module
+END MODULE healpix_guts
 
 #endif

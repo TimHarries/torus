@@ -14,7 +14,9 @@ use amr_mod
 use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
-use definitions
+!use definitions
+use healpix_guts
+use pdr_utils_mod
 !use healpix_module
 use vector_mod
 #ifdef MPI
@@ -38,13 +40,18 @@ subroutine PDR_MAIN(grid)
   use nrayshealpix
   implicit none
   type(gridtype) :: grid
+  real(double), allocatable :: rate(:), alpha(:), beta(:), gamma(:)
+  real(double), allocatable :: rtmin(:), rtmax(:)
+  integer, allocatable :: duplicate(:)
+  character(len=10), allocatable :: product(:,:), reactant(:,:)
 
 
   call donrayshealpix()
 
 !set up the data/allocate what needs allocated
   call writeInfo("Setting up for PDR calculation.", TRIVIAL)
-  call setupPDR(grid)
+  call setupPDR(grid, reactant, product, alpha, beta, gamma, &
+       rate, duplicate, rtmin, rtmax)
 
 !do the ray casting
 #ifdef MPI
@@ -55,6 +62,9 @@ subroutine PDR_MAIN(grid)
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
   call iniTempGuessMPI(grid%octreeroot)
+  call writeInfo("Calculating reaction rates in each cell.", TRIVIAL)
+  call callcalculateReactionRatesMPI(grid%octreeroot, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
 
 #else
   call writeInfo("Casting rays over grid.", TRIVIAL)
@@ -73,6 +83,56 @@ end subroutine PDR_MAIN
 
 
 #ifdef MPI
+recursive subroutine callCalculateReactionRatesMPI(thisOctal, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+  real(double) :: rate(:), alpha(:), beta(:), gamma(:)
+  real(double) :: rtmin(:), rtmax(:)
+  integer :: duplicate(:)
+  character(len=10) :: product(:,:), reactant(:,:)
+  integer :: nreac
+  type(octal), pointer :: thisOctal, child
+  integer :: subcell, j, nrays
+  integer :: NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NSPEC
+
+  nreac = 33
+  nrays = nray_func() 
+!  print *, "PRE ", nreac
+!  print *, "PRENRAY ", nrays
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call callCalculateReactionRatesMPI(child, reactant, &
+                   product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+!        call findsubcelllocal(thisOctal, subcell)
+        if(.not.thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+           call CALCULATE_REACTION_RATES(thisOctal%tLast(subcell),thisOctal%Dust_T(subcell), &
+                thisOctal%radsurface(subcell, :),thisOctal%AV(subcell, :),thisOctal%thisColRho(subcell, :, :), &
+                &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
+                &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays)        
+           if(myrankglobal == 1) then
+              print *, RATE(1:10)
+              print *, NRGR, NRH2, NRHD
+              print *, NRCO, NRCI, NRSI
+              stop
+           end if
+        end if
+     end if
+  end do
+
+end subroutine callCalculateReactionRatesMPI
+
+
+
+
 subroutine rayTraceMPI(grid)
 
   implicit none
@@ -101,7 +161,7 @@ end subroutine rayTraceMPI
 recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
 !  use mpi
   use inputs_mod, only : hlevel, maxdepthamr
-  use healpix_module, only : vectors, nrays
+!  use healpix_module, only : vectors, nrays
   implicit none
   
   type(gridtype) :: grid
@@ -111,8 +171,8 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal, rho, uvx, uvy, uvz, HplusFrac
-  integer ::  i, ncontributed!, k
-
+  integer ::  i, ncontributed, k
+  real(double) :: abundanceArray(1:33)
 
 
   do subcell = 1, thisoctal%maxchildren
@@ -156,7 +216,8 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
            do while (inOctal(grid%octreeRoot, testPosition))
               
               tval = 0.d0
-              call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval)  
+              call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
+                   abundancearray) 
 
 
               if(Hplusfrac > 0.9d0) then
@@ -170,6 +231,11 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
               end if
               
               thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
+              do k = 1, 33
+                 thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
+                      abundancearray(k)*tval*1.d10*soctal%rho(subcell)/mhydrogen                 
+              enddo
+
 
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
            end do
@@ -215,16 +281,11 @@ end do
 end subroutine castAllRaysOverGridMPI
 #endif
 
-integer function nray_func()
-  use inputs_mod, only : hlevel
-  integer :: nside
-  nside = 2**hlevel
-  nray_func = 12*nside**2
-end function nray_func
+
 !This is the main routine that loops over the grid and does the ray casting
 recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   use inputs_mod, only : hlevel, maxdepthamr
-  use healpix_module, only : vectors, nrays
+!  use healpix_module, only : vectors, nrays
   implicit none
   
   type(gridtype) :: grid
@@ -306,7 +367,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
               !loop over all species
               do k = 1, 33
                 thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
-                     thisOctal%abundance(subcell, k)*tval*1.d10*soctal%rho(subcell)/mhydrogen
+                     sOctal%abundance(ssubcell, k)*tval*1.d10*soctal%rho(subcell)/mhydrogen
                  
               enddo
 !              print *, "RAY ", I, "HAS"
@@ -366,7 +427,7 @@ end subroutine castAllRaysOverGrid
 subroutine fireTestRays(grid)
   use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
   use inputs_mod, only : hlevel, maxdepthamr
-  use healpix_module, only : vectors, nrays
+!  use healpix_module, only : vectors, nrays
 
   implicit none
 
@@ -493,7 +554,7 @@ end subroutine fireTestRays
 !-----------------------------------------------------------------------
 recursive SUBROUTINE CALCULATE_DUST_TEMPERATURES(thisOctal)
 
-   USE HEALPIX_TYPES
+!   USE HEALPIX_TYPES
 !   USE MAINCODE_MODULE
 
    IMPLICIT NONE
@@ -655,7 +716,7 @@ end subroutine iniTempGuessMPI
 
 recursive SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI(thisOctal)
 
-   USE HEALPIX_TYPES
+!   USE HEALPIX_TYPES
 !   USE MAINCODE_MODULE
 
    IMPLICIT NONE
@@ -741,117 +802,7 @@ END SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI
 #endif
 
 
-!=======================================================================
-!
-!  Calculate the rate of molecular hydrogen (H2) formation on grains
-!  using the treatment of Cazaux & Tielens (2002, ApJ, 575, L29) and
-!  Cazaux & Tielens (2004, ApJ, 604, 222).
-!
-!-----------------------------------------------------------------------
-FUNCTION H2_FORMATION_RATE(GAS_TEMPERATURE,GRAIN_TEMPERATURE) RESULT(RATE)
 
-!   USE DEFINITIONS
-!   USE HEALPIX_TYPES
-   IMPLICIT NONE
-
-   REAL(double) :: RATE
-   REAL(double), INTENT(IN) :: GAS_TEMPERATURE,GRAIN_TEMPERATURE
-
-   REAL(double) :: THERMAL_VELOCITY,STICKING_COEFFICIENT,TOTAL_CROSS_SECTION
-   REAL(double) :: FLUX,FACTOR1,FACTOR2,EPSILON
-   REAL(double) :: SILICATE_FORMATION_EFFICIENCY,GRAPHITE_FORMATION_EFFICIENCY
-   REAL(double) :: SILICATE_CROSS_SECTION,SILICATE_MU,SILICATE_E_S,SILICATE_E_H2
-   REAL(double) :: SILICATE_E_HP,SILICATE_E_HC,SILICATE_NU_H2,SILICATE_NU_HC
-   REAL(double) :: GRAPHITE_CROSS_SECTION,GRAPHITE_MU,GRAPHITE_E_S,GRAPHITE_E_H2
-   REAL(double) :: GRAPHITE_E_HP,GRAPHITE_E_HC,GRAPHITE_NU_H2,GRAPHITE_NU_HC
-
-!  Mean thermal velocity of hydrogen atoms (cm s^-1)
-   THERMAL_VELOCITY=1.45D5*SQRT(GAS_TEMPERATURE/1.0D2)
-
-!  Calculate the thermally averaged sticking coefficient of hydrogen atoms on grains,
-!  as given by Hollenbach & McKee (1979, ApJS, 41, 555, eqn 3.7)
-   STICKING_COEFFICIENT=1.0D0/(1.0D0+0.04D0*SQRT(GAS_TEMPERATURE+GRAIN_TEMPERATURE) &
-                    & + 0.2D0*(GAS_TEMPERATURE/1.0D2)+0.08D0*(GAS_TEMPERATURE/1.0D2)**2)
-
-   FLUX=1.0D-10 ! Flux of H atoms in monolayers per second (mLy s^-1)
-
-   TOTAL_CROSS_SECTION=6.273D-22 ! Total mixed grain cross section per H nucleus (cm^-2/nucleus)
-   SILICATE_CROSS_SECTION=8.473D-22 ! Silicate grain cross section per H nucleus (cm^-2/nucleus)
-   GRAPHITE_CROSS_SECTION=7.908D-22 ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
-
-!  Silicate grain properties
-   SILICATE_MU=0.005D0   ! Fraction of newly formed H2 that stays on the grain surface
-   SILICATE_E_S=110.0D0  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
-   SILICATE_E_H2=320.0D0 ! Desorption energy of H2 molecules (K)
-   SILICATE_E_HP=450.0D0 ! Desorption energy of physisorbed H atoms (K)
-   SILICATE_E_HC=3.0D4   ! Desorption energy of chemisorbed H atoms (K)
-   SILICATE_NU_H2=3.0D12 ! Vibrational frequency of H2 molecules in surface sites (s^-1)
-   SILICATE_NU_HC=1.3D13 ! Vibrational frequency of H atoms in their surface sites (s^-1)
-
-   FACTOR1=SILICATE_MU*FLUX/(2*SILICATE_NU_H2*EXP(-SILICATE_E_H2/GRAIN_TEMPERATURE))
-
-   FACTOR2=1.0D0*(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2 &
-        & /4.0D0*EXP(-SILICATE_E_S/GRAIN_TEMPERATURE)
-
-   EPSILON=1.0D0/(1.0D0+SILICATE_NU_HC/(2*FLUX)*EXP(-1.5*SILICATE_E_HC/GRAIN_TEMPERATURE) &
-              & *(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2)
-
-   SILICATE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
-
-!  Graphite grain properties
-   GRAPHITE_MU=0.005D0   ! Fraction of newly formed H2 that stays on the grain surface
-   GRAPHITE_E_S=260.0D0  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
-   GRAPHITE_E_H2=520.0D0 ! Desorption energy of H2 molecules (K)
-   GRAPHITE_E_HP=800.0D0 ! Desorption energy of physisorbed H atoms (K)
-   GRAPHITE_E_HC=3.0D4   ! Desorption energy of chemisorbed H atoms (K)
-   GRAPHITE_NU_H2=3.0D12 ! Vibrational frequency of H2 molecules in surface sites (s^-1)
-   GRAPHITE_NU_HC=1.3D13 ! Vibrational frequency of H atoms in their surface sites (s^-1)
-
-   FACTOR1=GRAPHITE_MU*FLUX/(2*GRAPHITE_NU_H2*EXP(-GRAPHITE_E_H2/GRAIN_TEMPERATURE))
-
-   FACTOR2=1.0D0*(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2 &
-        & /4.0D0*EXP(-GRAPHITE_E_S/GRAIN_TEMPERATURE)
-
-   EPSILON=1.0D0/(1.0D0+GRAPHITE_NU_HC/(2*FLUX)*EXP(-1.5*GRAPHITE_E_HC/GRAIN_TEMPERATURE) &
-              & *(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2)
-
-   GRAPHITE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
-
-!!$!  Use the tradional rate, with a simple temperature dependence based on the
-!!$!  thermal velocity of the H atoms in the gas and neglecting any temperature
-!!$!  dependency of the formation and sticking efficiencies
-!!$   RATE=3.0D-18*SQRT(GAS_TEMPERATURE)
-
-!!$!  Use the treatment of de Jong (1977, A&A, 55, 137, p140 right column).
-!!$!  The second exponential dependence on the gas temperature reduces the
-!!$!  efficiency at high temperatures and so prevents runaway H2 formation
-!!$!  heating at high temperatures:
-!!$!
-!!$!  k_H2 = 3E-18 * T^0.5 * exp(-T/1000)   [cm3/s]
-!!$!
-!!$   RATE=3.0D-18*SQRT(GAS_TEMPERATURE)*EXP(-(GAS_TEMPERATURE/1.0D3))
-
-!!$!  Use the treatment of Tielens & Hollenbach (1985, ApJ, 291, 722, eqn 4)
-!!$   RATE=0.5D0*THERMAL_VELOCITY*TOTAL_CROSS_SECTION*STICKING_COEFFICIENT
-
-!  Use the treatment of Cazaux & Tielens (2002, ApJ, 575, L29) and
-!  Cazaux & Tielens (2004, ApJ, 604, 222)
-   RATE=0.5D0*THERMAL_VELOCITY*(SILICATE_CROSS_SECTION*SILICATE_FORMATION_EFFICIENCY &
-    & + GRAPHITE_CROSS_SECTION*GRAPHITE_FORMATION_EFFICIENCY)*STICKING_COEFFICIENT
-
-!!$!  Use the expression given by Markus Rollig during the February 2012 Leiden workshop
-!!$   RATE=0.5D0*THERMAL_VELOCITY &
-!!$      & *(SILICATE_CROSS_SECTION/((1.0D0 + 6.998D24/EXP(1.5*SILICATE_E_HC/GRAIN_TEMPERATURE)) &
-!!$      & *(1.0D0 + 1.0D0/(EXP(SILICATE_E_HP/GRAIN_TEMPERATURE) &
-!!$      & *(0.427D0/EXP((SILICATE_E_HP-SILICATE_E_S)/GRAIN_TEMPERATURE) + 2.5336D-14*SQRT(GRAIN_TEMPERATURE))))) &
-!!$      & + GRAPHITE_CROSS_SECTION/((1.0D0 + 4.610D24/EXP(1.5*GRAPHITE_E_HC/GRAIN_TEMPERATURE)) &
-!!$      & *(1.0D0 + 1.0D0/(EXP(GRAPHITE_E_HP/GRAIN_TEMPERATURE) &
-!!$      & *(0.539D0/EXP((GRAPHITE_E_HP-GRAPHITE_E_S)/GRAIN_TEMPERATURE) + 5.6334D-14*SQRT(GRAIN_TEMPERATURE)))))) &
-!!$      & *STICKING_COEFFICIENT
-
-   RETURN
-END FUNCTION H2_FORMATION_RATE
-!=======================================================================
 
 end module pdr_mod
 #endif

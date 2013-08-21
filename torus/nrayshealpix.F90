@@ -11,8 +11,10 @@ contains
 subroutine donrayshealpix()
 !  use definitions
   use healpix
+  use constants_mod
 !  use healpix_types
-  use healpix_module
+  use healpix_guts
+!  use healpix_module
   use inputs_mod, only : hlevel
   
   implicit none

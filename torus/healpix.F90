@@ -18,9 +18,10 @@ contains
     !          iy = 2*ix
     !     ix + iy in {0, 128**2 -1}
     !=======================================================================
-    use definitions
-    use healpix_types
-    use healpix_module, only : x2pix, y2pix
+!    use definitions
+!    use healpix_types
+!    use healpix_module, only : x2pix, y2pix
+   use healpix_guts
     implicit none
 
 !    REAL(KIND=DP), INTENT(INOUT) :: x2pix(0:1023),y2pix(0:1023)
@@ -52,9 +53,10 @@ contains
 
 ! ============================================================================
   subroutine pix2vec_nest(nside, ipix, pix2x, pix2y, vector, vertex)
-    use definitions
-    use healpix_types
-    use healpix_module, only : ns_max
+!    use definitions
+!    use healpix_types
+!    use healpix_module, only : ns_max
+    use healpix_guts
     implicit none
     !=======================================================================
     !     renders vector (x,y,z) coordinates of the nominal pixel center
@@ -230,9 +232,11 @@ if (abs(vector(1)).lt.1d-10) vector(1)=0.0_dp
   end subroutine pix2vec_nest
  
 subroutine mk_pix2xy()
-   use definitions
-   use healpix_types
-   use healpix_module
+!   use definitions
+!   use healpix_types
+!
+!   use healpix_module
+  use healpix_guts
    implicit none
     !=======================================================================
     !     constructs the array giving x and y in the face from pixel number
@@ -279,8 +283,9 @@ subroutine mk_pix2xy()
     !     North pole is (x,y,z)=(0,0,1)
     !     added by EH, Feb 2000
     !=======================================================================
-    use definitions
-    use healpix_types
+!    use definitions
+!    use healpix_types
+    use healpix_guts
     implicit none
 
     REAL(KIND=DP), INTENT(IN) :: rvec(1:3)
@@ -321,10 +326,11 @@ subroutine mk_pix2xy()
     !     that the treatement of round-off will be consistent
     !     for every resolution
     !=======================================================================
-    use definitions
-    use healpix_types
-    use healpix_module, only : x2pix, y2pix, ns_max
-    implicit none
+!    use definitions
+!    use healpix_types
+ !   use healpix_module, only : x2pix, y2pix, ns_max
+   use healpix_guts
+   implicit none
 
     INTEGER(KIND=I4B), INTENT(IN) :: nside
     INTEGER(KIND=I4B), INTENT(OUT) :: ipix

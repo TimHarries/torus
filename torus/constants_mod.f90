@@ -122,6 +122,7 @@ module constants_mod
   real(double), parameter :: AV_fac = 6.289d-22
   real(double), parameter :: UV_fac = 3.02
   real(double), parameter :: zeta = 5.d-17/1.3d-17 !numerator is hardwired (would be user defined)
+  real(double), parameter :: v_turbPDR = 1.5d5 !cm s-1
 
 end module constants_mod
 

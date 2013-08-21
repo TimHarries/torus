@@ -1,5 +1,6 @@
 module setuppdr_mod
-use healpix_module
+!use healpix_module
+use healpix_guts
 use grid_mod
 implicit none
 
@@ -7,8 +8,10 @@ implicit none
 
 contains
 
-  subroutine setupPDR(grid)
+  subroutine setupPDR(grid, reactant, product, alpha, beta, gamma, &
+       rate, duplicate, rtmin, rtmax)
     use unix_mod, only: unixGetenv
+!    use healpix_guts
 !    use read_input, only: readinput
     implicit none
     type(gridtype) :: grid
@@ -79,14 +82,14 @@ contains
   integer :: nspec
   real(double) :: dummyAbundance(1:33)
   
-  integer, parameter :: nreac=329
-  real, allocatable :: rate(:), alpha(:), beta(:), gamma(:)
-  real, allocatable :: rtmin(:), rtmax(:)
+  integer :: nreac
+  real(double), allocatable :: rate(:), alpha(:), beta(:), gamma(:)
+  real(double), allocatable :: rtmin(:), rtmax(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
 
 !  real(kind=dp), allocatable :: C12O_LINE(:,:,:)!,C12O_POP(:,:)
-
+  nreac = 329
   cii_nlev = 5
   cii_ntemp = 18
   ci_nlev = 5
@@ -275,8 +278,9 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
       SUBROUTINE READ_RATES(NREAC,REAC,PROD,ALPHA,BETA,GAMMA,RATE,&
                            &DUPLICATE,RTMIN,RTMAX)
 !T.Bell
-use definitions
-use healpix_types
+!use definitions
+!use healpix_types
+!        use healpix_guts
 !use pdr_mod
 use unix_mod, only: unixGetenv
 !use maincode_module, only : nreac, duplicate, alpha, beta, gamma, rate, &
@@ -285,7 +289,7 @@ use unix_mod, only: unixGetenv
       IMPLICIT NONE
       INTEGER, intent(in) :: NREAC
       integer, intent(out) :: DUPLICATE(1:nreac)
-      real, intent(out) :: ALPHA(1:nreac),BETA(1:nreac),&
+      real(double), intent(out) :: ALPHA(1:nreac),BETA(1:nreac),&
               &GAMMA(1:nreac),RATE(1:nreac),RTMIN(1:nreac),RTMAX(1:nreac)
       CHARACTER(len=10), intent(out) :: REAC(1:nreac,1:3),PROD(1:nreac,1:4)
 
@@ -418,8 +422,10 @@ use unix_mod, only: unixGetenv
       SUBROUTINE READ_SPECIES(NSPEC,ABUNDANCE)
 
 !T.Bell
-use definitions
-use healpix_types
+!use definitions
+!
+!use healpix_types
+!use healpix_guts
 !use pdr_mod
 use unix_mod, only: unixGetenv
 !use maincode_module, only : nspec, abundance, mass, species
@@ -642,8 +648,8 @@ use unix_mod, only: unixGetenv
         
         !T.Bell
         
-        use healpix_types
-        
+!        use healpix_types
+!        use healpix_guts
         implicit none
         INTEGER(kind=I4B), INTENT(IN)::NLEV
         INTEGER(kind=I4B), INTENT(IN)::NTEMP
