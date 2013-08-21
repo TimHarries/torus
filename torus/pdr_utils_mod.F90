@@ -269,7 +269,8 @@ end function nray_func
       integer :: I,J,K!, nreac, nrays
 
       REAL(double), parameter :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
-      real(double) :: NH2, NHD, NCO, NC, NS
+!      real(double) :: NH2, NHD, NCO, NC, NS
+      integer ::NH2, NHD, NCO, NC, NS
 !#ifdef MOCASSIN
 !      real(double) :: RADSURFTOT
 !#endif

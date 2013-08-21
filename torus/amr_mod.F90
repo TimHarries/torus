@@ -729,6 +729,9 @@ CONTAINS
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
 
+!    CASE("toydisc")
+!       call calcToyDiscDensity(thisOctal, subcell, grid)
+
     CASE("lexington")
        CALL calcLexington(thisOctal, subcell, grid)
        if (thisOctal%nDepth > 1) then
@@ -3813,6 +3816,14 @@ CONTAINS
              split = .false.
           endif
           
+       case("toydisc")
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          else
+             split = .false.
+          endif
+
+
        case("point")
           if (thisOctal%nDepth < mindepthamr) then
              split = .true.
@@ -4533,6 +4544,8 @@ CONTAINS
                     
           !      write(*,*) nparticle,thisOctal%nDepth,subcell
 #endif
+
+
 
        case("ggtau")
           ! used to be 5
@@ -6259,7 +6272,17 @@ endif
   end subroutine calcPathTestDensity
 
 
+!  subroutine calcToyDiscDensity(thisOctal, subcell, grid)
+!    type(octal) :: thisOctal
+!    integer :: subcell
+!    type(gridtype) :: grid
+!
+!!
+!
+!  end subroutine calcToyDiscDensity
 
+!·         I also downloaded the zip file and got an error message that read “The Compressed (zipped) Folder is invalid or corrupted.” I’m not sure if this is because of the file itself or something to do with the way I downloaded it.
+!o   Pete, is this something you guys can check?
 
   subroutine calcLexington(thisOctal,subcell,grid)
 
