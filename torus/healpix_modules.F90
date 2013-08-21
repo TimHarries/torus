@@ -151,16 +151,16 @@ MODULE healpix_guts
 !  use definitions
 !  use healpix_types
   integer(kind=i4b):: ns_max                      ! ..
-  integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
-  integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
-  real(kind=DP) :: x2pix(0:1023)          ! ..
-  real(kind=DP) :: y2pix(0:1023)          ! ..
-  real(kind=DP), allocatable :: vertex(:,:)      ! ..
+ ! integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
+!  integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
+!  real(kind=DP) :: x2pix(0:1023)          ! ..
+!  real(kind=DP) :: y2pix(0:1023)          ! ..
+!  real(kind=DP), allocatable :: vertex(:,:)      ! ..
 !  real(kind=DP), allocatable :: vector(:)      ! ..
 
   real(kind=DP), allocatable :: vectors(:,:) ! Healpix rays
 !  integer(kind=i4b)::level,nrays,nside,ipix
-  integer(kind=i4b)::level,ipix
+  integer(kind=i4b)::level!,ipix
 END MODULE healpix_guts
 
 #endif
