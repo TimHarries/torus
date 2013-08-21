@@ -171,7 +171,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal, rho, uvx, uvy, uvz, HplusFrac
-  integer ::  i, ncontributed, k
+  integer ::  i, ncontributed, k, nrays
   real(double) :: abundanceArray(1:33)
 
 
@@ -295,7 +295,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal
-  integer ::  i, ncontributed, k
+  integer ::  i, ncontributed, k, nrays
 
 
 
@@ -436,7 +436,7 @@ subroutine fireTestRays(grid)
   integer :: subcell
   type(octal), pointer :: thisOctal
   real(double) :: x, y, z, tVal, totalLength, totalRho
-  integer :: nside, i, ier
+  integer :: nside, i, ier, nrays
 
 
   nside = 2**hlevel

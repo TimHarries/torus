@@ -20,7 +20,9 @@ subroutine donrayshealpix()
   implicit none
 
   integer :: i
+
   real(kind=dp) :: vector(1:3)
+  integer(kind=i4b) :: nside, nrays
   level=hlevel !<---- ONLY THIS IS NEEDED FOR INPUT PARAMETERS
   nside=2**level
   nrays = 12*nside**2

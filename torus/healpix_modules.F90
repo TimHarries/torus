@@ -159,7 +159,8 @@ MODULE healpix_guts
 !  real(kind=DP), allocatable :: vector(:)      ! ..
 
   real(kind=DP), allocatable :: vectors(:,:) ! Healpix rays
-  integer(kind=i4b)::level,nrays,nside,ipix
+!  integer(kind=i4b)::level,nrays,nside,ipix
+  integer(kind=i4b)::level,ipix
 END MODULE healpix_guts
 
 #endif
