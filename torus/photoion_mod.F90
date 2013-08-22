@@ -34,7 +34,7 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
-    use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation
+    use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation, dustPhysics
     use inputs_mod, only : uv_vector
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
@@ -206,6 +206,10 @@ contains
        close(lun_convfile)
     end if
 
+    call setMinDensity(grid%octreeRoot, 1.d-25)
+    call resetNH(grid%octreeRoot)
+    call ionizeGrid(grid%octreeRoot)
+!    call setTemperature(grid%octreeRoot, 8000.)
 
 ! Remove dust from around the source, required in addition to the outflow condition
     if (variableDustSublimation) then
@@ -239,7 +243,7 @@ contains
 
 
        nCellsInDiffusion = 0
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
@@ -458,7 +462,7 @@ contains
 
     !$OMP PARALLEL DEFAULT(NONE) &
     !$OMP PRIVATE(ioctal,i, thisOctal) &
-    !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, epsOverDeltaT) &
+    !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, epsOverDeltaT, niter) &
     !$OMP REDUCTION(+:sumDeltaT, numDeltaT, sumDeltaNe, numDeltaNe)
                  
     !$OMP DO SCHEDULE(STATIC)
@@ -466,11 +470,15 @@ contains
 
        thisOctal => octalArray(iOctal)%content
 
-       do i = 1 , 3
-          call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, sumDeltaNe, numDeltaNe)
-          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT, sumDeltaT, numDeltaT)
-       enddo
-
+!       if (niter > 5) then
+          do i = 1 , 3
+             call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, sumDeltaNe, numDeltaNe)
+             call calculateThermalBalance(grid, thisOctal, epsOverDeltaT, sumDeltaT, numDeltaT)
+          enddo
+!       else
+!          numDeltaT = 1; sumDeltaT = 0.
+!          call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, sumDeltaNe, numDeltaNe)
+!       endif
     enddo
     !$OMP END DO
     !$OMP BARRIER
@@ -537,7 +545,7 @@ contains
          write(*,*) "Finished calculating ionization and thermal equilibria"
 
        if (doTuning) call tune(6, "Temperature/ion corrections")
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot,taudiff)
+       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot,taudiff)
 
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
@@ -547,7 +555,7 @@ contains
 
 
        call solveArbitraryDiffusionZones(grid)
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, nDiff=nCellsInDiffusion)
+       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, nDiff=nCellsInDiffusion)
 !       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
@@ -565,6 +573,7 @@ contains
        call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)
        write(*,'(a20,2f12.4)') "H beta :",luminosity1/1.e37,luminosity1/2.05e37
        fac = luminosity1
+       if (fac /= 0.) then
        
 
        call getForbiddenLineLuminosity(grid, "N II", 1.22d6, luminosity1)
@@ -628,7 +637,7 @@ contains
        call getForbiddenLineLuminosity(grid, "S III", 9069.d0, luminosity2)
        write(*,'(a20,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
     endif
-
+ endif
 #ifdef MPI
 ! Make sure the output above has finished writing before proceeding
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -963,6 +972,50 @@ end subroutine photoIonizationloop
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine setTemperature(thisOctal, t)
+  type(octal), pointer   :: thisOctal
+  real :: t
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setTemperature(child, t)
+                exit
+             end if
+          end do
+       else
+          thisOctal%temperature(subcell) = t
+       endif
+    enddo
+  end subroutine setTemperature
+
+  recursive subroutine setMinDensity(thisOctal, rho)
+  type(octal), pointer   :: thisOctal
+  real(double) :: rho
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setMinDensity(child, rho)
+                exit
+             end if
+          end do
+       else
+          thisOctal%rho(subcell) = max(thisOctal%rho(subcell),rho)
+       endif
+    enddo
+  end subroutine setMinDensity
 
   recursive subroutine getHbetaluminosity(thisOctal, grid, luminosity)
   type(octal), pointer   :: thisOctal

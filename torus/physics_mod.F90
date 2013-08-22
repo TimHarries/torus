@@ -78,6 +78,7 @@ contains
     use surface_mod
     use source_mod
     use inputs_mod
+    use vtk_mod
     type(GRIDTYPE) :: grid
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
@@ -310,6 +311,8 @@ contains
        endif
 
     endif
+    call writeVtkFile(nsource, source, "sources_at_setup.vtk")
+
   end subroutine setupSources
 
   subroutine doPhysics(grid)

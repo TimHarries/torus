@@ -12439,7 +12439,7 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission
+    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
@@ -12594,50 +12594,53 @@ end function readparameterfrom2dmap
 
     if (PRESENT(kappaSca)) then
        kappaSca = 0.
-       IF (.NOT.PRESENT(lambda)) THEN
-          if (grid%oneKappa) then
+       if (dustPhysics) then
+          IF (.NOT.PRESENT(lambda)) THEN
+             if (grid%oneKappa) then
+                kappaSca = 0.
+                
+                if(ndusttype .eq. 1) then
+                   kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell)  * thisOctal%dustTypeFraction(subcell, 1)
+                   if (present(debug)) write(*,*) "kappasca1 ",kappaSca, oneKappaScaT(ilambda,1), & 
+                        thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,1)
+                else
+                   do i = 1, nDustType
+                      kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda) * &
+                           thisOctal%rho(subcell)
+                      if (present(debug)) write(*,*) "kappasca2 ",kappaSca, grid%oneKappaSca(i,ilambda), &
+                           thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,i)
+                      
+                   enddo
+                endif
+             else 
+                ! For line computation (without dust).
+                ! Needs modification for a model which include gas and dust here.
+                ! This is a temporarily solution
+                if (lineEmission) then
+                   kappaSca = thisOctal%kappaSca(subcell,1)
+                else
+                   kappaSca = thisOctal%kappaSca(subcell,iLambda)
+                endif
+             end if
+          else
              kappaSca = 0.
-             
-             if(ndusttype .eq. 1) then
-                kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell)  * thisOctal%dustTypeFraction(subcell, 1)
-                if (present(debug)) write(*,*) "kappasca1 ",kappaSca, oneKappaScaT(ilambda,1), & 
-                     thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,1)
-             else
-                do i = 1, nDustType
-                   kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell)
-                   if (present(debug)) write(*,*) "kappasca2 ",kappaSca, grid%oneKappaSca(i,ilambda), &
-                        thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,i)
-
-                enddo
-             endif
-          else 
-             ! For line computation (without dust).
-             ! Needs modification for a model which include gas and dust here.
-             ! This is a temporarily solution
-             if (lineEmission) then
-                kappaSca = thisOctal%kappaSca(subcell,1)
-             else
-                kappaSca = thisOctal%kappaSca(subcell,iLambda)
-             endif
-          end if
-       else
-          kappaSca = 0.
-          itemp = ilambda
-          if (ilambda == grid%nLambda) itemp = itemp - 1
-          do i = 1, nDustType
-             if (grid%nLambda == 1) then
-                kappaSca = kappaSca +  thisOctal%dustTypeFraction(subcell, i) * &
-                     grid%oneKappaSca(i,1) * thisOctal%rho(subcell)
-             else
-                kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
-                     logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
-                     grid%oneKappaSca(i,itemp)*thisOctal%rho(subcell), &
-                     grid%oneKappaSca(i,itemp+1)*thisOctal%rho(subcell))
-             endif
-          enddo
+             itemp = ilambda
+             if (ilambda == grid%nLambda) itemp = itemp - 1
+             do i = 1, nDustType
+                if (grid%nLambda == 1) then
+                   kappaSca = kappaSca +  thisOctal%dustTypeFraction(subcell, i) * &
+                        grid%oneKappaSca(i,1) * thisOctal%rho(subcell)
+                else
+                   kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
+                        logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
+                        grid%oneKappaSca(i,itemp)*thisOctal%rho(subcell), &
+                        grid%oneKappaSca(i,itemp+1)*thisOctal%rho(subcell))
+                endif
+             enddo
+          endif
+          kappaSca = kappaSca * frac
+          if (present(debug)) write(*,*) "kappasca xxx ", kappasca
        endif
-       kappaSca = kappaSca * frac
-       if (present(debug)) write(*,*) "kappasca xxx ", kappasca
     endif
     if (PRESENT(kappaScaDust)) kappaScaDust = kappaSca
 
@@ -12668,47 +12671,49 @@ end function readparameterfrom2dmap
           kappaAbs = 0.
           itemp = ilambda
           if (ilambda == grid%nLambda) itemp = itemp - 1
-          if (ndusttype .eq. 1) then
-             if (grid%nLambda == 1) then
-                kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
-                     grid%oneKappaAbs(1,1) * thisOctal%rho(subcell)
-             else
-                kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
-                  logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
-                  oneKappaAbsT(itemp,1)*thisoctal%rho(subcell), &
-                  oneKappaAbsT(itemp+1,1)*thisoctal%rho(subcell))
-             endif
-
-          else
-             itemp = ilambda
-             if (ilambda == grid%nLambda) itemp = itemp - 1          
-             do i = 1, nDustType
-             !write(*,*) grid%oneKappaAbs(i,iLambda),grid%oneKappaAbs(i,iLambda+1),thisOctal%rho(subcell), &
-             !     dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), ilambda, dble(lambda)
-             !write(*,*) logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
-             !     grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
-             !     grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
-             !write(*,*) i, subcell
-             !write(*,*) nDusttype,kappaAbs 
-             !write(*,*) thisOctal%dustTypeFraction(subcell, i)
+          if (dustPhysics) then
+             if (ndusttype .eq. 1) then
                 if (grid%nLambda == 1) then
-                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
-                        grid%oneKappaAbs(i,1)*thisOctal%rho(subcell)
-
+                   kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
+                        grid%oneKappaAbs(1,1) * thisOctal%rho(subcell)
                 else
-                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
+                   kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
                         logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
-                        grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell), &
-                        grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell))
+                        oneKappaAbsT(itemp,1)*thisoctal%rho(subcell), &
+                        oneKappaAbsT(itemp+1,1)*thisoctal%rho(subcell))
                 endif
-             enddo
+                
+             else
+                itemp = ilambda
+                if (ilambda == grid%nLambda) itemp = itemp - 1          
+                do i = 1, nDustType
+                   !write(*,*) grid%oneKappaAbs(i,iLambda),grid%oneKappaAbs(i,iLambda+1),thisOctal%rho(subcell), &
+                   !     dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), ilambda, dble(lambda)
+                   !write(*,*) logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
+                   !     grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
+                   !     grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
+                   !write(*,*) i, subcell
+                   !write(*,*) nDusttype,kappaAbs 
+                   !write(*,*) thisOctal%dustTypeFraction(subcell, i)
+                   if (grid%nLambda == 1) then
+                      kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
+                           grid%oneKappaAbs(i,1)*thisOctal%rho(subcell)
+                      
+                   else
+                      kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
+                           logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
+                           grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell), &
+                           grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell))
+                   endif
+                enddo
+             endif
           endif
        endif
 !       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
        
        kappaAbs = kappaAbs * frac
 
-   endif
+    endif
    if (PRESENT(kappaAbsDust)) kappaAbsDust = kappaAbs
 
 

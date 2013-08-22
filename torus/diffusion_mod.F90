@@ -114,6 +114,8 @@ contains
        else
           thisOctal%temperature(subcell) = real((thisOctal%eDens(subcell)/arad)**0.25d0)
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
+          if (.not.associated(thisOctal%kappaRoss)) allocate(thisOctal%kappaRoss(1:thisOctal%maxChildren))
+          if (.not.associated(thisOctal%diffusionCoeff)) allocate(thisOctal%diffusionCoeff(1:thisOctal%maxChildren))
           thisOctal%kappaRoss(subcell) = kRos
           thisOctal%diffusionCoeff(subcell) =  cSpeed / max(1.d-20,(kRos * thisOctal%rho(subcell)))
           thisOctal%oldeDens(subcell) = thisOctal%eDens(subcell)
@@ -138,6 +140,8 @@ contains
              end if
           end do
        else
+          if (.not.associated(thisOctal%eDens)) allocate(thisOctal%eDens(1:thisOctal%maxChildren))
+          if (.not.associated(thisOctal%oldeDens)) allocate(thisOctal%oldeDens(1:thisOctal%maxChildren))
           thisOctal%eDens(subcell) = aRad * thisOctal%temperature(subcell)**4
        endif
     enddo

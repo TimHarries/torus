@@ -349,7 +349,7 @@ contains
     real(double) :: udist, umass, utime,  time, uvel, utemp
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h, h2ratio, gmw
     integer :: itype ! splash particle type, different convention to SPHNG 
-    integer :: ipart, icount, iptmass, igas, idead
+    integer :: ipart, icount, iptmass, igas, idead, i
     integer :: nptmass, nghost, nstar, nunknown, nlines
     real(double) :: junkArray(50) !, junk
     character(LEN=1)  :: junkchar
@@ -403,9 +403,13 @@ contains
     call splitintoWords(unitString, unit, nunit)
     call splitIntoWords(nameString, word, nWord)
 
-    if (nUnit /= nWord-1) then
+    if (nUnit /= nWord) then
        call writeFatal("Error reading splash file")
        write(*,*) nUnit, nWord
+       write(*,*) "Words: "
+       do i = 1, nWord
+          write(*,*) trim(word(i)),": ",trim(unit(i))
+       enddo
        stop
     endif
     
@@ -520,7 +524,11 @@ part_loop: do ipart=1, nlines
        u = junkArray(iu)
        rhon = junkArray(irho)
        h = junkArray(ih)
-       itype = int(junkArray(iitype))
+       if (iitype == 0) then
+          itype = 1
+       else
+          itype = int(junkArray(iitype))
+       endif
        gaspartmass = junkArray(imass)
 
        icount = icount + 1
@@ -2226,7 +2234,7 @@ part_loop: do ipart=1, nlines
        if(param .eq. 1) then
           Clusterparameter = VECTOR(0.d0,0.d0,0.d0)
        elseif(param .eq. 2) then
-          Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(1d-30, tcbr, 1d-30)  ! density ! stays as vector for moment
        elseif(param .eq. 3) then 
           Clusterparameter = VECTOR(1d-99, 0.d0, 0.d0)
        endif
@@ -2268,7 +2276,7 @@ part_loop: do ipart=1, nlines
           endif
           return
        elseif(param .eq. 2) then
-          Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density ! stays as vector for moment
+          Clusterparameter = VECTOR(1d-30, tcbr, 1d-30)  ! density ! stays as vector for moment
           return
        elseif(param .eq. 3) then 
           Clusterparameter = VECTOR(1d-99, 0.d0, 0.d0)
@@ -2408,7 +2416,7 @@ part_loop: do ipart=1, nlines
              Clusterparameter = VECTOR(2.d0,2.d0,2.d0)
           endif
        elseif(param .eq. 2) then
-          Clusterparameter = VECTOR(1d-37, tcbr, 1d-37)  ! density, temperature and H2 density 
+          Clusterparameter = VECTOR(1d-30, tcbr, 1d-30)  ! density, temperature and H2 density 
        elseif(param .eq. 3) then
           Clusterparameter = VECTOR(1d-99, 0.d0, 0.d0) ! CO density
        endif
@@ -2692,7 +2700,7 @@ part_loop: do ipart=1, nlines
    enddo
 
    if ( indexWord == 0 ) then 
-      call writeFatal("indexWord: "//inputword//" not found")
+      call writeWarning("indexWord: "//inputword//" not found")
    end if
 
  end function indexWord
