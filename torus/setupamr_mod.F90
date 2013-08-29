@@ -126,6 +126,9 @@ contains
        if (photoIonPhysics) call resizePhotoionCoeff(grid%octreeRoot, grid)
 #endif
 #endif
+
+       if (ttauriwind) call addGlobalDiscWind
+
        call findTotalMemory(grid, globalMemoryFootprint)
 
     else

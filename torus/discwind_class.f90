@@ -162,6 +162,17 @@ contains
     
   end subroutine int_discwind
 
+! Set up the globalDiscWind stored in this module using values from the parameter file
+  subroutine addGlobalDiscWind
+    use inputs_mod, only : DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, limitscalar, ttauriMstar
+    real(double) :: DW_Hdisc
+
+    call new(globalDiscWind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+       DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, dble(ttauriMstar)/msol, DW_Hdisc)
+
+  end subroutine addGlobalDiscWind
+
 
   !==========================================================================
   ! Accessors

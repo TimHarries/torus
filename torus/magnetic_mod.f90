@@ -289,8 +289,7 @@ contains
     type(VECTOR) :: rVec
     real(double) :: accretingArea
     integer :: i ,j
-    integer :: nLines
-    nLines = 100000
+    integer, parameter :: nLines = 1000000
     j = 0
     do i = 1, nLines
        rVec = (ttauriRstar * 1.01d0)*randomUnitVector() 
