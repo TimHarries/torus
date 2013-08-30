@@ -255,7 +255,7 @@ contains
        epsoverdeltat = lcore/dble(nMonte)
 
        call zeroDistanceGrid(grid%octreeRoot)
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call torus_mpi_barrier
 
        write(message,*) "Running loop with ",nmonte," photons. Iteration: ",niter
        call writeInfo(message,IMPORTANT)

@@ -124,7 +124,8 @@ contains
     dumpThisTime = .false.
     i = nsource
 
-    call mpi_barrier(MPI_COMM_WORLD,ierr)
+
+    call torus_mpi_barrier
 
 
     if (nbodyPhysics) then

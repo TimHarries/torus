@@ -403,6 +403,8 @@ contains
     call splitintoWords(unitString, unit, nunit)
     call splitIntoWords(nameString, word, nWord)
 
+    iitype = indexWord("itype",word,nWord)
+
     if ( ((iiType==0).and.(nUnit /= nWord)).or. &
          ((iiType/=0).and.(nUnit /= (nWord-1))) )then
        call writeFatal("Error reading splash file")
@@ -442,7 +444,6 @@ contains
     
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
-    iitype = indexWord("itype",word,nWord)
 
     if (discardSinks) then 
        write(message,*) "Allocating ", npart-nptmass, " gas particles"
