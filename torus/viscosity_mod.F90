@@ -617,7 +617,7 @@ contains
              rVec = subcellCentre(thisOCtal, subcell)
              r = rVec%x * gridDistanceScale
              torque = abs(fVisc%y) * r
-             thisTime = max(1.d4,thisOctal%rhov(subcell)) / max(torque,1.d-20)
+             thisTime = abs(thisOctal%rhov(subcell)) / max(torque,1.d-60)
              dt = min(thisTime, dt)
 
 

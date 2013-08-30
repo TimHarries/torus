@@ -35,7 +35,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation, dustPhysics
-    use inputs_mod, only : uv_vector
+    use inputs_mod, only : uv_vector, readgrid
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -75,7 +75,7 @@ contains
     logical :: converged
     real :: temp
     real(double) :: luminosity1, luminosity2, luminosity3
-    real(double) :: photonPacketWeight, sourceWeight
+    real(double) :: photonPacketWeight, sourceWeight, freqWeight
     real(double) :: fac
 !    logical :: gridConverged
     real(double) :: albedo
@@ -206,15 +206,20 @@ contains
        close(lun_convfile)
     end if
 
-    call setMinDensity(grid%octreeRoot, 1.d-25)
-    call resetNH(grid%octreeRoot)
-    call ionizeGrid(grid%octreeRoot)
+    if (.not.readgrid) then
+       call setMinDensity(grid%octreeRoot, 1.d-25)
+       call resetNH(grid%octreeRoot)
+       call ionizeGrid(grid%octreeRoot)
+    endif
 !    call setTemperature(grid%octreeRoot, 8000.)
 
 ! Remove dust from around the source, required in addition to the outflow condition
     if (variableDustSublimation) then
        call stripDustAway(grid%octreeRoot, 1.0d-20, 2.5d7, sourcePos=source(1)%position)
     end if
+
+    if (nSource > 1) &
+         call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
     call writeVtkFile(grid, "dust_initial.vtk", &
          valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
@@ -250,6 +255,7 @@ contains
        epsoverdeltat = lcore/dble(nMonte)
 
        call zeroDistanceGrid(grid%octreeRoot)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
        write(message,*) "Running loop with ",nmonte," photons. Iteration: ",niter
        call writeInfo(message,IMPORTANT)
@@ -309,8 +315,8 @@ contains
           endif
 
 
-          call getWavelength(thisSource%spectrum, wavelength, photonPacketWeight)
-
+          call getWavelength(thisSource%spectrum, wavelength, freqWeight)
+          photonPacketWeight = photonPacketWeight * freqWeight
 
           thisFreq = cSpeed/(wavelength / 1.e8)
 
@@ -564,7 +570,7 @@ contains
 
 
 
-       if (writeoutput) then
+       if (writeoutput.and.grid%geometry=="lexington") then
        call dumpLexington(grid, epsoverdeltat)
 
        fac = 2.06e37
@@ -677,9 +683,9 @@ contains
       if (niter < 10) nMonte = nMonte * 2
    endif
 
-   if ( grid%geometry == "runaway" ) then 
+!   if ( grid%geometry == "runaway" ) then 
       if ( percent_undersampled > max_undersampled ) nMonte = nMonte * 2
-   end if
+!   end if
 
     call writeAmrGrid("photo_tmp.grid",.false.,grid)
 
@@ -2992,8 +2998,10 @@ end subroutine readHeIIrecombination
     type(VECTOR) :: rHat, observerDirection
     type(IMAGETYPE) :: thisimage
     logical :: escaped, absorbed
+    real(double) :: photonPacketWeight
     real(double) :: totalEmission
     integer :: iLambdaPhoton
+    real :: junk(5)
     real(double) :: lCore, r
     real(double) :: powerPerPhoton
     real(double) :: totalLineEmission
@@ -3029,6 +3037,8 @@ end subroutine readHeIIrecombination
     thisImage = initImage(imageNum)
 
     call setupGridForImage(grid, outputimageType, lambdaLine, iLambdaPhoton, nsource, source, lcore)
+    if (nSource > 1) &
+         call randomSource(source, nSource, iSource, photonPacketWeight, junk, 5, initialize=.true.)
 
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
     totalEmission = totalEmission * 1.d30

@@ -403,7 +403,8 @@ contains
     call splitintoWords(unitString, unit, nunit)
     call splitIntoWords(nameString, word, nWord)
 
-    if (nUnit /= nWord) then
+    if ( ((iiType==0).and.(nUnit /= nWord)).or. &
+         ((iiType/=0).and.(nUnit /= (nWord-1))) )then
        call writeFatal("Error reading splash file")
        write(*,*) nUnit, nWord
        write(*,*) "Words: "

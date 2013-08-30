@@ -3418,7 +3418,6 @@ contains
                endif
             endif
             tag = ADJUSTL(tag)
-!            write(*,*) myrankglobal, " tag ",tag
             if (tag == "OCTALBEGINS") cycle
             if ((tag == "OCTALENDS").and.(runToEndofOctal)) exit
             if (tag == "OCTALENDS") cycle

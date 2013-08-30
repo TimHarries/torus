@@ -2799,7 +2799,7 @@ contains
 
 ! alpha viscosity
 
-!                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
+                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
                    if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after viscous forces"
@@ -2835,11 +2835,12 @@ contains
                 ! now centrifugal term
 
 
-                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
-
-
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
+
+
+                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
+
 
                    if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "u speed over 200 after centrifugal forces"
