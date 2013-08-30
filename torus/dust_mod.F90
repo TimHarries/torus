@@ -655,9 +655,33 @@ contains
 
   end subroutine fillDustUniform
 
+  recursive subroutine setupOrigDustFraction(thisOctal)
+    use inputs_mod, only : nDustType
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupOrigDustFraction(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%origdustTypeFraction(subcell,1:nDustType) =  thisOctal%dustTypeFraction(subcell,1:nDustType) 
+       end if
+    end do
+
+  end subroutine setupOrigDustFraction
+
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only : rSublimation, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, betaDisc
+    use inputs_mod, only : rSublimation, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, &
+         betaDisc, dustSettling
     use octal_mod, only : cellVolume
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -679,24 +703,39 @@ contains
              end if
           end do
        else
+         
 
           thisOctal%DustTypeFraction(subcell,:) = 1.d-10
           rVec = subcellCentre(thisOctal, subcell)
           r = sqrt(rVec%x**2+rVec%y**2)
           z = rVec%z
-          if ( (r > rSublimation).and.(r < rOuter)) then
-             tot = 0.d0
-             do iDust = 1, nDustType
-                thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
-                gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-                fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
-                thisOctal%dustTypeFraction(subcell, iDust) = fac
-                tot = tot + fac
-             enddo
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-                  grainFrac(1:nDustType)
+
+          if (.not.dustSettling) then
+             if ( (r > rSublimation).and.(r < rOuter)) then
+                tot = 0.d0
+                do iDust = 1, nDustType
+                   thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+                   gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                   fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
+                   thisOctal%dustTypeFraction(subcell, iDust) = fac
+                   tot = tot + fac
+                enddo
+                thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
+                     grainFrac(1:nDustType)
+                cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+                dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
+             endif
+
+          else
+
+             thisHeight = dustHeight(1)*(r/(100.d0*autocm/1.d10))**dustBeta(1)
+             fac = exp(-0.5d0*(z/thisHeight)**2)
+             thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+             thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(1)
+             
              cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
              dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
+
 
           endif
 
@@ -887,7 +926,7 @@ contains
           frac = max(frac, smallVal)
 
 
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType) * frac
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%origDustTypeFraction(subcell,1:nDustType) * frac
 
 
           call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
@@ -1022,7 +1061,7 @@ contains
        else
           r = modulus(subcellCentre(thisOctal, subcell) - thisSourcePos)
           if (r < radius) then
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType) * fac
+             thisOctal%dustTypeFraction(subcell,1:nDustType) =  thisOctal%origdustTypeFraction(subcell,1:nDustType) * fac
              thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
              if (.not.associated(thisOctal%oldFrac)) then
                 allocate(thisOctal%oldFrac(1:thisOctal%maxChildren))

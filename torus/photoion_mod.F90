@@ -283,7 +283,7 @@ contains
        !$OMP PRIVATE (imonte, isource, thisSource, rVec, uHat, rHat, tempOctal, tempsubcell) &
        !$OMP PRIVATE (photonPacketWeight, sourceWeight, escaped, subcell, temp, ok, directPhoton, wavelength) &
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
-       !$OMP PRIVATE (thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
+       !$OMP PRIVATE (freqWeight, thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
        !$OMP SHARED (nlambda, writeoutput, UV_vector)
 

@@ -219,6 +219,7 @@ MODULE octal_mod
 
     INTEGER, DIMENSION(:), pointer                :: dusttype => null()
     real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
+    real(double), dimension(:,:), pointer        :: origdustTypeFraction => null() ! dust type fraction (sum=1)
 
 
     REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients

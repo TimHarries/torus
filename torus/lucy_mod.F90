@@ -35,7 +35,7 @@ contains
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
-         normalizeDustFractions, findDustMass
+         normalizeDustFractions, findDustMass, setupOrigDustFraction
     use random_mod
     use gas_opacity_mod, only: atomhydrogenRayXsection
     use gridio_mod, only: writeAMRgrid
@@ -276,6 +276,7 @@ contains
     endif
 
     if (variableDustSublimation) then
+       call setupOrigDustFraction(grid%octreeRoot)
        call stripDustAway(grid%octreeRoot, 1.d-7, 1.d30)
     endif
 
@@ -993,10 +994,16 @@ contains
        endif
 
 
-       call writeVtkFile(grid, tfilename, &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       "/))
-
+       if (nDusttype == 1) then
+          call writeVtkFile(grid, tfilename, &
+               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+               "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       "/))
+       else
+          call writeVtkFile(grid, tfilename, &
+               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+               "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+               "diff       "/))
+       endif
        !    !
        !    ! Write grid structure to a tmp file.
        !    !

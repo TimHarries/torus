@@ -659,6 +659,9 @@ CONTAINS
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        endif
+       if (associated(thisOctal%origdustTypeFraction)) then
+          thisOctal%origdustTypeFraction(subcell,:) = parentOctal%origdustTypeFraction(parentSubcell,:)
+       endif
        if (associated(thisOctal%oldFrac)) thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
        if (associated(thisOctal%ionFrac)) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
@@ -11742,6 +11745,12 @@ end function readparameterfrom2dmap
       dest%dustTypeFraction = source%dustTypeFraction
     END IF  
 
+    IF (ASSOCIATED(source%origdustTypeFraction)) THEN                   
+      ALLOCATE(dest%origdustTypeFraction( SIZE(source%origdustTypeFraction,1), &
+                                      SIZE(source%origdustTypeFraction,2)))
+      dest%origdustTypeFraction = source%origdustTypeFraction
+    END IF  
+
   END SUBROUTINE copyOctalComponents
 
     
@@ -15077,9 +15086,12 @@ end function readparameterfrom2dmap
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
        thisOctal%dustTypeFraction = 0.d0
+       ALLOCATE(thisOctal%origdusttypefraction(thisOctal%maxchildren,  nDustType))
+       thisOctal%origdustTypeFraction = 0.d0
 
        do i = 1, thisOctal%maxChildren
           thisOctal%dustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+          thisOctal%origdustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
        enddo
        thisOctal%inflow = .true.
 
@@ -15164,6 +15176,11 @@ end function readparameterfrom2dmap
        thisOctal%dustTypeFraction = 0.d0
        do i = 1, thisOctal%maxChildren
           thisOctal%dustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+       enddo
+       ALLOCATE(thisOctal%origdusttypefraction(thisOctal%maxchildren,  nDustType))
+       thisOctal%origdustTypeFraction = 0.d0
+       do i = 1, thisOctal%maxChildren
+          thisOctal%origdustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
        enddo
 
        call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
@@ -15370,6 +15387,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%oldFrac)
     call deallocateAttribute(thisOctal%dusttype)
     call deallocateAttribute(thisOctal%dustTypeFraction)
+    call deallocateAttribute(thisOctal%origdustTypeFraction)
     call deallocateAttribute(thisOctal%departCoeff)
     call deallocateAttribute(thisOctal%kappaAbs)
     call deallocateAttribute(thisOctal%kappaSca)

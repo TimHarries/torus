@@ -1217,6 +1217,10 @@ contains
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
 
+       call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
+               "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+
        do i = 1, nDustType
 
 
