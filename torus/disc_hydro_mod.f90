@@ -358,6 +358,7 @@ contains
     use vtk_mod, only: writeVtkFile
     use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass
     use utils_mod, only: locate
+    use dust_mod, only : findDustMass
 
     type(GRIDTYPE) :: grid
     real :: mStar, sigma0
@@ -374,7 +375,7 @@ contains
     real :: massEnvelope
     real :: drho
     integer :: nIter, j
-    real(double) totalMass
+    real(double) totalMass, dustMass
     real(double) :: rSub, betaEstimate, heightEstimate
     real :: temp
     real :: rGapCM
@@ -389,6 +390,20 @@ contains
 
     converged = .false.
     nIter = 1
+
+
+    if (nDusttype >=2 ) then
+       call fillDustSettled(grid, grid%octreeRoot)
+       call writeVtkFile(grid, "settled.vtu", &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+            "diff       "/))
+       dustMass = 0.d0
+       call findDustMass(grid, grid%octreeRoot, dustMass)
+       if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
+
+    endif
+
     totalMass = 0.
     call findTotalMass(grid%octreeRoot, totalMass)
 
@@ -443,6 +458,18 @@ contains
        if(myRankIsZero) &
             write(*,*) "Maximum absolute change in density: ",drho
 
+
+       if (nDusttype >=2 ) then
+          call fillDustSettled(grid, grid%octreeRoot)
+          call writeVtkFile(grid, "settled.vtu", &
+               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+               "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+               "diff       "/))
+          dustMass = 0.d0
+          call findDustMass(grid, grid%octreeRoot, dustMass)
+          if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
+
+       endif
 
 
        totalMass = 0.
@@ -643,6 +670,80 @@ end subroutine verticalHydrostatic
 
   end subroutine setTemperature
 
+
+
+  recursive subroutine fillDustSettled(grid, thisOctal)
+
+    use inputs_mod, only : rinner, router
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rvec
+    real(double) :: height
+    integer :: subcell, i, j
+    real(double), allocatable :: zAxis(:), rho(:), subcellsize(:), normrho(:)
+    real, allocatable :: temperature(:)
+    integer :: nz
+    integer, parameter :: m = 10000
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustSettled(grid, child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          if ((rVec%x > rinner).and.(rVec%x< rOuter)) then
+             allocate(zAxis(m), rho(m), temperature(m), subcellsize(m), normrho(m))
+             call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(rVec%x), 0., nz, 1.)
+             zAxis(1:nz) = zAxis(1:nz) / 1.d10
+             zAxis(1:nz) = zAxis(1:nz)**2
+             normrho(1:nz) = log(rho(1:nz)/rho(1))
+             j = 1
+             do while (normrho(j) > -5.d0)
+                j = j + 1
+             enddo
+             nz  = j - 1
+             
+             call getLocalScaleheight(zAxis, normrho, nz, height)
+
+             thisOctal%dustTypeFraction(subcell,1) = 1.d-30
+             if (thisOctal%rho(subcell) > 1d-30) then
+                thisOctal%dustTypeFraction(subcell, 1) =  &
+                     (grainFrac(1) * rho(1) * exp(-0.5d0 * (rVec%z**2)/((0.6d0 * height)**2)))/thisOctal%rho(subcell)
+             endif
+
+
+             thisOctal%dustTypeFraction(subcell, 2)  = grainfrac(2)
+             thisOctal%origDustTypeFraction(subcell,1:2) = thisOctal%dustTypeFraction(subcell,1:2)
+             deallocate( zAxis, rho, temperature, subcellsize, normrho)
+
+          endif
+       end if
+    end do
+
+  end subroutine fillDustSettled
+
+
+  subroutine getLocalScaleheight(z, rho, nz, height)
+    use utils_mod, only: linfit 
+
+    use utils_mod, only : locate
+    real(double) :: z(:), rho(:), height
+    integer :: nz
+    real(double) :: a, sigmaa, b, sigmab, rcoeff
+    integer :: i
+
+    call LINFIT(z,rho,rho,nz, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
+    height = sqrt(-1.d0/(2.d0*b))
+
+
+  end subroutine getLocalScaleheight
+
   recursive subroutine clearDustToSublimation(thisOctal, rSub)
 
     type(octal), pointer   :: thisOctal
@@ -697,11 +798,12 @@ end subroutine verticalHydrostatic
   subroutine getBetaValue(grid, beta, heightat100AU)
     use inputs_mod, only : rinner, router
     use utils_mod, only: linfit 
+    use dust_mod, only : findDustMass
 
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: beta, heightat100AU
     real(double) :: height(100), r(100)
-    real(double) :: a, sigmaa, b, sigmab, rCoeff, rhoMid, rhoScale
+    real(double) :: a, sigmaa, b, sigmab, rCoeff, rhoMid, rhoScale, dustMass
     real(double), allocatable :: zAxis(:), rho(:), subcellsize(:)
     real, allocatable :: temperature(:)
     integer :: nz
@@ -730,10 +832,13 @@ end subroutine verticalHydrostatic
     call LINFIT(r,height,height,100, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
     heightAt100AU = (10.d0**a) * (100.d0*autocm/1.d10)**b
     beta = b
+    dustMass = 0.d0
+    call findDustMass(grid, grid%octreeRoot, dustMass)
 
     if (writeoutput) then
        write(*,*) "Disc beta value: ",beta
        write(*,*) "Height at 100 AU: ",1.d10*heightAt100AU/autocm
+          write(*,*) "Mass of dust in disc (solar masses): ",dustMass/msol
     endif
   end subroutine getBetaValue
 

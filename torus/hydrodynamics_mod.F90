@@ -2921,7 +2921,7 @@ contains
                 endif
 
 ! alpha viscosity
-!                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
+                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
                    if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
                       write(*,*) "w speed over 200 after viscous forces"

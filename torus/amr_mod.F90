@@ -8704,7 +8704,7 @@ endif
     real(double) :: rhoRing, Tring
 
     rhoRing = 1.d-15
-    rhoAmbient = 1.d-20
+    rhoAmbient = 1.d-18
     tRing = 1.e-7
     tAmbient = 1.e-2
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)

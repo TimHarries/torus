@@ -605,8 +605,8 @@ contains
           if (.not.thisOctal%ghostCell(subcell)) then
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
-!             acc = max(abs(fVisc%x), abs(fVisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
-             acc = max(abs(fVisc%x), 1.d-30)/ thisOctal%rho(subcell)
+             acc = max(abs(fVisc%x), abs(fVisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
+!             acc = max(abs(fVisc%x), 1.d-30)/ thisOctal%rho(subcell)
 
              thisTime = sqrt(smallestCellSize*gridDistanceScale/acc)
              dt = min(thisTime, dt)
@@ -614,11 +614,11 @@ contains
 
 
              
-             rVec = subcellCentre(thisOCtal, subcell)
-             r = rVec%x * gridDistanceScale
-             torque = abs(fVisc%y) * r
-             thisTime = abs(thisOctal%rhov(subcell)) / max(torque,1.d-60)
-             dt = min(thisTime, dt)
+  !           rVec = subcellCentre(thisOCtal, subcell)
+  !           r = rVec%x * gridDistanceScale
+  !           torque = abs(fVisc%y) * r
+  !           thisTime = abs(thisOctal%rhov(subcell)) / max(torque,1.d-60)
+  !           dt = min(thisTime, dt)
 
 
              acc = (thisOctal%rhov(subcell)**2) &
@@ -628,9 +628,9 @@ contains
              dt = min(thisTime, dt)
 
 
-             thisTime = (twoPi*r)/sqrt(bigG*mSol/r)
-             dt = min(thisTime, dt)
-
+ !            thisTime = (twoPi*r)/sqrt(bigG*mSol/r)
+ !            dt = min(thisTime, dt)
+             dt = 1.d30
           endif
        endif
     enddo

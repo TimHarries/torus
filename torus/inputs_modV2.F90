@@ -2050,6 +2050,10 @@ contains
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+
+    call getDouble("tsub", tsub, 1.d0, cLine, fLine, nLines, &
+            "Temperature factor for dust sublimation (K):  ","(a,e12.3,1x,a)", 2000.d0, ok, .false.)
+
     call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
          "Dust sublimation temperature (K): ","(a,f8.2,a)", 0., ok, .false.)
 

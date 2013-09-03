@@ -3364,7 +3364,7 @@ end subroutine writeRadialFile
              tauRad = tempStorage(2)
              exit
           else if (tempStorage(1) < -1.d29) then
-             tauRad = 1.d30
+             tauRad = 0.d0
              exit
           else
              tau = tau + tempStorage(2)

@@ -29,7 +29,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings, mDisc, dusttogas
+    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings, mDisc, dusttogas, dustSettling
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -238,7 +238,7 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if (grid%geometry == "shakara") then
+    if ((.not.dustSettling).and.(grid%geometry == "shakara")) then
        dustMass = 0.d0
        call fillDustShakara(grid, grid%octreeRoot, dustMass)
        call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))

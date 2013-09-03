@@ -331,6 +331,7 @@
   logical :: dustfile
   character(len=80) :: dustfilename(10) ! used in dust_mod, not set !!!
   logical :: variableDustSublimation
+  real(double) :: tSub ! variable dust sublimation temperature factor
   logical :: dustSettling
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile
