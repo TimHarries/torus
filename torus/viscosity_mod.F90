@@ -586,8 +586,8 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    real(double) :: dt, thisTime, acc, r, torque
-    type(VECTOR) :: fVisc, rVec
+    real(double) :: dt, thisTime, acc, r
+    type(VECTOR) :: fVisc
     integer :: subcell, i
   
     do subcell = 1, thisoctal%maxchildren

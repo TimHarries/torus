@@ -736,7 +736,6 @@ end subroutine verticalHydrostatic
     real(double) :: z(:), rho(:), height
     integer :: nz
     real(double) :: a, sigmaa, b, sigmab, rcoeff
-    integer :: i
 
     call LINFIT(z,rho,rho,nz, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
     height = sqrt(-1.d0/(2.d0*b))
