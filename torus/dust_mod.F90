@@ -883,7 +883,7 @@ contains
     integer :: subcell, i
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 1.d0
+    subrange = 5.d0
 
     if (present(minLevel)) then
        smallVal = minLevel
@@ -909,13 +909,18 @@ contains
           else
              sublimationTemp = real(max(700.d0,tSub * thisOctal%rho(subcell)**(1.95d-2)))
           endif
-          if (temperature < sublimationTemp) newFrac = 1.
 
           if (tThresh /= 0.) sublimationTemp = tThresh
 
+          if (temperature < sublimationTemp) newFrac = 1.
+
+
           if (temperature >= sublimationTemp) then
-             newfrac = exp(-dble((temperature-sublimationtemp)/subRange))
+             newfrac = 0.5d0 * exp(-dble((temperature-sublimationtemp)/subRange))
+          else
+             newfrac = 1.d0 - 0.5d0 * exp(dble((temperature-sublimationtemp)/subRange))
           endif
+
 
           newfrac = max(newfrac,smallVal)
 
@@ -935,15 +940,17 @@ contains
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
           if (thisTau > tauMax) then
              frac = tauMax / thisTau 
-             thisOctal%dustTypeFraction(subcell,:) = thisOctal%origdustTypeFraction(subcell,:) * frac
+             thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac
           endif
-
-
+          
+          where (thisOctal%dustTypeFraction(subcell,1:nDustType) < 1.d-20) 
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-20
+          end where
           if (deltaFrac /= 0.) then
              nfrac = nfrac + 1
              totFrac = totFrac + real(abs(deltaFrac))
           endif
-
+          
           thisOctal%oldFrac(subcell) = real(frac)
 
        end if
