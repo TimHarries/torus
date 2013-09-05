@@ -890,7 +890,7 @@ contains
 !                      call writeInfo("done")
                       if (solveVerticalHydro) then
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = thisIsFinalPass)
                       else
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
                               inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)

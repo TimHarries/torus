@@ -13035,6 +13035,9 @@ end function readparameterfrom2dmap
                 if ((grid%geometry.eq."shakara").and.&
                      (sqrt(rVec%x**2+rVec%y**2) > 0.9*rGapInner)) split = .false.
 
+                if ((grid%geometry.eq."shakara").and.&
+                     (sqrt(rVec%x**2+rVec%y**2) > 0.9*rOuter)) split = .false.
+
 
 
                 if (thisOctal%nDepth == maxDepthamr) then
