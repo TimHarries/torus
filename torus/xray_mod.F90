@@ -435,7 +435,7 @@ subroutine printIonParam()
   xi_max = 1.d-3
   open (1, file="ionParam", status="unknown", iostat=ier)
   do while (xi < xi_max)
-     temperature =  calcOwen(xi)
+     temperature =  real(calcOwen(xi))
      write(1, *) xi, temperature
      xi = xi + (xi/10.d0)
   end do

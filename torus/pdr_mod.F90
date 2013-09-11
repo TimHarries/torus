@@ -53,23 +53,26 @@ subroutine PDR_MAIN(grid)
   call setupPDR(grid, reactant, product, alpha, beta, gamma, &
        rate, duplicate, rtmin, rtmax)
 
+  print *, "BETA"
 !do the ray casting
 #ifdef MPI
-  call writeInfo("Casting rays over grid.", TRIVIAL)
+  print *, "GAMMA"
+  call writeInfo("Casting rays over grid MPI.", TRIVIAL)
   call rayTraceMPI(grid)
   call writeVTKfile(grid, "postRayTrace.vtk", valueTypeString=(/"rho       ",&
        "columnRho " /))
 !  stop
   call writeInfo("Done.", TRIVIAL)
-  call writeInfo("Calculating dust temperature.", TRIVIAL)
+  call writeInfo("Calculating dust temperature MPI.", TRIVIAL)
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
   call iniTempGuessMPI(grid%octreeroot)
   call writeInfo("Calculating reaction rates in each cell.", TRIVIAL)
-  call callcalculateReactionRatesMPI(grid%octreeroot, reactant, &
-     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+!  call callcalculateReactionRatesMPI(grid%octreeroot, reactant, &
+!     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
 
 #else
+  print *, "DELTA"
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call castAllRaysOverGrid(grid%octreeRoot, grid)
   call writeInfo("Done.", TRIVIAL)
@@ -147,9 +150,11 @@ subroutine rayTraceMPI(grid)
   if(myrankglobal /= 0) then
      do i = 1, nhydrothreadsglobal
         if(myrankglobal == i) then
+           print *, "rank ", myrankglobal, "casting rays"
            call castAllRaysOverGridMPI(grid%octreeRoot, grid)
            call shutdownserversXRAY_PDR()
         else
+           print *, "rank ", myrankglobal, "serving"
            call raytracingserverPDR(grid)
         end if
      end do            
@@ -204,9 +209,10 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
         thisOctal%av(subcell, :) = 0.d0           
         thisOctal%radsurface(subcell, :) = 0.d0           
         thisOctal%thisColRho(subcell, :, :) = 0.d0
+        print *, "Alpha"
         if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
            ncontributed = 0
-!        do i = 0, nrays-1
+           !        do i = 0, nrays-1
         do i = 1, nrays
 
            rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
@@ -253,7 +259,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
           
        end do
 !       print *, "DONE ONE "
-!       print *, 'ncontributed ', ncontributed
+       print *, 'ncontributed ', ncontributed
        if(ncontributed /= 0) then
 !          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
           thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(ncontributed)
@@ -261,7 +267,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
           thisOctal%UV(subcell) = 0.d0
        end if
 !       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
-       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)!/dble(nrays)
+       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
  !      print *, "AV ", thisOctal%AV(subcell,:)
   !     print *, "UV ", thisOctal%UV(subcell)
        
@@ -269,6 +275,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
 
        if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
     else
+       print *, "DONE NOTHING"
         thisOctal%columnRho(subcell) = 0.d0
         thisOctal%UV(subcell) = 0.d0
         thisOctal%AV(subcell,:) = 0.d0

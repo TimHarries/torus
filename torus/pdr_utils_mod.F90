@@ -294,7 +294,7 @@ end function nray_func
 
       !print *, "NREAC ", NREAC
       DO I=1,NREAC
-         print *, "I is ", I
+!         print *, "I is ", I
 !C        Determine the type of reaction
      !    print *, len(REACTANT(I, 2))
      !    print *, "2 ", REACTANT(I, 2), "FRWFWE"
