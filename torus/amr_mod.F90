@@ -733,7 +733,7 @@ CONTAINS
        CALL calcTestDensity(thisOctal,subcell,grid)
 
     CASE("toydisc")
-       call calcToyDiscDensity(thisOctal, subcell, grid)
+       call calcToyDiscDensity(thisOctal, subcell)
 !       call calcToyDiscDensity(thisOctal, subcell)
 
     CASE("lexington")
@@ -6292,7 +6292,7 @@ endif
   end subroutine calcPathTestDensity
 
 
-  subroutine calcToyDiscDensity(thisOctal, subcell, grid)
+  subroutine calcToyDiscDensity(thisOctal, subcell)
     use inputs_mod, only : hydrodynamics, hOnly, rinner
     use inputs_mod, only : amrgridcentrex, amrgridcentrez
     type(octal) :: thisOctal

@@ -57,6 +57,9 @@ subroutine PDR_MAIN(grid)
 #ifdef MPI
   call writeInfo("Casting rays over grid.", TRIVIAL)
   call rayTraceMPI(grid)
+  call writeVTKfile(grid, "postRayTrace.vtk", valueTypeString=(/"rho       ",&
+       "columnRho " /))
+!  stop
   call writeInfo("Done.", TRIVIAL)
   call writeInfo("Calculating dust temperature.", TRIVIAL)
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
@@ -226,7 +229,6 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
 
                  thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
                  if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
-
                  exit
               end if
               
@@ -235,7 +237,6 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
                  thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
                       abundancearray(k)*tval*1.d10*soctal%rho(subcell)/mhydrogen                 
               enddo
-
 
               testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
            end do

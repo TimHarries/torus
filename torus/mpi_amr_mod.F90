@@ -4871,7 +4871,8 @@ end subroutine writeRadialFile
        loc(7) = direction%z
 
        call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
+            localWorldCommunicator, status, ierr)
 
        rho = tempStorage(1)
        uvx = tempstorage(2)
@@ -4949,7 +4950,8 @@ end subroutine writeRadialFile
           tempStorage(5) = tval
           tempStorage(6) = thisOctal%ionfrac(subcell, 2)
           tempStorage(7:39) = thisOctal%ionfrac(subcell, :)
-          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
+               localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine rayTracingServerPDR
