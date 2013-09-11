@@ -292,21 +292,21 @@ end function nray_func
 !THIS NEEDS TO BE CHANGED SO THAT THE REACTANT AND PRODUCT ARE TRIMMED
 !328 and 329, 0, 290, 269, 0 for NR...
 
-!      print *, "NREAC ", NREAC
+      !print *, "NREAC ", NREAC
       DO I=1,NREAC
- !        print *, "I is ", I
+         print *, "I is ", I
 !C        Determine the type of reaction
-  !       print *, len(REACTANT(I, 2))
-   !      print *, "2 ", REACTANT(I, 2), "FRWFWE"
-         IF(REACTANT(I,2).EQ."PHOTON") GOTO 1
-         IF(REACTANT(I,2).EQ."CRP   ") GOTO 2
-         IF(REACTANT(I,2).EQ."CRPHOT") GOTO 3
-         IF(REACTANT(I,2).EQ."FREEZE") GOTO 4
-         IF(REACTANT(I,2).EQ."ELFRZE") GOTO 5
-         IF(REACTANT(I,2).EQ."CRH   ") GOTO 6
-         IF(REACTANT(I,2).EQ."PHOTD ") GOTO 7
-         IF(REACTANT(I,2).EQ."THERM ") GOTO 8
-         IF(REACTANT(I,2)(1:1).EQ."G") GOTO 9
+     !    print *, len(REACTANT(I, 2))
+     !    print *, "2 ", REACTANT(I, 2), "FRWFWE"
+         IF(trim(REACTANT(I,2)).EQ."PHOTON") GOTO 1
+         IF(trim(REACTANT(I,2)).EQ."CRP") GOTO 2
+         IF(trim(REACTANT(I,2)).EQ."CRPHOT") GOTO 3
+         IF(trim(REACTANT(I,2)).EQ."FREEZE") GOTO 4
+         IF(trim(REACTANT(I,2)).EQ."ELFRZE") GOTO 5
+         IF(trim(REACTANT(I,2)).EQ."CRH") GOTO 6
+         IF(trim(REACTANT(I,2)).EQ."PHOTD") GOTO 7
+         IF(trim(REACTANT(I,2)).EQ."THERM") GOTO 8
+         IF(trim(REACTANT(I,2)(1:1)).EQ."G") GOTO 9
 !#ifdef XRAYS
 !!ADD IF REACTANT IS XRAY GOTO 11
 !!         IF(REACTANT(I,2).EQ."XRAY  ") GOTO 11
@@ -315,10 +315,10 @@ end function nray_func
 !         IF(REACTANT(I,2).EQ."XRLYA ") GOTO 11
 !         IF(REACTANT(I,2).EQ."XRPHOT") GOTO 11
 !#else
-         IF(REACTANT(I,2).EQ."XRAY  ") GOTO 110
-         IF(REACTANT(I,2).EQ."XRSEC ") GOTO 120
-         IF(REACTANT(I,2).EQ."XRLYA ") GOTO 130
-         IF(REACTANT(I,2).EQ."XRPHOT") GOTO 140
+         IF(trim(REACTANT(I,2)).EQ."XRAY") GOTO 110
+         IF(trim(REACTANT(I,2)).EQ."XRSEC") GOTO 120
+         IF(trim(REACTANT(I,2)).EQ."XRLYA") GOTO 130
+         IF(trim(REACTANT(I,2)).EQ."XRPHOT") GOTO 140
 !#endif
 
 !C-----------------------------------------------------------------------
@@ -334,10 +334,10 @@ end function nray_func
 !C        k_H2 = 3E-18 * T^0.5 * exp(-T/1000)   (cm3/s)
 !C
 !         print *, "1 ", REACTANT(I, 1), " TRWFE"
-         IF(REACTANT(I,1).EQ."H  " .AND. REACTANT(I,2).EQ."H  "  .AND. &
-         & (REACTANT(I,3).EQ."   " .OR.  REACTANT(I,3).EQ."#  ") .AND. &
-         &  PRODUCT(I,1).EQ."H2 "  .AND. &
-         & (PRODUCT(I,2).EQ."   "  .OR.  PRODUCT(I,2).EQ."#  ")) THEN
+         IF(trim(REACTANT(I,1)).EQ."H  " .AND. trim(REACTANT(I,2)).EQ."H  "  .AND. &
+         & (trim(REACTANT(I,3)).EQ."   " .OR.  trim(REACTANT(I,3)).EQ."#  ") .AND. &
+         &  trim(PRODUCT(I,1)).EQ."H2"  .AND. &
+         & (trim(PRODUCT(I,2)).EQ.""  .OR.  trim(PRODUCT(I,2)).EQ."#")) THEN
 
 !old way to read reactants, omitting the #
 !         IF(REACTANT(I,1).EQ."H  " .AND. REACTANT(I,2).EQ."H  " .AND. &
@@ -396,8 +396,8 @@ end function nray_func
 !C     Store the reaction number for H2 photodissociation. The rate itself
 !C     is calculated separately by the function H2PDRATE (within shield.f)
 
- 1       IF(REACTANT(I,1).EQ."H2 " .AND. REACTANT(I,3).EQ."   " .AND.&
-     &      PRODUCT(I,1).EQ."H  " .AND. PRODUCT(I,2).EQ."H  ") THEN
+ 1       IF(trim(REACTANT(I,1)).EQ."H2" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+     &      trim(PRODUCT(I,1)).EQ."H" .AND. trim(PRODUCT(I,2)).EQ."H") THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
@@ -420,9 +420,9 @@ end function nray_func
 
 !C     Store the reaction number for HD photodissociation. The rate itself
 !C     is calculated separately by the function H2PDRATE (within shield.f)
-         IF(REACTANT(I,1).EQ."HD " .AND. REACTANT(I,3).EQ."   " .AND.&
-     &    ((PRODUCT(I,1).EQ."H  " .AND. PRODUCT(I,2).EQ."D  ") .OR.&
-     &     (PRODUCT(I,1).EQ."D  " .AND. PRODUCT(I,2).EQ."H  "))) THEN
+         IF(trim(REACTANT(I,1)).EQ."HD" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+     &    ((trim(PRODUCT(I,1)).EQ."H" .AND. trim(PRODUCT(I,2)).EQ."D") .OR.&
+     &     (trim(PRODUCT(I,1)).EQ."D" .AND. trim(PRODUCT(I,2)).EQ."H"))) THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
@@ -442,9 +442,9 @@ end function nray_func
 
 !C     Store the reaction number for !CO photodissociation. The rate itself
 !C     is calculated separately by the function !COPDRATE (within shield.f)
-         IF(REACTANT(I,1).EQ."CO " .AND. REACTANT(I,3).EQ."   " .AND.&
-     &    ((PRODUCT(I,1).EQ."C  " .AND. PRODUCT(I,2).EQ."O  ") .OR.&
-     &     (PRODUCT(I,1).EQ."O  " .AND. PRODUCT(I,2).EQ."C  "))) THEN
+         IF(trim(REACTANT(I,1)).EQ."CO" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+     &    ((trim(PRODUCT(I,1)).EQ."C" .AND. trim(PRODUCT(I,2)).EQ."O") .OR.&
+     &     (trim(PRODUCT(I,1)).EQ."O" .AND. trim(PRODUCT(I,2)).EQ."C"))) THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
@@ -464,9 +464,9 @@ end function nray_func
 
 !C     Store the reaction number for !CI photoionization. The rate itself
 !C     is calculated separately by the function CIPDRATE (within shield.f)
-         IF(REACTANT(I,1).EQ."C  " .AND. REACTANT(I,3).EQ."   " .AND.&
-     &    ((PRODUCT(I,1).EQ."C+ " .AND. PRODUCT(I,2).EQ."e- ") .OR.&
-     &     (PRODUCT(I,1).EQ."e- " .AND. PRODUCT(I,2).EQ."C+ "))) THEN
+         IF(trim(REACTANT(I,1)).EQ."C" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+     &    ((trim(PRODUCT(I,1)).EQ."C+" .AND. trim(PRODUCT(I,2)).EQ."e-") .OR.&
+     &     (trim(PRODUCT(I,1)).EQ."e-" .AND. trim(PRODUCT(I,2)).EQ."C+"))) THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
@@ -486,9 +486,9 @@ end function nray_func
 
 !C     Store the reaction number for SI photoionization. The rate itself
 !C     is calculated separately by the function SIPDRATE (within shield.f)
-         IF(REACTANT(I,1).EQ."S  " .AND. REACTANT(I,3).EQ."   " .AND.&
-     &    ((PRODUCT(I,1).EQ."S+ " .AND. PRODUCT(I,2).EQ."e- ") .OR.&
-     &     (PRODUCT(I,1).EQ."e- " .AND. PRODUCT(I,2).EQ."S+ "))) THEN
+         IF(trim(REACTANT(I,1)).EQ."S" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+     &    ((trim(PRODUCT(I,1)).EQ."S+" .AND. trim(PRODUCT(I,2)).EQ."e-") .OR.&
+     &     (trim(PRODUCT(I,1)).EQ."e-" .AND. trim(PRODUCT(I,2)).EQ."S+"))) THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
