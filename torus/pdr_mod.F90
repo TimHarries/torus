@@ -261,7 +261,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
           thisOctal%UV(subcell) = 0.d0
        end if
 !       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
-       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
+       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)!/dble(nrays)
  !      print *, "AV ", thisOctal%AV(subcell,:)
   !     print *, "UV ", thisOctal%UV(subcell)
        

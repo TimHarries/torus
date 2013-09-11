@@ -6299,7 +6299,7 @@ endif
     integer :: subcell
     type(vector) :: rvec
     real(double) :: ethermal, gamma
-    type(gridtype) :: grid
+!    type(gridtype) :: grid
     
     rvec = subcellcentre(thisOctal, subcell)
     thisOctal%temperature = 1.d4
