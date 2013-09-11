@@ -1,4 +1,3 @@
-
 module inputs_mod
 
   use vector_mod
@@ -356,6 +355,9 @@ contains
 !    if(xraycalc) then
     call getLogical("useionparam", useionparam, cLine, fLine, nLines, &
          "Use ionization parameter in x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("xrayonly", xrayonly, cLine, fLine, nLines, &
+         "Only use xrays: ","(a,1l,1x,a)", .false., ok, .false.)
 !    end if
    
 
@@ -1007,7 +1009,7 @@ contains
           call getDouble("rcavity", rCavity, 1.d0, cLine, fLine, nLines, &
                "Cavity radius (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
 
-       case("benchmark")
+       case("benchmark", "RHDDisc")
           call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
@@ -2175,10 +2177,12 @@ contains
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
 
     if (cylindricalHydro) then
-       amrGridCentreX = amrgridsize/2.
-       dx = dble(amrgridSize)/dble(2**4-4)
-       amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       vtkIncludeGhosts = .false.
+       if(.not. useionparam) then
+          amrGridCentreX = amrgridsize/2.
+          dx = dble(amrgridSize)/dble(2**4-4)
+          amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
+          vtkIncludeGhosts = .false.
+       endif
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
                "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .true.)
     endif

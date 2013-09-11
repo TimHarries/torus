@@ -732,8 +732,9 @@ CONTAINS
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
 
-!    CASE("toydisc")
-!       call calcToyDiscDensity(thisOctal, subcell, grid)
+    CASE("toydisc")
+       call calcToyDiscDensity(thisOctal, subcell, grid)
+!       call calcToyDiscDensity(thisOctal, subcell)
 
     CASE("lexington")
        CALL calcLexington(thisOctal, subcell, grid)
@@ -931,6 +932,9 @@ CONTAINS
 
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell)
+
+    CASE ("RHDDisc")
+       CALL RHDDisc(thisOctal, subcell)
 
     CASE ("molebench")
        thisoctal%rho(subcell) = -9.9d99
@@ -3292,6 +3296,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, smoothinneredge
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
+    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3370,6 +3375,7 @@ CONTAINS
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
+    real(double) :: dx
 
     splitInAzimuth = .false.
     split = .false.
@@ -4117,6 +4123,17 @@ CONTAINS
           
           massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
           if ((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) split = .true.
+
+       case("RHDDisc")
+          rVec = subcellCentre(thisOctal, subcell)
+
+          if(thisOctal%ndepth < mindepthamr) split = .true.
+
+          dx = amrgridsize/2.d0**(thisOctal%ndepth)
+          if(rVec%x < (amrgridcentrex - (amrgridsize/2.d0)) + 2.d0*dx) split = .true.
+          if(rVec%x > (amrgridcentrex + (amrgridsize/2.d0)) - 2.d0*dx) split = .true.
+          if(rVec%z < (amrgridcentrez - (amrgridsize/2.d0)) + 2.d0*dx) split = .true.
+          if(rVec%z > (amrgridcentrez + (amrgridsize/2.d0)) - 2.d0*dx) split = .true.
 
        case("benchmark")
           
@@ -6275,14 +6292,58 @@ endif
   end subroutine calcPathTestDensity
 
 
-!  subroutine calcToyDiscDensity(thisOctal, subcell, grid)
-!    type(octal) :: thisOctal
-!    integer :: subcell
-!    type(gridtype) :: grid
-!
-!!
-!
-!  end subroutine calcToyDiscDensity
+  subroutine calcToyDiscDensity(thisOctal, subcell, grid)
+    use inputs_mod, only : hydrodynamics, hOnly, rinner
+    use inputs_mod, only : amrgridcentrex, amrgridcentrez
+    type(octal) :: thisOctal
+    integer :: subcell
+    type(vector) :: rvec
+    real(double) :: ethermal, gamma
+    type(gridtype) :: grid
+    
+    rvec = subcellcentre(thisOctal, subcell)
+    thisOctal%temperature = 1.d4
+!    if(rvec%z > (amrgridsize/2.d0 - 1.d-1*amrgridsize) .and. rVec%z < &
+!         (amrgridsize/2.d0 + 1.d-1*amrgridsize) .and. rVec%x > & 
+!         amrgridsize/20.d0) then
+!       thisOctal%rho(subcell) = 1.d5 * mHydrogen
+    if(rvec%z > (amrgridcentrez-2.d5) .and. rvec%z < (amrgridcentrez+2.d5) &
+!         .and. rVec%x > amrgridcentrex - 3.5d5) then
+         .and. rVec%x > rinner) then
+        thisOctal%rho(subcell) = 1.d6 * mHydrogen
+    else
+       thisOctal%rho(subcell) = 1.d2*mHydrogen
+    end if
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%columnRho(subcell) = 1.d30
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+
+    thisOctal%ionFrac(subcell,1) = 1.e-10
+    thisOctal%ionFrac(subcell,2) = 1.
+    if(.not. hOnly) then
+       thisOctal%ionFrac(subcell,3) = 1.e-10
+       thisOctal%ionFrac(subcell,4) = 1.       
+    endif
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+    if (hydrodynamics) then
+       gamma = 1.d0
+       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
+       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+!       thisOctal%boundaryCondition(subcell) = 4
+    endif
+
+
+  end subroutine calcToyDiscDensity
 
 !·         I also downloaded the zip file and got an error message that read “The Compressed (zipped) Folder is invalid or corrupted.” I’m not sure if this is because of the file itself or something to do with the way I downloaded it.
 !o   Pete, is this something you guys can check?
@@ -7931,7 +7992,7 @@ endif
     ethermal = (1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
 
-    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+!    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%phi_i(subcell) = 0.d0
@@ -8027,15 +8088,23 @@ endif
     rVec%y = rVec%y - amrgridcentrey
     rVec%z = rVec%z - amrgridcentrez
     rMod = modulus(rVec)
-    if ((rMod*1.d10) < 3.5d0*pcToCm) then
-       thisOctal%rho(subcell) = 1.d3*mHydrogen
-       thisOctal%temperature(subcell) = 10.d0
+!    if ((rMod*1.d10) < 3.5d0*pcToCm) then
+    if ((rMod*1.d10) < 20.d0*pcToCm) then
+       thisOctal%rho(subcell) = 1.d2*mHydrogen
+       thisOctal%temperature(subcell) = 1.d4
        thisOctal%ionFrac(subcell,1) = 1.d0               !HI
        thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
        if (SIZE(thisOctal%ionFrac,2) > 2) then      
-          thisOctal%ionFrac(subcell,3) = 1.            !HeI
-          thisOctal%ionFrac(subcell,4) = 1.e-10        !HeII          
+          thisOctal%ionFrac(subcell,3) = 1.d0            !HeI
+          thisOctal%ionFrac(subcell,4) = 1.d-10        !HeII          
        endif       
+
+!       thisOctal%ionFrac(subcell,1) = 1.d-10               !HI
+!       thisOctal%ionFrac(subcell,2) = 1.d0          !HII
+!       if (SIZE(thisOctal%ionFrac,2) > 2) then      
+!          thisOctal%ionFrac(subcell,3) = 1.d-10            !HeI
+!          thisOctal%ionFrac(subcell,4) = 1.d0        !HeII          
+!       endif       
 
        if(pdrcalc) then
           thisOctal%uvvector(subcell)%x = 0.d0
@@ -9042,6 +9111,66 @@ endif
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine benchmarkDisk
+
+  subroutine RHDDisc(thisOctal,subcell)
+
+    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real :: r, hr, rd
+    real(double), parameter :: min_rho = 1.0d-20 ! minimum density
+!    real(double), parameter :: min_rho = 1.0d-22 ! minimum density
+    real(double) :: ethermal, gamma
+    TYPE(vector) :: rVec
+
+    real :: rInnerGap, rOuterGap
+    logical :: gap
+
+    gap = .false.
+    gamma = 1.d0
+    rInnerGap = 2. * auToCm / 1.e10
+    rOuterGap = 3. * auToCm / 1.e10
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    r = real(modulus(rVec))
+
+    thisOctal%rho(subcell) = min_rho
+    thisOctal%temperature(subcell) = 1.d4
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    rd = rOuter / 2.
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
+!    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
+    if ((r > rInner).and.(r < rOuter)) then
+       hr = height * (r/rd)**1.125
+       ! Calculate density and check the exponential won't underflow
+       if ( rVec%z/hr < 20.0 ) THEN
+          thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
+       endif
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
+       thisOctal%temperature(subcell) = 100.
+       thisOctal%inFlow(subcell) = .true.
+       thisOctal%etaCont(subcell) = 0.
+    endif
+!    endif
+!    thisOctal%nh = thisOctal%rho(subcell)/
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+    if (hydrodynamics) then
+!       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
+
+       thisOctal%phi_gas(Subcell) = 0.d0
+       thisOctal%phi_i(Subcell) = 0.d0
+       ethermal = (1.d0/(1.d0*mHydrogen)) * kerg * thisOctal%temperature(subcell)
+       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+       thisOctal%pressure_i(subcell) = thisOctal%rho(subcell)*ethermal
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+!       thisOctal%boundaryCondition(subcell) = 4
+    endif
+
+  end subroutine RHDDisc
 
   subroutine molecularBenchmark(thisOctal,subcell)
 
@@ -10107,7 +10236,8 @@ end function readparameterfrom2dmap
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     
     ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
-    thisOctal%gamma(subcell) = 5.d0/3.d0
+!    thisOctal%gamma(subcell) = 5.d0/3.d0
+    thisOctal%gamma(subcell) = 1.d0
 
 
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
@@ -15050,7 +15180,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
-    use inputs_mod, only : grainFrac, pdrcalc, hlevel, xraycalc
+    use inputs_mod, only : grainFrac, pdrcalc, hlevel, xraycalc, useionparam
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
     type(OCTAL), pointer :: thisOctal
@@ -15231,7 +15361,7 @@ end function readparameterfrom2dmap
 
     endif
 
-    if(xraycalc .or. pdrcalc) then
+    if(xraycalc .or. pdrcalc .or. useionparam) then
        call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
     end if
 

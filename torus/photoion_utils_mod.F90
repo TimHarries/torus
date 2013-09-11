@@ -269,12 +269,12 @@ function recombRate(thisIon, temperature) result (rate)
      case(1)
         select case(thisIon%n)
            case(1) ! H I
-!              rate = 2.7d-13
-              a = 7.982e-11
-              b = 0.7480
-              t0 = 3.148e0
-              t1 = 7.036e5
-              rate = vernerFerland(a, dble(temperature), t0, t1, b)
+              rate = 2.7d-13
+!              a = 7.982e-11
+!              b = 0.7480
+!              t0 = 3.148e0
+!              t1 = 7.036e5
+!              rate = vernerFerland(a, dble(temperature), t0, t1, b)
            case DEFAULT
               write(*,*) "No recombination rate for ",thisIon%species
               rate = 0.

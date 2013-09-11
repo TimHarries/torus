@@ -1079,12 +1079,15 @@ contains
        if(grid%geometry == "hii_test" .or. grid%geometry == "SB_Dtype") then
           write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
           call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-               VECTOR(3.86d8, 0.d0, 0.d0), 1000)
+               VECTOR(4.d9, 0.d0, 0.d0), 1000)
 
 
+!          write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
+!          call dumpStromgrenRadius(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+!               VECTOR(3.86d8, 0.d0, 0.d0), 1000)!
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
           call dumpStromgrenRadius(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-               VECTOR(3.86d8, 0.d0, 0.d0), 1000)!
+               VECTOR(4.d9, 0.d0, 0.d0), 1000)!
 !          write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
 !          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
 !               VECTOR(3.5d9, 0.d0, 1.75d9), 1000)!

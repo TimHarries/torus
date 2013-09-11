@@ -78,6 +78,7 @@
   logical :: usemetals         !Include species heavier than Helium
   logical :: usexraymetals     !Include x-ray metals
   logical :: useionparam       !use ionization parameter(T) in x-ray calc
+  logical :: xrayonly
   logical :: checkForPhoto     !Check whether or not a photoionization loop is necessary
   logical :: monochromatic     !Use a monochromatic radiation field
   real(double) :: inputEV     !energy of monochromatic photons

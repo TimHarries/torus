@@ -475,7 +475,7 @@ contains
        endif
 
        thisoctal%phi_gas = thisoctal%parent%phi_gas(thisoctal%parentsubcell)
-       if (any(thisOctal%phi_gas > 0.d0)) write(*,*) myrankGlobal," phi ",thisoctal%phi_gas(1:4),thisOctal%ghostCell(1:4)
+!       if (any(thisOctal%phi_gas > 0.d0)) write(*,*) myrankGlobal," phi ",thisoctal%phi_gas(1:4),thisOctal%ghostCell(1:4)
     else
 
        do subcell = 1, thisoctal%maxchildren
@@ -519,7 +519,7 @@ contains
             (SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:thisOctal%maxChildren)))
 
        thisoctal%phi_gas = thisoctal%parent%phi_gas(thisoctal%parentsubcell) + thisOctal%phi_gas
-       if (any(thisOctal%phi_gas > 0.d0)) write(*,*) myrankGlobal," phi ",thisoctal%phi_gas(1:4),thisOctal%ghostCell(1:4)
+!       if (any(thisOctal%phi_gas > 0.d0)) write(*,*) myrankGlobal," phi ",thisoctal%phi_gas(1:4),thisOctal%ghostCell(1:4)
     else
 
        do subcell = 1, thisoctal%maxchildren
@@ -4692,7 +4692,7 @@ end subroutine sumFluxes
              thisBound = 2
              if (myrankWorldglobal == 1) call tune(6,"X-direction step")
        end select
-
+       dt = dt*2.d0
 
 
        !set up the grid values
@@ -11911,6 +11911,7 @@ end subroutine refineGridGeneric2
     enddo
   end subroutine gSweep2
 
+!This is for cylindrical hydro calcs?
   recursive subroutine gSweep2level(thisOctal, grid, fracChange,nDepth)
     use mpi
     type(GRIDTYPE) :: grid
