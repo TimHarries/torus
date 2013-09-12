@@ -420,7 +420,7 @@ recursive subroutine calcIonParamTemperature(thisOctal, xrayLuminosity, starPos)
            !        print *, "stardist ", stardist
            !        ionParam = xrayLuminosity / ((column*starDist**2))
            ionParam = xrayLuminosity / ((column*starDist))
-           thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + calcOwen(ionParam)
+           thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + real(calcOwen(ionParam))
      end if
   end if
 end do
