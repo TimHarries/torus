@@ -68,8 +68,8 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
   call iniTempGuessMPI(grid%octreeroot)
   call writeInfo("Calculating reaction rates in each cell.", TRIVIAL)
-!  call callcalculateReactionRatesMPI(grid%octreeroot, reactant, &
-!     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+  call callcalculateReactionRatesMPI(grid%octreeroot, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
 
 #else
   print *, "DELTA"

@@ -103,7 +103,7 @@ contains
     integer :: iRefine, nUnrefine
     logical :: photoLoop, photoLoopGlobal=.false.
     integer :: i, status, tag=30, sign
-    integer :: stageCounter=1,  nPhase, nstep
+    integer :: stageCounter=1,  nPhase, nstep, nPhotoIter
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
@@ -117,7 +117,7 @@ contains
     real(double) :: epsoverdeltat
 
 
-    
+    nPhotoIter = 1
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter
 !    gridVtuCounter = 0
@@ -772,7 +772,10 @@ contains
                 tmpsphericalhydro=sphericalhydro
                 sphericalhydro=.false.
                 cylindricalHydro = .false.
-                call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, 1, loopLimitTime, &
+
+!                nPhotoIter = int(10 - grid%idump)
+!                nphotoIter = max(1, nPhotoIter)
+                call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, nPhotoIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 cylindricalHydro = tmpCylindricalHydro
                 sphericalhydro = tmpsphericalhydro

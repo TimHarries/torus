@@ -10219,7 +10219,7 @@ end function readparameterfrom2dmap
    
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = (1.d2)*mHydrogen
-    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%temperature(subcell) = 1.d4
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -10235,12 +10235,12 @@ end function readparameterfrom2dmap
     
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     
-    ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    ethermal = 1.5d0*(1.d0/(0.5d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
 !    thisOctal%gamma(subcell) = 5.d0/3.d0
     thisOctal%gamma(subcell) = 1.d0
 
 
-    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(0.5d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
    
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)

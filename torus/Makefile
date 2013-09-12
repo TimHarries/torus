@@ -320,6 +320,13 @@ else
    ETCFLAG += -DUSECFITSIO
 endif
 
+ifeq ($(sundials)), yes)
+    SUNDIALSLIBS = /sw/sundials-2.5.0 #-sundials
+else
+    SUNDIALSLIBS = 
+   ETCFLAG += -DUSESUNDIALS
+endif
+
 ifeq ($(hdf), yes)
    ETCFLAG += -DUSEHDF
    STARLIBS += -lhdf5_fortran -lhdf5
@@ -517,7 +524,8 @@ all: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS)
+	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) \
+            $(SUNDIALSLIBS)
     else
 	    @echo ""
 	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
@@ -578,7 +586,7 @@ link: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS)
+	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS) $(SUNDIALSLIBS)
 	    @echo "...done"
     else
 	    @echo ""
