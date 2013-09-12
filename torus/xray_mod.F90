@@ -428,7 +428,7 @@ end do
 end subroutine calcIonParamTemperature
 
 subroutine printIonParam()
-  real(double) :: xi, xi_max, dxi, temperature
+  real(double) :: xi, xi_max, temperature
   integer :: ier
 
   xi = 1.d-7
