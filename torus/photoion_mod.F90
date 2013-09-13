@@ -173,6 +173,8 @@ contains
 
     call createSahaMilneTables(hTable, heTable)
 
+! Read Hydrogen case B emissivities from Storey and Hummer, 1995, MNRAS, 272, 41 
+! Data available from Vizier (http://cdsarc.u-strasbg.fr/) 
     call createRecombTable(Hrecombtable, 'e1b.d')
 
 

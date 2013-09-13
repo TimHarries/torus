@@ -711,7 +711,10 @@ subroutine createSahaMilneTables(hTable, heTable)
 end subroutine createSahaMilneTables
 
 
-!-- Awaiting comments                                (P)
+! Read recombination emissivities in the format of Storey and Hummer, 1995, MNRAS, 272, 41 
+! Data available from Vizier (http://cdsarc.u-strasbg.fr/) 
+!--                                (P)
+
 subroutine createRecombTable(table, tablefilename)
   type(RECOMBTABLE), intent(out) :: table
   character(len=*) :: tablefilename
@@ -1182,6 +1185,9 @@ end subroutine addRecombinationEmissionLine
      real :: emissivity(3:15,2:8)
      real(double) :: hBeta, LineEmissivity
 
+! Emissivity values from Storey and Hummer, 1995, MNRAS 272, 41
+! These values are for T=1e4 K and n=1e2 cm^-3
+
      emissivity(15, 2:8) = (/ 0.156E-01, 0.541E-02, 0.266E-02, 0.154E-02, 0.974E-03, 0.657E-03, 0.465E-03 /)
      emissivity(14, 2:8) = (/ 0.192E-01, 0.666E-02, 0.328E-02, 0.190E-02, 0.120E-02, 0.811E-03, 0.573E-03 /)
      emissivity(13, 2:8) = (/ 0.240E-01, 0.832E-02, 0.411E-02, 0.237E-02, 0.151E-02, 0.102E-02, 0.719E-03 /)
@@ -1528,6 +1534,9 @@ recursive subroutine quickSublimate(thisOctal, fraction)
 !   pu0X Unused routines
       
 ! Currently never called. HI recombination rates (P)
+
+! The rate equation is eqn 4 from Verner and Ferland, 1996, ApJS, 103, 467
+! Fitting coefficients are from the first (HI) column of their Table 1
 function hRecombination(temperature) result (rate)
   real :: temperature
   real(double) :: rate, t0, t1, b
@@ -1540,6 +1549,7 @@ function hRecombination(temperature) result (rate)
 end function hRecombination
 
 ! Currently never called. He recombination rates (P)
+! Equation 25 of Wood, Mathias and Ercolano, 2004, MNRAS, 348, 1337
 subroutine calcHeRecombs(te, alpha1, alpha21s, alpha21p, alpha23s)
   real :: te, t
   real(double) :: alpha1, alpha21s, alpha21p, alpha23s
@@ -1557,6 +1567,7 @@ end subroutine calcHeRecombs
   
   
 ! Currently never called. Recomb rate into ground state. (P)
+! Equation 24 of Wood, Mathias and Ercolano, 2004, MNRAS, 348, 1337
 function recombToGround(temperature) result (alpha1)
   real :: temperature
   real(double) :: alpha1
