@@ -3359,7 +3359,7 @@ CONTAINS
     logical,save  :: firstTime = .true.
     logical,save  :: firstTimeTTauri = .true.
     logical, intent(in) :: wvars
-    real(double) :: lAccretion
+    real(double) :: lAccretion, thisHeightSplitFac
     real(double), save :: astar
     real(double) :: b, dphi, rhoc
     type(VECTOR) :: centre, dirVec(6), locator
@@ -3683,9 +3683,11 @@ CONTAINS
           cellSize = thisOctal%subcellSize
           r0 = modulus(cellCentre)
           
-          if (inflowMahdavi(cellcentre*1.d10).and.&
-               cellVolume(thisOctal,subcell)*1.d30*density(cellCentre,grid) > maxCellMass) &
-               split=.true.
+          if (ttauriMagnetosphere) then
+             if (inflowMahdavi(cellcentre*1.d10).and.&
+                  cellVolume(thisOctal,subcell)*1.d30*density(cellCentre,grid) > maxCellMass) &
+                  split=.true.
+          endif
           
           !     if (thisOctal%threed) then
           !        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
@@ -3753,7 +3755,7 @@ CONTAINS
                 splitInAzimuth = .true.
              endif
           endif
-          endif
+       endif
 
           inSideStar = .true.
           do i = 1, 40
@@ -4613,12 +4615,14 @@ CONTAINS
           cellSize = thisOctal%subcellSize 
           cellCentre = subcellCentre(thisOctal,subCell)
           r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          thisHeightSplitFac = heightSplitFac
+          if (r < rSublimation) thisheightSplitFac = 1.
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
           
           !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
 !          write(*,*) hr, height, r, betadisc
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
           

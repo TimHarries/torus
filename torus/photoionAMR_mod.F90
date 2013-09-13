@@ -909,10 +909,11 @@ contains
 
 
 !add/merge sink particles where necessary
-       if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
        if (myrankGlobal /= 0) then
           if (nbodyPhysics.and.addSinkParticles) call addSinks(grid, globalsourceArray, globalnSource)       
+          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
           if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
+          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
           do i = 1, globalnSource
              call emptySurface(globalsourceArray(i)%surface)
              call buildSphereNbody(globalsourceArray(i)%position, 2.5d0*smallestCellSize, &

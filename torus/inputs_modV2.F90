@@ -714,6 +714,12 @@ contains
 
        call getLogical("ttaurimag", ttauriMagnetosphere, cLine, fLine, nLines, &
             "Include a T Tauri magnetosphere: ","(a,1l,1x,a)", .false., ok, .true.)
+
+          call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
+               "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .false.)
+          call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
+            "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .false.)
+
        if (ttauriMagnetosphere) then
           call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
                "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
@@ -793,6 +799,9 @@ contains
        ! converting the curtain width from degrees to radians.
        curtain_width =  curtain_width*real(Pi/180.0)
 
+
+       call getReal("mdotpar1", MdotParameter1, 1., cLine, fLine, nLines, &
+            "1st parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
 
        if (tTauriMagnetosphere) then
        call getString("mdottype", mDotType, cLine, fLine, nLines, &

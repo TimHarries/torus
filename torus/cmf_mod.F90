@@ -3762,7 +3762,7 @@ contains
     real(double) :: totArea, tmp
     integer :: iRay
     integer :: iomp
-
+    logical :: doingCalc
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
     real(double) :: thisIntensity
@@ -3800,12 +3800,22 @@ contains
     iv2 = nv
 
 
+    doingCalc = .true.
 #ifdef MPI
-    iv1 = int(real(my_rank) * (real(nv) / real(np))) + 1
-    iv2 = int(real(my_rank+1) * (real(nv) / real(np)))
-    if (my_rank == (np-1)) iv2 = nv
+    if (nv < np) then
+       iv1 = my_rank+1
+       iv2 = my_rank+1
+       if ((my_rank+1) > nv) then
+          doingCalc = .false.
+       endif
+    else
+       iv1 = int(real(my_rank) * (real(nv) / real(np))) + 1
+       iv2 = int(real(my_rank+1) * (real(nv) / real(np)))
+       if (my_rank == (np-1)) iv2 = nv
+    endif
 #endif
 
+    if (doingCalc) then
     if (myRankGlobal == 0) then
        call initCube(cube, nv)
     else
@@ -3908,15 +3918,16 @@ contains
     enddo
     deallocate(xPoints, yPoints)
 
-
+ endif
 
 #ifdef MPI
+ write(*,*) "Rank ",my_rank, " waiting at barrier"
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
     n = (cube%nx * cube%ny)
 
-    do iThread = 1, nThreadsGlobal-1
+    do iThread = 1, min(nv-1,nThreadsGlobal-1)
        if (my_rank == iThread) then
           call MPI_SEND(iv2-iv1+1, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
           do iv = 1, nv                

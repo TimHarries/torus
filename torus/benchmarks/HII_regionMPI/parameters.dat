@@ -3,6 +3,7 @@
 !
 
 splitovermpi    T
+packetsplitting F
 readgrid        F
 
 amr1d           T

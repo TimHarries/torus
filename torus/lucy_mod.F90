@@ -3257,7 +3257,7 @@ subroutine setBiasOnTau(grid, iLambda)
   end subroutine unrefineThinCells
 
   recursive subroutine unrefineBack(thisOctal, grid, beta, height, rSub, nUnrefine, converged)
-    use inputs_mod, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR, smoothinneredge
+    use inputs_mod, only : rOuter, rInner, minDepthAMR, heightSplitFac, maxDepthAMR, smoothinneredge, rSublimation
     use amr_mod, only: deleteChild
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -3265,7 +3265,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: i
     logical :: unrefine, converged
     logical :: split
-    real(double) :: cellSize, r, hr, beta, height, rSub
+    real(double) :: cellSize, r, hr, beta, height, rSub, thisHeightSplitFac
     integer :: oldNChildren
     integer :: nUnrefine
 
@@ -3291,10 +3291,12 @@ subroutine setBiasOnTau(grid, iLambda)
           cellCentre = subcellCentre(thisOctal%parent,thisOctal%parentSubcell)
           r = sqrt(cellcentre%x**2 + cellcentre%y**2)
           hr = height * (r / (100.d0*autocm/1.d10))**beta
-
+          thisHeightSplitfac = heightSplitFac
+          if (r < rSublimation) thisHeightSplitFac = 1.
           split = .false.
           
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
+
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
           
           if (.not.split) then
              if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
