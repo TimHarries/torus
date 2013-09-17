@@ -369,21 +369,21 @@ subroutine simpleXRay(grid, thisSource)!
      do i = 1, nhydrothreadsglobal
 !        print *, myrankglobal, "starting ", i
         if(myrankglobal == i) then
- !          print *, "thread ", myrankglobal, "doing raytracing"
+           print *, "thread ", myrankglobal, "doing raytracing"
            call calculateColumnToStar(grid%octreeRoot, grid, thisSource%position)
-  !         print *, "thread ", myrankglobal, "done tracing"
+           print *, "thread ", myrankglobal, "done tracing"
            call shutdownserversXRAY_PDR()
         else
-   !        print *, "thread ", myrankglobal, "serving"
+           print *, "thread ", myrankglobal, "serving"
            call raytracingserverXRAY(grid)
-    !       print *, "thread ", myrankglobal, "done"
-
+           print *, "thread ", myrankglobal, "done"
+           
         end if
         call MPI_BARRIER(amrCommunicator, ier)
      end do            
   end if
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
-  call calcIonParamTemperature(grid%octreeRoot, thisSource%luminosity/100.d0,  thisSource%position)
+  call calcIonParamTemperature(grid%octreeRoot, thisSource%luminosity/1.d6,  thisSource%position)
 
 
 end subroutine simpleXRay
@@ -409,19 +409,22 @@ recursive subroutine calcIonParamTemperature(thisOctal, xrayLuminosity, starPos)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-        if(.not. thisOctal%ionfrac(subcell,2 ) > 0.9d0) then
-!        if(.not. thisOctal%temperature(subcell) > 50.d0) then
-           !           thisOCtal%temperature(subcell) = 10.d0 ! until I get the zeta(T) relation from James
-           rVec = subcellCentre(thisOctal, subcell)
-           starDist = modulus(rVec - starpos)*1.d10
-           column = thisOctal%columnRho(subcell)*1.d10/mHydrogen
-           !        print *, "columnrho ", column
-           !        print *, "xraylum ", xrayluminosity
-           !        print *, "stardist ", stardist
-           !        ionParam = xrayLuminosity / ((column*starDist**2))
-           ionParam = xrayLuminosity / ((column*starDist))
-           thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + real(calcOwen(ionParam))
-     end if
+        if(.not. thisOctal%ghostcell(subcell)) then
+           if(.not. thisOctal%ionfrac(subcell,2 ) > 0.9d0) then
+              
+              !        if(.not. thisOctal%temperature(subcell) > 50.d0) then
+              !           thisOCtal%temperature(subcell) = 10.d0 ! until I get the zeta(T) relation from James
+              rVec = subcellCentre(thisOctal, subcell)
+              starDist = modulus(rVec - starpos)*1.d10
+              column = thisOctal%columnRho(subcell)*1.d10/mHydrogen
+              !        print *, "columnrho ", column
+              !        print *, "xraylum ", xrayluminosity
+              !        print *, "stardist ", stardist
+              !        ionParam = xrayLuminosity / ((column*starDist**2))
+              ionParam = xrayLuminosity / ((column*starDist))
+              thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + real(calcOwen(ionParam))
+           end if
+        end if
   end if
 end do
 
@@ -479,8 +482,9 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
   type(octal), pointer :: thisOctal, child!, soctal
   integer :: subcell!, ssubcell
   type(vector) :: testposition, startposition, uhat, starpos
-  real(double) :: tval, rho
+  real(double) :: tval, rho, disttostar
   type(gridtype) :: grid
+  logical :: foundstar 
 
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
@@ -494,10 +498,9 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        if(.not. thisOctal%ghostcell(subcell)) then
         if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
-           
-!           sOctal=> thisOctal
-           
+           !           sOctal=> thisOctal           
            startPosition = subcellCentre(thisOctal, subcell)
            testPosition = startPosition
 !           call findSubcellLocal(testPosition, sOctal, ssubcell)
@@ -512,21 +515,31 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
 !           uHat = VECTOR(-Uhat%x, -uHat%y, -uHat%z)
 !           uhat = -uhat
 !           print *, "tracing ray with ", uhat
-           do while (inOctal(grid%octreeRoot, testPosition))            
+           foundstar = .false.
+           do while (inOctal(grid%octreeRoot, testPosition) .and. .not. foundstar)     
  !             print *, "went one"
 !              call findSubcellLocal(testPosition, sOctal, ssubcell)
 !              if(.not octalonthread(thisoctal, myrankglobal)) then
               tval = 0.d0
-              call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval)    
+
   !            print *, "got values  ", tval
-!!              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
-              
-              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
-              
-              testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
-              
-           end do
+!!              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell
+
+              disttostar = modulus(testposition-starpos)
+              if (disttostar < 2.d0*grid%halfsmallestsubcell) then
+                 call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval, getTval=.false.) 
+                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*disttostar)
+                 testPosition = testPosition + (disttostar*uhat)
+                 foundstar = .true.
+              else
+                 call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval, getTval=.true.) 
+                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
+                 testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
+              endif              
+            
+           end do          
         end if
+        endif
      end if
   end do
     

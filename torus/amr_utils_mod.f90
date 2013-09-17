@@ -1306,7 +1306,7 @@ module amr_utils_mod
       integer :: nDepth
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
-!      type(vector) :: rVec
+      type(vector) :: thispoint
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
@@ -1350,6 +1350,8 @@ module amr_utils_mod
           write(*,*) point
           write(*,*) sqrt(point%x**2+point%y**2)
           write(*,*) atan2(point%y,point%x)*radtodeg
+          thispoint = projectToXZ(point)
+          write(*,*) "post - porjection ", thispoint
           write(*,*) " "
           write(*,*) thisOctal%centre
           write(*,*) thisOctal%subcellSize

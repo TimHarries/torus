@@ -2788,9 +2788,9 @@ contains
                    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after pressure forces"
-                   endif
+ !                  if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!!!                      write(*,*) "u speed over 200 after pressure forces"
+  !                 endif
                    if (debug) then
                       write(*,*) "change in mom from pressure in x ",- dt * &
                            (p_i_plus_half - p_i_minus_half) / dx
@@ -2801,9 +2801,9 @@ contains
 
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after viscous forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after viscous forces"
+!                   endif
 
                 if (debug) then
                    write(*,*) "change in mom from viscosity in x ", dt * fVisc%x
@@ -2813,16 +2813,16 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after gas gravity forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after gas gravity forces"
+!                   endif
 
 
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after sink gravity forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after sink gravity forces"
+!                   endif
 
                 if (debug) then
                    write(*,*) "change in mom from gravity in x ", dt * & !gravity due to gas
@@ -2842,10 +2842,10 @@ contains
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
 
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after centrifugal forces"
-                      write(*,*) "rho ",thisOctal%rho(subcell)
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after centrifugal forces"
+!                      write(*,*) "rho ",thisOctal%rho(subcell)
+!                   endif
 
 
 
@@ -2871,9 +2871,9 @@ contains
                       write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
 
                    endif
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after rad pressure forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after rad pressure forces"
+!                   endif
 
                 endif
 
@@ -2909,9 +2909,9 @@ contains
                    thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after pressure forces"
-                   endif
+!                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "w speed over 200 after pressure forces"
+!                   endif
 
 
                 endif
@@ -2923,9 +2923,9 @@ contains
 ! alpha viscosity
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after viscous forces"
-                   endif
+!                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "w speed over 200 after viscous forces"
+!                   endif
 
 
 !                write(*,*) "ratio vr/vtheta: ",thisOctal%rhou(subcell)/(thisOctal%rhov(subcell)/r), thisOctal%rho(subcell),r/1e14
@@ -2939,9 +2939,9 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after gas gravity forces"
-                   endif
+!                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "w speed over 200 after gas gravity forces"
+!                   endif
 
 
                 thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + dt * gravForceFromSinks%z ! grav due to sinks
@@ -2952,17 +2952,17 @@ contains
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 endif
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after sink gravity forces"
-                   endif
+!                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "w speed over 200 after sink gravity forces"
+!                   endif
 
                 if (radiationPressure) then
                    thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
                         dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
 
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after rad pressure forces"
-                   endif
+!                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "w speed over 200 after rad pressure forces"
+!                   endif
 
                    if (debug) then
                       write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
@@ -3118,9 +3118,9 @@ contains
                    thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                         (p_i_plus_half - p_i_minus_half) / dx
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after pressure forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after pressure forces"
+!                   endif
                    if (debug) then
                       write(*,*) "change in mom from pressure in x ",- dt * &
                            (p_i_plus_half - p_i_minus_half) / dx
@@ -3131,9 +3131,9 @@ contains
 
 !                thisoctal%rhou(subcell) = thisoctal%rhou(subcell) + dt * fVisc%x
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after viscous forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after viscous forces"
+!                   endif
 
                 if (debug) then
                    write(*,*) "change in mom from viscosity in x ", dt * fVisc%x
@@ -3150,9 +3150,9 @@ contains
 !
  !               thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after sink gravity forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after sink gravity forces"
+!                   endif
 
                 if (debug) then
                    write(*,*) "change in mom from gravity in x ", dt * & !gravity due to gas
@@ -3171,10 +3171,10 @@ contains
    !             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
    !                  / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after centrifugal forces"
-                      write(*,*) "rho ",thisOctal%rho(subcell)
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after centrifugal forces"
+ !                     write(*,*) "rho ",thisOctal%rho(subcell)
+ !                  endif
 
 
 
@@ -3200,9 +3200,9 @@ contains
                       write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
 
                    endif
-                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "u speed over 200 after rad pressure forces"
-                   endif
+!                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
+!                      write(*,*) "u speed over 200 after rad pressure forces"
+ !                  endif
 
                 endif
 
@@ -9649,47 +9649,43 @@ real(double) :: rho
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
 
-          if (cylindricalHydro) then
-             rVec = subcellCentre(thisOctal,subcell)
-             if (rvec%x < 0.d0) then
-                thisOctal%ghostCell(subcell) = .true.
-                thisOctal%boundaryCondition(subcell) = 1
-
-! now look at next cell to the right
-
-                thisOctal%boundaryPartner(subcell) = VECTOR(1.d0, 0.d0, 0.d0)
-                call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 1, locator, nDepth)
-                thisOctal%boundaryPartner(subcell) = locator
-                tempOctal => grid%octreeRoot
-                tempSubcell = 1
-                call findSubcellLocalLevel(locator, tempOctal, tempSubcell, nDepth)
-                if (tempOctal%centre%x > 0.d0) cycle
-
-! ok we get to here the cell is further to the left, check whether it only has one cell between it and the real grid
-
-
-                thisOctal%boundaryPartner(subcell) = VECTOR(1.d0, 0.d0, 0.d0)
-                call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator, nDepth)
-                thisOctal%boundaryPartner(subcell) = locator
-                tempOctal => grid%octreeRoot
-                tempSubcell = 1
-                call findSubcellLocalLevel(locator, tempOctal, tempSubcell, nDepth)
-                if (tempOctal%centre%x > 0.d0) cycle
-
-! ok now we now that the ghostcell is deeply embedded - just set the boundary partner to be the ghostcell to its right
-
-
-                thisOctal%boundaryPartner(subcell) = VECTOR(1.d0, 0.d0, 0.d0)
-                call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 1, locator, nDepth)
-                thisOctal%boundaryPartner(subcell) = locator
-                cycle
-
-             endif
-          endif
-
-
-
-
+!          if (cylindricalHydro) then
+!             rVec = subcellCentre(thisOctal,subcell)
+!             if (rvec%x < 0.d0) then
+!                thisOctal%ghostCell(subcell) = .true.
+!                thisOctal%boundaryCondition(subcell) = 1
+!
+!! now look at next cell to the right
+!
+ !               thisOctal%boundaryPartner(subcell) = VECTOR(1.d0, 0.d0, 0.d0)
+ !               call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 1, locator, nDepth)
+ !               thisOctal%boundaryPartner(subcell) = locator
+ !               tempOctal => grid%octreeRoot
+ !               tempSubcell = 1
+ !               call findSubcellLocalLevel(locator, tempOctal, tempSubcell, nDepth)
+ !               if (tempOctal%centre%x > 0.d0) cycle
+!
+!! ok we get to here the cell is further to the left, check whether it only has one cell between it and the real grid
+!
+!
+!                thisOctal%boundaryPartner(subcell) = VECTOR(1.d0, 0.d0, 0.d0)
+!                call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 3, locator, nDepth)
+!                thisOctal%boundaryPartner(subcell) = locator
+!                tempOctal => grid%octreeRoot
+!                tempSubcell = 1
+!                call findSubcellLocalLevel(locator, tempOctal, tempSubcell, nDepth)
+!                if (tempOctal%centre%x > 0.d0) cycle
+!
+!! ok now we now that the ghostcell is deeply embedded - just set the boundary partner to be the ghostcell to its right
+!
+!
+!                thisOctal%boundaryPartner(subcell) = VECTOR(1.d0, 0.d0, 0.d0)
+!                call locatorToNeighbourLevel(grid, thisOctal, subcell, thisOctal%boundaryPartner(subcell), 1, locator, nDepth)
+!                thisOctal%boundaryPartner(subcell) = locator
+!                cycle
+!
+!             endif
+!          endif
 
 
 
@@ -11766,7 +11762,7 @@ end subroutine refineGridGeneric2
              thisOctal%adot = 0.d0
           endif
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%ghostCell(subcell) .and. .not. thisOctal%edgecell(subcell)) then
 
              locator = subcellCentre(thisOctal, subcell)
              thisR = returnCodeUnitLength(locator%x*gridDistanceScale)
@@ -11976,7 +11972,7 @@ end subroutine refineGridGeneric2
              thisOctal%adot = 0.d0
           endif
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%ghostCell(subcell) .and. .not. thisOctal%edgecell(subcell)) then
 
              locator = subcellCentre(thisOctal, subcell)
              thisR = returnCodeUnitLength(locator%x*gridDistanceScale)

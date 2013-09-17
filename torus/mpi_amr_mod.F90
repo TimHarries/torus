@@ -4957,13 +4957,13 @@ end subroutine writeRadialFile
   end subroutine rayTracingServerPDR
 
 
-  subroutine getRayTracingValuesXRAY(grid, position, direction, rho, tval)
+  subroutine getRayTracingValuesXRAY(grid, position, direction, rho, tval, getTval)
 !       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: rho
     type(VECTOR) :: position, rVec, direction
-    real(double) :: loc(7)
+    real(double) :: loc(8)
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
     integer, parameter :: nStorage = 2
@@ -4972,6 +4972,7 @@ end subroutine writeRadialFile
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
     integer :: ierr
+    logical, intent(in) :: getTval
 !    logical :: useTop
 
     thisOctal => grid%octreeRoot
@@ -4981,7 +4982,11 @@ end subroutine writeRadialFile
 
        rVec = subcellCentre(thisOctal, subcell)
        rho = thisOctal%rho(subcell)
-       call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+       if(getTval) then
+          call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+       else
+          tVal = 1.d0
+       endif
     else
 
        iThread = thisOctal%mpiThread(subcell)
@@ -4992,12 +4997,20 @@ end subroutine writeRadialFile
        loc(5) = direction%x
        loc(6) = direction%y
        loc(7) = direction%z
+       if(getTval) then
+          loc(8) = 1.d0
+       else
+          loc(8) = 0.d0
+       end if
 
-       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(loc, 8, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
 
        rho = tempStorage(1)
        tval = tempstorage(2)
+       if(.not.getTval) then
+          tval = 1.d0
+       endif
 
     endif
   end subroutine getRayTracingValuesXRAY
@@ -5007,7 +5020,7 @@ end subroutine writeRadialFile
     use mpi
     type(GRIDTYPE) :: grid
     logical :: stillServing
-    real(double) :: loc(7)
+    real(double) :: loc(8)
     type(VECTOR) :: position, rVec, direction
     type(OCTAL), pointer :: thisOctal
 !    type(OCTAL), pointer :: topOctal
@@ -5028,7 +5041,7 @@ end subroutine writeRadialFile
 !       do iThread = 1, nThreadsGlobal-1
 !       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
        
-       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+       call MPI_RECV(loc, 8, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
@@ -5056,10 +5069,15 @@ end subroutine writeRadialFile
 !             topOctalSubcell = topOctal%parentSubcell
 !             topOctal => topOctal%parent
 !          enddo
-          call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+          if(loc(8) == 1.d0) then
+             call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+             tempStorage(2) = tval
+          else
+             tempstorage(2) = 1.d0 
+          endif
           rVec = subcellCentre(thisOctal, subcell)
           tempStorage(1) = thisOctal%rho(subcell)
-          tempStorage(2) = tval
+
 
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif

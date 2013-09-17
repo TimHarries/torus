@@ -4550,9 +4550,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     
     do subcell = 1, thisOctal%maxChildren
        
-       if (hydrodynamics) then
-          if (thisOctal%ghostCell(subcell)) cycle
-       endif
+ !      if (hydrodynamics) then
+!          if (thisOctal%ghostCell(subcell)) cycle
+  !     endif
 
        if (.not.thisOctal%hasChild(subcell)) then
 

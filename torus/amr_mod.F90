@@ -9119,10 +9119,11 @@ endif
   subroutine RHDDisc(thisOctal,subcell)
 
     use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
+    use inputs_mod, ONLY : photoionPhysics, doselfgrav
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real :: r, hr, rd
-    real(double), parameter :: min_rho = 1.0d-20 ! minimum density
+    real(double), parameter :: min_rho = 1.0d-21 ! minimum density
 !    real(double), parameter :: min_rho = 1.0d-22 ! minimum density
     real(double) :: ethermal, gamma
     TYPE(vector) :: rVec
@@ -9140,8 +9141,10 @@ endif
 
     thisOctal%rho(subcell) = min_rho
     thisOctal%temperature(subcell) = 1.d4
-    thisOctal%etaCont(subcell) = 0.
-    thisOctal%inFlow(subcell) = .true.
+    if(photoionPhysics) then
+       thisOctal%etaCont(subcell) = 0.
+       thisOctal%inFlow(subcell) = .true.
+    end if
     rd = rOuter / 2.
     r = real(sqrt(rVec%x**2 + rVec%y**2))
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
@@ -9153,18 +9156,20 @@ endif
        endif
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
        thisOctal%temperature(subcell) = 100.
-       thisOctal%inFlow(subcell) = .true.
-       thisOctal%etaCont(subcell) = 0.
+       if(photoionPhysics) then
+          thisOctal%inFlow(subcell) = .true.
+          thisOctal%etaCont(subcell) = 0.
+       end if
     endif
 !    endif
 !    thisOctal%nh = thisOctal%rho(subcell)/
     thisOctal%velocity = VECTOR(0.,0.,0.)
-    thisOctal%biasCont3D = 1.
-    thisOctal%etaLine = 1.e-30
-
+    if(photoionphysics) then
+       thisOctal%biasCont3D = 1.
+       thisOctal%etaLine = 1.e-30
+    end if
     if (hydrodynamics) then
 !       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
-
        thisOctal%phi_gas(Subcell) = 0.d0
        thisOctal%phi_i(Subcell) = 0.d0
        ethermal = (1.d0/(1.d0*mHydrogen)) * kerg * thisOctal%temperature(subcell)

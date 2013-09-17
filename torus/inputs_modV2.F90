@@ -1925,6 +1925,13 @@ contains
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogen-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("caseB", hOnly, cLine, fline, nLines, &
+         "Use case B recombination coefficient: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    if(caseB .and. .not. nodiffusefield) then
+       call writeWarning("Using a case B recombination coefficient with the diffuse field!")
+    end if
+
     call getLogical("startfromneutral", startFromNeutral, cLine, fline, nLines, &
          "Start photoionization loop from neurtral: ", "(a,1l,1x,a)", .false., ok, .false.)
 
@@ -2186,14 +2193,14 @@ contains
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
 
     if (cylindricalHydro) then
-       if(.not. useionparam) then
-          amrGridCentreX = amrgridsize/2.
-          dx = dble(amrgridSize)/dble(2**4-4)
-          amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-          vtkIncludeGhosts = .false.
-       endif
+       !       if(.not. useionparam) then
+       amrGridCentreX = amrgridsize/2.
+       dx = dble(amrgridSize)/dble(2**4-4)
+       amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
+       vtkIncludeGhosts = .false.
+       !       endif
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
-               "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .true.)
+            "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
     endif
 
 
@@ -2585,6 +2592,7 @@ contains
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
     if (nimage > 9999) call writeWarning("Too many images. Need nimage <= 9999.")
+    
     call setNumImages(nimage)
 
     call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
