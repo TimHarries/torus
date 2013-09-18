@@ -14,7 +14,7 @@ print_help(){
     echo "The Torus source code needs to be available."
     echo "Exiting builds will not be deleted but will be updated."
     echo "Torus executables will be put in the bin directory"
-    echo "Run script with arguments openmp/mpi/hybrid/all."
+    echo "Run script with arguments openmp/mpi/hybrid/all/single."
     echo "Other arguments are passed to the make command"
     echo 
 }
@@ -31,6 +31,7 @@ echo
 openmp=no
 mpi=no
 hybrid=no
+single=no
 
 ############################
 # Parse command line flags #
@@ -47,6 +48,7 @@ do
 	openmp) openmp=yes;;
 	mpi) mpi=yes;;
 	hybrid) hybrid=yes;;
+	single) single=yes;;
 	*) make_args="${make_args} $1";;
     esac
 shift
@@ -177,6 +179,24 @@ if [[ $openmp == yes ]]; then
     cd ../.. 
 fi
 
+# Serial build 
+if [[ $single == yes ]]; then
+    echo "Building Torus wih no parallelisation"
+    builddir=build/single
+    if [[ -d $builddir ]]; then 
+	echo "Found existing $builddir"
+	cd $builddir
+    else
+	mkdir -p $builddir
+	cd $builddir
+	ln -s ../../torus/* . 
+    fi
+    make depends 
+    make getsvnver=no SYSTEM=${system_openmp} openmp=no mpi=no $make_args
+    cp torus.${system_openmp} ../../bin/torus.single
+    cd ../.. 
+fi
+
 # MPI build
 if [[ $mpi == yes ]]; then
     echo "Building Torus with MPI"
@@ -214,7 +234,7 @@ if [[ $hybrid == yes ]]; then
 fi
 
 # Print the help message if nothing was done.
-if [[ $mpi == no && $openmp == no && $hybrid == no ]]; then 
+if [[ $mpi == no && $openmp == no && $hybrid == no && $single == no ]]; then 
     print_help
     exit 1
 fi
