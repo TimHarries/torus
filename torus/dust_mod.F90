@@ -656,7 +656,6 @@ contains
   end subroutine fillDustUniform
 
   recursive subroutine setupOrigDustFraction(thisOctal)
-    use inputs_mod, only : nDustType
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell, i
@@ -672,7 +671,7 @@ contains
              end if
           end do
        else
-          thisOctal%origdustTypeFraction(subcell,1:nDustType) =  thisOctal%dustTypeFraction(subcell,1:nDustType) 
+          thisOctal%origdustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) 
        end if
     end do
 
