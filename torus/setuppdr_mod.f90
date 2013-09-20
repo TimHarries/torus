@@ -9,7 +9,7 @@ implicit none
 contains
 
   subroutine setupPDR(grid, reactant, product, alpha, beta, gamma, &
-       rate, duplicate, rtmin, rtmax)
+       rate, duplicate, rtmin, rtmax, nc12o, nci, ncii, noi, nelect)
     use unix_mod, only: unixGetenv
 !    use healpix_guts
 !    use read_input, only: readinput
@@ -20,8 +20,8 @@ contains
     integer :: i
     integer :: cii_nlev, cii_ntemp, ci_nlev, ci_ntemp, oi_nlev, oi_ntemp
     integer :: c12o_nlev, c12o_ntemp
-
-
+    integer :: nc12o, nci, ncii, noi, nelect
+    
 
 !  real(kind=dp), allocatable :: COEFF(:)
 !  real(kind=dp), allocatable :: ENERGIES(:), WEIGHTS(:)
@@ -201,8 +201,8 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
 !This is hardwired for species_reduced ! ! ! ! ! ! ! 
     nspec = 33
 !    allocate(dummyAbundance(1:nspec))
-    print *, "READING SPECIES"
-    call read_species(nspec, dummyAbundance)
+!    print *, "READING SPECIES"
+    call read_species(nspec, dummyAbundance, nc12o, nci, ncii, noi, nelect)
     call setupDummyAbundances(grid%octreeroot, dummyabundance)
 !    print *, dummyAbundance(1:10)
     
@@ -216,9 +216,9 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
     allocate(rtmax(1:nreac))
     allocate(duplicate(1:nreac))
     
-    print *, "READING RATES"
+!    print *, "READING RATES"
     call read_rates(nreac, reactant, product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
-    print *, product(1:10, :)
+!    print *, product(1:10, :)
 !allocations..........
 !ALLOCATE(COEFF(1:NTEMP))
 !ALLOCATE(ENERGIES(1:NLEV))
@@ -256,7 +256,7 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
              end if
           end do
        else
-          if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+          if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
              thisOctal%abundance(subcell,:) = dummyabundance(:)
           else
              thisOctal%abundance(subcell, :) = 0.d0
@@ -383,7 +383,7 @@ use unix_mod, only: unixGetenv
 
 !C     Check for negative gamma values as they could cause problems when
 !C     calculating abundances. Produce a warning message if they occur.
-         IF(GAMMA(I).LT.0.0D0) THEN
+         IF(GAMMA(I).LT.0.0D0 .and. myrankglobal == 1) THEN
           write(6,*) 'Negative gamma factor in rate',N
           WRITE(10,"('Negative gamma factor in rate',I5,' (',F8.1,')')")&
      &         N,GAMMA(I)
@@ -392,7 +392,7 @@ use unix_mod, only: unixGetenv
       I=I-1
       READ(RATEFILE,*,END=1)
       I=I+1
- 1    IF(I.NE.NREAC) THEN
+ 1    IF(I.NE.NREAC .and. myrankglobal == 1) THEN
          write(6,*) 'ERROR! Number of reactions (NREAC) does not match ', &
      &           'the number of entries in the ratefile'
          STOP
@@ -419,7 +419,7 @@ use unix_mod, only: unixGetenv
 !C     an error message if not.
 !C-----------------------------------------------------------------------
 !      SUBROUTINE READ_SPECIES(NSPEC,SPECIES,ABUNDANCE,MASS)
-      SUBROUTINE READ_SPECIES(NSPEC,ABUNDANCE)
+      SUBROUTINE READ_SPECIES(NSPEC,ABUNDANCE, nco, nc, ncx, no, nelect)
 
 !T.Bell
 !use definitions
@@ -541,7 +541,10 @@ use unix_mod, only: unixGetenv
 !C        Assign the various index labels to their correct species.
          IF(SPECIES(I).EQ."H         ") NH      = I
          IF(SPECIES(I).EQ."D         ") ND      = I
-         IF(SPECIES(I).EQ."H2        ") NH2     = I
+         IF(SPECIES(I).EQ."H2        ") then
+            NH2     = I
+            print *, "NH2 IS ", NH2
+         endif
          IF(SPECIES(I).EQ."HD        ") NHD     = I
          IF(SPECIES(I).EQ."H2+       ") NH2x    = I
          IF(SPECIES(I).EQ."H3+       ") NH3x    = I
@@ -552,7 +555,10 @@ use unix_mod, only: unixGetenv
          IF(SPECIES(I).EQ."O+        ") NOx     = I
          IF(SPECIES(I).EQ."N         ") NN      = I
          IF(SPECIES(I).EQ."N+        ") NNx     = I
-         IF(SPECIES(I).EQ."S         ") NS      = I
+         IF(SPECIES(I).EQ."S         ") then
+            NS      = I
+            print *, "NS IS", NS
+         endif
          IF(SPECIES(I).EQ."S+        ") NSx     = I
          IF(SPECIES(I).EQ."He        ") NHE     = I
          IF(SPECIES(I).EQ."HE        ") NHE     = I
@@ -600,7 +606,7 @@ use unix_mod, only: unixGetenv
       I=I-1
       READ(SPECIESFILE,*,END=1)
       I=I+1
- 1    IF(I.NE.NSPEC) THEN
+ 1    IF(I.NE.NSPEC .and. myrankglobal == 1) THEN
          write(6,*) 'ERROR! Number of species (NSPEC) does not match ',&
      &           'the number of entries in the species file'
          STOP
@@ -891,7 +897,9 @@ use unix_mod, only: unixGetenv
       ENDDO
 
       CLOSE(8)
-      WRITE(6,*) 'Cooling datafile: ',FILENAME,' read successfully'
+      if(myrankglobal == 1) then
+         WRITE(6,*) 'Cooling datafile: ',FILENAME,' read successfully'
+      end if
       RETURN
 
       END subroutine

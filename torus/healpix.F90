@@ -24,7 +24,7 @@ contains
    use healpix_guts
     implicit none
 
-    REAL(KIND=DP) :: x2pix(0:1023),y2pix(0:1023)
+!    REAL(KIND=DP) :: x2pix(0:1023),y2pix(0:1023)
     INTEGER(KIND=I4B):: kk,ipp,ii,jj,idd
     !=======================================================================
 
@@ -90,7 +90,7 @@ contains
     logical(kind=LGT) :: do_vertex
     !-----------------------------------------------------------------------
 
-ns_max=8192
+Ns_max=8192
       
     if (nside<1 .or. nside>ns_max) stop 'a'
     npix = 12 * nside**2
@@ -245,8 +245,8 @@ subroutine mk_pix2xy()
     !     one breaks up the pixel number by even and odd bits
     !=======================================================================
     INTEGER ::  kpix, jpix, ix, iy, ip, id
-    integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
-    integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
+!    integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
+!    integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
     !cc cf block data      data      pix2x(1023) /0/
     !-----------------------------------------------------------------------
     !      print *, 'initiate pix2xy'
@@ -336,8 +336,8 @@ subroutine mk_pix2xy()
     INTEGER(KIND=I4B), INTENT(IN) :: nside
     INTEGER(KIND=I4B), INTENT(OUT) :: ipix
     REAL(KIND=DP), INTENT(IN) ::  theta, phi
-    real(kind=DP) :: x2pix(0:1023)          ! ..
-    real(kind=DP) :: y2pix(0:1023)          ! ..
+!    real(kind=DP) :: x2pix(0:1023)          ! ..
+!    real(kind=DP) :: y2pix(0:1023)          ! ..
     REAL(KIND=DP) ::  z, za, tt, tp, tmp
     INTEGER(KIND=I4B) :: jp, jm, ifp, ifm, face_num, &
          &     ix, iy, ix_low, ix_hi, iy_low, iy_hi, ipf, ntt

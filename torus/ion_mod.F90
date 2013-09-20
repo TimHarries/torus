@@ -1289,6 +1289,15 @@ function returnAbundance(z) result(a)
 end function returnAbundance
 
 
+function returnMuSimple(thisOctal, subcell) result (mu)
+  type(octal) :: thisOctal
+  integer :: subcell
+  real(double) :: mu
+
+  mu = 1.d0/(1.d0 + thisOctal%ionfrac(subcell, 2))
+
+end function returnMuSimple
+
 function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
 
   real(double) :: mu, tot, ne, mA, mE

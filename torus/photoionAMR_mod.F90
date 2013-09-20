@@ -1083,7 +1083,7 @@ contains
        if(grid%geometry == "hii_test" .or. grid%geometry == "SB_Dtype") then
           write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
           call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-               VECTOR(4.d9, 0.d0, 0.d0), 1000)
+               VECTOR(4.d9, 0.d0, 4.d9), 1000)
 
 
 !          write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
@@ -1091,7 +1091,7 @@ contains
 !               VECTOR(3.86d8, 0.d0, 0.d0), 1000)!
           write(datFilename, '(a, i4.4, a)') "Ifront.dat"     
           call dumpStromgrenRadius(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-               VECTOR(4.d9, 0.d0, 0.d0), 1000)!
+               VECTOR(4.d9, 0.d0, 4.d9), 1000)!
 !          write(datFilename, '(a, i4.4, a)') "hii_test",grid%iDump,".dat"
 !          call dumpValuesAlongLine(grid, datFileName, VECTOR(1.75d9,  0.d0, 1.75d9), &
 !               VECTOR(3.5d9, 0.d0, 1.75d9), 1000)!
@@ -1665,7 +1665,7 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       if(.not. cart2d .and. .not. sphericalHydro) then
+       if(.not. cart2d .and. .not. sphericalHydro .and. 0== 1) then
           maxDiffRadius3  = 1.d30
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 10.d0, maxDiffRadius1(iSource))
@@ -6935,6 +6935,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
 
   recursive subroutine calculateEnergyFromTemperature(thisOctal)
+    use inputs_mod, only : hOnly, simplemu
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -6954,6 +6955,9 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           end do
        else
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          if(hOnly .and. simplemu) mu = returnMuSimple(thisOctal, subcell)
+
+             
           if (mu == 0.d0) then
              write(*,*) "nh ",thisOctal%nh(subcell)
              write(*,*) "ionfrac ",thisOctal%ionFrac(subcell,:)

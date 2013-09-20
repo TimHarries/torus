@@ -1047,6 +1047,13 @@ contains
                case("pdrtemp")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
+               case("CO_PDR")
+                  write(lunit, *) real(thisOctal%abundance(subcell, 28))
+               case("C+_PDR")
+                  write(lunit, *) real(thisOctal%abundance(subcell, 11))
+               case("C_PDR")
+                  write(lunit, *) real(thisOctal%abundance(subcell, 25))
+
                case("chiline")
                   write(lunit, *) real(thisOctal%chiline(subcell))
 
@@ -3123,7 +3130,14 @@ end subroutine writeXMLVtkFileAMR
 
                case("pdrtemp")
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
-                  
+
+               case("CO_PDR")
+                  rArray(1, n) = real(thisOctal%abundance(subcell, 28))
+               case("C+_PDR")
+                  rArray(1, n) = real(thisOctal%abundance(subcell, 11))
+               case("C_PDR")
+                  rArray(1, n) = real(thisOctal%abundance(subcell, 25))
+
                case("chiline")
                   if (.not.associated(thisOctal%chiline)) then
                      rArray(1, n) = 0.d0

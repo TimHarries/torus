@@ -74,6 +74,7 @@
 
   logical :: photoionization   !Perform a photoionization calculation
   logical :: hOnly             !Hydrogen only model (no Helium)
+  logical :: simpleMu          !simpified mean particle mass calc
   logical :: caseB             !use a case b recombination coefficient
   logical :: startFromNeutral  !Start photoionization loop from neutral
   logical :: usemetals         !Include species heavier than Helium

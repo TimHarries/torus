@@ -16,7 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
-sundials = no
+sundials = yes
 hdf = no
 memcheck = yes
 zlib = yes
@@ -47,6 +47,7 @@ MPIFLAG =
 #
 # Set system-dependent variables
 #
+
 
 ########################
 # NAG Fortran compiler #
@@ -320,11 +321,19 @@ else
    ETCFLAG += -DUSECFITSIO
 endif
 
-ifeq ($(sundials)), yes)
-    SUNDIALSLIBS = /sw/sundials-2.5.0 #-sundials
+#SUNFLAG = -sundials
+
+ifeq ($(sundials), yes)
+    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials
+    SUNDIALSINC = -I/sw/sundials-2.5.0/include #-sundials
+    SLIBS = -lsundials_cvode -lsundials_nvecserial -lm
+    ETCFLAG += -DUSESUNDIALS
 else
-    SUNDIALSLIBS = 
-   ETCFLAG += -DUSESUNDIALS
+#    CSOURCE = 
+#    CSOURCELIB =
+    SUNDIALSLIBRARIES = 
+    SUNDIALSLINC = 
+    SLIBS = 
 endif
 
 ifeq ($(hdf), yes)
@@ -498,21 +507,32 @@ CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90
                   pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90
 
 
+CSOURCE = calculate_abundances_onepart.c jacobian_reduced.c odes_reduced.c
+CSOURCELIB = calculate_abundances_onepart.c jacobian_reduced.c odes_reduced.c
+
+
 # Object files
 #
+#ifeq($(sundials), no)
+#    CSOURCE = ##
+#    CSOURCELIB =
+#endif
+
 INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
-ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(INPUTSMODOBJ)
-LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ)
+COBJ = $(CSOURCE:.c=.o)
+CLIB = $(CSOURCELIB:.c=.o)
+ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(INPUTSMODOBJ) $(COBJ)
+LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
 
 #
 # Compilers and compiler flags
 #
 
 F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE)
-
+GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
 #
 #
 
@@ -522,10 +542,14 @@ all: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
-	    $(F90) $(TRACEFLAG) -o $(EXE) \
+#	    ifeq($(sundials), yes)
+#	    $(GCC) -o  $(COBJ) 
+#	    endif
+	    $(F90) $(TRACEFLAG) $(SUNDIALSLIBRARIES) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) \
-            $(SUNDIALSLIBS)
+	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) $(COBJ) \
+	    $(SLIBS)
+
     else
 	    @echo ""
 	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
@@ -536,7 +560,7 @@ lib: depends $(LIBOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files making a library..."
-	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(INPUTSMODOBJ)
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(INPUTSMODOBJ) 
 	    @echo "...done"
     else
 	    @echo ""
@@ -551,6 +575,7 @@ preprocess:
 	@echo "BUILD OPTIONS: "
 	@echo "OpenMP = $(openmp)"
 	@echo "Debug  = $(debug)"
+	@echo "Sundials  = $(sundials)"
 
 
 depends: preprocess
@@ -584,9 +609,9 @@ link: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
-	    $(F90) $(TRACEFLAG) -o $(EXE) \
+	    $(F90) $(TRACEFLAG) $(SUNDIALSLIBRARIES) -o $(EXE) \
 	    $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS) $(SUNDIALSLIBS)
+	    $(CFITSIOLIBS) $(STARLIBS) $(STATICLIBS) $(SLIBS)
 	    @echo "...done"
     else
 	    @echo ""
@@ -599,11 +624,13 @@ link: depends $(ALLOBJ)
 .SUFFIXES:
 
 %.o: %.f90
-	$(F90) -c $<
+	$(F90) -cpp -c $<
 
 %.o: %.F90
-	$(F90) -c $<
+	$(F90) -cpp -c $<
 
+%.o: %.c
+	$(GCC) -c $<
 
 #
 # Auto-generated dependency file

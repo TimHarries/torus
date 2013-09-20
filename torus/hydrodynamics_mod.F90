@@ -12959,8 +12959,8 @@ end subroutine refineGridGeneric2
 
   real(double) function getPressure(thisOctal, subcell)
 #ifdef PHOTOION
-    use inputs_mod, only : photoionPhysics
-    use ion_mod, only : nGlobalIon, globalIonArray, returnMu
+    use inputs_mod, only : photoionPhysics, honly, simpleMu
+    use ion_mod, only : nGlobalIon, globalIonArray, returnMu, returnmusimple
 #endif
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
@@ -13001,6 +13001,7 @@ end subroutine refineGridGeneric2
 
           if (photoionPhysics) then
              mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+             if(honly .and. simpleMu) mu = returnMuSimple(thisOctal, subcell)
           else
              mu = 2.33d0
 !             if(grid%geometry == "SB_1D_2Da" .or. grid%geometry == "SB_CD_1Db" &
@@ -15714,8 +15715,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
 
   recursive subroutine calculateTemperatureFromEnergy(thisOctal)
-    use inputs_mod, only : photoionPhysics
-    use ion_mod, only : nGlobalIon, globalIonArray, returnMu
+    use inputs_mod, only : photoionPhysics, honly, simplemu
+    use ion_mod, only : nGlobalIon, globalIonArray, returnMu, returnMusimple
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -15724,6 +15725,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
     if (photoionPhysics) then
        mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+       if(hOnly .and. simpleMu) then
+          mu = returnMuSimple(thisOctal, subcell)
+       end if
     else
        mu = 2.33d0
     endif

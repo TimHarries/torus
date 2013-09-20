@@ -372,7 +372,7 @@ subroutine simpleXRay(grid, thisSource)!
            print *, "thread ", myrankglobal, "doing raytracing"
            call calculateColumnToStar(grid%octreeRoot, grid, thisSource%position)
            print *, "thread ", myrankglobal, "done tracing"
-           call shutdownserversXRAY_PDR()
+           call shutdownserversXRAY()
         else
            print *, "thread ", myrankglobal, "serving"
            call raytracingserverXRAY(grid)

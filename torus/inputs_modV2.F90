@@ -1925,6 +1925,8 @@ contains
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogen-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("simplemu", simpleMu, cLine, fline, nLines, &
+         "Use simple mean particle mass cals: ", "(a,1l,1x,a)", .false., ok, .false.)
     call getLogical("caseB", hOnly, cLine, fline, nLines, &
          "Use case B recombination coefficient: ", "(a,1l,1x,a)", .false., ok, .false.)
 

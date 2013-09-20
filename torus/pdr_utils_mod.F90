@@ -20,74 +20,21 @@ use utils_mod
 
 
 !UCLPDR TOM BELL
-  integer, save :: NUMH2=105
-  real(double), dimension(105), save :: COL_GRID=(/&
-     &              0.000D+00,3.690D+11,3.715D+12,3.948D+13,1.233D+14, &
-     &              2.536D+14,4.342D+14,6.653D+14,6.689D+14,9.075D+14, &
-     &              1.234D+15,1.631D+15,2.105D+15,2.363D+15,2.899D+15, &
-     &              3.207D+15,3.848D+15,4.636D+15,5.547D+15,6.604D+15, &
-     &              7.855D+15,9.368D+15,1.122D+16,1.352D+16,1.643D+16, &
-     &              2.017D+16,2.515D+16,3.190D+16,4.128D+16,5.439D+16, &
-     &              7.315D+16,1.009D+17,1.432D+17,2.092D+17,3.123D+17, &
-     &              4.738D+17,5.388D+17,8.935D+17,1.381D+18,2.164D+18, &
-     &              3.330D+18,5.024D+18,7.404D+18,9.029D+18,1.316D+19, &
-     &              1.813D+19,2.453D+19,3.248D+19,4.216D+19,5.370D+19, &
-     &              6.722D+19,8.277D+19,9.894D+19,1.186D+20,1.404D+20, &
-     &              1.644D+20,1.908D+20,2.197D+20,2.510D+20,2.849D+20, &
-     &              3.214D+20,3.604D+20,4.019D+20,4.456D+20,4.915D+20, &
-     &              5.393D+20,5.886D+20,6.392D+20,6.909D+20,7.433D+20, &
-     &              7.965D+20,8.505D+20,9.056D+20,9.627D+20,1.011D+21, &
-     &              1.068D+21,1.125D+21,1.185D+21,1.250D+21,1.327D+21, &
-     &              1.428D+21,1.578D+21,1.851D+21,2.128D+21,2.298D+21, &
-     &              2.389D+21,2.459D+21,2.519D+21,2.571D+21,2.618D+21, &
-     &              2.707D+21,2.790D+21,2.887D+21,3.001D+21,3.139D+21, &
-     &              3.303D+21,3.497D+21,3.722D+21,3.983D+21,4.283D+21, &
-     &              4.644D+21,5.127D+21,5.945D+21,8.205D+21,1.015D+22/)
-  real(double), dimension(105), save :: SH2_GRID=(/&
-     &              1.000D+00,9.983D-01,9.853D-01,8.761D-01,7.199D-01, &
-     &              5.728D-01,4.455D-01,3.431D-01,3.418D-01,2.732D-01, &
-     &              2.110D-01,1.619D-01,1.236D-01,1.084D-01,8.447D-02, &
-     &              7.410D-02,5.774D-02,4.416D-02,3.390D-02,2.625D-02, &
-     &              2.048D-02,1.606D-02,1.264D-02,9.987D-03,7.937D-03, &
-     &              6.343D-03,5.088D-03,4.089D-03,3.283D-03,2.640D-03, &
-     &              2.130D-03,1.725D-03,1.397D-03,1.129D-03,9.097D-04, &
-     &              7.340D-04,6.883D-04,5.377D-04,4.352D-04,3.475D-04, &
-     &              2.771D-04,2.205D-04,1.753D-04,1.549D-04,1.210D-04, &
-     &              9.666D-05,7.705D-05,6.148D-05,4.904D-05,3.909D-05, &
-     &              3.112D-05,2.473D-05,1.997D-05,1.578D-05,1.244D-05, &
-     &              9.769D-06,7.634D-06,5.932D-06,4.581D-06,3.515D-06, &
-     &              2.679D-06,2.029D-06,1.527D-06,1.144D-06,8.523D-07, &
-     &              6.332D-07,4.693D-07,3.475D-07,2.574D-07,1.907D-07, &
-     &              1.413D-07,1.047D-07,7.739D-08,5.677D-08,4.386D-08, &
-     &              3.227D-08,2.385D-08,1.750D-08,1.248D-08,8.389D-09, &
-     &              5.026D-09,2.382D-09,6.259D-10,1.653D-10,7.399D-11, &
-     &              4.824D-11,3.474D-11,2.633D-11,2.069D-11,1.663D-11, &
-     &              1.099D-11,7.506D-12,4.825D-12,2.864D-12,1.534D-12, &
-     &              7.324D-13,3.087D-13,1.135D-13,3.591D-14,9.689D-15, &
-     &              2.045D-15,2.618D-16,8.918D-18,3.041D-21,1.739D-23/)
+
+
+
   logical :: start
   integer, save :: DIMH2=6
   integer, save :: DIMCO=8
+
   real(double), dimension(8), save :: NCO_GRID=(/&
     &12.0D0,13.0D0,14.0D0,15.0D0, 16.0D0,17.0D0,18.0D0,19.0D0/)
   real(double), dimension(6), save :: NH2_GRID=(/&
     &18.0D0,19.0D0,20.0D0,21.0D0,22.0D0,23.0D0/)
   real(double) :: SCO_GRID(1:8,1:6)
   integer, save :: N_GRID=30
-  real(double), dimension(30), save :: L_GRID=(/&
-     &             910.0D0, 950.0D0,1000.0D0,1050.0D0,1110.0D0, &
-     &            1180.0D0,1250.0D0,1390.0D0,1490.0D0,1600.0D0, &
-     &            1700.0D0,1800.0D0,1900.0D0,2000.0D0,2100.0D0, &
-     &            2190.0D0,2300.0D0,2400.0D0,2500.0D0,2740.0D0, &
-     &            3440.0D0,4000.0D0,4400.0D0,5500.0D0,7000.0D0, &
-     &            9000.0D0,12500.0D0,22000.0D0,34000.0D0,1.0D9/)
-  real(double), dimension(30), save :: X_GRID=(/&
-     &            5.76D0,5.18D0,4.65D0,4.16D0,3.73D0, &
-     &            3.40D0,3.11D0,2.74D0,2.63D0,2.62D0, &
-     &            2.54D0,2.50D0,2.58D0,2.78D0,3.01D0, &
-     &            3.12D0,2.86D0,2.58D0,2.35D0,2.00D0, &
-     &            1.58D0,1.42D0,1.32D0,1.00D0,0.75D0, &
-     &            0.48D0,0.28D0,0.12D0,0.05D0,0.00D0/)
+
+
 
   real(double) :: SH2_DERIV(1:105), SCO_DERIV(1:8,1:6), X_DERIV(1:30)
 
@@ -212,6 +159,8 @@ use utils_mod
 contains
 
 
+
+
 integer function nray_func()
   use inputs_mod, only : hlevel
   integer :: nside
@@ -239,7 +188,7 @@ end function nray_func
 !#else
       SUBROUTINE CALCULATE_REACTION_RATES(TEMPERATURE,DUST_TEMPERATURE,RAD_SURFACE,AV,COLUMN, &
                  &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
-                 &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays)
+                 &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, n12co, nci)
 !#endif
  
 !T.Bell
@@ -253,7 +202,7 @@ end function nray_func
 
       integer, intent(in) ::  NSPEC, nreac, nrays
       real(double),intent(in) :: TEMPERATURE, DUST_TEMPERATURE
-      real(double),intent(in) :: RAD_SURFACE(0:nrays-1),AV(0:nrays-1),COLUMN(0:nrays-1,1:nspec)
+      real(double),intent(in) :: RAD_SURFACE(1:nrays),AV(1:nrays),COLUMN(1:nrays,1:nspec)
 !#ifdef XRAYS
 !      real(double),intent(in) :: XRAD_SURFACE(0:nrays-1)
 !#endif
@@ -270,12 +219,17 @@ end function nray_func
 
       REAL(double), parameter :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
 !      real(double) :: NH2, NHD, NCO, NC, NS
+      integer, intent(in) :: n12co,  nci
       integer ::NH2, NHD, NCO, NC, NS
 !#ifdef MOCASSIN
 !      real(double) :: RADSURFTOT
 !#endif
 !C     Initialize the rate coefficients.
       
+      NCO = n12co
+      NC = nci
+      NH2 = 31
+      NS = 30
 
       RATE=0.0D0
 
@@ -345,6 +299,7 @@ end function nray_func
 !       &       PRODUCT(I,2).EQ."   ") THEN
 
 !#ifdef H2FORM
+!            print *, "PART 2"
           RATE(I)=H2_FORMATION_RATE(TEMPERATURE,DUST_TEMPERATURE)
 !#else
 !!            T.Bell,15/11/11 - Use the H2 grain formation rate from the
@@ -358,6 +313,7 @@ end function nray_func
 
 !C     Check for large negative gamma values that might cause discrepant
 !C     rates at low temperatures. Set these rates to zero when T < RTMIN.
+!         print *, "PART 1"
          IF(DUPLICATE(I).EQ.0) THEN
             IF(GAMMA(I).LT.-200.0D0 .AND. TEMPERATURE.LT.RTMIN(I)) THEN
                RATE(I)=0.0D0
@@ -407,10 +363,12 @@ end function nray_func
  !           ENDDO
 !            RATE(I) = RATE(I)/RADSURFTOT
 !#else
-            if(myrankglobal == 1) then
-               print *, "DOING ", NRH2, "FOR ", NRAYS, "REAC ", NREAC
-            end if
-            DO K=0,NRAYS-1
+ !           if(myrankglobal == 1) then
+!               print *, "DOING ", NRH2, "FOR ", NRAYS, "REAC ", NREAC
+  !          end if
+!            print *, "PART 3"
+            DO K=1,NRAYS
+!            DO K=0,NRAYS-1
                RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NH2))
             ENDDO
 !#endif
@@ -432,7 +390,9 @@ end function nray_func
 !            ENDDO
 !            RATE(I) = RATE(I)/RADSURFTOT
 !#else
-            DO K=0,NRAYS-1
+!            print *, "PART 4"
+            DO K=1,NRAYS
+!            DO K=0,NRAYS-1
                RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NHD))
             ENDDO
 !#endif
@@ -454,7 +414,17 @@ end function nray_func
  !           ENDDO
  !           RATE(I) = RATE(I)/RADSURFTOT
 !#else
-            DO K=0,NRAYS-1
+!            print *, "PART 5"
+!            DO K=0,NRAYS-1
+            DO K=1,NRAYS
+!!               print *, "COMMENCING DUMP"
+!               print *, RATE(I)
+!               print *, ALPHA(I)
+!               print *, RAD_SURFACE(K)
+!               print *, AV(K) 
+!               print *, COLUMN(K,NCO)
+!               print *, COLUMN(K,NH2)
+!               Print *, COPDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NCO),COLUMN(K,NH2))
                RATE(I)=RATE(I) + COPDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NCO),COLUMN(K,NH2))
             ENDDO
 !#endif
@@ -476,7 +446,9 @@ end function nray_func
 !            ENDDO
 !            RATE(I) = RATE(I)/RADSURFTOT
 !#else
-            DO K=0,NRAYS-1
+!            print *, "PART 6"
+!            DO K=0,NRAYS-1
+            DO K=1,NRAYS
                RATE(I)=RATE(I) + CIPDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),GAMMA(I),COLUMN(K,NC),COLUMN(K,NH2),TEMPERATURE)
             ENDDO
 !#endif
@@ -498,7 +470,9 @@ end function nray_func
 !            ENDDO
 !            RATE(I) = RATE(I)/RADSURFTOT
 !#else
-            DO K=0,NRAYS-1
+!            print *, "PART 7"
+            DO K=1,NRAYS
+!            DO K=0,NRAYS-1
                RATE(I)=RATE(I) + SIPDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),GAMMA(I),COLUMN(K,NS))
             ENDDO
 !#endif
@@ -516,7 +490,13 @@ end function nray_func
 !!            ENDDO
  !           RATE(I) = RATE(I)/RADSURFTOT
 !#else
-            DO K=0,NRAYS-1
+!            print *, "part 8"
+!            DO K=0,NRAYS-1
+            DO K=1,NRAYS
+ !              print *, ""
+!               print *, "PART 8", RATE(I), ALPHA(I), RAD_SURFACE(K)
+!               print *, GAMMA(I), AV(K)
+!               print *, ""
                 RATE(I)=RATE(I) + ALPHA(I)*RAD_SURFACE(K)*EXP(-(GAMMA(I)*AV(K)))/2.0
             ENDDO
 !#endif
@@ -533,7 +513,9 @@ end function nray_func
 !                  ENDDO
 !                  RATE(J) = RATE(J)/RADSURFTOT
 !#else
-                  DO K=0,NRAYS-1
+!                  print *, "PART 9"
+!                  DO K=0,NRAYS-1
+                  DO K=1,NRAYS
                      RATE(J)=RATE(J) + ALPHA(J)*RAD_SURFACE(K)*EXP(-(GAMMA(J)*AV(K)))/2.0
                   ENDDO
 !#endif
@@ -548,7 +530,9 @@ end function nray_func
 !                  ENDDO
 !                  RATE(J) = RATE(J)/RADSURFTOT
 !#else                   
-                  DO K=0,NRAYS-1
+!                  print *, "PART 10"
+!                  DO K=0,NRAYS-1
+                  DO K=1,NRAYS
                      RATE(J)=RATE(J) + ALPHA(J)*RAD_SURFACE(K)*EXP(-(GAMMA(J)*AV(K)))/2.0
                   ENDDO
 !#endif
@@ -564,7 +548,7 @@ end function nray_func
 !C-----------------------------------------------------------------------
 
 !C     Cosmic ray-induced ionization:
-
+!         print *, "PART 11"
  2       IF(DUPLICATE(I).EQ.0) THEN
             RATE(I)=ALPHA(I)*ZETA
          ELSE IF(DUPLICATE(I).EQ.1) THEN
@@ -621,7 +605,7 @@ end function nray_func
 !C-----------------------------------------------------------------------
 
 !C     Photoreactions due to cosmic ray-induced secondary photons:
-
+!         print *, "PART 12"
  3       IF(DUPLICATE(I).EQ.0) THEN
             RATE(I)=ALPHA(I)*ZETA*(TEMPERATURE/300.0D0)**BETA(I)&
      &           *GAMMA(I)/(1.0D0-OMEGA)
@@ -656,6 +640,7 @@ end function nray_func
             CION=0.0D0
          ENDIF
          STICKING=0.3D0
+!         print *, "PART 13"
          RATE(I)=ALPHA(I)*4.57D4*2.4D-22*SQRT(TEMPERATURE/GAMMA(I))*CION*STICKING
          GOTO 10
 
@@ -671,6 +656,7 @@ end function nray_func
             CION=0.0D0
          ENDIF
          STICKING=0.3D0
+!         print *, "PART 14"
          RATE(I)=ALPHA(I)*4.57D4*2.4D-22*SQRT(TEMPERATURE/GAMMA(I))*CION*STICKING
          GOTO 10
 
@@ -688,6 +674,7 @@ end function nray_func
             YIELD=0.0D0
          ENDIF
          FLUX=2.06D-3 ! Flux of iron nuclei cosmic rays (in cm^-2 s^-1)
+!         print *, "PART 15"
          RATE(I)=FLUX*ZETA*2.4D-22*YIELD
          GOTO 10
 
@@ -715,7 +702,9 @@ end function nray_func
 !         ENDDO
 !         RATE(I) = RATE(I)/RADSURFTOT
 !#else       
-         DO K=0,NRAYS-1
+!         print *, "PART 17"
+         DO K=1,NRAYS
+!         DO K=0,NRAYS-1
             RATE(I)=RATE(I) + FLUX*RAD_SURFACE(K)*EXP(-(1.8D0*AV(K)))*2.4D-22*YIELD
          ENDDO
 !#endif
@@ -726,6 +715,7 @@ end function nray_func
 !C     Thermal desorption:
 
 !C     Treatment of Hasegawa, Herbst & Leung (1992, ApJS, 82, 167, Equations 2 & 3)
+!         print *, "PART 18"
  8       RATE(I)=SQRT(2.0D0*1.5D15*KB/(PI**2*AU)*ALPHA(I)/GAMMA(I))&
      &        *EXP(-(ALPHA(I)/DUST_TEMPERATURE))
          GOTO 10
@@ -733,7 +723,7 @@ end function nray_func
 !C-----------------------------------------------------------------------
 
 !C     Grain mantle reactions:
-
+!         print *, "PART 19"
  9       RATE(I)=ALPHA(I)
          GOTO 10
 
@@ -812,7 +802,7 @@ end function nray_func
       RADW=8.0D7
 
       h2shieldVAL = H2SHIELD1(NH2,DOPW,RADW)
-      scatterVAL = SCATTER(AV,LAMBDA)
+      scatterVAL = SCATTER(AV,LAMBDA, START=.true.)
 !     Calculate the H2 photodissociation rate (H2PDRATE)
       H2PDRATE=K0*G0*h2shieldVAL*scatterVAL/2.0
 !      H2PDRATE=K0*G0*H2SHIELD2(NH2)*SCATTER(AV,LAMBDA)/2.0
@@ -866,7 +856,8 @@ end function nray_func
 
       LAMBDA=LBAR(NCO,NH2)
       coshieldVAL = COSHIELD(NCO,NH2)
-      scatterVAL = SCATTER(AV,LAMBDA)
+!      print *, "CALLING SCATTER WITH ", LAMBDA
+      scatterVAL = SCATTER(AV,LAMBDA, start=.true.)
 !C     Calculate the CO photodissociation rate (COPDRATE)
       COPDRATE=K0*G0*COSHIELDVAL*SCATTERVAL/2.0
 
@@ -1083,7 +1074,54 @@ end function nray_func
       LOGICAL :: START
       integer :: NUMH2
 !      real(double) ::  NH2
-        real(double) ::  COL_GRID(105),SH2_GRID(105),SH2_DERIV(105)
+        real(double) ::  SH2_DERIV(105)
+  real(double), dimension(105) :: COL_GRID=(/&
+     &              0.000D+00,3.690D+11,3.715D+12,3.948D+13,1.233D+14, &
+     &              2.536D+14,4.342D+14,6.653D+14,6.689D+14,9.075D+14, &
+     &              1.234D+15,1.631D+15,2.105D+15,2.363D+15,2.899D+15, &
+     &              3.207D+15,3.848D+15,4.636D+15,5.547D+15,6.604D+15, &
+     &              7.855D+15,9.368D+15,1.122D+16,1.352D+16,1.643D+16, &
+     &              2.017D+16,2.515D+16,3.190D+16,4.128D+16,5.439D+16, &
+     &              7.315D+16,1.009D+17,1.432D+17,2.092D+17,3.123D+17, &
+     &              4.738D+17,5.388D+17,8.935D+17,1.381D+18,2.164D+18, &
+     &              3.330D+18,5.024D+18,7.404D+18,9.029D+18,1.316D+19, &
+     &              1.813D+19,2.453D+19,3.248D+19,4.216D+19,5.370D+19, &
+     &              6.722D+19,8.277D+19,9.894D+19,1.186D+20,1.404D+20, &
+     &              1.644D+20,1.908D+20,2.197D+20,2.510D+20,2.849D+20, &
+     &              3.214D+20,3.604D+20,4.019D+20,4.456D+20,4.915D+20, &
+     &              5.393D+20,5.886D+20,6.392D+20,6.909D+20,7.433D+20, &
+     &              7.965D+20,8.505D+20,9.056D+20,9.627D+20,1.011D+21, &
+     &              1.068D+21,1.125D+21,1.185D+21,1.250D+21,1.327D+21, &
+     &              1.428D+21,1.578D+21,1.851D+21,2.128D+21,2.298D+21, &
+     &              2.389D+21,2.459D+21,2.519D+21,2.571D+21,2.618D+21, &
+     &              2.707D+21,2.790D+21,2.887D+21,3.001D+21,3.139D+21, &
+     &              3.303D+21,3.497D+21,3.722D+21,3.983D+21,4.283D+21, &
+     &              4.644D+21,5.127D+21,5.945D+21,8.205D+21,1.015D+22/)
+
+  real(double), dimension(105) :: SH2_GRID=(/&
+     &              1.000D+00,9.983D-01,9.853D-01,8.761D-01,7.199D-01, &
+     &              5.728D-01,4.455D-01,3.431D-01,3.418D-01,2.732D-01, &
+     &              2.110D-01,1.619D-01,1.236D-01,1.084D-01,8.447D-02, &
+     &              7.410D-02,5.774D-02,4.416D-02,3.390D-02,2.625D-02, &
+     &              2.048D-02,1.606D-02,1.264D-02,9.987D-03,7.937D-03, &
+     &              6.343D-03,5.088D-03,4.089D-03,3.283D-03,2.640D-03, &
+     &              2.130D-03,1.725D-03,1.397D-03,1.129D-03,9.097D-04, &
+     &              7.340D-04,6.883D-04,5.377D-04,4.352D-04,3.475D-04, &
+     &              2.771D-04,2.205D-04,1.753D-04,1.549D-04,1.210D-04, &
+     &              9.666D-05,7.705D-05,6.148D-05,4.904D-05,3.909D-05, &
+     &              3.112D-05,2.473D-05,1.997D-05,1.578D-05,1.244D-05, &
+     &              9.769D-06,7.634D-06,5.932D-06,4.581D-06,3.515D-06, &
+     &              2.679D-06,2.029D-06,1.527D-06,1.144D-06,8.523D-07, &
+     &              6.332D-07,4.693D-07,3.475D-07,2.574D-07,1.907D-07, &
+     &              1.413D-07,1.047D-07,7.739D-08,5.677D-08,4.386D-08, &
+     &              3.227D-08,2.385D-08,1.750D-08,1.248D-08,8.389D-09, &
+     &              5.026D-09,2.382D-09,6.259D-10,1.653D-10,7.399D-11, &
+     &              4.824D-11,3.474D-11,2.633D-11,2.069D-11,1.663D-11, &
+     &              1.099D-11,7.506D-12,4.825D-12,2.864D-12,1.534D-12, &
+     &              7.324D-13,3.087D-13,1.135D-13,3.591D-14,9.689D-15, &
+     &              2.045D-15,2.618D-16,8.918D-18,3.041D-21,1.739D-23/)
+
+
 !      COMMON /STATUS/START
 !      COMMON /H2GRID/SH2_GRID,SH2_DERIV,COL_GRID,NUMH2
 !     use definitions
@@ -1094,12 +1132,14 @@ end function nray_func
      real(double) :: h2shield2
 !     integer, intent(in) :: nh2
      real(double), intent(inout) :: nh2
+!     START = .true.
 
-      IF(START) CALL SPLINE(COL_GRID,SH2_GRID,NUMH2, &
+      NUMH2=105
+      IF(START) CALL SPLINE_PDR(COL_GRID,SH2_GRID,NUMH2, &
      &                      1.0D30,1.0D30,SH2_DERIV)
       IF(NH2.LT.COL_GRID(1))     NH2=COL_GRID(1)
       IF(NH2.GT.COL_GRID(NUMH2)) NH2=COL_GRID(NUMH2)
-      CALL SPLINT(COL_GRID,SH2_GRID,SH2_DERIV,NUMH2,NH2,H2SHIELD2)
+      CALL SPLINT_PDR(COL_GRID,SH2_GRID,SH2_DERIV,NUMH2,NH2,H2SHIELD2)
       IF(H2SHIELD2.LT.0.0D0) H2SHIELD2=0.0D0
 
       RETURN
@@ -1145,12 +1185,20 @@ end function nray_func
     FUNCTION COSHIELD(NCO,NH2)
       
       IMPLICIT NONE
-      LOGICAL :: START
+      LOGICAL, save :: START=.true.
       integer :: DIMCO,DIMH2
       real(double) ::  NCO,NH2
       !      real(double) ::  LOGNCO,LOGNH2
-      real(double) ::  NCO_GRID(8),NH2_GRID(6)
-      real(double) ::  SCO_GRID(8,6),SCO_DERIV(8,6)
+!      real(double) ::  NCO_GRID(8),NH2_GRID(6)
+!      real(double) ::  SCO_GRID(8,6),SCO_DERIV(8,6)
+
+      real(double), dimension(8) :: NCO_GRID=(/&
+           &12.0D0,13.0D0,14.0D0,15.0D0, 16.0D0,17.0D0,18.0D0,19.0D0/)
+      real(double), dimension(6) :: NH2_GRID=(/&
+           &18.0D0,19.0D0,20.0D0,21.0D0,22.0D0,23.0D0/)
+      real(double) :: SCO_GRID(1:8,1:6)
+      real(double) :: SCO_DERIV(1:8,1:6)
+
       !      COMMON /STATUS/START
       !      COMMON /COGRID/SCO_GRID,SCO_DERIV,NCO_GRID,NH2_GRID,DIMCO,DIMH2
       
@@ -1164,6 +1212,9 @@ end function nray_func
      real(double) :: LOGNCO, LOGNH2
 !     integer, intent(in) :: NCO, NH2
 !     real(double), intent(in) :: nh2, nco
+     DIMH2 = 6
+     DIMCO=8
+
 
       IF(START) THEN
          CALL SPLIE2(NCO_GRID,NH2_GRID,SCO_GRID,DIMCO,DIMH2,SCO_DERIV)
@@ -1216,7 +1267,7 @@ end function nray_func
 !C     XLAMBDA = function to determine tau(λ)/tau(V)
 !C
 !C-----------------------------------------------------------------------
-      FUNCTION SCATTER(AV,LAMBDA)
+      FUNCTION SCATTER(AV,LAMBDA,START)
 
       IMPLICIT NONE
 !      integer :: I
@@ -1238,13 +1289,15 @@ end function nray_func
            &0.7514D0,0.8490D0,1.013D0,1.282D0,2.005D0,5.832D0/)
      real(double) :: EXPONENT, XLAMBDAVAL, LAMBDA
      integer :: i
+     logical :: start
      real(double) :: TAUL, TAUV
 
 !C     Calculate the optical depth at visual wavelength
       TAUV=AV/1.086D0
 
 !C     Convert the optical depth to that at the desired wavelength
-      XLAMBDAVAL = XLAMBDA(LAMBDA)
+!      print *, "CALLING XLAMBDAVAL WITH ", LAMBDA
+      XLAMBDAVAL = XLAMBDA(LAMBDA, START)
       TAUL=TAUV*XLAMBDAVAL
 
 !C     Calculate the attenuation due to scattering by dust (SCATTER)
@@ -1292,13 +1345,29 @@ end function nray_func
 !C     SPLIN =
 !C
 !C-----------------------------------------------------------------------
-      FUNCTION XLAMBDA(LAMBDA)
+      FUNCTION XLAMBDA(LAMBDA, START)
 
       IMPLICIT NONE
       LOGICAL :: START
       integer ::  N_GRID
 !      real(double) ::  LAMBDA
-      real(double) ::  L_GRID(30),X_GRID(30),X_DERIV(30)
+!      real(double) ::  X_GRID(30),X_DERIV(30)
+  real(double), dimension(30) :: X_GRID=(/&
+     &            5.76D0,5.18D0,4.65D0,4.16D0,3.73D0, &
+     &            3.40D0,3.11D0,2.74D0,2.63D0,2.62D0, &
+     &            2.54D0,2.50D0,2.58D0,2.78D0,3.01D0, &
+     &            3.12D0,2.86D0,2.58D0,2.35D0,2.00D0, &
+     &            1.58D0,1.42D0,1.32D0,1.00D0,0.75D0, &
+     &            0.48D0,0.28D0,0.12D0,0.05D0,0.00D0/)
+
+  real(double), dimension(30) :: L_GRID=(/&
+     &             910.0D0, 950.0D0,1000.0D0,1050.0D0,1110.0D0, &
+     &            1180.0D0,1250.0D0,1390.0D0,1490.0D0,1600.0D0, &
+     &            1700.0D0,1800.0D0,1900.0D0,2000.0D0,2100.0D0, &
+     &            2190.0D0,2300.0D0,2400.0D0,2500.0D0,2740.0D0, &
+     &            3440.0D0,4000.0D0,4400.0D0,5500.0D0,7000.0D0, &
+     &            9000.0D0,12500.0D0,22000.0D0,34000.0D0,1.0D9/)
+
 !      COMMON /STATUS/START
 !      COMMON /TAUGRID/L_GRID,X_GRID,X_DERIV,N_GRID
 
@@ -1309,11 +1378,17 @@ end function nray_func
      real(double) :: xlambda
      real(double), intent(inout) :: lambda
 
+      N_GRID=30
+!      print *, "L_GRID", L_GRID
+
+
 !C     Find the appropriate value for XLAMBDA using spline interpolation
-      IF(START) CALL SPLINE(L_GRID,X_GRID,N_GRID,1.0D30,1.0D30,X_DERIV)
+      IF(START) CALL SPLINE_PDR(L_GRID,X_GRID,N_GRID,1.0D30,1.0D30,X_DERIV)
+!      print *, "XLAMBDAVAL HAS ", lambda, l_grid(n_grid)
       IF(LAMBDA.LT.L_GRID(1))      LAMBDA=L_GRID(1)
       IF(LAMBDA.GT.L_GRID(N_GRID)) LAMBDA=L_GRID(N_GRID)
-      CALL SPLINT(L_GRID,X_GRID,X_DERIV,N_GRID,LAMBDA,XLAMBDA)
+!      print *, "XLAMBDAVAL HAS ", lambda
+      CALL SPLINT_PDR(L_GRID,X_GRID,X_DERIV,N_GRID,LAMBDA,XLAMBDA)
 
       RETURN
     END FUNCTION XLAMBDA
@@ -1350,8 +1425,14 @@ end function nray_func
 !     implicit none
      real(double) :: lbar
      real(double) :: U,W
+!
 !     integer, intent(in) :: NCO, NH2
-     real(double), intent(in) :: nh2,nco
+     real(double) :: nh2,nco
+
+!     nh2d = dble(nh2)
+!     ncod = dble(ncod)
+!     print *, "nco pork",  nco
+!     print *, "nh2 ham",  nh2
 
       U=DLOG10(NCO+1.0D0)
       W=DLOG10(NH2+1.0D0)
@@ -1364,6 +1445,7 @@ end function nray_func
 !C     and cannot be smaller than the wavelength of band 1 (913.6Å)
       IF(LBAR.LT.913.6D0)  LBAR=913.6D0
       IF(LBAR.GT.1076.1D0) LBAR=1076.1D0
+!      print *, "LBAR IS ", LBAR
 
       RETURN
     END FUNCTION LBAR
@@ -1401,7 +1483,7 @@ end function nray_func
             YTMP(J)=YA(I,J)
          ENDDO
 !        Values of 1.0D30 indicate a natural spline
-         CALL SPLINE(X2A,YTMP,N,1.0D30,1.0D30,Y2TMP)
+         CALL SPLINE_PDR(X2A,YTMP,N,1.0D30,1.0D30,Y2TMP)
          DO J=1,N
             Y2A(I,J)=Y2TMP(J)
          ENDDO
@@ -1443,13 +1525,13 @@ end function nray_func
             YTMP(J)=YA(I,J)
             Y2TMP(J)=Y2A(I,J)
          ENDDO
-         CALL SPLINT(X2A,YTMP,Y2TMP,N,X2,YYTMP(I))
+         CALL SPLINT_PDR(X2A,YTMP,Y2TMP,N,X2,YYTMP(I))
       ENDDO
 
 !     Construct the one-dimensional column spline and evaluate it
 !     Values of 1.0D30 indicate a natural spline
-      CALL SPLINE(X1A,YYTMP,M,1.0D30,1.0D30,YY2TMP)
-      CALL SPLINT(X1A,YYTMP,YY2TMP,M,X1,Y)
+      CALL SPLINE_PDR(X1A,YYTMP,M,1.0D30,1.0D30,YY2TMP)
+      CALL SPLINT_PDR(X1A,YYTMP,YY2TMP,M,X1,Y)
 
       RETURN
     END SUBROUTINE SPLIN2
@@ -1567,6 +1649,225 @@ FUNCTION H2_FORMATION_RATE(GAS_TEMPERATURE,GRAIN_TEMPERATURE) RESULT(RATE)
 
    RETURN
 END FUNCTION H2_FORMATION_RATE
+!=======================================================================
+
+
+! Calculate the partition function for the given species
+SUBROUTINE CALCULATE_PARTITION_FUNCTION(PARTITION_FUNCTION,NLEV,ENERGIES,WEIGHTS,TEMPERATURE)
+
+ !     USE HEALPIX_TYPES
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: NLEV
+      REAL(double), INTENT(IN)     :: ENERGIES(1:NLEV),WEIGHTS(1:NLEV)
+      REAL(double), INTENT(IN)     :: TEMPERATURE
+      REAL(double), INTENT(OUT)    :: PARTITION_FUNCTION
+
+      INTEGER :: ILEVEL
+
+      PARTITION_FUNCTION=0.0D0
+      DO ILEVEL=1,NLEV
+         PARTITION_FUNCTION=PARTITION_FUNCTION + WEIGHTS(ILEVEL)*EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)
+      ENDDO
+
+RETURN
+END SUBROUTINE CALCULATE_PARTITION_FUNCTION
+
+! Calculate the LTE level populations for the given species
+SUBROUTINE CALCULATE_LTE_POPULATIONS(NLEV,LEVEL_POP,ENERGIES,WEIGHTS,PARTITION_FUNCTION,DENSITY,TEMPERATURE)
+
+!      USE HEALPIX_TYPES
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: NLEV
+      REAL(double), INTENT(IN)     :: ENERGIES(1:NLEV),WEIGHTS(1:NLEV)
+      REAL(double), INTENT(IN)     :: PARTITION_FUNCTION
+      REAL(double), INTENT(IN)     :: DENSITY,TEMPERATURE
+      REAL(double), INTENT(OUT)    :: LEVEL_POP(1:NLEV)
+
+      INTEGER :: ILEVEL
+      REAL(double) :: TOTAL_POP
+
+      TOTAL_POP=0.0D0
+      DO ILEVEL=1,NLEV
+         LEVEL_POP(ILEVEL)=DENSITY*WEIGHTS(ILEVEL)*EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)/PARTITION_FUNCTION
+         TOTAL_POP=TOTAL_POP + LEVEL_POP(ILEVEL)
+      ENDDO
+
+      ! Check that the sum of the level populations adds up to the total density
+      IF(ABS(TOTAL_POP-DENSITY)/DENSITY.GT.1.0D-3) THEN
+         WRITE(6,*)'ERROR! Sum of LTE level populations differs from the total density by ', &
+		 & INT(1.0D2*ABS(TOTAL_POP-DENSITY)/DENSITY),'%'
+         STOP
+      ENDIF
+
+RETURN
+END SUBROUTINE CALCULATE_LTE_POPULATIONS
+
+     SUBROUTINE SPLINT_PDR(XA,YA,Y2A,N,X,Y)
+
+ !     USE DEFINITIONS
+!      USE HEALPIX_TYPES
+
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: N
+      REAL(double), INTENT(IN)     :: XA(1:N),YA(1:N),Y2A(1:N)
+      REAL(double), INTENT(IN)     :: X
+      REAL(double), INTENT(OUT)    :: Y
+
+      LOGICAL :: ASCND
+      INTEGER :: JLO,JHI,JMID,INC
+      REAL(double) :: A,B
+
+      JLO=0
+      JHI=0
+
+!     ASCND is TRUE if the table values are in ascending order, FALSE otherwise
+      ASCND=XA(N).GT.XA(1)
+
+!     Find the interval XA(JLO) <= X <= XA(JLO+1) = XA(JHI)
+      IF(JLO.LE.0 .OR. JLO.GT.N) THEN
+!        Input guess not useful, go immediately to bisection
+         JLO=0
+         JHI=N+1
+         GOTO 300
+      ENDIF
+
+!     Set the hunting increment
+      INC=1
+
+      IF(X.GE.XA(JLO) .EQV. ASCND) THEN
+!        Hunt up:
+ 100     JHI=JLO+INC
+         IF(JHI.GT.N) THEN
+!           Done hunting, since off the end of the table
+            JHI=N+1
+         ELSE IF(X.GE.XA(JHI) .EQV. ASCND) THEN
+!           Not done hunting...
+            JLO=JHI
+!           ...so double the increment...
+            INC=INC+INC
+!           ...and try again
+            GOTO 100
+         ENDIF
+!     Done hunting, value bracketed
+      ELSE
+         JHI=JLO
+!        Hunt down:
+ 200     JLO=JHI-INC
+         IF(JLO.LT.1) THEN
+!           Done hunting, since off the end of the table
+            JLO=0
+         ELSE IF(X.LT.XA(JLO) .EQV. ASCND) THEN
+!           Not done hunting...
+            JHI=JLO
+!           ...so double the increment...
+            INC=INC+INC
+!           ...and try again
+            GOTO 200
+         ENDIF
+!     Done hunting, value bracketed
+      ENDIF
+
+ 300  IF((JHI-JLO).NE.1) THEN
+!        Hunt is done, so begin the final bisection phase
+         JMID=(JHI+JLO)/2
+         IF(X.GT.XA(JMID) .EQV. ASCND) THEN
+            JLO=JMID
+         ELSE
+            JHI=JMID
+         ENDIF
+         GOTO 300
+      ENDIF
+
+      IF(JLO.EQ.0) THEN
+         JLO=1
+         JHI=2
+      ENDIF
+      IF(JLO.EQ.N) THEN
+         JLO=N-1
+         JHI=N
+      ENDIF
+
+!     JLO and JHI now bracket the input value X
+!     The cubic spline polynomial is now evaluated
+!      print *, "JLO", JLO
+!      print *, "JLI", JHI
+!      print *, ""
+!      print *, "XA ", XA
+!      print *, ""
+!      print *, "X ", X
+!      print *, ""
+!      print *, "A ", A
+!      print *, ""
+ !     print *, "(XA(JHI)-X)", (XA(JHI)-X)
+ !!     print *, "TROLOL A(JHI)", XA(JHI)
+ !     print *, "OMGWTFBBQ XA(JLO)", XA(JLO)
+ !     print *, "(XA(JHI)-XA(JLO)", (XA(JHI)-XA(JLO))
+
+      A=(XA(JHI)-X)/(XA(JHI)-XA(JLO))
+      B=(X-XA(JLO))/(XA(JHI)-XA(JLO))
+      Y=A*YA(JLO)+B*YA(JHI)+((A**3-A)*Y2A(JLO)+(B**3-B)*Y2A(JHI))&
+     &  *((XA(JHI)-XA(JLO))**2)/6.0D0
+
+      RETURN
+    END SUBROUTINE SPLINT_PDR
+!=======================================================================
+
+      SUBROUTINE SPLINE_PDR(X,Y,N,YP1,YPN,Y2)
+
+!      USE DEFINITIONS
+!      USE HEALPIX_TYPES
+
+      IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: N
+      REAL(double), INTENT(IN)     :: X(1:N),Y(1:N)
+      REAL(double), INTENT(IN)     :: YP1,YPN
+      REAL(double), INTENT(OUT)    :: Y2(1:N)
+
+      INTEGER :: I
+      REAL(double) :: P,QN,SIG,U(1:N),UN
+
+      IF(YP1.GE.1.0D30) THEN
+!        The lower boundary condition is either set to be "natural"
+         Y2(1)=0.0D0
+         U(1)=0.0D0
+      ELSE
+!        or to have a specified first derivative
+         Y2(1)=-0.5D0
+         U(1)=(3.0D0/(X(2)-X(1)))*((Y(2)-Y(1))/(X(2)-X(1))-YP1)
+      ENDIF
+
+!     This is the decomposition loop of the tridiagonal algorithm
+!     Y2 and U are used for temporary storage of the decomposed factors
+      DO I=2,N-1
+         SIG=(X(I)-X(I-1))/(X(I+1)-X(I-1))
+         P=SIG*Y2(I-1)+2.0D0
+         Y2(I)=(SIG-1.0D0)/P
+         U(I)=(6.0D0*((Y(I+1)-Y(I))/(X(I+1)-X(I))-(Y(I)-Y(I-1))&
+     &              /(X(I)-X(I-1)))/(X(I+1)-X(I-1))-SIG*U(I-1))/P
+      ENDDO
+
+      IF(YPN.GE.1.0D30) THEN
+!        The upper boundary condition is either set to be "natural"
+         QN=0.0D0
+         UN=0.0D0
+      ELSE
+!        or to have a specified first derivative
+         QN=0.5D0
+         UN=(3.0D0/(X(N)-X(N-1)))*(YPN-(Y(N)-Y(N-1))/(X(N)-X(N-1)))
+      ENDIF
+
+      Y2(N)=(UN-QN*U(N-1))/(QN*Y2(N-1)+1.0D0)
+!     This is the back-substitution loop of the tridiagonal algorithm
+      DO I=N-1,1,-1
+         Y2(I)=Y2(I)*Y2(I+1)+U(I)
+      ENDDO
+
+      RETURN
+    END SUBROUTINE SPLINE_PDR
 !=======================================================================
 
 

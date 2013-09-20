@@ -8080,7 +8080,7 @@ endif
 
   subroutine calcIsoSphereDensity(thisOctal,subcell)
     use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use inputs_mod, only : pdrcalc
+    use inputs_mod, only : pdrcalc, photoionequilibrium
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -8092,10 +8092,10 @@ endif
     rVec%y = rVec%y - amrgridcentrey
     rVec%z = rVec%z - amrgridcentrez
     rMod = modulus(rVec)
-!    if ((rMod*1.d10) < 3.5d0*pcToCm) then
-    if ((rMod*1.d10) < 20.d0*pcToCm) then
-       thisOctal%rho(subcell) = 1.d2*mHydrogen
-       thisOctal%temperature(subcell) = 1.d4
+    if ((rMod*1.d10) < 3.5d0*pcToCm) then
+!    if ((rMod*1.d10) < 20.d0*pcToCm) then
+       thisOctal%rho(subcell) = 1.d3*mHydrogen
+       thisOctal%temperature(subcell) = 10.d0
        thisOctal%ionFrac(subcell,1) = 1.d0               !HI
        thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
        if (SIZE(thisOctal%ionFrac,2) > 2) then      
@@ -8110,7 +8110,7 @@ endif
 !          thisOctal%ionFrac(subcell,4) = 1.d0        !HeII          
 !       endif       
 
-       if(pdrcalc) then
+       if(pdrcalc .and. .not. photoionequilibrium) then
           thisOctal%uvvector(subcell)%x = 0.d0
           thisOctal%uvvector(subcell)%y = 0.d0
           thisOctal%uvvector(subcell)%z = 0.d0
@@ -8126,10 +8126,10 @@ endif
           thisOctal%ionFrac(subcell,4) = 1.        !HeII       
        endif
        
-       if(pdrcalc) then
-          if(rVec%x < (amrgridcentrex)- 2.5d0*pcToCm/1.d10) then! .and. &
- !              rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then 
-             thisOctal%uvvector(subcell)%x = pi*Draine/1.d10
+       if(pdrcalc .and. .not. photoionequilibrium) then
+          if(rVec%x < (amrgridcentrex)) then! .and. &
+ !              rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then
+             thisOctal%uvvector(subcell)%x = 40.*pi*Draine/1.d10
              thisOctal%uvvector(subcell)%y = 0.d0
              thisOctal%uvvector(subcell)%z = 0.d0
 !1.d0*Draine/1.d10
@@ -11813,6 +11813,11 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%UV, source%UV)
     call copyAttribute(dest%dust_T, source%dust_T)
     call copyAttribute(dest%columnRho, source%columnRho)
+    call copyAttribute(dest%cii_pop, source%cii_pop)
+    call copyAttribute(dest%ci_pop, source%ci_pop)
+    call copyAttribute(dest%oi_pop, source%oi_pop)
+    call copyAttribute(dest%c12o_pop, source%c12o_pop)
+
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
 
@@ -15385,6 +15390,11 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%Tminarray, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tmaxarray, thisOctal%maxChildren)
 !       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
+       allocate(thisOctal%cii_pop(1:thisOctal%maxchildren, 1:5))
+       allocate(thisOctal%ci_pop(1:thisOctal%maxchildren, 1:5))
+       allocate(thisOctal%oi_pop(1:thisOctal%maxchildren, 1:5))
+       allocate(thisOctal%c12o_pop(1:thisOctal%maxchildren, 1:41))
+
        allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))
        allocate(thisOctal%AV(1:thisOctal%maxchildren, 1:nrays))
        allocate(thisOctal%abundance(1:thisOctal%maxchildren, 1:33))
@@ -15619,6 +15629,10 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%rLimit)
     call deallocateAttribute(thisOctal%ghostCell)
     call deallocateAttribute(thisOctal%columnRho)
+    call deallocateAttribute(thisOctal%cii_pop)
+    call deallocateAttribute(thisOctal%ci_pop)
+    call deallocateAttribute(thisOctal%oi_pop)
+    call deallocateAttribute(thisOctal%c12o_pop)
     call deallocateAttribute(thisOctal%feederCell)
     call deallocateAttribute(thisOctal%corner)
     call deallocateAttribute(thisOctal%edgeCell)

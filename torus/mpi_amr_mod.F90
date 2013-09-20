@@ -4642,10 +4642,26 @@ end subroutine writeRadialFile
     do iThread = 1, nHydroThreadsGlobal
        if (iThread /= myrankGlobal) then
           loc = 1.d30
+          loc(4) = 1.d0
           call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
   end subroutine shutdownServersXRAY_PDR
+
+  subroutine shutdownServersXRAY()
+    use mpi
+    integer :: iThread
+    real(double) :: loc(8)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+    do iThread = 1, nHydroThreadsGlobal
+       if (iThread /= myrankGlobal) then
+          loc = 1.d30
+          call MPI_SEND(loc, 8, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine shutdownServersXRAY
 
   subroutine shutdownServers2(check, k, endloop)
     use mpi
@@ -4839,6 +4855,7 @@ end subroutine writeRadialFile
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
     integer, parameter :: nStorage = 39
+!    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval, abundanceArray(1:33)
     integer :: subcell
     integer :: status(MPI_STATUS_SIZE)
@@ -4862,18 +4879,21 @@ end subroutine writeRadialFile
     else
 
        iThread = thisOctal%mpiThread(subcell)
+!       print *, "myrankglobal ", myrankglobal, "to ", ithread
        loc(1) = position%x
        loc(2) = position%y
        loc(3) = position%z
        loc(4) = dble(myRankGlobal)
+!       loc(4) = myRankGlobal
        loc(5) = direction%x
        loc(6) = direction%y
        loc(7) = direction%z
 
        call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+ !      print *, "sent "
        call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
             localWorldCommunicator, status, ierr)
-
+  !     print *, "recvd"
        rho = tempStorage(1)
        uvx = tempstorage(2)
        uvy = tempstorage(3)
@@ -4881,9 +4901,7 @@ end subroutine writeRadialFile
        tval = tempstorage(5)
        Hplusfrac = tempstorage(6)
        abundancearray(1:33) = tempstorage(7:39)
-!       do i = 1, 33
-!          abundancearray(i) = tempstorage(i+6)
-!       end do
+
     endif
   end subroutine getRayTracingValuesPDR
 
@@ -4899,7 +4917,8 @@ end subroutine writeRadialFile
     integer :: subcell!, nworking!, topOctalSubcell
     integer :: iThread!, servingArray!, workingTHreads(nworking)
     integer, parameter :: nStorage = 39
-    real(double) :: tempStorage(nStorage), tval
+!    integer, parameter :: nStorage = 6
+    real(double) :: tempStorage(nStorage), tval!, tmpthread
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
     integer :: ierr
@@ -4914,13 +4933,42 @@ end subroutine writeRadialFile
 !       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
        
        call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+!       print *, "got data"
        position%x = loc(1)
        position%y = loc(2)
        position%z = loc(3)
        iThread = int(loc(4))
+
+!       tmpThread = loc(4)
+!!a temporary measure becau!se debug mode doesnt like int(dble) above...
+!       if(tmpthread == 1.d!0) then
+!          iThread = 1
+!       elseif(tmpthread == 2.d0) then
+!          iThread = 2
+!       elseif(tmpthread == 3.d0) then
+!          iThread = 3
+!       elseif(tmpthread == 4.d0) then
+!          iThread = 4
+!       elseif(tmpthread == 5.d0) then
+!          iThread = 5
+!       elseif(tmpthread == 6.d0) then
+!          iThread = 6
+!       elseif(tmpthread == 7.d0) then
+!          iThread = 7
+!       elseif(tmpthread == 8.d0) then
+!          iThread = 8
+!       elseif(tmpthread == 9.d0) then
+!          iThread = 9
+!       else
+!          print *, "tmpThread", tmpThread
+!          call torus_abort("error in pdr server in debug mode")
+!       endif
+
+!       tmpThread = loc(4)
        direction%x = loc(5)
        direction%y = loc(6)
        direction%z = loc(7)
+!       ithread = int(tmpThread)
        if (position%x > 1.d29) then          
           !          do j=1, nworking
           !             if(workingThreads(j) == 0) then
@@ -4949,7 +4997,7 @@ end subroutine writeRadialFile
           tempStorage(4) = thisOctal%UVvector(subcell)%z
           tempStorage(5) = tval
           tempStorage(6) = thisOctal%ionfrac(subcell, 2)
-          tempStorage(7:39) = thisOctal%ionfrac(subcell, :)
+!          tempStorage(7:39) = thisOctal%abundance(subcell, :)
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
                localWorldCommunicator, ierr)
        endif

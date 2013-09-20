@@ -319,6 +319,10 @@ MODULE octal_mod
     real(double), pointer :: TMax(:)=>null()     
     real(double), pointer :: TMinArray(:)=>null()     
     real(double), pointer :: TMaxArray(:)=>null()     
+    real(double), pointer :: CII_Pop(:,:)=>null()
+    real(double), pointer :: CI_Pop(:,:)=>null()
+    real(double), pointer :: OI_Pop(:,:)=>null()
+    real(double), pointer :: C12O_Pop(:,:)=>null()
 #endif
 
     ! hydrodynamics

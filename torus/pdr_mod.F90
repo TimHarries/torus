@@ -25,6 +25,12 @@ use mpi
 implicit none
 
 
+!
+!relative_abundance_tolerance = 1.d-8
+!absolute_abundance_tolerance = 1.d-30
+!nelect
+!
+!
 
 ! REAL(double) :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
 
@@ -44,32 +50,47 @@ subroutine PDR_MAIN(grid)
   real(double), allocatable :: rtmin(:), rtmax(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
-
+  integer :: n12co, nci, ncii, noi, nelect, ier
+  
 
   call donrayshealpix()
 
 !set up the data/allocate what needs allocated
   call writeInfo("Setting up for PDR calculation.", TRIVIAL)
   call setupPDR(grid, reactant, product, alpha, beta, gamma, &
-       rate, duplicate, rtmin, rtmax)
+       rate, duplicate, rtmin, rtmax, n12co, nci, ncii, noi, nelect)
 
-  print *, "BETA"
+!  print *, "BETA"
 !do the ray casting
 #ifdef MPI
-  print *, "GAMMA"
+
   call writeInfo("Casting rays over grid MPI.", TRIVIAL)
-  call rayTraceMPI(grid)
+  call rayTraceMPI(grid, colrhoonly=.false.)
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
   call writeVTKfile(grid, "postRayTrace.vtk", valueTypeString=(/"rho       ",&
        "columnRho " /))
 !  stop
   call writeInfo("Done.", TRIVIAL)
   call writeInfo("Calculating dust temperature MPI.", TRIVIAL)
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
   call iniTempGuessMPI(grid%octreeroot)
   call writeInfo("Calculating reaction rates in each cell.", TRIVIAL)
-  call callcalculateReactionRatesMPI(grid%octreeroot, reactant, &
-     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
+  call writeVTKfile(grid, "PDR_CALC.vtk", valueTypeString=(/"rho       ",&
+       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   "/))
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
+!  stop
+  call abundanceSweepGovernor(grid, reactant, &
+       product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, n12co &
+       , ncii, nci, noi, nelect) 
+  call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
+       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
+       "CO_PDR    ", "C+_PDR    ", "C_PDR     "/))
+
+
+
 
 #else
   print *, "DELTA"
@@ -82,28 +103,118 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
   call iniTempGuess(grid%octreeroot)
 #endif
-  call writeVTKfile(grid, "PDR_CALC.vtk", valueTypeString=(/"rho       ",&
-       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   "/))
+
 
 end subroutine PDR_MAIN
 
 
+
+
+
+
 #ifdef MPI
-recursive subroutine callCalculateReactionRatesMPI(thisOctal, reactant, &
-     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+subroutine abundanceSweepGovernor(grid, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax & 
+     , n12co, ncii, nci, noi, nelect)
+  integer :: nChemIter, i
+  type(gridtype) :: grid
   real(double) :: rate(:), alpha(:), beta(:), gamma(:)
   real(double) :: rtmin(:), rtmax(:)
   integer :: duplicate(:)
   character(len=10) :: product(:,:), reactant(:,:)
-  integer :: nreac
-  type(octal), pointer :: thisOctal, child
-  integer :: subcell, j, nrays
-  integer :: NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NSPEC
+  integer :: n12co, ncii, nci, noi, nelect, ier
+  !first wave
+  nChemIter = 8
+  nChemIter = 1
+  do i = 1, nChemIter
+     if(myrankglobal == 1) print *, "!- chemical iteration ", i
+     call abundanceSweepDrone(nChemIter, grid%octreeRoot, reactant, &
+          product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+          n12co, ncii, nci, noi)
+     if(myrankglobal == 1) print *, "!- abundance sweep done, ray tracing... ", i
+     call MPI_BARRIER(MPI_COMM_WORLD, ier)
+!CALC 33 thisColRhos
+     call rayTraceMPI(grid, colrhoOnly=.true.)
+     if(myrankglobal == 1) print *, "!- ray tracing done ", i
+     call MPI_BARRIER(MPI_COMM_WORLD, ier)
+  end do
 
-  nreac = 33
+!     if(myrankglobal == 1) print *, "!- calling partition LTE ", i
+!  call partitionLTE(grid%octreeRoot, n12co, ncii, nci, noi)
+
+end subroutine abundanceSweepGovernor
+
+
+recursive subroutine abundanceSweepDrone(nChemIter, thisOctal, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+     nc12o, ncii, nci, noi)
+  type(octal), pointer :: thisOctal, child
+  integer :: nchemiter, subcell, j
+  real(double) :: rate(:), alpha(:), beta(:), gamma(:)
+  real(double) :: rtmin(:), rtmax(:)
+  integer :: duplicate(:)
+  character(len=10) :: product(:,:), reactant(:,:)
+  integer :: NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NSPEC, nreac, nrays, nelect
+  integer :: nc12o, ncii, nci, noi
+  nreac = 329
+  nspec = 33
   nrays = nray_func() 
-!  print *, "PRE ", nreac
-!  print *, "PRENRAY ", nrays
+  nchemiter = nchemiter
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call abundanceSweepDrone(nChemIter, child, reactant, &
+                   product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+                   nc12o, ncii, nci, noi)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+     
+
+!     print *, "ALPHA"
+        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!           print *, "BETA"
+!           thisOctal%tLast(subcell) = 100.d0
+!           thisOctal%Dust_T(subcell) = 10.d0
+!           thisOctal%radsurface(subcell,:) = 1.d0
+!           thisOctal%AV(subcell, :) = 1.d0
+!           thisOctal%thisColRho(subcell, :, :) = 1.d0
+           call CALCULATE_REACTION_RATES(thisOctal%tLast(subcell),thisOctal%Dust_T(subcell), &
+                thisOctal%radsurface(subcell, :),thisOctal%AV(subcell, :),thisOctal%thisColRho(subcell, :, :), &
+                &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
+                &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, nc12o, nci)   
+           
+!           print *, "calculating abundances"
+           
+           call calculate_abundances_onepart(thisOctal%abundance(subcell,:), rate, &
+                thisOctal%rho(subcell)/mhydrogen, thisOctal%tLast(subcell), nspec, nreac, nelect)
+!           print *, "abundances done"
+        end if
+     end if
+  end do
+end subroutine abundanceSweepDrone
+
+
+recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
+  type(octal), pointer :: thisOctal, child
+  integer :: subcell, j
+  real(double) :: cii_z_function, ci_z_function, oi_z_function, c12o_z_function
+  integer :: cii_nlev, ci_nlev, oi_nlev, c12o_nlev
+  real(double) :: cii_energies(1:5), ci_energies(1:5), oi_energies(1:5), c12o_energies(1:41)
+  real(double) :: cii_weights(1:5), ci_weights(1:5), oi_weights(1:5), c12o_weights(1:5)
+  integer :: n12co, ncii, nci, noi
+!  real(double) :: rate(:), alpha(:), beta(:), gamma(:)
+!
+!  real(double) :: rtmin(:), rtmax(:)
+!  integer :: duplicate(:)
+!  character(len=10) :: product(:,:), reactant(:,:)
+!  integer :: NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NSPEC, nreac, nrays
+
 
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
@@ -111,77 +222,102 @@ recursive subroutine callCalculateReactionRatesMPI(thisOctal, reactant, &
         do j = 1, thisoctal%nchildren, 1
            if (thisoctal%indexchild(j) == subcell) then
               child => thisoctal%child(j)
-              call callCalculateReactionRatesMPI(child, reactant, &
-                   product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
+              call partitionLTE(child, n12co, ncii, nci, noi)
               exit
            end if
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-!        call findsubcelllocal(thisOctal, subcell)
-        if(.not.thisOctal%ionfrac(subcell, 2) > 0.9d0) then
-           call CALCULATE_REACTION_RATES(thisOctal%tLast(subcell),thisOctal%Dust_T(subcell), &
-                thisOctal%radsurface(subcell, :),thisOctal%AV(subcell, :),thisOctal%thisColRho(subcell, :, :), &
-                &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
-                &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays)        
-           if(myrankglobal == 1) then
-              print *, RATE(1:10)
-              print *, NRGR, NRH2, NRHD
-              print *, NRCO, NRCI, NRSI
-              stop
-           end if
-        end if
      end if
+
+     cii_nlev = 5
+     ci_nlev = 5
+     oi_nlev = 5
+     c12o_nlev = 41
+
+     
+     if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+        CALL CALCULATE_PARTITION_FUNCTION(CII_Z_FUNCTION,CII_NLEV,CII_ENERGIES,CII_WEIGHTS,thisOctal%tLast(subcell))
+        CALL CALCULATE_PARTITION_FUNCTION(CI_Z_FUNCTION,CI_NLEV,CI_ENERGIES,CI_WEIGHTS,thisOctal%tLast(subcell))
+        CALL CALCULATE_PARTITION_FUNCTION(OI_Z_FUNCTION,OI_NLEV,OI_ENERGIES,OI_WEIGHTS,thisOctal%tLast(subcell))
+        CALL CALCULATE_PARTITION_FUNCTION(C12O_Z_FUNCTION,C12O_NLEV,C12O_ENERGIES,C12O_WEIGHTS,thisOctal%tLast(subcell))
+
+        !
+        ! Calculate the LTE level populations
+
+        
+        CALL CALCULATE_LTE_POPULATIONS(CII_NLEV,thisOctal%CII_POP(subcell, :),CII_ENERGIES,&
+             &CII_WEIGHTS,CII_Z_FUNCTION,thisOctal%abundance(Nci,subcell)*thisOctal%rho(subcell),&
+             thisOctal%tLast(subcell))
+        CALL CALCULATE_LTE_POPULATIONS(CI_NLEV, thisOctal%CI_POP(subcell, :), CI_ENERGIES, &
+             &CI_WEIGHTS, CI_Z_FUNCTION, thisOctal%abundance(Ncii,subcell)*thisOctal%rho(subcell),&
+             thisOctal%tLast(subcell))
+        CALL CALCULATE_LTE_POPULATIONS(OI_NLEV, thisOctal%OI_POP(subcell, :), OI_ENERGIES, &
+             &OI_WEIGHTS, OI_Z_FUNCTION, thisOctal%abundance(Noi,subcell)*thisOctal%rho(subcell),&
+             thisOctal%tLast(subcell))
+        CALL CALCULATE_LTE_POPULATIONS(C12O_NLEV,thisOctal%C12O_POP(subcell, :),C12O_ENERGIES,&
+             &C12O_WEIGHTS,C12O_Z_FUNCTION,thisOctal%abundance(N12co,subcell)*thisOctal%rho(subcell),&
+             thisOctal%tLast(subcell))
+
+     end if
+
   end do
-
-end subroutine callCalculateReactionRatesMPI
-
+end subroutine partitionLTE
 
 
 
-subroutine rayTraceMPI(grid)
+
+
+
+subroutine rayTraceMPI(grid, colrhoonly)
 
   implicit none
 
   type(gridtype) :: grid
 !  type(sourcetype) :: thisSource
   integer :: i, ier
+  logical :: colrhoonly
 
   if(myrankglobal /= 0) then
      do i = 1, nhydrothreadsglobal
         if(myrankglobal == i) then
            print *, "rank ", myrankglobal, "casting rays"
-           call castAllRaysOverGridMPI(grid%octreeRoot, grid)
+           call castAllRaysOverGridMPI(grid%octreeRoot, grid, colrhoonly)
+           print *, "rank ", myrankglobal, "shutting down"
            call shutdownserversXRAY_PDR()
         else
            print *, "rank ", myrankglobal, "serving"
            call raytracingserverPDR(grid)
         end if
+!        print *, "rank ", myrankglobal, "at barrier"
+        call MPI_BARRIER(amrCommunicator, ier)
      end do            
   end if
-!  call calcIonParamTemperature(grid%octreeRoot)
+!  print *, "rank ", myrankglobal, "at barrier"
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
+!  call calcIonParamTemperature(grid%octreeRoot)
+
 
 end subroutine rayTraceMPI
 
 
 !This is the main routine that loops over the grid and does the ray casting
-recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
+recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
 !  use mpi
   use inputs_mod, only : hlevel, maxdepthamr
 !  use healpix_module, only : vectors, nrays
   implicit none
   
   type(gridtype) :: grid
-  integer :: subcell, ssubcell
-  type(octal), pointer :: thisoctal, soctal
+  integer :: subcell
+  type(octal), pointer :: thisoctal
   type(octal), pointer :: child
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
   real(double) :: tVal, rho, uvx, uvy, uvz, HplusFrac
   integer ::  i, ncontributed, k, nrays
   real(double) :: abundanceArray(1:33)
-
+  logical :: colrhoonly
 
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
@@ -189,7 +325,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
         do j = 1, thisoctal%nchildren, 1
            if (thisoctal%indexchild(j) == subcell) then
               child => thisoctal%child(j)
-              call castAllRaysOverGrid(child, grid)
+              call castAllRaysOverGridMPI(child, grid, colrhoonly)
               exit
            end if
         end do
@@ -197,93 +333,121 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid)
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
 
         nrays = nray_func()
-        sOctal=> thisOctal
-        
+
         startPosition = subcellCentre(thisOctal, subcell)
         testPosition = startPosition
-        call findSubcellLocal(testPosition, sOctal, ssubcell)
-        sOctal%columnRho(ssubcell) = 0.d0
-!        thisOctal%columnRho(subcell) = 1.d-30 
 
-        thisOctal%uv(subcell) = 0.d0
-        thisOctal%av(subcell, :) = 0.d0           
-        thisOctal%radsurface(subcell, :) = 0.d0           
-        thisOctal%thisColRho(subcell, :, :) = 0.d0
-        print *, "Alpha"
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
-           ncontributed = 0
-           !        do i = 0, nrays-1
-        do i = 1, nrays
 
-           rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
-
-           uhat = rVec
-           call normalize(uhat)
-
-           testPosition = startPosition
-           thisOctal%columnrho(subcell)  = 0.d0
-           do while (inOctal(grid%octreeRoot, testPosition))
+        if(colrhoonly) then
+           if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+              ncontributed = 0
               
-              tval = 0.d0
-              call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-                   abundancearray) 
-
-
-              if(Hplusfrac > 0.9d0) then
-                 thisUVvector = VECTOR(uvx, uvy, uvz)
-                 thisUVvector = thisUVvector*1.d10/draine
-
-                 thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
-                 if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
-                 exit
+              do i = 1, nrays
+                 
+                 rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
+                 
+                 uhat = rVec
+                 call normalize(uhat)
+                 
+                 testPosition = startPosition
+                 
+                 do while (inOctal(grid%octreeRoot, testPosition))
+                    
+                    tval = 0.d0
+                    call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
+                         abundancearray) 
+                    
+                    
+                    if(Hplusfrac > 0.99d0) then                       
+                       exit
+                    end if
+                                  
+                    do k = 1, 33
+                       thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
+                            abundancearray(k)*tval*1.d10*rho/mhydrogen                 
+                    enddo
+                    testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
+                 end do
+              end do
+           end if
+           
+        else
+           thisOctal%uv(subcell) = 0.d0
+           thisOctal%av(subcell, :) = 0.d0           
+           thisOctal%radsurface(subcell, :) = 0.d0           
+           thisOctal%thisColRho(subcell, :, :) = 0.d0
+           thisOctal%columnrho(subcell)  = 0.d0
+           
+           if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+              ncontributed = 0
+              
+              do i = 1, nrays
+                 
+                 rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
+                 
+                 uhat = rVec
+                 call normalize(uhat)
+                 
+                 thisOctal%columnRho(subcell) = 0.d0
+                 testPosition = startPosition
+                 
+                 do while (inOctal(grid%octreeRoot, testPosition))
+                    
+                    tval = 0.d0
+                    call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
+                         abundancearray) 
+                    
+                    
+                    if(Hplusfrac > 0.99d0) then
+                       thisUVvector = VECTOR(uvx, uvy, uvz)
+                       thisUVvector = thisUVvector*1.d10/draine
+                       thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
+                       
+                       if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
+                       exit
+                    end if
+                    thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)          
+                    
+                    do k = 1, 33
+                       thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
+                            abundancearray(k)*tval*1.d10*rho/mhydrogen                 
+                    enddo
+                    
+                    
+                    testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
+                 end do
+                 
+                 thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
+                 
+                 
+                 if(thisOctal%radsurface(subcell, i) > 0.d0) then
+                    thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
+                      thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+                    ncontributed = ncontributed + 1
+                    
+                 end if
+                 
+              end do
+              
+              if(ncontributed /= 0) then
+                 thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(ncontributed)
+              else
+                 thisOctal%UV(subcell) = 0.d0
               end if
               
-              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
-              do k = 1, 33
-                 thisOctal%thisColRho(subcell, k, i)  = thisOctal%thisColRho(subcell, k, i) + &
-                      abundancearray(k)*tval*1.d10*soctal%rho(subcell)/mhydrogen                 
-              enddo
-
-              testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
-           end do
-
-          thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*1.d10*AV_fac/mhydrogen
-
-
-          if(thisOctal%radsurface(subcell, i) > 0.d0) then
-             thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
-                  thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
-             ncontributed = ncontributed + 1
-
-          end if
-          
-       end do
-!       print *, "DONE ONE "
-       print *, 'ncontributed ', ncontributed
-       if(ncontributed /= 0) then
-!          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
-          thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(ncontributed)
-       else
-          thisOctal%UV(subcell) = 0.d0
-       end if
-!       thisOctal%UV(subcell) = thisOctal%UV(subcell) / dble(nrays)
-       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(nrays)
- !      print *, "AV ", thisOctal%AV(subcell,:)
-  !     print *, "UV ", thisOctal%UV(subcell)
-       
-!       stop
-
-       if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
-    else
-       print *, "DONE NOTHING"
-        thisOctal%columnRho(subcell) = 0.d0
-        thisOctal%UV(subcell) = 0.d0
-        thisOctal%AV(subcell,:) = 0.d0
-        thisOctal%radsurface(subcell,:) = 0.d0
+              thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(ncontributed)
+              
+              if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
+           else
+              thisOctal%columnRho(subcell) = 0.d0
+              thisOctal%UV(subcell) = 0.d0
+              thisOctal%AV(subcell,:) = 0.d0
+              thisOctal%radsurface(subcell,:) = 0.d0
+           end if
+           !  endif
+        end if
      end if
-        
-  end if
-end do
+  end do
   
 
 end subroutine castAllRaysOverGridMPI
@@ -337,7 +501,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
         thisOctal%av(subcell, :) = 0.d0           
         thisOctal%radsurface(subcell, :) = 0.d0           
         thisOctal%thisColRho(subcell, :, :) = 0.d0
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
            ncontributed = 0
 !        do i = 0, nrays-1
         do i = 1, nrays
@@ -357,7 +521,7 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
 
              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
  
-              if(sOctal%ionFrac(ssubcell,2) > 0.9d0) then
+              if(sOctal%ionFrac(ssubcell,2) > 0.99d0) then
                  thisUVvector = sOctal%uvVector(ssubcell)*1.d10/draine
 !                 call normalize(thisUVvector)
 !                 print *, "thisUVvector ", thisUVvector
@@ -595,7 +759,7 @@ recursive SUBROUTINE CALCULATE_DUST_TEMPERATURES(thisOctal)
 !        P=IDlist_pdr(pp)
         !     Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
 !        PDR(P)%DUST_T=8.9D-11*NU_0*(1.71D0*PDR(P)%UVfield)+T_CMB**5
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
            thisOctal%DUST_T(subcell)=8.9D-11*NU_0*(1.71D0*thisOctal%UV(subcell))+T_CMB**5
            
            DO J=1,NRAYS ! Loop over rays
@@ -662,7 +826,7 @@ recursive subroutine iniTempGuess(thisOctal)
            end if
         end do
      else
-        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.9d0) then
+        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.99d0) then
            Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
            thisOctal%TLast(subcell) = Tguess
            thisOctal%temperature(subcell) = real(Tguess)
@@ -702,7 +866,7 @@ recursive subroutine iniTempGuessMPI(thisOctal)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.9d0) then
+        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.99d0) then
            Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
            thisOctal%TLast(subcell) = Tguess
            thisOctal%temperature(subcell) = real(Tguess)
@@ -758,7 +922,7 @@ recursive SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI(thisOctal)
 !        P=IDlist_pdr(pp)
         !     Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
 !        PDR(P)%DUST_T=8.9D-11*NU_0*(1.71D0*PDR(P)%UVfield)+T_CMB**5
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+        if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
            thisOctal%DUST_T(subcell)=8.9D-11*NU_0*(1.71D0*thisOctal%UV(subcell))+T_CMB**5
            
            DO J=1,NRAYS ! Loop over rays
