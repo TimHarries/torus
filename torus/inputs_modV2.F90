@@ -2434,8 +2434,6 @@ contains
        call getDouble("intDeltaVz", intDeltaVz, 1.0_db,  cLine, fLine, nLines, "Observer z velocity boost (km/s):", &
                "(a,f8.2,1x,a)", 0.d0, ok, .false.)
 
-       call getLogical("thermalLineWidth", thermalLineWidth, cLine, fLine, nLines, &
-            "Thermal line width:", "(a,1l,1x,a)", .true., ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.0, ok, .false.)
 

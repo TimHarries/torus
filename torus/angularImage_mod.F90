@@ -639,7 +639,8 @@ module angularImage
 
         dvAcrossCell = (veldiff.dot.direction)
 
-        if ( thermalLineWidth ) then 
+! molmicroturb won't be defined for 21cm case so calculate the line width here
+        if ( h21cm ) then 
            ! Calculate thermal line width in cm/s.
            sigma_thermal = real(sqrt (  (kErg * thisOctal%temperature(subcell)) / (thisMolecule%molecularWeight * amu) ))
            ! Add turbulent line width in quadrature with thermal line width. vturb is in km/s so 1e5 converts to cm/s
