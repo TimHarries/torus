@@ -315,10 +315,6 @@ contains
 
     select case (inputFileFormat)
 
-! If the mpi/binary routine is updated to handle CO then this subroutine is no longer required
-    case("binarywithChem","galaxy")
-       call read_sph_data_withChem(sphdatafilename)
-       
     case("mpi","binary")
        call read_sph_data_mpi(sphdatafilename)
 
@@ -678,7 +674,8 @@ part_loop: do ipart=1, nlines
 ! D. Acreman, June 2012
   subroutine read_sph_data_mpi(filename)
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
-         convertrhotohi
+         convertrhotohi, sphWithChem
+    use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
 #ifdef MPI
     use mpi
 #endif
@@ -714,6 +711,7 @@ part_loop: do ipart=1, nlines
     real(kind=8), allocatable    :: uoverTarray(:)
     real(kind=4), allocatable    :: rho(:)
     real(kind=8), allocatable    :: h2ratio(:)
+    real(kind=8), allocatable    :: COfrac(:)
 
     integer,allocatable :: listpm(:)
     real(kind=8),allocatable    :: spinx(:)
@@ -774,7 +772,16 @@ part_loop: do ipart=1, nlines
     allocate( vxyzu(4,npart))
     allocate( uoverTarray(npart))
     allocate( rho(npart)    )
-    if (ConvertRhoToHI) allocate ( h2ratio(npart))
+    if (ConvertRhoToHI .or. sphWithChem) then
+       write (message,'(a)') "Will read H2 fraction"
+       call writeInfo(message,TRIVIAL)
+       allocate ( h2ratio(npart) )
+    endif
+    if (sphWithChem) then
+       write (message,'(a)') "Will read CO abundance"
+       call writeInfo(message,TRIVIAL)
+       allocate ( COfrac(npart) )
+    endif
 
     do i=1,6
        read(LUIN)
@@ -859,21 +866,26 @@ part_loop: do ipart=1, nlines
           read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
-! Read in H2 fraction if required
-       if ( ConvertRhoToHI ) then 
+! Read H2 fraction if required
+       if ( ConvertRhoToHI .or. sphWithChem ) then 
           READ (LUIN) ( h2ratio(i), i=iiigas+1,iiigas+blocknpart)
-          write(message,*) "Minimum H2 ratio: ", minval(h2ratio)
-          call writeInfo(message,TRIVIAL)
-          write(message,*) "Maximum H2 ratio: ", maxval(h2ratio)
-          call writeInfo(message,TRIVIAL)
-          do j=1,nums(6)-10
+          do j=1,nums(6)-12
              READ (LUIN)
           end do
        else
-          do j=1,nums(6)-9
+          do j=1,nums(6)-11
              READ (LUIN)
           end do
        end if
+
+! Read CO abundance if required
+       if ( sphWithChem ) then
+          READ (LUIN) ( COfrac(i), i=iiigas+1,iiigas+blocknpart)
+       else
+          READ (LUIN)
+       endif
+
+       READ (LUIN)
 
        read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
 
@@ -942,7 +954,7 @@ part_loop: do ipart=1, nlines
 
 
 #ifdef MPI
-    do iThread = 1, nHydroThreadsGlobal
+hydroThreads: do iThread = 1, nHydroThreadsGlobal
 #endif
 
 
@@ -962,6 +974,10 @@ part_loop: do ipart=1, nlines
     irejected=0
     i_pt_mass =0 
     do i=1, blocksum_npart
+
+! Rotate/tilt for generating Galactic plane surveys
+       if (internalView) call rotate_particles_mpi(galaxyPositionAngle, galaxyInclination)
+
        if (iphase(i) > 0) then
           if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize) .and. (.not.discardSinks)) then 
              i_pt_mass = i_pt_mass + 1
@@ -986,6 +1002,10 @@ part_loop: do ipart=1, nlines
     call init_sph_data(udist, umass, utime, time, i_pt_mass)
     sphData%useSphTem = .true. 
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
+    if (sphwithChem) then
+       allocate ( sphData%rhoCO(npart) )
+       allocate ( sphData%rhoH2(npart) )
+    endif
 
     if (nblocktypes.GE.3) then
        sphdata%codeEnergytoTemperature = 1.0
@@ -1012,11 +1032,16 @@ part_loop: do ipart=1, nlines
 
              iiigas=iiigas+1
 
-             if (convertRhoToHI) then
+             if (convertRhoToHI .or. sphWithChem) then
                 sphdata%rhon(iiigas) = (1.0-2.0*h2ratio(i))*rho(i)*5.0/7.0
                 sphdata%rhon(iiigas) = max(sphdata%rhon(iiigas),1.0e-60_db)
              else
                 sphData%rhon(iiigas)  = rho(i)
+             endif
+
+             if (sphWithChem) then
+                sphData%rhoCO(iiigas) = rho(i) * COfrac(i)
+                sphData%rhoH2(iiigas) = h2ratio(i)*2.0*rho(i)*5./7.
              endif
 
              sphdata%vxn(iiigas)         = vxyzu(1,i)
@@ -1131,14 +1156,15 @@ part_loop: do ipart=1, nlines
 
 
     call kill_sph_data()
- enddo
+ enddo hydroThreads
+
     deallocate(rho)
     deallocate(vxyzu)
     deallocate(xyzmh)
     deallocate(uoverTarray)
     deallocate(iphase)
     deallocate(isteps)
-
+    deallocate(COfrac,h2ratio)
 
     else
 
@@ -1202,7 +1228,31 @@ part_loop: do ipart=1, nlines
 #endif
 
 
+contains
 
+   subroutine rotate_particles_mpi(thisPositionAngle, thisInclination)
+     real(double), intent(in) ::  thisPositionAngle, thisInclination
+     TYPE(VECTOR) :: orig_sph, rot_sph
+
+     orig_sph%x = xyzmh(1,i)
+     orig_sph%y = xyzmh(2,i)
+     orig_sph%z = xyzmh(3,i)
+     rot_sph  = rotateZ( orig_sph,  thisPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, thisInclination*degToRad )
+     xyzmh(1,i) = rot_sph%x
+     xyzmh(2,i) = rot_sph%y
+     xyzmh(3,i) = rot_sph%z
+
+     orig_sph%x = vxyzu(1,i)
+     orig_sph%y = vxyzu(2,i)
+     orig_sph%z = vxyzu(3,i)
+     rot_sph  = rotateZ( orig_sph,  thisPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, thisInclination*degToRad )
+     vxyzu(1,i) = rot_sph%x
+     vxyzu(2,i) = rot_sph%y
+     vxyzu(3,i) = rot_sph%z
+
+   end subroutine rotate_particles_mpi
 
 
   end subroutine read_sph_data_mpi
@@ -1263,226 +1313,6 @@ part_loop: do ipart=1, nlines
     endif
 
   end function particleInBox
-
-! Read in SPH data from dump file with Chemistry. Errors reading from file could be due to incorrect endian. 
-  subroutine read_sph_data_withChem(filename)
-    use angularImage_utils, only: internalView, galaxyPositionAngle, galaxyInclination
-
-    implicit none
-    
-    character(len=*), intent(in) :: filename
-    character(LEN=150) :: message
-
-    integer :: i, j, iiigas
-    real(double) :: hI_mass
-
-    real(double) :: udist, umass, utime,  time
-    integer, parameter :: nptmass=0
-
-    INTEGER(kind=4)  :: int1, int2, i1
-    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks
-    REAL(kind=8)     :: r1, dummy
-    integer :: intarray(8)
-    CHARACTER(len=100) ::  fileident
-
-    integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
-
-    integer(kind=1), allocatable :: iphase(:)
-    integer, allocatable   :: isteps(:)
-    real(kind=8), allocatable    :: xyzmh(:,:)
-    real(kind=8), allocatable    :: vxyzu(:,:)
-    real(kind=4), allocatable    :: rho(:)
-    real(kind=8), allocatable    :: h2rho(:)
-    real(kind=8), allocatable    :: h1rho(:)
-    real(kind=8), allocatable    :: COrho(:)
-
-    integer :: status
-    type(VECTOR) :: orig_sph, rot_sph
-
-!
-! Read in data from file
-!
-
-    write(message,*) "Reading SPH data from "//trim(filename)
-    call writeinfo(message, TRIVIAL)
-
-    open(unit=LUIN, file=filename, form='unformatted', status='old')
-
-    read(LUIN) int1, r1, int2, i1, int1
-    read(LUIN) fileident
-
-    read(LUIN) number
-    read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
-
-    do i=1,4
-       read(LUIN) number
-    end do
-
-    read(LUIN) number
-    
-    read(LUIN) dummy, dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,dummy,&
-         dummy,dummy,dummy,dummy,dummy,dummy
-
-    read(LUIN) number
-
-    read(LUIN) number
-    read(LUIN) udist, umass, utime, dummy
-
-    time=0.0
-
-    call init_sph_data(udist, umass, utime, time, nptmass)
-    allocate(sphdata%rhoH2(npart)) 
-
-    sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
-    sphdata%codeEnergytoTemperature = 1.0 ! no conversion required
-
-! Arrays
-
-    read(LUIN) number, nblocks
-
-! Array length 1 header
-    read(LUIN) dummy, intarray(1:8)
-
-! Array length 2 header
-    read(LUIN) dummy, intarray(1:8)
-
-! isteps and iphase
-    allocate(isteps(npart))
-    allocate(iphase(npart))
-! Note: this should not be a do loop
-    read(LUIN) ( isteps(i), i=1,npart)
-    read(LUIN) ( iphase(i), i=1, npart)
-
-! xyzmh, vxyzu
-    allocate( xyzmh(5,npart) )
-    allocate( vxyzu(4,npart) )
-
-    do j=1,5
-       read(LUIN) ( xyzmh(j,i), i=1, npart)
-    end do
-
-    do j=1,4
-       read(LUIN) ( vxyzu(j,i), i=1, npart)
-    end do
-
-! rho
-    allocate(rho(npart))
-    read(LUIN) ( rho(i), i=1, npart) 
-
-! h2rho and h1rho
-    allocate(h2rho(npart))
-    allocate(h1rho(npart))
-    read(LUIN) ( h2rho(i), i=1, npart)
-    read(LUIN) ( h1rho(i), i=1, npart)
-
-! See if there is CO data in this dump
-    allocate(COrho(npart))
-    read(LUIN, iostat=status) ( COrho(i), i=1,npart)
-    if (status == 0) then 
-       call writeInfo ("Found CO data")
-       allocate(sphdata%rhoCO(npart))
-    else
-       call writeInfo("No CO data found in this dump")
-    end if
-
-    close(LUIN)
-
-
-!
-! Set up SPH data structure
-!
-
-    ! Indicate that this object is in use
-    sphData%inUse = .true.
-
-! Use temperature from SPH particles to initialise temperature grid
-    sphData%useSphTem = .true. 
-    sphData%npart = npart
-    sphData%time = time
-
-    iiigas=0
-    hI_mass = 0.0
-    do i=1, npart
-       if (iphase(i) == 0) then
-
-          iiigas=iiigas+1
-          hI_mass = hI_mass + xyzmh(4,i) * (h1rho(i) / rho(i))
-
-          sphData%rhon(iiigas)  = h1rho(i)
-          sphData%rhoH2(iiigas) = h2rho(i)
-          if ( associated (sphData%rhoCO) ) sphData%rhoCO(iiigas) = COrho(i)
-
-          if ( internalView ) then 
-
-! For the internal view rotate the galaxy so that we are not looking along cell boundaries
-             orig_sph = VECTOR( vxyzu(1,i),  vxyzu(2,i),  vxyzu(3,i) )
-             rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
-             rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
-
-             sphdata%vxn(iiigas)         = rot_sph%x
-             sphdata%vyn(iiigas)         = rot_sph%y
-             sphdata%vzn(iiigas)         = rot_sph%z
-             sphData%temperature(iiigas) = vxyzu(4,i)
-             
-             orig_sph = VECTOR( xyzmh(1,i),  xyzmh(2,i),  xyzmh(3,i) )
-             rot_sph  = rotateZ( orig_sph,  galaxyPositionAngle*degToRad )
-             rot_sph  = rotateY( rot_sph, galaxyInclination*degToRad )
-             
-             sphData%xn(iiigas)          = rot_sph%x
-             sphData%yn(iiigas)          = rot_sph%y
-             sphData%zn(iiigas)          = rot_sph%z
-             sphData%gasmass(iiigas)     = xyzmh(4,i)
-             sphData%hn(iiigas)          = xyzmh(5,i)
-
-          else
-
-             sphdata%vxn(iiigas)         = vxyzu(1,i)
-             sphdata%vyn(iiigas)         = vxyzu(2,i)
-             sphdata%vzn(iiigas)         = vxyzu(3,i)
-             sphData%temperature(iiigas) = vxyzu(4,i)
-
-             sphData%xn(iiigas)          = xyzmh(1,i)
-             sphData%yn(iiigas)          = xyzmh(2,i)
-             sphData%zn(iiigas)          = xyzmh(3,i)
-             sphData%gasmass(iiigas)     = xyzmh(4,i)
-             sphData%hn(iiigas)          = xyzmh(5,i)
-
-          end if
-
-       end if
-    end do
-
-    write(message,*) "Read ", iiigas, " gas particles"
-    call writeinfo(message, TRIVIAL)    
-
-    write(message,*) "Minimum x=", minval(xyzmh(1,:)) * udist
-    call writeinfo(message, TRIVIAL)
-    write(message,*) "Maximum x=", maxval(xyzmh(1,:)) * udist
-    call writeinfo(message, TRIVIAL)
-
-    write(message,*) "Minimum y=", minval(xyzmh(2,:)) * udist
-    call writeinfo(message, TRIVIAL)
-    write(message,*) "Maximum y=", maxval(xyzmh(2,:)) * udist
-    call writeinfo(message, TRIVIAL)
-
-    write(message,*) "Minimum z=", minval(xyzmh(3,:)) * udist
-    call writeinfo(message, TRIVIAL)
-    write(message,*) "Maximum z=", maxval(xyzmh(3,:)) * udist
-    call writeinfo(message, TRIVIAL)
-
-    write(message,*) "Total HI mass=", hI_mass * umass / mSol
-    call writeinfo(message, TRIVIAL)
-
-    deallocate(h1rho)
-    deallocate(h2rho)
-    deallocate(COrho)
-    deallocate(rho)
-    deallocate(vxyzu)
-    deallocate(xyzmh)
-    deallocate(iphase)
-    deallocate(isteps)
-
-  end subroutine read_sph_data_withChem
 
   !
   !
