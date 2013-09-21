@@ -1,5 +1,5 @@
-#ifdef PDR
 module setuppdr_mod
+#ifdef PDR
 !use healpix_module
 use healpix_guts
 use grid_mod
@@ -905,9 +905,9 @@ use unix_mod, only: unixGetenv
 
       END subroutine
 
-
-end module setuppdr_mod
 #endif
+end module setuppdr_mod
+
 
 
 
