@@ -1044,6 +1044,14 @@ contains
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
+#ifdef PDR
+
+               case("dust_T")
+                  write(lunit, *) real(thisOctal%dust_T(subcell))
+
+               case("UV")
+                  write(lunit, *) real(thisOctal%UV(subcell))
+
                case("pdrtemp")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
@@ -1053,6 +1061,7 @@ contains
                   write(lunit, *) real(thisOctal%abundance(subcell, 11))
                case("C_PDR")
                   write(lunit, *) real(thisOctal%abundance(subcell, 25))
+#endif
 
                case("chiline")
                   write(lunit, *) real(thisOctal%chiline(subcell))
@@ -1133,11 +1142,8 @@ contains
                case("columnRho")
                   write(lunit, *) real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
 
-               case("UV")
-                  write(lunit, *) real(thisOctal%UV(subcell))
 
-               case("dust_T")
-                  write(lunit, *) real(thisOctal%dust_T(subcell))
+
 
 
                case("ghosts")
@@ -3128,15 +3134,6 @@ end subroutine writeXMLVtkFileAMR
                case("temperature")
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
-               case("pdrtemp")
-                  rArray(1, n) = real(real(thisOctal%temperature(subcell)))
-
-               case("CO_PDR")
-                  rArray(1, n) = real(thisOctal%abundance(subcell, 28))
-               case("C+_PDR")
-                  rArray(1, n) = real(thisOctal%abundance(subcell, 11))
-               case("C_PDR")
-                  rArray(1, n) = real(thisOctal%abundance(subcell, 25))
 
                case("chiline")
                   if (.not.associated(thisOctal%chiline)) then
@@ -3234,13 +3231,25 @@ end subroutine writeXMLVtkFileAMR
                case("columnRho")
                   rArray(1, n) = real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
 
+#ifdef PDR
                case("UV")
                   rArray(1, n) = real(thisOctal%UV(subcell))
 
                case("dust_T")
                   rArray(1, n) = real(thisOctal%dust_T(subcell))
 
+               case("pdrtemp")
+                  rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
+               case("CO_PDR")
+                  rArray(1, n) = real(thisOctal%abundance(subcell, 28))
+
+               case("C+_PDR")
+                  rArray(1, n) = real(thisOctal%abundance(subcell, 11))
+
+               case("C_PDR")
+                  rArray(1, n) = real(thisOctal%abundance(subcell, 25))
+#endif
 
                case("vphi")
                   rVec = subcellCentre(thisOctal,subcell)

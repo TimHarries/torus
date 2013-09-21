@@ -4844,6 +4844,7 @@ end subroutine writeRadialFile
     endif
   end subroutine getHydroValues
 
+#ifdef PDR
   subroutine getRayTracingValuesPDR(grid, position, direction, rho, uvx, uvy, uvz, Hplusfrac, tval, &
        abundanceArray)
 !       radially, searchRadius)
@@ -5003,7 +5004,7 @@ end subroutine writeRadialFile
        endif
     enddo
   end subroutine rayTracingServerPDR
-
+#endif
 
   subroutine getRayTracingValuesXRAY(grid, position, direction, rho, tval, getTval)
 !       radially, searchRadius)

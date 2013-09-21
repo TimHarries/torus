@@ -84,14 +84,18 @@ subroutine PDR_MAIN(grid)
        "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   "/))
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
 !  stop
+  call writeInfo("Doing initial abundance calculation.", TRIVIAL)
   call abundanceSweepGovernor(grid, reactant, &
        product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, n12co &
-       , ncii, nci, noi, nelect) 
+       , ncii, nci, noi, nelect, nchemiter=8) 
   call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
        "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
        "CO_PDR    ", "C+_PDR    ", "C_PDR     "/))
-
-
+  call writeInfo("Initial abundance calculation done.", TRIVIAL)
+  print *, " "
+  print *, " "
+  call writeInfo("Doing main PDR loop.", TRIVIAL)
+  call pdr_main_loop(grid)
 
 
 #else
@@ -115,9 +119,48 @@ end subroutine PDR_MAIN
 
 
 #ifdef MPI
+subroutine pdr_main_loop(grid)
+  type(gridtype) :: grid
+  real(double), allocatable :: rate(:), alpha(:), beta(:), gamma(:)
+  real(double), allocatable :: rtmin(:), rtmax(:)
+  integer, allocatable :: duplicate(:)
+  character(len=10), allocatable :: product(:,:), reactant(:,:)
+  integer :: n12co, nci, ncii, noi, nelect
+  logical :: converged
+
+  integer :: thisIteration, maxIter
+
+  converged = .false.
+  thisIteration = 1
+  maxIter = 10
+  do while(.not. converged)
+     !abundance calculation
+     call abundanceSweepGovernor(grid, reactant, &
+          product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, n12co &
+          , ncii, nci, noi, nelect, nchemiter=3) 
+
+
+     !thermal balance calculation
+
+
+
+     !convergence checks
+
+
+     if (thisIteration > maxIter) then
+        call writeInfo("Number of PDR iterations exceeded maximum, forcing convergence", TRIVIAL)
+        converged = .true.
+     endif
+
+  enddo
+
+end subroutine pdr_main_loop
+
+
+
 subroutine abundanceSweepGovernor(grid, reactant, &
      product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax & 
-     , n12co, ncii, nci, noi, nelect)
+     , n12co, ncii, nci, noi, nelect, nChemIter)
   integer :: nChemIter, i
   type(gridtype) :: grid
   real(double) :: rate(:), alpha(:), beta(:), gamma(:)
@@ -126,8 +169,7 @@ subroutine abundanceSweepGovernor(grid, reactant, &
   character(len=10) :: product(:,:), reactant(:,:)
   integer :: n12co, ncii, nci, noi, nelect, ier
   !first wave
-  nChemIter = 8
-  nChemIter = 1
+
   do i = 1, nChemIter
      if(myrankglobal == 1) print *, "!- chemical iteration ", i
      call abundanceSweepDrone(nChemIter, grid%octreeRoot, reactant, &
@@ -141,9 +183,9 @@ subroutine abundanceSweepGovernor(grid, reactant, &
      call MPI_BARRIER(MPI_COMM_WORLD, ier)
   end do
 
-     if(myrankglobal == 1) print *, "!- calling partition LTE ", i
+     if(myrankglobal == 1) print *, "!- calling partition LTE "
   call partitionLTE(grid%octreeRoot, n12co, ncii, nci, noi)
-
+  if(myrankglobal == 1) print *, "!- partition LTE done "
 end subroutine abundanceSweepGovernor
 
 
@@ -249,16 +291,16 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
 
         
         CALL CALCULATE_LTE_POPULATIONS(CII_NLEV,thisOctal%CII_POP(subcell, :),CII_ENERGIES,&
-             &CII_WEIGHTS,CII_Z_FUNCTION,thisOctal%abundance(Nci,subcell)*thisOctal%rho(subcell),&
+             &CII_WEIGHTS,CII_Z_FUNCTION,thisOctal%abundance(subcell, Ncii)*thisOctal%rho(subcell),&
              thisOctal%tLast(subcell))
         CALL CALCULATE_LTE_POPULATIONS(CI_NLEV, thisOctal%CI_POP(subcell, :), CI_ENERGIES, &
-             &CI_WEIGHTS, CI_Z_FUNCTION, thisOctal%abundance(Ncii,subcell)*thisOctal%rho(subcell),&
+             &CI_WEIGHTS, CI_Z_FUNCTION, thisOctal%abundance(subcell, Nci)*thisOctal%rho(subcell),&
              thisOctal%tLast(subcell))
         CALL CALCULATE_LTE_POPULATIONS(OI_NLEV, thisOctal%OI_POP(subcell, :), OI_ENERGIES, &
-             &OI_WEIGHTS, OI_Z_FUNCTION, thisOctal%abundance(Noi,subcell)*thisOctal%rho(subcell),&
+             &OI_WEIGHTS, OI_Z_FUNCTION, thisOctal%abundance(subcell, Noi)*thisOctal%rho(subcell),&
              thisOctal%tLast(subcell))
         CALL CALCULATE_LTE_POPULATIONS(C12O_NLEV,thisOctal%C12O_POP(subcell, :),C12O_ENERGIES,&
-             &C12O_WEIGHTS,C12O_Z_FUNCTION,thisOctal%abundance(N12co,subcell)*thisOctal%rho(subcell),&
+             &C12O_WEIGHTS,C12O_Z_FUNCTION,thisOctal%abundance(subcell, N12co)*thisOctal%rho(subcell),&
              thisOctal%tLast(subcell))
 
      end if

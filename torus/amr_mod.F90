@@ -11801,6 +11801,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%newatomLevel, source%newatomLevel)
 
     call copyAttribute(dest%ionFrac, source%ionFrac)
+#ifdef PDR
     call copyAttribute(dest%AV, source%AV)
     call copyAttribute(dest%thisColRho, source%thisColRho)
     call copyAttribute(dest%abundance, source%abundance)
@@ -11817,7 +11818,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%ci_pop, source%ci_pop)
     call copyAttribute(dest%oi_pop, source%oi_pop)
     call copyAttribute(dest%c12o_pop, source%c12o_pop)
-
+#endif
     call copyAttribute(dest%gamma, source%gamma)
     call copyAttribute(dest%iEquationOfState, source%iEquationOfState)
 
@@ -15200,7 +15201,10 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10
-    integer :: i, nrays, nside
+    integer :: i
+#ifdef PDR
+    integer :: nrays, nside
+#endif
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
@@ -15379,6 +15383,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
     end if
 
+#ifdef PDR
     if(pdrcalc) then
        nside=2**hlevel
        nrays = 12*nside**2
@@ -15400,7 +15405,7 @@ end function readparameterfrom2dmap
        allocate(thisOctal%abundance(1:thisOctal%maxchildren, 1:33))
        allocate(thisOctal%thisColRho(1:thisOctal%maxchildren, 1:33, 1:nrays))
     end if
-
+#endif
     if (lineEmission) then
        call allocateAttribute(thisOctal%probDistLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
@@ -15591,6 +15596,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%Hheating)
     call deallocateAttribute(thisOctal%Heheating)
     call deallocateAttribute(thisOctal%ionFrac)
+#ifdef PDR
     call deallocateAttribute(thisOctal%thisColRho)
     call deallocateAttribute(thisOctal%abundance)
     call deallocateAttribute(thisOctal%UV)
@@ -15601,6 +15607,11 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%Tmax)
     call deallocateAttribute(thisOctal%Tminarray)
     call deallocateAttribute(thisOctal%Tmaxarray)
+    call deallocateAttribute(thisOctal%cii_pop)
+    call deallocateAttribute(thisOctal%ci_pop)
+    call deallocateAttribute(thisOctal%oi_pop)
+    call deallocateAttribute(thisOctal%c12o_pop)
+#endif
     call deallocateAttribute(thisOctal%photoIonCoeff)
     call deallocateAttribute(thisOctal%sourceContribution)
     call deallocateAttribute(thisOctal%diffuseContribution)
@@ -15629,10 +15640,6 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%rLimit)
     call deallocateAttribute(thisOctal%ghostCell)
     call deallocateAttribute(thisOctal%columnRho)
-    call deallocateAttribute(thisOctal%cii_pop)
-    call deallocateAttribute(thisOctal%ci_pop)
-    call deallocateAttribute(thisOctal%oi_pop)
-    call deallocateAttribute(thisOctal%c12o_pop)
     call deallocateAttribute(thisOctal%feederCell)
     call deallocateAttribute(thisOctal%corner)
     call deallocateAttribute(thisOctal%edgeCell)

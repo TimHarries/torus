@@ -1,3 +1,4 @@
+#ifdef PDR
 module setuppdr_mod
 !use healpix_module
 use healpix_guts
@@ -906,7 +907,7 @@ use unix_mod, only: unixGetenv
 
 
 end module setuppdr_mod
-
+#endif
 
 
 

@@ -650,10 +650,18 @@ contains
           call writeAttributePointerFlexi(20, "kappaSca", thisOctal%kappaSca, fileFormatted)
           
           call writeAttributePointerFlexi(20, "ionFrac", thisOctal%ionFrac, fileFormatted)
+
+
+
+#ifdef PDR
           call writeAttributePointerFlexi(20, "AV", thisOctal%AV, fileFormatted)
           call writeAttributePointerFlexi(20, "UV", thisOctal%UV, fileFormatted)
           call writeAttributePointerFlexi(20, "radsurface", thisOctal%radsurface, fileFormatted)
           call writeAttributePointerFlexi(20, "dust_T", thisOctal%dust_T, fileFormatted)
+#endif
+
+
+
           call writeAttributePointerFlexi(20, "photoIonCoeff", thisOctal%photoIonCoeff, fileFormatted)
           
           call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
@@ -4098,6 +4106,7 @@ contains
             call readPointerFlexi(20, thisOctal%kappaSca, fileFormatted)
          case("ionFrac")
             call readPointerFlexi(20, thisOctal%ionFrac, fileFormatted)
+#ifdef PDR
          case("AV")
             call readPointerFlexi(20, thisOctal%AV, fileFormatted)
          case("UV")
@@ -4106,6 +4115,8 @@ contains
             call readPointerFlexi(20, thisOctal%radsurface, fileFormatted)
          case("dust_T")
             call readPointerFlexi(20, thisOctal%dust_T, fileFormatted)
+#endif
+
          case("photoIonCoeff")
             call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
          case("distanceGrid")
@@ -4458,6 +4469,8 @@ contains
             call receivePointerFlexi(thisOctal%kappaSca)
          case("ionFrac")
             call receivePointerFlexi(thisOctal%ionFrac)
+
+#ifdef PDR
          case("AV")
             call receivePointerFlexi(thisOctal%AV)
          case("UV")
@@ -4466,6 +4479,8 @@ contains
             call receivePointerFlexi(thisOctal%radsurface)
          case("dust_T")
             call receivePointerFlexi(thisOctal%dust_T)
+#endif
+
          case("photoIonCoeff")
             call receivePointerFlexi(thisOctal%photoIonCoeff)
          case("distanceGrid")
@@ -4736,10 +4751,15 @@ contains
       call sendAttributePointerFlexi(iThread, "kappaSca", thisOctal%kappaSca)
 
       call sendAttributePointerFlexi(iThread, "ionFrac", thisOctal%ionFrac)
+
+#ifdef PDR
       call sendAttributePointerFlexi(iThread, "AV", thisOctal%AV)
       call sendAttributePointerFlexi(iThread, "UV", thisOctal%UV)
       call sendAttributePointerFlexi(iThread, "radsurface", thisOctal%radsurface)
       call sendAttributePointerFlexi(iThread, "dust_T", thisOctal%dust_T)
+#endif
+
+
       call sendAttributePointerFlexi(iThread, "photoIonCoeff", thisOctal%photoIonCoeff)
 
       call sendAttributePointerFlexi(iThread, "distanceGrid", thisOctal%distanceGrid)
