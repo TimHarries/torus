@@ -1,4 +1,3 @@
-#ifdef PDR
 ! Definition of precision kind variables
 ! ============================================================================
 
@@ -8,6 +7,7 @@
 !T.Bisbas -- taken from SEREN/HEALPix
 
 MODULE healpix_guts
+#ifdef PDR
   use constants_mod
   integer, parameter :: DP = selected_real_kind(p=15) ! double precision
   integer, parameter :: SP = selected_real_kind(p=6)  ! single precision
@@ -161,6 +161,7 @@ MODULE healpix_guts
   real(kind=DP), allocatable :: vectors(:,:) ! Healpix rays
 !  integer(kind=i4b)::level,nrays,nside,ipix
   integer(kind=i4b)::level!,ipix
+#endif
 END MODULE healpix_guts
 
-#endif
+
