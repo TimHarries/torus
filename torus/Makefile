@@ -419,6 +419,9 @@ endif
 ifeq ($(pdr), yes)
   ETCFLAG += -DPDR
   sundials=yes
+  CPPflag = -cpp
+else
+  CPPflag = 
 endif
 
 ifeq ($(molecular), yes)
@@ -625,10 +628,10 @@ link: depends $(ALLOBJ)
 .SUFFIXES:
 
 %.o: %.f90
-	$(F90) -cpp -c $<
+	$(F90) $(CPPFLAG) -c $<
 
 %.o: %.F90
-	$(F90) -cpp -c $<
+	$(F90) $(CPPFLAG) -c $<
 
 %.o: %.c
 	$(GCC) -c $<
