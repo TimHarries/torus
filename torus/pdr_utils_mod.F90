@@ -1,5 +1,5 @@
-#ifdef PDR
 module pdr_utils_mod
+#ifdef PDR
 !!
 ! use definitions
 ! use healpix_types
@@ -1874,7 +1874,7 @@ END SUBROUTINE CALCULATE_LTE_POPULATIONS
     END SUBROUTINE SPLINE_PDR
 !=======================================================================
 
-
+#endif
 end module pdr_utils_mod
 
-#endif
+

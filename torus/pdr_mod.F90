@@ -1,5 +1,5 @@
-#ifdef PDR
 module pdr_mod
+#ifdef PDR
 !Started by THaw and Bisbas 13/08/2013
 
 use constants_mod
@@ -1018,6 +1018,6 @@ END SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI
 
 
 
-
-end module pdr_mod
 #endif
+end module pdr_mod
+

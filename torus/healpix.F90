@@ -1,6 +1,5 @@
-#ifdef PDR
 module healpix
-
+#ifdef PDR
 implicit none
 
 
@@ -411,6 +410,6 @@ subroutine mk_pix2xy(pix2x, pix2y)
 
     return
 end subroutine ang2pix_nest_id
-
-end module healpix
 #endif
+end module healpix
+
