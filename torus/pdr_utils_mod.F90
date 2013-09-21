@@ -221,7 +221,7 @@ end function nray_func
 !      real(double) :: NH2, NHD, NCO, NC, NS
       integer, intent(in) :: n12co,  nci
       integer ::NH2, NCO, NC, NS
-      integer :: NHD
+!      integer :: NHD
 !#ifdef MOCASSIN
 !      real(double) :: RADSURFTOT
 !#endif
