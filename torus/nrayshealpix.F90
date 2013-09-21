@@ -37,7 +37,7 @@ subroutine donrayshealpix()
 
   real(kind=dp) :: vector(1:3)
   integer(kind=i4b) :: nside, nrays
-!  integer(kind=i4b) ::pix2x(0:1023),pix2y(0:1023)
+  integer(kind=i4b) ::pix2x(0:1023),pix2y(0:1023)
 !  REAL(KIND=DP) :: vector(1:3)
   REAL(KIND=DP) :: vertex(1:3,1:4)
   integer :: ipix

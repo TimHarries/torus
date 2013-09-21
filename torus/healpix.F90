@@ -97,7 +97,7 @@ Ns_max=8192
     if (ipix <0 .or. ipix>npix-1) stop 'b'
 
     !     initiates the array for the pixel number -> (x,y) mapping
-    if (pix2x(1023) <= 0) call mk_pix2xy()
+    if (pix2x(1023) <= 0) call mk_pix2xy(pix2x, pix2y)
 
     fn = real(nside,kind=dp)
     fact1 = 1.0_dp/(3.0_dp*fn*fn)
@@ -231,7 +231,7 @@ if (abs(vector(1)).lt.1d-10) vector(1)=0.0_dp
     return
   end subroutine pix2vec_nest
  
-subroutine mk_pix2xy()
+subroutine mk_pix2xy(pix2x, pix2y)
 !   use definitions
 !   use healpix_types
 !
@@ -245,8 +245,8 @@ subroutine mk_pix2xy()
     !     one breaks up the pixel number by even and odd bits
     !=======================================================================
     INTEGER ::  kpix, jpix, ix, iy, ip, id
-!    integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
-!    integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
+    integer(kind=i4b), dimension(0:1023) :: pix2x   ! ..
+    integer(kind=i4b), dimension(0:1023) :: pix2y   ! ..
     !cc cf block data      data      pix2x(1023) /0/
     !-----------------------------------------------------------------------
     !      print *, 'initiate pix2xy'

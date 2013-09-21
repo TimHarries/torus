@@ -139,8 +139,8 @@ subroutine abundanceSweepGovernor(grid, reactant, &
      call MPI_BARRIER(MPI_COMM_WORLD, ier)
   end do
 
-!     if(myrankglobal == 1) print *, "!- calling partition LTE ", i
-!  call partitionLTE(grid%octreeRoot, n12co, ncii, nci, noi)
+     if(myrankglobal == 1) print *, "!- calling partition LTE ", i
+  call partitionLTE(grid%octreeRoot, n12co, ncii, nci, noi)
 
 end subroutine abundanceSweepGovernor
 
