@@ -220,7 +220,8 @@ end function nray_func
       REAL(double), parameter :: OMEGA=0.42D0,GRAIN_RADIUS=1.0D-7,METALLICITY=1.0D0
 !      real(double) :: NH2, NHD, NCO, NC, NS
       integer, intent(in) :: n12co,  nci
-      integer ::NH2, NHD, NCO, NC, NS
+      integer ::NH2, NCO, NC, NS
+      integer :: NHD
 !#ifdef MOCASSIN
 !      real(double) :: RADSURFTOT
 !#endif
@@ -376,11 +377,14 @@ end function nray_func
             GOTO 10
          ENDIF
 
+
+!THAW NHD IS NOT INCLUDED IN THE SPECIES DATAFILE
+
 !C     Store the reaction number for HD photodissociation. The rate itself
 !C     is calculated separately by the function H2PDRATE (within shield.f)
-         IF(trim(REACTANT(I,1)).EQ."HD" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
-     &    ((trim(PRODUCT(I,1)).EQ."H" .AND. trim(PRODUCT(I,2)).EQ."D") .OR.&
-     &     (trim(PRODUCT(I,1)).EQ."D" .AND. trim(PRODUCT(I,2)).EQ."H"))) THEN
+!         IF(trim(REACTANT(I,1)).EQ."HD" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+!     &    ((trim(PRODUCT(I,1)).EQ."H" .AND. trim(PRODUCT(I,2)).EQ."D") .OR.&
+!     &     (trim(PRODUCT(I,1)).EQ."D" .AND. trim(PRODUCT(I,2)).EQ."H"))) THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
@@ -391,14 +395,14 @@ end function nray_func
 !            RATE(I) = RATE(I)/RADSURFTOT
 !#else
 !            print *, "PART 4"
-            DO K=1,NRAYS
-!            DO K=0,NRAYS-1
-               RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NHD))
-            ENDDO
+!            DO K=1,NRAYS
+!!            DO K=0,NRAYS-1
+!               RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NHD))
+!            ENDDO
 !#endif
-            NRHD=I
-            GOTO 10
-         ENDIF
+!            NRHD=I
+!            GOTO 10
+!         ENDIF
 
 !C     Store the reaction number for !CO photodissociation. The rate itself
 !C     is calculated separately by the function !COPDRATE (within shield.f)
@@ -1132,8 +1136,8 @@ end function nray_func
      real(double) :: h2shield2
 !     integer, intent(in) :: nh2
      real(double), intent(inout) :: nh2
-!     START = .true.
-
+     START = .true.
+     
       NUMH2=105
       IF(START) CALL SPLINE_PDR(COL_GRID,SH2_GRID,NUMH2, &
      &                      1.0D30,1.0D30,SH2_DERIV)

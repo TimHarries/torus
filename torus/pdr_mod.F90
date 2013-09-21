@@ -50,8 +50,10 @@ subroutine PDR_MAIN(grid)
   real(double), allocatable :: rtmin(:), rtmax(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
-  integer :: n12co, nci, ncii, noi, nelect, ier
-  
+  integer :: n12co, nci, ncii, noi, nelect
+#ifdef MPI
+  integer :: ier
+#endif
 
   call donrayshealpix()
 
