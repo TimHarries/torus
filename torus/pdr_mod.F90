@@ -143,7 +143,6 @@ subroutine pdr_main_loop(grid)
      !thermal balance calculation
 
 
-
      !convergence checks
 
 
