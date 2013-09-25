@@ -215,6 +215,7 @@
   logical :: writetempfits
   logical :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
+  logical :: setupMolecularLteOnly ! Set up LTE level populations then exit molecular loop
   logical :: lowmemory ! if memory is tight
   logical :: noturb ! Subsonic turbulent velocity
   real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod

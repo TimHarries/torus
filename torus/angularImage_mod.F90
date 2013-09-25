@@ -858,7 +858,7 @@ module angularImage
 
    subroutine map_dI_to_particles(grid)
 
-    use inputs_mod, only: sphdatafilename
+    use inputs_mod, only: sphdatafilename, convertRhoToHI
     use sph_data_class, only: sphdata, read_sph_data_wrapper
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD
@@ -927,10 +927,15 @@ module angularImage
            dI       =  thisOctal%newmolecularlevel(1,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
            
-           ! Calculate fraction of molecular hydrogen by number (not mass)
-           ! sphdata%rhon is the mass density of HI 
-           if ( associated (sphdata%rhoH2) ) then 
-              H2_frac = sphdata%rhoH2(ipart) / ( (2.0_db * sphdata%rhon(ipart)) + sphdata%rhoH2(ipart) )
+           ! Calculate fraction of molecular hydrogen by mass
+           if ( associated (sphdata%rhoH2) ) then
+              if (convertRhoToHI) then 
+                 ! sphdata%rhon is the mass density of HI 
+                 H2_frac = sphdata%rhoH2(ipart) / ( sphdata%rhon(ipart) + sphdata%rhoH2(ipart) )
+              else
+                 ! sphdata%rhon is the total hydrogen mass density
+                 H2_frac = sphdata%rhoH2(ipart) / sphdata%rhon(ipart)
+              endif
            else
               H2_frac = 0.0
            end if

@@ -1838,6 +1838,8 @@ contains
             "Remove molecular material above 100K: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("isinlte", isinlte, cLine, fLine, nLines, &
             "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("setupMolecularLteOnly", setupMolecularLteOnly, cLine, fLine, nLines, &
+            "Set up LTE in molecular calculation then exit: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
        call getLogical("plotlevels", plotlevels, cLine, fLine, nLines, &

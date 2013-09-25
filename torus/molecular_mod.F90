@@ -534,8 +534,8 @@ module molecular_mod
 ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
 ! *2 because using 1/e definition of thermal line width
 ! molebench has vturb already
-                 write(*,*) "sound  ",sqrt(2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                      (thisMolecule%molecularWeight * amu))
+!                 write(*,*) "sound  ",sqrt(2.d-10 * kerg * thisOctal%temperature(subcell) / &
+!                      (thisMolecule%molecularWeight * amu))
               endif
 
 ! Fill cells with molecular abundance data
@@ -848,7 +848,7 @@ module molecular_mod
      use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
-          zeroGhosts, forceIniRay
+          zeroGhosts, forceIniRay, setupMolecularLteOnly
      use dust_mod
      use parallel_mod
      use vtk_mod
@@ -1037,7 +1037,7 @@ module molecular_mod
         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
 
         call writeAMRgrid(molgridltefilename,.false.,grid)
-!       goto 666
+        if (setupMolecularLteOnly) goto 666
      endif
 
 ! Write maximum interesting level as determined by molecularlevel
@@ -1556,7 +1556,7 @@ pops_conv_loop: do while (.not. popsConverged)
   enddo stage_loop
   
   close(33)
-!  666 continue
+  666 continue
 end subroutine molecularLoop
 
 !!! find the radiation incident at a point in a cell from a pencil beam along a particular direction

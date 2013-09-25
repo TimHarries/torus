@@ -359,24 +359,13 @@ contains
 !
 ! CO fraction. The column will not be labelled by splash
 ! so need to specify which column to use.
-    logical :: useCO
     integer, parameter :: iCO = 15
     real(double)       :: COfrac
-! Do we need to store particle H2? convertRhoToHI converts density to HI density but doesn't 
-! store H2 fraction
-    logical :: useH2
 
 ! Account for time in Galactic plane surveys
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
 
-    if (sphwithchem) then 
-       useCO = .true.
-       useH2 = .true.
-    else
-       useCO = .false.
-       useH2 = .false.
-    endif
 
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
@@ -462,12 +451,17 @@ contains
        haveUandUoverT = .false.
     end if
 
-! Decide how to convert between internal energy and temperature
+! Decide how to convert between internal energy and temperature. If there is information about
+! the H2 fraction then use this to calculate the molecular weight later on.
     if (convertRhoToHI) then
-       write (message,'(a,i2)') "Converting density to HI density using H2 fraction from column ", ih2frac
+       write (message,'(a,i2)') "Will convert total density to HI density using H2 fraction from column ", ih2frac
        call writeInfo(message,FORINFO)
-       ! This affects the conversion of internal energy to temperature via the mean molecular weight
-       ! so needs to be handled differently to cases with fixed abundances. 
+       write (message,'(a)') "Will calculate molecular weight based on H2 fraction"
+       call writeInfo(message,FORINFO)
+       sphdata%codeEnergytoTemperature = 1.0
+    else if (sphWithChem) then
+       write(message,'(a)') "Will read chemistry data but will not convert total density to HI density"
+       call writeInfo(message,FORINFO)
        sphdata%codeEnergytoTemperature = 1.0
     else if (haveUandUoverT) then
        call writeInfo("Calculating temperature from u and u/T",FORINFO)
@@ -479,13 +473,13 @@ contains
        call writeInfo(message, FORINFO)
     end if
 
-    if (useCO) then
+    if (sphWithChem) then
        write (message,'(a,i2)') "Reading CO fraction from column ", iCO
        call writeInfo(message,FORINFO)
        allocate(sphData%rhoCO(npart))
     end if
 
-    if (useH2) then 
+    if (convertRhoToHI.or.sphwithChem) then 
        write (message,'(a,i2)') "Will store particle H2 density. H2 fraction is from column ", ih2frac
        call writeInfo(message,FORINFO)
        allocate(sphdata%rhoH2(npart))
@@ -547,11 +541,12 @@ part_loop: do ipart=1, nlines
           sphdata%vzn(igas) = vz
 
 ! For SPH simulations with chemistry we need to set up H2
-          if ( convertRhoToHI .or. useH2 ) then
+          if ( convertRhoToHI.or.sphwithChem ) then
              h2ratio = junkArray(ih2frac)
           endif
 
-          if (convertRhoToHI) then 
+! Set up temperature or internal energy
+          if (convertRhoToHI.or.sphwithChem ) then 
              gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
              sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
           else if (haveUandUoverT) then 
@@ -570,17 +565,12 @@ part_loop: do ipart=1, nlines
 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
 
-          if ( convertRhoToHI ) then
-             sphdata%rhon(igas) = (1.0-2.0*h2ratio)*rhon*5.0/7.0
-             sphdata%rhon(igas) = max(sphdata%rhon(igas),1.0e-60_db)
-          end if
-
-          if (useCO) then 
+          if (sphwithChem) then 
              COfrac = junkArray(iCO)
              sphdata%rhoCO(igas) = COfrac * rhon
           endif
 
-          if (useH2) then
+          if (convertRhoToHI.or.sphwithChem) then
              sphdata%rhoH2(igas) = h2ratio*2.*rhon*5./7.
           end if
           
@@ -1002,8 +992,12 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
     call init_sph_data(udist, umass, utime, time, i_pt_mass)
     sphData%useSphTem = .true. 
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
+
+! Allocate chemistry related components
     if (sphwithChem) then
        allocate ( sphData%rhoCO(npart) )
+    endif
+    if (sphwithChem.or.convertRhoToHI) then
        allocate ( sphData%rhoH2(npart) )
     endif
 
@@ -1011,6 +1005,10 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
        sphdata%codeEnergytoTemperature = 1.0
     else if (convertRhoToHI) then
        write(message,*) "Will convert density to HI density and set molecular weight accordingly"
+       call writeInfo(message,FORINFO)
+       sphdata%codeEnergytoTemperature = 1.0
+    else if (sphWithChem) then
+       write(message,'(a)') "Will set molecular weight using H2 fraction but not convert total density to HI density"
        call writeInfo(message,FORINFO)
        sphdata%codeEnergytoTemperature = 1.0
     else
@@ -1032,16 +1030,14 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
 
              iiigas=iiigas+1
 
-             if (convertRhoToHI .or. sphWithChem) then
-                sphdata%rhon(iiigas) = (1.0-2.0*h2ratio(i))*rho(i)*5.0/7.0
-                sphdata%rhon(iiigas) = max(sphdata%rhon(iiigas),1.0e-60_db)
-             else
-                sphData%rhon(iiigas)  = rho(i)
-             endif
+             sphData%rhon(iiigas)  = rho(i)
 
+! Calculate chemistry related components
+             if (convertRhoToHI.or.sphWithChem) then 
+                sphData%rhoH2(iiigas) = h2ratio(i)*2.0*rho(i)*5./7.
+             endif
              if (sphWithChem) then
                 sphData%rhoCO(iiigas) = rho(i) * COfrac(i)
-                sphData%rhoH2(iiigas) = h2ratio(i)*2.0*rho(i)*5./7.
              endif
 
              sphdata%vxn(iiigas)         = vxyzu(1,i)
@@ -1061,7 +1057,7 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
 
 ! Convert internal energy to temperature using the mean molecular weight derived from the H2 fraction
 ! sphdata%codeEnergytoTemperature = 1.0 so this needs to be temperature
-             if (convertRhoToHI) then
+             if (convertRhoToHI.or.sphWithChem) then
                 gmwWithH2 = (2.*h2ratio(i)+(1.-2.*h2ratio(i))+0.4) / (0.1+h2ratio(i)+(1.-2.*h2ratio(i)))
                 sphdata%temperature(iiigas) = (2.0/3.0) * sphData%temperature(iiigas) * ( gmwWithH2 / Rgas) &
                      * ( (udist**2)/(utime**2) )
@@ -1845,7 +1841,8 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone)
-    USE inputs_mod, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull
+    USE inputs_mod, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull, &
+         convertRhoToHI
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
 
@@ -1871,6 +1868,7 @@ contains
     real(double), save :: sumWeight
     real(double) :: bigx, bigy, bigz, Hedge
     real(double) :: paramValue(4)
+    real(double) :: h2ratio
     
     character(len=100) :: message
 
@@ -2220,6 +2218,16 @@ contains
              paramValue(1) = paramValue(1) + partArray(i) * rhoH2Array(indexArray(i)) ! H2 density
           enddo
           
+! Convert density to HI density if required. Done here so that particle rho stores total density
+! even if the grid needs rho_HI. This way the grid refinement is done using total density. 
+          if (convertRhoToHI) then 
+             ! paramValue(4) holds total density, paramValue(1) is H2 density
+             h2ratio       = 0.5 * (7.0/5.0) * paramValue(1) / paramValue(4)
+             ! Convert paramValue(4) to HI density
+             paramValue(4) = (1.0-2.0*h2ratio)*paramValue(4)*5.0/7.0
+             paramValue(4) = max(paramValue(4),1.0e-60_db)
+          endif
+
           Clusterparameter = VECTOR(paramValue(4)*fac, paramValue(3)*fac, paramValue(1)*fac)  ! density ! stays as vector for moment
           
 
