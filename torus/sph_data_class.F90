@@ -711,10 +711,14 @@ part_loop: do ipart=1, nlines
     integer :: thisNumGas
     integer :: nlistinactive, listinactive(1)
     integer :: iThread
+! The MPI communication handles multiple hydro threads so I've keyed it out for non-hydro builds
+! For Galactic plane survey runs build with hydro=no
 #ifdef MPI
+#ifdef HYDRO
     integer :: ierr
     integer, parameter :: tag = 33
     integer :: status(MPI_STATUS_SIZE)
+#endif
 #endif
 ! Mean molecular weight, used for calculating temperature from internal energy.
 ! This assumes a 10:1 H:He ratio by number
@@ -722,7 +726,9 @@ part_loop: do ipart=1, nlines
     real(double) :: gmwWithH2
 
 #ifdef MPI
+#ifdef HYDRO
     if (myrankWorldGlobal == 0) then
+#endif
 #endif
 
 !
@@ -944,7 +950,9 @@ part_loop: do ipart=1, nlines
 
 
 #ifdef MPI
+#ifdef HYDRO
 hydroThreads: do iThread = 1, nHydroThreadsGlobal
+#endif
 #endif
 
 
@@ -1116,7 +1124,7 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
     call writeinfo(message, TRIVIAL)
 
 #ifdef MPI
-
+#ifdef HYDRO
     call mpi_send(uDist, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
     call mpi_send(uMass, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
     call mpi_send(uTime, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
@@ -1222,7 +1230,7 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
     endif
     call mpi_barrier(MPI_COMM_WORLD, ierr)
 #endif
-
+#endif
 
 contains
 
