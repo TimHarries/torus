@@ -4845,6 +4845,149 @@ end subroutine writeRadialFile
   end subroutine getHydroValues
 
 #ifdef PDR
+  subroutine getRayTracingValuesPDR_TWO(grid, position, direction, CII_POP, CI_POP, OI_POP, C12O_POP, tVal,&
+       HplusFrac)
+
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: HplusFrac, CII_POP(5), CI_POP(5), OI_POP(5), C12O_POP(41)
+    type(VECTOR) :: position, rVec, direction
+    real(double) :: loc(7)
+    type(OCTAL), pointer :: thisOctal
+    integer :: iThread
+    integer, parameter :: nStorage = 58
+!    integer, parameter :: nStorage = 6
+    real(double) :: tempStorage(nStorage), tval
+    integer :: subcell
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+!    logical :: useTop
+    integer :: counter
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(position, thisOctal, subcell)
+   
+    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
+!58
+       rVec = subcellCentre(thisOctal, subcell)
+       Hplusfrac = thisOctal%ionfrac(subcell, 2)
+       CII_POP = thisOctal%CII_POP(subcell, :)!5
+       CI_POP = thisOctal%CI_POP(subcell, :)!5
+       OI_POP = thisOctal%OI_POP(subcell, :)!5
+       C12O_POP = thisOctal%C12O_POP(subcell, :)!41
+       call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+    else
+
+       iThread = thisOctal%mpiThread(subcell)
+!       print *, "myrankglobal ", myrankglobal, "to ", ithread
+       loc(1) = position%x
+       loc(2) = position%y
+       loc(3) = position%z
+       loc(4) = dble(myRankGlobal)
+!       loc(4) = myRankGlobal
+       loc(5) = direction%x
+       loc(6) = direction%y
+       loc(7) = direction%z
+
+       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+ !      print *, "sent "
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
+            localWorldCommunicator, status, ierr)
+  !     print *, "recvd"
+       tval = tempstorage(1)
+       Hplusfrac = tempstorage(2)
+       do counter = 1, 5
+          CII_POP(counter) = tempstorage(counter + 2)
+          CI_POP(counter) = tempstorage(counter + 7)
+          OI_POP(counter) = tempstorage(counter + 12)
+       enddo
+       do counter = 1, 41
+          C12O_POP(counter) = tempstorage(counter + 17)
+       enddo
+    endif
+  end subroutine getRayTracingValuesPDR_TWO
+
+
+  subroutine rayTracingServerPDR_TWO(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    logical :: stillServing
+    real(double) :: loc(7)
+    type(VECTOR) :: position, rVec, direction
+    type(OCTAL), pointer :: thisOctal
+!    type(OCTAL), pointer :: topOctal
+    integer :: subcell!, nworking!, topOctalSubcell
+    integer :: iThread!, servingArray!, workingTHreads(nworking)
+    integer, parameter :: nStorage = 58
+!    integer, parameter :: nStorage = 6
+    real(double) :: tempStorage(nStorage), tval!, tmpthread
+    integer :: status(MPI_STATUS_SIZE)
+    integer, parameter :: tag = 50
+    integer :: ierr
+    integer :: counter
+
+    stillServing = .true.
+!    servingArray = 0
+!    workingTHreads = 0
+    thisOctal => grid%octreeroot
+    do while (stillServing)
+
+!       do iThread = 1, nThreadsGlobal-1
+!       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+       
+       call MPI_RECV(loc, 7, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+!       print *, "got data"
+       position%x = loc(1)
+       position%y = loc(2)
+       position%z = loc(3)
+       iThread = int(loc(4))
+
+       direction%x = loc(5)
+       direction%y = loc(6)
+       direction%z = loc(7)
+!       ithread = int(tmpThread)
+       if (position%x > 1.d29) then          
+          !          do j=1, nworking
+          !             if(workingThreads(j) == 0) then
+          !                workingThreads(j) = 1
+          !                exit
+          !             end if
+          !         end do
+          !         if(SUM(workingTHreads) == nworking) then
+          !            workingThreads = 0
+          stillServing= .false.
+!       end if
+       else
+
+          call findSubcellLocal(position, thisOctal, subcell)
+!          topOctal => thisOctal
+!          topOctalSubcell = subcell
+!          Do while(topOctal%changed(topOctalSubcell))
+!             topOctalSubcell = topOctal%parentSubcell
+!             topOctal => topOctal%parent
+!          enddo
+          call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+          rVec = subcellCentre(thisOctal, subcell)
+          tempstorage(1) = tval
+          tempstorage(2) = thisOctal%ionfrac(subcell, 2)
+          do counter = 1, 5
+             tempstorage(counter + 2) = thisOctal%CII_POP(subcell, counter)
+             tempstorage(counter + 7) = thisOctal%CII_POP(subcell, counter)
+             tempstorage(counter + 12) = thisOctal%CII_POP(subcell, counter)
+          enddo
+          do counter = 1, 41
+             tempstorage(counter+17) = thisOctal%C12O_POP(subcell,counter)
+          enddo      
+
+
+          call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
+               localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine rayTracingServerPDR_TWO
+
+
+
   subroutine getRayTracingValuesPDR(grid, position, direction, rho, uvx, uvy, uvz, Hplusfrac, tval, &
        abundanceArray)
 !       radially, searchRadius)

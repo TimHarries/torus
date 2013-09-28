@@ -1,4 +1,4 @@
-#ifdef PDR
+//#ifdef PDR
 /*=======================================================================
 
  User-supplied Jacobian routine. Compute the function J(t,y) = df/dy
@@ -686,4 +686,4 @@ int Jac(long int N, realtype t, N_Vector y, N_Vector fy, DlsMat J,
   return(0);
 }
 /*=======================================================================*/
-#endif
+//#endif

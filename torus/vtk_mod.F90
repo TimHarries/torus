@@ -1059,8 +1059,29 @@ contains
                   write(lunit, *) real(thisOctal%abundance(subcell, 28))
                case("C+_PDR")
                   write(lunit, *) real(thisOctal%abundance(subcell, 11))
+
+               case("CII_1")
+                  write(lunit, *) real(thisOctal%CII_POP(subcell, 1))
+
+               case("CII_2")
+                  write(lunit, *) real(thisOctal%CII_POP(subcell, 2))
+
+               case("CII_3")
+                  write(lunit, *) real(thisOctal%CII_POP(subcell, 3))
+
+               case("CII_4")
+                  write(lunit, *) real(thisOctal%CII_POP(subcell, 4))
+
                case("C_PDR")
                   write(lunit, *) real(thisOctal%abundance(subcell, 25))
+               case("cii_1to0")
+                  write(lunit, *) real(thisOctal%ciiTransition(subcell, 2, 1))
+
+               case("cii_line")
+                  write(lunit, *) real(thisOctal%ciiline(subcell,2,1))
+
+               case("cooling")
+                  write(lunit, *) real(thisOctal%coolingRate(subcell))
 #endif
 
                case("chiline")
@@ -3244,11 +3265,34 @@ end subroutine writeXMLVtkFileAMR
                case("CO_PDR")
                   rArray(1, n) = real(thisOctal%abundance(subcell, 28))
 
+               case("CII_1")
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 1))       
+
+               case("CII_2")
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 2))       
+
+               case("CII_3")
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 3))       
+
+               case("CII_4")
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 4))       
+
                case("C+_PDR")
                   rArray(1, n) = real(thisOctal%abundance(subcell, 11))
 
                case("C_PDR")
                   rArray(1, n) = real(thisOctal%abundance(subcell, 25))
+
+               case("cii_1to0")
+                  rArray(1, n) = real(thisOctal%ciitransition(subcell, 2, 1))
+
+               case("cii_line")
+                  rArray(1, n) = real(thisOctal%ciiLine(subcell, 2, 1))
+
+               case("cooling")
+                  rArray(1, n) = real(thisOctal%coolingRate(subcell))
+
+
 #endif
 
                case("vphi")

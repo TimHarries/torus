@@ -29,7 +29,7 @@
 
 !pdr param
   integer :: hlevel !level of healpix refinement
-
+  real(double) :: v_turb
 !-------------------------------
 ! Type of output to be generated
 !-------------------------------

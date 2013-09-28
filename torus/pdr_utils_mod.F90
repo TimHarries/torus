@@ -3,6 +3,7 @@ module pdr_utils_mod
 !!
 ! use definitions
 ! use healpix_types
+use setuppdr_mod
 use healpix_guts
 use constants_mod
 use messages_mod
@@ -31,7 +32,7 @@ use utils_mod
     &12.0D0,13.0D0,14.0D0,15.0D0, 16.0D0,17.0D0,18.0D0,19.0D0/)
   real(double), dimension(6), save :: NH2_GRID=(/&
     &18.0D0,19.0D0,20.0D0,21.0D0,22.0D0,23.0D0/)
-  real(double) :: SCO_GRID(1:8,1:6)
+!  real(double) :: SCO_GRID(1:8,1:6)
   integer, save :: N_GRID=30
 
 
@@ -157,6 +158,623 @@ use utils_mod
 ! end interface
 
 contains
+
+
+SUBROUTINE find_Ccoeff(NTEMP,NLEV,TEMPERATURE,TEMPERATURES,H_COL,HP_COL,EL_COL,HE_COL, &
+                     & H2_COL,PH2_COL,OH2_COL,C_COEFFS,H_abd,Hp_abd,elec_abd,He_abd,H2_abd)
+!T.Bell
+
+! use definitions
+! use healpix_types
+! use global_module
+ use healpix_guts
+
+ implicit none
+
+ integer, intent(in) :: NTEMP, NLEV
+ real(double), intent(in)::TEMPERATURE
+ real(double), intent(in)::TEMPERATURES(1:7,1:NTEMP)
+ real(double), intent(in)::H_COL(1:NLEV,1:NLEV,1:NTEMP)
+ real(double), intent(in)::HP_COL(1:NLEV,1:NLEV,1:NTEMP)
+ real(double), intent(in)::EL_COL(1:NLEV,1:NLEV,1:NTEMP)
+ real(double), intent(in)::HE_COL(1:NLEV,1:NLEV,1:NTEMP)
+ real(double), intent(in)::H2_COL(1:NLEV,1:NLEV,1:NTEMP)
+ real(double), intent(in)::PH2_COL(1:NLEV,1:NLEV,1:NTEMP)
+ real(double), intent(in)::OH2_COL(1:NLEV,1:NLEV,1:NTEMP)
+
+ real(double), intent(in)::H_abd, Hp_abd, elec_abd, He_abd, H2_abd
+
+ real(double), intent(out)::C_COEFFS(1:NLEV,1:NLEV)
+
+ integer :: i,j,k,klo,khi,partner_id
+ real(double) :: step, tmp
+ real(double) :: FPARA, FORTHO
+
+!  Initialize the collisional rates
+   C_COEFFS=0.0D0
+
+!  Calculate the H2 ortho/para ratio at equilibrium for the specified
+!  temperature and the resulting fractions of H2 in para & ortho form
+   FPARA=0.0D0 ; FORTHO=0.0D0
+   IF(H2_abd.GT.0.0D0) THEN
+      FPARA=1.0D0/(1.0D0+9.0D0*EXP(-170.5D0/TEMPERATURE))
+      FORTHO=1.0D0-FPARA
+   ENDIF
+
+   DO PARTNER_ID=1,7 ! Loop over collision partners
+
+!     Skip the collision partner if no rates are available
+      IF(TEMPERATURES(PARTNER_ID,1).EQ.0.0D0) CYCLE
+
+!     Determine the two nearest temperature values
+!     present within the list of collisional rates
+      KLO=0; KHI=0
+      DO K=1,NTEMP ! Loop over temperatures
+         IF(TEMPERATURES(PARTNER_ID,K).GT.TEMPERATURE) THEN
+            KLO=K-1
+            KHI=K
+            EXIT
+         ELSE IF(TEMPERATURES(PARTNER_ID,K).EQ.0.0D0) THEN
+            KLO=K-1
+            KHI=K-1
+            EXIT
+         END IF
+      END DO
+
+!     If the required temperature is above or below the range of available
+!     temperature values then use the highest or lowest value in the range
+      IF(KHI.EQ.0) THEN
+         KLO=NTEMP
+         KHI=NTEMP
+      ELSE IF(KHI.EQ.1) THEN
+         KLO=1
+         KHI=1
+      END IF
+
+!     Calculate the "distance" between the two temperature
+!     values, to be used in the linear interpolation below
+      IF(KLO.EQ.KHI) THEN
+         STEP=0.0D0
+      ELSE
+         STEP=(TEMPERATURE-TEMPERATURES(PARTNER_ID,KLO)) &
+           & /(TEMPERATURES(PARTNER_ID,KHI)-TEMPERATURES(PARTNER_ID,KLO))
+      END IF
+
+!     Linearly interpolate the collisional rate coefficients
+!     for each collision partner at the required temperature
+      IF(PARTNER_ID.EQ.1) THEN ! Collisions with H2
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=H2_COL(I,J,KLO)+(H2_COL(I,J,KHI)-H2_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*H2_abd!*DENSITY*ABUNDANCE(nH2)
+            END DO
+         END DO
+      END IF
+      IF(PARTNER_ID.EQ.2) THEN ! Collisions with para-H2
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=PH2_COL(I,J,KLO)+(PH2_COL(I,J,KHI)-PH2_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*H2_abd*FPARA!*DENSITY*ABUNDANCE(nH2)*PARA_FRACTION
+            END DO
+         END DO
+      END IF
+      IF(PARTNER_ID.EQ.3) THEN ! Collisions with ortho-H2
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=OH2_COL(I,J,KLO)+(OH2_COL(I,J,KHI)-OH2_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*H2_abd*FORTHO!*DENSITY*ABUNDANCE(nH2)*ORTHO_FRACTION
+            END DO
+         END DO
+      END IF
+      IF(PARTNER_ID.EQ.4) THEN ! Collisions with electrons
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=EL_COL(I,J,KLO)+(EL_COL(I,J,KHI)-EL_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*elec_abd!*DENSITY*ABUNDANCE(nelect)
+            END DO
+         END DO
+      END IF
+      IF(PARTNER_ID.EQ.5) THEN ! Collisions with H
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=H_COL(I,J,KLO)+(H_COL(I,J,KHI)-H_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*H_abd!*DENSITY*ABUNDANCE(nH)
+            END DO
+         END DO
+      END IF
+      IF(PARTNER_ID.EQ.6) THEN ! Collisions with He
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=HE_COL(I,J,KLO)+(HE_COL(I,J,KHI)-HE_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*He_abd!*DENSITY*ABUNDANCE(nHe)
+            END DO
+         END DO
+      END IF
+      IF(PARTNER_ID.EQ.7) THEN ! Collisions with protons
+         DO I=1,NLEV
+            DO J=1,NLEV
+               TMP=HP_COL(I,J,KLO)+(HP_COL(I,J,KHI)-HP_COL(I,J,KLO))*STEP
+               C_COEFFS(I,J)=C_COEFFS(I,J)+TMP*Hp_abd!*DENSITY*ABUNDANCE(nHx)
+            END DO
+         END DO
+      END IF
+
+   END DO ! End of loop over collision partners
+
+   RETURN
+END SUBROUTINE
+
+
+
+
+
+!=======================================================================
+!
+!     Calculate the total heating rate at the current grid point.
+!
+!-----------------------------------------------------------------------
+!#ifdef XRAYS
+!      SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
+!                 & UV_FIELD,X_FIELD,V_TURB,NSPEC,ABUNDANCE,NREAC,RATE,HEATING_RATE,&
+!                 & NRGR,NRH2,NRHD,NRCO,NRCI,NRSI) 
+!#else
+SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
+     & UV_FIELD,V_TURB,NSPEC,ABUNDANCE,NREAC,RATE,HEATING_RATE,&
+     & NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, NELECT) 
+!#endif
+
+ !     USE DEFINITIONS
+  !    USE HEALPIX_TYPES
+  !    USE GLOBAL_MODULE
+  !    USE MAINCODE_MODULE, ONLY : UV_FAC, ZETA
+  use healpix_guts  
+  
+  IMPLICIT NONE
+
+      INTEGER, INTENT(IN) :: NSPEC,NREAC
+      REAL(double), INTENT(IN)     :: DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE,UV_FIELD,V_TURB
+      REAL(double), INTENT(IN)     :: ABUNDANCE(1:NSPEC),RATE(1:NREAC)
+      INTEGER :: NRGR,NRH2,NRHD,NRCO,NRCI,NRSI
+!#ifdef XRAYS
+!      REAL(double), INTENT(IN)     :: X_FIELD
+!      REAL(double), INTENT(OUT)    :: HEATING_RATE(1:15)
+!#else
+      REAL(double), INTENT(OUT)    :: HEATING_RATE(1:12)
+!#endif
+
+      REAL(double) :: TOTAL_HEATING,PHOTOELECTRIC_HEATING,PAHPHOTOELEC_HEATING,WEINGARTNER_HEATING, &
+                     & CIONIZATION_HEATING,H2FORMATION_HEATING,H2PHOTODISS_HEATING,FUVPUMPING_HEATING, &
+                     & COSMICRAY_HEATING,TURBULENT_HEATING,CHEMICAL_HEATING,GASGRAIN_HEATING!,SOFTXRAY_HEATING
+!#ifdef XRAYS
+!      REAL(double) :: H2IONIZATION_HEATING, XRAY_HEATING, METASTABLE_COOLING, RECOMBINATION_COOLING
+ !     REAL(double) :: ETA_H2He, ETA_HeH, ETA, HX, COULOMB_HEATING, CHI
+ !     REAL(double) :: chiprime, R_FRAC
+      real(double) :: grain_radius, METALLICITY
+!#endif
+      integer, intent(in)  :: NELECT
+!     Dust PE heating
+      INTEGER :: ITERATION
+      REAL(double) :: HABING_FIELD
+      REAL(double) :: X,XX,XK,XD,GAMMA,DELTA
+      REAL(double) :: DELTAD,DELTAUV,Y,HNUD,HNUH
+
+
+      integer :: NC, NH, NH2, NHCOX, NH3X, NH3OX, NHEX, NCO
+
+!     PAH heating/cooling
+      REAL(double) :: EPSILON,ALPHA,BETA,PAH_HEATING,PAH_COOLING
+      REAL(double) :: PHI_PAH
+
+!     Weingartner & Draine treatment of photoelectric heating (grains+PAHs)
+      REAL(double) :: C0,C1,C2,C3,C4,C5,C6
+
+!     H2* FUV pumping heating
+      REAL(double) :: NCR_H2
+
+!     Turbulent heating
+      REAL(double) :: L_TURB
+
+!     Gas-grain coupling heating/cooling
+      REAL(double) :: ACCOMMODATION,NGRAIN,CGRAIN
+
+!!     Soft X-ray heating
+!      REAL(double) :: PP1,PP2,F6
+!     Convert the FUV field (in Draine units) to the Habing equivalent
+      HABING_FIELD=1.68D0*UV_FIELD
+
+!-----------------------------------------------------------------------
+!     Dust photoelectric heating
+!
+!     Use the treatment of Tielens & Hollenbach, 1985, ApJ, 291, 722,
+!     which follows de Jong (1977,1980)
+!
+!     The charge of a dust grain can be found by equating the rate of
+!     photo-ejection of electrons from the dust grain to the rate of
+!     recombination of electrons with the dust grain (Spitzer)
+!
+!     The various parameter values are taken from Table 2 of the paper
+!-----------------------------------------------------------------------
+
+      NRHD = NRHD
+      NRCO = NRCO
+      NRSI = NRSI
+      DELTAD=1.0D0
+      DELTAUV=1.8D0
+      Y=0.1D0
+      HNUD=6.0D0
+      HNUH=13.6D0
+
+      XK=KB*GAS_TEMPERATURE/(HNUH*EV)
+      XD=HNUD/HNUH
+      GAMMA=2.9D-4*Y*SQRT(GAS_TEMPERATURE)*HABING_FIELD/(ABUNDANCE(NELECT)*DENSITY)
+      DELTA=XK-XD+GAMMA
+
+!     Iterate to determine X by finding the zero of the function F
+      X=0.5D0
+      DO ITERATION=1,100
+         XX=X-(F(X,DELTA,GAMMA)/FF(X,DELTA))
+         IF(ABS(XX-X).LT.1.0D-2) EXIT
+         X=XX
+      ENDDO
+      X=XX
+
+     IF(ITERATION.GE.100) THEN
+        WRITE(10,*)'WARNING! Grain parameter X not found in PE heating'
+        WRITE(10,*)'Using final value from interation loop: X =',X
+     ENDIF
+
+!     Assume the dust PE heating scales linearly with metallicity
+      PHOTOELECTRIC_HEATING=2.7D-25*DELTAUV*DELTAD*DENSITY*Y*HABING_FIELD &
+             & *(((1.0D0-X)**2)/X + XK*((X**2)-1.0D0)/(X**2))*METALLICITY
+
+
+!!===============OLD PAH PHOTOELECTRIC HEATING=================================
+!!-----------------------------------------------------------------------
+!!     VSG/PAH photoelectric heating
+!!
+!!     Use the treatment of Bakes & Tielens, 1994, ApJ, 427, 822
+!!
+!!     Other relevant references:
+!!     Wolfire et al., 1995, ApJ, 443, 152
+!!     Le Page, Snow & Bierbaum, 2001, ApJS, 132, 233
+!!-----------------------------------------------------------------------
+!
+!      ALPHA=0.944D0
+!      BETA=0.735D0/(GAS_TEMPERATURE**0.068)
+!      DELTA=HABING_FIELD*SQRT(GAS_TEMPERATURE)/(ABUNDANCE(NELECT)*DENSITY)
+!      EPSILON=4.87D-2/(1.0D0+4.0D-3*(DELTA**0.73))+3.65D-2*((GAS_TEMPERATURE/1.0D4)**0.7)/(1.0D0+2.0D-4*DELTA)
+!
+!      PAH_HEATING=1.0D-24*EPSILON*HABING_FIELD*DENSITY
+!      PAH_COOLING=3.49D-30*(GAS_TEMPERATURE**ALPHA)*(DELTA**BETA)*(ABUNDANCE(NELECT)*DENSITY)*DENSITY
+!
+!!     Assume the PAH PE heating scales linearly with metallicity
+!      PAHPHOTOELEC_HEATING=(PAH_HEATING-PAH_COOLING)*METALLICITY
+!!==============================================================================
+
+!==================NEW PAH PHOTOELECTRIC HEATING===============================
+!-----------------------------------------------------------------------
+!  Grain + PAH photoelectric heating (MRN size distribution; r = 3-100
+!  Å)
+!
+!  Use the treatment of Bakes & Tielens (1994, ApJ, 427, 822) with the
+!  modifications suggested by Wolfire et al. (2003, ApJ, 587, 278) to
+!  account for the revised PAH abundance estimate from Spitzer data.
+!
+!  See also:
+!  Wolfire et al. (1995, ApJ, 443, 152)
+!  Le Page, Snow & Bierbaum (2001, ApJS, 132, 233)
+!-----------------------------------------------------------------------
+
+!  Adopt the PAH rate scaling factor of Wolfire et al. (2008, ApJ, 680,
+!  384)
+!  Setting this factor to 1.0 gives the standard Bakes & Tielens
+!  expression
+   PHI_PAH=0.4D0
+
+   ALPHA=0.944D0
+   BETA=0.735D0/GAS_TEMPERATURE**0.068
+   DELTA=HABING_FIELD*SQRT(GAS_TEMPERATURE)/(ABUNDANCE(NELECT)*DENSITY*PHI_PAH)
+   EPSILON=4.87D-2/(1.0D0+4.0D-3*DELTA**0.73) + 3.65D-2*(GAS_TEMPERATURE/1.0D4)**0.7/(1.0D0+2.0D-4*DELTA)
+
+   PAH_HEATING=1.30D-24*EPSILON*HABING_FIELD*DENSITY
+   PAH_COOLING=4.65D-30*GAS_TEMPERATURE**ALPHA*(DELTA**BETA)*ABUNDANCE(NELECT)*DENSITY*PHI_PAH*DENSITY
+
+!  Assume the PE heating rate scales linearly with metallicity
+   PAHPHOTOELEC_HEATING=(PAH_HEATING-PAH_COOLING)*METALLICITY
+
+!==============================================================================
+
+
+!-----------------------------------------------------------------------
+!     Weingartner & Draine, 2001, ApJS, 134, 263
+!
+!     Includes photoelectric heating due to PAHs, VSGs and larger grains
+!     Assumes a gas-to-dust mass ratio of 100:1
+!-----------------------------------------------------------------------
+
+      C0=5.72D+0
+      C1=3.45D-2
+      C2=7.08D-3
+      C3=1.98D-2
+      C4=4.95D-1
+      C5=6.92D-1
+      C6=5.20D-1
+
+      WEINGARTNER_HEATING=METALLICITY*1.0D-26*(HABING_FIELD*DENSITY)*(C0+C1*GAS_TEMPERATURE**C4) &
+             & /(1.0D0+C2*(HABING_FIELD*SQRT(GAS_TEMPERATURE)/(ABUNDANCE(NELECT)*DENSITY))**C5  &
+             & *(1.0D0+C3*(HABING_FIELD*SQRT(GAS_TEMPERATURE)/(ABUNDANCE(NELECT)*DENSITY))**C6))
+
+!-----------------------------------------------------------------------
+!     Carbon photoionization heating
+!
+!     1 eV on average per carbon ionization
+!     Use the C photoionization rate determined by the CALCULATE_REACTION_RATES subroutine: RATE(NRCI) [units: s^-1]
+!-----------------------------------------------------------------------
+      CIONIZATION_HEATING=(1.0*EV)*RATE(NRCI)*ABUNDANCE(NC)*DENSITY
+!-----------------------------------------------------------------------
+!     H2 formation heating
+!
+!     Assume 1.5 eV liberated as heat during H2 formation
+!     See: Hollenbach & Tielens, Review of Modern Physics, 1999, 71, 173
+!     Use the rate determined by the CALCULATE_REACTION_RATES subroutine: RATE(NRGR) [units: cm^3.s^-1]
+!-----------------------------------------------------------------------
+
+      H2FORMATION_HEATING=(1.5*EV)*RATE(NRGR)*DENSITY*ABUNDANCE(NH)*DENSITY
+
+!-----------------------------------------------------------------------
+!     H2 photodissociation heating
+!
+!     0.4 eV on average per photodissociated molecule
+!     Use the rate determined by the CALCULATE_REACTION_RATES subroutine: RATE(NRH2) [units: s^-1]
+!-----------------------------------------------------------------------
+
+      H2PHOTODISS_HEATING=(0.4*EV)*RATE(NRH2)*ABUNDANCE(NH2)*DENSITY
+
+!-----------------------------------------------------------------------
+!     H2 FUV pumping heating
+!
+!     2.2 eV on average per vibrationally excited H2* molecule
+!     See: Hollenbach & McKee (1979)
+!     Use the H2 photodissociation rate determined by CALCULATE_REACTION_RATES: RATE(NRH2) [units: s^-1]
+!     Use the H2 critical density calculation from Hollenbach & McKee (1979)
+!-----------------------------------------------------------------------
+
+      NCR_H2=1.0D6/SQRT(GAS_TEMPERATURE)/(1.6D0*ABUNDANCE(NH)*EXP(-((400.0D0/GAS_TEMPERATURE)**2)) &
+                                       & + 1.4D0*ABUNDANCE(NH2)*EXP(-(18100.0D0/(GAS_TEMPERATURE+1200.0D0))))
+
+      FUVPUMPING_HEATING=(2.2*EV)*9.0D0*RATE(NRH2)*ABUNDANCE(NH2)*DENSITY/(1.0D0+NCR_H2/DENSITY)
+
+!-----------------------------------------------------------------------
+!     Cosmic-ray ionization heating
+!
+!     8.0 eV of heat deposited per primary ionization (plus some from He ionization)
+!     Use the treatment of Tielens & Hollenbach, 1985, ApJ, 291, 772
+!     See also: Shull & Van Steenberg, 1985, ApJ, 298, 268
+!               Clavel et al. (1978), Kamp & van Zadelhoff (2001)
+!-----------------------------------------------------------------------
+
+      COSMICRAY_HEATING=(9.4*EV)*(1.3D-17*ZETA)*DENSITY
+
+!-----------------------------------------------------------------------
+!     Supersonic turbulent decay heating
+!
+!     Most relevant for the inner parsecs of galaxies (Black)
+!     Black, in Interstellar Processes, 1987, p731
+!     See also: Rodriguez-Fernandez et al., 2001, A&A, 365, 174
+!
+!     V_TURB = turbulent velocity (km/s); Galactic center ~ 15 km/s
+!     L_TURB = turbulent scale length (pc); typically 5 pc
+!-----------------------------------------------------------------------
+
+      L_TURB=5.0D0
+      TURBULENT_HEATING=3.5D-28*((V_TURB/1.0D5)**3)*(1.0D0/L_TURB)*DENSITY
+
+!-----------------------------------------------------------------------
+!     Exothermic chemical reaction heating
+!
+!     See: Clavel et al., 1978, A&A, 65, 435
+!     Recombination reactions: HCO+ (7.51 eV); H3+ (4.76+9.23 eV); H3O+ (1.16+5.63+6.27 eV)
+!     Ion-neutral reactions  : He+ + H2 (6.51 eV); He+ + CO (2.22 eV)
+!     For each reaction, the heating rate should be: n(1) * n(2) * K * E
+!     with n(1) and n(2) the densities, K the rate coefficient [cm^3.s^-1], and E the energy [erg]
+!-----------------------------------------------------------------------
+
+!#ifdef REDUCED
+      CHEMICAL_HEATING=ABUNDANCE(NHCOx)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(240)*(7.51*EV)) &                                         ! HCO+ + e-
+                   & + ABUNDANCE(NH3x)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(217)*(4.76*EV)+RATE(218)*(9.23*EV)) &                      ! H3+  + e-
+                   & + ABUNDANCE(NH3Ox)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(236)*(1.16*EV)+&
+                   &RATE(237)*(5.63*EV)+RATE(238)*(6.27*EV)) &                                                                            ! H3O+ + e-
+                   & + ABUNDANCE(NHEx)*DENSITY*ABUNDANCE(NH2)*DENSITY*(RATE(50)*(6.51*EV)+RATE(170)*(6.51*EV)) &                          ! He+  + H2
+                   & + ABUNDANCE(NHEx)*DENSITY*ABUNDANCE(NCO)*DENSITY*(RATE(89)*(2.22*EV)+RATE(90)*(2.22*EV)+&
+                   &RATE(91)*(2.22*EV))          ! He+  + CO
+!#endif
+
+!#ifdef FULL
+!!      CHEMICAL_HEATING=ABUNDANCE(NHCOx)*DENSITY*ABUNDANCE(NELECT)*DENSITY*((RATE(898)+RATE(899)+RATE(900))*(7.51*EV)) &                                         ! HCO+ + e-
+!!                   & + ABUNDANCE(NH3x)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(13)*(4.76*EV)+RATE(14)*(9.23*EV)) &                      ! H3+  + e-
+!!                   & + ABUNDANCE(NH3Ox)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(908)*(1.16*EV)+&
+!!                   &RATE(907)*(5.63*EV)+RATE(909)*(6.27*EV)) &                                                                            ! H3O+ + e-
+!!                   & + ABUNDANCE(NHEx)*DENSITY*ABUNDANCE(NH2)*DENSITY*(RATE(25)*(6.51*EV)+RATE(26)*(6.51*EV)) &                          ! He+  + H2
+!!                   & + ABUNDANCE(NHEx)*DENSITY*ABUNDANCE(NCO)*DENSITY*(RATE(618)*(2.22*EV))
+!
+!      CHEMICAL_HEATING=ABUNDANCE(NHCOx)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(730)*(7.51*EV)) &                                         ! HCO+ + e-
+!                   & + ABUNDANCE(NH3x)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(706)*(4.76*EV)+RATE(705)*(9.23*EV)) &                      ! H3+  + e-
+!                   & + ABUNDANCE(NH3Ox)*DENSITY*ABUNDANCE(NELECT)*DENSITY*(RATE(717)*(1.16*EV)+&
+!                   &RATE(716)*(5.63*EV)+RATE(714)*(6.27*EV)) &                                                                            ! H3O+ + e-
+!                   & + ABUNDANCE(NHEx)*DENSITY*ABUNDANCE(NH2)*DENSITY*(RATE(1227)*(6.51*EV)+RATE(265)*(6.51*EV)) &                          ! He+  + H2
+!                   & + ABUNDANCE(NHEx)*DENSITY*ABUNDANCE(NCO)*DENSITY*(RATE(1541)*(2.22*EV))
+!
+!#endif
+!
+!#ifdef MYNETWORK
+!      STOP "CHEMICAL_HEATING function has to be declared &
+!             & [sub_calculate_heating.F90]"
+!!      CHEMICAL_HEATING = 
+!#endif
+
+!-----------------------------------------------------------------------
+!     Gas-grain collisional heating
+!
+!     Use the treatment of Burke & Hollenbach, 1983, ApJ, 265, 223, and
+!     accommodation fitting formula of Groenewegen, 1994, A&A, 290, 531
+!
+!     Other relevant references:
+!     Hollenbach & McKee, 1979, ApJS, 41,555
+!     Tielens & Hollenbach, 1985, ApJ, 291,722
+!     Goldsmith, 2001, ApJ, 557, 736
+!
+!     This process is insignificant for the energy balance of the dust
+!     but can influence the gas temperature. If the dust temperature is
+!     lower than the gas temperature, this becomes a cooling mechanism
+!
+!     In Burke & Hollenbach (1983) the factor:
+!
+!     (8*kb/(pi*mass_proton))**0.5*2*kb = 4.003D-12
+!
+!     This value has been used in the expression below
+!-----------------------------------------------------------------------
+
+      ACCOMMODATION=0.35D0*EXP(-SQRT((DUST_TEMPERATURE+GAS_TEMPERATURE)/5.0D2))+0.1D0
+      NGRAIN=1.998D-12*DENSITY*METALLICITY
+      CGRAIN=PI*GRAIN_RADIUS**2
+
+      GASGRAIN_HEATING=4.003D-12*DENSITY*NGRAIN*CGRAIN*ACCOMMODATION*SQRT(GAS_TEMPERATURE) &
+                    & *(DUST_TEMPERATURE-GAS_TEMPERATURE)
+
+!-----------------------------------------------------------------------
+!     Soft X-ray heating
+!
+!     Use the treatment of from Wolfire et al., 1995, ApJ, 443, 152
+!-----------------------------------------------------------------------
+
+!      IF(DEPTH.EQ.0) THEN
+!         PP1=0.0D0
+!      ELSE
+!         PP1=DLOG10(DENSITY*(DIST(DEPTH)-DIST(DEPTH-1))/1.0D18)
+!      ENDIF
+!
+!      PP2=DLOG10(ABUNDANCE(NELECT))
+!      F6=0.990D0-2.74D-3*PP2+1.13D-3*PP2**2
+!
+!      SOFTXRAY_HEATING=10.0D0**(F6*(-26.5D0-0.920D0*PP1+5.89D-2*PP1**2)
+!     *                +F6*0.96D0*EXP(-(((PP1-0.38D0)/0.87D0)**2)))
+
+
+
+!#ifdef XRAYS
+!!-----------------------------------------------------------------------
+!!     X-Ray heating (CfA work)
+!!
+!!meijerink and spaans A&A 436, p397 appendix B and C for including heating
+!!due to Xrays. H2 recombination heating. Eq B5. 
+!!appendix C is the cooling process. The only thing to add: metastable
+!!line cooling C2, recombination line cooling app. C3.
+!!P. Maloney et al. ApJ 1996 466 561 calculations of this paper for the Xrays.
+!
+!!k_e, k_H, k_H2 are the rates of dissociative recombination, charge
+!!transfer with hydrogen and the reaction to H_3^+ respectively
+!!-----------------------------------------------------------------------
+!
+!        R_FRAC = ABUNDANCE(NH2)/ABUNDANCE(NH)
+!        CHIPRIME = 1.83D0*ABUNDANCE(NELECT)/(1.0D0 + 0.83D0*ABUNDANCE(NELECT))
+!        ETA_H2He = 1.0D0 + (0.055D0 - 1.0D0)/(1.0D0 + 2.17D0*CHIPRIME**0.366D0)
+!        ETA_HeH = 1.0D0 + (0.117D0 - 1.0D0)/(1.0D0 + 7.95D0*ABUNDANCE(NELECT)**0.678D0)
+!        ETA = (10.0D0*R_FRAC*ETA_H2He + ETA_HeH)/(10.0D0*R_FRAC + 1.0D0)
+!        HX = SIGMA*X_FIELD
+!        COULOMB_HEATING = ETA*DENSITY*HX
+!
+!        H2IONIZATION_HEATING = ((17.5D0*RATE(216)*ABUNDANCE(NELECT) + 1.51D0*RATE(155)*ABUNDANCE(NH) + &
+!                               &13.7D0*RATE(49)*ABUNDANCE(NH2))/(RATE(216)*ABUNDANCE(NELECT) + &
+!                               &RATE(155)*ABUNDANCE(NH) + RATE(49)*ABUNDANCE(NH2)))*&
+!                               &1.0D-12*(RATE(331)+RATE(296))*ABUNDANCE(NH2)*DENSITY
+!
+!        XRAY_HEATING = COULOMB_HEATING + H2IONIZATION_HEATING
+!#endif
+
+!-----------------------------------------------------------------------
+!     Total heating rate (sum of all contributions)
+!-----------------------------------------------------------------------
+
+      TOTAL_HEATING=&
+!           & + PHOTOELECTRIC_HEATING &
+           & + PAHPHOTOELEC_HEATING &
+!           & + WEINGARTNER_HEATING &
+           & + CIONIZATION_HEATING &
+           & + H2FORMATION_HEATING &
+           & + H2PHOTODISS_HEATING &
+           & + FUVPUMPING_HEATING &
+           & + COSMICRAY_HEATING &
+           & + TURBULENT_HEATING &
+           & + CHEMICAL_HEATING &
+!           & + SOFTXRAY_HEATING &
+           & + GASGRAIN_HEATING
+!#ifdef XRAYS
+!     TOTAL_HEATING = TOTAL_HEATING + XRAY_HEATING
+!#endif
+
+      HEATING_RATE(1)=PHOTOELECTRIC_HEATING
+      HEATING_RATE(2)=PAHPHOTOELEC_HEATING
+      HEATING_RATE(3)=WEINGARTNER_HEATING
+      HEATING_RATE(4)=CIONIZATION_HEATING
+      HEATING_RATE(5)=H2FORMATION_HEATING
+      HEATING_RATE(6)=H2PHOTODISS_HEATING
+      HEATING_RATE(7)=FUVPUMPING_HEATING
+      HEATING_RATE(8)=COSMICRAY_HEATING
+      HEATING_RATE(9)=TURBULENT_HEATING
+      HEATING_RATE(10)=CHEMICAL_HEATING
+      HEATING_RATE(11)=GASGRAIN_HEATING
+!#ifdef XRAYS
+!      HEATING_RATE(12)=COULOMB_HEATING
+!      HEATING_RATE(13)=H2IONIZATION_HEATING
+!      HEATING_RATE(14)=XRAY_HEATING
+!      HEATING_RATE(15)=TOTAL_HEATING!/5.0D0
+!#else
+      HEATING_RATE(12)=TOTAL_HEATING
+!#endif
+
+!-----------------------------------------------------------------------
+
+
+
+      END SUBROUTINE CALC_HEATING
+!=======================================================================
+
+!=======================================================================
+!     X is the grain charge parameter and is the solution to F(X)=0
+!-----------------------------------------------------------------------
+      FUNCTION F(X,DELTA,GAMMA)
+
+ !       use healpix_guts
+!      USE DEFINITIONS
+!      USE HEALPIX_TYPES
+
+      IMPLICIT NONE
+
+      REAL(double) :: F
+      REAL(double), INTENT(IN) :: X,DELTA,GAMMA
+
+      F=(X**3)+DELTA*(X**2)-GAMMA
+
+      END FUNCTION F
+!-----------------------------------------------------------------------
+
+!=======================================================================
+!     FF(X) is the derivative of F(X) with respect to X
+!-----------------------------------------------------------------------
+      FUNCTION FF(X,DELTA)
+
+!      USE DEFINITIONS
+!      USE HEALPIX_TYPES
+
+      IMPLICIT NONE
+
+      REAL(double) :: FF
+      REAL(double), INTENT(IN) :: X,DELTA
+
+      FF=3*(X**2)+DELTA*(2*X)
+
+      END FUNCTION FF
+!-----------------------------------------------------------------------
 
 
 
@@ -1200,7 +1818,7 @@ end function nray_func
            &12.0D0,13.0D0,14.0D0,15.0D0, 16.0D0,17.0D0,18.0D0,19.0D0/)
       real(double), dimension(6) :: NH2_GRID=(/&
            &18.0D0,19.0D0,20.0D0,21.0D0,22.0D0,23.0D0/)
-      real(double) :: SCO_GRID(1:8,1:6)
+!      real(double) :: SCO_GRID(1:8,1:6)
       real(double) :: SCO_DERIV(1:8,1:6)
 
       !      COMMON /STATUS/START
@@ -1694,8 +2312,24 @@ SUBROUTINE CALCULATE_LTE_POPULATIONS(NLEV,LEVEL_POP,ENERGIES,WEIGHTS,PARTITION_F
 
       TOTAL_POP=0.0D0
       DO ILEVEL=1,NLEV
-         LEVEL_POP(ILEVEL)=DENSITY*WEIGHTS(ILEVEL)*EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)/PARTITION_FUNCTION
+!         print *, " "
+!         print *, "ILEVEL ", ILEVEL
+!         print *, "DENSITY", DENSITY
+!         print *, "WEIGHTS(ILEVEL)", WEIGHTS(ILEVEL)
+!         print *, "PARTITION_FUNCTION", PARTITION_FUNCTION
+!         print *, "EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)", EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)
+         if(partition_function == 0.d0) then
+            call torus_abort("zero partition function being used...")
+         endif
+        LEVEL_POP(ILEVEL)=DENSITY*WEIGHTS(ILEVEL)*EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)/PARTITION_FUNCTION
          TOTAL_POP=TOTAL_POP + LEVEL_POP(ILEVEL)
+!         if(LEVEL_POP(ILEVEL)< 1.d-50 .and. LEVEL_POP(ILEVEL)/= 0.d0) then 
+!            print *, "found super low level"
+!            print *, LEVEL_POP(ILEVEL)
+!            LEVEL_POP(ILEVEL) = 0.d0
+!         endif
+!         print *, ABS(LEVEL_POP(ILEVEL))
+!         print *, "LEVEL_POP(", ILEVEL,") is", LEVEL_POP(ILEVEL), TOTAL_POP
       ENDDO
 
       ! Check that the sum of the level populations adds up to the total density
@@ -1873,6 +2507,347 @@ END SUBROUTINE CALCULATE_LTE_POPULATIONS
       RETURN
     END SUBROUTINE SPLINE_PDR
 !=======================================================================
+
+
+
+SUBROUTINE solvlevpop(NLEV,TRANSITION,density,SOLUTION,coolant)
+
+!  use definitions
+!  use healpix_types
+!  use maincode_module, only : p,iteration,pdr,gridpoint,nrays
+
+  implicit none  
+  integer, intent(in) :: NLEV
+  integer, intent(in) :: coolant
+  real(double), intent(in) :: density
+  real(double), intent(in) :: transition(1:NLEV,1:NLEV)
+  real(double), intent(out) :: SOLUTION(1:NLEV)
+  integer :: i,j
+  real(double) :: out1
+  real(double) :: A(1:NLEV,1:NLEV)
+  logical::call_writes
+!  real(double) :: temp_a(1:nlev,1:nlev),temp_solution(1:nlev)
+ ! integer :: nrays
+  
+!THAW -- need defined
+  
+
+!  nrays = nray_func()
+
+
+         A=0.0D0
+!        Fill the matrix
+         DO I=1,NLEV
+            OUT1=0.0D0
+            DO J=1,NLEV
+               OUT1=OUT1+TRANSITION(I,J)
+               A(I,J)=TRANSITION(J,I)
+            ENDDO
+            A(I,I)=-OUT1
+         ENDDO
+!        Initialize the solution array before calling the solver routine
+         DO I=1,NLEV
+            SOLUTION(I)=0.0D0
+            A(NLEV,I)=1.0D-8 !non-zero starting parameter to avoid division by zero.
+         ENDDO
+
+         SOLUTION(NLEV)=DENSITY*1.0D-8
+
+         CALL GAUSS_JORDAN(A,NLEV,NLEV,SOLUTION,coolant,call_writes)
+
+!        Replace negative level populations due to numerical noise around 0
+         DO I=1,NLEV
+            if (solution(i).lt.0.0D0) solution(i)=0.0D0!1.0D-99!then !stop 'found negative solution!'
+!              write(6,*) '';write(6,*) 'found negative solution in p=',p;write(6,*) 'coolant=',coolant;write(6,*)''
+!              call gauss_jordan_writes(temp_a,nlev,nlev,temp_solution,coolant,i)
+!              stop
+!            endif
+         ENDDO
+         
+     return
+   end subroutine solvlevpop
+
+!C-----------------------------------------------------------------------
+!C Standard Gauss-Jordon linear equation solver from Numerical Recipes
+!C A(N,N) is an input matrix stored in an array of dimensions NPxNP
+!C B(N,M) is an input matrix containing the M right-hand side vectors
+!C stored in an array of dimensions NPxMPP
+!C
+!C On output, A(N,N) is replaced by its matrix inverse and B(N,M)
+!C is replaced by the corresponding set of solution vectors
+!C
+!C Note: set NMAX to the maximum possible dimension (NLEVEL)
+!C-----------------------------------------------------------------------
+!   SUBROUTINE GAUSS_JORDAN(A,N,NP,B,M,MPP,coolant)
+   SUBROUTINE GAUSS_JORDAN(A,N,NP,B,coolant,call_writes)
+
+!      use definitions
+!      use healpix_types
+!      use maincode_module, only : gastemperature,p,iteration
+
+      IMPLICIT NONE
+      integer, intent(in) :: coolant
+      INTEGER:: I,J,K,L,LL,IROW,ICOL
+      INTEGER, intent(in):: N,NP!,M,MPP
+      integer, PARAMETER :: NMAX=100
+      INTEGER:: IPIV(1:NMAX),INDXR(1:NMAX),INDXC(1:NMAX)
+      real(double), intent(inout) :: A(1:NP,1:NP)
+      real(double), intent(inout) :: B(1:NP)!,1:MPP)
+      real(double) :: BIG,DUM,PIVINV
+      logical,intent(out)::call_writes
+
+      ICOL=0
+      IROW=0
+      IPIV=0
+      DO I=1,N
+         BIG=0.0D0
+         DO J=1,N
+            IF(IPIV(J).NE.1) THEN
+               DO K=1,N
+                  IF(IPIV(K).EQ.0) THEN
+                     IF(ABS(A(J,K)).GE.BIG) THEN
+                        BIG=ABS(A(J,K))
+                        IROW=J
+                        ICOL=K
+                     ENDIF
+                  ELSE IF(IPIV(K).GT.1) THEN
+                     PRINT *,'ERROR! Singular matrix in GAUSS_JORDAN'
+call_writes=.true.
+return
+!                     write(6,*) 'Crashed in first loop'
+                     write(6,*) ' coolant = ',coolant
+!                     write(6,*) 'gastemperature = ',gastemperature(p)
+!                     STOP
+                  ENDIF
+               ENDDO
+            ENDIF
+         ENDDO
+         IPIV(ICOL)=IPIV(ICOL)+1
+         IF(IROW.NE.ICOL) THEN
+            DO L=1,N
+               DUM=A(IROW,L)
+               A(IROW,L)=A(ICOL,L)
+               A(ICOL,L)=DUM
+            ENDDO
+!            DO L=1,M
+!               DUM=B(IROW,L)
+!               B(IROW,L)=B(ICOL,L)
+!               B(ICOL,L)=DUM
+!            ENDDO
+!================================
+            DUM=B(IROW)
+            B(IROW)=B(ICOL)
+            B(ICOL)=DUM
+!================================
+         ENDIF
+         INDXR(I)=IROW
+         INDXC(I)=ICOL
+         IF(A(ICOL,ICOL).EQ.0.0D0) THEN
+            PRINT *,'ERROR! Singular matrix found by GAUSS_JORDAN'
+call_writes=.true.
+return
+!            write(6,*) 'Crashed in second loop'
+!            write(6,*) 'grid point = ',p, ' coolant = ',coolant
+!            write(6,*) 'gastemperature = ',gastemperature(p)
+!            STOP
+         ENDIF
+         PIVINV=1.0D0/A(ICOL,ICOL)
+         A(ICOL,ICOL)=1.0D0
+         DO L=1,N
+            A(ICOL,L)=A(ICOL,L)*PIVINV
+         ENDDO
+!         DO L=1,M
+!            B(ICOL,L)=B(ICOL,L)*PIVINV
+!         ENDDO
+!=======================================
+         B(ICOL)=B(ICOL)*PIVINV
+!=======================================
+         DO LL=1,N
+            IF(LL.NE.ICOL) THEN
+               DUM=A(LL,ICOL)
+               A(LL,ICOL)=0.0D0
+               DO L=1,N
+                  A(LL,L)=A(LL,L)-A(ICOL,L)*DUM
+               ENDDO
+!               DO L=1,M
+!                  B(LL,L)=B(LL,L)-B(ICOL,L)*DUM
+!               ENDDO
+!=============================================
+               B(LL)=B(LL)-B(ICOL)*DUM
+!=============================================
+            ENDIF
+         ENDDO
+      ENDDO
+      DO L=N,1,-1
+         IF(INDXR(L).NE.INDXC(L)) THEN
+            DO K=1,N
+               DUM=A(K,INDXR(L))
+               A(K,INDXR(L))=A(K,INDXC(L))
+               A(K,INDXC(L))=DUM
+            ENDDO
+         ENDIF
+      ENDDO
+      RETURN
+    END subroutine GAUSS_JORDAN
+
+
+!C-----------------------------------------------------------------------
+!C Standard Gauss-Jordon linear equation solver from Numerical Recipes
+!C A(N,N) is an input matrix stored in an array of dimensions NPxNP
+!C B(N,M) is an input matrix containing the M right-hand side vectors
+!C stored in an array of dimensions NPxMPP
+!C
+!C On output, A(N,N) is replaced by its matrix inverse and B(N,M)
+!C is replaced by the corresponding set of solution vectors
+!C
+!C Note: set NMAX to the maximum possible dimension (NLEVEL)
+!C-----------------------------------------------------------------------
+!   SUBROUTINE GAUSS_JORDAN(A,N,NP,B,M,MPP,coolant)
+   SUBROUTINE GAUSS_JORDAN_writes(A,N,NP,B,coolant,ill)
+
+!      use definitions
+!      use healpix_types
+!      use maincode_module, only : gastemperature,p,iteration
+
+      IMPLICIT NONE
+      integer, intent(in) :: coolant,ill
+      INTEGER:: I,J,K,L,LL,IROW,ICOL
+      INTEGER, intent(in):: N,NP!,M,MPP
+      integer, PARAMETER :: NMAX=100
+      INTEGER:: IPIV(1:NMAX),INDXR(1:NMAX),INDXC(1:NMAX)
+      real(double), intent(inout) :: A(1:NP,1:NP)
+      real(double), intent(inout) :: B(1:NP)!,1:MPP)
+      real(double) :: BIG,DUM,PIVINV
+
+write(6,*) 'b'
+do i=1,np
+write(6,*) b(i),i
+enddo
+
+write(6,*) 'a'
+do i=1,np
+  do j=1,np
+    write(6,*) a(i,j)
+  enddo
+enddo
+
+
+      ICOL=0
+      IROW=0
+      IPIV=0
+      DO I=1,N
+         BIG=0.0D0
+         DO J=1,N
+            IF(IPIV(J).NE.1) THEN
+               DO K=1,N
+                  IF(IPIV(K).EQ.0) THEN
+                     IF(ABS(A(J,K)).GE.BIG) THEN
+                        BIG=ABS(A(J,K))
+                        IROW=J
+                        ICOL=K
+                     ENDIF !ABS(A
+                  ELSE IF(IPIV(K).GT.1) THEN
+                     PRINT *,'ERROR! Singular matrix in GAUSS_JORDAN'
+                     write(6,*) 'Crashed in first loop'
+                     write(6,*) ' coolant = ',coolant
+!                     write(6,*) 'gastemperature = ',gastemperature(p)
+                     STOP
+                  ENDIF !IPIV(K).EQ.0
+               ENDDO !K=1,N
+            ENDIF !IPIV(J).NE.1
+         ENDDO !J=1,N
+         IPIV(ICOL)=IPIV(ICOL)+1
+         IF(IROW.NE.ICOL) THEN
+            DO L=1,N
+               DUM=A(IROW,L)
+               A(IROW,L)=A(ICOL,L)
+               A(ICOL,L)=DUM
+            ENDDO !L=1,N
+!            DO L=1,M
+!               DUM=B(IROW,L)
+!               B(IROW,L)=B(ICOL,L)
+!               B(ICOL,L)=DUM
+!            ENDDO
+!================================
+            DUM=B(IROW)
+if (i.eq.ill) write(6,*) 'dum=',dum,'A'
+!write(6,*) 'DUM=',DUM
+            B(IROW)=B(ICOL)
+if (i.eq.ill) write(6,*) 'b(',irow,')=',b(irow),'B'
+!write(6,*) 'irow=',irow
+!write(6,*) 'B(irow)=',b(irow)
+            B(ICOL)=DUM
+if (i.eq.ill) write(6,*) 'b(',icol,')=',b(icol),'C'
+!write(6,*) 'icol=',icol
+!write(6,*) 'b(icol)=',b(icol)
+!================================
+         ENDIF !IROW.NE.ICOL
+         INDXR(I)=IROW
+         INDXC(I)=ICOL
+         IF(A(ICOL,ICOL).EQ.0.0D0) THEN
+            PRINT *,'ERROR! Singular matrix found by GAUSS_JORDAN'
+            write(6,*) 'Crashed in second loop'
+!            write(6,*) 'grid point = ',p, ' coolant = ',coolant
+!            write(6,*) 'gastemperature = ',gastemperature(p)
+            STOP
+         ENDIF
+         PIVINV=1.0D0/A(ICOL,ICOL)
+         A(ICOL,ICOL)=1.0D0
+         DO L=1,N
+            A(ICOL,L)=A(ICOL,L)*PIVINV
+         ENDDO
+!         DO L=1,M
+!            B(ICOL,L)=B(ICOL,L)*PIVINV
+!         ENDDO
+!=======================================
+if (i.eq.ill) write(6,*) b(icol),pivinv,'D'
+         B(ICOL)=B(ICOL)*PIVINV
+if (i.eq.ill) write(6,*) b(icol),'E'
+!write(6,*) 'pivinv=',pivinv
+!write(6,*) 'b(icol)=',b(icol)
+!=======================================
+         DO LL=1,N
+            IF(LL.NE.ICOL) THEN
+               DUM=A(LL,ICOL)
+               A(LL,ICOL)=0.0D0
+               DO L=1,N
+                  A(LL,L)=A(LL,L)-A(ICOL,L)*DUM
+               ENDDO
+!               DO L=1,M
+!                  B(LL,L)=B(LL,L)-B(ICOL,L)*DUM
+!               ENDDO
+!=============================================
+if (i.eq.ill) then
+write(6,*) 'll=',ll,'F'
+write(6,*) 'b(ll)=',b(ll),'G'
+write(6,*) 'b(icol)=',b(icol),'H'
+write(6,*) 'dum=',dum,'I'
+endif
+               B(LL)=B(LL)-B(ICOL)*DUM
+if (i.eq.ill) write(6,*) 'b(ll) after=',b(ll),'J'
+!=============================================
+            ENDIF !LL.NE.ICOL
+         ENDDO !LL=1,N
+      ENDDO ! I=1,N
+      DO L=N,1,-1
+         IF(INDXR(L).NE.INDXC(L)) THEN
+            DO K=1,N
+               DUM=A(K,INDXR(L))
+               A(K,INDXR(L))=A(K,INDXC(L))
+               A(K,INDXC(L))=DUM
+            ENDDO !K=1,N
+         ENDIF !INDXR(L).NE.INDXC(L)
+      ENDDO !L=N,1,-1
+do i=1,n
+write(6,*) b(i),i
+enddo
+      RETURN
+    END subroutine GAUSS_JORDAN_writes
+
+
+
+
+
 
 #endif
 end module pdr_utils_mod

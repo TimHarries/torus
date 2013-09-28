@@ -1,4 +1,4 @@
-#ifdef PDR
+//#ifdef PDR
 /*=======================================================================
 
  User-supplied f (ODEs) routine. Compute the function ydot = f(t,y)
@@ -148,4 +148,4 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
   return(0);
 }
 /*=======================================================================*/
-#endif
+//#endif

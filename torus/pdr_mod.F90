@@ -19,6 +19,7 @@ use healpix_guts
 use pdr_utils_mod
 !use healpix_module
 use vector_mod
+use setuppdr_mod
 #ifdef MPI
 use mpi
 #endif
@@ -42,7 +43,7 @@ contains
 
 subroutine PDR_MAIN(grid)
   use unix_mod, only: unixGetenv
-  use setuppdr_mod
+
   use nrayshealpix
   implicit none
   type(gridtype) :: grid
@@ -58,25 +59,27 @@ subroutine PDR_MAIN(grid)
   call donrayshealpix()
 
 !set up the data/allocate what needs allocated
+
+#ifdef MPI
   call writeInfo("Setting up for PDR calculation.", TRIVIAL)
   call setupPDR(grid, reactant, product, alpha, beta, gamma, &
        rate, duplicate, rtmin, rtmax, n12co, nci, ncii, noi, nelect)
 
-!  print *, "BETA"
-!do the ray casting
-#ifdef MPI
 
   call writeInfo("Casting rays over grid MPI.", TRIVIAL)
   call rayTraceMPI(grid, colrhoonly=.false.)
+
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
   call writeVTKfile(grid, "postRayTrace.vtk", valueTypeString=(/"rho       ",&
        "columnRho " /))
 !  stop
   call writeInfo("Done.", TRIVIAL)
   call writeInfo("Calculating dust temperature MPI.", TRIVIAL)
+
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
+
   call iniTempGuessMPI(grid%octreeroot)
   call writeInfo("Calculating reaction rates in each cell.", TRIVIAL)
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
@@ -85,6 +88,7 @@ subroutine PDR_MAIN(grid)
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
 !  stop
   call writeInfo("Doing initial abundance calculation.", TRIVIAL)
+
   call abundanceSweepGovernor(grid, reactant, &
        product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, n12co &
        , ncii, nci, noi, nelect, nchemiter=8) 
@@ -92,11 +96,17 @@ subroutine PDR_MAIN(grid)
        "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
        "CO_PDR    ", "C+_PDR    ", "C_PDR     "/))
   call writeInfo("Initial abundance calculation done.", TRIVIAL)
-  print *, " "
+
   print *, " "
   call writeInfo("Doing main PDR loop.", TRIVIAL)
-  call pdr_main_loop(grid)
+!  print *, "CII WEIGHTS 6", CII_WEIGHTS
+  call pdr_main_loop(grid, nelect, ncii, nci, noi, n12co, reactant, &
+       product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
 
+  call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
+       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
+       "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "cii_1to0  ", "cii_line  ",& 
+       "cooling   "/))
 
 #else
   print *, "DELTA"
@@ -119,43 +129,422 @@ end subroutine PDR_MAIN
 
 
 #ifdef MPI
-subroutine pdr_main_loop(grid)
+subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
+       product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
   type(gridtype) :: grid
   real(double), allocatable :: rate(:), alpha(:), beta(:), gamma(:)
   real(double), allocatable :: rtmin(:), rtmax(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
-  integer :: n12co, nci, ncii, noi, nelect
+  integer :: nc12o, nci, ncii, noi, nelect
   logical :: converged
-
+  character(len=80) :: filename
   integer :: thisIteration, maxIter
+  integer :: ier
+  integer :: k
 
   converged = .false.
   thisIteration = 1
-  maxIter = 10
+  maxIter = 20
   do while(.not. converged)
+
+     if(myrankglobal == 1) then
+        print *, "! - Main PDR loop, iteration ", thisIteration
+     endif
      !abundance calculation
+     call writeInfo("Abundance sweep...", trivial)
      call abundanceSweepGovernor(grid, reactant, &
-          product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, n12co &
+          product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nc12o &
           , ncii, nci, noi, nelect, nchemiter=3) 
+     call writeInfo("Abundance sweep done")
 
-
+     call writeInfo("Solving populations", trivial)     
+     if(myrankglobal /= 0) then
+        do k = 1, nhydrothreadsglobal
+           if(myrankglobal == k) then
+              !calculate collisional coefficients
+ !             print *, "rank", myrankglobal, "is solving pop"
+              call solvePopulations(grid%octreeroot, grid, nelect, ncii, nci, noi, nc12o)
+              call shutdownserversXRAY_PDR()
+              !
+           else
+              !server
+!              print *, "rank", myrankglobal, "is serving"
+              call raytracingserverPDR_TWO(grid)
+              
+           endif
+           call MPI_BARRIER(amrCommunicator, ier)
+        enddo
+     endif
+  !              print *, "rank", myrankglobal, "at final barrier"
+     call MPI_BARRIER(MPI_COMM_WORLD, ier)
+     call writeInfo("Population solver done", trivial)
      !thermal balance calculation
 
 
      !convergence checks
-
-
+     write(filename,'(a, i4.4, a)') "pdr_", thisIteration,".vtk"
+!     filename = "iteration", thisIteration
+     call writeVTKfile(grid, filename, valueTypeString=(/"rho       ",&
+          "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
+          "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "cii_1to0  ", "cii_line  ",&
+          "cooling   ", "CII_1     ", "CII_2     ", "CII_3     ", "CII_4     "/))
+     
+     
      if (thisIteration > maxIter) then
         call writeInfo("Number of PDR iterations exceeded maximum, forcing convergence", TRIVIAL)
         converged = .true.
      endif
-
+     thisIteration = thisIteration + 1
   enddo
 
 end subroutine pdr_main_loop
 
 
+recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, nc12o)
+  use inputs_mod, only : v_turb
+  type(gridtype) :: grid
+  type(octal), pointer ::  thisOctal, child
+  integer :: subcell
+  integer :: j, i
+  integer :: nrays
+
+  integer :: nelect, nproton, nh, nhe, nh2
+
+!  integer :: CII_NLEV, CII_NTEMP   !CII cooling variables  
+!  
+  real(double) :: CII_C_COEFFS(1:5,1:5)
+  real(double) :: CI_C_COEFFS(1:5,1:5)
+  real(double) :: OI_C_COEFFS(1:5,1:5)
+  real(double) :: C12O_C_COEFFS(1:41,1:41)
+!  real(double) :: fac
+  real(double) :: CI_POP(5), CII_POP(5), OI_POP(5), C12O_POP(41)!, tau_increment, tpop
+  type(vector) :: startposition, testposition, rvec, uhat
+
+  integer :: ncontributed
+!  logical :: toField
+
+  real(double) :: frac2,  tval, Hplusfrac
+
+
+
+  Integer, intent(in) :: ncii, nci, noi, nc12o
+
+  real(double) :: taucii(5,5), tauci(5,5), tauoi(5,5), tauc12o(41,41), beta!, beta(41, 41)
+!  real(double) :: ngrain, rho_grain, emissivity, BB_ij_dust, S_ij, BB_ij, tmp2, field(41, 41)
+!  real(double) :: tmp2small(5, 5), BB_small(5,5), S_small(5,5)
+!  real(double) :: 
+!  integer, pointer :: epray(:)        !population of evaluation points per ray  
+
+!is gastemperature(pp) thisOCtal%temperature(subcell)?
+
+!unspecified
+  integer :: ilevel, jlevel
+
+  nrays = nray_func()
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call solvePopulations(child, grid, nelect, ncii, nci, noi, nc12o)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then  
+
+
+           !FIRST CALCULATE COLLISIONAL COEFFICIENTS
+           !DO CII      ---------------------------------
+           taucii = 0.d0
+           tauci = 0.d0
+           tauoi = 0.d0
+           tauc12o = 0.d0
+
+           NH2 = 31
+           NPROTON = 19
+           NHE = 26
+           NH = 32
+
+           CALL FIND_CCOEFF(CII_NTEMP,CII_NLEV,thisOctal%tLast(subcell),CII_TEMPERATURES,&
+                CII_H,CII_HP,CII_EL,CII_HE,CII_H2,CII_PH2,CII_OH2,&
+                CII_C_COEFFS,thisOctal%abundance(subcell, NH)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NPROTON)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NELECT)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NHE)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NH2)*thisOctal%rho(subcell)/mhydrogen)
+
+
+           !CI 
+           CALL FIND_CCOEFF(CI_NTEMP,CI_NLEV,thisOctal%tLast(subcell),CI_TEMPERATURES,&
+                CI_H,CI_HP,CI_EL,CI_HE,CI_H2,CI_PH2,CI_OH2,&
+                CI_C_COEFFS,thisOctal%abundance(subcell, NH)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NPROTON)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NELECT)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NHE)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NH2)*thisOctal%rho(subcell)/mhydrogen)
+!
+!
+!           !OI
+           CALL FIND_CCOEFF(OI_NTEMP,OI_NLEV,thisOctal%tLast(subcell),OI_TEMPERATURES,&
+                OI_H,OI_HP,OI_EL,OI_HE,OI_H2,OI_PH2,OI_OH2,&
+                OI_C_COEFFS,thisOctal%abundance(subcell, NH)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NPROTON)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NELECT)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NHE)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NH2)*thisOctal%rho(subcell)/mhydrogen)
+!
+!           !CO
+           CALL FIND_CCOEFF(C12O_NTEMP,C12O_NLEV,thisOctal%tLast(subcell),C12O_TEMPERATURES,&
+                C12O_H,C12O_HP,C12O_EL,C12O_HE,C12O_H2,C12O_PH2,C12O_OH2,&
+                C12O_C_COEFFS,thisOctal%abundance(subcell, NH)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NPROTON)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NELECT)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NHE)*thisOctal%rho(subcell)/mhydrogen, &
+                thisOctal%abundance(subcell, NH2)*thisOctal%rho(subcell)/mhydrogen)
+
+
+           !           !CALCULATE THE SOURCE FUNCTION
+           
+           !NOW CAST RAYS TO GET TAUS
+           nrays = nray_func()
+           
+
+           startPosition = subcellCentre(thisOctal, subcell)
+           testPosition = startPosition
+                      
+           ncontributed = 0
+           frac2=1.0D0/sqrt(8.0*KB*thisOctal%tLast(subcell)/PI/MP + v_turb**2)
+           do i = 1, nrays              
+              rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
+              
+              uhat = rVec
+              call normalize(uhat)
+              
+              testPosition = startPosition                        
+              
+              do while (inOctal(grid%octreeRoot, testPosition))
+                 
+                 tval = 0.d0
+
+                 call getRayTracingValuesPDR_TWO(grid, testposition, uHat, CII_POP, CI_POP, OI_POP, C12O_POP, tVal,&
+                      HplusFrac) 
+
+                 if(Hplusfrac > 0.99d0) then                       
+                    exit
+                 end if
+
+                 !rhs2 is just the ray segment length
+!                 rhs2 = tval
+
+!calculate the optical depth along each ray for each species                 
+                 do ilevel = 1, C12O_NLEV
+                    do jlevel = 1, C12O_NLEV
+                       if(jlevel >= ilevel) exit
+
+!                       frac1=(CII_A_COEFFS(ilevel,jlevel)*(C**3))/(8.0*pi*(cii_frequencies(ilevel,jlevel)**3))
+                      
+!                     !  frac3=((CII_POP(jlevel)*CII_WEIGHTS(ilevel)-CII_POP(ilevel)*CII_WEIGHTS(jlevel))+&
+!                            &(CII_POP(jlevel)*CII_WEIGHTS(ilevel)-CII_POP(ilevel)*CII_WEIGHTS(jlevel)))&
+!                            /2./CII_WEIGHTS(jlevel)                       
+!
+!                       tau_increment=frac1*frac2*frac3*tval*1.d10pcToCm
+!                       taucii(ilevel,jlevel)=taucii(ilevel,jlevel)+tau_increment !optical depth        
+                       if(ilevel <= CII_NLEV) then
+                          taucii(ilevel, jlevel) = taucii(ilevel,jlevel) + updateTau(CII_A_COEFFS(ilevel,jlevel), &
+                               cii_frequencies(ilevel,jlevel), CII_POP(jlevel), CII_WEIGHTS(ilevel), CII_POP(ilevel), &
+                               CII_WEIGHTS(jlevel), frac2, tval)
+
+                          tauci(ilevel, jlevel) = taucii(ilevel,jlevel) + updateTau(CI_A_COEFFS(ilevel,jlevel), &
+                               cii_frequencies(ilevel,jlevel), CI_POP(jlevel), CI_WEIGHTS(ilevel), CI_POP(ilevel), &
+                               CI_WEIGHTS(jlevel), frac2, tval)
+
+                          tauoi(ilevel, jlevel) = taucii(ilevel,jlevel) + updateTau(OI_A_COEFFS(ilevel,jlevel), &
+                               cii_frequencies(ilevel,jlevel), OI_POP(jlevel), OI_WEIGHTS(ilevel), OI_POP(ilevel), &
+                               OI_WEIGHTS(jlevel), frac2, tval)
+                       endif
+                          tauc12o(ilevel, jlevel) = tauc12o(ilevel,jlevel) + updateTau(c12o_A_COEFFS(ilevel,jlevel), &
+                               cii_frequencies(ilevel,jlevel), c12o_POP(jlevel), c12o_WEIGHTS(ilevel), c12o_POP(ilevel), &
+                               c12o_WEIGHTS(jlevel), frac2, tval)
+
+                    end do
+                 enddo
+                 
+                 testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
+              end do
+              taucii = taucii/dble(nrays)
+
+              do ilevel = 1, C12O_NLEV
+                 do jlevel = 1, C12O_NLEV
+                    if(jlevel >= ilevel) exit
+
+                    if(ilevel <= CII_NLEV) then
+                       call setupEscapeParameters(cii_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
+                            thisOctal%CII_pop(subcell, ilevel), thisOctal%CII_pop(subcell, jlevel), CII_WEIGHTS(ilevel), &
+                            CII_WEIGHTS(jlevel), beta, CII_A_COEFFS(ilevel,jlevel), taucii(ilevel, jlevel), &
+                            thisOctal, subcell, ilevel, jlevel, CII_B_COEFFS(ilevel,jlevel), CII_C_COEFFS(ilevel,jlevel))  
+
+                       call setupEscapeParameters(ci_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
+                            thisOctal%CI_pop(subcell, ilevel), thisOctal%CI_pop(subcell, jlevel), CI_WEIGHTS(ilevel), &
+                            CI_WEIGHTS(jlevel), beta, CI_A_COEFFS(ilevel,jlevel), tauci(ilevel, jlevel), &
+                            thisOctal, subcell, ilevel, jlevel, CI_B_COEFFS(ilevel,jlevel), CI_C_COEFFS(ilevel,jlevel))  
+
+                       call setupEscapeParameters(oi_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
+                            thisOctal%oI_pop(subcell, ilevel), thisOctal%oI_pop(subcell, jlevel), oI_WEIGHTS(ilevel), &
+                            oI_WEIGHTS(jlevel), beta, oI_A_COEFFS(ilevel,jlevel), tauoi(ilevel, jlevel), &
+                            thisOctal, subcell, ilevel, jlevel, oI_B_COEFFS(ilevel,jlevel), oI_C_COEFFS(ilevel,jlevel))  
+
+                    endif
+
+                       call setupEscapeParameters(c12o_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
+                            thisOctal%C12o_pop(subcell, ilevel), thisOctal%C12o_pop(subcell, jlevel), C12o_WEIGHTS(ilevel), &
+                            C12o_WEIGHTS(jlevel), beta, C12o_A_COEFFS(ilevel,jlevel), tauc12o(ilevel, jlevel), &
+                            thisOctal, subcell, ilevel, jlevel, C12o_B_COEFFS(ilevel,jlevel), C12o_C_COEFFS(ilevel,jlevel))  
+
+                 enddo
+              enddo
+           enddo
+
+
+        else
+           thisOctal%ciiline(subcell, :, :) = 0.d0
+           thisOctal%ciiTransition(subcell, :, :) = 0.d0
+           thisOctal%ciline(subcell, :, :) = 0.d0
+           thisOctal%ciTransition(subcell, :, :) = 0.d0
+           thisOctal%oiline(subcell, :, :) = 0.d0
+           thisOctal%oiTransition(subcell, :, :) = 0.d0
+           thisOctal%c12oline(subcell, :, :) = 0.d0
+           thisOctal%c12oTransition(subcell, :, :) = 0.d0
+           thisOctal%coolingRate(subcell) = 0.d0
+        end if
+        
+
+!           call solvlevpop(CII_nlev,transition_CII,thisOctal%abundance(subcell, NCx)*thisOctal%rho(subcell)&
+!                ,CIIsolution,1)
+!           
+!           CII_solution(pp,:)=CIIsolution
+           
+     end if
+     !  endif
+  enddo
+end subroutine solvePopulations
+
+
+real(double) function updateTau(Acoeff,freq, jPop, iWeight, iPop, &
+     jWeight, frac2, tval)
+
+  real(double) :: frac2, tval, frac1, frac3, ipop, iweight, jpop, jweight, freq, Acoeff
+
+  frac1=(Acoeff*(C**3))/(8.0*pi*(freq**3))
+  
+  frac3=((jPop*iWeight-iPop*jWeight)+&
+       &(jPop*iweight-iPop*jWeight))&
+       /2./jWeight                       
+  
+  updateTau=frac1*frac2*frac3*tval*1.d10*pcToCm
+
+end function updateTau
+
+
+subroutine setupEscapeParameters(freq, tDust, &
+     iPop, jPop, iweight, &
+     jweight, beta,  Acoeff, tau, thisOctal, subcell, ilevel, jlevel, &
+     BCoeffs, Ccoeffs)
+
+  real(double) :: freq, tDust, ipop, jpop, iweight, jweight, Acoeff, beta
+  real(double) :: tmp2, fac, ngrain, rho_grain, emissivity, BB_ij_dust, tpop
+  real(double) :: tau
+  logical :: tofield
+  logical :: fullBeta
+  type(octal), pointer :: thisOctal
+  integer :: subcell, ilevel, jlevel
+  real(double) :: field, BCoeffs, CCoeffs, BB, sourceFun
+
+  tofield = .false.
+  TMP2=2.0D0*HP*(freq**3)/(cspeed**2)
+  
+  !Planck function !2.7D0 is the CMBR temperature                                                        
+  
+  fac = HP*freq/(KB*(2.7D0))
+
+  if(fac < 100.d0) then
+     BB = TMP2*(1.0D0/(EXP(fac)-1.0D0))
+  else
+     BB = 0.d0
+  endif
+  !#ifdef DUST                                                                                                    
+  NGRAIN=2.0D-9 !2.0D-12*densityofgas depth depented                                                     
+  rho_grain=2.0D0
+  EMISSIVITY=(RHO_GRAIN*NGRAIN)*(0.01*(1.3*FREQ/3.0D11))
+  if(fac < 100.d0) then
+     BB_ij_dust = TMP2*(1.0D0/(EXP(HP*freq/KB/tDust)&
+          -1.D0)*EMISSIVITY)
+  else
+     BB_ij_dust = 0.d0
+  endif
+  BB = BB + BB_ij_dust
+  !#endif                                                                                                         
+  if (iPop.eq.0) then
+     sourceFun=0.0D0
+     beta=1.0D0
+     toField= .true.
+  endif
+  
+  if(.not. toField) then
+     TPOP = 0.d0
+     
+     TPOP=(jPop*iWeight)/&
+          (iPop*jWeight)-1.0D0
+
+     IF(abs(TPOP).lt.1.0D-50) then ! .or. thisOctal%CII_pop(subcell, ilevel) .lt. 1.d-50) then
+        sourceFun=HP*FREQ*&
+             iPop*ACOEFF/4./pi
+        beta=1.0D0
+!        goto 1
+        fullBeta = .false.
+     else
+        fullBeta = .true.
+        !calculation of source function (taken from UCL_PDR)                                                   
+        sourceFun=TMP2/TPOP
+     endif
+     if(fullBeta) then
+        if(tau < -5.d0) then
+           beta=(1.0D0-EXP(5.0D0))/(-5.0D0)
+        else if (abs(tau).lt.1.0D-8) then
+           beta=1.0D0
+        else
+           beta = (1.d0 - exp(-tau))/tau
+        end if
+     endif
+  endif
+
+
+  
+  if(.not. toField) then
+     if(sourceFun /= 0.d0) then
+        thisOctal%ciiline(subcell,ilevel,jlevel) = Acoeff*HP*freq * &
+             & iPop*beta*(sourceFun-BB)/sourceFun
+     else
+        thisOctal%ciiline(subcell,ilevel,jlevel) = 0.d0
+     endif
+     
+     thisOctal%coolingRate(subcell) = thisOctal%coolingRate(subcell) + thisOctal%ciiline(subcell, ilevel,jlevel)        
+  endif
+  
+  field = (1.0D0-beta)*sourceFun + beta*BB
+!  field = field
+ 
+  thisOctal%ciiTRANSITION(subcell, ilevel,jlevel)=Acoeff&
+       & +Bcoeffs*FIELD&
+       & +Ccoeffs
+  IF(ABS(thisOctal%ciiTRANSITION(subcell, ilevel,jlevel)).LT.1.0D-50) thisOctal%ciiTRANSITION(subcell,ilevel,jlevel)=&
+       0.0D0
+  
+end subroutine setupEscapeParameters
 
 subroutine abundanceSweepGovernor(grid, reactant, &
      product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax & 
@@ -168,6 +557,7 @@ subroutine abundanceSweepGovernor(grid, reactant, &
   character(len=10) :: product(:,:), reactant(:,:)
   integer :: n12co, ncii, nci, noi, nelect, ier
   !first wave
+  
 
   do i = 1, nChemIter
      if(myrankglobal == 1) print *, "!- chemical iteration ", i
@@ -201,8 +591,11 @@ recursive subroutine abundanceSweepDrone(nChemIter, thisOctal, reactant, &
   integer :: nc12o, ncii, nci, noi
   nreac = 329
   nspec = 33
+
   nrays = nray_func() 
-  nchemiter = nchemiter
+
+!  nchemiter = nchemiter
+
   do subcell = 1, thisoctal%maxchildren
      if (thisoctal%haschild(subcell)) then
         ! find the child
@@ -222,7 +615,7 @@ recursive subroutine abundanceSweepDrone(nChemIter, thisOctal, reactant, &
 !     print *, "ALPHA"
         if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then
 !           print *, "BETA"
-!           thisOctal%tLast(subcell) = 100.d0
+!          thisOctal%tLast(subcell) = 100.d0
 !           thisOctal%Dust_T(subcell) = 10.d0
 !           thisOctal%radsurface(subcell,:) = 1.d0
 !           thisOctal%AV(subcell, :) = 1.d0
@@ -247,9 +640,9 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
   type(octal), pointer :: thisOctal, child
   integer :: subcell, j
   real(double) :: cii_z_function, ci_z_function, oi_z_function, c12o_z_function
-  integer :: cii_nlev, ci_nlev, oi_nlev, c12o_nlev
-  real(double) :: cii_energies(1:5), ci_energies(1:5), oi_energies(1:5), c12o_energies(1:41)
-  real(double) :: cii_weights(1:5), ci_weights(1:5), oi_weights(1:5), c12o_weights(1:5)
+!  integer :: cii_nlev, ci_nlev, oi_nlev, c12o_nlev
+!!  real(double) :: cii_energies(1:5), ci_energies(1:5), oi_energies(1:5), c12o_energies(1:41)
+!  real(double) :: cii_weights(1:5), ci_weights(1:5), oi_weights(1:5), c12o_weights(1:5)
   integer :: n12co, ncii, nci, noi
 !  real(double) :: rate(:), alpha(:), beta(:), gamma(:)
 !
@@ -271,15 +664,16 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-     end if
+     
 
-     cii_nlev = 5
-     ci_nlev = 5
-     oi_nlev = 5
-     c12o_nlev = 41
+!     cii_nlev = 5
+!     ci_nlev = 5
+!     oi_nlev = 5
+!     c12o_nlev = 41
 
      
      if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+
         CALL CALCULATE_PARTITION_FUNCTION(CII_Z_FUNCTION,CII_NLEV,CII_ENERGIES,CII_WEIGHTS,thisOctal%tLast(subcell))
         CALL CALCULATE_PARTITION_FUNCTION(CI_Z_FUNCTION,CI_NLEV,CI_ENERGIES,CI_WEIGHTS,thisOctal%tLast(subcell))
         CALL CALCULATE_PARTITION_FUNCTION(OI_Z_FUNCTION,OI_NLEV,OI_ENERGIES,OI_WEIGHTS,thisOctal%tLast(subcell))
@@ -288,23 +682,24 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
         !
         ! Calculate the LTE level populations
 
-        
+        thisOctal%CII_POP(subcell, :) = 0.d0
         CALL CALCULATE_LTE_POPULATIONS(CII_NLEV,thisOctal%CII_POP(subcell, :),CII_ENERGIES,&
-             &CII_WEIGHTS,CII_Z_FUNCTION,thisOctal%abundance(subcell, Ncii)*thisOctal%rho(subcell),&
+             &CII_WEIGHTS,CII_Z_FUNCTION,thisOctal%abundance(subcell, Ncii)*thisOctal%rho(subcell)/mhydrogen,&
              thisOctal%tLast(subcell))
         CALL CALCULATE_LTE_POPULATIONS(CI_NLEV, thisOctal%CI_POP(subcell, :), CI_ENERGIES, &
-             &CI_WEIGHTS, CI_Z_FUNCTION, thisOctal%abundance(subcell, Nci)*thisOctal%rho(subcell),&
+             &CI_WEIGHTS, CI_Z_FUNCTION, thisOctal%abundance(subcell, Nci)*thisOctal%rho(subcell)/mhydrogen,&
              thisOctal%tLast(subcell))
         CALL CALCULATE_LTE_POPULATIONS(OI_NLEV, thisOctal%OI_POP(subcell, :), OI_ENERGIES, &
-             &OI_WEIGHTS, OI_Z_FUNCTION, thisOctal%abundance(subcell, Noi)*thisOctal%rho(subcell),&
+             &OI_WEIGHTS, OI_Z_FUNCTION, thisOctal%abundance(subcell, Noi)*thisOctal%rho(subcell)/mhydrogen,&
              thisOctal%tLast(subcell))
         CALL CALCULATE_LTE_POPULATIONS(C12O_NLEV,thisOctal%C12O_POP(subcell, :),C12O_ENERGIES,&
-             &C12O_WEIGHTS,C12O_Z_FUNCTION,thisOctal%abundance(subcell, N12co)*thisOctal%rho(subcell),&
+             &C12O_WEIGHTS,C12O_Z_FUNCTION,thisOctal%abundance(subcell, N12co)*thisOctal%rho(subcell)/mhydrogen,&
              thisOctal%tLast(subcell))
-
+     else
+        thisOctal%CII_POP(subcell, :) = 0.d0
      end if
-
-  end do
+  end if
+end do
 end subroutine partitionLTE
 
 
@@ -324,12 +719,12 @@ subroutine rayTraceMPI(grid, colrhoonly)
   if(myrankglobal /= 0) then
      do i = 1, nhydrothreadsglobal
         if(myrankglobal == i) then
-           print *, "rank ", myrankglobal, "casting rays"
+!           print *, "rank ", myrankglobal, "casting rays"
            call castAllRaysOverGridMPI(grid%octreeRoot, grid, colrhoonly)
-           print *, "rank ", myrankglobal, "shutting down"
+!           print *, "rank ", myrankglobal, "shutting down"
            call shutdownserversXRAY_PDR()
         else
-           print *, "rank ", myrankglobal, "serving"
+!           print *, "rank ", myrankglobal, "serving"
            call raytracingserverPDR(grid)
         end if
 !        print *, "rank ", myrankglobal, "at barrier"
@@ -412,6 +807,12 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                     testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
                  end do
               end do
+           else
+              thisOctal%thisColRho(subcell, :, :) = 0.d0
+!              thisOctal%columnRho(subcell) = 0.d0
+!              thisOctal%UV(subcell) = 0.d0
+!              thisOctal%AV(subcell,:) = 0.d0
+!              thisOctal%radsurface(subcell,:) = 0.d0
            end if
            
         else
@@ -482,6 +883,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
               
               if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
            else
+              thisOctal%thisColRho(subcell, :, :) = 0.d0
               thisOctal%columnRho(subcell) = 0.d0
               thisOctal%UV(subcell) = 0.d0
               thisOctal%AV(subcell,:) = 0.d0

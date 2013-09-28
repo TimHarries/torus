@@ -1,4 +1,4 @@
-#ifdef PDR
+//#ifdef PDR
 /*=======================================================================
 
  Calculate the abundances of all species at the specified end time
@@ -541,4 +541,4 @@ static int check_flag(void *flagvalue, char *funcname, int opt)
   return(0);
 }
 /*=======================================================================*/
-#endif
+//#endif

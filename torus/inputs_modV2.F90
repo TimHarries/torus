@@ -367,6 +367,9 @@ contains
     if(pdrcalc) then
        call getInteger("hlevel", hlevel, cLine, fLine, nLines, &
             "Level of healpix refinement : ","(a,i8,a)", 2, ok, .false.)
+
+       call getDouble("v_turb", v_turb, 1.d0, cLine, fLine, nLines, &
+            "Turbulent velocity (cm/s): ", "(a,f7.1,1x,a)", 1.d0, ok, .false.)
     end if
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &

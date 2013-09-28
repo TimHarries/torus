@@ -16,7 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
-sundials = no
+sundials = yes
 hdf = no
 memcheck = yes
 zlib = yes
@@ -29,7 +29,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
-pdr = no
+pdr = yes
 hydro = yes
 molecular = yes
 photoion = yes
@@ -419,9 +419,9 @@ endif
 ifeq ($(pdr), yes)
   ETCFLAG += -DPDR
   sundials=yes
-  CPPflag = -cpp
+  CPPFLAG = -cpp
 else
-  CPPflag = 
+  CPPFLAG = 
 endif
 
 ifeq ($(molecular), yes)

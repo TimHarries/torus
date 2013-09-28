@@ -6,8 +6,60 @@ use grid_mod
 implicit none
 
 
+real(kind=dp), allocatable :: CII_ENERGIES(:),CII_WEIGHTS(:)
+real(kind=dp), allocatable :: CII_A_COEFFS(:,:),CII_B_COEFFS(:,:)!,CII_C_COEFFS(:,:)
+real(kind=dp), allocatable :: CII_FREQUENCIES(:,:)
+real(kind=dp), allocatable :: CII_TEMPERATURES(:,:), CII_HP(:,:,:)
+real(kind=dp), allocatable :: CII_H(:,:,:),CII_EL(:,:,:)
+real(kind=dp), allocatable :: CII_HE(:,:,:),CII_H2(:,:,:)
+real(kind=dp), allocatable :: CII_PH2(:,:,:),CII_OH2(:,:,:)
+
+  real(kind=dp), allocatable :: CI_ENERGIES(:),CI_WEIGHTS(:)
+  real(kind=dp), allocatable :: CI_A_COEFFS(:,:),CI_B_COEFFS(:,:)!,CI_C_COEFFS(:,:)
+  real(kind=dp), allocatable :: CI_FREQUENCIES(:,:)
+  real(kind=dp), allocatable :: CI_TEMPERATURES(:,:),CI_HP(:,:,:)
+  real(kind=dp), allocatable :: CI_H(:,:,:),CI_EL(:,:,:)
+  real(kind=dp), allocatable :: CI_HE(:,:,:),CI_H2(:,:,:)
+  real(kind=dp), allocatable :: CI_PH2(:,:,:),CI_OH2(:,:,:)
+
+
+  real(kind=dp), allocatable :: OI_ENERGIES(:),OI_WEIGHTS(:)
+  real(kind=dp), allocatable :: OI_A_COEFFS(:,:),OI_B_COEFFS(:,:)!,OI_C_COEFFS(:,:)
+  real(kind=dp), allocatable :: OI_FREQUENCIES(:,:)
+  real(kind=dp), allocatable :: OI_TEMPERATURES(:,:),OI_HP(:,:,:)
+  real(kind=dp), allocatable :: OI_H(:,:,:),OI_EL(:,:,:)
+  real(kind=dp), allocatable :: OI_HE(:,:,:),OI_H2(:,:,:)
+  real(kind=dp), allocatable :: OI_PH2(:,:,:),OI_OH2(:,:,:)
+
+  real(kind=dp), allocatable :: C12O_ENERGIES(:),C12O_WEIGHTS(:)
+  real(kind=dp), allocatable :: C12O_A_COEFFS(:,:),C12O_B_COEFFS(:,:)!,C12O_C_COEFFS(:,:)
+  real(kind=dp), allocatable :: C12O_FREQUENCIES(:,:)
+  real(kind=dp), allocatable :: C12O_TEMPERATURES(:,:),C12O_HP(:,:,:)
+  real(kind=dp), allocatable :: C12O_H(:,:,:),C12O_EL(:,:,:)
+  real(kind=dp), allocatable :: C12O_HE(:,:,:),C12O_H2(:,:,:)
+  real(kind=dp), allocatable :: C12O_PH2(:,:,:),C12O_OH2(:,:,:)
+  real(kind=dp) :: SCO_GRID(1:8, 1:6)
+
+  integer, parameter :: cii_nlev=5
+  integer, parameter :: cii_ntemp=18
+  integer, parameter :: ci_nlev=5
+  integer, parameter :: ci_ntemp=29
+  integer, parameter :: oi_nlev=5
+  integer, parameter :: oi_ntemp=27
+  integer, parameter :: c12o_nlev=41
+  integer, parameter :: c12o_ntemp=25
+
+  INTEGER :: NH,ND,NH2,NHD,NPROTON,NH2O,NHe, &
+       &        NMG,NMGx,NN,NFE,NFEx,NSI,NSIx,NCA,NCAx,NCAxx,NS,NSx,NCS, &
+       &        NCL,NCLx,NH2x,NHEx,NOx,NNx,NNA,NNAx,NCH,NCH2,NOH,NO2, &
+       &        NH3x, NH3Ox, NHCOx!, NOSH
+
 
 contains
+
+
+!  subroutine 
+
 
   subroutine setupPDR(grid, reactant, product, alpha, beta, gamma, &
        rate, duplicate, rtmin, rtmax, nc12o, nci, ncii, noi, nelect)
@@ -15,12 +67,21 @@ contains
 !    use healpix_guts
 !    use read_input, only: readinput
     implicit none
+
+!  integer, parameter :: cii_nlev=5
+!  integer, parameter :: cii_ntemp=18
+!  integer, parameter :: ci_nlev=5
+!  integer, parameter :: ci_ntemp=29
+!  integer, parameter :: oi_nlev=5
+!  integer, parameter :: oi_ntemp=27
+!  integer, parameter :: c12o_nlev=41
+!  integer, parameter :: c12o_ntemp=25
     type(gridtype) :: grid
     character(len=200) :: dataDirectory, dataPath
     character(len=400) :: C12Oinput, CIIinput, CIinput, OIinput
     integer :: i
-    integer :: cii_nlev, cii_ntemp, ci_nlev, ci_ntemp, oi_nlev, oi_ntemp
-    integer :: c12o_nlev, c12o_ntemp
+!    integer :: cii_nlev, cii_ntemp, ci_nlev, ci_ntemp, oi_nlev, oi_ntemp
+!    integer :: c12o_nlev, c12o_ntemp
     integer :: nc12o, nci, ncii, noi, nelect
     
 
@@ -41,44 +102,26 @@ contains
 !  real(kind=dp), allocatable :: transition_OI(:,:),transition_C12O(:,:)
 !CII cooling variables
 !  real(kind=dp) :: CII_COOLING
-  real(kind=dp), allocatable :: CII_ENERGIES(:),CII_WEIGHTS(:)
-  real(kind=dp), allocatable :: CII_A_COEFFS(:,:),CII_B_COEFFS(:,:)!,CII_C_COEFFS(:,:)
- real(kind=dp), allocatable :: CII_FREQUENCIES(:,:)
-  real(kind=dp), allocatable :: CII_TEMPERATURES(:,:), CII_HP(:,:,:)
-  real(kind=dp), allocatable :: CII_H(:,:,:),CII_EL(:,:,:)
-  real(kind=dp), allocatable :: CII_HE(:,:,:),CII_H2(:,:,:)
-  real(kind=dp), allocatable :: CII_PH2(:,:,:),CII_OH2(:,:,:)
+!  real(kind=dp), allocatable :: CII_ENERGIES(:),CII_WEIGHTS(:)
+!  real(kind=dp), allocatable :: CII_A_COEFFS(:,:),CII_B_COEFFS(:,:)!,CII_C_COEFFS(:,:)
+! real(kind=dp), allocatable :: CII_FREQUENCIES(:,:)
+!  real(kind=dp), allocatable :: CII_TEMPERATURES(:,:), CII_HP(:,:,:)
+!  real(kind=dp), allocatable :: CII_H(:,:,:),CII_EL(:,:,:)
+!  real(kind=dp), allocatable :: CII_HE(:,:,:),CII_H2(:,:,:)
+!  real(kind=dp), allocatable :: CII_PH2(:,:,:),CII_OH2(:,:,:)
 !  real(kind=dp), allocatable :: CII_LINE(:,:,:)!,CII_POP(:,:)
 !CI cooling variables
 !  real(kind=dp) :: CI_COOLING
-  real(kind=dp), allocatable :: CI_ENERGIES(:),CI_WEIGHTS(:)
-  real(kind=dp), allocatable :: CI_A_COEFFS(:,:),CI_B_COEFFS(:,:)!,CI_C_COEFFS(:,:)
-  real(kind=dp), allocatable :: CI_FREQUENCIES(:,:)
-  real(kind=dp), allocatable :: CI_TEMPERATURES(:,:),CI_HP(:,:,:)
-  real(kind=dp), allocatable :: CI_H(:,:,:),CI_EL(:,:,:)
-  real(kind=dp), allocatable :: CI_HE(:,:,:),CI_H2(:,:,:)
-  real(kind=dp), allocatable :: CI_PH2(:,:,:),CI_OH2(:,:,:)
+
 !  real(kind=dp), allocatable :: CI_LINE(:,:,:)!,CI_POP(:,:)
 !OI cooling variables
 !  real(kind=dp) :: OI_COOLING
-  real(kind=dp), allocatable :: OI_ENERGIES(:),OI_WEIGHTS(:)
-  real(kind=dp), allocatable :: OI_A_COEFFS(:,:),OI_B_COEFFS(:,:)!,OI_C_COEFFS(:,:)
-  real(kind=dp), allocatable :: OI_FREQUENCIES(:,:)
-  real(kind=dp), allocatable :: OI_TEMPERATURES(:,:),OI_HP(:,:,:)
-  real(kind=dp), allocatable :: OI_H(:,:,:),OI_EL(:,:,:)
-  real(kind=dp), allocatable :: OI_HE(:,:,:),OI_H2(:,:,:)
-  real(kind=dp), allocatable :: OI_PH2(:,:,:),OI_OH2(:,:,:)
+
 !  real(kind=dp), allocatable :: OI_LINE(:,:,:)!,OI_POP(:,:)
 !12CO cooling variables
 !  real(kind=dp) :: C12O_COOLING
-  real(kind=dp), allocatable :: C12O_ENERGIES(:),C12O_WEIGHTS(:)
-  real(kind=dp), allocatable :: C12O_A_COEFFS(:,:),C12O_B_COEFFS(:,:)!,C12O_C_COEFFS(:,:)
-  real(kind=dp), allocatable :: C12O_FREQUENCIES(:,:)
-  real(kind=dp), allocatable :: C12O_TEMPERATURES(:,:),C12O_HP(:,:,:)
-  real(kind=dp), allocatable :: C12O_H(:,:,:),C12O_EL(:,:,:)
-  real(kind=dp), allocatable :: C12O_HE(:,:,:),C12O_H2(:,:,:)
-  real(kind=dp), allocatable :: C12O_PH2(:,:,:),C12O_OH2(:,:,:)
-  real(kind=dp) :: SCO_GRID(1:8, 1:6)
+
+!    integer :: NCO, NC, NCX, NO
 
   integer :: nspec
   real(double) :: dummyAbundance(1:33)
@@ -91,24 +134,7 @@ contains
 
 !  real(kind=dp), allocatable :: C12O_LINE(:,:,:)!,C12O_POP(:,:)
   nreac = 329
-  cii_nlev = 5
-  cii_ntemp = 18
-  ci_nlev = 5
-  ci_ntemp = 29
-  oi_nlev = 5
-  oi_ntemp = 27
-  c12o_nlev = 41
-  c12o_ntemp = 25
 
-
-
-!load SCO_GRID data [UCL_PDR]
-SCO_GRID(1:8,1) = (/0.000D+00,-1.408D-02,-1.099D-01,-4.400D-01,-1.154D+00,-1.888D+00,-2.760D+00,-4.001D+00/)
-SCO_GRID(1:8,2) = (/-8.539D-02,-1.015D-01,-2.104D-01,-5.608D-01,-1.272D+00,-1.973D+00,-2.818D+00,-4.055D+00/)
-SCO_GRID(1:8,3) = (/-1.451D-01,-1.612D-01,-2.708D-01,-6.273D-01,-1.355D+00,-2.057D+00,-2.902D+00,-4.122D+00/)
-SCO_GRID(1:8,4) = (/-4.559D-01,-4.666D-01,-5.432D-01,-8.665D-01,-1.602D+00,-2.303D+00,-3.146D+00,-4.421D+00/)
-SCO_GRID(1:8,5) = (/-1.303D+00,-1.312D+00,-1.367D+00,-1.676D+00,-2.305D+00,-3.034D+00,-3.758D+00,-5.077D+00/)
-SCO_GRID(1:8,6) = (/-3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.165D+00,-5.441D+00,-6.446D+00/)
 
 
 ALLOCATE(CII_ENERGIES(1:CII_NLEV))
@@ -168,6 +194,19 @@ ALLOCATE(C12O_PH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
 ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
 
 
+
+
+
+!load SCO_GRID data [UCL_PDR]
+SCO_GRID(1:8,1) = (/0.000D+00,-1.408D-02,-1.099D-01,-4.400D-01,-1.154D+00,-1.888D+00,-2.760D+00,-4.001D+00/)
+SCO_GRID(1:8,2) = (/-8.539D-02,-1.015D-01,-2.104D-01,-5.608D-01,-1.272D+00,-1.973D+00,-2.818D+00,-4.055D+00/)
+SCO_GRID(1:8,3) = (/-1.451D-01,-1.612D-01,-2.708D-01,-6.273D-01,-1.355D+00,-2.057D+00,-2.902D+00,-4.122D+00/)
+SCO_GRID(1:8,4) = (/-4.559D-01,-4.666D-01,-5.432D-01,-8.665D-01,-1.602D+00,-2.303D+00,-3.146D+00,-4.421D+00/)
+SCO_GRID(1:8,5) = (/-1.303D+00,-1.312D+00,-1.367D+00,-1.676D+00,-2.305D+00,-3.034D+00,-3.758D+00,-5.077D+00/)
+SCO_GRID(1:8,6) = (/-3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.165D+00,-5.441D+00,-6.446D+00/)
+
+
+
 !    C12Oinput = "12co.dat"; CIIinput = "12c+.dat" ; CIinput = "12c.dat" ; OIinput = "16o.dat"
 
     
@@ -198,6 +237,7 @@ ALLOCATE(C12O_OH2(1:C12O_NLEV,1:C12O_NLEV,1:C12O_NTEMP))
     call readinput(OIinput,OI_NLEV,OI_NTEMP,OI_ENERGIES,OI_WEIGHTS,&
          &     OI_A_COEFFS,OI_B_COEFFS,OI_FREQUENCIES,OI_TEMPERATURES,&
          &     OI_H,OI_HP,OI_EL,OI_HE,OI_H2,OI_PH2,OI_OH2)
+
 
 !This is hardwired for species_reduced ! ! ! ! ! ! ! 
     nspec = 33
@@ -444,11 +484,11 @@ use unix_mod, only: unixGetenv
       character(len=200) :: dataDirectory, dataPath
       INTEGER(kind=i4b) :: I,INDEX,SPECIESFILE
 
-      INTEGER(kind=i4b) :: NH,ND,NH2,NHD,NC,NCx,NCO,NO,NELECT,NPROTON,NH2O,NHe, &
-           &        NMG,NMGx,NN,NFE,NFEx,NSI,NSIx,NCA,NCAx,NCAxx,NS,NSx,NCS, &
-           &        NCL,NCLx,NH2x,NHEx,NOx,NNx,NNA,NNAx,NCH,NCH2,NOH,NO2, &
-           &        NH3x, NH3Ox, NHCOx!, NOSH
-      
+!      INTEGER(kind=i4b) :: NH,ND,NH2,NHD,NC,NCx,NCO,NO,NELECT,NPROTON,NH2O,NHe, &
+!           &        NMG,NMGx,NN,NFE,NFEx,NSI,NSIx,NCA,NCAx,NCAxx,NS,NSx,NCS, &
+!           &        NCL,NCLx,NH2x,NHEx,NOx,NNx,NNA,NNAx,NCH,NCH2,NOH,NO2, &
+!           &        NH3x, NH3Ox, NHCOx!, NOSH
+      integer :: NC, NCx, NCO, NO, NELECT
 
 !   allocate(species(1:nspec))
 !   allocate(abundance(1:nspec))
@@ -540,7 +580,10 @@ use unix_mod, only: unixGetenv
          READ(SPECIESFILE,*,END=1) INDEX,SPECIES(I),ABUNDANCE(I),MASS(I)
 
 !C        Assign the various index labels to their correct species.
-         IF(SPECIES(I).EQ."H         ") NH      = I
+         IF(SPECIES(I).EQ."H         ") then 
+            print *, "NH IS", I
+            NH      = I
+         endif
          IF(SPECIES(I).EQ."D         ") ND      = I
          IF(SPECIES(I).EQ."H2        ") then
             NH2     = I
@@ -549,7 +592,10 @@ use unix_mod, only: unixGetenv
          IF(SPECIES(I).EQ."HD        ") NHD     = I
          IF(SPECIES(I).EQ."H2+       ") NH2x    = I
          IF(SPECIES(I).EQ."H3+       ") NH3x    = I
-         IF(SPECIES(I).EQ."H+        ") NPROTON = I
+         IF(SPECIES(I).EQ."H+        ") then
+            NPROTON = I
+            print *, "nproton is", nproton
+         endif
          IF(SPECIES(I).EQ."C         ") NC      = I
          IF(SPECIES(I).EQ."C+        ") NCx     = I
          IF(SPECIES(I).EQ."O         ") NO      = I
@@ -558,10 +604,13 @@ use unix_mod, only: unixGetenv
          IF(SPECIES(I).EQ."N+        ") NNx     = I
          IF(SPECIES(I).EQ."S         ") then
             NS      = I
-            print *, "NS IS", NS
+            print *, "NS IS", I
          endif
          IF(SPECIES(I).EQ."S+        ") NSx     = I
-         IF(SPECIES(I).EQ."He        ") NHE     = I
+         IF(SPECIES(I).EQ."He        ") then
+            print *, "NHE IS", I
+            NHE     = I
+         endif
          IF(SPECIES(I).EQ."HE        ") NHE     = I
          IF(SPECIES(I).EQ."He+       ") NHEx    = I
          IF(SPECIES(I).EQ."HE+       ") NHEx    = I
@@ -650,8 +699,8 @@ use unix_mod, only: unixGetenv
 
 
       SUBROUTINE READINPUT(FILENAME,NLEV,NTEMP,ENERGIES,WEIGHTS,&
-           &                     A_COEFFS,B_COEFFS,FREQUENCIES,TEMPERATURES,&
-           &                     H_COL,HP_COL,EL_COL,HE_COL,H2_COL,PH2_COL,OH2_COL)
+           A_COEFFS,B_COEFFS,FREQUENCIES,TEMPERATURES,&
+           H_COL,HP_COL,EL_COL,HE_COL,H2_COL,PH2_COL,OH2_COL)
         
         !T.Bell
         

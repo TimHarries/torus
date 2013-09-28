@@ -311,6 +311,17 @@ MODULE octal_mod
     real(double), dimension (:, :), pointer :: radsurface=>null()
     real(double), dimension (:, :), pointer :: abundance=>null()
     real(double), dimension (:, :, :), pointer :: thisColRho=>null()
+    real(double), dimension (:, :, :), pointer :: ciiLine=>null()
+    real(double), dimension (:, :, :), pointer :: ciiTransition=>null()
+    real(double), dimension (:, :, :), pointer :: ciLine=>null()
+    real(double), dimension (:, :, :), pointer :: ciTransition=>null()
+    real(double), dimension (:, :, :), pointer :: oiLine=>null()
+    real(double), dimension (:, :, :), pointer :: oiTransition=>null()
+    real(double), dimension (:, :, :), pointer :: c12oLine=>null()
+    real(double), dimension (:, :, :), pointer :: c12oTransition=>null()
+
+!    real(double), dimension (:, :, :, :), pointer :: pdrTransition=>null()
+
     real(double), pointer :: UV(:)=>null()
     real(double), pointer :: dust_T(:)=>null()
 !    real(double), pointer :: TPDR(:)=>null()     
@@ -323,6 +334,9 @@ MODULE octal_mod
     real(double), pointer :: CI_Pop(:,:)=>null()
     real(double), pointer :: OI_Pop(:,:)=>null()
     real(double), pointer :: C12O_Pop(:,:)=>null()
+    real(double), pointer :: coolingRate(:)=>null()
+
+!    real(double), pointer :: CII_CCOEFFS(:)
 #endif
 
     ! hydrodynamics

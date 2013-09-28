@@ -4016,7 +4016,7 @@ CONTAINS
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
-       case("isophsphere")
+       case("isosphere")
           if(thisOctal%nDepth < maxdepthamr) split = .true.
 
        case("sphere")
@@ -11804,6 +11804,7 @@ end function readparameterfrom2dmap
 #ifdef PDR
     call copyAttribute(dest%AV, source%AV)
     call copyAttribute(dest%thisColRho, source%thisColRho)
+
     call copyAttribute(dest%abundance, source%abundance)
     call copyAttribute(dest%radsurface, source%radsurface)    
     call copyAttribute(dest%Tlast, source%Tlast)    
@@ -11814,6 +11815,18 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%UV, source%UV)
     call copyAttribute(dest%dust_T, source%dust_T)
     call copyAttribute(dest%columnRho, source%columnRho)
+    call copyAttribute(dest%coolingRate, source%coolingRate)
+
+    call copyAttribute(dest%ciiLine, source%ciiLine)
+    call copyAttribute(dest%ciiTransition, source%ciiTransition)
+    call copyAttribute(dest%ciLine, source%ciLine)
+    call copyAttribute(dest%ciTransition, source%ciTransition)
+    call copyAttribute(dest%oiLine, source%oiLine)
+    call copyAttribute(dest%oiTransition, source%oiTransition)
+    call copyAttribute(dest%c12oLine, source%c12oLine)
+    call copyAttribute(dest%c12oTransition, source%c12oTransition)
+
+
     call copyAttribute(dest%cii_pop, source%cii_pop)
     call copyAttribute(dest%ci_pop, source%ci_pop)
     call copyAttribute(dest%oi_pop, source%oi_pop)
@@ -15395,6 +15408,9 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%Tminarray, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tmaxarray, thisOctal%maxChildren)
 !       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
+
+       call allocateAttribute(thisOctal%coolingRate, thisOctal%maxChildren)
+
        allocate(thisOctal%cii_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%ci_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%oi_pop(1:thisOctal%maxchildren, 1:5))
@@ -15404,6 +15420,17 @@ end function readparameterfrom2dmap
        allocate(thisOctal%AV(1:thisOctal%maxchildren, 1:nrays))
        allocate(thisOctal%abundance(1:thisOctal%maxchildren, 1:33))
        allocate(thisOctal%thisColRho(1:thisOctal%maxchildren, 1:33, 1:nrays))
+
+       allocate(thisOctal%ciiLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
+       allocate(thisOctal%ciiTransition(1:thisOctal%maxchildren, 1:5, 1:5))!, 1:41))
+       allocate(thisOctal%ciLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
+       allocate(thisOctal%ciTransition(1:thisOctal%maxchildren, 1:5, 1:5))!, 1:41))
+       allocate(thisOctal%oiLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
+       allocate(thisOctal%oiTransition(1:thisOctal%maxchildren, 1:5, 1:5))!, 1:41))
+       allocate(thisOctal%c12oLine(1:thisOctal%maxchildren, 1:41, 1:41 ))
+       allocate(thisOctal%c12oTransition(1:thisOctal%maxchildren, 1:41, 1:41))!, 1:41))
+
+
     end if
 #endif
     if (lineEmission) then
@@ -15597,6 +15624,16 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%Heheating)
     call deallocateAttribute(thisOctal%ionFrac)
 #ifdef PDR
+    call deallocateAttribute(thisOctal%ciiLine)
+    call deallocateAttribute(thisOctal%ciiTransition)
+    call deallocateAttribute(thisOctal%ciLine)
+    call deallocateAttribute(thisOctal%ciTransition)
+    call deallocateAttribute(thisOctal%oiLine)
+    call deallocateAttribute(thisOctal%oiTransition)
+    call deallocateAttribute(thisOctal%c12oLine)
+    call deallocateAttribute(thisOctal%c12oTransition)
+
+    call deallocateAttribute(thisOctal%coolingRate)
     call deallocateAttribute(thisOctal%thisColRho)
     call deallocateAttribute(thisOctal%abundance)
     call deallocateAttribute(thisOctal%UV)
