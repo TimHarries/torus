@@ -225,8 +225,8 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 !  logical :: toField
 
   real(double) :: frac2,  tval, Hplusfrac
-
-
+  real(double) :: outCii, outC12O, outCI, outOI, AC12O(41, 41), AOI(5, 5), ACI(5, 5), ACII(5, 5)
+  logical :: callwrites
 
   Integer, intent(in) :: ncii, nci, noi, nc12o
 
@@ -422,23 +422,106 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            thisOctal%coolingRate(subcell) = 0.d0
         end if
 
+
+
+        ACI = 0.d0
+        ACII = 0.d0
+        AOI = 0.d0
+        AC12O = 0.d0
         !do final population step
         do ilevel = 1, C12O_NLEV
+           outc12o = 0.d0
+           outci = 0.d0
+           outoi = 0.d0
+           outcii = 0.d0
+           
            do jlevel = 1, C12O_NLEV
               if(jlevel >= ilevel) exit
-
+              
               if(ilevel <= CII_NLEV) then
-!                 call solvlevpop(CII_nlev,thisOctal%transition_CII(subcell, ilevel, jlevel) & 
+!                 call solvlevpop(CII_nlev,thisOctal%CIItransition(subcell, ilevel, jlevel) & 
 !                      ,thisOctal%abundance(subcell, NCx)*thisOctal%rho(subcell)&
-!                      /mhydrogen,CIIsolution,1) 
+!                      /mhydrogen,CII_solution,1) 
+                 
+                 outcii = outcii + thisOctal%CIItransition(subcell, ilevel, jlevel)
+                 ACII(ilevel, jlevel) = thisOctal%CIItransition(subcell, jlevel, ilevel)
+                 
+!                 call solvlevpop(CI_nlev,thisOctal%CItransition(subcell, ilevel, jlevel) & 
+!                      ,thisOctal%abundance(subcell, NC)*thisOctal%rho(subcell)&
+!                      /mhydrogen,CI_solution,1) 
+                 
+                 outci = outci + thisOctal%CItransition(subcell, ilevel, jlevel)
+                 ACI(ilevel, jlevel) = thisOctal%CItransition(subcell, jlevel, ilevel)
+                 
+!                 call solvlevpop(oI_nlev,thisOctal%OItransition(subcell, ilevel, jlevel) & 
+!                      ,thisOctal%abundance(subcell, NO)*thisOctal%rho(subcell)&
+!                      /mhydrogen,oI_solution,1) 
+                 
+                 outoi = outoi + thisOctal%OItransition(subcell, ilevel, jlevel)
+                 AOI(ilevel, jlevel) = thisOctal%OItransition(subcell, jlevel, ilevel)
+                 
               endif
+              
+!              call solvlevpop(C12o_nlev,thisOctal%C12otransition(subcell, ilevel, jlevel) & 
+!                   ,thisOctal%abundance(subcell, Nc12o)*thisOctal%rho(subcell)&
+!                   /mhydrogen,C12o_solution,1) 
+              
+              outc12o = outc12o + thisOctal%C12otransition(subcell, ilevel, jlevel)
+              AC12O(ilevel, jlevel) = thisOctal%C12otransition(subcell, jlevel, ilevel)
            enddo
+           
+           if(ilevel <= CII_NLEV) then
+              ACII(ilevel, ilevel) = -outCII
+              ACI(ilevel, ilevel) = -outCI
+              AOI(ilevel, ilevel) = -outOI
+           endif
+           AC12O(ilevel, ilevel) = -outC12O
         enddo
         
+!        DO Ilevel=1,C12O_NLEV
 
-!           
-!           CII_solution(pp,:)=CIIsolution
-           
+           !           SOLUTION(I)=0.0D0
+!           A(NLEV,I)=1.0D-8 !non-zero starting parameter to avoid division by zero.
+
+ !
+        CALL GAUSS_JORDAN(ACII,CII_NLEV,CII_NLEV,thisOctal%CII_POP(subcell, :),1, callwrites)
+
+        CALL GAUSS_JORDAN(ACI,CI_NLEV,CI_NLEV,thisOctal%CI_POP(subcell, :),2, callwrites)
+
+        CALL GAUSS_JORDAN(AOI,OI_NLEV,OI_NLEV,thisOctal%OI_POP(subcell, :),3, callwrites)
+
+        CALL GAUSS_JORDAN(AC12O,C12O_NLEV,C12O_NLEV,thisOctal%C12O_POP(subcell, :),4, callwrites)
+
+        do ilevel = 1, C12O_NLEV
+           if(Ilevel <= CII_NLEV) then
+              if (thisOctal%CII_POP(subcell, ilevel).lt.0.0D0) &
+                   thisOctal%CII_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
+        
+
+              
+              if (thisOctal%CI_POP(subcell, ilevel).lt.0.0D0) &
+                   thisOctal%CI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
+              
+              
+              if (thisOctal%OI_POP(subcell, ilevel).lt.0.0D0) &
+                   thisOctal%OI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'             
+           endif
+     
+           if (thisOctal%C12O_POP(subcell, ilevel).lt.0.0D0) &
+                thisOctal%C12O_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!' 
+        ENDDO
+
+        !cii, ci, oi, c12o coolant = 1, 2, 3, 4
+
+!        DO I=1,NLEV!
+!
+!        ENDDO
+        
+
+ 
+        !           
+        !           CII_solution(pp,:)=CIIsolution
+        
      end if
      !  endif
   enddo
