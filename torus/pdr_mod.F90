@@ -47,8 +47,8 @@ subroutine PDR_MAIN(grid)
   use nrayshealpix
   implicit none
   type(gridtype) :: grid
-  real(double), allocatable :: rate(:), alpha(:), beta(:), gamma(:)
-  real(double), allocatable :: rtmin(:), rtmax(:)
+  real(double), allocatable :: rate(:), alpha(:), beta(:)
+  real(double), allocatable :: rtmin(:), rtmax(:), gamma(:)!, duplicate(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
   integer :: n12co, nci, ncii, noi, nelect
@@ -421,10 +421,21 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            thisOctal%c12oTransition(subcell, :, :) = 0.d0
            thisOctal%coolingRate(subcell) = 0.d0
         end if
+
+        !do final population step
+        do ilevel = 1, C12O_NLEV
+           do jlevel = 1, C12O_NLEV
+              if(jlevel >= ilevel) exit
+
+              if(ilevel <= CII_NLEV) then
+!                 call solvlevpop(CII_nlev,thisOctal%transition_CII(subcell, ilevel, jlevel) & 
+!                      ,thisOctal%abundance(subcell, NCx)*thisOctal%rho(subcell)&
+!                      /mhydrogen,CIIsolution,1) 
+              endif
+           enddo
+        enddo
         
 
-!           call solvlevpop(CII_nlev,transition_CII,thisOctal%abundance(subcell, NCx)*thisOctal%rho(subcell)&
-!                ,CIIsolution,1)
 !           
 !           CII_solution(pp,:)=CIIsolution
            
