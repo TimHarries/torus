@@ -163,20 +163,20 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
         do k = 1, nhydrothreadsglobal
            if(myrankglobal == k) then
               !calculate collisional coefficients
- !             print *, "rank", myrankglobal, "is solving pop"
+!             print *, "rank", myrankglobal, "is solving pop"
               call solvePopulations(grid%octreeroot, grid, nelect, ncii, nci, noi, nc12o)
               call shutdownserversXRAY_PDR()
               !
            else
               !server
-!              print *, "rank", myrankglobal, "is serving"
+              print *, "rank", myrankglobal, "is serving"
               call raytracingserverPDR_TWO(grid)
               
            endif
            call MPI_BARRIER(amrCommunicator, ier)
         enddo
      endif
-  !              print *, "rank", myrankglobal, "at final barrier"
+     print *, "rank", myrankglobal, "at final barrier"
      call MPI_BARRIER(MPI_COMM_WORLD, ier)
      call writeInfo("Population solver done", trivial)
      !thermal balance calculation
@@ -259,7 +259,6 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 
 
            !FIRST CALCULATE COLLISIONAL COEFFICIENTS
-           !DO CII      ---------------------------------
            taucii = 0.d0
            tauci = 0.d0
            tauoi = 0.d0
@@ -313,10 +312,10 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            !NOW CAST RAYS TO GET TAUS
            nrays = nray_func()
            
-
+           
            startPosition = subcellCentre(thisOctal, subcell)
            testPosition = startPosition
-                      
+           
            ncontributed = 0
            frac2=1.0D0/sqrt(8.0*KB*thisOctal%tLast(subcell)/PI/MP + v_turb**2)
            do i = 1, nrays              
@@ -330,14 +329,22 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
               do while (inOctal(grid%octreeRoot, testPosition))
                  
                  tval = 0.d0
-
+                 
                  call getRayTracingValuesPDR_TWO(grid, testposition, uHat, CII_POP, CI_POP, OI_POP, C12O_POP, tVal,&
                       HplusFrac) 
-
+                 
                  if(Hplusfrac > 0.99d0) then                       
                     exit
                  end if
 
+!                 print *, "CIIPOP ", CII_POP
+!                 print *, " "
+!                 print *, "CIPOP ", CI_POP
+!                 print *, " "
+!                 print *, "OIPOP ", OI_POP
+!                 print *, " "
+!                 print *, "C12OPOP ", C12O_POP
+!                 print *, " "                 
                  !rhs2 is just the ray segment length
 !                 rhs2 = tval
 
@@ -346,70 +353,229 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
                     do jlevel = 1, C12O_NLEV
                        if(jlevel >= ilevel) exit
 
-!                       frac1=(CII_A_COEFFS(ilevel,jlevel)*(C**3))/(8.0*pi*(cii_frequencies(ilevel,jlevel)**3))
-                      
-!                     !  frac3=((CII_POP(jlevel)*CII_WEIGHTS(ilevel)-CII_POP(ilevel)*CII_WEIGHTS(jlevel))+&
-!                            &(CII_POP(jlevel)*CII_WEIGHTS(ilevel)-CII_POP(ilevel)*CII_WEIGHTS(jlevel)))&
-!                            /2./CII_WEIGHTS(jlevel)                       
-!
-!                       tau_increment=frac1*frac2*frac3*tval*1.d10pcToCm
-!                       taucii(ilevel,jlevel)=taucii(ilevel,jlevel)+tau_increment !optical depth        
                        if(ilevel <= CII_NLEV) then
                           taucii(ilevel, jlevel) = taucii(ilevel,jlevel) + updateTau(CII_A_COEFFS(ilevel,jlevel), &
                                cii_frequencies(ilevel,jlevel), CII_POP(jlevel), CII_WEIGHTS(ilevel), CII_POP(ilevel), &
                                CII_WEIGHTS(jlevel), frac2, tval)
 
-                          tauci(ilevel, jlevel) = taucii(ilevel,jlevel) + updateTau(CI_A_COEFFS(ilevel,jlevel), &
-                               cii_frequencies(ilevel,jlevel), CI_POP(jlevel), CI_WEIGHTS(ilevel), CI_POP(ilevel), &
+                          tauci(ilevel, jlevel) = tauci(ilevel,jlevel) + updateTau(CI_A_COEFFS(ilevel,jlevel), &
+                               ci_frequencies(ilevel,jlevel), CI_POP(jlevel), CI_WEIGHTS(ilevel), CI_POP(ilevel), &
                                CI_WEIGHTS(jlevel), frac2, tval)
 
-                          tauoi(ilevel, jlevel) = taucii(ilevel,jlevel) + updateTau(OI_A_COEFFS(ilevel,jlevel), &
-                               cii_frequencies(ilevel,jlevel), OI_POP(jlevel), OI_WEIGHTS(ilevel), OI_POP(ilevel), &
+                          tauoi(ilevel, jlevel) = tauoi(ilevel,jlevel) + updateTau(OI_A_COEFFS(ilevel,jlevel), &
+                               oi_frequencies(ilevel,jlevel), OI_POP(jlevel), OI_WEIGHTS(ilevel), OI_POP(ilevel), &
                                OI_WEIGHTS(jlevel), frac2, tval)
                        endif
                           tauc12o(ilevel, jlevel) = tauc12o(ilevel,jlevel) + updateTau(c12o_A_COEFFS(ilevel,jlevel), &
-                               cii_frequencies(ilevel,jlevel), c12o_POP(jlevel), c12o_WEIGHTS(ilevel), c12o_POP(ilevel), &
+                               c12o_frequencies(ilevel,jlevel), c12o_POP(jlevel), c12o_WEIGHTS(ilevel), c12o_POP(ilevel), &
                                c12o_WEIGHTS(jlevel), frac2, tval)
 
-                    end do
-                 enddo
+                       end do
+                    enddo
                  
-                 testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
-              end do
-              taucii = taucii/dble(nrays)
+                    testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
+                 end do
 
+
+              taucii = taucii/dble(nrays)
+              tauci = tauci/dble(nrays)
+              tauoi = tauoi/dble(nrays)
+              tauc12o = tauc12o/dble(nrays)
+
+
+!t              print *, "tauc12o", tauc12o
+              thisOctal%CIItransition(subcell, :,:) = 0.d0
+              thisOctal%CItransition(subcell, :,:) = 0.d0
+              thisOctal%OItransition(subcell, :,:) = 0.d0
+              thisOctal%C12Otransition(subcell, :,:) = 0.d0
               do ilevel = 1, C12O_NLEV
                  do jlevel = 1, C12O_NLEV
                     if(jlevel >= ilevel) exit
 
                     if(ilevel <= CII_NLEV) then
+
                        call setupEscapeParameters(cii_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
                             thisOctal%CII_pop(subcell, ilevel), thisOctal%CII_pop(subcell, jlevel), CII_WEIGHTS(ilevel), &
                             CII_WEIGHTS(jlevel), beta, CII_A_COEFFS(ilevel,jlevel), taucii(ilevel, jlevel), &
-                            thisOctal, subcell, ilevel, jlevel, CII_B_COEFFS(ilevel,jlevel), CII_C_COEFFS(ilevel,jlevel))  
+                            thisOctal, subcell, ilevel, jlevel, CII_B_COEFFS(ilevel,jlevel), CII_C_COEFFS(ilevel,jlevel),1)
+
 
                        call setupEscapeParameters(ci_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
                             thisOctal%CI_pop(subcell, ilevel), thisOctal%CI_pop(subcell, jlevel), CI_WEIGHTS(ilevel), &
                             CI_WEIGHTS(jlevel), beta, CI_A_COEFFS(ilevel,jlevel), tauci(ilevel, jlevel), &
-                            thisOctal, subcell, ilevel, jlevel, CI_B_COEFFS(ilevel,jlevel), CI_C_COEFFS(ilevel,jlevel))  
+                            thisOctal, subcell, ilevel, jlevel, CI_B_COEFFS(ilevel,jlevel), CI_C_COEFFS(ilevel,jlevel),2)
+
 
                        call setupEscapeParameters(oi_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
                             thisOctal%oI_pop(subcell, ilevel), thisOctal%oI_pop(subcell, jlevel), oI_WEIGHTS(ilevel), &
                             oI_WEIGHTS(jlevel), beta, oI_A_COEFFS(ilevel,jlevel), tauoi(ilevel, jlevel), &
-                            thisOctal, subcell, ilevel, jlevel, oI_B_COEFFS(ilevel,jlevel), oI_C_COEFFS(ilevel,jlevel))  
+                            thisOctal, subcell, ilevel, jlevel, oI_B_COEFFS(ilevel,jlevel), oI_C_COEFFS(ilevel,jlevel),3)
 
                     endif
 
                        call setupEscapeParameters(c12o_FREQUENCIES(ilevel,jlevel), thisOctal%Dust_T(subcell), &
                             thisOctal%C12o_pop(subcell, ilevel), thisOctal%C12o_pop(subcell, jlevel), C12o_WEIGHTS(ilevel), &
                             C12o_WEIGHTS(jlevel), beta, C12o_A_COEFFS(ilevel,jlevel), tauc12o(ilevel, jlevel), &
-                            thisOctal, subcell, ilevel, jlevel, C12o_B_COEFFS(ilevel,jlevel), C12o_C_COEFFS(ilevel,jlevel))  
+                            thisOctal, subcell, ilevel, jlevel, C12o_B_COEFFS(ilevel,jlevel), C12o_C_COEFFS(ilevel,jlevel),4)
 
                  enddo
               enddo
            enddo
+!           print *, "BLA"
 
+           
+           ACI = 1.d-30
+           ACII = 1.d-30
+           AOI = 1.d-30
+           AC12O = 1.d-30
+           !        ACI = 1.d-8
+           !        ACII = 1.d-8
+           !        AOI = 1.d-8
+           !        AC12O = 1.d-8
+            !do final population step
+!           print *, "AOI D", AOI
 
+           do ilevel = 1, C12O_NLEV
+              outc12o = 0.d0
+              outci = 0.d0
+              outoi = 0.d0
+              outcii = 0.d0
+
+              do jlevel = 1, C12O_NLEV
+                 if(jlevel >= ilevel) exit              
+                 
+                 if(ilevel <= CII_NLEV) then
+                    outcii = outcii + thisOctal%CIItransition(subcell, ilevel, jlevel)
+                    ACII(ilevel, jlevel) = thisOctal%CIItransition(subcell, jlevel, ilevel)
+                    
+                    outci = outci + thisOctal%CItransition(subcell, ilevel, jlevel)
+                    ACI(ilevel, jlevel) = thisOctal%CItransition(subcell, jlevel, ilevel)
+                    
+                    outoi = outoi + thisOctal%OItransition(subcell, ilevel, jlevel)
+                    AOI(ilevel, jlevel) = thisOctal%OItransition(subcell, jlevel, ilevel)
+!                    print *, "AOI", ilevel, jlevel, thisOctal%OItransition(subcell, jlevel, ilevel)
+!                    print *, "outoi", outoi
+!                    dummy = abs(AOI(ilevel, jlevel))
+                 endif
+                 outc12o = outc12o + thisOctal%C12otransition(subcell, ilevel, jlevel)
+                 AC12O(ilevel, jlevel) = thisOctal%C12otransition(subcell, jlevel, ilevel)
+
+!                 if(ilevel ==38) then
+!                    print *, "monitoring ", jlevel
+!                    print *, "outc12o", outc12o
+!                    print *, "transition", thisOctal%C12otransition(subcell, ilevel, jlevel)
+!                    print *, "tauc12o(ilevel, jlevel)", tauc12o(ilevel, jlevel)
+!                 endif
+!                 if(ilevel == 38 .and. jlevel == 38) then
+!                    print *, "38 stuff A"
+!                    print *, AC12O(ilevel, ilevel)
+!                    
+!                 endif
+
+              enddo
+              
+              if(ilevel <= CII_NLEV) then
+                 ACII(ilevel, ilevel) = -outCII
+                 ACI(ilevel, ilevel) = -outCI
+                 AOI(ilevel, ilevel) = -outOI
+              endif
+
+              AC12O(ilevel, ilevel) = -outC12O
+!              if(ilevel == 38 .and. jlevel ==!! 38) then
+!                 print *, "38 stuff !"
+!                 print *, AC12O(ilev!el, ilevel)
+!                 
+!              endif
+           enddo
+
+!           print *, "AOI A", AOI
+!
+           
+           DO Ilevel=1,C12O_NLEV
+              if(ilevel <= CII_NLEV) then
+!                 thisOctal%cii_pop(subcell,iLevel)=0.0D0
+!                 thisOctal%ci_pop(subcell,iLevel)=0.0D0
+!                 thisOctal%oi_pop(subcell,iLevel)=0.0D0
+                 ACII(CII_NLEV,Ilevel)=1.0D-8            
+                 ACI(CI_NLEV,Ilevel)=1.0D-8            
+                 AOI(OI_NLEV,Ilevel)=1.0D-8            
+              endif
+ !             thisOctal%c12o_pop(subcell,iLevel)=0.0D0
+              AC12O(C12O_NLEV,Ilevel)=1.0D-8            
+
+           enddo
+
+!           do ilevel = 1, C12O_NLEV
+!              do jlevel = 1, C12O_NLEV
+!!                 print *, "i, j ", ilevel, jlevel
+!                 print *, "c12o transition ", thisOctal%c12otransition(subcell, ilevel, jlevel)
+!                 print *, "c12o line ", thisOctal%c12oline(subcell,ilevel,jlevel)
+!                 print *, "AC12O(", AC12O(ilevel, jlevel)
+!                 dummy = abs(thisOctal%c12oline(subcell,ilevel,jlevel))
+!                 dummy = abs(thisOctal%c12otransition(subcell, ilevel, jlevel))
+!                 dummy = abs(AC12O(ilevel, jlevel))
+!!              enddo
+ !          enddo
+
+           
+
+           !        thisOctal%cii_pop(subcell,5)=1.0-8
+           !        thisOctal%ci_pop(subcell,5)=1.0D-8
+           !        thisOctal%oi_pop(subcell,5)=1.0D-8
+           !        thisOctal%c12o_pop(subcell,41)=1.0D-8
+           
+           !           SOLUTION(I)=0.0D0
+           
+           !        do ilevel = 1, C12O_NLEV
+           !        
+           !           if(ilevel <= CII_NLEV) then
+           !              ACII(CII_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
+           !              ACI(CI_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
+           !              AOI(OI_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
+           !           endif
+           !           AC12O(C12O_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
+           !        enddo
+
+!           print *, "ACI ", ACI
+ !          print *, "ACII ", ACII
+!           print *, "AOI ", AOI
+!           print *, "AC12O ", AC12O
+
+!           print *, "rank ", myrankglobal, "doing cii gauss-jordan"
+           CALL GAUSS_JORDAN(ACII,CII_NLEV,CII_NLEV,thisOctal%CII_POP(subcell, :),1, callwrites)
+!           print *, "rank ", myrankglobal, "done"
+           
+!           print *, "rank ", myrankglobal, "doing ci gauss-jordan"
+           CALL GAUSS_JORDAN(ACI,CI_NLEV,CI_NLEV,thisOctal%CI_POP(subcell, :),2, callwrites)
+!           print *, "rank ", myrankglobal, "done"
+           !
+!           print *, "rank ", myrankglobal, "doing oi gauss-jordan"
+           CALL GAUSS_JORDAN(AOI,OI_NLEV,OI_NLEV,thisOctal%OI_POP(subcell, :),3, callwrites)
+!           print *, "rank ", myrankglobal, "done"
+           
+!           print *, "rank ", myrankglobal, "doing c12o gauss-jordan"
+           CALL GAUSS_JORDAN(AC12O,C12O_NLEV,C12O_NLEV,thisOctal%C12O_POP(subcell, :),4, callwrites)
+!           print *, "rank ", myrankglobal, "done"
+
+           
+           do ilevel = 1, C12O_NLEV
+              if(Ilevel <= CII_NLEV) then
+                 if (thisOctal%CII_POP(subcell, ilevel).lt.0.0D0) &
+                      thisOctal%CII_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
+                 
+                 if (thisOctal%CI_POP(subcell, ilevel).lt.0.0D0) &
+                      thisOctal%CI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
+                 
+                 
+                 if (thisOctal%OI_POP(subcell, ilevel).lt.0.0D0) &
+                      thisOctal%OI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'             
+              endif
+              
+              if (thisOctal%C12O_POP(subcell, ilevel).lt.0.0D0) &
+                   thisOctal%C12O_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!' 
+           ENDDO
+
+           
         else
            thisOctal%ciiline(subcell, :, :) = 0.d0
            thisOctal%ciiTransition(subcell, :, :) = 0.d0
@@ -423,107 +589,9 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
         end if
 
 
-
-        ACI = 0.d0
-        ACII = 0.d0
-        AOI = 0.d0
-        AC12O = 0.d0
-        !do final population step
-        do ilevel = 1, C12O_NLEV
-           outc12o = 0.d0
-           outci = 0.d0
-           outoi = 0.d0
-           outcii = 0.d0
-           
-           do jlevel = 1, C12O_NLEV
-              if(jlevel >= ilevel) exit
-              
-              if(ilevel <= CII_NLEV) then
-!                 call solvlevpop(CII_nlev,thisOctal%CIItransition(subcell, ilevel, jlevel) & 
-!                      ,thisOctal%abundance(subcell, NCx)*thisOctal%rho(subcell)&
-!                      /mhydrogen,CII_solution,1) 
-                 
-                 outcii = outcii + thisOctal%CIItransition(subcell, ilevel, jlevel)
-                 ACII(ilevel, jlevel) = thisOctal%CIItransition(subcell, jlevel, ilevel)
-                 
-!                 call solvlevpop(CI_nlev,thisOctal%CItransition(subcell, ilevel, jlevel) & 
-!                      ,thisOctal%abundance(subcell, NC)*thisOctal%rho(subcell)&
-!                      /mhydrogen,CI_solution,1) 
-                 
-                 outci = outci + thisOctal%CItransition(subcell, ilevel, jlevel)
-                 ACI(ilevel, jlevel) = thisOctal%CItransition(subcell, jlevel, ilevel)
-                 
-!                 call solvlevpop(oI_nlev,thisOctal%OItransition(subcell, ilevel, jlevel) & 
-!                      ,thisOctal%abundance(subcell, NO)*thisOctal%rho(subcell)&
-!                      /mhydrogen,oI_solution,1) 
-                 
-                 outoi = outoi + thisOctal%OItransition(subcell, ilevel, jlevel)
-                 AOI(ilevel, jlevel) = thisOctal%OItransition(subcell, jlevel, ilevel)
-                 
-              endif
-              
-!              call solvlevpop(C12o_nlev,thisOctal%C12otransition(subcell, ilevel, jlevel) & 
-!                   ,thisOctal%abundance(subcell, Nc12o)*thisOctal%rho(subcell)&
-!                   /mhydrogen,C12o_solution,1) 
-              
-              outc12o = outc12o + thisOctal%C12otransition(subcell, ilevel, jlevel)
-              AC12O(ilevel, jlevel) = thisOctal%C12otransition(subcell, jlevel, ilevel)
-           enddo
-           
-           if(ilevel <= CII_NLEV) then
-              ACII(ilevel, ilevel) = -outCII
-              ACI(ilevel, ilevel) = -outCI
-              AOI(ilevel, ilevel) = -outOI
-           endif
-           AC12O(ilevel, ilevel) = -outC12O
-        enddo
-        
-!        DO Ilevel=1,C12O_NLEV
-
-           !           SOLUTION(I)=0.0D0
-!           A(NLEV,I)=1.0D-8 !non-zero starting parameter to avoid division by zero.
-
- !
-        CALL GAUSS_JORDAN(ACII,CII_NLEV,CII_NLEV,thisOctal%CII_POP(subcell, :),1, callwrites)
-
-        CALL GAUSS_JORDAN(ACI,CI_NLEV,CI_NLEV,thisOctal%CI_POP(subcell, :),2, callwrites)
-
-        CALL GAUSS_JORDAN(AOI,OI_NLEV,OI_NLEV,thisOctal%OI_POP(subcell, :),3, callwrites)
-
-        CALL GAUSS_JORDAN(AC12O,C12O_NLEV,C12O_NLEV,thisOctal%C12O_POP(subcell, :),4, callwrites)
-
-        do ilevel = 1, C12O_NLEV
-           if(Ilevel <= CII_NLEV) then
-              if (thisOctal%CII_POP(subcell, ilevel).lt.0.0D0) &
-                   thisOctal%CII_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
-        
-
-              
-              if (thisOctal%CI_POP(subcell, ilevel).lt.0.0D0) &
-                   thisOctal%CI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
-              
-              
-              if (thisOctal%OI_POP(subcell, ilevel).lt.0.0D0) &
-                   thisOctal%OI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'             
-           endif
-     
-           if (thisOctal%C12O_POP(subcell, ilevel).lt.0.0D0) &
-                thisOctal%C12O_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!' 
-        ENDDO
-
-        !cii, ci, oi, c12o coolant = 1, 2, 3, 4
-
-!        DO I=1,NLEV!
-!
-!        ENDDO
-        
-
- 
-        !           
-        !           CII_solution(pp,:)=CIIsolution
         
      end if
-     !  endif
+     
   enddo
 end subroutine solvePopulations
 
@@ -533,6 +601,7 @@ real(double) function updateTau(Acoeff,freq, jPop, iWeight, iPop, &
 
   real(double) :: frac2, tval, frac1, frac3, ipop, iweight, jpop, jweight, freq, Acoeff
 
+
   frac1=(Acoeff*(C**3))/(8.0*pi*(freq**3))
   
   frac3=((jPop*iWeight-iPop*jWeight)+&
@@ -541,19 +610,29 @@ real(double) function updateTau(Acoeff,freq, jPop, iWeight, iPop, &
   
   updateTau=frac1*frac2*frac3*tval*1.d10*pcToCm
 
+!  if(debug) then
+!     print *, "TAU DEBUG"
+!     print *, "jWeight", jWeight
+!     print *, "dTau ", updateTau
+!     if(updateTau /= 0.d0) then
+!        print *, "abs ", abs(updateTau)
+!     endif
+!  endif
+
 end function updateTau
 
 
 subroutine setupEscapeParameters(freq, tDust, &
      iPop, jPop, iweight, &
      jweight, beta,  Acoeff, tau, thisOctal, subcell, ilevel, jlevel, &
-     BCoeffs, Ccoeffs)
+     BCoeffs, Ccoeffs, id)
 
   real(double) :: freq, tDust, ipop, jpop, iweight, jweight, Acoeff, beta
   real(double) :: tmp2, fac, ngrain, rho_grain, emissivity, BB_ij_dust, tpop
   real(double) :: tau
   logical :: tofield
   logical :: fullBeta
+  integer :: id
   type(octal), pointer :: thisOctal
   integer :: subcell, ilevel, jlevel
   real(double) :: field, BCoeffs, CCoeffs, BB, sourceFun
@@ -605,6 +684,14 @@ subroutine setupEscapeParameters(freq, tDust, &
         !calculation of source function (taken from UCL_PDR)                                                   
         sourceFun=TMP2/TPOP
      endif
+!     if(debug) then
+!!        print *, "sourceFun is ", sourceFun
+!        dummy = abs(sourceFun)!
+!        if(sourceFun == 0.d0) th!en
+!           print *, "zero source! function", sourcefun, tmp2, tpop
+!        endif
+!     endif
+
      if(fullBeta) then
         if(tau < -5.d0) then
            beta=(1.0D0-EXP(5.0D0))/(-5.0D0)
@@ -616,28 +703,91 @@ subroutine setupEscapeParameters(freq, tDust, &
      endif
   endif
 
-
-  
   if(.not. toField) then
      if(sourceFun /= 0.d0) then
-        thisOctal%ciiline(subcell,ilevel,jlevel) = Acoeff*HP*freq * &
-             & iPop*beta*(sourceFun-BB)/sourceFun
+        if(id == 1) then
+           thisOctal%ciiline(subcell,ilevel,jlevel) = Acoeff*HP*freq * &
+                & iPop*beta*(sourceFun-BB)/sourceFun
+        else if(id == 2) then
+           thisOctal%ciline(subcell,ilevel,jlevel) = Acoeff*HP*freq * &
+                & iPop*beta*(sourceFun-BB)/sourceFun
+        else if(id == 3) then
+           thisOctal%oiline(subcell,ilevel,jlevel) = Acoeff*HP*freq * &
+                & iPop*beta*(sourceFun-BB)/sourceFun
+        else if(id == 4) then
+           thisOctal%c12oline(subcell,ilevel,jlevel) = Acoeff*HP*freq * &
+                & iPop*beta*(sourceFun-BB)/sourceFun
+        else
+           call torus_abort("species ID not recognised in pdr_mod")
+        endif
      else
-        thisOctal%ciiline(subcell,ilevel,jlevel) = 0.d0
+        if(id == 1) then
+           thisOctal%ciiline(subcell,ilevel,jlevel) = 0.d0
+        else if(id == 2) then
+           thisOctal%ciline(subcell,ilevel,jlevel) = 0.d0
+        else if(id == 3) then
+           thisOctal%oiline(subcell,ilevel,jlevel) = 0.d0
+        else if(id == 4) then
+           thisOctal%c12oline(subcell,ilevel,jlevel) = 0.d0
+        else
+           call torus_abort("species ID not recognised in pdr_mod")
+        endif
+        
      endif
-     
-     thisOctal%coolingRate(subcell) = thisOctal%coolingRate(subcell) + thisOctal%ciiline(subcell, ilevel,jlevel)        
+     if(id == 1) then
+        thisOctal%coolingRate(subcell) = thisOctal%coolingRate(subcell) + thisOctal%ciiline(subcell, ilevel,jlevel)        
+     else if(id == 2) then
+        thisOctal%coolingRate(subcell) = thisOctal%coolingRate(subcell) + thisOctal%ciline(subcell, ilevel,jlevel)        
+     else if(id == 3) then
+        thisOctal%coolingRate(subcell) = thisOctal%coolingRate(subcell) + thisOctal%oiline(subcell, ilevel,jlevel)        
+     else if(id == 4) then
+        thisOctal%coolingRate(subcell) = thisOctal%coolingRate(subcell) + thisOctal%c12oline(subcell, ilevel,jlevel)   
+     endif
   endif
   
   field = (1.0D0-beta)*sourceFun + beta*BB
 !  field = field
  
-  thisOctal%ciiTRANSITION(subcell, ilevel,jlevel)=Acoeff&
-       & +Bcoeffs*FIELD&
-       & +Ccoeffs
-  IF(ABS(thisOctal%ciiTRANSITION(subcell, ilevel,jlevel)).LT.1.0D-50) thisOctal%ciiTRANSITION(subcell,ilevel,jlevel)=&
-       0.0D0
+  if(id == 1) then
+     thisOctal%ciiTRANSITION(subcell, ilevel,jlevel)=Acoeff&
+          & +Bcoeffs*FIELD&
+          & +Ccoeffs
+     IF(ABS(thisOctal%ciiTRANSITION(subcell, ilevel,jlevel)).LT.1.0D-50) thisOctal%ciiTRANSITION(subcell,ilevel,jlevel)=&
+          0.0D0
   
+  elseif(id == 2) then
+     thisOctal%ciTRANSITION(subcell, ilevel,jlevel)=Acoeff&
+          & +Bcoeffs*FIELD&
+          & +Ccoeffs
+     IF(ABS(thisOctal%ciTRANSITION(subcell, ilevel,jlevel)).LT.1.0D-50) thisOctal%ciTRANSITION(subcell,ilevel,jlevel)=&
+          0.0D0
+
+  elseif(id == 3) then
+     thisOctal%oiTRANSITION(subcell, ilevel,jlevel)=Acoeff&
+          & +Bcoeffs*FIELD&
+          & +Ccoeffs
+     IF(ABS(thisOctal%oiTRANSITION(subcell, ilevel,jlevel)).LT.1.0D-50) thisOctal%oiTRANSITION(subcell,ilevel,jlevel)=&
+          0.0D0
+
+!     if(debug .and. ilevel == 3 .and. jlevel == 1) then
+!        print *,  thisOctal%oiTRANSITION(subcell, ilevel,jlevel)
+!        print *, "Acoeff ", Acoeff
+!        print *, "Bcoeffs", Bcoeffs
+!        print *, "Ccoeffs", Ccoeffs
+!        print *, "FIELD", FIELD
+!        print *, "tau", tau
+!        print *, " "
+!     endif
+!
+  elseif(id == 4) then
+     thisOctal%c12oTRANSITION(subcell, ilevel,jlevel)=Acoeff&
+          & +Bcoeffs*FIELD&
+          & +Ccoeffs
+
+     IF(ABS(thisOctal%c12oTRANSITION(subcell, ilevel,jlevel)).LT.1.0D-50) thisOctal%c12oTRANSITION(subcell,ilevel,jlevel)=&
+          0.0D0
+endif
+
 end subroutine setupEscapeParameters
 
 subroutine abundanceSweepGovernor(grid, reactant, &
@@ -776,7 +926,7 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
         !
         ! Calculate the LTE level populations
 
-        thisOctal%CII_POP(subcell, :) = 0.d0
+
         CALL CALCULATE_LTE_POPULATIONS(CII_NLEV,thisOctal%CII_POP(subcell, :),CII_ENERGIES,&
              &CII_WEIGHTS,CII_Z_FUNCTION,thisOctal%abundance(subcell, Ncii)*thisOctal%rho(subcell)/mhydrogen,&
              thisOctal%tLast(subcell))
@@ -791,6 +941,9 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
              thisOctal%tLast(subcell))
      else
         thisOctal%CII_POP(subcell, :) = 0.d0
+        thisOctal%CI_POP(subcell, :) = 0.d0
+        thisOctal%OI_POP(subcell, :) = 0.d0
+        thisOctal%C12O_POP(subcell, :) = 0.d0
      end if
   end if
 end do

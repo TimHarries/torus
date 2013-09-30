@@ -4972,8 +4972,8 @@ end subroutine writeRadialFile
           tempstorage(2) = thisOctal%ionfrac(subcell, 2)
           do counter = 1, 5
              tempstorage(counter + 2) = thisOctal%CII_POP(subcell, counter)
-             tempstorage(counter + 7) = thisOctal%CII_POP(subcell, counter)
-             tempstorage(counter + 12) = thisOctal%CII_POP(subcell, counter)
+             tempstorage(counter + 7) = thisOctal%CI_POP(subcell, counter)
+             tempstorage(counter + 12) = thisOctal%oI_POP(subcell, counter)
           enddo
           do counter = 1, 41
              tempstorage(counter+17) = thisOctal%C12O_POP(subcell,counter)

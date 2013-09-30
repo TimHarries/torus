@@ -16,7 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
-sundials = no
+sundials = yes
 hdf = no
 memcheck = yes
 zlib = yes
@@ -29,7 +29,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
-pdr = no
+pdr = yes
 hydro = yes
 molecular = yes
 photoion = yes

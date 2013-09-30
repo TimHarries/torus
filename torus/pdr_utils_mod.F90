@@ -2322,14 +2322,8 @@ SUBROUTINE CALCULATE_LTE_POPULATIONS(NLEV,LEVEL_POP,ENERGIES,WEIGHTS,PARTITION_F
             call torus_abort("zero partition function being used...")
          endif
         LEVEL_POP(ILEVEL)=DENSITY*WEIGHTS(ILEVEL)*EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)/PARTITION_FUNCTION
-         TOTAL_POP=TOTAL_POP + LEVEL_POP(ILEVEL)
-!         if(LEVEL_POP(ILEVEL)< 1.d-50 .and. LEVEL_POP(ILEVEL)/= 0.d0) then 
-!            print *, "found super low level"
-!            print *, LEVEL_POP(ILEVEL)
-!            LEVEL_POP(ILEVEL) = 0.d0
-!         endif
-!         print *, ABS(LEVEL_POP(ILEVEL))
-!         print *, "LEVEL_POP(", ILEVEL,") is", LEVEL_POP(ILEVEL), TOTAL_POP
+        TOTAL_POP=TOTAL_POP + LEVEL_POP(ILEVEL)
+
       ENDDO
 
       ! Check that the sum of the level populations adds up to the total density
@@ -2595,10 +2589,11 @@ SUBROUTINE solvlevpop(NLEV,TRANSITION,density,SOLUTION,coolant)
       real(double), intent(inout) :: B(1:NP)!,1:MPP)
       real(double) :: BIG,DUM,PIVINV
       logical,intent(out)::call_writes
-
+      logical, save :: firstTime = .true.
       ICOL=0
       IROW=0
       IPIV=0
+
       DO I=1,N
          BIG=0.0D0
          DO J=1,N
@@ -2611,9 +2606,12 @@ SUBROUTINE solvlevpop(NLEV,TRANSITION,density,SOLUTION,coolant)
                         ICOL=K
                      ENDIF
                   ELSE IF(IPIV(K).GT.1) THEN
-                     PRINT *,'ERROR! Singular matrix in GAUSS_JORDAN'
-call_writes=.true.
-return
+                     if(firstTime) then
+                        PRINT *,'ERROR! Singular matrix in GAUSS_JORDAN'
+                        call_writes=.true.
+                        firstTime = .false.
+                        return
+                     endif
 !                     write(6,*) 'Crashed in first loop'
                      write(6,*) ' coolant = ',coolant
 !                     write(6,*) 'gastemperature = ',gastemperature(p)
@@ -2643,9 +2641,14 @@ return
          INDXR(I)=IROW
          INDXC(I)=ICOL
          IF(A(ICOL,ICOL).EQ.0.0D0) THEN
-            PRINT *,'ERROR! Singular matrix found by GAUSS_JORDAN'
-call_writes=.true.
-return
+            if(firstTime) then
+               PRINT *,'ERROR! Singular matrix found by GAUSS_JORDAN'
+               print *, ICOL
+               print *, A(ICOL, ICOL)
+               call_writes=.true.
+               firstTime = .false.
+               return
+            endif
 !            write(6,*) 'Crashed in second loop'
 !            write(6,*) 'grid point = ',p, ' coolant = ',coolant
 !            write(6,*) 'gastemperature = ',gastemperature(p)
