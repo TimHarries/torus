@@ -261,7 +261,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   character(LEN=30) :: name_filter
   real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
   real(double) :: bandwidth   ! Band width of a filter[A]
-  real(double) :: weightsource
+  real(double) :: weightsource, positionAngle
   real(double) :: totalOutputLuminosity
   real :: probContPhoton
   character(len=80) :: thisImageType
@@ -351,6 +351,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      nInclination = getNumSedInc()
      outfile = sedFileName
   endif
+  positionAngle = GetImagePA(imNum)
   call findMultiFilename(outfile, iModel, tempFilename)
   outfile = tempFilename
 
@@ -1988,7 +1989,7 @@ CONTAINS
                  thisVel = (thisLam-lamLine)/lamLine
 
                  call addPhotonToImage(viewVec, rotationAxis,o6Image(1), 1, &
-                      thisPhoton, thisVel, obs_weight, filters)
+                      thisPhoton, thisVel, obs_weight, filters, positionAngle)
               endif
            endif
 
@@ -2146,7 +2147,7 @@ CONTAINS
                  if (stokesImage) then
                     thisVel = 0. ! no velocity for dust continuum
                     call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, thisPhoton,&
-                         thisVel, obs_weight, filters)
+                         thisVel, obs_weight, filters, positionAngle)
 
                  endif
               endif
@@ -2173,7 +2174,7 @@ CONTAINS
                     thisVel = (observedLambda-lamLine)/lamLine
                     if (stokesImage) then
                        call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImageLocal, &
-                            thisPhoton, thisVel, obs_weight, filters)
+                            thisPhoton, thisVel, obs_weight, filters, positionAngle)
                     endif
 
                  else  ! contunuum photon
@@ -2241,7 +2242,7 @@ CONTAINS
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImageLocal, &
-                               thisPhoton, thisVel, obs_weight, filters, grid%lamArray(iLambda))
+                               thisPhoton, thisVel, obs_weight, filters, positionAngle, grid%lamArray(iLambda))
                        endif
 
                     enddo
@@ -2405,7 +2406,7 @@ CONTAINS
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
-                            obsPhoton, thisVel, obs_weight, filters)
+                            obsPhoton, thisVel, obs_weight, filters, positionAngle)
                     endif
                  enddo
               endif
@@ -2667,7 +2668,7 @@ CONTAINS
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal,  &
-                            obsPhoton, thisVel, obs_weight, filters)
+                            obsPhoton, thisVel, obs_weight, filters, positionAngle)
                     endif
 
                     if (doRaman) then
@@ -2698,7 +2699,7 @@ CONTAINS
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
-                               obsPhoton, thisVel, obs_weight, filters)
+                               obsPhoton, thisVel, obs_weight, filters, positionAngle)
                        endif
 
                     else
@@ -2788,7 +2789,7 @@ CONTAINS
                           thisVel = (observedlambda-lamLine)/lamLine
                           if (stokesImage) then
                              call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImageLocal, &
-                                  obsPhoton, thisVel, obs_weight, filters, grid%lamArray(iLambda))
+                                  obsPhoton, thisVel, obs_weight, filters, positionAngle, grid%lamArray(iLambda))
                           endif
 
                        enddo

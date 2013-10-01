@@ -125,7 +125,7 @@ module image_mod
 #endif
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
-                               thisVel, weight, filters, lambda0_cont)
+                               thisVel, weight, filters, positionAngle, lambda0_cont)
      use filter_set_class
      use phasematrix_mod
 
@@ -134,6 +134,7 @@ module image_mod
      type(PHOTON) :: thisPhoton
      type(VECTOR) :: viewVec,  xProj, yProj, rotationAxis
      real :: xDist, yDist
+     real(double) :: positionAngle, r, ang
      integer :: xPix, yPix
      real :: thisVel
      real :: weight
@@ -167,6 +168,12 @@ module image_mod
            
         xDist = real((thisPhoton%position) .dot. xProj)
         yDist = real((thisPhoton%position) .dot. yProj)
+
+        r = sqrt(xDist**2 + yDist**2)
+        ang = atan2(yDist, xDist)
+        ang = ang - positionAngle
+        xDist = r * cos(ang)
+        yDist = r * sin(ang)
            
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 

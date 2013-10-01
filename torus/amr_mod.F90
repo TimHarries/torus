@@ -13564,7 +13564,7 @@ end function readparameterfrom2dmap
     endif
 
     do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
+       if (thisOctal%hasChild(subcell)) then 
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then

@@ -2649,7 +2649,7 @@ contains
 
 ! Inclination and position angle for single image, also used as default value for multiple images
     call getReal("inclination", inclination, real(degtorad), cLine, fLine, nLines, &
-         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+         "Inclination angle (deg): ","(a,f6.1,1x,a)", 0., ok, .false.)
     call getReal("positionangle", positionAngle, real(degtorad), cLine, fLine, nLines, &
          "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 

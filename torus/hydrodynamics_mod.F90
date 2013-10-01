@@ -3891,6 +3891,7 @@ contains
 
 !copy advecting quantity q back to cell rho
   recursive subroutine copyqtorho(thisoctal, direction)
+    use inputs_mod, only : rhoFloor
     type(vector) :: direction
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -3911,7 +3912,7 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
 
           if (.not.thisoctal%ghostcell(subcell)) then
-             thisoctal%rho(subcell) = thisoctal%q_i(subcell)
+             thisoctal%rho(subcell) = max(thisoctal%q_i(subcell),rhofloor)
           endif
           if (thisoctal%rho(subcell) < 0.d0) then
              write(*,*) "rho warning ", thisoctal%rho(subcell), subcellcentre(thisoctal, subcell)
