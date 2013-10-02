@@ -305,11 +305,11 @@ recursive subroutine calcHeatingOverGrid(thisOctal, reactant, &
                   thisOctal%abundance(subcell, :), nreac, rate, thisOctal%heatingRate(subcell,:), &
                   NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NELECT)
              
-             print *, " thisOctal%UV(subcell)",  thisOctal%UV(subcell)
-             print *, "thisOctal%abundance(subcell, :)", thisOctal%abundance(subcell, :)
-             print *, " "
-             print *, "heating values are ", thisOctal%heatingRate(subcell, :)
-             stop
+!             print *, " thisOctal%UV(subcell)",  thisOctal%UV(subcell)
+!             print *, "thisOctal%abundance(subcell, :)", thisOctal%abundance(subcell, :)
+!             print *, " "
+!             print *, "heating values are ", thisOctal%heatingRate(subcell, :)
+!             stop
 
              fmean = thisOctal%heatingRate(subcell,12) - thisOctal%coolingRate(subcell)
              fRatio = 2.0D0*abs(Fmean)/abs(thisoCtal%heatingRate(subcell,12) + &
