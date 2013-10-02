@@ -134,9 +134,10 @@ module image_mod
      type(PHOTON) :: thisPhoton
      type(VECTOR) :: viewVec,  xProj, yProj, rotationAxis
      real :: xDist, yDist
-     real(double) :: positionAngle, r, ang
+     real(double) :: positionAngle, ang
+     real :: r
      integer :: xPix, yPix
-     real :: thisVel
+     real  :: thisVel
      real :: weight
      type(filter_set), intent(in) :: filters     
      real, intent(in), optional :: lambda0_cont  ! rest wavelength of contiuum photon

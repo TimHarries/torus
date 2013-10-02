@@ -359,7 +359,7 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
       REAL(double) :: DELTAD,DELTAUV,Y,HNUD,HNUH
 
 
-      integer :: NC, NH, NH2, NHCOX, NH3X, NH3OX, NHEX, NCO
+!      integer :: NC, NH, NH2, NHCOX, NH3X, NH3OX, NHEX, NCO
 
 !     PAH heating/cooling
       REAL(double) :: EPSILON,ALPHA,BETA,PAH_HEATING,PAH_COOLING
@@ -369,7 +369,7 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
       REAL(double) :: C0,C1,C2,C3,C4,C5,C6
 
 !     H2* FUV pumping heating
-      REAL(double) :: NCR_H2
+!      REAL(double) :: NCR_H2
 
 !     Turbulent heating
       REAL(double) :: L_TURB
@@ -395,9 +395,9 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
 !     The various parameter values are taken from Table 2 of the paper
 !-----------------------------------------------------------------------
 
-      NRHD = NRHD
-      NRCO = NRCO
-      NRSI = NRSI
+ !     NRHD = NRHD
+ !     NRCO = NRCO
+ !     NRSI = NRSI
       DELTAD=1.0D0
       DELTAUV=1.8D0
       Y=0.1D0
