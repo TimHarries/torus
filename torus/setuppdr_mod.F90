@@ -53,7 +53,7 @@ real(kind=dp), allocatable :: CII_PH2(:,:,:),CII_OH2(:,:,:)
        &        NMG,NMGx,NN,NFE,NFEx,NSI,NSIx,NCA,NCAx,NCAxx,NS,NSx,NCS, &
        &        NCL,NCLx,NH2x,NHEx,NOx,NNx,NNA,NNAx,NCH,NCH2,NOH,NO2, &
        &        NH3x, NH3Ox, NHCOx!, NOSH
-
+  integer :: NCO, NC, NCX, NO
 
 contains
 
@@ -121,7 +121,7 @@ contains
 !12CO cooling variables
 !  real(kind=dp) :: C12O_COOLING
 
-!    integer :: NCO, NC, NCX, NO
+!
 
   integer :: nspec
   real(double) :: dummyAbundance(1:33)

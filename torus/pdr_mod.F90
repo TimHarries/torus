@@ -305,7 +305,9 @@ recursive subroutine calcHeatingOverGrid(thisOctal, reactant, &
                   thisOctal%abundance(subcell, :), nreac, rate, thisOctal%heatingRate(subcell,:), &
                   NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NELECT)
              
-             
+             print *, " thisOctal%UV(subcell)",  thisOctal%UV(subcell)
+             print *, "thisOctal%abundance(subcell, :)", thisOctal%abundance(subcell, :)
+             print *, " "
              print *, "heating values are ", thisOctal%heatingRate(subcell, :)
              stop
 

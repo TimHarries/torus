@@ -369,7 +369,7 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
       REAL(double) :: C0,C1,C2,C3,C4,C5,C6
 
 !     H2* FUV pumping heating
-!      REAL(double) :: NCR_H2
+      REAL(double) :: NCR_H2
 
 !     Turbulent heating
       REAL(double) :: L_TURB
