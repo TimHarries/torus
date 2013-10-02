@@ -94,7 +94,8 @@ subroutine PDR_MAIN(grid)
        , ncii, nci, noi, nelect, nchemiter=8) 
   call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
        "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
-       "CO_PDR    ", "C+_PDR    ", "C_PDR     "/))
+       "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "CII_1     ", "CII_2     ", &
+       "CII_3     ", "CII_4     "/))
   call writeInfo("Initial abundance calculation done.", TRIVIAL)
 
   print *, " "
@@ -142,16 +143,24 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
   integer :: thisIteration, maxIter
   integer :: ier
   integer :: k
+!  logical, save :: firstTime=.true.
+  logical :: first_time, level_conv
 
   converged = .false.
   thisIteration = 1
   maxIter = 20
+!these logicals are updated in the convergence checks
+  first_time = .true.
+  level_conv = .true.
   do while(.not. converged)
 
      if(myrankglobal == 1) then
         print *, "! - Main PDR loop, iteration ", thisIteration
      endif
      !abundance calculation
+     
+     call InitLogicals(grid%octreeroot)
+
      call writeInfo("Abundance sweep...", trivial)
      call abundanceSweepGovernor(grid, reactant, &
           product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nc12o &
@@ -179,16 +188,32 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
      print *, "rank", myrankglobal, "at final barrier"
      call MPI_BARRIER(MPI_COMM_WORLD, ier)
      call writeInfo("Population solver done", trivial)
+
+
+     if(thisIteration > 1) first_time = .false.
+     if(thisIteration > 15) level_conv = .false.
+     
+     
      !thermal balance calculation
+     call writeInfo("Calculating heating rates and doing thermal balance", trivial)
+     call calcHeatingOverGrid(grid%octreeRoot, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+     nc12o, ncii, nci, noi, level_conv, first_time)   
 
 
+     call MPI_BARRIER(MPI_COMM_WORLD, ier)
+
+
+!     call writeInfo("Checking convergence", trivial)
      !convergence checks
+
      write(filename,'(a, i4.4, a)') "pdr_", thisIteration,".vtk"
 !     filename = "iteration", thisIteration
      call writeVTKfile(grid, filename, valueTypeString=(/"rho       ",&
           "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
           "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "cii_1to0  ", "cii_line  ",&
-          "cooling   ", "CII_1     ", "CII_2     ", "CII_3     ", "CII_4     "/))
+          "cooling   ", "CII_1     ", "CII_2     ", "CII_3     ", "CII_4     ", &
+          "heating   ", "tLast     "/))
      
      
      if (thisIteration > maxIter) then
@@ -199,6 +224,214 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
   enddo
 
 end subroutine pdr_main_loop
+
+
+recursive subroutine InitLogicals(thisOctal)
+  type(octal), pointer :: thisOCtal, child
+  integer :: j, subcell
+
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call InitLogicals(child)
+              exit
+           end if
+        end do
+     else
+        
+        thisOctal%converged(subcell) = .false.
+        thisOctal%expanded(subcell) = .false.
+        thisOctal%biChop(subcell) = .false.
+
+     endif
+  enddo
+end subroutine InitLogicals
+
+
+recursive subroutine calcHeatingOverGrid(thisOctal, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+     nc12o, ncii, nci, noi, level_conv, first_time)   
+  use inputs_mod, only : v_turb
+  integer :: subcell
+  type(octal), pointer :: thisOctal, child
+  real(double) :: rate(:), alpha(:), beta(:), gamma(:)
+  real(double) :: rtmin(:), rtmax(:)
+  integer :: duplicate(:)
+  character(len=10) :: product(:,:), reactant(:,:)
+  integer :: nc12o, ncii, nci, noi, nelect
+  integer :: j
+  integer :: NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NSPEC, nreac, nrays
+  logical :: level_conv, first_time
+
+  real(double) :: fmean, fratio, dummytemperature, Tlow, Thigh, Fcrit, Tdiff
+  
+  nreac = 329
+  nspec = 33
+
+!THAW what should fcrit and tdiff be?
+  Fcrit=1.d-2
+  Tdiff= 1.d0
+
+
+    do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call calcHeatingOverGrid(child, reactant, &
+     product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+     nc12o, ncii, nci, noi, level_conv, first_time)   
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        if(thisOctal%converged(subcell)) cycle
+        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then  
+           
+           call CALCULATE_REACTION_RATES(thisOctal%tLast(subcell),thisOctal%Dust_T(subcell), &
+                thisOctal%radsurface(subcell, :),thisOctal%AV(subcell, :),thisOctal%thisColRho(subcell, :, :), &
+                &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
+                &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, nc12o, nci)              
+        
+
+             call calc_heating(thisOctal%rho(subcell)/mHydrogen, thisOctal%tLast(subcell), &
+                  thisOctal%dust_T(subcell), thisOctal%UV(subcell), v_turb, nspec, &
+                  thisOctal%abundance(subcell, :), nreac, rate, thisOctal%heatingRate(subcell,:), &
+                  NRGR, NRH2, NRHD, NRCO, NRCI, NRSI, NELECT)
+             
+             
+             print *, "heating values are ", thisOctal%heatingRate(subcell, :)
+             stop
+
+             fmean = thisOctal%heatingRate(subcell,12) - thisOctal%coolingRate(subcell)
+             fRatio = 2.0D0*abs(Fmean)/abs(thisoCtal%heatingRate(subcell,12) + &
+                  thisOctal%coolingRate(subcell))
+
+
+             ! Store the current temperature in a dummy variable            
+             ! Do not start testing the thermal balance until enough iterations have passed for the level populations to begin to converge...
+             if (level_conv.and.first_time) then
+                dummytemperature = thisOctal%tLast(subcell)
+                ! Determine the temperature bracket to begin searching within...
+                if (Fmean.eq.0) then ! Handle the (very rare) case when the initial guess temperature is the correct value    
+                   Tlow = thisOctal%tLast(subcell)  ! Update the value of Tlow
+                   Thigh = thisOctal%tLast(subcell) ! Update the value of Thigh
+                else if (Fmean.gt.0) then !---> HEATING                  
+                   Tlow = thisOctal%tLast(subcell)  ! Update the value of Tlow 
+                   thisOctal%tLast(subcell) = 1.3D0*thisOctal%tLast(subcell) !increase 30%
+                   !1 for heating, 0 for cooling
+                   thisOctal%lastChange(subcell) = 1 !we increase                      
+                else if (Fmean.lt.0) then !---> COOLING                   
+                   Thigh = thisOctal%tLast(subcell) ! Update the value of Thigh 
+                   thisOctal%tLast(subcell) = 0.7D0*thisOctal%tLast(subcell) !decrease 30%
+                   thisOctal%lastChange(subcell) = 0 !we increase                      
+!                   previouschange(pp) = "C" !we decrease                     
+                endif
+                thisOctal%tPrev(subcell) = dummytemperature
+
+             else if (level_conv.and..not.first_time) then
+                dummytemperature = thisOctal%tLast(subcell)
+                ! Check for convergence in both the heating-cooling imbalance and the temperature difference between iterations
+                if (Fratio.le.Fcrit) thisOctal%converged(subcell) = .true.
+                
+                if (.not.thisOctal%biChop(subcell)) then
+                   !if we *still* need to heat, increase by 30%
+                   if (Fmean.gt.0.and.thisOctal%lastChange(subcell).eq.1) then
+                      Tlow = thisOctal%tLast(subcell)
+                      thisOctal%tLast(subcell) = 1.3D0*thisOctal%tLast(subcell)
+                      Thigh = thisOctal%tLast(subcell)
+                      thisOctal%lastChange(subcell) = 1
+                      !if we *still* need to cool, decrease by 30%                                                                                                                                
+                   endif
+
+                   if (Fmean.lt.0.and.thisOctal%lastChange(subcell).eq.0) then
+                      Thigh = thisOctal%tLast(subcell)
+                      thisOctal%tLast(subcell) = 0.7D0*thisOctal%tLast(subcell)
+                      Tlow = thisOctal%tLast(subcell)
+
+                      thisOctal%lastChange(subcell) = 0
+                   endif
+                      
+                   
+                endif
+
+
+                !For all other cases do binary chop and flag the process as .true.
+                !Needs heating but previously it was decreased by 30%.          
+                if (Fmean > 0.d0 .and.thisOctal%lastChange(subcell).eq.0) then
+                   !     gastemperature(pp) = 1.3D0*gastemperature(pp) !<------       
+                   thisOctal%TLast(subcell) = (Thigh + &
+                        Tlow)/2.0D0
+                   thisOctaL%biChop(subcell)=.true.  !from now on            
+                endif
+
+!Does nothing different to the first one... THaw
+                if (Fmean.lt.0.and.thisOctal%lastChange(subcell).eq.1) then
+                   thisOctal%tlast(subcell) = (Thigh + &
+                        Tlow)/2.0D0
+                   thisOctal%biChop(subcell) = .true.
+!                   dobinarychop(pp)=.true.  
+                endif
+
+             else
+                if (Fmean.gt.0) then
+                   Tlow = thisOctal%Tlast(subcell)
+                   thisOctal%Tlast(subcell) = (thisOctal%Tlast(subcell) + &
+                        Thigh) / 2.0D0
+                endif
+
+                if (Fmean.lt.0) then
+                   Thigh = thisOctal%Tlast(subcell)
+                   thisOctal%Tlast(subcell) = (thisOctal%Tlast(subcell) + &
+                        Tlow) / 2.0D0
+                endif
+
+
+                if ((abs(thisOctal%Tlast(subcell)-thisOctal%tPrev(subcell)).le.Tdiff).and.&
+                     (Fratio.gt.Fcrit)) then
+                   if (thisOctal%expanded(subcell)) thisOctal%converged(subcell) = .true.
+                   if (Fmean.gt.0) then
+                      Tlow = thisOctal%Tlast(subcell)
+                      thisOctal%Tlast(subcell) = 4.0D0*thisOctal%Tlast(subcell)
+                      !           Thigh(pp) = 1.3D0*gastemperature(pp) !*************
+                   endif
+                   if (Fmean.lt.0) then
+                      Thigh = thisOctal%Tlast(subcell)
+                      thisOctal%Tlast(subcell) = 0.25d0*thisOctal%Tlast(subcell)
+                      !           Tlow(pp) = 0.7D0*gastemperature(pp) !**********    
+                   endif
+                   thisOctal%expanded(subcell) = .true.
+                endif
+                
+                thisOctal%tPrev(subcell) = dummytemperature
+                
+                if ((dummytemperature.le.thisOctal%Tmin(subcell)).and.&
+                     (Fmean.lt.0)) thisOctal%converged(subcell) = .true.
+                if ((dummytemperature.ge.thisOctal%Tmax(subcell)).and.&
+                     (Fmean.gt.0))thisOctal%converged(subcell) = .true.
+                
+                if (thisOctal%converged(subcell)) then
+                   if (dummytemperature.le.thisOctal%Tmin(subcell)) &
+                        thisOctal%tPrev(subcell) = thisOctal%Tmin(subcell)
+                   if (dummytemperature.ge.thisOctaL%Tmax(subcell)) &
+                        thisOctal%tPrev(subcell) = thisOctal%Tmax(subcell)
+                endif
+
+
+             endif
+                                      
+          else
+             thisOctal%heatingRate(subcell,:) = 0.d0
+          endif
+       endif
+    enddo
+end subroutine calcHeatingOverGrid
 
 
 recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, nc12o)
@@ -423,7 +656,11 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            enddo
 !           print *, "BLA"
 
-           
+  
+!           ACI = 0.d0
+ !          ACII = 0.d0
+  !         AOI = 0.d0
+   !        AC12O = 0.d0
            ACI = 1.d-30
            ACII = 1.d-30
            AOI = 1.d-30
@@ -453,24 +690,11 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
                     
                     outoi = outoi + thisOctal%OItransition(subcell, ilevel, jlevel)
                     AOI(ilevel, jlevel) = thisOctal%OItransition(subcell, jlevel, ilevel)
-!                    print *, "AOI", ilevel, jlevel, thisOctal%OItransition(subcell, jlevel, ilevel)
-!                    print *, "outoi", outoi
-!                    dummy = abs(AOI(ilevel, jlevel))
+
                  endif
                  outc12o = outc12o + thisOctal%C12otransition(subcell, ilevel, jlevel)
                  AC12O(ilevel, jlevel) = thisOctal%C12otransition(subcell, jlevel, ilevel)
 
-!                 if(ilevel ==38) then
-!                    print *, "monitoring ", jlevel
-!                    print *, "outc12o", outc12o
-!                    print *, "transition", thisOctal%C12otransition(subcell, ilevel, jlevel)
-!                    print *, "tauc12o(ilevel, jlevel)", tauc12o(ilevel, jlevel)
-!                 endif
-!                 if(ilevel == 38 .and. jlevel == 38) then
-!                    print *, "38 stuff A"
-!                    print *, AC12O(ilevel, ilevel)
-!                    
-!                 endif
 
               enddo
               
@@ -492,58 +716,36 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 !
            
            DO Ilevel=1,C12O_NLEV
+
               if(ilevel <= CII_NLEV) then
-!                 thisOctal%cii_pop(subcell,iLevel)=0.0D0
-!                 thisOctal%ci_pop(subcell,iLevel)=0.0D0
-!                 thisOctal%oi_pop(subcell,iLevel)=0.0D0
-                 ACII(CII_NLEV,Ilevel)=1.0D-8            
+!not sure if these should be zeroed
+!THEY SHOULD BE - THaw
+                 thisOctal%cii_pop(subcell,iLevel)=0.0D0
+                 thisOctal%ci_pop(subcell,iLevel)=0.0D0
+                 thisOctal%oi_pop(subcell,iLevel)=0.0D0
+                 ACII(CII_NLEV,Ilevel)=1.0D-8
                  ACI(CI_NLEV,Ilevel)=1.0D-8            
                  AOI(OI_NLEV,Ilevel)=1.0D-8            
-              endif
- !             thisOctal%c12o_pop(subcell,iLevel)=0.0D0
+              endif!
+              thisOctal%c12o_pop(subcell,iLevel)=0.0D0
               AC12O(C12O_NLEV,Ilevel)=1.0D-8            
-
            enddo
 
-!           do ilevel = 1, C12O_NLEV
-!              do jlevel = 1, C12O_NLEV
-!!                 print *, "i, j ", ilevel, jlevel
-!                 print *, "c12o transition ", thisOctal%c12otransition(subcell, ilevel, jlevel)
-!                 print *, "c12o line ", thisOctal%c12oline(subcell,ilevel,jlevel)
-!                 print *, "AC12O(", AC12O(ilevel, jlevel)
-!                 dummy = abs(thisOctal%c12oline(subcell,ilevel,jlevel))
-!                 dummy = abs(thisOctal%c12otransition(subcell, ilevel, jlevel))
-!                 dummy = abs(AC12O(ilevel, jlevel))
-!!              enddo
- !          enddo
-
            
 
-           !        thisOctal%cii_pop(subcell,5)=1.0-8
-           !        thisOctal%ci_pop(subcell,5)=1.0D-8
-           !        thisOctal%oi_pop(subcell,5)=1.0D-8
-           !        thisOctal%c12o_pop(subcell,41)=1.0D-8
+           thisOctal%cii_pop(subcell,5)=1.0D-8*thisOctal%rho(subcell)*thisOctal%abundance(subcell,ncii)/mhydrogen
+           thisOctal%ci_pop(subcell,5)=1.0D-8*thisOctal%rho(subcell)*thisOctal%abundance(subcell,nci)/mhydrogen
+           thisOctal%oi_pop(subcell,5)=1.0D-8*thisOctal%rho(subcell)*thisOctal%abundance(subcell,noi)/mhydrogen
+           thisOctal%c12o_pop(subcell,41)=1.0D-8*thisOctal%rho(subcell)*thisOctal%abundance(subcell,nc12o)/mhydrogen
            
-           !           SOLUTION(I)=0.0D0
-           
-           !        do ilevel = 1, C12O_NLEV
-           !        
-           !           if(ilevel <= CII_NLEV) then
-           !              ACII(CII_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
-           !              ACI(CI_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
-           !              AOI(OI_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
-           !           endif
-           !           AC12O(C12O_NLEV,iLevel)=1.0D-8 !non-zero starting parameter to avoid division by zero.
-           !        enddo
-
 !           print *, "ACI ", ACI
  !          print *, "ACII ", ACII
-!           print *, "AOI ", AOI
-!           print *, "AC12O ", AC12O
-
-!           print *, "rank ", myrankglobal, "doing cii gauss-jordan"
+ !          print *, "AOI ", AOI
+  !         print *, "AC12O ", AC12O
+!
+  !         print *, "rank ", myrankglobal, "doing cii gauss-jordan"
            CALL GAUSS_JORDAN(ACII,CII_NLEV,CII_NLEV,thisOctal%CII_POP(subcell, :),1, callwrites)
-!           print *, "rank ", myrankglobal, "done"
+   !        print *, "rank ", myrankglobal, "done"
            
 !           print *, "rank ", myrankglobal, "doing ci gauss-jordan"
            CALL GAUSS_JORDAN(ACI,CI_NLEV,CI_NLEV,thisOctal%CI_POP(subcell, :),2, callwrites)
@@ -560,9 +762,13 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            
            do ilevel = 1, C12O_NLEV
               if(Ilevel <= CII_NLEV) then
-                 if (thisOctal%CII_POP(subcell, ilevel).lt.0.0D0) &
-                      thisOctal%CII_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
-                 
+                 if (thisOctal%CII_POP(subcell, ilevel).lt.0.0D0) then
+                    print *, "isOctal%CII_POP(subcell, ilevel)", thisOctal%CII_POP(subcell, ilevel)
+                    print *, "ilevel is", ilevel
+                    thisOctal%CII_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
+                    
+!                    call torus_abort("found negative population ")
+                 endif
                  if (thisOctal%CI_POP(subcell, ilevel).lt.0.0D0) &
                       thisOctal%CI_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!'
                  
@@ -574,7 +780,7 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
               if (thisOctal%C12O_POP(subcell, ilevel).lt.0.0D0) &
                    thisOctal%C12O_POP(subcell, ilevel)=0.0D0!1.0D-99!then !stop 'found negative solution!' 
            ENDDO
-
+!           stop
            
         else
            thisOctal%ciiline(subcell, :, :) = 0.d0
@@ -586,6 +792,10 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            thisOctal%c12oline(subcell, :, :) = 0.d0
            thisOctal%c12oTransition(subcell, :, :) = 0.d0
            thisOctal%coolingRate(subcell) = 0.d0
+           thisOctal%CII_POP(subcell, :) = 0.d0
+           thisOctal%CI_POP(subcell, :) = 0.d0
+           thisOctal%OI_POP(subcell, :) = 0.d0
+           thisOctal%C12O_POP(subcell, :) = 0.d0
         end if
 
 
@@ -608,6 +818,7 @@ real(double) function updateTau(Acoeff,freq, jPop, iWeight, iPop, &
        &(jPop*iweight-iPop*jWeight))&
        /2./jWeight                       
   
+!THAW temporarily rming the pcToCm
   updateTau=frac1*frac2*frac3*tval*1.d10*pcToCm
 
 !  if(debug) then

@@ -278,7 +278,7 @@ function recombRate(thisIon, temperature) result (rate)
                  b = 0.7480
                  t0 = 3.148e0
                  t1 = 7.036e5
-                 rate = vernerFerland(a, dble(temperature), t0, t1, b)
+                rate = vernerFerland(a, dble(temperature), t0, t1, b)
               end if
            case DEFAULT
               write(*,*) "No recombination rate for ",thisIon%species

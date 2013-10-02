@@ -2209,7 +2209,7 @@ contains
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
             "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
     endif
-
+!
 
     if (sphericalHydro) then
        amrGridCentreX = amrgridsize/2.

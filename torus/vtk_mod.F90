@@ -1055,6 +1055,9 @@ contains
                case("pdrtemp")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
+               case("tLast")
+                  write(lunit, *) real(thisOctal%tLast(subcell))
+
                case("CO_PDR")
                   write(lunit, *) real(thisOctal%abundance(subcell, 28))
                case("C+_PDR")
@@ -1082,6 +1085,9 @@ contains
 
                case("cooling")
                   write(lunit, *) real(thisOctal%coolingRate(subcell))
+
+               case("heating")
+                  write(lunit, *) real(thisOctal%heatingRate(subcell, 12))
 #endif
 
                case("chiline")
@@ -3262,6 +3268,9 @@ end subroutine writeXMLVtkFileAMR
                case("pdrtemp")
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
+               case("tLast")
+                  rArray(1, n) = real(real(thisOctal%temperature(subcell)))
+
                case("CO_PDR")
                   rArray(1, n) = real(thisOctal%abundance(subcell, 28))
 
@@ -3288,6 +3297,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("cii_line")
                   rArray(1, n) = real(thisOctal%ciiLine(subcell, 2, 1))
+
+               case("heating")
+                  rArray(1, n) = real(thisOctal%heatingRate(subcell, 12))
 
                case("cooling")
                   rArray(1, n) = real(thisOctal%coolingRate(subcell))

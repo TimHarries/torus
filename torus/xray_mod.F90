@@ -516,7 +516,7 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
 !           uhat = -uhat
 !           print *, "tracing ray with ", uhat
            foundstar = .false.
-           do while (inOctal(grid%octreeRoot, testPosition) .and. .not. foundstar)     
+           do while (.not. foundstar)     
  !             print *, "went one"
 !              call findSubcellLocal(testPosition, sOctal, ssubcell)
 !              if(.not octalonthread(thisoctal, myrankglobal)) then

@@ -16,7 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
-sundials = yes
+sundials = no
 hdf = no
 memcheck = yes
 zlib = yes
@@ -29,7 +29,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
-pdr = yes
+pdr = no
 hydro = yes
 molecular = yes
 photoion = yes
@@ -511,9 +511,10 @@ CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90
                   pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90
 
 
+ifeq ($(pdr),yes)
 CSOURCE = calculate_abundances_onepart.c jacobian_reduced.c odes_reduced.c
 CSOURCELIB = calculate_abundances_onepart.c jacobian_reduced.c odes_reduced.c
-
+endif
 
 # Object files
 #

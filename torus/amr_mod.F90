@@ -8146,6 +8146,10 @@ endif
 
        endif
     end if
+!    if(pdrcalc) then
+!       thisOctal%converged(subcell) = .false.
+!       thisOctal%biChop
+!    endif
 
 
     thisOctal%inFlow(subcell) = .true.
@@ -10227,7 +10231,7 @@ end function readparameterfrom2dmap
     real(double) :: eThermal!, numDensity
    
     rVec = subcellCentre(thisOctal,subcell)
-    thisOctal%rho(subcell) = (1.d2)*mHydrogen
+    thisOctal%rho(subcell) = (5.d2)*mHydrogen
     thisOctal%temperature(subcell) = 1.d4
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
@@ -11813,9 +11817,15 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%Tminarray, source%Tminarray)    
     call copyAttribute(dest%Tmaxarray, source%Tmaxarray)    
     call copyAttribute(dest%UV, source%UV)
+    call copyAttribute(dest%converged, source%converged)
+    call copyAttribute(dest%biChop, source%biChop)
+    call copyAttribute(dest%expanded, source%expanded)
+    call copyAttribute(dest%lastChange, source%lastChange)
+    call copyAttribute(dest%tPrev, source%tPrev)
     call copyAttribute(dest%dust_T, source%dust_T)
     call copyAttribute(dest%columnRho, source%columnRho)
     call copyAttribute(dest%coolingRate, source%coolingRate)
+    call copyAttribute(dest%heatingRate, source%heatingRate)
 
     call copyAttribute(dest%ciiLine, source%ciiLine)
     call copyAttribute(dest%ciiTransition, source%ciiTransition)
@@ -15384,6 +15394,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
 
+
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%sourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
@@ -15401,6 +15412,11 @@ end function readparameterfrom2dmap
        nside=2**hlevel
        nrays = 12*nside**2
        call allocateAttribute(thisOctal%UV, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%converged, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biChop, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%expanded, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%lastChange, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%tPrev, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%dust_T, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tlast, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tmin, thisOctal%maxChildren)
@@ -15410,7 +15426,8 @@ end function readparameterfrom2dmap
 !       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%coolingRate, thisOctal%maxChildren)
-
+!       call allocateAttribute(thisOctal%heatingRate, thisOctal%maxChildren)
+       allocate(thisOctal%heatingRate(1:thisOctal%maxchildren, 1:12))
        allocate(thisOctal%cii_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%ci_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%oi_pop(1:thisOctal%maxchildren, 1:5))
@@ -15634,9 +15651,15 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%c12oTransition)
 
     call deallocateAttribute(thisOctal%coolingRate)
+    call deallocateAttribute(thisOctal%heatingRate)
     call deallocateAttribute(thisOctal%thisColRho)
     call deallocateAttribute(thisOctal%abundance)
     call deallocateAttribute(thisOctal%UV)
+    call deallocateAttribute(thisOctal%converged)
+    call deallocateAttribute(thisOctal%biChop)
+    call deallocateAttribute(thisOctal%expanded)
+    call deallocateAttribute(thisOctal%lastChange)
+    call deallocateAttribute(thisOctal%tPreV)
     call deallocateAttribute(thisOctal%dust_T)
     call deallocateAttribute(thisOctal%radsurface)
     call deallocateAttribute(thisOctal%Tlast)

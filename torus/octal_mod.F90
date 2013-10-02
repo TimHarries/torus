@@ -319,11 +319,15 @@ MODULE octal_mod
     real(double), dimension (:, :, :), pointer :: oiTransition=>null()
     real(double), dimension (:, :, :), pointer :: c12oLine=>null()
     real(double), dimension (:, :, :), pointer :: c12oTransition=>null()
-
+    logical, pointer :: converged(:)=>null()
+    logical, pointer :: biChop(:)=>null()
+    logical, pointer :: expanded(:)=>null()
+    integer, pointer :: lastChange(:)=>null()
 !    real(double), dimension (:, :, :, :), pointer :: pdrTransition=>null()
-
+    
     real(double), pointer :: UV(:)=>null()
     real(double), pointer :: dust_T(:)=>null()
+    real(double), pointer :: TPrev(:)=>null()
 !    real(double), pointer :: TPDR(:)=>null()     
     real(double), pointer :: TLast(:)=>null()     
     real(double), pointer :: TMin(:)=>null()     
@@ -335,6 +339,7 @@ MODULE octal_mod
     real(double), pointer :: OI_Pop(:,:)=>null()
     real(double), pointer :: C12O_Pop(:,:)=>null()
     real(double), pointer :: coolingRate(:)=>null()
+    real(double),dimension(:,:), pointer :: heatingRate=>null()
 
 !    real(double), pointer :: CII_CCOEFFS(:)
 #endif

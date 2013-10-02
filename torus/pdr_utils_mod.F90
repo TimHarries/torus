@@ -2504,63 +2504,6 @@ END SUBROUTINE CALCULATE_LTE_POPULATIONS
 
 
 
-SUBROUTINE solvlevpop(NLEV,TRANSITION,density,SOLUTION,coolant)
-
-!  use definitions
-!  use healpix_types
-!  use maincode_module, only : p,iteration,pdr,gridpoint,nrays
-
-  implicit none  
-  integer, intent(in) :: NLEV
-  integer, intent(in) :: coolant
-  real(double), intent(in) :: density
-  real(double), intent(in) :: transition(1:NLEV,1:NLEV)
-  real(double), intent(out) :: SOLUTION(1:NLEV)
-  integer :: i,j
-  real(double) :: out1
-  real(double) :: A(1:NLEV,1:NLEV)
-  logical::call_writes
-!  real(double) :: temp_a(1:nlev,1:nlev),temp_solution(1:nlev)
- ! integer :: nrays
-  
-!THAW -- need defined
-  
-
-!  nrays = nray_func()
-
-
-         A=0.0D0
-!        Fill the matrix
-         DO I=1,NLEV
-            OUT1=0.0D0
-            DO J=1,NLEV
-               OUT1=OUT1+TRANSITION(I,J)
-               A(I,J)=TRANSITION(J,I)
-            ENDDO
-            A(I,I)=-OUT1
-         ENDDO
-!        Initialize the solution array before calling the solver routine
-         DO I=1,NLEV
-            SOLUTION(I)=0.0D0
-            A(NLEV,I)=1.0D-8 !non-zero starting parameter to avoid division by zero.
-         ENDDO
-
-         SOLUTION(NLEV)=DENSITY*1.0D-8
-
-         CALL GAUSS_JORDAN(A,NLEV,NLEV,SOLUTION,coolant,call_writes)
-
-!        Replace negative level populations due to numerical noise around 0
-         DO I=1,NLEV
-            if (solution(i).lt.0.0D0) solution(i)=0.0D0!1.0D-99!then !stop 'found negative solution!'
-!              write(6,*) '';write(6,*) 'found negative solution in p=',p;write(6,*) 'coolant=',coolant;write(6,*)''
-!              call gauss_jordan_writes(temp_a,nlev,nlev,temp_solution,coolant,i)
-!              stop
-!            endif
-         ENDDO
-         
-     return
-   end subroutine solvlevpop
-
 !C-----------------------------------------------------------------------
 !C Standard Gauss-Jordon linear equation solver from Numerical Recipes
 !C A(N,N) is an input matrix stored in an array of dimensions NPxNP
@@ -2608,12 +2551,13 @@ SUBROUTINE solvlevpop(NLEV,TRANSITION,density,SOLUTION,coolant)
                   ELSE IF(IPIV(K).GT.1) THEN
                      if(firstTime) then
                         PRINT *,'ERROR! Singular matrix in GAUSS_JORDAN'
-                        call_writes=.true.
+                        write(6,*) ' coolant = ',coolant 
+                       call_writes=.true.
                         firstTime = .false.
                         return
                      endif
 !                     write(6,*) 'Crashed in first loop'
-                     write(6,*) ' coolant = ',coolant
+!
 !                     write(6,*) 'gastemperature = ',gastemperature(p)
 !                     STOP
                   ENDIF
