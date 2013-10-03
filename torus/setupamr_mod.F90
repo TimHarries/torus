@@ -416,6 +416,7 @@ contains
 
 
           case("theGalaxy","fitsfile")
+             call writeInfo("Calling quickSublimate",FORINFO)
              call quickSublimate(grid%octreeRoot)
 
           case("ttauri")
@@ -1502,7 +1503,7 @@ contains
 #ifdef SPH
     use sph_data_class, only: sph_mass_within_grid, info_sph
 #endif
-    use inputs_mod, only : mDisc, geometry
+    use inputs_mod, only : mDisc, geometry, sphWithChem
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
@@ -1534,8 +1535,13 @@ contains
        write(message,*) "Minimum Density: ",minrho, " g/cm^3"
        call writeInfo(message, TRIVIAL)
 
-! Write a VTK file so we can check the SPH to grid conversion 
-       call writeVTKfile(grid, "gridFromSph.vtk")
+! Write a VTK file so we can check the SPH to grid conversion
+       if ( sphWithChem ) then 
+          call writeVTKfile(grid, "gridFromSph.vtk", valueTypeString=(/"rho         ",&
+         "temperature ", "velocity    ", "molabundance", "nh2         "/))
+       else
+          call writeVTKfile(grid, "gridFromSph.vtk")
+       end if
 
 ! Write SPH information (e.g. code units) to a file
        call info_sph("info_sph.dat")

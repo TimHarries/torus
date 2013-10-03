@@ -321,9 +321,6 @@ contains
        thisOctal%temperature(subcell) =  real(max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4)))
     end if
 
-! Initialise to zero, will be set later in this subroutine if required
-    if(associated(thisOctal%molabundance))thisOctal%molabundance = 0.0
-
 ! Set H2 number density from SPH particles if present
     if ( associated(thisOctal%nh2) ) then
        if (associated(sphData%rhoH2) ) then 
