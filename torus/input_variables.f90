@@ -1,7 +1,11 @@
   !   a large number of variables are passed to the torus main
   !   program by the inputs subroutine. they are all collected
   !   here so that they only need to be defined once.  nhs
-  !   These now are inlcuded in inputs_mod. D. Acreman 
+  !
+  !   These now are inlcuded in inputs_mod and can be declared as 
+  !   'protected'. This is a F2003 feature which means that only 
+  !   the module containing the variable can change it - other modules
+  !   have read-only access (i.e. it is like intent(in)). D. Acreman 
 
 !----------------------------------
 ! Physical ingredients of the model
@@ -758,20 +762,20 @@
 ! Parameters for setting up a run from SPH particles
 !---------------------------------------------------
 
-  character(len=80) :: sphdataFilename
-  character(len=80) :: inputFileFormat 
-  real    :: hcritPercentile
-  real    :: hmaxPercentile
-  real    :: sph_norm_limit
-  integer :: kerneltype
-  logical :: useHull
-  logical :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
-  logical :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
+  character(len=80), protected :: sphdataFilename
+  character(len=80), protected :: inputFileFormat 
+  real, protected    :: hcritPercentile
+  real, protected    :: hmaxPercentile
+  real, protected    :: sph_norm_limit
+  integer, protected :: kerneltype
+  logical, protected :: useHull
+  logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
+  logical, protected :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
   logical :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
-  logical :: convertRhoToHI ! Convert density to HI
-  integer :: ih2frac        ! column of SPH file which contains H2 fraction
-  logical :: sphwithchem    ! SPH has chemistry data which needs to be read
-  logical :: discardSinks   ! Don't store sink particles
+  logical, protected :: convertRhoToHI ! Convert density to HI
+  integer, protected :: ih2frac        ! column of SPH file which contains H2 fraction
+  logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
+  logical, protected :: discardSinks   ! Don't store sink particles
 
 
 !------------------
