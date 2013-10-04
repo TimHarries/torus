@@ -1,5 +1,5 @@
-#ifdef PDR
 module nrayshealpix
+#ifdef PDR
 use constants_mod
 use messages_mod
 use parallel_mod
@@ -89,5 +89,6 @@ subroutine donrayshealpix()
 #endif
 
 end subroutine donrayshealpix
-end module
 #endif
+end module
+
