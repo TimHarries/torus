@@ -307,27 +307,33 @@ contains
 
     TYPE(octal), pointer :: thisOctal
     INTEGER :: subcell
-    real(double), parameter :: density_crit = 1d13
     type(vector) :: point, clusterparam
+    logical, save :: firstTime=.true.
+! Critical density if we are not using SPH temperature
+!    real(double), parameter :: density_crit = 1d13
 
     point = subcellcentre(thisOctal, subcell)
-    ! Calculate density, temperature and H2 (if required) 
+! This function returns density, temperature and H2 (if required) 
     clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 2)
 
+! Set octal density
     thisOctal%rho(subcell) = clusterparam%x
-    if ( sphData%useSphTem ) then 
-       thisOctal%temperature(subcell) =  max(real(clusterparam%y), tMinGlobal)
-    else
-       thisOctal%temperature(subcell) =  real(max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4)))
-    end if
+
+! Set octal temperature
+    thisOctal%temperature(subcell) =  max(real(clusterparam%y), tMinGlobal)
+! If you don't want to use the SPH particle temperature then do something else here e.g. 
+!    thisOctal%temperature(subcell) =  real(max(10.0_db, 10. * (thisOctal%rho(subcell) * density_crit)**(0.4)))
 
 ! Set H2 number density from SPH particles if present
     if ( associated(thisOctal%nh2) ) then
-       if (associated(sphData%rhoH2) ) then 
+       if (associated(sphData%rhoH2) ) then
+          if (firstTime) call writeInfo("Setting nH2 from SPH particle H2 fraction",FORINFO)
           thisOctal%NH2(subcell) = clusterparam%z / (2.0_db * mhydrogen)
        else
+          if (firstTime) call writeInfo("Setting nH2 assuming particle density is all H2",FORINFO)
           thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
           if(doCOchemistry) then
+             if (firstTime) call writeInfo("Setting abundance from drop model")
              !       thisOctal%molAbundance(subcell) = 4e-10
              if(thisOctal%nh2(subcell) .lt. 3e4) thisOctal%molAbundance(subcell) = x_D ! drop fraction
              !       if(thisOctal%rho(subcell) .gt. 1.55885d-12) thisOctal%molAbundance(subcell) = 4e-9 !T > 30K
@@ -343,10 +349,13 @@ contains
 
 ! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
     if ( associated (sphData%rhoCO) ) then 
+       if (firstTime) call writeInfo("Setting CO abundance from particle abundance values")
        clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 3)
        thisOctal%molabundance(subcell) = real(max( ( clusterparam%x / ( 28.0_db * mhydrogen ) ) / thisOctal%nh2(subcell), 1d-37))
        write(115,*) thisOctal%molabundance(subcell), clusterparam%x, thisOctal%nh2(subcell)
     end if
+
+    firstTime=.false.
 
   end subroutine assign_grid_values
 

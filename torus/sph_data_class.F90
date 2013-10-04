@@ -43,7 +43,8 @@ module sph_data_class
        sphVelocityPresent, &
        read_sph_data_wrapper, & ! only the wrapper routine is public
        sph_mass_within_grid, &
-       npart, init_sph_data ! for distributeSphDataOverMPI
+       npart, init_sph_data, & ! for distributeSphDataOverMPI
+       deallocate_sph
 
 ! Default is private  
   private
@@ -82,16 +83,12 @@ module sph_data_class
      ! 
      !
      ! Some extra data for the stellar disk.
-     ! Note: the units used here are diffrent from the ones used above!     
+     ! Note: the units used here are different from the ones used above!     
      logical :: have_stellar_disc            ! T if the following data are assigned
      real(double), pointer, dimension(:) :: discrad ! in [10^10cm]
      real(double), pointer, dimension(:) :: discmass   ! in [g]
      real(double), pointer, dimension(:) :: spinx, spiny, spinz
           
-     ! Does the temperature of the SPH particles get used?
-     logical :: useSphTem 
-     
-
   end type sph_data
 
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
@@ -133,9 +130,6 @@ contains
 
     ! Indicate that this object is in use
     sphdata%inUse = .true.
-
-! Do not use temperature from SPH particles to initialise temperature grid
-    sphData%useSphTem = .false. 
 
     ! save these values in this object
     sphdata%udist = udist
@@ -226,8 +220,6 @@ contains
     ! Indicate that this object is in use
     sphData%inUse = .true.
 
-! Use temperature from SPH particles to initialise temperature grid
-    sphData%useSphTem = .true. 
 ! no conversion required
     sphdata%codeEnergytoTemperature = 1.0 
 
@@ -485,7 +477,6 @@ contains
        allocate(sphdata%rhoH2(npart))
     end if
 
-    sphData%useSphTem = .true.
     sphdata%totalgasmass = 0.d0
 
     nlines = npart + nghost + nptmass + nstar + nunknown ! npart now equal to no. lines - 12 = sum of particles dead or alive
@@ -998,7 +989,6 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
 
     write(*,*) myrankGlobal, "nptmass ", i_pt_mass, npart
     call init_sph_data(udist, umass, utime, time, i_pt_mass)
-    sphData%useSphTem = .true. 
     sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
 
 ! Allocate chemistry related components
@@ -1159,7 +1149,6 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
     call mpi_send(sphdata%vz, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
 
 
-    call kill_sph_data()
  enddo hydroThreads
 
     deallocate(rho)
@@ -1608,6 +1597,22 @@ contains
 
   end subroutine kill_sph_data
 
+
+  subroutine deallocate_sph
+    use octal_mod
+
+    type(VECTOR) :: dummyVector
+    type(OCTAL),pointer  :: dummyOctal
+
+    if (.not.sphdata%inUse) return
+
+    call writeInfo("Deallocating SPH data", TRIVIAL)
+    call kill_sph_data
+
+    call writeInfo("Deallocating clusterParameter storage", TRIVIAL)
+    dummyVector = clusterparameter(VECTOR(0.d0,0.d0,0.d0),dummyOctal, subcell = 1, isdone = .true.)
+
+  end subroutine deallocate_sph
 
   !
   ! Retuns the minimum value of rhon

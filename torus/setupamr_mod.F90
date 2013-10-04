@@ -45,7 +45,7 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: read_sph_data_wrapper
+    use sph_data_class, only: read_sph_data_wrapper, deallocate_sph
 #endif
 #ifdef MPI 
     use mpi_amr_mod
@@ -564,6 +564,9 @@ contains
 ! been allocated, that way it is always safe to call the subroutine.
 #ifdef USECFITSIO
         call deallocate_gridFromFitsFile
+#endif
+#ifdef SPH
+        call deallocate_sph
 #endif
         call deallocate_gridFromFlash
         call deallocate_vh1
