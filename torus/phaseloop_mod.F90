@@ -345,13 +345,15 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
      ! Images call phaseloop once per image and looping is done by doOutputs
      nInclination = 1 
+     positionAngle = GetImagePA(imNum)
      outfile = getImageFilename(imNum)
   else
      ! Multiple SED inclinations can be generated on each call to this subroutine
      nInclination = getNumSedInc()
+     positionAngle = 0.0
      outfile = sedFileName
   endif
-  positionAngle = GetImagePA(imNum)
+
   call findMultiFilename(outfile, iModel, tempFilename)
   outfile = tempFilename
 
