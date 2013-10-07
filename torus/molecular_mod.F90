@@ -848,7 +848,7 @@ module molecular_mod
      use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
-          zeroGhosts, forceIniRay, setupMolecularLteOnly
+          zeroGhosts, forceIniRay, setupMolecularLteOnly, renewinputrays
      use dust_mod
      use parallel_mod
      use vtk_mod
@@ -873,7 +873,7 @@ module molecular_mod
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
      integer, parameter :: maxIter = 50
-     logical :: popsConverged, renewinputrays
+     logical :: popsConverged
      character(len=200) :: message
      integer :: iRay, iter, i 
      integer :: iStage
@@ -1103,7 +1103,6 @@ stage_loop: do iStage = 1, 2
             ngcounter = 0
             juststarted = .false.
 
-            renewInputRays = .true.
             if(renewInputRays) then
                nRay = 1000
             end if
@@ -1475,6 +1474,7 @@ pops_conv_loop: do while (.not. popsConverged)
            call writeAmrGrid(molgridfilename,.false.,grid)
            call writeinfo("",FORINFO)  
            if(writeoutput) then
+              call randomNumberGenerator(getIseed=iseedpublic)
               open(95, file="restart.dat",status="unknown",form="formatted")
               write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
               write(95, *) iseedpublic

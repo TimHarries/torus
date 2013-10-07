@@ -215,6 +215,7 @@
   logical :: modelwashydro
   logical :: forceIniRay
   logical :: zeroghosts
+  logical, protected :: renewinputrays
   logical :: plotlevels   
   logical :: writetempfits
   logical :: doCOchemistry

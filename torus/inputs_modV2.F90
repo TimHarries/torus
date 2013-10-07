@@ -1815,6 +1815,9 @@ contains
        else
           zeroghosts=.false.
        end if
+
+       call getLogical("renewinputrays", renewinputrays, cLine, fLine, nLines, &
+            "Restart with 1000 rays: ","(a,1l,a)", .false., ok, .false.)
   
        call getLogical("forceiniray", forceIniRay, cLine, fLine, nLines, &
                "Force the first ray towards star in stateq calculations: ","(a,1l,a)", .false., ok, .false.)
