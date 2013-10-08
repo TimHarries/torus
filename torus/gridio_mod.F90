@@ -3732,7 +3732,6 @@ contains
 !            enddo
             
             call readAmrGridSingle(gridfilename, fileFormatted, grid)
-            call writeInfo(message,TRIVIAL)
 
          endif
 
