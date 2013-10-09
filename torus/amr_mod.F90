@@ -11651,10 +11651,6 @@ end function readparameterfrom2dmap
     dest%threeD =   source%threeD 
     dest%twod = source%twoD  
     dest%oneD = source%oneD   
-! Bitstrings not used in V2. Commented out DMA March 2011
-!    dest%iXbitString = source%iXbitString
-!    dest%iYbitString = source%iYbitString
-!    dest%iZbitString = source%iZbitString
 
     dest%cylindrical = source%cylindrical
     dest%splitAzimuthally = source%splitAzimuthally

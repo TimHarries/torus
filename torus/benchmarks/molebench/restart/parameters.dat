@@ -1,0 +1,47 @@
+geometry molebench
+readgrid T
+inputfile testDump_HCO+_grid.grid
+restart T
+writegrid F
+
+! mindepthamr 8
+! maxdepthamr 8
+! disc params
+rinner 1.00065E+6                               
+router 4.00000E+7
+
+molecularphysics T
+stateq T
+
+! molecular stuff
+constantabundance T 
+molAbundance 1.d-8      % Abundance of HCO+ : H2 - use
+removehotmolecular F
+vturb 0.3
+tolerance 0.0001
+distance 250.0
+moleculefile hco_benchmark.mol
+quasi F
+dongstep T
+setmaxlevel 10
+outputconvergence T
+dotune T
+
+amr1d T
+amr2d F
+amrgridsize 9.2d7
+amrgridcentrex 4.6d7
+amrgridcentrey 0d0
+amrgridcentrez 0d0
+
+! Data cube parameters
+datacube T
+datacubefile molebench.fits
+imageside 9.2d7
+npixels 200
+nv 21
+maxVel 1.0
+itrans 1
+centrevecx 0.0
+centrevecy 0.0 
+centrevecz 0.0

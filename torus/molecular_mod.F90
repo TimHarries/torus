@@ -63,9 +63,6 @@ module molecular_mod
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
 
-! Have we written a restart dump yet?
-   logical, private, save :: firstDumpWritten=.false.
-
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
 
@@ -922,6 +919,9 @@ module molecular_mod
 
      logical :: warned_neg_dtau
 
+! Have we written a restart dump yet?
+     logical, save :: firstDumpWritten=.false.
+
      call writeinfo("molecular_mod 20100428.1400",TRIVIAL)
 
 #ifdef PHOTOION
@@ -936,12 +936,13 @@ module molecular_mod
 #endif
 
 ! logicals are quicker to access than strings 
-     if(grid%geometry .eq. 'molebench') molebench = .true.
-     if(grid%geometry .eq. 'molcluster') molcluster = .true.
-     if(grid%geometry .eq. 'iras04158') chrisdisc = .true.
-     if(grid%geometry .eq. 'ggtau') ggtau = .true.
-     if(grid%geometry .eq. 'agbstar') agbstar = .true.
-     if(grid%geometry .eq. 'h2obench2') hhobench = .true.
+! There are problems with restarts if grid%geometry is used without the indices (DMA)
+     if(grid%geometry(1:9)  .eq. 'molebench') molebench = .true.
+     if(grid%geometry(1:10) .eq. 'molcluster') molcluster = .true.
+     if(grid%geometry(1:9)  .eq. 'iras04158') chrisdisc = .true.
+     if(grid%geometry(1:5)  .eq. 'ggtau') ggtau = .true.
+     if(grid%geometry(1:7)  .eq. 'agbstar') agbstar = .true.
+     if(grid%geometry(1:9)  .eq. 'h2obench2') hhobench = .true.
 !     usedust = .false.
      debug=.false.
 
@@ -1525,7 +1526,6 @@ pops_conv_loop: do while (.not. popsConverged)
         endif
 ! Double number of rays if convergence criterion not met and not using fixed rays
 !THAW - changed this logical so that doubling occurs for non-fixed rays
-!        if (.not.gridConvergedTest) then
         if (.not.gridConvergedTest) then
            if (.not.gridConverged) then               
               if (.not.fixedRays .and. nray < (maxRay/2)) then
@@ -1786,6 +1786,7 @@ end subroutine molecularLoop
            ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
 
            if(ntau .gt. 2) thisOctal%nsplit(subcell) = ntau
+
         else
            ntau = 2
         endif
@@ -2395,7 +2396,7 @@ endif
            end do
         else
 ! if doing ng Acceleration step the do it here
-           if(ng) then
+doNg:       if(ng) then
 ! If fixedrays then only do every accstepgrand steps
               if((mod(ngcounter, accstepgrand) .eq. 0 .and. ngcounter .ne. 0) &
 !                   .or. nray .eq. 2048*initnray & 
@@ -2430,7 +2431,7 @@ endif
 !                         length = max(2,minlevel-1), doubleweight = .false.)
                  endif
               endif
-           endif
+           endif doNg
            
 ! determine updated fractional change in each level upto minlevels.
            newFracChangePerLevel = abs(((thisOctal%newMolecularLevel(1:minlevel,subcell) - &
@@ -4991,7 +4992,7 @@ subroutine compare_molbench(diffmax)
   real(double) :: bench_R, bench_J(ncols)
   real(double) :: diff(ncols,200)
 
-  integer :: diffmaxloc(2)!, diffmaxr(1)
+  integer :: diffmaxloc(2)
   integer :: nlines, status, i
 ! Status = 1 is a pass, 0 is a numerical fail, -1 is an incomplete file
 !  max_diff = 2.d0 * tolerance * sqrt(89.d0) ! sqrt(Nvoxels)
@@ -4999,7 +5000,7 @@ subroutine compare_molbench(diffmax)
   diff = -999.
   diffmax = -1.
 
-  open (unit=60, file=bench_file, status='unknown')
+  open (unit=60, file=bench_file, status='old')
   open (unit=61, file=model_file, status='old')
   open (unit=62, file=test2_file, position = "append")
   open (unit=63, file=test_file, position = "append")
@@ -5012,7 +5013,6 @@ subroutine compare_molbench(diffmax)
 
      read(60, *, iostat=status) bench_R, bench_J(:)
      read(61, *, iostat=status) model_R, model_J(:)
-
 
      if (status /= 0 ) then
 !        write(*,*) "Reached end of ", model_file, "before end of ", bench_file

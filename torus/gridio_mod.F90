@@ -674,9 +674,14 @@ contains
           call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
           
           call writeAttributePointerFlexi(20, "molecularLevel", thisOctal%molecularLevel, fileFormatted)
+          call writeAttributePointerFlexi(20, "oldmolecularLevel", thisOctal%oldmolecularLevel, fileFormatted)
+          call writeAttributePointerFlexi(20, "oldestmolecularLevel", thisOctal%oldestmolecularLevel, fileFormatted)
+          call writeAttributePointerFlexi(20, "newmolecularLevel", thisOctal%newmolecularLevel, fileFormatted)
+
           call writeAttributePointerFlexi(20, "jnu", thisOctal%jnu, fileFormatted)
           call writeAttributePointerFlexi(20, "bnu", thisOctal%bnu, fileFormatted)
           call writeAttributePointerFlexi(20, "molAbundance", thisOctal%molAbundance, fileFormatted)
+          call writeAttributePointerFlexi(20, "nsplit", thisOctal%nsplit, fileFormatted)
           call writeAttributePointerFlexi(20, "nh2", thisOctal%nh2, fileFormatted)
           call writeAttributePointerFlexi(20, "microTurb", thisOctal%microTurb, fileFormatted)
           call writeAttributePointerFlexi(20, "cornerrho", thisOctal%cornerrho, fileFormatted)          
@@ -3815,7 +3820,7 @@ contains
          logical :: fileFormatted
          integer, dimension(8) :: timeValues    ! system date and time
          integer               :: error         ! status code
-         character(len=80) :: message
+         character(len=80)     :: message
          if (fileFormatted) then
             open(unit=20, iostat=error, file=gridFilename, form="formatted", status="old")
             if (error /=0) then
@@ -3847,8 +3852,7 @@ contains
             end if
          end if
 
-         write(message,'(a,a)') "Reading flexible AMR file from: ",trim(gridfilename)
-         call writeInfo(message,TRIVIAL)
+         call writeInfo("Reading flexible AMR file from: "//trim(gridfilename),TRIVIAL)
 
          write(message,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
               timeValues(1),'/',timeValues(2),'/',&
@@ -4138,12 +4142,21 @@ contains
 
          case("molecularLevel")
             call readPointerFlexi(20, thisOctal%molecularLevel, fileFormatted)
+         case("oldmolecularLevel")
+            call readPointerFlexi(20, thisOctal%oldmolecularLevel, fileFormatted)
+         case("oldestmolecularLevel")
+            call readPointerFlexi(20, thisOctal%oldestmolecularLevel, fileFormatted)
+         case("newmolecularLevel")
+            call readPointerFlexi(20, thisOctal%newmolecularLevel, fileFormatted)
+
          case("jnu")
             call readPointerFlexi(20, thisOctal%jnu, fileFormatted)
          case("bnu")
             call readPointerFlexi(20, thisOctal%bnu, fileFormatted)
          case("molAbundance")
             call readPointerFlexi(20, thisOctal%molAbundance, fileFormatted)
+         case("nsplit")
+            call readPointerFlexi(20, thisOctal%nsplit, fileFormatted)
          case("nh2")
             call readPointerFlexi(20, thisOctal%nh2, fileFormatted)
          case("microTurb")
@@ -4502,12 +4515,21 @@ contains
 
          case("molecularLevel")
             call receivePointerFlexi(thisOctal%molecularLevel)
+         case("oldmolecularLevel")
+            call receivePointerFlexi(thisOctal%oldmolecularLevel)         
+         case("oldestmolecularLevel")
+            call receivePointerFlexi(thisOctal%oldestmolecularLevel)         
+         case("newmolecularLevel")
+            call receivePointerFlexi(thisOctal%newmolecularLevel)
+
          case("jnu")
             call receivePointerFlexi(thisOctal%jnu)
          case("bnu")
             call receivePointerFlexi(thisOctal%bnu)
          case("molAbundance")
             call receivePointerFlexi(thisOctal%molAbundance)
+         case("nsplit")
+            call receivePointerFlexi(thisOctal%nsplit)
          case("nh2")
             call receivePointerFlexi(thisOctal%nh2)
          case("microTurb")
@@ -4771,9 +4793,14 @@ contains
       call sendAttributePointerFlexi(iThread, "diffusionApprox", thisOctal%diffusionApprox)
 
       call sendAttributePointerFlexi(iThread, "molecularLevel", thisOctal%molecularLevel)
+      call sendAttributePointerFlexi(iThread, "oldmolecularLevel", thisOctal%oldmolecularLevel)
+      call sendAttributePointerFlexi(iThread, "oldestmolecularLevel", thisOctal%oldestmolecularLevel)
+      call sendAttributePointerFlexi(iThread, "newmolecularLevel", thisOctal%newmolecularLevel)
+
       call sendAttributePointerFlexi(iThread, "jnu", thisOctal%jnu)
       call sendAttributePointerFlexi(iThread, "bnu", thisOctal%bnu)
       call sendAttributePointerFlexi(iThread, "molAbundance", thisOctal%molAbundance)
+      call sendAttributePointerFlexi(iThread, "nsplit", thisOctal%nsplit)
       call sendAttributePointerFlexi(iThread, "nh2", thisOctal%nh2)
       call sendAttributePointerFlexi(iThread, "microTurb", thisOctal%microTurb)
       call sendAttributePointerFlexi(iThread, "cornerrho", thisOctal%cornerrho)
