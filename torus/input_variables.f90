@@ -204,45 +204,46 @@
 !----------------------------------
 
   logical :: molecular
-  logical :: constantAbundance
-  logical :: removeHotMolecular
-  real :: molAbundance
-  character(len=80) :: molFilename
-  character(len=80) :: moleculefile
-  logical :: restart
-  logical :: addnewmoldata
-  logical :: dongstep ! controls Ng Acceleration
-  logical :: modelwashydro
-  logical :: forceIniRay
-  logical :: zeroghosts
+  logical, protected :: constantAbundance
+  logical, protected :: removeHotMolecular
+  real, protected :: molAbundance
+  character(len=80), protected :: molFilename
+  character(len=80), protected :: moleculefile
+  logical, protected :: restart
+  logical, protected :: molRestartTest
+  logical, protected :: addnewmoldata
+  logical, protected :: dongstep ! controls Ng Acceleration
+  logical, protected :: modelwashydro
+  logical, protected :: forceIniRay
+  logical, protected :: zeroghosts
   logical, protected :: renewinputrays
-  logical :: plotlevels   
-  logical :: writetempfits
-  logical :: doCOchemistry
+  logical, protected :: plotlevels   
+  logical, protected :: writetempfits
+  logical, protected :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
-  logical :: setupMolecularLteOnly ! Set up LTE level populations then exit molecular loop
+  logical, protected :: setupMolecularLteOnly ! Set up LTE level populations then exit molecular loop
   logical :: lowmemory ! if memory is tight
-  logical :: noturb ! Subsonic turbulent velocity
-  real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
-  integer :: initnray ! number of rays to use in fixed ray case (stage 1)
-  real(double) :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
-  integer :: setmaxlevel ! Maximum level to be converged
-  real    :: setmaxleveltemp ! Temperature of maximum level to be converged
+  logical, protected :: noturb ! Subsonic turbulent velocity
+  real, protected :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
+  integer, protected :: initnray ! number of rays to use in fixed ray case (stage 1)
+  real(double), protected :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+  integer, protected :: setmaxlevel ! Maximum level to be converged
+  real, protected    :: setmaxleveltemp ! Temperature of maximum level to be converged
   logical :: lineimage
   logical :: maxrhocalc
-  logical :: quasi ! use quasirandom numbers
-  logical :: rgbCube ! reverse velocity axis 
-  logical :: densitysubsample ! do you want to subsample density in your images?
-  logical :: wanttau ! Output tau cube? (also used in angularImage_mod)
-  real(double) :: centrevecx, centrevecy, centrevecz ! cube centre (also in AngularImage_mod)
-  real :: beamSize
-  logical :: getdepartcoeffs, gettau
-  logical :: outputconvergence, dotune
-  real :: x_D, x_0 ! CO drop model
+  logical, protected :: quasi ! use quasirandom numbers
+  logical, protected :: rgbCube ! reverse velocity axis 
+  logical, protected :: densitysubsample ! do you want to subsample density in your images?
+  logical, protected :: wanttau ! Output tau cube? (also used in angularImage_mod)
+  real(double), protected :: centrevecx, centrevecy, centrevecz ! cube centre (also in AngularImage_mod)
+  real, protected :: beamSize
+  logical, protected :: getdepartcoeffs, gettau
+  logical, protected :: outputconvergence, dotune
+  real, protected :: x_D, x_0 ! CO drop model
   logical ::  realdust ! molecular_mod includes continuum emission
-  integer :: nsubpixels ! No. of sub-pixels for ray trace
+  integer, protected :: nsubpixels ! No. of sub-pixels for ray trace
   integer :: itrans
-  integer :: observerpos ! position of observer in molecular_mod image generation
+  integer, protected :: observerpos ! position of observer in molecular_mod image generation
 
 
 !-----------------------------

@@ -1,6 +1,10 @@
 geometry molebench
 readgrid F 
 writegrid F
+
+! Set this to true to save the first restart dump for testing 
+molRestartTest T
+
 ! mindepthamr 8
 ! maxdepthamr 8
 ! disc params

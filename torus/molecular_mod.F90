@@ -63,6 +63,8 @@ module molecular_mod
    real(double) :: vexact, vlin, vquad, vquaddiff, vlindiff, vlindiffcounter
    real(double) :: vlindiffnormcounter, vquaddiffcounter, vquaddiffnormcounter = 0.d0
 
+! Have we written a restart dump yet?
+   logical, private, save :: firstDumpWritten=.false.
 
  ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
  ! Telescope holds data about particular telescopes
@@ -848,7 +850,7 @@ module molecular_mod
      use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
-          zeroGhosts, forceIniRay, setupMolecularLteOnly, renewinputrays
+          zeroGhosts, forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
      use dust_mod
      use parallel_mod
      use vtk_mod
@@ -969,9 +971,9 @@ module molecular_mod
      call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
-! Write Column headings for file containing level populations and convergence data
      grand_iter = 0
-     
+
+! Write Column headings for file containing level populations and convergence data     
      if(writeoutput .and. outputconvergence) then
 18      format(a,tr3,8(a,tr8),a,6(tr2,a))
         open(138,file="fracChanges.dat",status="unknown",form="formatted")
@@ -981,29 +983,9 @@ module molecular_mod
 
         open(139,file="avgChange.dat",status="replace",form="formatted")
         open(140,file="avgRMSChange.dat",status="replace",form="formatted")
-        open(141,file="tau.dat",status="replace",form="formatted")
-        open(142,file="criticaldensities.dat",status="replace",form="formatted")
-        open(999,file="tempcheck.dat",status="replace",form="formatted")
-        close(999)
         close(139)
         close(140)
-        close(141)
      endif
-
-!! TORUS V1 code - if interfacing with lucy_mod, read in lucy temp file and start from here.
-!! This will ultimately be removed     
-!     if(openlucy) then
-!        if(writeoutput) then
-!           write(message,*) "Reading in lucy temp files: ",lucyfilenamein
-!           call writeinfo(message,FORINFO)
-!        endif
-        
-!        call freeGrid(grid)
-!        call readAmrGrid(lucyfilenamein,.false.,grid)
-        
-!        call writeinfo("Successfully read in Lucy Grid file", FORINFO)
-!        call writeinfo("Plotting Temperatures...",TRIVIAL)
-!     endif
 
 #ifdef MPI
 #ifdef HYDRO
@@ -1470,9 +1452,11 @@ pops_conv_loop: do while (.not. popsConverged)
            gridConverged = .false.
         endif
 
+! Write restart files. Only do this after the fixed ray stage is completed.
         if(.not. fixedrays) then
+! Write out a restart dump which is updated after each iteration. Use this file for restarting molecular calculations.
            call writeAmrGrid(molgridfilename,.false.,grid)
-           call writeinfo("",FORINFO)  
+! Write out other information (including the random seed) required for an exact restart of this iteration. 
            if(writeoutput) then
               call randomNumberGenerator(getIseed=iseedpublic)
               open(95, file="restart.dat",status="unknown",form="formatted")
@@ -1480,6 +1464,20 @@ pops_conv_loop: do while (.not. popsConverged)
               write(95, *) iseedpublic
               close(95)
            endif
+! Write out the first restart files such that they are not overwritten later. Use this for testing restarts. 
+           if (molRestartTest.and.(.not.firstDumpWritten)) then
+              call writeAmrGrid("testDump_"//molgridfilename,.false.,grid)
+              write(message,*) "First restart dump is saved as ", "testDump_"//molgridfilename
+              call writeinfo(message,FORINFO)
+              if(writeoutput) then
+                 open(95, file="testDump_restart.dat",status="unknown",form="formatted")
+                 write(95, '(l1,1x,i7,1x,i3)') fixedrays, nray, grand_iter
+                 write(95, *) iseedpublic
+                 close(95)
+              endif
+           endif
+           firstDumpWritten=.true.
+           call writeinfo("",FORINFO)
         endif
         
         if(writeoutput .and. outputconvergence) then
@@ -1571,9 +1569,8 @@ end subroutine molecularLoop
      type(GRIDTYPE), intent(in) :: grid
      type(OCTAL), pointer :: thisOctal, fromOctal
      integer :: fromSubcell
-     logical, optional :: fixedrays
-     logical, optional :: tostar
-     logical :: stage1
+     logical :: fixedrays
+     logical :: tostar
      real(double) :: di0(maxtrans), dirWeight
      real(double), intent(out) :: ds, phi, i0(:)
 	 	 
@@ -1650,12 +1647,6 @@ end subroutine molecularLoop
     else
        position = randomPositionInCell(fromOctal, fromsubcell)
     endif
-
-    if(present(fixedrays)) then
-       stage1 = fixedrays
-    else
-        stage1 = .false.
-     endif
 
 !Choose position in cell & determine velocity at that position
      position = randomPositionInCell(fromOctal, fromsubcell)

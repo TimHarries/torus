@@ -1790,6 +1790,8 @@ contains
             "Read in LTE grid: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("restart", restart, cLine, fLine, nLines, &
             "Restart molecular calculation : ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("molRestartTest",  molRestartTest, cLine, fLine, nLines, &
+            "Save first molecular restart dump for testing : ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("densitysubsample", densitysubsample, cLine, fLine, nLines, &
                "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("suppresswarnings", suppressWarnings, cLine, fLine, nLines, &
