@@ -339,7 +339,7 @@ contains
     integer :: itype ! splash particle type, different convention to SPHNG 
     integer :: ipart, icount, iptmass, igas, idead, i
     integer :: nptmass, nghost, nstar, nunknown, nlines
-    real(double) :: junkArray(50) !, junk
+    real(double) :: junkArray(50)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=500) :: namestring, unitString
@@ -369,10 +369,8 @@ contains
     read(LUIN,*)
     read(LUIN,*) junkchar, npart, nghost, nptmass, nstar, nunknown
     read(LUIN,*)
-!    read(LUIN,*) junkchar, udist, junk, junk, umass, junk, junk, junk, junk, junk, uvel, junk, junk, utemp
     read(LUIN,'(a)') unitString
     unitString = unitstring(2:)
-!    read(LUIN,*) junkchar, udist, junk, junk, umass
     read(LUIN,*)
     read(LUIN,*)
     read(LUIN,'(a)') nameString
@@ -422,10 +420,12 @@ contains
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
 
+! Say what is going to be stored. In init_sph_data sphdata%npart is set to npart and gas particle arrays are 
+! allocated to be sphdata%npart in size. The point mass arrays are allocated as nptmass in size. 
     if (discardSinks) then 
-       write(message,*) "Allocating ", npart-nptmass, " gas particles"
+       write(message,*) "Allocating ", npart, " gas particles"
     else
-       write(message,*) "Allocating ", npart-nptmass, " gas particles and ", nptmass, " sink particles"
+       write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
     endif
     call writeinfo(message, TRIVIAL)
 
@@ -479,7 +479,7 @@ contains
 
     sphdata%totalgasmass = 0.d0
 
-    nlines = npart + nghost + nptmass + nstar + nunknown ! npart now equal to no. lines - 12 = sum of particles dead or alive
+    nlines = npart + nghost + nptmass + nstar + nunknown ! nlines now equal to no. lines - 12 = sum of particles dead or alive
 
     write(message,*) "Reading SPH data from ASCII...."
     call writeinfo(message, TRIVIAL)
@@ -491,8 +491,6 @@ contains
 
 part_loop: do ipart=1, nlines
 
-!       read(LUIN,*) xn, yn, zn, gaspartmass, h, rhon, junk, junk, junk, vx, vy, vz, u, junk, junk, junk, junk, junk, junk, junk, &
-!            junk, junk, junk,junk, junk,junk,junk,junk,itype
        read(LUIN,*) junkArray(1:nWord)
 
        xn = junkArray(ix)

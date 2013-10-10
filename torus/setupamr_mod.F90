@@ -565,9 +565,6 @@ contains
 #ifdef USECFITSIO
         call deallocate_gridFromFitsFile
 #endif
-#ifdef SPH
-        call deallocate_sph
-#endif
         call deallocate_gridFromFlash
         call deallocate_vh1
         call delete_particle_lists(grid%octreeRoot)

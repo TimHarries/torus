@@ -140,9 +140,12 @@ use particle_pos_mod, only: particle_pos
    b_xyzmh(4,b_num_gas+1) = source_mass
 
   open(unit=61, file="part_out.dat", status='replace')
+! Gas particles
   do ipart=1, b_num_gas
      write(61,'(1x,10(e14.7,2x),i4)')  b_xyzmh(:,ipart), b_rho(ipart), b_temp(ipart), 0.0, 0.0, 0.0, 1
   end do
+! Sink particle
+   write(61,'(1x,10(e14.7,2x),i4)') b_xyzmh(:,b_num_gas+1), 1e-20, 1000.0, 0.0, 0.0, 0.0, 3
   close(61)
 
   deallocate ( b_xyzmh  )

@@ -39,6 +39,7 @@ program torus
   use random_mod
   use memory_mod
   use zlib_mod
+  use sph_data_class, only: deallocate_sph
 #ifdef MPI
   use mpi
 #endif
@@ -147,6 +148,11 @@ program torus
      endif
 !$OMP END MASTER
      call setupGlobalSources(grid)
+
+! SPH data may be required for setting up sources so only free memeory after this is done
+#ifdef SPH
+        call deallocate_sph
+#endif
 
      call writeBanner("Run-time messages","+",TRIVIAL)
 
