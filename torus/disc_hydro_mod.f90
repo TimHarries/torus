@@ -157,6 +157,7 @@ contains
 
   subroutine getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
     use amr_mod, only: amrGridValues
+    use parallel_mod, only: torus_abort
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer, intent(out) :: nz
@@ -170,7 +171,9 @@ contains
     real :: direction
     type(VECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
+    integer :: nzMax
 
+    nzMax = SIZE(temperature)
     nz = 0
     halfSmallestSubcell = real(grid%halfSmallestSubcell)
 
@@ -182,6 +185,9 @@ contains
        thisOctal%chiLine(subcell) = 1.e-30
 !       if (thisOctal%inFlow(subcell)) then
           nz = nz + 1
+          if (nz>nzmax) then
+             call torus_abort("nz>nzMax in getTemperatureDensityRun. Aborting ...")
+          endif
           temperature(nz) = temptemp
           rho(nz) = rhotemp
           temp = subCellCentre(thisOctal, subcell)
@@ -261,7 +267,7 @@ contains
     use amr_mod, only: getxValues
     use utils_mod, only: stripSimilarValues
     type(GRIDTYPE) :: grid
-    integer, parameter :: maxvals = 100000
+    integer, parameter :: maxvals = 200000
     real(double) :: zAxis(maxVals)
     real(double) :: rho(maxVals)
     real :: temperature(maxVals)

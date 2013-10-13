@@ -1052,7 +1052,7 @@ contains
 
     if (grid%geometry == "shakara") then
        call getSublimationRadius(grid, subRadius)
-       write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+       write(message, '(a, f8.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
        call writeInfo(message, FORINFO)
        write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
        call writeInfo(message, FORINFO)
