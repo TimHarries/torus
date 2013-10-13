@@ -42,6 +42,33 @@ ${TORUS_FC} -o check_disc_image check_disc_image.f90 -lcfitsio -L${TORUS_FITSLIB
 echo
 }
 
+run_molecularRestart()
+{
+cd ${WORKING_DIR}/benchmarks/molebench/restart
+
+# Copy/link required files from original run directory
+cp ../testDump_HCO+_grid.grid .
+cp ../testDump_restart.dat restart.dat
+ln -s ../model_1.dat
+ln -s ../moltest.dat
+ln -s ../compare_molbench.f90
+ln -s ../check_cube.f90
+
+log_file=run_log_${SYSTEM}_${THIS_BENCH}.txt
+export TORUS_JOB_DIR=./
+ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
+
+case ${SYSTEM} in
+    ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    *) echo "Unrecognised SYSTEM type. Skipping this test.";;
+esac
+
+#Rename the tune.dat file 
+mv tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt 
+}
+
 run_bench()
 {
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
@@ -341,6 +368,14 @@ for sys in ${SYS_TO_TEST}; do
     export THIS_BENCH=molebench 
     run_bench
     check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
+    check_completion
+    echo
+
+    echo "Running molecular restart test"
+    export THIS_BENCH=moleRestart
+    run_molecularRestart
+    check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
     tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
     check_completion
     echo

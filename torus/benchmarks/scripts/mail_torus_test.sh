@@ -6,8 +6,7 @@
 # Default mode is daily test
 export MODE=daily
 export BASE_DIR=/Users/acreman
-#mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
-mail_to="acreman@astro.ex.ac.uk"
+mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -129,6 +128,17 @@ if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]];
     echo "Molecular benchmark successful." >> header
 else
     echo "!! Molecular benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of molecular mod restart
+num_success=`/usr/bin/grep -c "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/molebench/restart/check_log_ompiosx_moleRestart.txt`
+num_success2=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/restart/check_log_gfortran_moleRestart.txt`
+num_success3=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/restart/check_log_ompiosx_moleRestart.txt`
+if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]]; then
+    echo "Molecular restart successful." >> header
+else
+    echo "!! Molecular restart FAILED !!" >> header
     suite_status="FAILED"
 fi
 
