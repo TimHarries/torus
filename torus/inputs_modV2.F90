@@ -2124,7 +2124,7 @@ contains
        call getReal("taumax", tauSmoothMax, 1.0, cLine, fLine, nLines, &
             "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 0.5, ok, .false.)
        call getReal("taumin", tauSmoothMin, 0.1, cLine, fLine, nLines, &
-            "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 0.001, ok, .false.)
+            "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 0.1, ok, .false.)
     endif
 
     call getReal("edenstol", eDensTol, 1., cLine, fLine, nLines, &

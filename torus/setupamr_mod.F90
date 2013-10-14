@@ -582,9 +582,9 @@ contains
     implicit none
 
     type(GRIDTYPE) :: grid
-    integer :: j, ismoothlam
-    logical :: gridConverged, doPhotoSphereSplit
-    character(len=80) :: message
+    integer :: i, j, ismoothlam, iter
+    logical :: gridConverged, doPhotoSphereSplit, smoothConverged
+    character(len=80) :: message, thisfile
 
 
     ! Smooth the grid with respect to optical depth, if requested
@@ -601,21 +601,37 @@ contains
 
        call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
        call locate(grid%lamArray, grid%nLambda,lambdaSmooth,ismoothlam)
+       iter = 1
        do j = iSmoothLam,  grid%nLambda, 5
           write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
           call writeInfo(message, TRIVIAL)
           do
              gridConverged = .true.
-             if (dophotospheresplit) call putTau(grid, grid%lamArray(j))
-             call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                  inheritProps = .false., interpProps = .false., &
-                  photosphereSplit = doPhotoSphereSplit )
+             ! The following is Tim's replacement for soomthAMRgrid.
+             call myScaleSmooth(smoothFactor, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .false.)
              if (gridConverged) exit
           end do
+
+          do
+             gridConverged = .true.
+             if (dophotospheresplit) call putTau(grid, grid%lamArray(j))
+             call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                     inheritProps = .false., interpProps = .false., &
+                     photosphereSplit = doPhotoSphereSplit )
+             iter = iter + 1
+             do
+                smoothConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothFactor, grid, &
+                     smoothConverged,  inheritProps = .false., interpProps = .false.)
+                if (smoothConverged) exit
+             end do
+             if (gridConverged) exit
+          enddo
        enddo
        call writeInfo("...grid smoothing complete", TRIVIAL)
 
-       call writeVtkFile(grid, "aftersmooth.vtk")
        ! The tau smoothing may result in large differences in the size
        ! of neighbouring octals, so we smooth the grid again.
 
@@ -630,6 +646,7 @@ contains
           end do
           call writeInfo("...grid smoothing complete", TRIVIAL)
        endif
+       call writeVtkFile(grid, "aftersmooth.vtk")
              
        if ( myRankIsZero ) call grid_info(grid, "info_grid_aftersmooth.dat")
 

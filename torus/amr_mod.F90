@@ -974,6 +974,10 @@ CONTAINS
     CASE("ppdisk")
        CALL calcPPDiskDensity(thisOctal,subcell,grid)
 
+    CASE("benchi")
+       CALL calcBenchI(thisOctal,subcell)
+
+
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
 
@@ -3375,7 +3379,7 @@ CONTAINS
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
-    real(double) :: dx
+    real(double) :: dx, cellMass
 
     splitInAzimuth = .false.
     split = .false.
@@ -3911,6 +3915,8 @@ CONTAINS
              if (thisOctal%subcellsize/rstar2 > (rgrid(i+1)-rgrid(i))) split = .true.
           endif
                             
+
+
        case ("testamr","proto")
           cellSize = thisOctal%subcellSize 
           cellCentre = subcellCentre(thisOctal,subCell)
@@ -8404,13 +8410,14 @@ endif
     
 
     rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
-    thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
+
+    if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
     if (rMod < sphereRadius) then
        thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)
        thisOctal%temperature(subcell) = 20.d0 ! max(20.0,50.0*real(sqrt(smallestCellSize/rMod)))
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
        if (cylindricalHydro) then
-          thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
+          if (hydrodynamics) thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
        endif
     else
        thisOctal%rho(subcell) = 1.d-2 * rhoSphere
@@ -10369,6 +10376,47 @@ end function readparameterfrom2dmap
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine assign_toruslogo
+
+  subroutine calcBenchI(thisOctal,subcell)
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(vector) :: rVec
+    real(double) :: r1, r2, rho1, rho2, mass1, mass2, rhoAmbient, rsub
+    type(VECTOR) :: pos1, pos2, sourcepos
+
+    rsub = autocm/1.d10
+    r1 = 1000.d0*autocm/1.d10
+    r2 = 1000.d0*autocm/1.d10
+
+    sourcePos = VECTOR(-5.d6, 0.d0, 2.5d6)
+    pos1 = VECTOR(2000.d0*autocm/1.d10, 0.d0, 0.d0)
+    pos2 = VECTOR(6000.d0*autocm/1.d10, 0.d0, 0.d0)
+
+    mass1 = 10.d0 * msol
+    mass2 = 5.d0 * msol
+    rhoambient = 1.d-30
+
+
+    rVec = subcellCentre(thisOctal,subcell)
+
+    rho1 = mass1 / (fourPi/3.d0 * (r1*1.d10)**3)
+    rho2 = mass2 / (fourPi/3.d0 * (r2*1.d10)**3)
+
+    thisOctal%rho(subcell) = rhoAmbient
+    thisOctal%dustTypeFraction(subcell,1) = 0.01d0
+    if (modulus(rVec-pos1) < r1) then
+       thisOctal%rho(subcell) = rho1
+    endif
+    if (modulus(rVec-pos2) < r2) then
+       thisOctal%rho(subcell) = rho2
+    endif
+
+    if (modulus(rVec-sourcepos) < rSub) then
+       thisOctal%dustTypeFraction(subcell,1) = 1.d-30
+    endif
+
+    thisOctal%temperature(subcell) = 10.
+  end subroutine calcBenchI
 
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
@@ -13238,7 +13286,7 @@ end function readparameterfrom2dmap
                 call returnKappa(grid, thisOctal, subcell, ilambda, rosselandKappa = kAbs)
                 tauross = thisOctal%subcellSize*kAbs*thisOctal%rho(subcell)*1.d10
                 if ((tauRoss > 500.d0).and.split) then
-!                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
+                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                         inherit=inheritProps, interp=interpProps)
                    converged = .false.
