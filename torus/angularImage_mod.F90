@@ -40,7 +40,7 @@ module angularImage
   real(double), parameter, private :: minH2 = 17.0
   real(double), parameter, private :: maxH2 = 22.0
 
-
+!$OMP THREADPRIVATE(this_gal_lat, this_gal_lon)
 !$OMP THREADPRIVATE (vr_format)
 
   contains
@@ -353,7 +353,7 @@ module angularImage
       cube%xAxis(:) = 90.0 + ( phi_axis(:)   / degToRad )
       cube%yAxis(:) = 90.0 - ( theta_axis(:) / degToRad )
 
-!$OMP PARALLEL default(none), private(ipixels, jpixels, this_gal_lon, this_gal_lat, viewvec),  &
+!$OMP PARALLEL default(none), private(ipixels, jpixels, viewvec),  &
 !$OMP private(viewvec_x, viewvec_y, viewvec_z), &
 !$OMP shared(galaxyPositionAngle, galaxyInclination, grid, thisMolecule, ncolonly), &
 !$OMP shared(ix1, ix2, cube, theta_axis, phi_axis, iTrans, deltaV, subpixels, imagegrid, vel_chan_num, nv)
@@ -873,7 +873,7 @@ module angularImage
     type(OCTAL), pointer :: thisOctal
     integer :: subcell 
 
-    real(double) :: dI, n_sample
+    real(double) :: dI, n_sample, l_coord, b_coord, CO_abund
     real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
     real(double) :: H2_frac, temperature
 
@@ -925,27 +925,32 @@ module angularImage
            call findSubcellTD(positionTorus,grid%octreeRoot,thisOctal,subcell)
            
            dI       =  thisOctal%newmolecularlevel(1,subcell)
+           l_coord  =  thisOctal%newmolecularlevel(2,subcell)
+           b_coord  =  thisOctal%newmolecularlevel(3,subcell)
            n_sample =  thisOctal%newmolecularlevel(4,subcell)
            
-           ! Calculate fraction of molecular hydrogen by mass
+! Calculate fraction of molecular hydrogen by mass. sphdata%rhon is now the 
+! total hydrogen mass density, even if convertRhoToHI is true. The conversion 
+! to HI density takes place in ClusterParameter and doesn't affect the value of sphdata%rhon. 
            if ( associated (sphdata%rhoH2) ) then
-              if (convertRhoToHI) then 
-                 ! sphdata%rhon is the mass density of HI 
-                 H2_frac = sphdata%rhoH2(ipart) / ( sphdata%rhon(ipart) + sphdata%rhoH2(ipart) )
-              else
-                 ! sphdata%rhon is the total hydrogen mass density
-                 H2_frac = sphdata%rhoH2(ipart) / sphdata%rhon(ipart)
-              endif
+              H2_frac  = sphdata%rhoH2(ipart) / sphdata%rhon(ipart)
            else
               H2_frac = 0.0
+           end if
+
+! Similarly we now calculate the CO abundance. 
+           if ( associated (sphdata%rhoCO) ) then
+              CO_abund = sphdata%rhoCO(ipart) / sphdata%rhon(ipart)
+           else
+              CO_abund = 0.0
            end if
 
 ! Convert internal energy to temperature
            temperature = sphdata%temperature(ipart) * sphdata%codeEnergytoTemperature
 
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
-           if ( n_sample > 0.99 ) write(LUIN,'(10(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
-                sphdata%rhon(ipart), dI, n_sample, H2_frac, temperature, ipart
+           if ( n_sample > 0.99 ) write(LUIN,'(13(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
+                sphdata%rhon(ipart), dI, n_sample, H2_frac, temperature, l_coord, b_coord, CO_abund, ipart
 
         end if
 
@@ -965,6 +970,9 @@ module angularImage
      write(LUIN,'(a)') "nsample"
      write(LUIN,'(a)') "H2frac"
      write(LUIN,'(a)') "temperature"
+     write(LUIN,'(a)') "l"
+     write(LUIN,'(a)') "b"
+     write(LUIN,'(a)') "CO"
      write(LUIN,'(a)') "index"
      close (LUIN)
 
