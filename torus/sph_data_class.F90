@@ -583,6 +583,7 @@ part_loop: do ipart=1, nlines
 
 !          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
 
+! This write statement is checked by the test suite so update checkSphToGrid.pl if it changes.
           write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol - Index", iptmass + igas
           call writeinfo(message, TRIVIAL)
           write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10, gaspartmass

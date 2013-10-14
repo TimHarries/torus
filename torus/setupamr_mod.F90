@@ -1541,6 +1541,7 @@ contains
     case("molcluster", "theGalaxy", "cluster","sphfile")
        totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0
        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
+! This write statement is checked by the test suite so update checkSphToGrid.pl if it changes.
        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
        call writeInfo(message, TRIVIAL)
        write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
