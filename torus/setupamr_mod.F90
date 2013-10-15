@@ -582,9 +582,9 @@ contains
     implicit none
 
     type(GRIDTYPE) :: grid
-    integer :: i, j, ismoothlam, iter
+    integer :: j, ismoothlam, iter
     logical :: gridConverged, doPhotoSphereSplit, smoothConverged
-    character(len=80) :: message, thisfile
+    character(len=80) :: message
 
 
     ! Smooth the grid with respect to optical depth, if requested

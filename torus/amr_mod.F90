@@ -3379,7 +3379,7 @@ CONTAINS
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
-    real(double) :: dx, cellMass
+    real(double) :: dx
 
     splitInAzimuth = .false.
     split = .false.
