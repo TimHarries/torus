@@ -1526,7 +1526,7 @@ contains
     integer(kind=bigInt) :: i
 #ifdef SPH
     character(len=80) :: message
-    real(double) :: minRho, maxRho, totalmasstrap, totalmass
+    real(double) :: minRho, maxRho, totalmasstrap, totalmass, totalMassMol
 #endif
 
     call findTotalMemory(grid, i)
@@ -1539,13 +1539,18 @@ contains
 
 #ifdef SPH
     case("molcluster", "theGalaxy", "cluster","sphfile")
-       totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0
-       call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, maxrho=maxrho, minrho=minrho)
+       totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0; totalmassMol=0.0
+       call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, totalmassMol=totalmassMol, &
+            maxrho=maxrho, minrho=minrho)
 ! This write statement is checked by the test suite so update checkSphToGrid.pl if it changes.
        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
        call writeInfo(message, TRIVIAL)
        write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
        call writeInfo(message, TRIVIAL)
+       if (sphwithchem) then 
+          write(message,*) "Molecular mass of envelope: ",totalMassMol/mSol, " solar masses"
+          call writeInfo(message, TRIVIAL)
+       endif
        write(message,*) "Mass of SPH particles within grid: ", sph_mass_within_grid(grid), " solar masses"
        call writeInfo(message, TRIVIAL)
        write(message,*) "Maximum Density: ",maxrho, " g/cm^3"

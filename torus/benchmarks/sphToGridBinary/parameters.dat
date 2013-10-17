@@ -1,0 +1,53 @@
+! Parameters file for generating HI cubes 
+! Written by generate_feedback.sh
+
+geometry theGalaxy
+
+! molecular physics needs to be true for sphwithchem
+molecularphysics T 
+moleculefile co.dat
+distance 0.0
+constantabundance F
+
+readgrid F
+writegrid F
+dosmoothgrid F
+maxmemory 16000
+
+!!
+!! readGridInitparamerers
+!!
+
+amr3d T
+
+amrgridsize 1.0e13
+amrgridcentrex 0.0
+amrgridcentrey 0.0
+amrgridcentrez 0.0
+
+! One particle is 4.98E+36g
+limitscalar 1.0e38
+
+! Do we split the grid based on particle velocity difference?
+doVelocitySplit F 
+
+! Convert density to HI density
+convertrhotohi T
+sphwithchem T
+
+!!
+!!  readGeometrySpecificParameters
+!!
+
+! This test reads a file from outside the torus repository. 
+! Not ideal but better than not testing at all. 
+sphdatafilename SQA0321
+inputFileFormat binary
+
+!sphdatafilename SQA0321.ascii
+!inputFileFormat ascii
+
+sphNormLimit 0.5
+kerneltype 0
+useHull F
+

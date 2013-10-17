@@ -10687,13 +10687,13 @@ end function readparameterfrom2dmap
     enddo
   end subroutine scaleDensityAMR
 
-  recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, minRho, maxRho)
+  recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, totalMassMol, minRho, maxRho)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double), intent(inout) :: totalMass
-  real(double),optional, intent(inout) :: totalMassTrap
+  real(double),optional, intent(inout) :: totalMassTrap, totalMassMol
   real(double),optional, intent(inout) :: minRho, maxRho
-  real(double) :: dv
+  real(double) :: dv, rhoMol
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -10702,7 +10702,11 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho)
+                if (present(totalMassMol)) then
+                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, minRho=minRho, maxRho=maxRho)
+                else
+                   call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho)
+                endif
                 exit
              end if
           end do
@@ -10713,6 +10717,11 @@ end function readparameterfrom2dmap
           if(present(totalmasstrap) .and. associated(thisOctal%cornerRho)) then 
              totalMassTrap = totalMassTrap + (1.d30) * averagerhofromoctal(thisoctal,subcell) * dv
           end if
+
+          if (present(totalMassMol).and.associated(thisOctal%molabundance)) then
+             rhoMol =  thisOctal%molabundance(subcell) * thisOctal%nh2(subcell)*( 28.0_db * mhydrogen )
+             totalMassMol = totalMassMol + (1.d30) * dv * rhoMol
+          endif
 
           if (PRESENT(minRho)) then
              if (thisOctal%rho(subcell) > 1.d-40) then

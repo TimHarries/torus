@@ -60,7 +60,9 @@ module sph_data_class
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
-     real(double)                        :: totalgasmass       ! Total gas mass summed over all SPH particles. 
+     real(double)                        :: totalgasmass       ! Total gas mass summed over all SPH particles.
+     real(double)                        :: totalHImass        ! Total HI mass summed over all SPH particles. 
+     real(double)                        :: totalMolmass       ! Total molecular gas mass summed over all SPH particles.
      ! Positions of gas particles
      real(double), pointer, dimension(:) :: xn,yn,zn
      real(double), pointer, dimension(:) :: vxn,vyn,vzn
@@ -303,7 +305,11 @@ contains
 ! according to the string inputFileFormat
 ! D. Acreman, June 2012
   subroutine read_sph_data_wrapper
-    use inputs_mod, only: inputFileFormat, sphdatafilename
+    use inputs_mod, only: inputFileFormat, sphdatafilename, sphwithchem, molecularPhysics
+
+! Basic sanity check of input variables
+    if (sphwithchem.and.(.not.molecularPhysics))  &
+         call writeFatal("sphwithchem can only be used with molecularPhysics=T")
 
     select case (inputFileFormat)
 
@@ -478,6 +484,8 @@ contains
     end if
 
     sphdata%totalgasmass = 0.d0
+    sphdata%totalHImass  = 0.d0
+    sphdata%totalMolmass = 0.d0
 
     nlines = npart + nghost + nptmass + nstar + nunknown ! nlines now equal to no. lines - 12 = sum of particles dead or alive
 
@@ -552,8 +560,6 @@ part_loop: do ipart=1, nlines
              sphdata%rhon(igas) = gaspartmass / h**3
           endif
 
-          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
-
           if (sphwithChem) then 
              COfrac = junkArray(iCO)
              sphdata%rhoCO(igas) = COfrac * rhon
@@ -562,6 +568,15 @@ part_loop: do ipart=1, nlines
           if (convertRhoToHI.or.sphwithChem) then
              sphdata%rhoH2(igas) = h2ratio*2.*rhon*5./7.
           end if
+
+! Calculate total gas mass summed over all particles and (if required) HI and CO masses. 
+          sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
+          if (convertRhoToHI.or.sphwithChem) then
+             sphdata%totalHImass  = sphdata%totalHImass + (1.0-2.0*h2ratio)*gaspartmass*5.0/7.0
+          endif
+          if (sphwithChem) then
+             sphdata%totalMolmass = sphdata%totalMolmass + COfrac*gaspartmass
+          endif
           
 ! 3=sink, 4=star
        else if(itype .eq. 3 .or. itype .eq. 4) then
@@ -1017,8 +1032,9 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
 
     iiigas=0
     iiisink = 0 
-
-
+    sphdata%totalgasmass = 0.0
+    sphdata%totalHImass  = 0.0
+    sphdata%totalMolmass = 0.0
 
 ! This loop needs to be over all the particles read in
     do i=1, blocksum_npart
@@ -1065,6 +1081,14 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
              sphData%zn(iiigas)          = xyzmh(3,i)
              sphData%gasmass(iiigas)     = xyzmh(4,i)
              sphData%hn(iiigas)          = xyzmh(5,i)
+
+             sphdata%totalgasmass = sphdata%totalgasmass + sphData%gasmass(iiigas)
+             if (convertRhoToHI.or.sphwithChem) then
+                sphdata%totalHImass  = sphdata%totalHImass + (1.0-2.0*h2ratio(i))*sphData%gasmass(iiigas)*5.0/7.0
+             endif
+             if (sphwithChem) then
+                sphdata%totalMolmass = sphdata%totalMolmass + COfrac(i)*sphData%gasmass(iiigas)
+             endif
 
           endif
        else if(iphase(i) > 0) then
@@ -1659,11 +1683,13 @@ contains
   !
   ! if filename is '*' then it prints on screen.
   subroutine info_sph(filename)
+    use inputs_mod, only: convertRhoToHI, sphwithchem
     implicit none
     character(LEN=*), intent(in) :: filename
     integer :: UN
     real(double) :: tmp
-    
+    real(double) :: myTotalMass, myHImass, myMolmass
+
     if (filename(1:1) == '*') then
        UN = 6   ! prints on screen
     else
@@ -1674,8 +1700,13 @@ contains
     ! time of the data dump
     tmp = get_time()*get_utime()/(60.0d0*60.0d0*24.0d0*365.0d0*1.0d6)
     
+    ! Total gas mass, HI mass and molecular mass in solar masses
+    myTotalMass = sphdata%totalGasMass * get_umass() / mSol
+    myHImass    = sphdata%totalHIMass  * get_umass() / mSol
+    myMolMass   = sphdata%totalMolMass * get_umass() / mSol
+
     Write(UN,'(a)') ' '
-    write(UN,'(a)') '######################################################'
+    write(UN,'(a)') '################################################################'
     write(UN,'(a)') 'SPH data info :'
     write(UN,'(a)') ' '    
     write(UN,*)     'Units of length            : ', get_udist(), ' [cm]'
@@ -1686,7 +1717,12 @@ contains
     write(UN,*)     '# of stars                 : ',  get_nptmass()
     write(UN,*)     '# of gas particles (total) : ',  get_npart()   
     write(UN,*)     'Time of data dump          : ',  tmp, ' [Myr]'    
-    write(UN,'(a)') '#######################################################'
+    write(UN,*)     'Total gas mass             : ',  myTotalMass, ' [M_Sun]'
+    if (convertRhoToHI.or.sphwithchem) &
+          write(UN,*)     'Total HI mass              : ',  myHIMass, ' [M_Sun]'
+    if (sphwithchem) &
+          write(UN,*)     'Total molecular mass       : ',  myMolMass, ' [M_Sun]'
+    write(UN,'(a)') '############################################################'
     write(UN,'(a)') ' '
     write(Un,'(a)') ' '
     
