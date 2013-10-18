@@ -220,10 +220,21 @@ else
     suite_status="FAILED"
 fi
 
+# Test for success of SPH to grid test (binary dump with chemistry)
+num_success=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx-openmp/benchmarks/sphToGridBinary/check_log_ompiosx_sphToGridBinary.txt`
+num_success2=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/sphToGridBinary/check_log_gfortran_sphToGridBinary.txt`
+num_success3=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/sphToGridBinary/check_log_ompiosx_sphToGridBinary.txt`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+    echo "SPH to grid test with chemistry successful." >> header
+else
+    echo "!! SPH to grid test with chemistry FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
 # Test for success of restart test
-num_success=`/usr/bin/grep "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/restart/check_log_ompiosx_restart.txt | /usr/bin/wc -l`
-num_success2=`/usr/bin/grep "TORUS: Test successful" benchmarks_gfortran/benchmarks/restart/check_log_gfortran_restart.txt | /usr/bin/wc -l`
-num_success3=`/usr/bin/grep "TORUS: Test successful" benchmarks_ompiosx/benchmarks/restart/check_log_ompiosx_restart.txt | /usr/bin/wc -l`
+num_success=`/usr/bin/grep -c "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/restart/check_log_ompiosx_restart.txt`
+num_success2=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/restart/check_log_gfortran_restart.txt`
+num_success3=`/usr/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/restart/check_log_ompiosx_restart.txt`
 if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
     echo "Restart test successful" >> header 
 else

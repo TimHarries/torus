@@ -388,6 +388,15 @@ for sys in ${SYS_TO_TEST}; do
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
     echo
 
+    echo "Running SPH to grid test (binary dump with chemistry)"
+    export THIS_BENCH=sphToGridBinary
+    cd ${WORKING_DIR}/benchmarks/sphToGridBinary
+    ln -s /Users/acreman/torus_dev/forTestSuite/SQA0321
+    run_bench
+    ./checkSphToGridChem.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
+    echo
+
     echo "Running restart test"
     export THIS_BENCH=restart
     cd ${WORKING_DIR}/benchmarks/restart
