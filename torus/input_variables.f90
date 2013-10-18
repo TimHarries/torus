@@ -118,7 +118,7 @@
 ! Hydrodynamics
 !---------------
 
-  integer :: nHydroThreadsInput       !Number of hydrothreads for domain decomposition
+  integer, protected :: nHydroThreadsInput !Number of hydrothreads for domain decomposition
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
   logical :: doGasGravity             ! Include gas gravity in calculation

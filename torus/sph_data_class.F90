@@ -716,6 +716,7 @@ part_loop: do ipart=1, nlines
     integer :: thisNumGas
     integer :: nlistinactive, listinactive(1)
     integer :: iThread
+    integer :: loopIndex
 ! The MPI communication handles multiple hydro threads so I've keyed it out for non-hydro builds
 ! For Galactic plane survey runs build with hydro=no
 #ifdef MPI
@@ -732,7 +733,7 @@ part_loop: do ipart=1, nlines
 
 #ifdef MPI
 #ifdef HYDRO
-    if (myrankWorldGlobal == 0) then
+    if (myrankWorldGlobal == 0 .or. (.not.splitOverMPI)) then
 #endif
 #endif
 
@@ -953,10 +954,18 @@ part_loop: do ipart=1, nlines
        call writeWarning(message)
     endif
 
+! If the grid is split over MPI processes then only the rank zero process will get here. 
+! It then needs to loop over all the hydro threads to hand out the particles. 
+! Otherwise all MPI process get here and execute this loop once. 
+    if (splitOverMPI) then
+       loopIndex = nHydroThreadsGlobal
+    else
+       loopIndex = 1
+    endif
 
 #ifdef MPI
 #ifdef HYDRO
-hydroThreads: do iThread = 1, nHydroThreadsGlobal
+hydroThreads: do iThread = 1, loopIndex
 #endif
 #endif
 
@@ -1138,6 +1147,9 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
 
 #ifdef MPI
 #ifdef HYDRO
+
+    if (splitOverMPI) then
+
     call mpi_send(uDist, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
     call mpi_send(uMass, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
     call mpi_send(uTime, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
@@ -1171,6 +1183,8 @@ hydroThreads: do iThread = 1, nHydroThreadsGlobal
     call mpi_send(sphdata%vy, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
     call mpi_send(sphdata%vz, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
 
+
+    end if
 
  enddo hydroThreads
 
