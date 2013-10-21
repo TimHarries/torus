@@ -780,7 +780,8 @@ contains
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
                 if(.not. xrayonly) then
-                   call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, nPhotoIter, loopLimitTime, &
+                   call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
+                        lamArray, nPhotoIter, loopLimitTime, &
                         looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 endif
                 cylindricalHydro = tmpCylindricalHydro
