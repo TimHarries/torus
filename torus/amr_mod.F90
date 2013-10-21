@@ -848,6 +848,9 @@ CONTAINS
     CASE("isosphere")
        call calcIsoSphereDensity(thisOctal, subcell)
 
+    CASE("rv1test")
+       call calcrv1TestDensity(thisOctal, subcell)
+
     CASE("brunt")
        call calcBruntDensity(thisOctal, subcell) 
 
@@ -924,7 +927,7 @@ CONTAINS
     CASE ("wind")
        CALL WindSubcell(thisOctal, subcell)
        
-    CASE("sphfile","cluster","molcluster","theGalaxy","wr104")
+    CASE("sphfile","cluster","molcluster","theGalaxy","wr104", "dale")
 
        ! Flag as missing data to be filled in by FinishGrid
        thisoctal%rho(subcell) = -9.9d99
@@ -1220,7 +1223,7 @@ CONTAINS
 
     select case (grid%geometry)
 #ifdef SPH
-       case("sphfile","cluster","molcluster","theGalaxy","wr104")
+       case("sphfile","cluster","molcluster","theGalaxy","wr104", "dale")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
           ! to the subcells if the particles are in the subcells.
@@ -1927,7 +1930,7 @@ CONTAINS
           call assign_grid_values(thisOctal,subcell)
 
 ! With corner velocities
-       CASE ("molcluster", "theGalaxy")
+       CASE ("molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then 
 
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
@@ -4025,6 +4028,47 @@ CONTAINS
        case("isosphere")
           if(thisOctal%nDepth < maxdepthamr) split = .true.
 
+
+       case("rv1test")
+          if(thisOctal%nDepth < mindepthamr) split = .true.
+          rVec = subcellCentre(thisOctal, subcell)
+
+          if(rVec%x < 1.d-1*pctocm/1.d10) then                    
+!             if(thisOctal%subcellSize > 1.d-6) split = .true.
+             if(thisOctal%nDepth < maxdepthAMR) split = .true.
+          endif
+!          else if(rVec%x >= 1.d-1*pctocm/1.d10 .and. rVec%x < 1.1d0*pctocm/1.d10) then            
+!             if(thisOctal%subcellSize > 8.d-1) split = .true.
+!          else
+!             if(thisOctal%subcellSize > 0.1) split = .true.
+!             print *, "split A"
+!          endif
+!          elseif(rVec%x >= 1.d-4*pctocm/1.d10 .and. rVec%x < 5.d-4*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-1)) split = .true.
+!             print *, "split B"
+!          elseif(rVec%x >= 5.d-4*pctocm/1.d10 .and. rVec%x < 1.d-3*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-2)) split = .true.
+!             print *, "split C"
+!          elseif(rVec%x >= 1.d-3*pctocm/1.d10 .and. rVec%x < 5.d-3*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-4)) split = .true.
+!             print *, "split D"
+!          elseif(rVec%x >= 5.d-3*pctocm/1.d10 .and. rVec%x < 1.d-2*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-8)) split = .true.
+!             print *, "split E"
+!          elseif(rVec%x >= 1.d-2*pctocm/1.d10 .and. rVec%x < 5.d-2*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-5)) split = .true.
+!             print *, "split F"
+ !         elseif(rVec%x >= 5.d-2*pctocm/1.d10 .and. rVec%x < 1.d-1*pctocm/1.d10) then          
+ !            if(thisOctal%nDepth < (maxdepthamr-10)) split = .true.
+! !            print *, "split G"
+!          elseif(rVec%x >= 1.d-1*pctocm/1.d10 .and. rVec%x < 5.d-1*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-5)) split = .true.
+!             print *, "split H"
+!!          elseif(rVec%x >= 5.d-1*pctocm/1.d10 .and. rVec%x < 1.d0*pctocm/1.d10) then          
+!             if(thisOctal%nDepth < (maxdepthamr-10)) split = .true.
+!!             print *, "split F"
+  !        endif
+          
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           bigJ = 0.25d0
@@ -4348,7 +4392,7 @@ CONTAINS
                (cellSize > (r_cmfgen(2)-r_cmfgen(1))) ) split = .true.
           
 #ifdef SPH
-       case ("sphfile","cluster","molcluster","theGalaxy")
+       case ("sphfile","cluster","molcluster","theGalaxy", "dale")
           pOctal => thisOctal
           if (octalOnThread(pOctal, subcell, myrankGlobal).and.(get_npart() > 0)) then
 
@@ -8171,6 +8215,38 @@ endif
   end subroutine calcIsoSphereDensity
 
 
+  subroutine calcrv1TestDensity(thisOctal,subcell)
+    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : pdrcalc, photoionequilibrium
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+!    type(VECTOR) :: rVec
+!    real(double) :: rMod
+
+    thisOctal%rho(subcell) = 1.d3*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%ionFrac(subcell,1) = 1.d0               !HI
+    thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
+    
+!    if(pdrcalc .and. .not. photoionequilibrium) then
+    thisOctal%uvvector(subcell)%x = 10.*Draine/1.d10
+    thisOctal%uvvector(subcell)%y = 0.d0
+    thisOctal%uvvector(subcell)%z = 0.d0
+    !    endif
+    
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 1)
+    thisOctal%nhii(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
+    !    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%etaCont(subcell) = 0.
+ 
+  end subroutine calcrv1TestDensity
+
+
   subroutine calcRadialClouds(thisOctal, subcell)
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -9130,23 +9206,28 @@ endif
   subroutine RHDDisc(thisOctal,subcell)
 
     use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
-    use inputs_mod, ONLY : photoionPhysics, doselfgrav
+    use inputs_mod, ONLY : photoionPhysics, doselfgrav, extmass!, stellarMass
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real :: r, hr, rd
-    real(double), parameter :: min_rho = 1.0d-21 ! minimum density
+!    real(double), parameter :: min_rho = 1.0d-24 ! minimum density
+!    real(double), parameter :: min_rho = 1.0d-21 ! minimum density
 !    real(double), parameter :: min_rho = 1.0d-22 ! minimum density
+    real(double) :: min_rho!, vphi, vkep
     real(double) :: ethermal, gamma
     TYPE(vector) :: rVec
 
-    real :: rInnerGap, rOuterGap
+!    real :: rInnerGap, rOuterGap
     logical :: gap
 
+    min_rho = extmass
     gap = .false.
     gamma = 1.d0
-    rInnerGap = 2. * auToCm / 1.e10
-    rOuterGap = 3. * auToCm / 1.e10
-    
+!    rInnerGap = 2. * auToCm / 1.e10
+!    rOuterGap = 3. * auToCm / 1.e10
+ 
+
+   
     rVec = subcellCentre(thisOctal,subcell)
     r = real(modulus(rVec))
 
@@ -9159,14 +9240,22 @@ endif
     rd = rOuter / 2.
     r = real(sqrt(rVec%x**2 + rVec%y**2))
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
-    if ((r > rInner).and.(r < rOuter)) then
+!    vphi= 0.d0
+!    rinner = rinner * autocm*1.e10
+    print *, "r ", r
+    print *, "rinner ", rinner
+    if ((r > rInner)) then!).and.(r < rOuter)) then
        hr = height * (r/rd)**1.125
        ! Calculate density and check the exponential won't underflow
        if ( rVec%z/hr < 20.0 ) THEN
           thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
        endif
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
-       thisOctal%temperature(subcell) = 100.
+!       if(thisOctal%rho(subcell) > min_rho) then
+!          vkep = sqrt(biG*stellarMass(1)/r)
+!          vphi = Vkep*(1.d0-eta*(rvec%z/r)**2)
+!       endif
+!       thisOctal%temperature(subcell) = 100.
        if(photoionPhysics) then
           thisOctal%inFlow(subcell) = .true.
           thisOctal%etaCont(subcell) = 0.
@@ -9174,6 +9263,7 @@ endif
     endif
 !    endif
 !    thisOctal%nh = thisOctal%rho(subcell)/
+
     thisOctal%velocity = VECTOR(0.,0.,0.)
     if(photoionphysics) then
        thisOctal%biasCont3D = 1.
@@ -9189,6 +9279,8 @@ endif
        thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
 !       thisOctal%boundaryCondition(subcell) = 4
     endif
+
+    thisOctal%iEquationOfState(subcell) = 1
 
   end subroutine RHDDisc
 
@@ -11856,26 +11948,30 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%atomLevel, source%atomLevel)
 
     call copyAttribute(dest%newatomLevel, source%newatomLevel)
-
+    call copyAttribute(dest%dust_T, source%dust_T)
     call copyAttribute(dest%ionFrac, source%ionFrac)
 #ifdef PDR
     call copyAttribute(dest%AV, source%AV)
     call copyAttribute(dest%thisColRho, source%thisColRho)
+    call copyAttribute(dest%relch, source%relch)
 
     call copyAttribute(dest%abundance, source%abundance)
     call copyAttribute(dest%radsurface, source%radsurface)    
     call copyAttribute(dest%Tlast, source%Tlast)    
     call copyAttribute(dest%Tmin, source%Tmin)    
     call copyAttribute(dest%Tmax, source%Tmax)    
+    call copyAttribute(dest%Tlow, source%Tlow)    
+    call copyAttribute(dest%Thigh, source%Thigh)    
     call copyAttribute(dest%Tminarray, source%Tminarray)    
     call copyAttribute(dest%Tmaxarray, source%Tmaxarray)    
     call copyAttribute(dest%UV, source%UV)
     call copyAttribute(dest%converged, source%converged)
+    call copyAttribute(dest%level_converged, source%level_converged)
     call copyAttribute(dest%biChop, source%biChop)
     call copyAttribute(dest%expanded, source%expanded)
     call copyAttribute(dest%lastChange, source%lastChange)
     call copyAttribute(dest%tPrev, source%tPrev)
-    call copyAttribute(dest%dust_T, source%dust_T)
+
     call copyAttribute(dest%columnRho, source%columnRho)
     call copyAttribute(dest%coolingRate, source%coolingRate)
     call copyAttribute(dest%heatingRate, source%heatingRate)
@@ -15455,41 +15551,47 @@ end function readparameterfrom2dmap
        allocate(thisOctal%normSourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
 
     endif
-
+    call allocateAttribute(thisOctal%dust_T, thisOctal%maxChildren)
     if(xraycalc .or. pdrcalc .or. useionparam) then
        call allocateAttribute(thisOctal%columnRho, thisOctal%maxChildren)
     end if
+
 
 #ifdef PDR
     if(pdrcalc) then
        nside=2**hlevel
        nrays = 12*nside**2
+       if(thisOctal%oned) nrays = 1 
        call allocateAttribute(thisOctal%UV, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%converged, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%level_converged, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biChop, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%expanded, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%lastChange, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%tPrev, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%dust_T, thisOctal%maxChildren)
+
        call allocateAttribute(thisOctal%Tlast, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tmin, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tmax, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%Tlow, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%Thigh, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tminarray, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%Tmaxarray, thisOctal%maxChildren)
 !       call allocateAttribute(thisOctal%radsurface, thisOctal%maxChildren)
 
-       call allocateAttribute(thisOctal%coolingRate, thisOctal%maxChildren)
+       allocate (thisOctal%coolingRate(1:thisOctal%maxChildren,1:4))
 !       call allocateAttribute(thisOctal%heatingRate, thisOctal%maxChildren)
        allocate(thisOctal%heatingRate(1:thisOctal%maxchildren, 1:12))
        allocate(thisOctal%cii_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%ci_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%oi_pop(1:thisOctal%maxchildren, 1:5))
        allocate(thisOctal%c12o_pop(1:thisOctal%maxchildren, 1:41))
+       allocate(thisOctal%relch(1:thisOctal%maxchildren, 1:4, 1:41))
 
        allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))
        allocate(thisOctal%AV(1:thisOctal%maxchildren, 1:nrays))
        allocate(thisOctal%abundance(1:thisOctal%maxchildren, 1:33))
-       allocate(thisOctal%thisColRho(1:thisOctal%maxchildren, 1:33, 1:nrays))
+       allocate(thisOctal%thisColRho(1:thisOctal%maxchildren, 1:nrays, 1:33))
 
        allocate(thisOctal%ciiLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
        allocate(thisOctal%ciiTransition(1:thisOctal%maxchildren, 1:5, 1:5))!, 1:41))
@@ -15695,6 +15797,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%ionFrac)
 #ifdef PDR
     call deallocateAttribute(thisOctal%ciiLine)
+    call deallocateAttribute(thisOctal%relch)
     call deallocateAttribute(thisOctal%ciiTransition)
     call deallocateAttribute(thisOctal%ciLine)
     call deallocateAttribute(thisOctal%ciTransition)
@@ -15709,14 +15812,17 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%abundance)
     call deallocateAttribute(thisOctal%UV)
     call deallocateAttribute(thisOctal%converged)
+    call deallocateAttribute(thisOctal%level_converged)
     call deallocateAttribute(thisOctal%biChop)
     call deallocateAttribute(thisOctal%expanded)
     call deallocateAttribute(thisOctal%lastChange)
     call deallocateAttribute(thisOctal%tPreV)
-    call deallocateAttribute(thisOctal%dust_T)
+
     call deallocateAttribute(thisOctal%radsurface)
     call deallocateAttribute(thisOctal%Tlast)
     call deallocateAttribute(thisOctal%Tmin)
+    call deallocateAttribute(thisOctal%Tlow)
+    call deallocateAttribute(thisOctal%Thigh)
     call deallocateAttribute(thisOctal%Tmax)
     call deallocateAttribute(thisOctal%Tminarray)
     call deallocateAttribute(thisOctal%Tmaxarray)
@@ -15725,6 +15831,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%oi_pop)
     call deallocateAttribute(thisOctal%c12o_pop)
 #endif
+    call deallocateAttribute(thisOctal%dust_T)
     call deallocateAttribute(thisOctal%photoIonCoeff)
     call deallocateAttribute(thisOctal%sourceContribution)
     call deallocateAttribute(thisOctal%diffuseContribution)

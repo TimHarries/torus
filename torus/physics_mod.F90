@@ -1,5 +1,5 @@
 module physics_mod
-
+  
   use constants_mod
   use messages_mod
   use mpi_global_mod
@@ -27,6 +27,7 @@ contains
 #ifdef PHOTOION
     use ion_mod, only: addIons, globalIonArray, nGlobalIon
     use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals
+!    use inputs_mod, only : startFromNeutral
 #endif
 
 
@@ -494,6 +495,9 @@ contains
         else
 #ifdef MPI
            call setupevenuparray(grid, evenuparray)
+!           if(.not. startFromNeutral) then
+           call ionizeGrid(grid%octreeRoot)
+ !          endif
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)
 
@@ -742,7 +746,8 @@ contains
      use mpi
 #endif
 
-     integer, parameter :: maxSources =1000
+!     integer, parameter :: maxSources =1000
+     integer, parameter :: maxSources =10000
      integer(bigInt) :: itest
      integer :: i
      type(GRIDTYPE) :: grid
@@ -754,6 +759,8 @@ contains
         deallocate(globalSourceArray)
      endif
 
+ !    print *, "setting up global sources"
+
      if (readSources.or.(inputNsource > 0 )) call writeBanner("Source setup","-",TRIVIAL)
      globalNSource = 0
      allocate(globalsourceArray(1:maxSources))
@@ -762,9 +769,12 @@ contains
         call setupSources(globalnSource, globalsourceArray, grid)
      endif
 
-     if (grid%geometry == "theGalaxy") then
+!     print *, "delta"
+     if (grid%geometry == "theGalaxy" .or. grid%geometry == "sphfile") then
+!        print *, "echo"
 #ifdef SPH
         globalnSource = get_nptmass()
+!        print *, "using ", globalnsource, "sources"
         if ( globalnSource > size(globalSourceArray)) then 
            write(message,*) "Number of sources exceeds size of source array", globalnSource, size(globalSourceArray)
            call writeFatal(message)
@@ -783,10 +793,21 @@ contains
         if (splitOverMPI) call gatherSinks()
 #endif 
 #endif
-        if (nbodyPhysics.and.hosokawaTracks) then
-           call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
-           call writeSourceList(globalsourceArray, globalnSource)
+!        print *, "setting up source array properties"
+!        if (nbodyPhysics.and.hosokawaTracks) 
+        call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
+        print *, "writing source list"
+        !        call writeSourceList(globalsourceArray, globalnSource)
+#ifdef MPI
+        !        call MPI_BARRIER(MPI_COMM_WORLD, ier)
+        if(myrankglobal == 0) then
+           !           print *, " " 
+           call writeIonizingFLuxes(globalsourceArray, globalnSource)
+           
+           !           call MPI_BARRIER(MPI_COMM_WORLD, ier)
         endif
+#endif
+        !endif
      endif
 
 

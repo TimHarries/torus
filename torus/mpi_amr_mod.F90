@@ -3157,6 +3157,253 @@ end subroutine writeRadialFile
   end subroutine dumpValuesAlongLine
 
 
+#ifdef PDR
+  subroutine dumpValuesAlongLinePDR(grid, thisFile, startPoint, endPoint, nPoints)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, soctal
+    integer :: subcell
+    integer :: nPoints
+    type(VECTOR) :: startPoint, endPoint, position, direction, cen
+    real(double) :: loc(3)!, rho, rhou , rhoe, p, phi_stars, phi_gas
+!    real(double) :: temperature
+    character(len=*) :: thisFile
+    integer :: ierr
+    integer, parameter :: nStorage = 19
+    real(double) :: c, cplus, c12o, cool1, cool2, cool3, cool4, cii_1, cii_2
+    real(double) :: tempSTorage(nStorage), UVtemp, heating, cooling
+    real(double) :: tlast, dustT, AVtemp, tval
+    integer, parameter :: tag = 30
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillLooping
+    integer :: sendThread
+    integer :: i
+
+    i = npoints
+
+    thisOctal => grid%octreeRoot
+    position = startPoint
+    direction = endPoint - startPoint
+    call normalize(direction)
+    if (myHydroSetGlobal /= 0) goto 555
+
+    if (myrankWorldGlobal == 0) then
+
+       open(20, file=thisFile, form="formatted", status="replace")
+!       open(21, file="hc_components.dat", form="formatted", status="replace")
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+
+          cen%x = tempStorage(1)
+          cen%y = tempStorage(2)
+          cen%z = tempStorage(3)
+          AVtemp = tempStorage(4)
+          tlast = tempStorage(5)
+          dustT = tempStorage(6)
+          UVtemp = tempStorage(7)
+          heating = tempStorage(8)
+          cooling = tempStorage(9)
+          tval =  tempStorage(10)
+          c = tempstorage(11)
+          cplus = tempstorage(12)
+          c12o = tempstorage(13)
+          cool1 = tempstorage(14)
+          cool2 = tempstorage(15)
+          cool3 = tempstorage(16)
+          cool4 = tempstorage(17)
+          cii_1 = tempstorage(18)
+          cii_2 = tempstorage(19)
+          write(20,'(1p,30e14.5)') cen%x, AVtemp, tlast, dustT, UVtemp, heating, cooling, c, cplus, c12o, &
+               cool1, cool2, cool3, cool4, cii_1, cii_2
+
+          position = cen
+          position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
+
+       enddo
+       !Send escape trigger to other threads
+       do sendThread = 1, nHydroThreadsGlobal
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+       enddo
+       close(20)
+!       goto 555
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+             call findSubcellLocal(position, thisOctal, subcell)
+             sOctal => thisOctal
+             cen = subcellCentre(thisOctal, subcell)
+             call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+             tempStorage(1) = cen%x
+             tempStorage(2) = cen%y
+             tempStorage(3) = cen%z
+             tempStorage(4) = thisOctal%AV(subcell, 1)
+             tempStorage(5) = thisOctaL%tLast(subcell)
+             tempStorage(6) = thisOctal%dust_t(subcell)
+             tempStorage(7) = thisOctal%UV(subcell)             
+             tempStorage(8) = thisOctal%heatingRate(subcell, 12)
+             tempStorage(9) = sum(thisOctal%coolingRate(subcell,:))
+             tempStorage(10) = tval
+             tempStorage(11) = thisOctal%abundance(subcell, 11) !C+ 
+             tempStorage(12) = thisOctal%abundance(subcell, 25) !C
+             tempStorage(13) = thisOctal%abundance(subcell, 28) !CO
+             tempStorage(14) = thisOctal%coolingRate(subcell, 1)
+             tempStorage(15) = thisOctal%coolingRate(subcell, 2)
+             tempStorage(16) = thisOctal%coolingRate(subcell, 3)
+             tempStorage(17) = thisOctal%coolingRate(subcell, 4)
+             tempStorage(18) = thisOctal%cii_pop(subcell, 1)
+             tempStorage(19) = thisOctal%cii_pop(subcell, 2)
+!             tempStorage(14) = thisOctal%heatingRate(subcell, 1)
+
+
+!             tempStorage(9) = thisOctal%ci_abund(subcell)             
+!             tempStorage(10) = thisOctal%oi_abund(subcell)             
+!             tempStorage(11) = thisOctal%c12o_abund(subcell)
+             
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+             
+          endif
+       enddo
+    endif
+
+555 continue
+  end subroutine dumpValuesAlongLinePDR
+
+  subroutine dumpHeatingCooling(grid, thisFile, startPoint, endPoint, nPoints, iter)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, soctal
+    integer :: subcell, iter
+    integer :: nPoints
+    type(VECTOR) :: startPoint, endPoint, position, direction, cen
+    real(double) :: loc(3)!, rho, rhou , rhoe, p, phi_stars, phi_gas
+!    real(double) :: temperature
+    character(len=*) :: thisFile
+    integer :: ierr
+    integer, parameter :: nStorage = 13
+    real(double) :: c, cplus, c12o
+    real(double) :: tempSTorage(nStorage), UVtemp, heating, cooling
+    real(double) :: tlast, dustT, AVtemp, tval
+    integer, parameter :: tag = 30
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillLooping
+    integer :: sendThread
+    integer :: i
+    logical, save :: hcfile = .true.
+    i = npoints
+
+    thisOctal => grid%octreeRoot
+    position = startPoint
+    direction = endPoint - startPoint
+    call normalize(direction)
+    if (myHydroSetGlobal /= 0) goto 555
+
+    if (myrankWorldGlobal == 0) then
+       if(hcfile) then
+          open(20, file=thisFile, form="formatted", status="replace")
+          hcfile = .false.
+       else
+          open(20, file=thisFile, form="formatted", status="old", position="append")
+       endif
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+
+          cen%x = tempStorage(1)
+          cen%y = tempStorage(2)
+          cen%z = tempStorage(3)
+          AVtemp = tempStorage(4)
+          tlast = tempStorage(5)
+          dustT = tempStorage(6)
+          UVtemp = tempStorage(7)
+          heating = tempStorage(8)
+          cooling = tempStorage(9)
+          tval =  tempStorage(10)
+          c = tempstorage(11)
+          cplus = tempstorage(12)
+          c12o = tempstorage(13)
+
+          write(20,'(1p,4e14.5)') dble(iter), heating, cooling, tLast
+!          write(20,'(1p,10e14.5)') cen%x, AVtemp, tlast, dustT, UVtemp, heating, cooling, c, cplus, c12o
+          position = cen
+          position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
+
+       enddo
+       !Send escape trigger to other threads
+       do sendThread = 1, nHydroThreadsGlobal
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+       enddo
+       close(20)
+!       goto 555
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+             call findSubcellLocal(position, thisOctal, subcell)
+             sOctal => thisOctal
+             cen = subcellCentre(thisOctal, subcell)
+             call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+             tempStorage(1) = cen%x
+             tempStorage(2) = cen%y
+             tempStorage(3) = cen%z
+             tempStorage(4) = thisOctal%AV(subcell, 1)
+             tempStorage(5) = thisOctaL%tLast(subcell)
+             tempStorage(6) = thisOctal%dust_t(subcell)
+             tempStorage(7) = thisOctal%UV(subcell)             
+             tempStorage(8) = thisOctal%heatingRate(subcell, 12)
+             tempStorage(9) = sum(thisOctal%coolingRate(subcell,:))
+             tempStorage(10) = tval
+             tempStorage(11) = thisOctal%abundance(subcell, 11) !C+ 
+             tempStorage(12) = thisOctal%abundance(subcell, 25) !C
+             tempStorage(13) = thisOctal%abundance(subcell, 28) !CO
+
+!             tempStorage(9) = thisOctal%ci_abund(subcell)             
+!             tempStorage(10) = thisOctal%oi_abund(subcell)             
+!             tempStorage(11) = thisOctal%c12o_abund(subcell)
+             
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+             
+          endif
+       enddo
+    endif
+
+555 continue
+  end subroutine dumpHeatingCooling
+
+
+#endif
+
   subroutine dumpDensitySpectrumZero(filename, filenameB, time)
     use mpi 
     use inputs_mod, only : normFac
@@ -4658,6 +4905,7 @@ end subroutine writeRadialFile
     do iThread = 1, nHydroThreadsGlobal
        if (iThread /= myrankGlobal) then
           loc = 1.d30
+          loc(4) = 1.d0
           call MPI_SEND(loc, 8, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
        endif
     enddo
@@ -4876,6 +5124,8 @@ end subroutine writeRadialFile
        OI_POP = thisOctal%OI_POP(subcell, :)!5
        C12O_POP = thisOctal%C12O_POP(subcell, :)!41
        call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+!       print *, "CII_POP ONTHREAD ", CII_POP
+
     else
 
        iThread = thisOctal%mpiThread(subcell)
@@ -4904,6 +5154,9 @@ end subroutine writeRadialFile
        do counter = 1, 41
           C12O_POP(counter) = tempstorage(counter + 17)
        enddo
+
+
+!       print *, "CII_POP NOTONTHREAD ", CII_POP
     endif
   end subroutine getRayTracingValuesPDR_TWO
 
@@ -5006,11 +5259,43 @@ end subroutine writeRadialFile
     integer, parameter :: tag = 50
     integer :: ierr
 !    logical :: useTop
+    logical :: notOnThread
+    notonthread = .false.
+    if(inOctal(grid%octreeRoot, position)) then
+       thisOctal => grid%octreeRoot
+!       print *, "finding cell at ", position
+       call findSubcellLocal(position, thisOctal, subcell)
+    else
+       notOnThread = .true.
+    endif
 
-    thisOctal => grid%octreeRoot
-    call findSubcellLocal(position, thisOctal, subcell)
-   
-    if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
+    if(notOnThread) then
+       iThread = thisOctal%mpiThread(subcell)
+       !       print *, "myrankglobal ", myrankglobal, "to ", ithread
+       loc(1) = position%x
+       loc(2) = position%y
+       loc(3) = position%z
+       loc(4) = dble(myRankGlobal)
+       !       loc(4) = myRankGlobal
+       loc(5) = direction%x
+       loc(6) = direction%y
+       loc(7) = direction%z
+       
+       call MPI_SEND(loc, 7, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+       !      print *, "sent "
+       call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
+            localWorldCommunicator, status, ierr)
+       !     print *, "recvd"
+       rho = tempStorage(1)
+       uvx = tempstorage(2)
+       uvy = tempstorage(3)
+       uvz = tempstorage(4)
+       tval = tempstorage(5)
+       Hplusfrac = tempstorage(6)
+       abundancearray(1:33) = tempstorage(7:39)
+       
+       
+    elseif (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
 
        rVec = subcellCentre(thisOctal, subcell)
        rho = thisOctal%rho(subcell)
@@ -5021,7 +5306,7 @@ end subroutine writeRadialFile
        abundanceArray(:) = thisOctal%abundance(subcell, :)
        call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
     else
-
+!       call torus_abort("error in pdr server")
        iThread = thisOctal%mpiThread(subcell)
 !       print *, "myrankglobal ", myrankglobal, "to ", ithread
        loc(1) = position%x
@@ -5045,6 +5330,7 @@ end subroutine writeRadialFile
        tval = tempstorage(5)
        Hplusfrac = tempstorage(6)
        abundancearray(1:33) = tempstorage(7:39)
+
 
     endif
   end subroutine getRayTracingValuesPDR
@@ -5141,7 +5427,7 @@ end subroutine writeRadialFile
           tempStorage(4) = thisOctal%UVvector(subcell)%z
           tempStorage(5) = tval
           tempStorage(6) = thisOctal%ionfrac(subcell, 2)
-!          tempStorage(7:39) = thisOctal%abundance(subcell, :)
+          tempStorage(7:39) = thisOctal%abundance(subcell, :)
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
                localWorldCommunicator, ierr)
        endif

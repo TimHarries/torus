@@ -284,7 +284,7 @@ contains
          lumAcc = bigG *source(i)%mass * source(i)%mdot / (source(i)%radius*1.d10) * fractionOfAccretionLum
          source(i)%luminosity = source(i)%luminosity + lumAcc
          tAcc = (lumAcc / (fourPi*stefanBoltz*source(i)%radius**2*1.d20))**0.25d0
-         if (Writeoutput) then
+         if (Writeoutput .and. nSource < 1000) then
             write(*,*) "Information for source: ",i
             write(*,*) "Mass: ",source(i)%mass/msol
             write(*,*) "radius: ",source(i)%radius*1.d10/rsol

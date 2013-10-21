@@ -1239,14 +1239,14 @@ end subroutine addRecombinationEmissionLine
   recursive subroutine addRadioContinuumEmissivity(thisOctal,lambda)
 !Emissivity calculation based on the third term of equation 75.2, page 333 of 
 !"Foundations of radiation hydrodynamics", Mihalas and Mihalas 1999
-
+    use inputs_mod, only : guessNe
     use stateq_mod, only : alpkk
     type(octal), pointer  :: thisOctal
     real, intent(in)      :: lambda
     type(octal), pointer  :: child 
     integer               :: subcell
     integer               :: i
-    real(double) :: eta, freq
+    real(double) :: eta, freq, X
     
     do subcell = 1, thisOctal%maxChildren, 1
 
@@ -1261,6 +1261,12 @@ end subroutine addRecombinationEmissionLine
           end do            
        else
           freq = cspeed / (lambda*angstromToCm)
+          if(guessNe) then
+             X = (thisOCtal%temperature(subcell) - 10.d0)/(1.d4-10.d0)
+             if(X > 1.d0) X = 1.d0
+             thisOctal%ne(subcell) = (thisOctal%rho(subcell)/mhydrogen)*X
+             thisOctal%temperature(subcell) = min(1.d4, thisOctal%temperature(subcell))
+          endif
           eta =  thisOctal%Ne(subcell)**2 * &
                alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
                exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))

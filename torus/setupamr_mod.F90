@@ -181,7 +181,7 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 ! General case of setting up a grid from an SPH file
-       case("molcluster","theGalaxy","sphfile")
+       case("molcluster","theGalaxy","sphfile", "dale")
           if (.not.grid%splitOverMPI) then
              call read_sph_data_wrapper
           else
@@ -196,6 +196,9 @@ contains
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+
+
 
        case("wr104")
           objectDistance = griddistance * pctocm
@@ -459,7 +462,7 @@ contains
              grid%rCore = rCore
 
 #ifdef SPH
-          case("cluster")
+          case("cluster", "dale")
              removedMass = 0.0
              call new(young_cluster, .false.)
              call remove_too_close_cells(young_cluster, grid%octreeRoot, real(rCore,db), removedMass, 1.0d-37, 'z')
@@ -1538,7 +1541,7 @@ contains
        call testAMRmass(grid, dble(mdisc))
 
 #ifdef SPH
-    case("molcluster", "theGalaxy", "cluster","sphfile")
+    case("molcluster", "theGalaxy", "cluster","sphfile", "dale")
        totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0; totalmassMol=0.0
        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, totalmassMol=totalmassMol, &
             maxrho=maxrho, minrho=minrho)

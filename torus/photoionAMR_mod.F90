@@ -74,13 +74,14 @@ contains
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
-         hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical
+         hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
+         imposeazimuthalvelocity
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -316,6 +317,9 @@ contains
 !       enddo
 
        if(grid%currentTime == 0.d0) then
+!          if(grid%geometry == "RHDDisc") then
+!             call imposeazimuthalvelocity(grid%octreeroot)
+!          endif
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 1.d0, 0.d0)
@@ -414,7 +418,7 @@ contains
                 tmpsphericalhydro=sphericalhydro
                 sphericalhydro=.false.
                 cylindricalHydro = .false.
-                if (.not.timedependentRT) &
+                if (.not.timedependentRT .and. .not. xrayonly) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, &
                      loopLimitTime, &
@@ -437,7 +441,7 @@ contains
                 tmpsphericalhydro=sphericalhydro
                 sphericalhydro=.false.
                 cylindricalHydro = .false.
-                if (.not.timeDependentRT) &
+                if (.not.timeDependentRT .and. .not. xrayonly) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
@@ -468,10 +472,10 @@ contains
        call writeAmrGrid(mpiFilename, .false., grid)
 
        if ((myrankglobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
-          
+       
        call calculateEnergyFromTemperature(grid%octreeRoot)
        call calculateRhoE(grid%octreeRoot, direction)
-
+       
                     
           if (myrankGlobal/=0) then
              call writeInfo("Refining individual subgrids", TRIVIAL)
@@ -775,8 +779,10 @@ contains
 !                nPhotoIter = 10
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
-                call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, nPhotoIter, loopLimitTime, &
-                     looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
+                if(.not. xrayonly) then
+                   call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, nPhotoIter, loopLimitTime, &
+                        looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
+                endif
                 cylindricalHydro = tmpCylindricalHydro
                 sphericalhydro = tmpsphericalhydro
 

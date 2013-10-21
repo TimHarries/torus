@@ -266,6 +266,38 @@ contains
        enddo
   end subroutine fluxlimiter
 
+  recursive subroutine imposeAzimuthalVelocity(thisOctal)
+    use inputs_mod, only : sourceMass
+    integer :: i
+    type(octal), pointer :: thisOctal, child
+    integer :: subcell
+    real(double) :: vkep, r, cs, n, eta, thisVel
+    type(vector) :: rvec
+
+   do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call imposeAzimuthalVelocity(child)
+                exit
+             end if
+          end do
+       else
+          n = 1.125
+          rVec = subcellCentre(thisOctal,subcell)
+          r = real(modulus(rVec))
+          vkep = sqrt(bigG*sourceMass(1)/r)
+          cs = soundSpeed(thisOctal, subcell)
+          eta = n *(cs**2/vkep**2)
+          thisVel = vkep*(1.d0-eta*(abs(rVec%z)/r)**2)
+          thisOctal%rhow(subcell) = thisOctal%rho(subcell) * thisVel
+       endif
+    enddo
+
+
+  end subroutine imposeAzimuthalVelocity
 
   recursive subroutine updatedensitytree(thisoctal)
     use mpi
@@ -3519,6 +3551,8 @@ contains
              thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
              thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
           else
+!             print *, "rhou ", thisOctal%rhou(subcell)
+!             print *, "rhow ", thisOctal%rhow(subcell)
              speed = (thisOctal%rhou(subcell)**2 + &
                   thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
              speed = sqrt(speed)
@@ -5284,6 +5318,7 @@ end subroutine sumFluxes
 
   recursive subroutine computeCourantTime(grid, thisOctal, tc)
     use mpi
+    use inputs_mod, only : hydroSpeedLimit
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -5315,6 +5350,7 @@ end subroutine sumFluxes
              else
                 speed = thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2
              endif
+             if(speed > hydroSpeedLimit) speed = hydrospeedlimit
 
              if(sphericalHydro) then
                 speed = thisOctal%rhou(subcell)**2
@@ -12767,9 +12803,43 @@ end subroutine refineGridGeneric2
 
 
   end subroutine multiGrid
+  
+  
+  recursive subroutine simpleGravity(thisOctal)
+    use inputs_mod, only : sourceMass, sourcePos
+    type(OCTAL), pointer :: thisOctal, child
+    type(VECTOR) :: rVec
+    integer :: subcell, i
+    real(double) :: R, thisMass
+    
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call simpleGravity(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          Rvec = subcellcentre(thisOCtal, subcell)
+          R= modulus(Rvec - sourcePos(1))*1.d10
+          thisMass = 1.d0
+!          thisMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)!*1.d30
+!          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)/R
+!          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)/R
+          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)*thisMass/R
+          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)*thisMass/R
+          thisOctal%phi_stars(subcell) = 0.d0
+       end if
+    end do
+
+  end subroutine simpleGravity
 
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
-    use inputs_mod, only :  maxDepthAMR, dirichlet, amr3d
+    use inputs_mod, only :  maxDepthAMR, dirichlet, amr3d, simpleGrav
     use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid
@@ -12781,7 +12851,12 @@ end subroutine refineGridGeneric2
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
 
-
+    if(simpleGrav) then
+       call simpleGravity(grid%octreeRoot)
+       if (myRankWorldGlobal == 1) write(*,*) "Done simplified self gravity calculation!"
+       goto 666
+    endif
+! endif
     tol = 1.d-5
     tol2 = 1.d-6
 
@@ -12952,6 +13027,7 @@ end subroutine refineGridGeneric2
     enddo
     if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
+666 continue
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 

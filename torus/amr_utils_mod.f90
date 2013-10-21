@@ -1544,7 +1544,7 @@ module amr_utils_mod
     ! true if the point lies within the boundaries of the current octal
   
     use inputs_mod, only : hydrodynamics, cylindricalHydro, photoionPhysics, spherical
-    use inputs_mod, only : sphericalhydro
+    use inputs_mod, only : sphericalhydro, pdrcalc
     use vector_mod, only : projectToXZ
     IMPLICIT NONE
     LOGICAL                       :: inOctal

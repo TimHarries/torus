@@ -320,7 +320,7 @@ END SUBROUTINE
 !#else
 SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
      & UV_FIELD,V_TURB,NSPEC,ABUNDANCE,NREAC,RATE,HEATING_RATE,&
-     & NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, NELECT) 
+     & NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, NELECT, NRAYS) 
 !#endif
 
  !     USE DEFINITIONS
@@ -351,15 +351,16 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
  !     REAL(double) :: chiprime, R_FRAC
       real(double) :: grain_radius, METALLICITY
 !#endif
-      integer, intent(in)  :: NELECT
+      integer, intent(in)  :: NELECT, NRAYS
 !     Dust PE heating
       INTEGER :: ITERATION
       REAL(double) :: HABING_FIELD
       REAL(double) :: X,XX,XK,XD,GAMMA,DELTA
       REAL(double) :: DELTAD,DELTAUV,Y,HNUD,HNUH
 
-
+      integer :: NHE
 !      integer :: NC, NH, NH2, NHCOX, NH3X, NH3OX, NHEX, NCO
+      integer :: NC, NCO
 
 !     PAH heating/cooling
       REAL(double) :: EPSILON,ALPHA,BETA,PAH_HEATING,PAH_COOLING
@@ -376,6 +377,19 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
 
 !     Gas-grain coupling heating/cooling
       REAL(double) :: ACCOMMODATION,NGRAIN,CGRAIN
+
+
+      NRCO = NRCO
+      NRHD = NRHD
+      NRSI = NRSI
+      if(0 == 1) print *, NRAYS
+
+!THAW - hardwired for now
+      GRAIN_RADIUS=1.0D-7
+      METALLICITY = 1.d0
+      NHE = 26
+      NCO = 28
+      NC = 25
 
 !!     Soft X-ray heating
 !      REAL(double) :: PP1,PP2,F6
@@ -730,6 +744,8 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
 !      HEATING_RATE(15)=TOTAL_HEATING!/5.0D0
 !#else
       HEATING_RATE(12)=TOTAL_HEATING
+
+      if(heating_rate(12) < 0.d0) heating_rate(12) = 0.d0
 !#endif
 
 !-----------------------------------------------------------------------
@@ -806,7 +822,7 @@ end function nray_func
 !#else
       SUBROUTINE CALCULATE_REACTION_RATES(TEMPERATURE,DUST_TEMPERATURE,RAD_SURFACE,AV,COLUMN, &
                  &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
-                 &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, n12co, nci)
+                 &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, n12co, nci, debug)
 !#endif
  
 !T.Bell
@@ -817,7 +833,7 @@ end function nray_func
 ! use functions_module
 ! use maincode_module , only : zeta, AV_fac
       IMPLICIT NONE
-
+      logical :: debug
       integer, intent(in) ::  NSPEC, nreac, nrays
       real(double),intent(in) :: TEMPERATURE, DUST_TEMPERATURE
       real(double),intent(in) :: RAD_SURFACE(1:nrays),AV(1:nrays),COLUMN(1:nrays,1:nspec)
@@ -850,6 +866,14 @@ end function nray_func
       NH2 = 31
       NS = 30
 
+!      print *, "NCO ", NCO
+!      print *, "NC ", NC
+!      print *, "NH2 ", NH2
+!      print *, "NS ", NS
+
+
+
+
       RATE=0.0D0
 
 !C     Initialize the stored reaction numbers. If they are not assigned
@@ -869,8 +893,14 @@ end function nray_func
       DO I=1,NREAC
 !         print *, "I is ", I
 !C        Determine the type of reaction
-     !    print *, len(REACTANT(I, 2))
-     !    print *, "2 ", REACTANT(I, 2), "FRWFWE"
+ !        print *, len(trim(REACTANT(I, 1)))
+  !       print *, len(trim(REACTANT(I, 2)))
+   !      print *, len(trim(REACTANT(I, 3)))
+    !     print *, "reactant is ", REACTANT(I, 1) 
+     !    print *, "reactant is ", REACTANT(I, 2) 
+      !   print *, "reactant is ", REACTANT(I, 3) 
+       !  print *, " "
+
          IF(trim(REACTANT(I,2)).EQ."PHOTON") GOTO 1
          IF(trim(REACTANT(I,2)).EQ."CRP") GOTO 2
          IF(trim(REACTANT(I,2)).EQ."CRPHOT") GOTO 3
@@ -907,10 +937,15 @@ end function nray_func
 !C        k_H2 = 3E-18 * T^0.5 * exp(-T/1000)   (cm3/s)
 !C
 !         print *, "1 ", REACTANT(I, 1), " TRWFE"
-         IF(trim(REACTANT(I,1)).EQ."H  " .AND. trim(REACTANT(I,2)).EQ."H  "  .AND. &
-         & (trim(REACTANT(I,3)).EQ."   " .OR.  trim(REACTANT(I,3)).EQ."#  ") .AND. &
+!THAW
+         IF(trim(REACTANT(I,1)).EQ."H" .AND. trim(REACTANT(I,2)).EQ."H"  .AND. &
+         & (trim(REACTANT(I,3)).EQ."" .OR.  trim(REACTANT(I,3)).EQ."#") .AND. &
          &  trim(PRODUCT(I,1)).EQ."H2"  .AND. &
          & (trim(PRODUCT(I,2)).EQ.""  .OR.  trim(PRODUCT(I,2)).EQ."#")) THEN
+!         IF(trim(REACTANT(I,1)).EQ."H  " .AND. trim(REACTANT(I,2)).EQ."H  "  .AND. &
+!         & (trim(REACTANT(I,3)).EQ."   " .OR.  trim(REACTANT(I,3)).EQ."#  ") .AND. &
+!         &  trim(PRODUCT(I,1)).EQ."H2"  .AND. &
+!         & (trim(PRODUCT(I,2)).EQ.""  .OR.  trim(PRODUCT(I,2)).EQ."#")) THEN
 
 !old way to read reactants, omitting the #
 !         IF(REACTANT(I,1).EQ."H  " .AND. REACTANT(I,2).EQ."H  " .AND. &
@@ -1000,9 +1035,9 @@ end function nray_func
 
 !C     Store the reaction number for HD photodissociation. The rate itself
 !C     is calculated separately by the function H2PDRATE (within shield.f)
-!         IF(trim(REACTANT(I,1)).EQ."HD" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
-!     &    ((trim(PRODUCT(I,1)).EQ."H" .AND. trim(PRODUCT(I,2)).EQ."D") .OR.&
-!     &     (trim(PRODUCT(I,1)).EQ."D" .AND. trim(PRODUCT(I,2)).EQ."H"))) THEN
+         IF(trim(REACTANT(I,1)).EQ."HD" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
+     &    ((trim(PRODUCT(I,1)).EQ."H" .AND. trim(PRODUCT(I,2)).EQ."D") .OR.&
+     &     (trim(PRODUCT(I,1)).EQ."D" .AND. trim(PRODUCT(I,2)).EQ."H"))) THEN
 !C           Loop over all rays
 !#ifdef MOCASSIN
 !            RADSURFTOT = 0.0D0
@@ -1013,14 +1048,14 @@ end function nray_func
 !            RATE(I) = RATE(I)/RADSURFTOT
 !#else
 !            print *, "PART 4"
-!            DO K=1,NRAYS
+            DO K=1,NRAYS
 !!            DO K=0,NRAYS-1
-!               RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NHD))
-!            ENDDO
+               RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NHD))
+            ENDDO
 !#endif
-!            NRHD=I
-!            GOTO 10
-!         ENDIF
+            NRHD=I
+            GOTO 10
+         ENDIF
 
 !C     Store the reaction number for !CO photodissociation. The rate itself
 !C     is calculated separately by the function !COPDRATE (within shield.f)
@@ -1114,11 +1149,15 @@ end function nray_func
 !#else
 !            print *, "part 8"
 !            DO K=0,NRAYS-1
+
             DO K=1,NRAYS
- !              print *, ""
-!               print *, "PART 8", RATE(I), ALPHA(I), RAD_SURFACE(K)
-!               print *, GAMMA(I), AV(K)
-!               print *, ""
+               if(debug) then
+!                  print *, ""
+!                  print *, "i, k ", i, k
+!                  print *, "PART 8", RATE(I), ALPHA(I), RAD_SURFACE(K)
+ !                 print *, GAMMA(I), AV(K)
+ !                 print *, ""
+               endif
                 RATE(I)=RATE(I) + ALPHA(I)*RAD_SURFACE(K)*EXP(-(GAMMA(I)*AV(K)))/2.0
             ENDDO
 !#endif

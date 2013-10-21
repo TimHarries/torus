@@ -82,11 +82,16 @@
       real(double) :: tot
       integer :: i, j
 
+
+      print *, "nsource is ", nsource
+
       if ( nsource<1 ) return
 
       if (writeoutput) &
            write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
            "Ran ","N","M","R","L","L(spec)","x","y","z","vx","vy","vz"
+
+      
       do i = 1, nSource
          fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
          if (writeoutput) &
@@ -107,6 +112,51 @@
 !         write(*,*) myrankWorldGlobal, " source lum ",tot/lsol
       enddo
     end subroutine writeSourceList
+
+
+    subroutine writeIonizingFluxes(source, nSource)
+      type(SOURCETYPE) :: source(:)
+      integer :: nSource
+ !     real(double) :: fromSpec
+      real(double) :: tot, max
+      integer :: i!, j
+      
+
+
+
+      if ( nsource<1 ) return
+
+!      if (writeoutput) &!
+!           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
+!           "Ran ","N","M","R","L","L(spec)","x","y","z","vx","vy","vz"
+
+      print *, "ionizing fluxes are"
+      tot = 0.d0
+      max = 0.d0
+      do i = 1, nSource
+!         fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
+!         print *, "mass ", source(i)%mass/msol
+         if(source(i)%mass/msol >= 20.d0) then
+
+!            if (writeoutput) &
+                 write(*,*)  myrankWorldGlobal, i, ionizingflux(source(i))
+                 tot = tot + ionizingflux(source(i))
+                 if(ionizingflux(source(i)) > max) then
+                    max = ionizingflux(source(i))
+                 endif
+         endif
+!         tot = 0.d0
+!         do j = 1, source(i)%spectrum%nLambda
+         !            if (j < source(i)%spectrum%nlambda) then
+!               tot = tot + source(i)%spectrum%flux(j) * source(i)%spectrum%dlambda(j)
+!            endif
+!         enddo
+ !        tot = tot * fourPi*source(i)%radius**2 * 1.d20
+!         write(*,*) myrankWorldGlobal, " source lum ",tot/lsol
+      enddo
+      print *, "TOTAL IONIZING FLUX FROM SINKS IS " ,tot
+      print *, "HIGHEST IONIZING FLUX IS ", max
+    end subroutine writeIonizingFluxes
 
     subroutine writeSourceArray(rootfilename)
       use inputs_mod, only : iModel

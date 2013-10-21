@@ -297,6 +297,7 @@ SCO_GRID(1:8,6) = (/-3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.16
              end if
           end do
        else
+          thisOctal%abundance(subcell, :) = 0.d0
           if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
              thisOctal%abundance(subcell,:) = dummyabundance(:)
           else
@@ -589,15 +590,24 @@ use unix_mod, only: unixGetenv
             NH2     = I
             print *, "NH2 IS ", NH2
          endif
-         IF(SPECIES(I).EQ."HD        ") NHD     = I
+         IF(SPECIES(I).EQ."HD        ") then
+            print *, "NHD IS ", NHD
+            NHD     = I
+         endif
          IF(SPECIES(I).EQ."H2+       ") NH2x    = I
          IF(SPECIES(I).EQ."H3+       ") NH3x    = I
          IF(SPECIES(I).EQ."H+        ") then
             NPROTON = I
             print *, "nproton is", nproton
          endif
-         IF(SPECIES(I).EQ."C         ") NC      = I
-         IF(SPECIES(I).EQ."C+        ") NCx     = I
+         IF(SPECIES(I).EQ."C         ") then
+            print *, "NC is", I
+            NC      = I
+         endif
+         IF(SPECIES(I).EQ."C+        ") then
+            print *, "NCII is ", I
+            NCx     = I
+         endif
          IF(SPECIES(I).EQ."O         ") NO      = I
          IF(SPECIES(I).EQ."O+        ") NOx     = I
          IF(SPECIES(I).EQ."N         ") NN      = I
@@ -612,7 +622,10 @@ use unix_mod, only: unixGetenv
             NHE     = I
          endif
          IF(SPECIES(I).EQ."HE        ") NHE     = I
-         IF(SPECIES(I).EQ."He+       ") NHEx    = I
+         IF(SPECIES(I).EQ."He+       ") then
+            print *, "NHEx is ", I
+            NHEx    = I
+         endif
          IF(SPECIES(I).EQ."HE+       ") NHEx    = I
          IF(SPECIES(I).EQ."Na        ") NNA     = I
          IF(SPECIES(I).EQ."NA        ") NNA     = I
@@ -640,7 +653,10 @@ use unix_mod, only: unixGetenv
          IF(SPECIES(I).EQ."CA+       ") NCAx    = I
          IF(SPECIES(I).EQ."Ca++      ") NCAxx   = I
          IF(SPECIES(I).EQ."CA++      ") NCAxx   = I
-         IF(SPECIES(I).EQ."CO        ") NCO     = I
+         IF(SPECIES(I).EQ."CO        ") then
+            print *, "NCO IS", I
+            NCO     = I
+         endif
          IF(SPECIES(I).EQ."CH        ") NCH     = I
          IF(SPECIES(I).EQ."CH2       ") NCH2    = I
          IF(SPECIES(I).EQ."OH        ") NOH     = I
@@ -649,8 +665,14 @@ use unix_mod, only: unixGetenv
          IF(SPECIES(I).EQ."H2O       ") NH2O    = I
          IF(SPECIES(I).EQ."H3O+      ") NH3Ox   = I
          IF(SPECIES(I).EQ."HCO+      ") NHCOx   = I
-         IF(SPECIES(I).EQ."e-        ") NELECT  = I
-         IF(SPECIES(I).EQ."ELECTR    ") NELECT  = I
+         IF(SPECIES(I).EQ."e-        ") then
+            print *, "NELECT IS", I
+            NELECT  = I
+         endif
+         IF(SPECIES(I).EQ."ELECTR    ") then
+            print *, "NELECT IS B", I
+            NELECT  = I
+         endif
       ENDDO
 
       I=I-1

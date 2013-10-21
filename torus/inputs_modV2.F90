@@ -370,6 +370,7 @@ contains
 
        call getDouble("v_turb", v_turb, 1.d0, cLine, fLine, nLines, &
             "Turbulent velocity (cm/s): ", "(a,f7.1,1x,a)", 1.d0, ok, .false.)
+       spherical = .false.
     end if
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
@@ -392,6 +393,9 @@ contains
 
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("simplegrav", simplegrav, cLine, fLine, nLines, &
+         "Do simple self gravity calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
 !Otherwise periodic boundaries are automatically used
     call getLogical("dirichlet", dirichlet, cLine, fLine, nLines, &
@@ -1025,8 +1029,8 @@ contains
           call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
-          call getReal("rinner", rInner, real(autocm/1.e10), cLine, fLine, nLines, &
-               "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
+          call getDouble("extmass", extmass, 1.d0, cLine, fLine, nLines, &
+               "Ambient mass: ","(a,f5.1,a)", 1.d-20, ok, .false.)
 
           call getReal("router", rOuter, real(autocm/1.e10), cLine, fLine, nLines, &
                "Outer Radius (AU): ","(a,f8.2,a)", 20., ok, .true.)
@@ -1036,6 +1040,9 @@ contains
 
           call getReal("rho", rho, 1., cLine, fLine, nLines, &
                "Density: ","(a,e12.5,a)", 1., ok, .true.)
+
+          call getReal("rinner", rInner, real(autocm/1.e10), cLine, fLine, nLines, &
+               "Inner Radius for dumpresults (AU): ","(a,1pe8.2,a)", 1.e0, ok, .false.)
 
        case("molebench")
           call getReal("rinner", rInner, 1., cLine, fLine, nLines, &
@@ -1063,6 +1070,9 @@ contains
 
           call getLogical("useHull", useHull, cLine, fLine, nLines, &
             "Use hull particle method: ","(a,1l,a)", .false., ok, .false.)
+
+          call getLogical("guessNe", guessNe, cLine, fLine, nLines, &
+            "Guess the electron density based on temperature: ","(a,1l,a)", .false., ok, .false.)
 
           call getLogical("discardsinks", discardSinks, cLine, fLine, nLines, &
             "Discard sink particles: ","(a,1l,a)", .false., ok, .false.)
@@ -1831,6 +1841,8 @@ contains
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .false.)
+       call getLogical("forceturb", forceturb, cLine, fLine, nLines, &
+            "Force microturbulence nonzeroing: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("noturb", noturb, cLine, fLine, nLines, &
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, fLine, nLines, &

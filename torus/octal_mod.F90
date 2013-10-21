@@ -289,7 +289,7 @@ MODULE octal_mod
     real(double), dimension(:,:), pointer :: sourceContribution => null()
     real(double), dimension(:,:), pointer :: diffuseContribution => null()
     real(double), dimension(:,:), pointer :: normSourceContribution => null()
-
+    real(double), pointer :: dust_T(:)=>null()
 
       ! the subcell labels may be useful for debugging the code, but are not needed for
       !   any of the normal AMR routines. They should probably be removed in the future.
@@ -321,24 +321,30 @@ MODULE octal_mod
     real(double), dimension (:, :, :), pointer :: c12oTransition=>null()
     logical, pointer :: converged(:)=>null()
     logical, pointer :: biChop(:)=>null()
+    logical, pointer :: level_converged(:)=>null()
     logical, pointer :: expanded(:)=>null()
     integer, pointer :: lastChange(:)=>null()
+
+    real(double), dimension(:,:,:), pointer :: relch=>null()
+
 !    real(double), dimension (:, :, :, :), pointer :: pdrTransition=>null()
     
     real(double), pointer :: UV(:)=>null()
-    real(double), pointer :: dust_T(:)=>null()
+
     real(double), pointer :: TPrev(:)=>null()
 !    real(double), pointer :: TPDR(:)=>null()     
     real(double), pointer :: TLast(:)=>null()     
     real(double), pointer :: TMin(:)=>null()     
     real(double), pointer :: TMax(:)=>null()     
+    real(double), pointer :: TLow(:)=>null()     
+    real(double), pointer :: THigh(:)=>null()     
     real(double), pointer :: TMinArray(:)=>null()     
     real(double), pointer :: TMaxArray(:)=>null()     
     real(double), pointer :: CII_Pop(:,:)=>null()
     real(double), pointer :: CI_Pop(:,:)=>null()
     real(double), pointer :: OI_Pop(:,:)=>null()
     real(double), pointer :: C12O_Pop(:,:)=>null()
-    real(double), pointer :: coolingRate(:)=>null()
+    real(double), pointer :: coolingRate(:,:)=>null()
     real(double),dimension(:,:), pointer :: heatingRate=>null()
 
 !    real(double), pointer :: CII_CCOEFFS(:)

@@ -83,7 +83,7 @@ int calculate_abundances_onepart_(realtype *abundance, realtype *rate, realtype 
   realtype start_time = 0.0;   //!maincode_module_mp_start_time_;
   realtype end_time = 1.e7;  //!maincode_module_mp_end_time_;
   realtype seconds_in_year = RCONST(3.1556926e7); /* Convert from years to seconds */
-  int nelect = nelectIn-1;
+  int nelect = 32;
 
   double cpu_start, cpu_end; /* CPU times */
 //#ifdef OPENMP
@@ -144,30 +144,41 @@ int calculate_abundances_onepart_(realtype *abundance, realtype *rate, realtype 
 
     /* Initialize y from the abundance array */
     data = NV_DATA_S(y);
+
     for (i = 0; i < neq; i++) {
 #ifdef LOG_ODES
+
       if (abundance[i] > 0) data[i] = log(abundance[i]);
+
       else data[i] = log(abstol*abstol);
+
 #else
+
       data[i] = abundance[i];
+
 #endif
     }
+
     /*for (i=212; i<215; i++) {
      printf ("n %i ,abundance( %i )= %E \n",n,i,abundance[n*(*nspec)+i]); 
     }
     printf ("\n");*/
-
     /* Create and allocate memory to user_data to contain the rates */
     user_data = NULL;
+
     user_data = (User_Data) malloc(sizeof *user_data);
+
     if(check_flag((void *)user_data, "malloc", 2)) status = 1;
 
     /* Initialize user_data with the array of reaction rate coefficients,
      * the total number density, gas temperature and electron abundance */
     user_data->rate = &rate[0];
+
     user_data->n_H = density[0];
+
     user_data->T_g = temperature[0];
     user_data->x_e = abundance[nelect];
+
 
     /* Call CVodeCreate to create the solver memory and specify the
      * use of Backward Differentiation Formula and Newton iteration */
@@ -210,6 +221,7 @@ int calculate_abundances_onepart_(realtype *abundance, realtype *rate, realtype 
     do { /* Call CVode, check the return status and loop until the end time is reached */
 
       flag = CVode(cvode_mem, tout, y, &t, CV_NORMAL);
+
 //#ifdef OPENMP
 //#pragma omp critical (status)
 //#endif

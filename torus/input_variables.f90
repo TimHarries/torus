@@ -121,6 +121,7 @@
   integer, protected :: nHydroThreadsInput !Number of hydrothreads for domain decomposition
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
+  logical :: simpleGrav               !Do self gravity calculation
   logical :: doGasGravity             ! Include gas gravity in calculation
   logical :: dirichlet                !Use dirichlet boundary conditions - otherwise periodic used by default
   logical :: severeDamping            ! Turn on damping
@@ -224,6 +225,7 @@
   logical, protected :: setupMolecularLteOnly ! Set up LTE level populations then exit molecular loop
   logical :: lowmemory ! if memory is tight
   logical, protected :: noturb ! Subsonic turbulent velocity
+  logical, protected :: forceturb ! Subsonic turbulent velocity
   real, protected :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   integer, protected :: initnray ! number of rays to use in fixed ray case (stage 1)
   real(double), protected :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
@@ -439,6 +441,7 @@
   real :: rCore, rInner
   real :: rTorus, rOuter, rSublimation
   real :: rho, rho0
+  real(double) :: extMass
   real :: scale, rscale
   real :: mCore, diskTemp, mDisc
   real :: epsilonDisc
@@ -778,7 +781,7 @@
   integer, protected :: ih2frac        ! column of SPH file which contains H2 fraction
   logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
   logical, protected :: discardSinks   ! Don't store sink particles
-
+  logical :: guessNe                   !guess the electron number density based on temperature
 
 !------------------
 ! Other parameters 

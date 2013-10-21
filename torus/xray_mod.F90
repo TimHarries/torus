@@ -369,14 +369,14 @@ subroutine simpleXRay(grid, thisSource)!
      do i = 1, nhydrothreadsglobal
 !        print *, myrankglobal, "starting ", i
         if(myrankglobal == i) then
-           print *, "thread ", myrankglobal, "doing raytracing"
+!           print *, "thread ", myrankglobal, "doing raytracing"
            call calculateColumnToStar(grid%octreeRoot, grid, thisSource%position)
-           print *, "thread ", myrankglobal, "done tracing"
+!           print *, "thread ", myrankglobal, "done tracing"
            call shutdownserversXRAY()
         else
-           print *, "thread ", myrankglobal, "serving"
+!           print *, "thread ", myrankglobal, "serving"
            call raytracingserverXRAY(grid)
-           print *, "thread ", myrankglobal, "done"
+!           print *, "thread ", myrankglobal, "done"
            
         end if
         call MPI_BARRIER(amrCommunicator, ier)
@@ -410,44 +410,51 @@ recursive subroutine calcIonParamTemperature(thisOctal, xrayLuminosity, starPos)
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
         if(.not. thisOctal%ghostcell(subcell)) then
-           if(.not. thisOctal%ionfrac(subcell,2 ) > 0.9d0) then
+!           if(.not. thisOctal%ionfrac(subcell,2 ) > 0.9d0) then
               
               !        if(.not. thisOctal%temperature(subcell) > 50.d0) then
               !           thisOCtal%temperature(subcell) = 10.d0 ! until I get the zeta(T) relation from James
               rVec = subcellCentre(thisOctal, subcell)
               starDist = modulus(rVec - starpos)*1.d10
               column = thisOctal%columnRho(subcell)*1.d10/mHydrogen
-              !        print *, "columnrho ", column
-              !        print *, "xraylum ", xrayluminosity
-              !        print *, "stardist ", stardist
+!                      print *, "columnrho ", column
+!                      print *, "xraylum ", xrayluminosity
+!                      print *, "stardist ", stardist
               !        ionParam = xrayLuminosity / ((column*starDist**2))
-              ionParam = xrayLuminosity / ((column*starDist))
-              thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + real(calcOwen(ionParam))
-           end if
+              if(column /= 0.d0 .and. starDist /= 0.d0) then
+                 ionParam = xrayLuminosity / ((column*starDist))
+              else
+                 ionParam = 100.d0
+              endif
+
+              
+              thisOctal%temperature(subcell) = real(calcOwen(ionParam, thisOctal%dust_t(subcell)))
+!              print *, "ionparam, temperature ", ionParam, thisOctal%temperature(subcell)
+ !          end if
         end if
   end if
 end do
 
 end subroutine calcIonParamTemperature
 
-subroutine printIonParam()
-  real(double) :: xi, xi_max, temperature
-  integer :: ier
+!subroutine printIonParam()
+!  real(double) :: xi, xi_max, temperature
+!  integer :: ier!!
+!
+!  xi = 1.d-7
+!  xi_max = 1.d-3
+!  open (1, file="ionParam", status="unknown", iostat=ier)
+!  do while (xi < xi_max)
+!     temperature =  real(calcOwen(xi))
+!     write(1, *) xi, temperature
+!     xi = xi + (xi/10.d0)
+!  end do
+!  
+!end subroutine printIonParam
 
-  xi = 1.d-7
-  xi_max = 1.d-3
-  open (1, file="ionParam", status="unknown", iostat=ier)
-  do while (xi < xi_max)
-     temperature =  real(calcOwen(xi))
-     write(1, *) xi, temperature
-     xi = xi + (xi/10.d0)
-  end do
-  
-end subroutine printIonParam
-
-real(double) function calcOwen(thisxi)
+real(double) function calcOwen(thisxi, dustt)
   real(double), intent(in) :: thisxi
-  real(double) :: tHot, tCold, xi
+  real(double) :: tHot, tCold, xi, dustt
 !FITTING CONSTANTS
   real(double), parameter :: ao=8.9362527959248299D-03
   real(double), parameter :: bo=-4.0392424905367275d0
@@ -468,6 +475,7 @@ real(double) function calcOwen(thisxi)
   tCold = 10.d0**((fo*xi)+go)
 !  tCold = log10(tCold)
 !  print *, tHot, tCold
+  tCold = max(dustt, tCold)
   calcOwen = min(tHot, tCold)
 !  calcOwen = max(calcOwen, 10.d0)
 
@@ -477,7 +485,7 @@ end function calcOwen
 !for use with the ionization parameter scheme used
 !by James Owen
 recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
-
+  use inputs_mod, only : sourceRadius, sourceTeff
   integer :: j
   type(octal), pointer :: thisOctal, child!, soctal
   integer :: subcell!, ssubcell
@@ -498,8 +506,9 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        thisOctal%dust_t(subcell)= 10.d0
         if(.not. thisOctal%ghostcell(subcell)) then
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
+!        if(.not. thisOctal%ionfrac(subcell, 2) > 0.9d0) then
            !           sOctal=> thisOctal           
            startPosition = subcellCentre(thisOctal, subcell)
            testPosition = startPosition
@@ -516,6 +525,9 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
 !           uhat = -uhat
 !           print *, "tracing ray with ", uhat
            foundstar = .false.
+           disttostar = modulus(testposition-starpos)
+           thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*disttostar*1.d10))**0.5d0
+           
            do while (.not. foundstar)     
  !             print *, "went one"
 !              call findSubcellLocal(testPosition, sOctal, ssubcell)
@@ -527,9 +539,9 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
 
               disttostar = modulus(testposition-starpos)
               if (disttostar < 2.d0*grid%halfsmallestsubcell) then
-                 call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval, getTval=.false.) 
-                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*disttostar)
-                 testPosition = testPosition + (disttostar*uhat)
+!                 call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval, getTval=.false.) 
+!                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*disttostar)
+!                 testPosition = testPosition + (disttostar*uhat)
                  foundstar = .true.
               else
                  call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval, getTval=.true.) 
@@ -537,12 +549,12 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
                  testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
               endif              
             
-           end do          
+           end do
         end if
-        endif
+!     endif
      end if
   end do
-    
+  
      
 end subroutine calculateColumnToStar
 

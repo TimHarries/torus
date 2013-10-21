@@ -1084,7 +1084,7 @@ contains
                   write(lunit, *) real(thisOctal%ciiline(subcell,2,1))
 
                case("cooling")
-                  write(lunit, *) real(thisOctal%coolingRate(subcell))
+                  write(lunit, *) real(sum(thisOctal%coolingRate(subcell,:)))
 
                case("heating")
                   write(lunit, *) real(thisOctal%heatingRate(subcell, 12))
@@ -3269,7 +3269,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
 
                case("tLast")
-                  rArray(1, n) = real(real(thisOctal%temperature(subcell)))
+                  rArray(1, n) = real(real(thisOctal%tLast(subcell)))
 
                case("CO_PDR")
                   rArray(1, n) = real(thisOctal%abundance(subcell, 28))
@@ -3302,7 +3302,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%heatingRate(subcell, 12))
 
                case("cooling")
-                  rArray(1, n) = real(thisOctal%coolingRate(subcell))
+                  rArray(1, n) = real(sum(thisOctal%coolingRate(subcell,:)))
 
 
 #endif
