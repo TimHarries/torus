@@ -1265,7 +1265,7 @@ end subroutine addRecombinationEmissionLine
              X = (thisOCtal%temperature(subcell) - 10.d0)/(1.d4-10.d0)
              if(X > 1.d0) X = 1.d0
              thisOctal%ne(subcell) = (thisOctal%rho(subcell)/mhydrogen)*X
-             thisOctal%temperature(subcell) = min(1.d4, thisOctal%temperature(subcell))
+             thisOctal%temperature(subcell) = min(1.e4, thisOctal%temperature(subcell))
           endif
           eta =  thisOctal%Ne(subcell)**2 * &
                alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
