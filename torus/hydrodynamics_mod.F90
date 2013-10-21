@@ -2871,8 +2871,10 @@ contains
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 
 
-                thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
-
+                !THAW - NULLIFYING TORQUE FOR DEBUGGING PURPOSES
+                if(0 /= 0) then
+                   thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
+                end if
 
 !                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
 !                      write(*,*) "u speed over 200 after centrifugal forces"
