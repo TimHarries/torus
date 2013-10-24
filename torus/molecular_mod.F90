@@ -521,13 +521,13 @@ module molecular_mod
 ! set up microturbulence - this shouldn't be done here but is at the moment. It can easily be moved into a function.
 ! this just catches stuff if it's been allocated and not set.
 
-              if (.not.associated(thisOctal%microturb)) then
-                 print *, "allocating microturb"
-                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-                 thisOctal%microTurb = 0.d0
-              else
-                 print *, "microturb already allocated"
-              endif
+!              if (.not.associated(thisOctal%microturb)) then
+!                 print *, "allocating microturb"
+!                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
+!                 thisOctal%microTurb = 0.d0
+!              else
+!                 print *, "microturb already allocated"
+!              endif
               if(thisoctal%microturb(subcell) .le. 1d-20) then
 !                 if(.not. molebench) 
                  thisOctal%microturb(subcell) = max(1d-7, &
@@ -668,7 +668,7 @@ module molecular_mod
                     !                      (thisMolecule%molecularWeight * amu))
 !                 endif
                  
-              else
+              Else
                  thisOctal%microturb(subcell) = max(1d-7, &
                       sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
                       (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))

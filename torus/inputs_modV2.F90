@@ -349,6 +349,8 @@ contains
     call getLogical("photoioneq", photoionEquilibrium, cLine, fLine, nLines, &
          "Perform a photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+
+
     call getLogical("xray", xraycalc, cLine, fLine, nLines, &
          "Include x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -2159,6 +2161,8 @@ contains
     call getbigInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
          "Number of photons in image","(a,i12,a)", 0, ok, .false.)
 
+    call getLogical("massiveStars", massiveStars, cLine, fLine, nLines, &
+         "Only include stars over 20Msol in photoion calc: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)

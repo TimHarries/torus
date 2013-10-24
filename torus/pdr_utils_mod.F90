@@ -378,7 +378,7 @@ SUBROUTINE CALC_HEATING(DENSITY,GAS_TEMPERATURE,DUST_TEMPERATURE, &
 !     Gas-grain coupling heating/cooling
       REAL(double) :: ACCOMMODATION,NGRAIN,CGRAIN
 
-
+!      print *, "in heating NH is ", Nh
       NRCO = NRCO
       NRHD = NRHD
       NRSI = NRSI

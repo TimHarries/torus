@@ -1128,7 +1128,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam, dumpregularVTUS
-    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d
+    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d, massiveStars
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
@@ -1272,6 +1272,10 @@ end subroutine radiationHydro
     type(VECTOR) :: smallPacketOrigin
     
 
+    logical :: gotmassive
+
+
+
     !Energy cons variables
     real(double) :: totalPower = 0.d0
     real(double) :: lams(1000) = 0.d0
@@ -1407,7 +1411,13 @@ end subroutine radiationHydro
     nescapedArray = 0    
     dprCounter = 0
 
-
+    
+!    if(uv_vector .or. singlemegaphoto .or. dumpRegularVTUS) then
+!       write(mpiFilename,'(a, i4.4, a)') "pre", nIter,".vtk"!
+!       call writeVtkFile(grid, mpiFilename, &
+!            valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        "/))
+!    end if
+    
 
 
 
@@ -1595,9 +1605,22 @@ end subroutine radiationHydro
     nIter = 0
 
     converged = .false.
-    if (nSource > 1) &
-         call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
+    if (nSource > 1) then
+       if(massiveStars) then
+          gotMassive = .false.
+          do while (.not. gotMassive) 
+
+             call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+             print *, "hunting ", source(isource)%mass/msol
+             if(source(iSource)%mass/msol >= 20.d0) gotMassive = .true.
+          enddo
+
+       else
+          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+       endif
+    endif
+    print *, "gota massive star..."
     if (maxiter > 1) then
        if (variableDustSublimation) then
           if (Writeoutput) write(*,*) "Stripping dust away."
@@ -1825,7 +1848,17 @@ end subroutine radiationHydro
                    else
                       lastPhoton = .false.
                    endif
-                call randomSource(source, nSource, iSource, photonPacketWeight)
+!                call randomSource(source, nSource, iSource, photonPacketWeight)
+                   if(massiveStars) then
+                      gotMassive = .false.
+                      do while (.not. gotMassive) 
+                         call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+                         if(source(iSource)%mass/msol >= 20.d0) gotMassive = .true.
+                      enddo
+                   else
+                      call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+                   endif
+!                   print *, "gota massive star B..."
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
                 if(cart2d .and. .not. source(1)%outsidegrid) then
@@ -4572,10 +4605,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
                 end if
              else
+
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
                 if(thisOctal%nCrossings(subcell) /= 0) then
-!                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
                 end if
              endif
           endif
@@ -7159,6 +7193,9 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     Call randomSource(source, nSource, iSource, thisSourceWeight, nLambda=nLams, initialize=.true., &
          lambdaMono=LambdaImage)
+
+
+
 
     if (myRankGlobal == 0) then
        np = 0

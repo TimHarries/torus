@@ -495,7 +495,9 @@ contains
         else
 #ifdef MPI
            call setupevenuparray(grid, evenuparray)
+           
 !           if(.not. startFromNeutral) then
+           print *, "ionizing grid"
            call ionizeGrid(grid%octreeRoot)
  !          endif
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
@@ -794,20 +796,20 @@ contains
 #endif 
 #endif
 !        print *, "setting up source array properties"
-!        if (nbodyPhysics.and.hosokawaTracks) 
-        call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
-        print *, "writing source list"
-        !        call writeSourceList(globalsourceArray, globalnSource)
+        if (nbodyPhysics.and.hosokawaTracks)  then
+           call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
+           print *, "writing source list"
+           !        call writeSourceList(globalsourceArray, globalnSource)
 #ifdef MPI
-        !        call MPI_BARRIER(MPI_COMM_WORLD, ier)
-        if(myrankglobal == 0) then
-           !           print *, " " 
+           !        call MPI_BARRIER(MPI_COMM_WORLD, ier)
+           if(myrankglobal == 0) then
+              !           print *, " " 
            call writeIonizingFLuxes(globalsourceArray, globalnSource)
            
            !           call MPI_BARRIER(MPI_COMM_WORLD, ier)
         endif
 #endif
-        !endif
+     endif
      endif
 
 
