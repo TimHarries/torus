@@ -227,7 +227,6 @@
   logical, protected :: setupMolecularLteOnly ! Set up LTE level populations then exit molecular loop
   logical :: lowmemory ! if memory is tight
   logical, protected :: noturb ! Subsonic turbulent velocity
-  logical, protected :: forceturb ! Subsonic turbulent velocity
   real, protected :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   integer, protected :: initnray ! number of rays to use in fixed ray case (stage 1)
   real(double), protected :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ

@@ -362,7 +362,7 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use inputs_mod, only : vturb, restart, isinLTE, &
           addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, &
-          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts, forceTurb
+          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts
 
 !         plotlevels
 !     type(VECTOR) :: pos
@@ -521,13 +521,10 @@ module molecular_mod
 ! set up microturbulence - this shouldn't be done here but is at the moment. It can easily be moved into a function.
 ! this just catches stuff if it's been allocated and not set.
 
-!              if (.not.associated(thisOctal%microturb)) then
-!                 print *, "allocating microturb"
-!                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-!                 thisOctal%microTurb = 0.d0
-!              else
-!                 print *, "microturb already allocated"
-!              endif
+              if (.not.associated(thisOctal%microturb)) then
+                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
+                 thisOctal%microTurb = 0.d0
+              endif
               if(thisoctal%microturb(subcell) .le. 1d-20) then
 !                 if(.not. molebench) 
                  thisOctal%microturb(subcell) = max(1d-7, &
@@ -650,39 +647,11 @@ module molecular_mod
               endif
            endif
 
-           ! molmicroturb = 1/microturb which is used far more commonly. For speed
-           if (.not.associated(thisOctal%microturb) .and. forceTurb) then
- !                print *, "allocating microturb"
-                 allocate(thisOctal%microturb(1:thisOctal%maxChildren))
-                 thisOctal%microTurb = 0.d0
-                 
-!                 if(thisoctal%microturb(subcell) .le. 1d-20) then
-                    !                 if(.not. molebench) 
-                    thisOctal%microturb(subcell) = max(1d-7, &
-                         sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                         (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
-                    ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
-                    ! *2 because using 1/e definition of thermal line width
-                    ! molebench has vturb already
-                    !                 write(*,*) "sound  ",sqrt(2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                    !                      (thisMolecule%molecularWeight * amu))
-!                 endif
-                 
-              Else
-                 thisOctal%microturb(subcell) = max(1d-7, &
-                      sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
-                      (thisMolecule%molecularWeight * amu)) + vturb**2 ) / (cspeed * 1d-5))
-                 ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
-!                 print *, "microturb already allocated"
-              endif
-
-
-
+! molmicroturb = 1/microturb which is used far more commonly. For speed
            if (.not.associated(thisOctal%molmicroturb)) then
               allocate(thisOctal%molmicroturb(1:thisOctal%maxChildren))
            endif
-
-           Thisoctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
+           thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
 
            deptharray(thisoctal%ndepth + 1) = deptharray(thisoctal%ndepth + 1) + 1
         endif ! if haschild

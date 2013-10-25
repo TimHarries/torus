@@ -1849,8 +1849,6 @@ contains
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.3, ok, .false.)
-       call getLogical("forceturb", forceturb, cLine, fLine, nLines, &
-            "Force microturbulence nonzeroing: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("noturb", noturb, cLine, fLine, nLines, &
             "No microturbulence","(a,1l,a)",.false., ok, .false.)
        call getInteger("setmaxlevel", setmaxlevel, cLine, fLine, nLines, &
@@ -1894,8 +1892,17 @@ contains
           
        endif
 
-       
+! Do some sanity checks
+       if (restart.and.(.not.readGrid)) then
+          call writeFatal("Restart option can only be used when reading a grid")
+       endif
 
+       if (restart) then
+          inquire(file="restart.dat", exist=ok)
+          if (.not.ok) then
+             call writeFatal("Failed to find the file restart.dat")
+          endif
+       endif
 
   end subroutine readMolecularPhysicsParameters
 
@@ -2816,7 +2823,6 @@ contains
     character(len=10) :: axisUnits
     character(len=10) :: fluxUnits
     character(len=80) :: outputImageType, imageFilename
-    character(len=4)  :: iChar
     integer :: thisnpixels, npixels, nimage
     real :: lambdaImage, thisLambdaImage
     real :: imagesize, thisImageSize, wholeGrid
