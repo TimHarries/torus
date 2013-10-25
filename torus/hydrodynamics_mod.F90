@@ -4688,7 +4688,7 @@ end subroutine sumFluxes
 
     if (selfGravity) then
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
           call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
@@ -4729,8 +4729,6 @@ end subroutine sumFluxes
              thisBound = 2
              if (myrankWorldglobal == 1) call tune(6,"X-direction step")
        end select
-       dt = dt*2.d0
-
 
        !set up the grid values
        call setupX(grid%octreeRoot, grid, direction)
@@ -4756,11 +4754,11 @@ end subroutine sumFluxes
 
        !Advect rho, velocities and rhoe
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
-       call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-       call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-       call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-       call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
-       call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRho(grid, direction,  dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
 
        !if running a radiation hydrodynamics calculation, advect the ion fraction
        if(photoionPhysics .and. hydrodynamics) then
@@ -4784,7 +4782,7 @@ end subroutine sumFluxes
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
 
-       call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
+       call setupUi(grid%octreeRoot, grid, direction, dt)
        call setupUpm(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .true.)
@@ -4802,7 +4800,7 @@ end subroutine sumFluxes
        endif
 
        !modify rhou and rhoe due to pressure/graviational potential gradient
-       call pressureForce(grid%octreeRoot, dt/2.d0, grid, direction)
+       call pressureForce(grid%octreeRoot, dt, grid, direction)
 
        select case(idir)
          case(1)
@@ -4847,7 +4845,7 @@ end subroutine sumFluxes
 
    if (selfGravity) then
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
       call zeroSourcepotential(grid%octreeRoot)
       if (globalnSource > 0) then
          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)

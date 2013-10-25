@@ -2679,12 +2679,14 @@ i_loop: do i = 1, n-1
       IF (MODE .NE. 0) THEN
         VARNCE = 1.
       ELSE
-        C = NPTS - 2
-        VARNCE = (SUMY2+A*A*SUM+B*B*SUMX2 &
+        IF (NPTS .GT. 2) THEN
+           C = NPTS - 2
+           VARNCE = (SUMY2+A*A*SUM+B*B*SUMX2 &
                 -2*(A*SUMY+B*SUMXY-A*B*SUMX))/C
+        ENDIF
       ENDIF
-      SIGMAA = SQRT(VARNCE*SUMX2/DELTA)
-      SIGMAB = SQRT(VARNCE*SUM/DELTA)
+      SIGMAA = SQRT(ABS(VARNCE*SUMX2/DELTA))
+      SIGMAB = SQRT(ABS(VARNCE*SUM/DELTA))
       R = (SUM*SUMXY-SUMX*SUMY)/SQRT(DELTA*(SUM*SUMY2-SUMY*SUMY))
     END SUBROUTINE LINFIT
 

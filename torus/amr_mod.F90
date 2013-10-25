@@ -4122,7 +4122,7 @@ CONTAINS
        case("gravtest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.          
           rVec = subcellCentre(thisOctal, subcell)          
-          if(modulus(rVec) > (sphereRadius+(sphereRadius*0.15d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
+          if(modulus(rVec) > (sphereRadius-(sphereRadius*0.15d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
                .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("brunt")
@@ -8687,25 +8687,43 @@ endif
 
   subroutine calcGravtest(thisOctal,subcell)
 
-    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    real(double) :: sphereRadius1, sphereMass1
+    real(double) :: sphereRadius2, sphereMass2
+    type(VECTOR) ::  spherePosition1,  spherePosition2
+
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: eThermal, rMod,  rhoSphere
+    real(double) :: eThermal, rMod1,  rhoSphere1, rMod2,  rhoSphere2
+
+    spherePosition1 = VECTOR(0.d0, 0.d0, 0.d0)
+    sphereMass1 = 1.d0 * mSol
+    sphereRadius1 = 0.5d0*pctocm/1.d10
+
+    spherePosition2 = VECTOR(0.d0, 0.d0, 5.d8)
+    sphereMass2 = 1.d0 * mSol
+    sphereRadius2 =  0.5d0*pctocm/1.d10
 
     rVec = subcellCentre(thisOctal, subcell)
-    rMod = modulus(rVec-spherePosition)
-    rhoSphere = sphereMass / ((fourPi/3.d0) * sphereRadius**3 * 1.d30)
+    rMod1 = modulus(rVec-spherePosition1)
+    rhoSphere1 = sphereMass1 / ((fourPi/3.d0) * sphereRadius1**3 * 1.d30)
+    rMod2 = modulus(rVec-spherePosition2)
+    rhoSphere2 = sphereMass2 / ((fourPi/3.d0) * sphereRadius2**3 * 1.d30)
 
-    if (rMod < sphereRadius) then
-       thisOctal%rho(subcell) = rhoSphere
+
+    thisOctal%rho(subcell) = 1.d-30
+    thisOctal%temperature(subcell) = 100.d0
+
+    if (rMod1 < sphereRadius1) then
+       thisOctal%rho(subcell) = rhoSphere1
        thisOctal%temperature(subcell) = 10.d0
-    else
-!       thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
-       thisOctal%rho(subcell) = 1.d-30
-       thisOctal%temperature(subcell) = 100.d0
     endif
-    thisOctal%velocity(subcell) = sphereVelocity
+
+    if (rMod2 < sphereRadius2) then
+       thisOctal%rho(subcell) = rhoSphere2
+       thisOctal%temperature(subcell) = 10.d0
+    endif
+    thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
     thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
     ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = eThermal
@@ -8800,14 +8818,19 @@ endif
 !    mCloud = 1.d0 * msol
 !    rCloud = 5.d16
 
-    mCloud = 100.d0 * msol
-    rCloud = 0.1d0 * pctocm
+!    mCloud = 100.d0 * msol
+!    rCloud = 0.1d0 * pctocm
+
+    mCloud = mSol
+    rCloud = 3.2d16
+
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
     beta = 0.16d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     rVec = subcellCentre(thisOctal,subcell)
     omega = sqrt(2.d0 * beta * eGrav / inertia)
+    omega = 1.6d-12
     thisOctal%phi_i(subcell) = -bigG * mCloud / (modulus(rVec)*1.d10)
     thisOctal%velocity(subcell) = vector(0., 0., 0.)
 
@@ -8830,17 +8853,17 @@ endif
     if (modulus(rVec) < (rCloud/1.d10)) then
         thisOctal%temperature(subcell) = 10.d0
        thisOctal%rho(subcell) = mCloud / (4.d0/3.d0*pi*rCloud**3)
-       thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.1d0 * cos(2.d0 * phi)) !m=2 dens perturbation
+       thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.5d0 * cos(2.d0 * phi)) !m=2 dens perturbation
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
-       thisOctal%temperature(subcell) = 1000.d0
+       thisOctal%temperature(subcell) = 100.d0
        thisOctal%rho(subcell) = 1.d-1 * mCloud / (4.d0/3.d0*pi*rCloud**3)
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
     thisOctal%temperature(subcell) = 20.d0
-    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    thisOctal%iequationOfState(subcell) = 2 ! bonnell
     ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = eThermal
     thisOctal%gamma(subcell) = 2.d0

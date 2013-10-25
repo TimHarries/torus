@@ -710,7 +710,7 @@ end subroutine verticalHydrostatic
              zAxis(1:nz) = zAxis(1:nz)**2
              normrho(1:nz) = log(rho(1:nz)/rho(1))
              j = 1
-             do while (normrho(j) > -5.d0)
+             do while ((normrho(j) > -8.d0).and.(.not.(j > nz)))
                 j = j + 1
              enddo
              nz  = j - 1

@@ -162,7 +162,7 @@ contains
 !       endif
           
           
-       call testMPIspeeds()
+!       call testMPIspeeds()
     else
        myrankGlobal = myrankWorldGlobal
     endif
@@ -3724,7 +3724,7 @@ end subroutine writeRadialFile
           UN = 6   ! prints on screen
        else
           UN = 69
-          open(unit=UN, file = TRIM(filename), status = 'replace',form='formatted')
+          open(unit=UN, file = TRIM(filename), status = 'unknown',form='formatted')
        end if
     endif
 

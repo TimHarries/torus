@@ -338,6 +338,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   ! If the imNum argument has been provided then we need to calculate an image
   !
   stokesImage=.false.
+  positionAngle = 0.
   if ( present(imNum) ) then 
      thisImageType = getImageType(imNum)
      if (thisImageType(1:6) == "stokes") then 
@@ -347,6 +348,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      nInclination = 1 
      positionAngle = GetImagePA(imNum)
      outfile = getImageFilename(imNum)
+       positionAngle = GetImagePA(imNum)
   else
      ! Multiple SED inclinations can be generated on each call to this subroutine
      nInclination = getNumSedInc()
@@ -1804,7 +1806,7 @@ CONTAINS
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble, finaltau ) &
 !$OMP SHARED(iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
-!$OMP SHARED(grid, nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
+!$OMP SHARED(grid, nContPhotons, nPhotons, lineEmission, lamLine, nLambda, positionAngle) &
 !$OMP SHARED(weightLinePhoton, weightSource, flatSpec, secondSource, secondSourcePosition) &
 !$OMP SHARED(ramanSourceVelocity, doRaman) &
 !$OMP SHARED(weightContPhoton, outVec)&

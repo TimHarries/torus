@@ -930,6 +930,10 @@ contains
           frac = max(frac, smallVal)
 
 
+	  if (.not.associated(thisOctal%origDustTypeFraction)) then
+             allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+             thisOctal%origDustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+          endif
           thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%origDustTypeFraction(subcell,1:nDustType) * frac
 
 
