@@ -15,7 +15,7 @@ contains
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
-    use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark
+    use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, nv, ncubes
     use inputs_mod, only : lineEmission, postsublimate
@@ -100,6 +100,7 @@ contains
 
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
+         (.not.calcMovie).and. &
          (.not.calcDataCube).and. &
          (.not.calcPhotometry).and. &
          (.not.calcBenchmark) .and. &
@@ -215,7 +216,7 @@ contains
 
 
 #ifdef PHOTOION
-    if (photoionPhysics.and.calcImage) then
+    if (photoionPhysics.and.(calcImage.or.calcMovie)) then
        call setupXarray(grid, xArray, nLambda, photoion=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        if(postsublimate) then
@@ -281,7 +282,7 @@ contains
     end if
 #endif
 
-    if (dustPhysics.and.(calcspectrum.or.calcimage).and.(.not.photoionPhysics)) then
+    if (dustPhysics.and.(calcspectrum.or.calcimage.or.calcMovie).and.(.not.photoionPhysics)) then
        mie = .true.
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
@@ -304,7 +305,7 @@ contains
           call do_phaseloop(grid, .false., 100000, miePhase, globalnsource, globalsourcearray, nmumie)
        end if
 
-       if (calcImage) then
+       if (calcImage.or.calcMovie) then
           do i = 1, nImage
              nlambda = 1
              lambdaImage = getImageWavelength(i)
@@ -328,7 +329,7 @@ contains
     endif
 
 #ifdef CMFATOM
-    if (atomicPhysics.and.(calcspectrum.or.calcimage)) then
+    if (atomicPhysics.and.(calcspectrum.or.calcimage.or.calcMovie)) then
        mie = .false.
        lineEmission = .true.
        grid%lineEmission = .true.
@@ -340,7 +341,7 @@ contains
           call do_phaseloop(grid, .true., 100000, miePhase, globalnsource, globalsourcearray, nmumie) 
        end if
 
-       if (calcImage) then
+       if (calcImage.or.calcMovie) then
           do i = 1, nImage
              nlambda = 1
              lambdaImage = getImageWavelength(i)

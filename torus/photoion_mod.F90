@@ -208,11 +208,11 @@ contains
        close(lun_convfile)
     end if
 
-    if (.not.readgrid) then
+!    if (.not.readgrid) then
        call setMinDensity(grid%octreeRoot, 1.d-25)
        call resetNH(grid%octreeRoot)
        call ionizeGrid(grid%octreeRoot)
-    endif
+!    endif
 !    call setTemperature(grid%octreeRoot, 8000.)
 
 ! Remove dust from around the source, required in addition to the outflow condition

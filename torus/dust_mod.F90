@@ -930,7 +930,7 @@ contains
           frac = max(frac, smallVal)
 
 
-	  if (.not.associated(thisOctal%origDustTypeFraction)) then
+          if (.not.associated(thisOctal%origDustTypeFraction)) then
              allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
              thisOctal%origDustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
           endif
@@ -1071,6 +1071,12 @@ contains
        else
           r = modulus(subcellCentre(thisOctal, subcell) - thisSourcePos)
           if (r < radius) then
+             if (.not.associated(thisOctal%origDustTypeFraction)) then
+                allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+                do i = 1, thisOctal%maxChildren
+                   thisOctal%origDustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+                enddo
+             endif
              thisOctal%dustTypeFraction(subcell,1:nDustType) =  thisOctal%origdustTypeFraction(subcell,1:nDustType) * fac
              thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
              if (.not.associated(thisOctal%oldFrac)) then

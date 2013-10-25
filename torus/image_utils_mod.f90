@@ -7,8 +7,8 @@
 
 module image_utils_mod
 
+  use vector_mod
   implicit none
-
   public :: setNumImages, setImageParams, getImageWavelength, getImageType, getImagenPixelsX, &
        getImagenPixelsY, getImageFilename, getAxisUnits, getImageInc, getImagePA, &
        getImageViewVec, getnImage, getImageOffsets, getImageSizeX, getImageSizeY, getFluxUnits
@@ -27,6 +27,7 @@ module image_utils_mod
      real    :: inclination
      real    :: positionAngle
      real    :: offsetX, offsetY
+     type(VECTOR) :: viewVec
   END TYPE imageParameters
 
 !
@@ -59,7 +60,7 @@ contains
 ! values it has been given. 
 !
   subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, fluxUnits, &
-       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance)
+       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance, viewVec)
     use messages_mod
     use constants_mod, only: autocm, pctocm, pi
     implicit none 
@@ -77,6 +78,7 @@ contains
     real, intent(in) :: inclination, positionAngle
     real, intent(in) :: offsetX, offsetY
     real, intent(in) :: gridDistance
+    type(VECTOR), optional :: viewVec
 
 ! Local variables
     character(len=80) :: message
@@ -159,7 +161,8 @@ contains
 ! Set image inclination and postion angle
     myImages(i)%inclination   = inclination
     myImages(i)%positionAngle = positionAngle
-
+    myImages(i)%viewVec = setImageViewVec(i)
+    if (PRESENT(viewVec)) myImages(i)%viewVec = viewVec
 ! Set the position of the image centre
     myImages(i)%offsetX = offsetX
     myImages(i)%offsetY = offsetY
@@ -297,10 +300,10 @@ contains
   end function getImagePA
 
 ! Return the viewing vector for the ith image
-  function getImageViewVec(i)
+  function setImageViewVec(i)
     use vector_mod, only: vector, rotateZ
     integer, intent(in) :: i
-    TYPE(vector) :: getImageViewVec, tempVec
+    TYPE(vector) :: setImageViewVec, tempVec
 
 ! Make a unit vector with the required inclination
 ! Inclination is spherical polar theta
@@ -310,7 +313,15 @@ contains
     
 ! Now apply the required position angle
 ! Position angle is spherical polar phi
-    getImageViewVec = rotateZ(tempVec,dble(myImages(i)%positionAngle))
+    setImageViewVec = rotateZ(tempVec,dble(myImages(i)%positionAngle))
+
+  end function setImageViewVec
+
+! Return the viewing vector for the ith image
+  type(VECTOR) function getImageViewVec(i)
+    integer, intent(in) :: i
+
+    getImageViewVec = myImages(i)%viewVec
 
   end function getImageViewVec
 

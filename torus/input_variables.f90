@@ -41,7 +41,8 @@
   logical :: calcDataCube
   logical :: calcPhotometry
   logical :: calcImage
-  logical :: calcSpectrum
+  logical :: calcMovie
+  Logical :: calcSpectrum
   logical :: calcBenchmark
 
   logical :: dowriteRadialFile

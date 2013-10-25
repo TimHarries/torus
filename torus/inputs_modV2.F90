@@ -480,6 +480,10 @@ contains
          "Calculate an image: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
+    call getLogical("movie", calcMovie, cLine, fLine, nLines, &
+         "Calculate a movie: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -513,7 +517,8 @@ contains
     if (calcDataCube) call readDataCubeParameters(cLine, fLine, nLines)
 #endif
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
-    if (calcDataCube.or.calcImage) call readFitsParameters(cLine, fLine, nLines)
+    if (calcMovie) call readMovieParameters(cLine, fLine, nLines)
+    if (calcDataCube.or.calcImage.or.calcMovie) call readFitsParameters(cLine, fLine, nLines)
     if (calcSpectrum) call readSpectrumParameters(cLine, fLine, nLines)
     if (calcPhotometry) call readPhotometryParameters(cLine, fLine, nLines)
 
@@ -1727,6 +1732,7 @@ contains
                 call getDouble(keyword, sourceLum(i), lSol, cLine, fLine, nLines, &
                      "Source luminosity (solar luminosities) : ","(a,f7.2,a)",1.d0, ok, .true.)
                 sourceTeff(i) = (sourceLum(i) / (fourPi*sourceRadius(i)**2*1.d20 * stefanBoltz))**0.25d0
+                if (writeoutput) write(*,'(a,f7.1)') "Source temperature (K): ",sourceTeff(i)
              else if (teffPresent.and.lumPresent) then
 
                 write(keyword, '(a,i1)') "lum",i
@@ -2796,6 +2802,162 @@ contains
     end if
    
   end subroutine readImageParameters
+
+  subroutine readMovieParameters(cLine, fLine, nLines)
+    use image_utils_mod
+
+    character(len=lencLine) :: cLine(:)
+    character(len=80) :: message
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+    integer :: i
+    character(len=20) :: keyword
+    character(len=10) :: axisUnits
+    character(len=10) :: fluxUnits
+    character(len=80) :: outputImageType, imageFilename
+    character(len=4)  :: iChar
+    integer :: thisnpixels, npixels, nimage
+    real :: lambdaImage, thisLambdaImage
+    real :: imagesize, thisImageSize, wholeGrid
+    real :: inclination, positionAngle, thisPA, thisInc
+    real :: offsetX, offsetY, thisOffsetX, thisOffsetY
+    real :: aspectRatio, thisAspectRatio
+    type(VECTOR) :: viewVec
+    real(double) :: ang
+
+    call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
+         "Number of photons in image: ","(a,i9,a)", 10000, ok, .true.)
+
+    call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
+         "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .false.)
+
+    call getInteger("nimage", nimage, cLine, fLine, nLines, &
+         "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
+    if (nimage > 9999) call writeWarning("Too many images. Need nimage <= 9999.")
+    
+    call setNumImages(nimage)
+
+    call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
+         "Axis units for image:", "(a,a,1x,a)", "au", ok, .false.)
+
+    ! Size of the whole grid in image axis units
+    ! This is used as the default image size
+    select case (axisunits)
+    case ("au","AU")
+       wholeGrid = (amrGridSize*1.0e10) / real(auTocm)
+    case ("pc","PC")
+       wholeGrid = (amrGridSize*1.0e10) / real(pctocm)
+    case ("cm")
+       wholeGrid = amrGridSize*1.0e10
+    case ("arcsec")
+       wholeGrid = (amrGridSize*1.0e10) / real(pctocm) ! pc
+       wholeGrid = wholeGrid / real(gridDistance)            ! radians
+       wholeGrid = wholeGrid * (180.0/real(pi)) * 3600.0     ! arcsec
+    case default
+       wholeGrid = amrGridSize
+       write(message,*) "Unrecognised units in readImageParameters: ", trim(axisunits)
+       call writeWarning(message)
+    end select
+
+    write(message,*) "Image size ("//trim(axisUnits)//"): "
+    call getReal("imagesize", imageSize, 1.0, cLine, fLine, nLines, &
+         trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
+
+    call getString("imagefluxunits", fluxUnits, cLine, fLine, nLines,&
+         "Flux units for image:", "(a,a,1x,a)", "MJy/str", ok, .false.)
+
+    call getInteger("npixels", npixels, cLine, fLine, nLines, &
+         "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
+
+    call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, & 
+         "Image aspect ratio: ", "(a,f4.1,1x,a)", 1.0, ok, .false.)
+
+! Inclination and position angle for single image, also used as default value for multiple images
+    call getReal("inclination", inclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f6.1,1x,a)", 0., ok, .false.)
+
+    call getReal("positionangle", positionAngle, real(degtorad), cLine, fLine, nLines, &
+         "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+! Position of image centre
+    call getReal("imagecentrex", offsetx, 1.0, cLine, fLine, nLines, &
+         "Image centre x position (10^10 cm): ", "(a,e10.1,1x,a)", 0.0, ok, .false.)
+    call getReal("imagecentrey", offsety, 1.0, cLine, fLine, nLines, &
+         "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", 0.0, ok, .false.)
+
+    call getLogical("polimage", polarizationImages, cLine, fLine, nLines, &
+         "Write polarization images: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
+         "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
+         "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", 6562.8, ok, .false.)
+
+    call writeInfo(" ")
+    write(message,'(a)') "Details for movie: "
+    call writeInfo(message)
+    call writeInfo(" ")
+
+    call getString("moviefile", imageFilename, cLine, fLine, nLines, &
+         "Output movie filename: ","(a,a,1x,a)","none", ok, .true.)
+
+
+    call getReal("movielambda", thisLambdaImage, 1., cLine, fLine, nLines, &
+         "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", lambdaImage, ok, .false.)
+
+    if (photoionPhysics) then
+       call getString("movietype", outputimageType, cLine, fLine, nLines, &
+            "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
+          ! Reset default wavelength to 20cm if this is a free-free image and
+          ! no wavelength has been specified in the parameters file
+    endif
+    call getInteger("npixels", thisnpixels, cLine, fLine, nLines, &
+         "Number of pixels per side in image","(a,i8,a)", npixels, ok, .false.)
+    
+    ! Size of this image
+    write(keyword,'(a)') "imagesize"
+    write(message,*) "Image size ("//trim(axisUnits)//"): "        
+    call getReal(keyword, thisImageSize, 1.0, cLine, fLine, nLines, &
+         trim(message), "(a,1pe10.2,1x,a)", imageSize, ok, .false.)
+    
+    ! Aspect ratio
+    write(keyword,'(a)') "imageaspect"
+    call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, & 
+         "Image aspect ratio: ", "(a,f4.1,1x,a)", aspectRatio, ok, .false.)
+    
+    ! Inclination and position angle
+    write(keyword,'(a)') "inclination"
+    call getReal(keyword, thisInc, real(degtorad), cLine, fLine, nLines, &
+         "Inclination of image: ","(a,f6.1,1x,a)",inclination*real(radtodeg), ok, .false.)
+    write(keyword,'(a)') "positionangle"
+    call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
+         "Position angle (deg): ","(a,f6.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
+    
+    ! Position of image centre
+    write(keyword,'(a)') "imagecentrex"
+    call getReal(keyword, thisOffsetx, 1.0, cLine, fLine, nLines, &
+         "Image centre x position (10^10 cm): ", "(a,e10.1,1x,a)", offsetx, ok, .false.)
+    write(keyword,'(a)') "imagecentrey"
+    call getReal(keyword, thisOffsety, 1.0, cLine, fLine, nLines, &
+         "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
+    
+    do i = 1, nImage
+       
+       write(imageFilename,'(a,i4.4,a)') "movie",i,".fits"
+
+       ang = twoPi * dble(i-1)/dble(nImage)
+       viewVec = VECTOR(0.d0,0.d0, -1.d0)
+       viewVec = rotateY(viewVec, dble(ang))
+       if (writeoutput) write(*,*) i, viewvec
+       call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
+            thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance, viewVec=viewVec)
+    enddo
+
+    call writeInfo(" ")
+   
+  end subroutine readMovieParameters
 
   subroutine readFitsParameters(cLine, fLine, nLines)
     use fits_utils_mod, only: fitsBitpix
