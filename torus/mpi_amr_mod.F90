@@ -3210,8 +3210,8 @@ end subroutine writeRadialFile
           heating = tempStorage(8)
           cooling = tempStorage(9)
           tval =  tempStorage(10)
-          c = tempstorage(11)
-          cplus = tempstorage(12)
+          cplus = tempstorage(11)
+          c = tempstorage(12)
           c12o = tempstorage(13)
           cool1 = tempstorage(14)
           cool2 = tempstorage(15)
@@ -3290,7 +3290,7 @@ end subroutine writeRadialFile
              
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
              
-          endif
+          Endif
        enddo
     endif
 

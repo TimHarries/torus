@@ -851,6 +851,15 @@ CONTAINS
     CASE("rv1test")
        call calcrv1TestDensity(thisOctal, subcell)
 
+    CASE("rv2test")
+       call calcrv2TestDensity(thisOctal, subcell)
+
+    CASE("rv3test")
+       call calcrv3TestDensity(thisOctal, subcell)
+
+    CASE("rv4test")
+       call calcrv4TestDensity(thisOctal, subcell)
+
     CASE("brunt")
        call calcBruntDensity(thisOctal, subcell) 
 
@@ -4029,7 +4038,7 @@ CONTAINS
           if(thisOctal%nDepth < maxdepthamr) split = .true.
 
 
-       case("rv1test")
+       case("rv1test", "rv2test", "rv3test", "rv4test")
           if(thisOctal%nDepth < mindepthamr) split = .true.
           rVec = subcellCentre(thisOctal, subcell)
 
@@ -8245,6 +8254,102 @@ endif
     thisOctal%etaCont(subcell) = 0.
  
   end subroutine calcrv1TestDensity
+
+  subroutine calcrv2TestDensity(thisOctal,subcell)
+    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : pdrcalc, photoionequilibrium
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+!    type(VECTOR) :: rVec
+!    real(double) :: rMod
+
+    thisOctal%rho(subcell) = 1.d3*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%ionFrac(subcell,1) = 1.d0               !HI
+    thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
+    
+!    if(pdrcalc .and. .not. photoionequilibrium) then
+    thisOctal%uvvector(subcell)%x = (10.d5)*Draine/1.d10
+    thisOctal%uvvector(subcell)%y = 0.d0
+    thisOctal%uvvector(subcell)%z = 0.d0
+    !    endif
+    
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 1)
+    thisOctal%nhii(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
+    !    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%etaCont(subcell) = 0.
+ 
+  end subroutine calcrv2TestDensity
+
+
+  subroutine calcrv3TestDensity(thisOctal,subcell)
+    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : pdrcalc, photoionequilibrium
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+!    type(VECTOR) :: rVec
+!    real(double) :: rMod
+
+    thisOctal%rho(subcell) = (1.*(10.d0**(5.5)))*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%ionFrac(subcell,1) = 1.d0               !HI
+    thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
+    
+!    if(pdrcalc .and. .not. photoionequilibrium) then
+    thisOctal%uvvector(subcell)%x = 10.*Draine/1.d10
+    thisOctal%uvvector(subcell)%y = 0.d0
+    thisOctal%uvvector(subcell)%z = 0.d0
+    !    endif
+    
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 1)
+    thisOctal%nhii(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
+    !    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%etaCont(subcell) = 0.
+ 
+  end subroutine calcrv3TestDensity
+
+
+  subroutine calcrv4TestDensity(thisOctal,subcell)
+    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : pdrcalc, photoionequilibrium
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+!    type(VECTOR) :: rVec
+!    real(double) :: rMod
+
+!    thisOctal%rho(subcell) = 1.d5.5*mHydrogen
+    thisOctal%rho(subcell) = (1.*(10.d0**(5.5)))*mHydrogen
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%ionFrac(subcell,1) = 1.d0               !HI
+    thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
+    
+!    if(pdrcalc .and. .not. photoionequilibrium) then
+    thisOctal%uvvector(subcell)%x = (10.d5)*Draine/1.d10
+    thisOctal%uvvector(subcell)%y = 0.d0
+    thisOctal%uvvector(subcell)%z = 0.d0
+    !    endif
+    
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 1)
+    thisOctal%nhii(subcell) = thisOctal%nh(subcell) * thisOctal%ionfrac(subcell, 2)
+    !    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    
+    thisOctal%etaCont(subcell) = 0.
+ 
+  end subroutine calcrv4TestDensity
 
 
   subroutine calcRadialClouds(thisOctal, subcell)
