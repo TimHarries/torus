@@ -374,8 +374,8 @@ CONTAINS
     if (first_time) then  ! setup ref. r grid
        do i = 1, nr
           ! this should not depend on the size of the model boundary box.
-          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%Rmin))
-!          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(this%Rmax)-log10(this%Rmin))
+!          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%Rmin))
+          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(this%Rmax)-log10(this%Rmin))
        enddo
        do i = 1, nr
           rGrid(i) = 10.d0**rGrid(i)

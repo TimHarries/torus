@@ -1802,7 +1802,7 @@ CONTAINS
 !$OMP PRIVATE(outPhoton,intPathError, nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
 !$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
-!$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau, positionAngle) &
+!$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble, finaltau ) &
 !$OMP SHARED(iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
