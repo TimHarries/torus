@@ -1135,14 +1135,20 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 ! If the position angle is zero then just tag the SED file name with the inclination
 ! For non-zero position angles tag with both inclination and position angle values
        if (iPhase == nStartPhase .and. iInclination == 1) originalOutFile = outFile
-       write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
-       write(tempChar2,'(i3.3)') NINT(imagePA*radToDeg)
-       if (imagePA == 0.0 ) then
-          outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
-       else
-          outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)//'_PA'//TRIM(tempChar2)
-       endif
 
+
+
+       if (index(originalOutFile,".") == 0) then
+          write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
+          write(tempChar2,'(i3.3)') NINT(imagePA*radToDeg)
+          if (imagePA == 0.0 ) then
+             outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
+          else
+             outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)//'_PA'//TRIM(tempChar2)
+          endif
+       else
+          outFile = trim(originalOutFile)
+       endif
        outVec = (-1.d0)*viewVec
        thisVec = viewVec
 

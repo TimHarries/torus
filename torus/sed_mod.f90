@@ -294,7 +294,11 @@ contains
     write(message,*) "Writing spectrum to ",trim(outfile),".dat"
     call writeInfo(message, TRIVIAL)
 
-    open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+    if (index(outfile,".") == 0) then
+       open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+    else
+       open(20,file=trim(outFile),status="unknown",form="formatted")
+    endif
     if (SedInLambdaFLambda) then
        write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
     else if (SedInSiUnits) then
