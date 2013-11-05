@@ -664,8 +664,13 @@ contains
        call writeinfo(message,TRIVIAL)
     endif
 
-    write(message,*) "Angular pixel resolution : ", (dxInCm/griddistance)*radiansToArcSec, " arcseconds"
-    call writeinfo(message,TRIVIAL)
+    if (gridDistance > 0.0 ) then 
+       write(message,*) "Angular pixel resolution : ", (dxInCm/griddistance)*radiansToArcSec, " arcseconds"
+       call writeinfo(message,TRIVIAL)
+    else
+       write(message,*) "Distance to grid should be > 0 but it is ", gridDistance
+       call writeWarning(message)
+    endif
 
     do i = 1, cube%nx
        cube%xAxis(i) = xmin + dble(i-0.5d0)*dx 
