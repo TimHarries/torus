@@ -277,7 +277,7 @@
   logical :: forceLucyConv
   logical :: multiLucyFiles
   logical :: polarizationImages
-
+  logical :: writeLucyTmpFile
   ! For diffusion approximation
   real :: tauDiff, tauForce
   logical :: resetDiffusion
@@ -373,6 +373,7 @@
 !------------------------------
 
   real :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
+  real :: thisPA           ! position angle
   logical :: freefreeSed   !include free-free emission in SED
   logical :: recombinationSed   !include recombination line emission in SED
   logical :: forbiddenSed   !include forbidden line emission in SED

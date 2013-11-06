@@ -1407,7 +1407,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            lcore = tiny(lcore)
            if (nSource > 0) then              
               lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
-              if (writeoutput) write(*,*) "Core luminosity is: ",lcore, " erg/s/A ", lcore/(fourpi * objectDistance**2)
+              if (writeoutput) write(*,*) "Core luminosity at ",grid%lamArray(ilambdaPHoton)," is: ",lcore, " erg/s/A "
            endif
 
            totEnvelopeEmission = totDustContinuumEmission

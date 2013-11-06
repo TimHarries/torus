@@ -2104,6 +2104,10 @@ contains
     call getLogical("convergeonundersampled", convergeOnUndersampled, cLine, fLine, nLines, &
          "Prevent convergence when too many cells undersampled: ", "(a,1l,1x,a)", .true., ok, .false.)
 
+
+    call getLogical("writelucytmpfile", writeLucyTmpFile, cLine, fLine, nLines, &
+         "Write temporary lucy grid file: ", "(a,1l,1x,a)", .true., ok, .false.)
+
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
@@ -3038,14 +3042,15 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
 
     else
 
-! Inclinations and postion angles "first and last" style
-! firstinc is required if inclinations keyword is not present
-       call getReal("firstinc", firstInclination, real(degToRad), cLine, fLine, nLines, &
-            "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
+       ! Inclinations and postion angles "first and last" style
 ! lasstinc is required if inclinations keyword is not present and there is >1 inclination to do
-       if (nInclination > 1) &
+       if (nInclination > 1) then
+! firstinc is required if inclinations keyword is not present
+            call getReal("firstinc", firstInclination, real(degToRad), cLine, fLine, nLines, &
+            "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
             call getReal("lastinc", lastInclination, real(degToRad), cLine, fLine, nLines, &
             "Last inclination angle (deg): ","(a,f5.1,1x,a)", 80., ok, .true.)
+         endif
 ! Position angles default to zero, we don't need these for 2D geometries
        call getReal("firstPA", firstPA, real(degToRad), cLine, fLine, nLines, &
             "First position angle (deg): ","(a,f4.1,1x,a)", 0.0, ok, .false.)
@@ -3055,6 +3060,9 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
     end if incStyle
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+    call getReal("positionangle", thisPA, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 
 
@@ -3144,8 +3152,13 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
        deallocate(inclinations)
        deallocate(posangs)
     else
-       call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
-            firstInc=firstInclination,LastInc=LastInclination, cosSpacing=UniformInCos)
+       if (nInclination > 1) then
+          call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
+               firstInc=firstInclination,LastInc=LastInclination, cosSpacing=UniformInCos)
+       else
+          call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
+               firstinc=FirstInclination,lastInc=LastInclination,thisInclination=thisInclination, thisPA=thisPA)
+       endif
     end if
 
   end subroutine readSpectrumParameters

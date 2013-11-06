@@ -15,7 +15,7 @@ module disc_hydro_mod
   use inputs_mod
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, subcellCentre
-  use lucy_mod, only: lucyRadiativeEquilibriumAMR
+  use lucy_mod, only: lucyRadiativeEquilibriumAMR, fillDustSettled
 
   implicit none
 
@@ -629,6 +629,18 @@ contains
     endif
 
 
+    if (nDusttype >=2 ) then
+       call fillDustSettled(grid, grid%octreeRoot)
+       call writeVtkFile(grid, "settled.vtu", &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+            "diff       "/))
+       dustMass = 0.d0
+       call findDustMass(grid, grid%octreeRoot, dustMass)
+       if (writeoutput) write(*,*) "FINAL total dust mass (solar)",dustMass/mSol
+       
+    endif
+
  temp = 20.
  call setTemperature(grid%octreeRoot, temp)
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
@@ -678,76 +690,6 @@ end subroutine verticalHydrostatic
 
 
 
-  recursive subroutine fillDustSettled(grid, thisOctal)
-
-    use inputs_mod, only : rinner, router
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    type(VECTOR) :: rvec
-    real(double) :: height
-    integer :: subcell, i, j
-    real(double), allocatable :: zAxis(:), rho(:), subcellsize(:), normrho(:)
-    real, allocatable :: temperature(:)
-    integer :: nz
-    integer, parameter :: m = 10000
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call fillDustSettled(grid, child)
-                exit
-             end if
-          end do
-       else
-          rVec = subcellCentre(thisOctal,subcell)
-          if ((rVec%x > rinner).and.(rVec%x< rOuter)) then
-             allocate(zAxis(m), rho(m), temperature(m), subcellsize(m), normrho(m))
-             call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(rVec%x), 0., nz, 1.)
-             zAxis(1:nz) = zAxis(1:nz) / 1.d10
-             zAxis(1:nz) = zAxis(1:nz)**2
-             normrho(1:nz) = log(rho(1:nz)/rho(1))
-             j = 1
-             do while ((normrho(j) > -8.d0).and.(.not.(j > nz)))
-                j = j + 1
-             enddo
-             nz  = j - 1
-             
-             call getLocalScaleheight(zAxis, normrho, nz, height)
-
-             thisOctal%dustTypeFraction(subcell,1) = 1.d-30
-             if (thisOctal%rho(subcell) > 1d-30) then
-                thisOctal%dustTypeFraction(subcell, 1) =  &
-                     (grainFrac(1) * rho(1) * exp(-0.5d0 * (rVec%z**2)/((0.6d0 * height)**2)))/thisOctal%rho(subcell)
-             endif
-
-
-             thisOctal%dustTypeFraction(subcell, 2)  = grainfrac(2)
-             thisOctal%origDustTypeFraction(subcell,1:2) = thisOctal%dustTypeFraction(subcell,1:2)
-             deallocate( zAxis, rho, temperature, subcellsize, normrho)
-
-          endif
-       end if
-    end do
-
-  end subroutine fillDustSettled
-
-
-  subroutine getLocalScaleheight(z, rho, nz, height)
-    use utils_mod, only: linfit 
-
-    use utils_mod, only : locate
-    real(double) :: z(:), rho(:), height
-    integer :: nz
-    real(double) :: a, sigmaa, b, sigmab, rcoeff
-
-    call LINFIT(z,rho,rho,nz, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
-    height = sqrt(-1.d0/(2.d0*b))
-
-
-  end subroutine getLocalScaleheight
 
   recursive subroutine clearDustToSublimation(thisOctal, rSub)
 

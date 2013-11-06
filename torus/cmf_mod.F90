@@ -1347,14 +1347,14 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 200, maxRay = 200000
+    integer, parameter :: maxIter = 1000, maxRay = 200000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
-    real(double), parameter :: underCorrect = 1.d0
-    real(double), parameter :: underCorrectne = 1.d0
+    real(double), parameter :: underCorrect = 0.95d0
+    real(double), parameter :: underCorrectne = 0.95d0
     real(double) :: dne
     logical :: sobolevApprox
     real(double) :: fac

@@ -130,7 +130,7 @@ program torus
 !        call calculategrid()
 !        goto 666
 !     endif
-!$OMP MASTER
+
      if (doSetupAMRgrid) then
 
         call  setupamrgrid(grid)
@@ -144,9 +144,8 @@ program torus
      !  call torus_mpi_barrier
      !  goto 666
 
-        call writeVtkFile(grid, "rho.vtk")
+       call writeVtkFile(grid, "rho.vtk")
      endif
-!$OMP END MASTER
      call setupGlobalSources(grid)
 
 ! SPH data may be required for setting up sources so only free memeory after this is done

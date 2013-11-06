@@ -27,7 +27,7 @@ module sed_mod
 contains
 
   subroutine setSedParameters(fileName,jansky,SIsed,sed, firstPA, lastPA, &
-       nInclination,firstInc,LastInc,cosSpacing,incList,PAlist)
+       nInclination,firstInc,LastInc,cosSpacing,incList,PAlist,thisInclination, thisPA)
     use kind_mod
     use messages_mod
     use constants_mod
@@ -37,6 +37,7 @@ contains
     real, intent(in), optional    :: firstInc, LastInc
     real, intent(in)              :: firstPA, lastPA ! Don't need to be optional, default to zero if not required
     logical, optional             :: cosSpacing
+    real, optional :: thisInclination, thisPA
     real, intent(in), optional    :: incList(:), PAlist(:)
     character(len=80), intent(in) :: fileName
 
@@ -67,11 +68,13 @@ contains
     else
 
 ! Check the required arguments are present
-       if (present(firstInc).and.present(lastInc).and.present(nInclination).and.present(cosSpacing)) then
-          call writeInfo("Calculating SED inclinations", TRIVIAL)
-       else
-          call WriteFatal("Error in call to setSedParameters")
-       end if
+       if (nInclination > 1) then
+          if (present(firstInc).and.present(lastInc).and.present(nInclination).and.present(cosSpacing)) then
+             call writeInfo("Calculating SED inclinations", TRIVIAL)
+          else
+             call WriteFatal("Error in call to setSedParameters")
+          end if
+       endif
 
 ! Check input values and issue a warning if anything is odd  
        if (lastInc < firstInc) call writeWarning("lastInc is less than firstInc")
@@ -83,6 +86,12 @@ contains
 
        SedInclinations(1)   = firstInc
        SedPositionAngles(1) = firstPA
+
+       if (PRESENT(thisInclination)) then
+          SedInclinations(1)   = thisInclination
+          SedPositionAngles(1) = thisPA
+       endif
+
        if ( nInclination > 1 ) then
           do i=2, SedNInc
 

@@ -30,6 +30,7 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings, mDisc, dusttogas, dustSettling
+    use inputs_mod, only : writelucyTmpfile
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -248,6 +249,18 @@ contains
           write(*,*) "Mass of dust in disc (solar masses): ",dustMass/msol
        endif
     endif
+
+    if ((nDusttype >=2 ).and.(dustSettling)) then
+       call fillDustSettled(grid, grid%octreeRoot)
+       call writeVtkFile(grid, "settled.vtu", &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+            "diff       "/))
+       dustMass = 0.d0
+       call findDustMass(grid, grid%octreeRoot, dustMass)
+       if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
+    endif
+
 
 
     !    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
@@ -1009,7 +1022,7 @@ contains
        !    !
 
 
-       if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+       if (myRankIsZero.and.writelucytmpfile) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 
 
 
@@ -3527,6 +3540,122 @@ subroutine setBiasOnTau(grid, iLambda)
 
   end subroutine refineDiscGrid
 
+  recursive subroutine fillDustSettled(grid, thisOctal)
+
+    use inputs_mod, only : rinner, router, grainFrac
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rvec
+    real(double) :: height
+    integer :: subcell, i, j
+    real(double), allocatable :: zAxis(:), rho(:), subcellsize(:), normrho(:)
+    real, allocatable :: temperature(:)
+    integer :: nz
+    integer, parameter :: m = 10000
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustSettled(grid, child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          if ((rVec%x > rinner).and.(rVec%x< rOuter)) then
+             allocate(zAxis(m), rho(m), temperature(m), subcellsize(m), normrho(m))
+             call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(rVec%x), 0., nz, 1.)
+             zAxis(1:nz) = zAxis(1:nz) / 1.d10
+             zAxis(1:nz) = zAxis(1:nz)**2
+             normrho(1:nz) = log(rho(1:nz)/rho(1))
+             j = 1
+             do while ((normrho(j) > -8.d0).and.(.not.(j > nz)))
+                j = j + 1
+             enddo
+             nz  = j - 1
+             
+             call getLocalScaleheight(zAxis, normrho, nz, height)
+
+             thisOctal%dustTypeFraction(subcell,1) = 1.d-30
+             if (thisOctal%rho(subcell) > 1d-30) then
+                thisOctal%dustTypeFraction(subcell, 1) =  &
+                     (grainFrac(1) * rho(1) * exp(-0.5d0 * (rVec%z**2)/((0.6d0 * height)**2)))/thisOctal%rho(subcell)
+             endif
+
+
+             thisOctal%dustTypeFraction(subcell, 2)  = grainfrac(2)
+             thisOctal%origDustTypeFraction(subcell,1:2) = thisOctal%dustTypeFraction(subcell,1:2)
+             deallocate( zAxis, rho, temperature, subcellsize, normrho)
+
+          endif
+       end if
+    end do
+
+  end subroutine fillDustSettled
+
+
+  subroutine getLocalScaleheight(z, rho, nz, height)
+    use utils_mod, only: linfit 
+
+    use utils_mod, only : locate
+    real(double) :: z(:), rho(:), height
+    integer :: nz
+    real(double) :: a, sigmaa, b, sigmab, rcoeff
+
+    call LINFIT(z,rho,rho,nz, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
+    height = sqrt(-1.d0/(2.d0*b))
+
+
+  end subroutine getLocalScaleheight
+  subroutine getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
+    use amr_mod, only: amrGridValues
+    use parallel_mod, only: torus_abort
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer, intent(out) :: nz
+    real(double) :: rho(:)
+    real :: temperature(:)
+    real(double) :: zAxis(:), subcellsize(:)
+    real :: xPos, yPos
+    integer :: subcell
+    real(double) :: rhotemp
+    real :: temptemp
+    real :: direction
+    type(VECTOR) :: currentPos, temp
+    real :: halfSmallestSubcell
+    integer :: nzMax
+
+    nzMax = SIZE(temperature)
+    nz = 0
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
+
+    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
+
+    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
+       thisOctal%chiLine(subcell) = 1.e-30
+!       if (thisOctal%inFlow(subcell)) then
+          nz = nz + 1
+          if (nz>nzmax) then
+             call torus_abort("nz>nzMax in getTemperatureDensityRun. Aborting ...")
+          endif
+          temperature(nz) = temptemp
+          rho(nz) = rhotemp
+          temp = subCellCentre(thisOctal, subcell)
+          zAxis(nz) = temp%z
+          subcellsize(nz) = thisOctal%subcellsize
+!       endif
+          currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+!       else
+!          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+!       endif
+    end do
+    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
+  end subroutine getTemperatureDensityRun
 
 end module lucy_mod
 

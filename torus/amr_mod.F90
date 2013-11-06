@@ -3830,10 +3830,14 @@ CONTAINS
              hr = height * (r / (100.d0*autocm/1.d10))**betadisc
              
              if ((r+cellsize/2.d0) > max(ttauririnner/1.d10,dble(rinner))) then
-                if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+                if (r-cellsize/2.d0 > rSublimation) then
+                   if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+                else
+                   if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.0)) split = .true.
+                endif
                 if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-                if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
-                     (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+!                if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rsublimation) .and. &
+!                     (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 5.d0) ) split=.true.
              endif
           endif
        case("lexington", "NLR")
@@ -13519,7 +13523,7 @@ end function readparameterfrom2dmap
                 call returnKappa(grid, thisOctal, subcell, ilambda, rosselandKappa = kAbs)
                 tauross = thisOctal%subcellSize*kAbs*thisOctal%rho(subcell)*1.d10
                 if ((tauRoss > 500.d0).and.split) then
-                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
+!                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                         inherit=inheritProps, interp=interpProps)
                    converged = .false.
@@ -13732,8 +13736,8 @@ end function readparameterfrom2dmap
              thisOctal%fixedTemperature(subcell) = .false.
              thisOctal%inflow(subcell) = .true.
              thisOctal%temperature(subcell) = 10.
-             if (r < rSublimation*1.01d0) then
-                fac = ((rSublimation*1.01 - r)/(0.001*rSublimation))
+             if (r < rSublimation*1.05d0) then
+                fac = ((rSublimation*1.05d0 - r)/(0.005d0*rSublimation))
                 thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)*exp(-fac)
              endif
           endif
