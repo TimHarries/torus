@@ -9367,7 +9367,7 @@ endif
     thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*disttostar*1.d10))**0.5d0
 
     thisOctal%rho(subcell) = min_rho
-    thisOctal%temperature(subcell) = thisOCtal%dust_t(subcell)
+!    thisOctal%temperature(subcell) = thisOCtal%dust_t(subcell)
     thisOctal%temperature(subcell) = 10.
     if(photoionPhysics) then
        thisOctal%etaCont(subcell) = 0.
@@ -9382,14 +9382,14 @@ endif
 !       print *, "rinner ", rinner
     rInner = 3.*autocm/1.e10
     if ((r > rInner)) then!).and.(r < rOuter)) then
-!       hr = height * (r/rd)**1.125
-       hr = ((kerg*thisOctal%temperature(subcell)/mhydrogen)**0.5)*((bigG*sourcemass(1)/(disttostar*1.d10)**3)**(-0.5))
+       !       hr = height * (r/rd)**1.125
+       hr = dble(((kerg*dble(thisOctal%temperature(subcell))/mhydrogen)**0.5)*((bigG*sourcemass(1)/(disttostar*1.d10)**3)**(-0.5)))
        print *, "hr is ", hr, rVec%z*1.d10, ((rVec%z*1.d10)/(2.d0*hr))**2
        ! Calculate density and check the exponential won't underflow
        !       if ( rVec%z/hr < 30.0 ) THEN
        !       thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
        thisOctal%rho(subcell) = rho*exp(-((rVec%z*1.d10)/(2.d0*hr))**2)
- !      print *, "rho is ", thisOctal%rho(subcell)
+       !      print *, "rho is ", thisOctal%rho(subcell)
        !       endif
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
     endif
