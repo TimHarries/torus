@@ -846,6 +846,7 @@ module angularImage
 ! Increment the array of point densities if this point lies within the range considered
          if (i_dist > 0 .and. i_dist <= CO_H2_dist_size .and. &
               j_dist > 0 .and. j_dist <= CO_H2_dist_size) then
+!$OMP ATOMIC
             CO_H2_dist(i_dist, j_dist) = CO_H2_dist(i_dist, j_dist) + 1
          endif
 
