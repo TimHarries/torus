@@ -1128,7 +1128,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam, dumpregularVTUS
-    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d, massiveStars
+    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d, massiveStars, forceminrho
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
@@ -1162,7 +1162,7 @@ end subroutine radiationHydro
     integer(bigint) :: nEscapedGlobal=0
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
-    integer :: nIter, nPeriodic
+    integer :: nIter, nPeriodic, loopSource
     logical :: converged, thisThreadConverged, failed
     real(double) :: photonPacketWeight, spectrumweight
     real(double) :: tPhoton
@@ -1259,6 +1259,8 @@ end subroutine radiationHydro
     real(double) :: fac, luminosity1, luminosity2, luminosity3
     real(double) :: zTemp, thisLum
 
+
+
     !OMP variables
     logical :: finished = .false.
     logical :: voidThread
@@ -1350,6 +1352,10 @@ end subroutine radiationHydro
 
 !    stackLimit = 0
 !    iUnrefine = 0
+
+    if (forceMinRho) then
+       call enforceminrho(grid%octreeroot) 
+    endif
 
     
     allocate(photonPacketStack(maxStackLimit*nHydroThreadsGlobal))
@@ -1543,11 +1549,22 @@ end subroutine radiationHydro
 
     if (myrankWorldglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
+    nionizingphotons = 0
+    if(globalnsource > 1) then
+       do loopsource = 1, globalnsource
+          nIonizingPhotons = nionizingphotons + ionizingFlux(source(loopSource))
+       enddo
+    else
+       nIonizingPhotons = ionizingFlux(source(1))
+    endif
+    
     if (writeoutput) then
-       write(*,'(a,1pe12.1)') "Ionizing photons per second ", ionizingFlux(source(1))
+!       write(*,'(a,1pe12.1)') "Ionizing photons per second ", ionizingFlux(source(1))
+       write(*,'(a,1pe12.1)') "Ionizing photons per second ", nIonizingPhotons
     endif
 
-    nIonizingPhotons = ionizingFlux(source(1))
+
+
 
     !nmonte selector: Only works for fixed grids at present
     if (inputnMonte == 0) then
@@ -1612,7 +1629,7 @@ end subroutine radiationHydro
           do while (.not. gotMassive) 
 
              call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
-             print *, "hunting ", source(isource)%mass/msol
+!             print *, "hunting ", source(isource)%mass/msol
              if(source(iSource)%mass/msol >= 20.d0) gotMassive = .true.
           enddo
 
@@ -1620,7 +1637,7 @@ end subroutine radiationHydro
           call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
        endif
     endif
-    print *, "gota massive star..."
+!    print *, "gota massive star..."
     if (maxiter > 1) then
        if (variableDustSublimation) then
           if (Writeoutput) write(*,*) "Stripping dust away."
@@ -1695,7 +1712,7 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       if(.not. cart2d .and. .not. sphericalHydro .and. 0== 1) then
+       if(.not. cart2d .and. .not. sphericalHydro) then! .and. 0== 1) then
           maxDiffRadius3  = 1.d30
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 10.d0, maxDiffRadius1(iSource))
@@ -3345,7 +3362,8 @@ end subroutine radiationHydro
      if(uv_vector .or. singlemegaphoto .or. dumpRegularVTUS) then
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
         call writeVtkFile(grid, mpiFilename, &
-             valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        "/))
+             valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        ", &
+             "crossings    "/))
      end if
 
 !, &
@@ -4324,6 +4342,30 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+
+  recursive subroutine enforceMinRho(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call enforceMinRho(child)
+                exit
+             end if
+          end do
+       else
+          if(thisOctal%rho(subcell)/mhydrogen < 1.d0) then
+             thisOctal%rho(subcell) = mhydrogen
+          endif
+       endif
+    enddo
+  end subroutine enforceMinRho
 
   recursive subroutine testIonFront(thisOctal, currentTime)
   type(octal), pointer   :: thisOctal

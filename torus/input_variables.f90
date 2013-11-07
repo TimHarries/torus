@@ -80,6 +80,7 @@
   logical :: photoionization   !Perform a photoionization calculation
   logical :: hOnly             !Hydrogen only model (no Helium)
   logical :: massiveStars      !only use stars with M>20Msol in photo calc
+  logical :: forceminrho       !Endforce a minimum density
   logical :: simpleMu          !simpified mean particle mass calc
   logical :: caseB             !use a case b recombination coefficient
   logical :: startFromNeutral  !Start photoionization loop from neutral

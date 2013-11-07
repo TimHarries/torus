@@ -101,6 +101,37 @@ contains
     enddo
   end subroutine ionizeGrid
 
+  recursive subroutine setupPhotoGrid(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupPhotoGrid(child)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%etaCont(subcell) = 0.
+          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%ne(subcell) = thisOctal%nh(subcell)
+          thisOctal%nhi(subcell) = 1.e-8
+          thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+          thisOctal%inFlow(subcell) = .true.
+
+          thisOctal%biasCont3D = 1.
+          thisOctal%etaLine = 1.e-30
+
+       endif
+    enddo
+  end subroutine setupPhotoGrid
+
   recursive subroutine neutralGrid(thisOctal)
     use inputs_mod, only : tMinGlobal
   type(octal), pointer   :: thisOctal

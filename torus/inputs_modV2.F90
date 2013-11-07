@@ -2181,6 +2181,9 @@ contains
     call getLogical("massiveStars", massiveStars, cLine, fLine, nLines, &
          "Only include stars over 20Msol in photoion calc: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("forceminrho", forceMinRHo, cLine, fLine, nLines, &
+         "Enforce a minimum density of 1mHydrogen cm^-3: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
          "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
 
