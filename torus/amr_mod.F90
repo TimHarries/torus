@@ -9341,7 +9341,7 @@ endif
     use inputs_mod, ONLY : photoionPhysics, doselfgrav, extmass, sourcepos, sourceTeff, sourceRadius
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    real :: r, hr, rd
+    real(double) :: r, hr, rd
 !    real(double), parameter :: min_rho = 1.0d-24 ! minimum density
 !    real(double), parameter :: min_rho = 1.0d-21 ! minimum density
 !    real(double), parameter :: min_rho = 1.0d-22 ! minimum density
