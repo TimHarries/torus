@@ -9337,8 +9337,8 @@ endif
 
   subroutine RHDDisc(thisOctal,subcell)
 
-    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
-    use inputs_mod, ONLY : photoionPhysics, doselfgrav, extmass!, stellarMass
+    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics, sourcemass
+    use inputs_mod, ONLY : photoionPhysics, doselfgrav, extmass, sourcepos, sourceTeff, sourceRadius
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real :: r, hr, rd
@@ -9346,7 +9346,7 @@ endif
 !    real(double), parameter :: min_rho = 1.0d-21 ! minimum density
 !    real(double), parameter :: min_rho = 1.0d-22 ! minimum density
     real(double) :: min_rho!, vphi, vkep
-    real(double) :: ethermal, gamma
+    real(double) :: ethermal, gamma, disttostar
     TYPE(vector) :: rVec
 
 !    real :: rInnerGap, rOuterGap
@@ -9355,16 +9355,20 @@ endif
     min_rho = extmass
     gap = .false.
     gamma = 1.d0
-!    rInnerGap = 2. * auToCm / 1.e10
+    !rInnerGap = 2. * auToCm / 1.e10
 !    rOuterGap = 3. * auToCm / 1.e10
- 
-
    
     rVec = subcellCentre(thisOctal,subcell)
     r = real(modulus(rVec))
 
+
+    disttostar = modulus(rVec-sourcepos(1))
+    disttostar = disttostar
+    thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*disttostar*1.d10))**0.5d0
+
     thisOctal%rho(subcell) = min_rho
-    thisOctal%temperature(subcell) = 1.d4
+    thisOctal%temperature(subcell) = thisOCtal%dust_t(subcell)
+    thisOctal%temperature(subcell) = 10.
     if(photoionPhysics) then
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inFlow(subcell) = .true.
@@ -9374,28 +9378,32 @@ endif
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
 !    vphi= 0.d0
 !    rinner = rinner * autocm*1.e10
-    print *, "r ", r
-    print *, "rinner ", rinner
+!       print *, "r ", r
+!       print *, "rinner ", rinner
+    rInner = 3.*autocm/1.e10
     if ((r > rInner)) then!).and.(r < rOuter)) then
-       hr = height * (r/rd)**1.125
+!       hr = height * (r/rd)**1.125
+       hr = ((kerg*thisOctal%temperature(subcell)/mhydrogen)**0.5)*((bigG*sourcemass(1)/(disttostar*1.d10)**3)**(-0.5))
+       print *, "hr is ", hr, rVec%z*1.d10, ((rVec%z*1.d10)/(2.d0*hr))**2
        ! Calculate density and check the exponential won't underflow
-       if ( rVec%z/hr < 20.0 ) THEN
-          thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
-       endif
+       !       if ( rVec%z/hr < 30.0 ) THEN
+       !       thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
+       thisOctal%rho(subcell) = rho*exp(-((rVec%z*1.d10)/(2.d0*hr))**2)
+ !      print *, "rho is ", thisOctal%rho(subcell)
+       !       endif
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
-!       if(thisOctal%rho(subcell) > min_rho) then
-!          vkep = sqrt(biG*stellarMass(1)/r)
-!          vphi = Vkep*(1.d0-eta*(rvec%z/r)**2)
-!       endif
-!       thisOctal%temperature(subcell) = 100.
-       if(photoionPhysics) then
-          thisOctal%inFlow(subcell) = .true.
-          thisOctal%etaCont(subcell) = 0.
-       end if
     endif
-!    endif
-!    thisOctal%nh = thisOctal%rho(subcell)/
+    
 
+    !       if(thisOctal%rho(subcell) > min_rho) then
+    !          vkep = sqrt(biG*stellarMass(1)/r)
+    !          vphi = Vkep*(1.d0-eta*(rvec%z/r)**2)
+    !       endif
+       !       thisOctal%temperature(subcell) = 100.
+    ! endif
+    !    endif
+    !    thisOctal%nh = thisOctal%rho(subcell)/
+    
     thisOctal%velocity = VECTOR(0.,0.,0.)
     if(photoionphysics) then
        thisOctal%biasCont3D = 1.
@@ -12082,6 +12090,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%newatomLevel, source%newatomLevel)
     call copyAttribute(dest%dust_T, source%dust_T)
     call copyAttribute(dest%ionFrac, source%ionFrac)
+    call copyAttribute(dest%columnRho, source%columnRho)
+
 #ifdef PDR
     call copyAttribute(dest%AV, source%AV)
     call copyAttribute(dest%thisColRho, source%thisColRho)
@@ -12104,7 +12114,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%lastChange, source%lastChange)
     call copyAttribute(dest%tPrev, source%tPrev)
 
-    call copyAttribute(dest%columnRho, source%columnRho)
+
     call copyAttribute(dest%coolingRate, source%coolingRate)
     call copyAttribute(dest%heatingRate, source%heatingRate)
 

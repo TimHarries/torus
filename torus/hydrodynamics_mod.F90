@@ -287,7 +287,7 @@ contains
        else
           n = 1.125
           rVec = subcellCentre(thisOctal,subcell)
-          r = real(modulus(rVec))
+          r = real(modulus(rVec*1.d10))
           vkep = sqrt(bigG*sourceMass(1)/r)
           cs = soundSpeed(thisOctal, subcell)
           eta = n *(cs**2/vkep**2)
@@ -295,8 +295,6 @@ contains
           thisOctal%rhow(subcell) = thisOctal%rho(subcell) * thisVel
        endif
     enddo
-
-
   end subroutine imposeAzimuthalVelocity
 
   recursive subroutine updatedensitytree(thisoctal)
@@ -12830,8 +12828,8 @@ end subroutine refineGridGeneric2
 !          thisMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)!*1.d30
 !          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)/R
 !          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)/R
-          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)*thisMass/R
-          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)*thisMass/R
+          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)/R
+          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)/R
           thisOctal%phi_stars(subcell) = 0.d0
        end if
     end do
