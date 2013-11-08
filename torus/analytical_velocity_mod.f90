@@ -1,6 +1,7 @@
 module analytical_velocity_mod
 
   use vector_mod
+  use magnetic_mod
   implicit none
   
 
@@ -18,6 +19,8 @@ contains
           call writeFatal("Analytical velocity called with type of zero")
        case(1) ! disc wind
           analyticalVelocity =  discwind_velocity(globalDiscWind, point)
+       case(2) ! ttauri keplerian
+          analyticalVelocity =   TTauriKeplerianVelocity(point)
        case DEFAULT
           call writeFatal("Error in logic in amrGridVelocity")
        end select

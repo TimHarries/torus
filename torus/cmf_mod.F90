@@ -3329,7 +3329,8 @@ contains
 !                if ((myrankGlobal==1).and.(iomp==0).and.(tau > 0.01d0))write(*,*) "i0, tau ",real(i0),real(tau),real(taustep)
              endif
              if ((.not. ok).and.(ntau > 100000)) then
-                write(*,*) "ntau cap limit reached ",alphanu,dustopac
+                write(*,*) "ntau cap limit reached ",alphanu, " dust ",dustopac, &
+                     " tau ",tau, " dtau ",dtau, " temp ",thisOctal%temperature(subcell)
                 ok = .true.
              endif
           enddo
@@ -3674,7 +3675,7 @@ contains
 
     if (nr3 > 0) then
        rmin = ttauriRouter/1.d10 ! DW_Rmin
-       rMax = DW_Rmax
+       rMax = grid%octreeRoot%subcellsize*2.d0
        do ir = 1, nr3
           r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr3))**3
           r2 = rMin + (rmax-rMin) * (dble(ir)/dble(nr3))**3
@@ -4307,7 +4308,7 @@ contains
     enddo
 
     rmin = ttaurirOuter/1.d10 !dw_rmin
-    rMax = dw_rmax
+    rMax = amrGridSize
     do i = 1, nr3
        r1 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i-1)/dble(nr3))
        r2 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i)/dble(nr3))

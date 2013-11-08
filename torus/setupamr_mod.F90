@@ -441,6 +441,8 @@ contains
                                                                      "chiline    ", &
                                                                      "inflow     ", &
                                                                      "cornervel  ", &
+                                                                     "velcall    ", &
+                                                                     "vely       ", &
                                                                      "temperature", &
                                                                      "fixedtemp  "/))
 #ifdef STATEQ

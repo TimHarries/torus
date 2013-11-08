@@ -375,7 +375,7 @@ CONTAINS
        do i = 1, nr
           ! this should not depend on the size of the model boundary box.
 !          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%Rmin))
-          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(this%Rmax)-log10(this%Rmin))
+          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(10.d0*autocm/1.d10)-log10(this%rMin))
        enddo
        do i = 1, nr
           rGrid(i) = 10.d0**rGrid(i)
@@ -3781,23 +3781,23 @@ CONTAINS
           enddo
           if (inSideStar) split = .false.
           
-          if (ttauriwind) then
-             inflow = .false.
-             do i = 1, 1000
-                rVec = randomPositionInCell(thisOctal,subcell)
-                if (inFLowBlandfordPayne(rVec)) then
-                   inFlow = .true.
-                   exit
-                endif
-             enddo
-        
-             if (inflow) then
-                if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
-                !           if (abs(cellCentre%z) < 0.5*DW_rMax) then
-                !              if ((cellSize/(DW_rMax-DW_rMin)) > 0.02) split = .true.
-                !           endif
-             endif
-          endif
+!          if (ttauriwind) then
+!             inflow = .false.
+!             do i = 1, 1000
+!                rVec = randomPositionInCell(thisOctal,subcell)
+!                if (inFLowBlandfordPayne(rVec)) then
+!                   inFlow = .true.
+!                   exit
+!                endif
+!             enddo
+!        
+!             if (inflow) then
+!                if ((cellSize/(DW_rMax-DW_rMin)) > 0.05) split = .true.
+!                !           if (abs(cellCentre%z) < 0.5*DW_rMax) then
+!                !              if ((cellSize/(DW_rMax-DW_rMin)) > 0.02) split = .true.
+!                !           endif
+!             endif
+!          endif
           
           if (ttauriwarp) then
              phi = atan2(cellCentre%y,cellCentre%x)
@@ -13754,11 +13754,13 @@ end function readparameterfrom2dmap
           if ((thisRho > thisOctal%rho(subcell)).and.(r < rSublimation)) then
              thisOctal%temperature(subcell) = alphaDiscTemp
           endif
-          thisOCtal%rho(subcell) = max(thisRho, thisOctal%rho(subcell))
-          if ( (r > Rinner).and.(r < rOuter) ) then
+          if ( (r > Rinner).and.(r < rOuter).and.(thisRho > thisOctal%rho(subcell))) then
              thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)
              CALL fillVelocityCorners(thisOctal,velocityAlphaDisc)
+             thisOctal%iAnalyticalVelocity(subcell) = 2
           endif
+
+          thisOCtal%rho(subcell) = max(thisRho, thisOctal%rho(subcell))
        endif
     enddo
   end subroutine assignDensitiesAlphaDisc

@@ -12,6 +12,7 @@ module vtk_mod
   use constants_mod
   use utils_mod
   use amr_mod
+  use magnetic_mod
 #ifdef MPI
   use mpi_amr_mod
 #endif
@@ -680,7 +681,7 @@ contains
 
     select case (valueType)
        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom", &
-            "radforce", "uvvec")
+            "radforce", "uvvec", "velcall")
           scalarvalue = .false.
           vectorvalue = .true.
        case DEFAULT
@@ -2655,7 +2656,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   do ivalues = 1, nValueType
      select case (valueType(iValues))
      case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
-          "radforce", "uvvec")
+          "radforce", "uvvec","velcall")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -2794,7 +2795,7 @@ end subroutine writeXMLVtkFileAMR
       integer :: i, subcell, n, iVal, nVal
       integer, save ::  iLambda
       real(double) :: ksca, kabs, value, v, r
-      type(VECTOR) :: rVec, vel
+      type(VECTOR) :: rVec, vel, vec, pos
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
 
@@ -3071,6 +3072,26 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%fViscosity(subcell)%y*r)
                case("fvisc3")
                         rArray(1, n) = real(thisOctal%fViscosity(subcell)%z)
+
+               case("velcall")
+                  pos = subcellCentre(thisOctal, subcell)
+                  vec  = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, &
+                     linearInterp=.false.) 
+                  if (thisOctal%threed) then
+                     rArray(1, n) = real(thisOctal%velocity(subcell)%x*cspeed/1.e5)
+                     rArray(2, n) = real(thisOctal%velocity(subcell)%y*cspeed/1.e5)
+                     rArray(3, n) = real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
+                  else
+                     rArray(1, n) = real(thisOctal%velocity(subcell)%x*cspeed/1.e5)
+                     rArray(2, n) = real(thisOctal%velocity(subcell)%z*cspeed/1.e5)
+                     rArray(3, n) = real(thisOctal%velocity(subcell)%y*cspeed/1.e5)
+                  endif
+
+               case("vely")
+                  pos = subcellCentre(thisOctal, subcell)
+                  vec  = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, &
+                     linearInterp=.false.) 
+                  rArray(1, n) = real(thisOctal%velocity(subcell)%y*cspeed/1.e5)
 
 
                case("velocity")

@@ -11,6 +11,7 @@ module magnetic_mod
   implicit none
 
   public
+
   interface inflowMahdavi
      module procedure inflowMahdaviSingle
      module procedure inflowMahdaviArray
