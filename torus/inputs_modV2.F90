@@ -2426,7 +2426,7 @@ contains
     call getString("datacubefile", datacubeFilename, cLine, fLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
-         "Image size (x10^10cm):","(a,1p,e9.3,1x,a)", 5e7, ok, .true.)
+         "Image size (x10^10cm):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f9.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
@@ -2540,9 +2540,9 @@ contains
                "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
        else
           call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
           call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
        endif
 
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
@@ -2592,11 +2592,11 @@ contains
                "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
        else
           call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
           call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
           call getDouble("centrevecz", centrevecz, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreZ, ok, .false.)
        end if
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)

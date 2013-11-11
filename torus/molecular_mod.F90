@@ -361,7 +361,7 @@ module molecular_mod
 
      use grid_mod, only: freeGrid
      use inputs_mod, only : vturb, restart, isinLTE, &
-          addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, &
+          addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts
 
 !         plotlevels
@@ -378,12 +378,11 @@ module molecular_mod
 ! firsttime1 is defunct
      logical, save :: firsttime2 = .true.
      logical :: inlte
-     logical, save :: firstAbundanceWarning = .true.
-     logical, save :: photoionmessage=.true.
+     logical, save :: firstAbundanceMessage = .true.
      real(double) :: nupper(200), nlower(200)
      real(double) :: levelpops(200), alphanubase(200), nmol
 
-     !$OMP THREADPRIVATE( firstTime2, firstAbundanceWarning )
+     !$OMP THREADPRIVATE( firstTime2, firstAbundanceMessage )
 
      inlte = isinlte
 
@@ -537,33 +536,43 @@ module molecular_mod
 !                      (thisMolecule%molecularWeight * amu))
               endif
 
-! Fill cells with molecular abundance data
+! Fill cells with molecular abundance data and warn if we think this hasn't been done
               if (.not.associated(thisOctal%molAbundance)) &
                    allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
 
               if (constantAbundance) then
                  thisOctal%molAbundance(subcell) = molAbundance
+                 if (firstAbundanceMessage) then
+                    call writeInfo("Setting a constant molecular abundance (constantAbundance)",FORINFO)
+                    firstAbundanceMessage = .false.
+                 endif
               elseif(doCOchemistry) then
                  if(thisOctal%nh2(subcell) .gt. 3e4 .and. thisOctal%temperature(subcell) .lt. 30.) then
                     thisOctal%molAbundance(subcell) = x_D ! depleted abundance
                  else
                     thisOctal%molAbundance(subcell) = x_0 ! normal abundance
                  endif
+                 if (firstAbundanceMessage) then
+                    call writeInfo("Using drop model for molecular abundance (doCOchemistry)",FORINFO)
+                    firstAbundanceMessage = .false.
+                 endif
+              elseif (sphWithChem) then
+                 if (firstAbundanceMessage) then
+                    call writeInfo("Abundance set from SPH chemistry (sphWithChem)",FORINFO)
+                    firstAbundanceMessage = .false.
+                 endif
+              elseif(photoionPhysics.or.removeHotMolecular) then
+                 call photoionChemistry(grid, thisOctal, subcell)
+                 if (firstAbundanceMessage) then
+                    call writeInfo("Abundance set from photoion chemistry (photoionPhysics/removeHotMolecular)",FORINFO)
+                    firstAbundanceMessage = .false.
+                 endif
               else
-                 if (firstAbundanceWarning) then
-                    call writeinfo("constantAbundance off and doCOchemistry off")
-                    call writeinfo("Implement a new molecular abundance elsewhere")
-                    call writeinfo("because molabundance hasn't been changed here at all")
-                    call writeinfo("... which might of course be what you wanted :)")
-                    firstAbundanceWarning = .false.
+                 if (firstAbundanceMessage) then
+                    call writeWarning("Molecular abundance has not been set")
+                    firstAbundanceMessage = .false.
                  endif
               endif
-              if (photoionPhysics.or.removeHotMolecular .and. photoionmessage) then
-                 call writeInfo("Applying photoion chemistry")
-                 call photoionChemistry(grid, thisOctal, subcell)
-                 photoionmessage = .false.
-              endif
-
 
 #ifdef MPI
 #ifdef HYDRO
@@ -1192,7 +1201,11 @@ grid_conv_loop: do while (.not. gridConverged)
                ioctal_end = ioctal_beg + m - 1
             end if
             
-
+! This shouldn't be used with domain decomposed grids
+            if (grid%splitOverMpi) then
+               call writeFatal("Attempting to calculate level populations when split over MPI")
+               call writeFatal("This is unlikely to work: FIX ME!!")
+            endif
 #endif
 
 ! Make sure all MPI processes and OpenMP threads have the correct random seed
@@ -1225,13 +1238,11 @@ grid_conv_loop: do while (.not. gridConverged)
 
             warned_neg_dtau = .false. 
 
-!#ifdef MPI
-!            if(myrankglobal /= 0) then
-!#endif
-
             !$OMP DO SCHEDULE(static)
 
 octal_loop: do iOctal = ioctal_beg, ioctal_end
+
+
 !       if (writeoutput) then
 !          write(message,*) iOctal,ioctal_beg,ioctal_end
 !          call writeInfo(message,TRIVIAL)
@@ -1374,11 +1385,6 @@ pops_conv_loop: do while (.not. popsConverged)
        enddo subcell_loop ! all subcells
     enddo octal_loop ! all octals
  !$OMP END DO
-
-!#ifdef MPI
-! end if
-!#endif
-
 
  deallocate(ds, phi, i0, i0temp, oldpops1, oldpops2, oldpops3, oldpops4, dirweight)
  !$OMP BARRIER
@@ -2967,7 +2973,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      call writeinfo(message, TRIVIAL) 
      write(message,'(a,1pe12.3,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
      call writeinfo(message, TRIVIAL) 
-     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0, gridDistance)
+     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0, gridDistance, &
+          smallestCell=2.0_db*grid%halfsmallestsubcell)
 
      if ( present(revVel) ) then 
         doRevVel = revVel

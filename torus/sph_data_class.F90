@@ -474,6 +474,10 @@ contains
     if (sphWithChem) then
        write (message,'(a,i2)') "Reading CO fraction from column ", iCO
        call writeInfo(message,FORINFO)
+       if (iCO > nWord) then 
+          write(message,*) "SPH file only has", nWord, " columns"
+          call writeFatal(message)
+       endif
        allocate(sphData%rhoCO(npart))
     end if
 

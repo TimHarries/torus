@@ -639,13 +639,14 @@ contains
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
-  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax, griddistance)
+  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax, griddistance, smallestCell)
     use constants_mod
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin, dx, dy, dxInCm
     integer :: i
     character(len=100) :: message
     real, intent(in) :: gridDistance
+    real(double), intent(in), optional :: smallestCell ! In Torus units
 
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
@@ -654,6 +655,12 @@ contains
 ! Smallest grid cell (in AU) is reported by createimage, so report pixel size in AU for comparison.
     write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dxInCm/autocm, " AU"
     call writeinfo(message,TRIVIAL)
+
+! If the smallestCell argument is present then compare with the pixel size to check we aren't doing something daft
+    if (present(smallestCell)) then 
+       if (dx < 0.1*smallestCell) call writeWarning("X-axis pixel size is more than 10x smaller than the smallest grid cell")
+       if (dy < 0.1*smallestCell) call writeWarning("Y-axis pixel size is more than 10x smaller than the smallest grid cell")
+    endif
 
 ! Report the linear pixel size in suitable units
     if (dxInCm < pcToCm) then 
