@@ -1246,6 +1246,24 @@ contains
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
 
+       call getDouble("erinner", erInner, autocm, cLine, fLine, nLines, &
+            "Envelope inner radius (AU): ","(a,f10.2,a)", 100.d0, ok, .false.)
+
+       call getDouble("erouter", erOuter, autocm, cLine, fLine, nLines, &
+            "Envelope inner radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
+
+
+       call getDouble("mdotenv", mDotEnv, msol * secstoyears, cLine, fLine, nLines, &
+            "Envelope accretion rate (AU): ","(a,f5.2,a)", 1.d-30, ok, .false.)
+
+
+       call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+            "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
+
+       call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
+            "Cavity density (g/cc): ","(a,e12.2,a)", 8d-20, ok, .false.)
+
+
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
 
        call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &

@@ -415,9 +415,10 @@
   real :: rpower ! radial density power  r^-rpower. For proto geometry
 
   ! whitney stuff
-  real :: erInner, erOuter, drInner, drOuter, cavAngle, cavDens
+  real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens
+  real :: drInner, drOuter
   real(double) :: rCavity
-  real :: rStellar, mdotEnv, mEnv
+  real :: rStellar, mEnv
 
   ! variables for clumped wind models
   integer :: nBlobs

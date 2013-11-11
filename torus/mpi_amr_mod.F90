@@ -10,7 +10,7 @@ contains
 
   subroutine setupAMRCOMMUNICATOR
     use mpi
-    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr2d, amr3d
+    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr1d, amr2d, amr3d
     integer :: ierr, i, j, iset, k
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
@@ -41,6 +41,8 @@ contains
              nHydroThreadsGlobal = 16
           else if (amr2d.and.(mod(nThreadsGlobal, 5) == 0)) then
              nHydroThreadsGlobal = 4
+          else if (amr1d.and.(mod(nThreadsGlobal, 3) == 0)) then
+             nHydroThreadsGlobal = 2
           else
              write(*,*) "Number of MPI threads is ",nThreadsGlobal
              write(*,*) "Can't figure out automatically what domain decomp is required"

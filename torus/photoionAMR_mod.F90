@@ -1066,11 +1066,11 @@ contains
              call writeSourceArray(mpifilename)
           endif
 
-          if (.not.CylindricalHydro) then
+!          if (.not.CylindricalHydro) then
              write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
              call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
-          endif
+!          endif
 
           if(grid%geometry == "bonnor" .and. grid%octreeRoot%oneD) then
              write(mpiFilename,'(a,i4.4,a)') "1DRHD_torus",grid%idump,".dat"
@@ -2897,6 +2897,8 @@ end subroutine radiationHydro
        do iOctal =  iOctal_beg, iOctal_end
           
           thisOctal => octalArray(iOctal)%content
+
+          if (.not.radpressuretest) then
           
           if (dustOnly) then
              do subcell = 1, thisOctal%maxChildren
@@ -2912,6 +2914,7 @@ end subroutine radiationHydro
 
           else             
 !             if(.not. uv_vector) then
+
              if(timeDep) then
                 do i = 1, nTimes
                    call calculateIonizationBalanceTimeDep(grid,thisOctal, epsOverDeltaT, deltaTime/dble(nTimes))
@@ -2956,6 +2959,7 @@ end subroutine radiationHydro
 
              
           endif
+       endif
        !end if
           if (nHydroSetsGlobal > 1) tempCell(iOctal,1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
           if (nHydroSetsGlobal > 1) tempIon(iOctal,1:thisOctal%maxChildren,:) = real(thisOctal%ionFrac(1:thisOctal%maxChildren,:))
@@ -3640,7 +3644,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
     endif
 
-
+    if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-24)) then
+       kappaAbsDb = 1.d-30
+       kappaScaDb = 1.d-30
+    endif
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
     else
@@ -4650,9 +4657,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
                 thisOctal%ionFrac(subcell, 1) = 1.d0
                 thisOctal%ionFrac(subcell, 2) = 1.d-30
-                if(thisOctal%nCrossings(subcell) /= 0) then
-                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
-                end if
+!                if(thisOctal%nCrossings(subcell) /= 0) then
+!                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!                end if
              endif
           endif
        endif
@@ -5336,8 +5343,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        zHat = VECTOR(0.d0, 0.d0, 1.d0)
        uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
     endif
+
+    if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-24)) then
+       kappaExt  = 1.d-30
+    endif
+
     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
          + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
+
+
     if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     if(uv_vector) then

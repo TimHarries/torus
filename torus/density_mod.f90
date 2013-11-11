@@ -864,7 +864,7 @@ contains
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral, &
-         deltaCav
+         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -875,7 +875,7 @@ contains
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
     type(VECTOR),save :: stream1(nStream), stream2(nStream), spiralVec
-    real(double) :: rSpiral, rSpiralInner, rSpiralOuter, rhoLocal
+    real(double) :: rSpiral, rSpiralInner, rSpiralOuter, rhoLocal, mu, r_c, rhoEnv, mu_0, theta
     logical :: ok
     real :: x1, x2
 
@@ -1005,7 +1005,34 @@ contains
 
 
     rhoOut = max(rhoOut, 1.d-30)
+    r = (modulus(point)*1.e10)
+    mu = ((abs(point%z)*1.e10) /r)
+    r_c = erInner
+
+    rhoEnv = 1.d-30
+    write(*,*) r, erinner,erouter
+    if ((r > erInner).and.(r < erOuter)) then
+       mu_0 = rtnewtdble(-0.2d0 , 1.5d0 , 1.d-4, r/r_c, abs(mu))
+
+! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
+! this is from Momose et al. 1998 ApJ 504 314
+
+       rhoEnv = real((mdotenv / fourPi) * (bigG * mCore)**(-0.5d0) * r**(-1.5d0) * &
+       (1.d0 + abs(mu)/mu_0)**(-0.5d0) * &
+       (abs(mu)/mu_0 + (2.d0*mu_0**2 * r_c/r))**(-1.))
+       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoEnv = (rhoEnv * fac)
+       rhoEnv = max(rhoEnv, tiny(rhoEnv))
+       write(*,*) "rhoenv ",rhoEnv
+    endif
+    theta = acos(mu)
+    write(*,*) "theta ",theta
+!    if (theta < cavAngle/2.d0)  then
+!       rhoEnv = cavdens
+!    endif
        
+    rhoOut = max(rhoOut, rhoEnv)
 
 
   end function shakaraSunyaevDisc
@@ -1171,6 +1198,28 @@ contains
     enddo
     write(*,*) 'rtnewt exceeding maximum iterations'
   end function rtnewt
+
+  real(double) function rtnewtdble(x1,x2,xacc, p1, p2) result(junk)
+
+    real(double) :: x1, x2, xacc, p1, p2
+    integer :: jmax, j
+    real(double) ::  dx, f, df
+    parameter (jmax=20)
+    junk = 0.5d0 * (x1+x2)
+
+    f = 0.d0; df = 0.d0
+    do j=1,jmax
+       call equation2dble(junk,f,df,p1,p2)
+       dx=f/df
+       junk=junk-dx
+       if((x1-junk)*(junk-x2).lt.0.) then
+          write(*,*) 'RTNEWT: jumped out of brackets',p1,p2,junk
+          stop
+       endif
+       if(abs(dx).lt.xacc) return
+    enddo
+    write(*,*) 'rtnewt exceeding maximum iterations'
+  end function rtnewtdble
   
 
 !  real function Equation2(mu0, eq2, deq2, r, mu)
@@ -1182,6 +1231,15 @@ contains
     deq2 = 3.*mu0**2 + r - 1.
 
   end subroutine Equation2
+
+  subroutine Equation2dble(mu0, eq2, deq2, r, mu)
+    real(double) :: r, mu, mu0
+    real(double) :: eq2, deq2
+
+    eq2 = mu0**3 + (r-1.)*mu0 -r*mu
+    deq2 = 3.*mu0**2 + r - 1.
+
+  end subroutine Equation2dble
 !  end function Equation2
 
   function clumpyDisc(rVec, grid) result (rhoOut)
