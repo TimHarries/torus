@@ -3536,6 +3536,23 @@ contains
             thisOctal%hasChild = .false.
          endif
 
+         if (nHydroThreadsGlobal == 2) then
+            thisOctal%nChildren = 1
+            do i = 1, nHydroThreadsGlobal
+               thisOctal%hasChild = .false.
+               thisOctal%hasChild(i) = .true.
+               thisOctal%indexChild(1) = i
+               call sendOctalviaMPI(thisOctal,i)
+            enddo
+
+            do i = 1, nHydroThreadsGlobal
+               call readBranchFromFile(i, fileFormatted)
+            enddo
+
+            thisOctal%nChildren = 0 
+            thisOctal%hasChild = .false.
+         endif
+
          if (nHydroThreadsGlobal == 4) then
             thisOctal%nChildren = 1
             do i = 1, nHydroThreadsGlobal
