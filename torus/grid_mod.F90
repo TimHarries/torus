@@ -101,8 +101,8 @@ contains
        grid%geometry = "whitney"
        grid%rCore = rStellar/1.e10
        grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
-       grid%rInner = erInner/1.e10
-       grid%rOuter = erOuter/1.e10
+       grid%rInner = real(erInner,si)/1.e10
+       grid%rOuter = real(erOuter,si)/1.e10
        grid%starPos1 = vector(1.e-6,1.e-6,1.e-6)
 
     case("benchmark")

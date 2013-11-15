@@ -753,7 +753,7 @@ contains
 
     mu = real((abs(point%z)*1.e10) /r)
 
-    r_c = erInner
+    r_c = real(erInner,kind=si)
     alpha = 2.25
     beta = 1.25
 
@@ -789,7 +789,7 @@ contains
 
     theta = acos(mu)
     if (theta < cavAngle/2.d0)  then
-       rhoEnv = cavdens
+       rhoEnv = real(cavdens,kind=si)
     endif
     
     whitneyDensity = max(rhoEnv, rhoDisc)
