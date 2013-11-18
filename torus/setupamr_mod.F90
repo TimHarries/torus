@@ -597,8 +597,12 @@ contains
 
        call writeVtkFile(grid, "beforesmooth.vtk")
 
-       doPhotoSphereSplit =  ((.not.cylindrical).and.(.not.variableDustSublimation).and.(.not.photoionPhysics))
-       if ( doPhotoSphereSplit ) then
+       dophotosphereSplit = .false.
+!       if (grid%geometry == "shakara") doPhotosphereSplit = .true.
+!       doPhotoSphereSplit =  ((.not.cylindrical).and.(.not.variableDustSublimation).and.(.not.photoionPhysics))
+
+
+      if ( doPhotoSphereSplit ) then
           call writeInfo("Doing photsphere split", TRIVIAL)
        else
           call writeInfo("Not doing photsphere split", TRIVIAL)

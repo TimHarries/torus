@@ -779,6 +779,10 @@ CONTAINS
     CASE("wrshell")
        CALL calcWRShellDensity(thisOctal,subcell,grid)
 
+
+    CASE("lighthouse")
+       CALL calcLighthouseDensity(thisOctal,subcell)
+
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell)
 
@@ -3312,7 +3316,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, smoothinneredge
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -4689,11 +4693,11 @@ CONTAINS
           
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
           
-          if (.not.smoothinneredge) then
-             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
-                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
-                  (.not.thisOctal%cylindrical)) split=.true.
-          endif
+!          if (.not.smoothinneredge) then
+!             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
+!                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
+!                  (.not.thisOctal%cylindrical)) split=.true.
+!         endif
           
              if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
                 if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
@@ -4763,6 +4767,15 @@ CONTAINS
           !            split = .true.
 !         endif
           !      endif
+
+          cellsize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal, subcell)
+          if (cavdens > 1.d-30) then
+             dr = tan(cavAngle/2.) * abs(cellCentre%z)
+             if ( ((abs(cellCentre%x) - cellsize/2.d0) < dr).and.(cellSize > dr/8.d0) .and.(abs(cellCentre%z)>erInner/1.d10)) then
+                split = .true.
+             endif
+          endif
           
        case("circumbin")
           
@@ -6997,6 +7010,36 @@ endif
 
 
   end subroutine calcBowshock
+
+  subroutine calcLighthouseDensity(thisOctal,subcell)
+    use inputs_mod, only : grainFrac, nDustType
+    TYPE(octal) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: rhoAmbient, rhoShell, rShell, rMin, rMax, thetaOpening, r, theta, sigmaShell
+
+    rhoAmbient = 2.d-20
+    rhoShell = 2.d-14
+    rShell = 50.d0*autocm/1.d10
+    sigmaShell = 1.d0*autocm/1.d10
+    rMin = 1.d0 * auToCm / 1.d10
+    rMax = 300.d0 * auToCm / 1.d10
+    thetaOpening = 30.d0 * degToRad
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)
+
+    theta = acos ( rVec%z / r)
+    if ((theta >= thetaOpening).and.(r >= rMin).and.(r <= rMax)) then
+       thisOctal%rho(subcell) = rhoAmbient + rhoShell * exp(-(r-rShell)**2/(2.d0*sigmaShell**2))
+    else if ( (theta < thetaOpening).and.(r >= rMin).and.(r <= rMax)) then
+       thisOctal%rho(subcell) = rhoAmbient
+    else if ((r < rMin).or.(r > rMax)) then
+       thisOctal%rho(subcell) = 1.d-30
+    endif
+    thisOctal%dustTypeFraction(subcell, 1:nDustType) = grainFrac(1:nDustType)
+  end subroutine calcLighthouseDensity
+
 
   subroutine calcKelvinDensity(thisOctal,subcell)
     use inputs_mod  
@@ -10652,12 +10695,12 @@ end function readparameterfrom2dmap
 
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
-    use density_mod, only: density
+    use density_mod, only: density, shakaraSunyaevDisc
     use inputs_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -10703,7 +10746,7 @@ end function readparameterfrom2dmap
 
     r = real(sqrt(rVec%x**2 + rVec%y**2))
 
-    if (r < rOuter) then
+!    if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
 ! tinkered from 10K - I figured the cooler bits will gently drop but a 
 ! large no. of cells are close to this temp.
@@ -10721,7 +10764,7 @@ end function readparameterfrom2dmap
 
        h = real(height * (r / (100.d0*autocm/1.d10))**betaDisc)
     
-    endif
+!    endif
 
     if(molecular) then
  !      if(modulus(rvec) .lt. 1000.) then
@@ -10759,6 +10802,27 @@ end function readparameterfrom2dmap
     endif
 
 
+    if (dustPhysics) then
+       rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
+       rhoFid = shakaraSunyaevDisc(rVec, grid)
+       
+       thisOctal%DustTypeFraction(subcell,:) = 1.d-10
+       rVec = subcellCentre(thisOctal, subcell)
+       rho = shakaraSunyaevDisc(rVec, grid)
+       thisRsub = 1.01d0 * rSublimation * max(1.d0,(1.d0/(rho/rhoFid)**0.0195)**2)
+       r = sqrt(rVec%x**2+rVec%y**2)
+       z = rVec%z
+       thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+       !          write(*,*) r/1496.,thisRsub/1496.d0
+       if (modulus(rVec) < rSublimation) then
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
+       endif
+       
+       if (curvedInnerEdge.and.(r < thisRsub).and.(modulus(rVec) < 2.d0*rsublimation)) then
+          fac = (thisRsub-r)/(0.002d0*rSublimation)
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
+       endif
+    endif
   end subroutine shakaraDisk
 
   subroutine warpedDisk(thisOctal,subcell,grid)
@@ -13518,8 +13582,7 @@ end function readparameterfrom2dmap
                       firstTimeMem = .false.
                    endif
                 endif
-                   
-                
+
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
                    if (thisTau > neighbourTau) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
@@ -13529,16 +13592,15 @@ end function readparameterfrom2dmap
                    endif
                 endif
 
-
-                call returnKappa(grid, thisOctal, subcell, ilambda, rosselandKappa = kAbs)
-                tauross = thisOctal%subcellSize*kAbs*thisOctal%rho(subcell)*1.d10
-                if ((tauRoss > 500.d0).and.split) then
-!                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
-                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                        inherit=inheritProps, interp=interpProps)
-                   converged = .false.
-                   return
-                endif
+!                call returnKappa(grid, thisOctal, subcell, ilambda, rosselandKappa = kAbs)
+!                tauross = thisOctal%subcellSize*kAbs*thisOctal%rho(subcell)*1.d10
+!                if ((tauRoss > 500.d0).and.split) then
+!!                   if (myrankGlobal==1) write(*,*) "Splitting with tauRoss ",tauross
+!                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+!                        inherit=inheritProps, interp=interpProps)
+!                   converged = .false.
+!                   return
+!                endif
 
 
                 fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &

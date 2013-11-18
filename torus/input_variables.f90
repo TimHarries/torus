@@ -341,6 +341,7 @@
   logical :: useOldMiePhaseCalc ! used in dust_mod, not set !!!
   logical :: includeGasOpacity
   logical :: isotropicScattering
+  logical :: henyeyGreensteinPhaseFunction
   real :: dusttogas
   logical :: dustfile
   character(len=80) :: dustfilename(10) ! used in dust_mod, not set !!!
@@ -415,7 +416,7 @@
   real :: rpower ! radial density power  r^-rpower. For proto geometry
 
   ! whitney stuff
-  real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens
+  real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens, rhoAmbient
   real :: drInner, drOuter
   real(double) :: rCavity
   real :: rStellar, mEnv
@@ -824,6 +825,7 @@
   integer :: nr, nphi
   logical :: lineEmission
   logical :: smoothInnerEdge
+  logical :: curvedInnerEdge
   logical :: opaqueCore
   logical :: thin_disc_on       ! T to include disc
   logical :: pencilBeam

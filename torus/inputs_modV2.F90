@@ -1157,6 +1157,9 @@ contains
        call getLogical("smoothinneredge", smoothInnerEdge, cLine, fLine, nLines, &
             "Smooth density drop at inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("curvedinneredge", curvedInnerEdge, cLine, fLine, nLines, &
+            "Curved inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
             "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
 
@@ -1261,7 +1264,10 @@ contains
             "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
 
        call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
-            "Cavity density (g/cc): ","(a,e12.2,a)", 8d-20, ok, .false.)
+            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+
+       call getDouble("rhoambient", rhoAmbient, 1.d0, cLine, fLine, nLines, &
+            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
@@ -1554,7 +1560,6 @@ contains
                "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
           nDustType = 1
           grainfrac = 1.
-          isoTropicScattering = .true.
           
 
        else
@@ -1613,7 +1618,13 @@ contains
           if (.not. readDustFromFile) &
                call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
                "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
-       endif
+
+
+         endif
+
+         call getLogical("henyey", henyeyGreensteinPhaseFunction, cLine, fLine, nLines, &
+              "Use Henyey-Greenstein phase function: ","(a,1l,1x,a)", .false., ok, .false.)
+
   end subroutine readDustPhysicsParameters
 
   subroutine readAtomicPhysicsParameters(cLine, fLine, nLines)
@@ -2171,8 +2182,8 @@ contains
 
     if (dosmoothgridtau) then
        call getReal("taumax", tauSmoothMax, 1.0, cLine, fLine, nLines, &
-            "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 0.5, ok, .false.)
-       call getReal("taumin", tauSmoothMin, 0.1, cLine, fLine, nLines, &
+            "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 1., ok, .false.)
+       call getReal("taumin", tauSmoothMin, 1.0, cLine, fLine, nLines, &
             "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 0.1, ok, .false.)
     endif
 

@@ -242,7 +242,7 @@ contains
     if ((.not.dustSettling).and.(grid%geometry == "shakara")) then
        dustMass = 0.d0
        call fillDustShakara(grid, grid%octreeRoot, dustMass)
-       call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
+       if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
        dustMass = 0.d0
        call findDustMass(grid, grid%octreeRoot, dustMass)
        if (writeOutput) then

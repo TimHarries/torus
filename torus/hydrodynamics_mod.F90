@@ -1001,11 +1001,9 @@ contains
 
              rVec = subcellCentre(thisOctal,subcell)
 
-             area_i = fourPi * ((thisOctal%x_i(subcell)-gridDistanceScale*thisOctal%subcellSize/2.d0) &
-                  * thisOctal%subcellSize * gridDistanceScale)
+             area_i = fourPi * (thisOctal%x_i(subcell)-gridDistanceScale*thisOctal%subcellSize/2.d0)**2
 
-             area_i_plus_1 = fourPi * ((thisOctal%x_i(subcell)+gridDistanceScale*thisOctal%subcellSize/2.d0) &
-                  * thisOctal%subcellSize * gridDistanceScale)
+             area_i_plus_1 = fourPi * (thisOctal%x_i(subcell)+gridDistanceScale*thisOctal%subcellSize/2.d0)**2
              
 
 
@@ -4042,11 +4040,7 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           
           if (.not.thisoctal%ghostcell(subcell)) then
-             thisoctal%rho(subcell) = thisoctal%q_i(subcell)             
-!             if (rhoFloor > thisOctal%q_i(subcell)) then
-!                fac = thisOctal%q_i(subcell)/rhoFloor
-!                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
-!             endif
+             thisoctal%rho(subcell) = max(thisoctal%q_i(subcell),rhoFloor)
           endif
        endif
     enddo

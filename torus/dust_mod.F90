@@ -497,8 +497,8 @@ contains
           if (writeoutput) &
                write(20,'(1p,5e13.4)') grid%lamArray(i)*angstomicrons,&
                grainFrac(thisDust)*(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
-               grainFrac(thisDust)*grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
-               grainFrac(thisDust)*grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))
+               grainFrac(thisDust)*grid%oneKappaAbs(thisdust,i)/1.e10,grainFrac(thisDust)*grid%oneKappaSca(thisdust,i)/1.e10, &
+               grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))
        enddo
        if (writeoutput) close(20)
 
@@ -548,17 +548,17 @@ contains
     enddo
   end subroutine fillAMRgridMie
 
-  subroutine dustPropertiesfromFile(filename, nlambda, lambda, kappaAbs, kappaSca)
+  subroutine dustPropertiesfromFile(filename, nlambda, lambda, kappaAbs, kappaSca, gfac)
     use utils_mod, only: logInt
     implicit none
     character(len=*) :: filename
     integer :: nlambda
     real :: lambda(:)
     real :: kappaAbs(:), kappaSca(:)
-    real :: sigmaExt(1000),sigmaSca(1000), kappa(1000), albedo(1000), tlam(1000)
-    real :: tSca(1000), tAbs(1000), sigmaAbs(1000)
+    real :: sigmaExt(2000),sigmaSca(2000), kappa(2000), albedo(2000), tlam(2000)
+    real :: tSca(1000), tAbs(2000), sigmaAbs(2000), junk, gfac(2000), tgfac(2000)
     character(len=40) :: filetype
-    character(len=80) :: message
+    character(len=80) :: message, junkchar
     integer :: npts, i, j
 
     write(message,'(a,a)') "Reading dust properties from: ",trim(filename)
@@ -594,6 +594,22 @@ contains
        tSca(1:npts) = sigmaSca(1:npts)
        tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
 
+    case("trust")
+       npts = 1201
+       read(20,*) junkchar
+       read(20,*) junkchar
+       read(20,*) junkchar
+       read(20,*) junkchar
+
+       do i = 1, npts
+          read(20,*) tlam(i), junk, junk, junk, kappa(i), albedo(i), tgfac(i)
+       enddo
+
+       close(20)
+       tAbs(1:npts) = (1.d0-albedo(1:npts)) * kappa(1:npts)
+       tSca(1:npts) = albedo(1:npts) * kappa(1:npts)
+       tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+
     case DEFAULT
        write(*,'(a)') "! Dust properties file has unknown type",trim(filetype)
        stop
@@ -604,6 +620,7 @@ contains
        call locate(tlam,npts,lambda(i),j)
        kappaAbs(i) = logint(lambda(i), tlam(j), tlam(j+1), tAbs(j), tAbs(j+1))*1.e10
        kappaSca(i) = logint(lambda(i), tlam(j), tlam(j+1), tSca(j), tSca(j+1))*1.e10
+       gfac(i) = tgfac(j) + (lambda(i)-tlam(j)) * (tgfac(j+1)-tgfac(j)) / (tlam(j+1)-tlam(j))
        if (writeoutput) write(*,*) lambda(i), kappaAbs(i), kappaSca(i)
     enddo
 
@@ -680,15 +697,16 @@ contains
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
     use inputs_mod, only : rSublimation, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, &
-         betaDisc, dustSettling
+         betaDisc, dustSettling, curvedInnerEdge
     use octal_mod, only : cellVolume
+    use density_mod
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
     real(double) :: r, z
     real(double) :: thisheight, gasHeight, dustMass, cellMass
-    real(double) :: fac, tot
+    real(double) :: fac, tot, rhoFid, rho, thisRsub
     integer :: subcell, i, iDust
 
     do subcell = 1, thisOctal%maxChildren
@@ -703,40 +721,53 @@ contains
           end do
        else
          
+          rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
+          rhoFid = shakaraSunyaevDisc(rVec, grid)
 
           thisOctal%DustTypeFraction(subcell,:) = 1.d-10
           rVec = subcellCentre(thisOctal, subcell)
+          rho = shakaraSunyaevDisc(rVec, grid)
+          thisRsub = 1.01d0 * rSublimation * max(1.d0,(1.d0/(rho/rhoFid)**0.0195)**2)
           r = sqrt(rVec%x**2+rVec%y**2)
           z = rVec%z
-
-          if (.not.dustSettling) then
-             if ( (r > rSublimation).and.(r < rOuter)) then
-                tot = 0.d0
-                do iDust = 1, nDustType
-                   thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
-                   gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-                   fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
-                   thisOctal%dustTypeFraction(subcell, iDust) = fac
-                   tot = tot + fac
-                enddo
-                thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-                     grainFrac(1:nDustType)
-                cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
-                dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
-             endif
-
-          else
-
-             thisHeight = dustHeight(1)*(r/(100.d0*autocm/1.d10))**dustBeta(1)
-             fac = exp(-0.5d0*(z/thisHeight)**2)
-             thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
-             thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(1)
-             
-             cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
-             dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
-
-
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+!          write(*,*) r/1496.,thisRsub/1496.d0
+          if (modulus(rVec) < rSublimation) then
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
           endif
+
+          if (curvedInnerEdge.and.(r < thisRsub).and.(modulus(rVec) < 2.d0*rsublimation)) then
+             fac = (thisRsub-r)/(0.002d0*rSublimation)
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
+          endif
+ !         thisOctal%dustTypeFraction(subcell,1:nDustType) = thisRsub/1496.
+          if (nDustType > 1) then
+             if (.not.dustSettling) then
+                if ( (r > rSublimation).and.(r < rOuter)) then
+                   tot = 0.d0
+                   do iDust = 1, nDustType
+                      thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+                      gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                      fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
+                      thisOctal%dustTypeFraction(subcell, iDust) = fac
+                      tot = tot + fac
+                   enddo
+                   thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
+                        grainFrac(1:nDustType)
+                endif
+
+             else
+                
+                thisHeight = dustHeight(1)*(r/(100.d0*autocm/1.d10))**dustBeta(1)
+                fac = exp(-0.5d0*(z/thisHeight)**2)
+                thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+                thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(1)
+                
+                
+             endif
+          endif
+          cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+          dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
 
        end if
     end do
@@ -1257,11 +1288,11 @@ contains
     use mpi
 #endif
     use mieDistPhaseMatrix_mod
-    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie
+    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie, fillHenyey
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
-         ttau_disc_on, grainFrac
+         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
@@ -1272,7 +1303,7 @@ contains
 
 
     type(GRIDTYPE) :: grid
-    real :: xArray(:)
+    real :: xArray(:), gfac(2000)
     integer :: nLambda
     integer :: ilam_beg, ilam_end
 
@@ -1308,7 +1339,7 @@ contains
        else
           do i = 1, nDustType
              call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, &
-                  grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda))
+                  grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda), gfac)
           enddo
        endif
        if (writeoutput) then
@@ -1341,6 +1372,17 @@ contains
           miePhase = fillIsotropic()
           call writeInfo("Completed.",TRIVIAL)
           goto 666
+       else if (henyeyGreensteinPhaseFunction) then
+          call writeInfo("Using Henyey-Greenstein scattering",FORINFO)
+          i = 1
+          do j = 1, grid%nLambda
+             do k = 1, nMumie
+                mu = 2.*real(k-1)/real(nMumie-1)-1.
+                miePhase(i,j,k) = fillHenyey(mu, gfac(j))
+             enddo
+          end do
+          call writeInfo("Completed.",TRIVIAL)
+          
        else
 
        if (readMiePhase) then

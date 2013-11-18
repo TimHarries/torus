@@ -381,7 +381,7 @@ contains
     real, pointer :: xArray(:) => null()
     integer :: nLambda 
     real(double) :: packetWeight
-    real(double) :: temp
+    real(double) :: temp, dustMass
     real :: temp2
 
     integer :: i
@@ -420,6 +420,10 @@ contains
                 i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
         endif
         call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="dust")
+
+        if (grid%geometry == "shakara") then
+           call fillDustShakara(grid, grid%octreeRoot, dustmass)
+        endif
 !        call fillDustUniform(grid, grid%octreeRoot)
 #ifdef MPI
         call randomNumberGenerator(syncIseed=.true.)

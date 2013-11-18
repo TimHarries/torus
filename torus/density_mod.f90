@@ -864,7 +864,7 @@ contains
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral, &
-         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens
+         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -922,9 +922,15 @@ contains
     warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
     if ((r < rOuter).and.(r>rinner)) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+
+
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+
+
+
+
        if (smoothInnerEdge) then
           fac = 1.d0
           if (r < 1.02d0*rinner) then
@@ -1004,13 +1010,12 @@ contains
     endif
 
 
-    rhoOut = max(rhoOut, 1.d-30)
+    rhoOut = max(rhoOut, cavDens)
     r = (modulus(point)*1.e10)
     mu = ((abs(point%z)*1.e10) /r)
     r_c = erInner
 
     rhoEnv = 1.d-30
-    write(*,*) r, erinner,erouter
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewtdble(-0.2d0 , 1.5d0 , 1.d-4, r/r_c, abs(mu))
 
@@ -1024,15 +1029,14 @@ contains
        fac = exp(-fac*10.d0)
        rhoEnv = (rhoEnv * fac)
        rhoEnv = max(rhoEnv, tiny(rhoEnv))
-       write(*,*) "rhoenv ",rhoEnv
+       theta = acos(mu)
+       if (theta < cavAngle/2.d0)  then
+          rhoEnv = cavdens
+       endif
     endif
-    theta = acos(mu)
-    write(*,*) "theta ",theta
-!    if (theta < cavAngle/2.d0)  then
-!       rhoEnv = cavdens
-!    endif
        
     rhoOut = max(rhoOut, rhoEnv)
+    rhoOut = max(rhoOut, rhoAmbient)
 
 
   end function shakaraSunyaevDisc

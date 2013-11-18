@@ -183,6 +183,18 @@ contains
 
   end function fillRayleigh
 
+
+  pure function fillHenyey(costheta, g) result(b)
+
+    type(PHASEMATRIX) :: b
+    real,intent(in) :: costheta, g
+    real :: cos2t
+
+    b%element = 0.
+    b%element(1,1) = oneOnFourPi * (1.-g**2) / (1. + g**2 - 2.*g*costheta)**1.5
+
+  end function fillHenyey
+
   pure function fillIsotropic() result(b)
 
     type(PHASEMATRIX) :: b

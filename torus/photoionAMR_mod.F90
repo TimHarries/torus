@@ -3632,18 +3632,19 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     usedMRW = .false.
     i = 0
     call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-    if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
-       call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-            freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-       usedMRW = .true.
-       thisLam = (cspeed/thisFreq)*1.d8
-       call locate(lamArray, nLambda, real(thisLam), iLam)
-       call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-            actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-            grid=grid, inFlow=inFlow)
-       call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+    if (.not.radpressuretest) then
+       if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
+          call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+               freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+          usedMRW = .true.
+          thisLam = (cspeed/thisFreq)*1.d8
+          call locate(lamArray, nLambda, real(thisLam), iLam)
+          call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+               actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+               grid=grid, inFlow=inFlow)
+          call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+       endif
     endif
-
     if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-24)) then
        kappaAbsDb = 1.d-30
        kappaScaDb = 1.d-30
@@ -5342,6 +5343,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        call normalize(rHat)
        zHat = VECTOR(0.d0, 0.d0, 1.d0)
        uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+    endif
+
+    if (thisOctal%oneD) then
+       rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+       call normalize(rHat)
+       uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
     endif
 
     if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-24)) then
