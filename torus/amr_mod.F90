@@ -10696,11 +10696,15 @@ end function readparameterfrom2dmap
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
     use density_mod, only: density, shakaraSunyaevDisc
-    use inputs_mod
+    use inputs_mod, only : rInner, rOuter, erInner, erOuter, alphaDisc, betaDisc
+    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale
+    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
+    use inputs_mod, only : rSublimation
+
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -13465,7 +13469,7 @@ end function readparameterfrom2dmap
     logical, optional :: inheritProps, interpProps, photoSphereSplit
     integer :: subcell, i, ilambda
     logical :: converged
-    real(double) :: kabs, ksca, r, fac, tauRoss, kabsDust, kScaDust
+    real(double) :: kabs, ksca, r, fac,  kabsDust, kScaDust
     type(VECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir

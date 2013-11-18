@@ -188,10 +188,9 @@ contains
 
     type(PHASEMATRIX) :: b
     real,intent(in) :: costheta, g
-    real :: cos2t
 
     b%element = 0.
-    b%element(1,1) = oneOnFourPi * (1.-g**2) / (1. + g**2 - 2.*g*costheta)**1.5
+    b%element(1,1) = real(oneOnFourPi) * (1.-g**2) / (1. + g**2 - 2.*g*costheta)**1.5
 
   end function fillHenyey
 

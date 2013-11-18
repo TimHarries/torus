@@ -606,7 +606,7 @@ contains
        enddo
 
        close(20)
-       tAbs(1:npts) = (1.d0-albedo(1:npts)) * kappa(1:npts)
+       tAbs(1:npts) = (1.0-albedo(1:npts)) * kappa(1:npts)
        tSca(1:npts) = albedo(1:npts) * kappa(1:npts)
        tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
 
