@@ -2,6 +2,7 @@ module setuppdr_mod
 #ifdef PDR
 !use healpix_module
 use healpix_guts
+
 use grid_mod
 implicit none
 
@@ -56,6 +57,153 @@ real(kind=dp), allocatable :: CII_PH2(:,:,:),CII_OH2(:,:,:)
   integer :: NCO, NC, NCX, NO
 
 contains
+
+
+
+recursive subroutine checkPDRAllocations(thisOctal, nrays)
+
+type(octal), pointer :: thisoctal, child
+integer :: subcell, nspec, i, nrays
+
+    nspec = 33
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do i = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(i) == subcell) then
+              child => thisoctal%child(i)
+              call checkPDRallocations(child, nrays)
+              exit
+           end if
+        end do
+     else
+
+        
+        if(.not. associated(thisOctal%abundance)) then
+           allocate(thisOctal%abundance(1:thisOctal%maxChildren, 1:nspec))
+        endif
+
+        if(.not. associated(thisOctal%tlast)) then
+           allocate(thisOctal%tLast(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%dust_t)) then
+           allocate(thisOctal%dust_t(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%tlow)) then
+           allocate(thisOctal%tlow(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%thigh)) then
+           allocate(thisOctal%thigh(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%tprev)) then
+           allocate(thisOctal%tprev(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%UV)) then
+           allocate(thisOctal%UV(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%AV)) then
+           allocate(thisOctal%UV(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%converged)) then
+           allocate(thisOctal%converged(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%level_converged)) then
+           allocate(thisOctal%level_converged(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%biChop)) then
+           allocate(thisOctal%biChop(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%expanded)) then
+           allocate(thisOctal%expanded(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%lastChange)) then
+           allocate(thisOctal%lastChange(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%coolingRate)) then
+           allocate(thisOctal%coolingRate(1:thisOctal%maxChildren, 1:4))
+        endif
+
+        if(.not. associated(thisOctal%heatingRate)) then
+           allocate(thisOctal%heatingRate(1:thisOctal%maxchildren, 1:12))
+        endif
+
+        if(.not. associated(thisOctal%cii_pop)) then
+           allocate(thisOctal%cii_pop(1:thisOctal%maxchildren, 1:5))
+        endif
+        if(.not. associated(thisOctal%ci_pop)) then
+           allocate(thisOctal%ci_pop(1:thisOctal%maxchildren, 1:5))
+        endif
+
+        if(.not. associated(thisOctal%oi_pop)) then
+           allocate(thisOctal%oi_pop(1:thisOctal%maxchildren, 1:5))
+        endif
+        if(.not. associated(thisOctal%c12o_pop)) then
+           allocate(thisOctal%c12o_pop(1:thisOctal%maxchildren, 1:41))
+        endif
+
+        if(.not. associated(thisOctal%relch)) then
+           allocate(thisOctal%relch(1:thisOctal%maxchildren, 1:4, 1:41))
+        endif
+
+        if(.not. associated(thisOctal%relch)) then
+           allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))
+        endif
+
+        if(.not. associated(thisOctal%thisColRho)) then
+           allocate(thisOctal%thisColRho(1:thisOctal%maxchildren, 1:nrays, 1:33))
+        endif
+
+        if(.not. associated(thisOctal%ciiLine)) then
+           allocate(thisOctal%ciiLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
+        endif
+
+        if(.not. associated(thisOctal%ciiTransition)) then
+           allocate(thisOctal%ciiTransition(1:thisOctal%maxchildren, 1:5, 1:5))
+        endif
+
+        if(.not. associated(thisOctal%ciLine)) then
+           allocate(thisOctal%ciLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
+        endif
+
+        if(.not. associated(thisOctal%ciTransition)) then
+           allocate(thisOctal%ciTransition(1:thisOctal%maxchildren, 1:5, 1:5))
+        endif
+
+        if(.not. associated(thisOctal%oiLine)) then
+           allocate(thisOctal%oiLine(1:thisOctal%maxchildren, 1:5, 1:5 ))
+        endif
+
+        if(.not. associated(thisOctal%oiTransition)) then
+           allocate(thisOctal%oiTransition(1:thisOctal%maxchildren, 1:5, 1:5))
+        endif
+
+        if(.not. associated(thisOctal%c12oLine)) then
+           allocate(thisOctal%c12oLine(1:thisOctal%maxchildren, 1:41, 1:41 ))
+        endif
+
+        if(.not. associated(thisOctal%c12oTransition)) then
+           allocate(thisOctal%c12oTransition(1:thisOctal%maxchildren, 1:41, 1:41))
+        endif
+
+
+     
+     endif
+  enddo
+
+
+end subroutine checkPDRAllocations
 
 
 !  subroutine 
@@ -732,7 +880,7 @@ use unix_mod, only: unixGetenv
         INTEGER(kind=I4B), INTENT(IN)::NLEV
         INTEGER(kind=I4B), INTENT(IN)::NTEMP
         CHARACTER(len=*),INTENT(IN)::FILENAME
-        
+
         real(kind=dp), intent(out)::ENERGIES(1:NLEV), WEIGHTS(1:NLEV)
         real(kind=dp), intent(out)::A_COEFFS(1:NLEV,1:NLEV), B_COEFFS(1:NLEV,1:NLEV)
         real(kind=dp), intent(out)::FREQUENCIES(1:NLEV,1:NLEV), TEMPERATURES(1:7,1:NTEMP)
@@ -749,8 +897,7 @@ use unix_mod, only: unixGetenv
         real(kind=dp):: ENERGY,WEIGHT,EINSTEINA,FREQUENCY
         real(kind=dp)::COEFF(1:NTEMP)
         
-        
-        !     Initialize all variables to zero before reading in the data
+!        flag = 1        !     Initialize all variables to zero before reading in the data
         DO I=1,NLEV
            ENERGIES(I)=0.0D0
            WEIGHTS(I)=0.0D0
@@ -762,15 +909,15 @@ use unix_mod, only: unixGetenv
                  TEMPERATURES(:,K)=0.0D0
                  H_COL(I,J,K)=0.0D0
                  EL_COL(I,J,K)=0.0D0
-               HE_COL(I,J,K)=0.0D0
-               H2_COL(I,J,K)=0.0D0
-               PH2_COL(I,J,K)=0.0D0
-               OH2_COL(I,J,K)=0.0D0
-            ENDDO
-         ENDDO
-      ENDDO
+                 HE_COL(I,J,K)=0.0D0
+                 H2_COL(I,J,K)=0.0D0
+                 PH2_COL(I,J,K)=0.0D0
+                 OH2_COL(I,J,K)=0.0D0
+              ENDDO
+           ENDDO
+        ENDDO
 
-      OPEN(8,FILE=FILENAME,STATUS='OLD')
+        OPEN(8,FILE=FILENAME,STATUS='OLD')
       READ(8,'(////)') !empty line
       READ(8,*) N !number of levels of the file
       IF(N.NE.NLEV) STOP "ERROR! Incorrect number of energy levels, N>NLEV"
@@ -950,15 +1097,21 @@ use unix_mod, only: unixGetenv
             READ(8,*) (TEMPERATURES(P,K),K=1,M)
             READ(8,*)
             N=0
+            HP_COL = 0.d0
             DO WHILE(N.LT.NCOL)
                READ(8,*) N,I,J,(COEFF(K),K=1,M)
                DO K=1,M
+
                   HP_COL(I,J,K)=COEFF(K)
+!                  if(flag==3) print *, "COEFF(",K,") =", COEFF(K) 
 !                 Calculate the reverse (excitation) rate coefficient
 !                 from detailed balance: Cji = Cij*gi/gj*exp(-(Ei-Ej)/kT)
                   IF(HP_COL(I,J,K).NE.0.0D0 .AND. HP_COL(J,I,K).EQ.0.0D0) THEN
-                     HP_COL(J,I,K)=HP_COL(I,J,K)*(WEIGHTS(I)/WEIGHTS(J)) &
-     &              *EXP(-(ENERGIES(I)-ENERGIES(J))/(KB*TEMPERATURES(P,K)))
+                     if(WEIGHTS(J) /= 0.d0 .and. TEMPERATURES(P,K) /= 0.d0) then
+                        HP_COL(J,I,K)=HP_COL(I,J,K)*(WEIGHTS(I)/WEIGHTS(J)) &
+                             &              *EXP(-(ENERGIES(I)-ENERGIES(J))/(KB*TEMPERATURES(P,K)))
+ !                       if(flag==3) print *, "HP_COL", HP_COL(J,I,K)
+                     endif
                   ENDIF
                ENDDO
             ENDDO

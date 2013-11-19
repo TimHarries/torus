@@ -31,9 +31,17 @@
   logical :: timeDependentRT
   logical :: donBodyOnly
 
-!pdr param
+
+
+!-------------------------------
+!pdr params
+!-------------------------------
   integer :: hlevel !level of healpix refinement
   real(double) :: v_turb
+  logical :: uvfromphoto
+
+
+
 !-------------------------------
 ! Type of output to be generated
 !-------------------------------
@@ -91,6 +99,8 @@
   logical :: checkForPhoto     !Check whether or not a photoionization loop is necessary
   logical :: monochromatic     !Use a monochromatic radiation field
   real(double) :: inputEV     !energy of monochromatic photons
+  real(double) :: UV_low         ! density spectrum normalization factor
+  real(double) :: UV_high         ! density spectrum normalization factor
   logical :: quickThermal      !Use a simplified thermal balance calculation
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
   logical :: addSinkParticles  ! add new sink particles
@@ -132,6 +142,7 @@
   logical :: dumpRadial               ! write a text radial cut each dump
   logical :: radiationPressure        ! use radiation pressure terms
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
+  logical :: forcegascourant          !use the gas condition only
   real(double) :: rhoFloor            !min density in grid
   real(double) :: etaViscosity        !Artificial viscosity parameter
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
@@ -740,7 +751,9 @@
   real(double) :: amrGridCentreY       ! y-coordinate of grid centre 
   real(double) :: amrGridCentreZ       ! z-coordinate of grid centre 
   logical :: doSmoothGrid   ! whether to correct large differences in the size
-                            !   of adjacent grid cells
+  logical :: logSpaceGrid   ! try to set up a log space grid (x-dir only atm)
+  integer :: npoints
+  integer :: nmag
   logical :: doSmoothGridTau! smooth according to chris's algorithm
   real :: smoothFactor      ! maximum ratio between adjacent cell sizes before
                             !   smoothing is applied 
@@ -816,6 +829,7 @@
   integer(kind=bigInt) :: nPhotons ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector
+
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity
   real    :: TMinGlobal   ! globally applied minimum temperature

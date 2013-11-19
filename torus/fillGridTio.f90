@@ -18,7 +18,7 @@ contains
     real, allocatable :: xArray(:), sigmaArray(:)
     integer :: i, j, k, m
 
-    massTio = 15.9994*mHydrogen + 47.867*mHydrogen
+    massTio = real(15.9994*mHydrogen + 47.867*mHydrogen)
     abundance = 1.e-7
 
 

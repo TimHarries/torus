@@ -19,7 +19,9 @@ module vtk_mod
   use messages_mod
   use vector_mod
   use mpi_global_mod
+#ifdef USEZLIB
   use zlib_mod
+#endif
 #ifdef PHOTOION
   use ion_mod, only : returnMu
   use ion_mod, only: returnIonNumber

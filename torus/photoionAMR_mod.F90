@@ -75,7 +75,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
-         imposeazimuthalvelocity
+         imposeazimuthalvelocity, forcegascourant
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -212,7 +212,7 @@ contains
        if(justDump) then 
 
 
-          if(grid%geometry == "lexington") then
+          if(grid%geometry == "lexington" .or. grid%geometry == "lexpdr") then
              niter = 0
              epsoverdeltat = 1.d0
              call dumpLexingtonMPI(grid, epsoverdeltat, niter)
@@ -317,9 +317,9 @@ contains
 !       enddo
 
        if(grid%currentTime == 0.d0) then
-!          if(grid%geometry == "RHDDisc") then
-!             call imposeazimuthalvelocity(grid%octreeroot)
-!          endif
+          if(grid%geometry == "RHDDisc") then
+             call imposeazimuthalvelocity(grid%octreeroot)
+          endif
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
           direction = VECTOR(0.d0, 1.d0, 0.d0)
@@ -680,8 +680,11 @@ contains
           write(*,"(a30,1p,e12.3)") "Max sound speed: ", vSound/1.d5
           write(*,"(a30,1p,e12.3)") "Viscous time: ", viscdt
        endif
-       
-
+       !THAW
+       if(forceGasCourant) then
+          print *, "forcing gas courant"
+          dt = pressuredt
+       endif
        dt = dt * dble(cfl)
 
 
@@ -1125,10 +1128,13 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, iterTime, &
        monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, hydrodynamics, doRefine, amrtolerance, hOnly, &
+         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam, dumpregularVTUS
+
+
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d, massiveStars, forceminrho
+
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
@@ -1275,7 +1281,8 @@ end subroutine radiationHydro
     
 
     logical :: gotmassive
-
+    
+    logical :: firstConverged=.true.
 
 
     !Energy cons variables
@@ -1693,11 +1700,11 @@ end subroutine radiationHydro
 
 
           if (nIter == 2) tauMax = 0.1
-          if (nIter == 3) tauMax = 1.d0
-          if (niter == 4) tauMax = 10.d0
-          if (nIter == 5) tauMax = 100.d0
-          if (nIter == 6) tauMax = 1000.d0
-          if (nIter == 7) tauMax = 1.d30
+          if (nIter == 3) tauMax = 1.e0
+          if (niter == 4) tauMax = 10.e0
+          if (nIter == 5) tauMax = 100.e0
+          if (nIter == 6) tauMax = 1000.e0
+          if (nIter == 7) tauMax = 1.e30
           nFrac = 0
           totFrac = 0.d0
           if (nIter >= 3) then
@@ -2323,6 +2330,7 @@ end subroutine radiationHydro
                          else
                             rVec = smallPacketOrigin
                             thisFreq = smallPacketFreq
+                            smallPhotonPacketWeight=smallPhotonPacketWeight
                             photonPacketWeight = smallPhotonPacketWeight * bigPhotonPacketWeight
                             Uhat = randomUnitVector()
 !                            if(cart2d) then
@@ -3003,7 +3011,7 @@ end subroutine radiationHydro
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
 
-    if(grid%geometry == "lexington") then
+    if(grid%geometry == "lexington" .or. grid%geometry == "lexpdr") then
       call dumpLexingtonMPI(grid, epsoverdeltat, niter)
    end if
 
@@ -3221,149 +3229,25 @@ end subroutine radiationHydro
         if (myrankWorldGlobal == 0) write(*,*) "Undersampled cells found. Increasing nMonte to ",nTotalMonte
      endif
 
+     if(uv_vector) then
+!        print *, "REDUCING UV_VEC NOISE"
+        if(converged .and. firstConverged) then
+!           print *, "forcing another iteration to reduce UV vector noise", nIter
+!           converged = .false.
+           firstConverged = .false.
+           nTotalMonte = nTotalMonte * 10
+        elseif(.not. firstConverged) then
+           print *, "Allowing end to calculation at", nIter
+           converged = .true.
+        endif
+     endif
 
-!     write(*,*) "myrank ",myrankGlobal, " converged ",converged, " undersampled ",undersampled
-
-!       if (myRankGlobal /= 0) then
-!          iOctal_beg = 1
-!          iOctal_end = nOctal
-!          do iOctal =  iOctal_beg, iOctal_end
-!             thisOctal => octalArray(iOctal)%content
-!             do subcell = 1, thisOctal%maxChildren
-!                if (.not.thisOctal%hasChild(subcell)) then
-!
-!                      if (niter == 1) then
-!                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-!                         thisThreadConverged = .false.
-!                         
-!                      else
-!                         
-!                         deltaT = (thisOctal%temperature(subcell)-thisOctal%TLastIter(subcell)) / &
-!                              thisOctal%TLastIter(subcell)  
-!                         deltaT = abs(deltaT)                 
-!                         maxDeltaT = max(deltaT, maxDeltaT)
-!                         if(deltaT > 5.0d-2) then
-!                            write(*,*) "max ",maxDeltaT, thisOctal%temperature(subcell), thisOctal%Tlastiter(subcell)
-!                         end if
-!                         if (thisOctal%nCrossings(subcell) < minCrossings) then
-!                            anyUndersampled = .true.
-!                         endif
-!                         
-!                         if(deltaT < 5.0d-2 .and. .not. failed) then
-!                            thisThreadConverged = .true.
-!                         else 
-!                            if(niter > 2) then
-!                               fluctuationCheck = abs((thisOctal%temperature(subcell)-thisOctal%TLastLastIter(subcell))/ &
-!                                    thisOctal%TLastLastIter(subcell))
-!                               
-!                               if(fluctuationCheck < 5.0d-2 .and. .not. failed) then!
-!                                  thisThreadConverged = .true.
-!                               else
-!                                  thisThreadConverged = .false.                             
-!!                                  if(deltaT /= 0.d0 .and. .not. failed) then
-!!                                     write(*,*) "deltaT = ", deltaT
-!!                                     write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-!!                                     write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-!!                                     write(*,*) "thisOctal%TLastLastIter(subcell) ", thisOctal%TLastLastIter(subcell)
-!!                                     write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
-!!                                     write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
-!!                                  end if
-!                                  failed = .true.
-!                               end if
-!                            else
-!                               thisThreadConverged = .false.  
-!!                               if(deltaT /= 0.d0 .and. .not. failed) then
-!!                                  write(*,*) "deltaT = ", deltaT
-!!                                  write(*,*) "thisOctal%temperature(subcell) ", thisOctal%temperature(subcell)
-!!                                  write(*,*) "thisOctal%TLastIter(subcell) ", thisOctal%TLastIter(subcell)
-!!                                  write(*,*) "cell center ", subcellCentre(thisOctal,subcell)
-!!                                  write(*,*) "nCrossings ", thisOctal%nCrossings(subcell)
-!!                               end if
-!                               failed = .true.
-!                            end if
-!                         end if
-!                         
-!                         !Check for temperature oscillations
-!                         if(niter > 1) then
-!                            thisOctal%TLastLastIter(subcell) = thisOctal%TLastIter(subcell)
-!                         end if
-!                         thisOctal%TLastIter(subcell) = thisOctal%temperature(subcell)
-!                      end if
-!                   end if
-!                   
-!                end do
-!                
-!                !Send result to master rank 
-!             end do
-!             
-!             !Send converged information
-!!             write(*,*) myrankGlobal, " converged, undersampled,failed ",thisThreadConverged, anyUndersampled, failed, maxDeltaT
-!             call MPI_SEND(thisThreadConverged , 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-!             call MPI_SEND(anyUndersampled, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-!
-!          else
-!             failed = .false.
-!             underSamFailed = .false.
-!             underSampledTOT = .false.
-!             
-!!!!Rank 0, collate results and decide if converged 
-!             converged = .false.
-!             do iThread = 1 , nHydroThreadsGlobal
-!                call MPI_RECV(thisThreadConverged,1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr )
-!                call MPI_RECV(anyUndersampled, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)
-!                if(thisThreadConverged .and. .not. failed) then
-!                   converged = .true.
-!                else
-!                   converged = .false.
-!                   failed = .true.
-!                end if
-!                if(anyUndersampled) then
-!                   undersampledTOT=.true.
-!                end if
-!             end do
-!             
-!             do iThread = 1, nHydroThreadsGlobal
-!                call MPI_SEND(converged, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr) 
-!                call MPI_SEND(underSampledTOT, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, ierr)   
-!             end do
-!          end if
-!          
-!          if(myRankGlobal /= 0) then
-!             call MPI_RECV(converged, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
-!             call MPI_RECV(underSampledTOT, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
-!             
-!          end if
-!          if (myrankGlobal == 0) maxDeltaT = -1.d30
-!          call mpi_allreduce(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
-!          maxDeltaT = tempDouble
      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
      deallocate(octalArray)    
      
-     !     converged = .false.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     
-!     if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!     if ((maxiter > 1).and.(niter <= 8).and.variableDustSublimation) converged = .false.
-!     if ((.not.Converged).and.(myrankWorldglobal==0)) write(*,*) "Maximum fractional temperature changed ",maxDeltaT
-!     if(converged) then
-!        if(myRankWorldGlobal == 0) then
-!           write(*,*) "photoionization loop converged at iteration ", niter
-!        end if
-!     else if(underSampledTOT .and. monteCheck) then
-!        if(myRankWorldGlobal == 0) then
-!           write(*,*) "Undersampled cell, increasing nMonte"
-!        end if
-!        nMonte = nMonte *2
-!     end if
-!
-!     if (myrankWorldGlobal == 0) then
-!        write(*,*) "converged ",converged
-!        write(*,*) "undersampledTot ", underSampledTot
-!        write(*,*) "monteCheck ",monteCheck
-!     endif
-
-!     write(*,*) myrankglobal, " calling vtk writer"
-
      if(uv_vector .or. singlemegaphoto .or. dumpRegularVTUS) then
+        write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
+        call writeAmrGrid(mpiFilename, .false., grid)
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
         call writeVtkFile(grid, mpiFilename, &
              valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        ", &
@@ -3382,8 +3266,7 @@ end subroutine radiationHydro
 !     if(singleMegaPhoto) then
 
 
-!        write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
-!        call writeAmrGrid(mpiFilename, .false., grid)
+
 !        write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
 
 !     if(hydrodynamics) then
@@ -3545,8 +3428,8 @@ end subroutine setDiffusionZoneOnRadius
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
-  use inputs_mod, only : periodicX, periodicY, periodicZ, radpressuretest, cylindricalHydro, amrgridcentrey
-  use inputs_mod, only : amrgridcentrez
+  use inputs_mod, only : periodicX, periodicY, periodicZ, amrgridcentrey
+  use inputs_mod, only : amrgridcentrez, radpressuretest
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -4258,7 +4141,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     endif
 
       call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
-      thisOctal%oldFrac = 1.d-30
+      thisOctal%oldFrac = 1.e-30
       call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
       thisOctal%dustType = 1
       call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
@@ -4347,6 +4230,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           endif
           thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
           thisOctal%UVvector(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%UVvectorPlus(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%UVvectorMinus(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -4631,7 +4516,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
 
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, augerArray)
-    use inputs_mod, only : hydrodynamics, xraycalc, useionparam
+    use inputs_mod, only : xraycalc, useionparam
     type(gridtype) :: grid
     type(AUGER) :: augerArray(5, 5, 10)
     type(octal), pointer   :: thisOctal
@@ -5259,7 +5144,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, &
        photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
-    use inputs_mod,only : dustOnly, radPressureTest, UV_vector
+    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat
@@ -5362,9 +5247,37 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     if(uv_vector) then
-       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
+!       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
+       if(thisFreq*hcgs > (UV_low*evToErg) .and. thisFreq*hcgs < (UV_high*evToErg)) then
           thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell)&
                + (dble(distance) * photonpacketweight*uHatdash)
+
+!          if(uhatdash 
+          if(uhatdash%x > 0.d0) then
+             thisOctal%UVvectorPlus(subcell)%x = thisOctal%UVvectorPlus(subcell)%x&
+                  + (dble(distance) * photonpacketweight*uHatdash%x)
+          else
+             thisOctal%UVvectorMinus(subcell)%x = thisOctal%UVvectorMinus(subcell)%x&
+                  + (dble(distance) * photonpacketweight*uHatdash%x)
+          endif
+
+          if(uhatdash%y > 0.d0) then
+             thisOctal%UVvectorPlus(subcell)%y = thisOctal%UVvectorPlus(subcell)%y&
+                  + (dble(distance) * photonpacketweight*uHatdash%y)
+          else
+             thisOctal%UVvectorMinus(subcell)%y = thisOctal%UVvectorMinus(subcell)%y&
+                  + (dble(distance) * photonpacketweight*uHatdash%y)
+          endif
+
+          if(uhatdash%x > 0.d0) then
+             thisOctal%UVvectorPlus(subcell)%z = thisOctal%UVvectorPlus(subcell)%z&
+                  + (dble(distance) * photonpacketweight*uHatdash%z)
+          else
+             thisOctal%UVvectorMinus(subcell)%z = thisOctal%UVvectorMinus(subcell)%z&
+                  + (dble(distance) * photonpacketweight*uHatdash%z)
+          endif
+
+
           !            + (dble(distance) *dble(kappaExt)* photonPacketWeight)*uHatDash
        end if
     end if
@@ -5662,7 +5575,7 @@ end subroutine dumpWhalenNormanTest
 
 subroutine dumpIfrontTest(grid)
   use mpi
-  use inputs_mod, only : quickThermal, readgrid
+  use inputs_mod, only : readgrid
   type(gridtype) :: grid
   integer :: ier, ierr, i, j
   logical, save :: firstTime=.true.
@@ -7986,7 +7899,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
        freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-    use inputs_mod, only : smallestCellSize
+!    use inputs_mod, only : smallestCellSize
     type(GRIDTYPE) :: grid
     real(double) :: spectrum(2000)
     real(double) :: freq(:), dfreq(:), thisFreq

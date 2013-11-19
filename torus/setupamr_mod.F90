@@ -33,7 +33,7 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics, logspacegrid, nmag
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -49,7 +49,7 @@ contains
 #endif
 #ifdef MPI 
     use mpi_amr_mod
-    use inputs_mod, only : photoionPhysics, rho0, sphereMass
+    use inputs_mod, only : photoionPhysics, rho0
 #ifdef PHOTOION
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff, &
          hasPhotoionAllocations, allocatePhotoionAttributes
@@ -383,6 +383,7 @@ contains
         if(gridShuffle) then
            call writeInfo("Shuffling the grid for more accurate initial configuration...", TRIVIAL)
            nTimes = maxDepthAMR - minDepthAMR + 2
+           if(logspacegrid) nTimes = nmag*10
            do counter = 1, nTimes
               call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true., romData=romData)     
               call fixParentPointers(grid%octreeRoot)
@@ -407,12 +408,17 @@ contains
            call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
            call finishGrid(grid%octreeRoot, grid, romData=romData)
 #ifdef MPI
-          call findMassOverAllThreads(grid, totalmass)
-          write(message,'(a,1pe12.5,a)') "Total mass in grid (solar masses): ",totalMass/lsol
-          call writeInfo(message,TRIVIAL)
+#ifdef HYDRO
+           if(hydrodynamics) then
+              call findMassOverAllThreads(grid, totalmass)
+              write(message,'(a,1pe12.5,a)') "Total mass in grid (solar masses): ",totalMass/lsol
+              call writeInfo(message,TRIVIAL)
+           endif
 #endif
-        end if
+#endif
 
+     end if
+        
 
 
        select case (geometry)
@@ -679,9 +685,9 @@ contains
     integer :: i, j
     logical :: gridConverged
 
-    rinner = 5.*autocm/1.d10
+    rinner = real(5.*autocm/1.d10)
     grid%rinner = rinner
-    router = 400.*autocm/1.d10
+    router = real(400.*autocm/1.d10)
     allocate(r(maxR), nz(maxR), z(maxR, maxZ), rho(maxR, maxZ), &
          t(maxR,maxZ), abundance(maxR,maxZ))
 
@@ -991,7 +997,7 @@ contains
                 thisOctal%rho(subcell) = 1.d-25
                 thisOctal%temperature(subcell) = 3.d0
                 if (molecularPhysics) then
-                   thisOctal%molAbundance(subcell) = 1.d-20
+                   thisOctal%molAbundance(subcell) = 1.e-20
                    thisOctal%microTurb(subcell) = 0.d0
                 endif
                 if (.not.outsideGrid) then
@@ -1368,7 +1374,7 @@ contains
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use inputs_mod, only : minDepthAMR, photoionPhysics, hydrodynamics, inputNSource, &
+    use inputs_mod, only : photoionPhysics, hydrodynamics, inputNSource, &
          sourcepos, smallestCellSize, maxDepthAmr
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child

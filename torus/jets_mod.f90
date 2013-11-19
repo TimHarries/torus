@@ -947,7 +947,7 @@ contains
 !    if ( r >= rmin  .and. r < rmax ) then
        out = real(rho_0/(r**2))
     else
-       out = (rho_0/ (rmax**2))*1.0e-9
+       out = real((rho_0/ (rmax**2))*1.0e-9)
     end if
 
   end function density_inverse_sq

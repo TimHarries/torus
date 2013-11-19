@@ -35,7 +35,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation, dustPhysics
-    use inputs_mod, only : uv_vector, readgrid
+    use inputs_mod, only : uv_vector
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -234,11 +234,11 @@ contains
        if (variableDustSublimation) then
 
           if (nIter == 2) tauMax = 0.1
-          if (nIter == 3) tauMax = 1.d0
-          if (niter == 4) tauMax = 10.d0
-          if (nIter == 5) tauMax = 100.d0
-          if (nIter == 6) tauMax = 1000.d0
-          if (nIter >= 7) tauMax = 1.d30
+          if (nIter == 3) tauMax = 1.e0
+          if (niter == 4) tauMax = 10.e0
+          if (nIter == 5) tauMax = 100.e0
+          if (nIter == 6) tauMax = 1000.e0
+          if (nIter >= 7) tauMax = 1.e30
           nFrac = 0
           totFrac = 0.d0
           if (nIter >= 2) then

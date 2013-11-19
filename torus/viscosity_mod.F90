@@ -448,7 +448,7 @@ contains
   end subroutine setupViscosity
 
   recursive subroutine setupCylindricalViscosity(thisoctal, grid)
-    use inputs_mod, only : gridDistanceScale, smallestCellSize
+    use inputs_mod, only : gridDistanceScale!, smallestCellSize
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child
@@ -586,7 +586,7 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    real(double) :: dt, thisTime, acc, r
+    real(double) :: dt, thisTime, acc!, r
     type(VECTOR) :: fVisc
     integer :: subcell, i
   
@@ -614,15 +614,15 @@ contains
 
 
              
-  !           rVec = subcellCentre(thisOCtal, subcell)
-  !           r = rVec%x * gridDistanceScale
+  !           rVec = subcellCentre(thisOCtal, subcell)            
+!             r = rVec%x * gridDistanceScale
   !           torque = abs(fVisc%y) * r
   !           thisTime = abs(thisOctal%rhov(subcell)) / max(torque,1.d-60)
   !           dt = min(thisTime, dt)
 
 
-             acc = (thisOctal%rhov(subcell)**2) &
-                     / (thisOctal%rho(subcell)**2*r**3)
+!             acc = (thisOctal%rhov(subcell)**2) &
+!                     / (thisOctal%rho(subcell)**2*r**3)
 
              thisTime = 0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc)
              dt = min(thisTime, dt)

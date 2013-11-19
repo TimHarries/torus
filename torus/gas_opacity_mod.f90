@@ -70,7 +70,7 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
   character(len=4) :: branch
   real, allocatable :: wavenumber(:),gf(:),alpha(:)
   real, parameter :: mHydrogen = 1.6733e-24      ! g
-  real, parameter :: mElectron = 9.109565D-28    ! g
+  real, parameter :: mElectron = 9.109565e-28    ! g
   real, parameter :: eCharge = 4.803242384E-10 !
 
   real, parameter :: cSpeed = 2.99792458e10  ! cm/s
@@ -656,7 +656,7 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitationLower,excitationUpp
   real, allocatable :: jLow(:)
   real, allocatable :: gf(:),alpha(:)
   real, parameter :: mHydrogen = 1.6733e-24      ! g
-  real, parameter :: mElectron = 9.109565D-28    ! g
+  real, parameter :: mElectron = 9.109565e-28    ! g
   real, parameter :: eCharge = 4.803242384E-10 !
 
   real, parameter :: cSpeed = 2.99792458e10  ! cm/s
@@ -799,7 +799,7 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
   real :: lambda(:), kappa(:), excitation(:), g(:)
   real, allocatable :: wavenumber(:),gf(:)
   real, parameter :: mHydrogen = 1.6733e-24      ! g
-  real, parameter :: mElectron = 9.109565D-28    ! g
+  real, parameter :: mElectron = 9.109565e-28    ! g
   real, parameter :: eCharge = 4.803242384E-10 !
 
   real, parameter :: cSpeed = 2.99792458e10  ! cm/s

@@ -237,8 +237,8 @@ contains
 !      RETURN
     END IF
 
-    rho = 1.d-25
-    if (inFlowMahdavi(pointVec)) rho = 1.d-14
+    rho = 1.e-25
+    if (inFlowMahdavi(pointVec)) rho = 1.e-14
     
   end function TTauriDensity
 
@@ -757,7 +757,7 @@ contains
     alpha = 2.25
     beta = 1.25
 
-    rhoEnv = 1.d-30
+    rhoEnv = 1.e-30
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
  ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
@@ -778,7 +778,7 @@ contains
 
     r = real(sqrt(point%x**2 + point%y**2)*1.e10)
     h = 0.01 * rStellar * (r/rStellar)**beta
-    rhoDisc = 1.d-30
+    rhoDisc = 1.e-30
     if ((r > drInner).and.(r < drOuter)) then
        rhoDisc = real(rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2))
        fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
@@ -808,7 +808,7 @@ contains
          (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) ))
     r = sqrt(point%x**2 + point%y**2)
     h = height * rCore * (r/rCore)**betaDisc
-    rhoDisc = 1.d-30
+    rhoDisc = 1.e-30
     if ((r > rInner).and.(r < rOuter)) then
        rhoDisc = real(rho0 * (rCore/r)**alphaDisc  * exp(-0.5*(point%z/h)**2))
        fac =  1.d0-min(dble(r - rInner)/(0.02d0*rinner),1.d0)
@@ -884,11 +884,11 @@ contains
 
     if (firstTime) then
 
-       phi1 = pi
-       phi2 = pi+pi/2.
+       phi1 = real(pi)
+       phi2 = real(pi+pi/2.)
        turns = 0.
        dphi = real((phi2 - phi1) + twoPi * turns)
-       d = binarySep/(1.+massRatio)
+       d = real(binarySep/(1.+massRatio))
        call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
        r1 = min(x1, x2)
        do i = 1, nStream
@@ -898,7 +898,7 @@ contains
        enddo
 
        phi1 = 0.
-       phi2 = pi/2.
+       phi2 = real(pi/2.)
        turns = 0.
        dphi = real((phi2 - phi1) + twoPi * turns)
        d = -binarySep*(1.-1./(1.+massRatio))
@@ -1126,14 +1126,14 @@ contains
 ! Envelope with cavity plus alpha disc model, as presented
 ! by Alvarez, Hoare and Lucas (2004).
 
-    rStar = 10. * rSol
-    H_0 = 10. * autocm
-    mStar = 10. * mSol
-    mDot = 1.11e-4 * mSol / (365.25*24.*3600.)
-    rCav = 50.*auTocm
-    r_c = 50. * auTocm
-    r_d = 1000. * auTocm
-    openingAngle = 20. * degtoRad
+    rStar = real(10. * rSol)
+    H_0 = real(10. * autocm)
+    mStar = real(10. * mSol)
+    mDot = real(1.11e-4 * mSol / (365.25*24.*3600.))
+    rCav = real(50.*auTocm)
+    r_c = real(50. * auTocm)
+    r_d = real(1000. * auTocm)
+    openingAngle = real(20. * degtoRad)
     alpha = 1.875
     beta  = 1.125
     rho0 = 2.e-5
@@ -1142,20 +1142,20 @@ contains
     r = real(modulus(point) * 1.e10)
     mu = real(point%z * 1.e10 / r)
     z = real(point%z * 1.e10)
-    zMaxxed = 6.d16 !thap  
+    zMaxxed = 6.e16 !thap  
 
     bigR = real(sqrt(point%x**2 + point%y**2)*1.e10)
     H_R = real(H_0 * (bigR / (100.*auToCm))**beta)
 
-    rhoEnv = 100.*mHydrogen
+    rhoEnv = real(100.*mHydrogen)
     if (r > r_c) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
        rhoEnv = real(Mdot/(8. * pi * r_c * sqrt(bigG * Mstar)))  ! Equation 1
-       rhoEnv = rhoEnv * 1./sqrt(1.+mu_0) * 1./sqrt(r)
+       rhoEnv = real(rhoEnv * 1./sqrt(1.+mu_0) * 1./sqrt(r))
     endif
-    rhoDisc = 1.d-30
+    rhoDisc = 1.e-30
     if ((bigR < r_d).and.(bigR > 10.*rStar)) then
-       rhoDisc = rho0 * ((bigR/Rstar)**(-alpha))*exp(-(z**2 / (2.*H_R**2))) ! Eq 3
+       rhoDisc = real(rho0 * ((bigR/Rstar)**(-alpha))*exp(-(z**2 / (2.*H_R**2)))) ! Eq 3
     endif
     rhoDisc = 1.e-30
 
@@ -1163,18 +1163,18 @@ contains
     melvinDensity = max(rhoDisc, rhoEnv)
 
     if (bigR < Rcav) then
-       melvinDensity = 1.d30
+       melvinDensity = 1.e30
        if(abs(z) < zMaxxed) then !thap                                                                                    
-          melvinDensity = 3.25d30 !                                                                                       
+          melvinDensity = 3.25e30 !                                                                                       
        endif   !                                                                                                          
     endif
 
     if (bigR > Rcav) then
        cavZ = real(tan(pi/2.-0.5*openingAngle)*(bigR - Rcav)) ! Eq 4
        if (abs(z) > cavZ) then   !In cavity     ?                                                                         
-          melvinDensity = 1.d30
+          melvinDensity = 1.e30
           if(abs(z) < zMaxxed) then !thap                                                                                 
-             melvinDensity = 3.25d30!                                                                                     
+             melvinDensity = 3.25e30!                                                                                     
           endif !                                                                                                         
        endif
     endif

@@ -29,7 +29,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mincrossings, mDisc, dusttogas, dustSettling
+    use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mDisc, dusttogas, dustSettling
     use inputs_mod, only : writelucyTmpfile
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
@@ -861,9 +861,9 @@ contains
           if (mod(iIter_grand, 2) == 0) then
 
              if (iIter_grand == 2) tauMax = 0.1
-             if (iIter_grand == 4) tauMax = 1.d0
-             if (iIter_grand == 6) tauMax = 10.d0
-             if (iIter_grand == 8) tauMax = 1.d30
+             if (iIter_grand == 4) tauMax = 1.e0
+             if (iIter_grand == 6) tauMax = 10.e0
+             if (iIter_grand == 8) tauMax = 1.e30
 
              ! Sublimate the dust and smooth at the photosphere on the last pass
              if (iIter_Grand <= 8) &

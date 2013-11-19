@@ -26,7 +26,9 @@ program torus
   use constants_mod
   use messages_mod
   use mpi_global_mod
+#ifdef USEZLIB
   use zlib_mod
+#endif
   use utils_mod
   use inputs_mod
   use timing
@@ -38,7 +40,7 @@ program torus
   use source_mod
   use random_mod
   use memory_mod
-  use zlib_mod
+!  use zlib_mod
   use sph_data_class, only: deallocate_sph
 #ifdef MPI
   use mpi

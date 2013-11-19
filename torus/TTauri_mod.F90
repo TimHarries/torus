@@ -79,15 +79,15 @@ contains
 !    endif
 
     grid%geometry = "ttauri"
-    mDot = 1.e-7 * mSol / (365.25 * 24. * 3600.)
+    mDot = real(1.e-7 * mSol / (365.25 * 24. * 3600.))
 
-    mLoss = 1.e-8 * mSol / (365.25 * 24. * 3600.)
+    mLoss = real(1.e-8 * mSol / (365.25 * 24. * 3600.))
     vTerm = 200. * 1.e5
     v0 = 10. * 1e5
-    rStar = 2.*rSol
-    rInner = 2.2 * rStar
-    rOuter = 3. * rStar
-    mStar = 0.8 * mSol
+    rStar = real(2.*rSol)
+    rInner = real(2.2 * rStar)
+    rOuter = real(3. * rStar)
+    mStar = real(0.8 * mSol)
     grid%rCore = rStar /1.e10
 
     grid%dipoleOffset = dipoleOffset
@@ -485,10 +485,10 @@ contains
     real ::  rStar, rinner, rOuter, fac, theta, rM
     integer :: j
 
-    rStar = 2.*rSol
-    rInner = 2.2 * rStar
-    rOuter = 3. * rStar
-    theta = 85.*degtoRad
+    rStar = real(2.*rSol)
+    rInner = real(2.2 * rStar)
+    rOuter = real(3. * rStar)
+    theta = real(85.*degtoRad)
 
     write(*,*) "initializing vectors..."
     do j = 1, nVec
@@ -617,10 +617,10 @@ contains
 
     grid%rho = 1.e-30
 
-    diskMass = 0.01 * 0.01 * mSol
-    rOuter = 100. * auTocm
-    rHole = 10. * rSol
-    grid%rCore = rSol
+    diskMass = real(0.01 * 0.01 * mSol)
+    rOuter = real(100. * auTocm)
+    rHole = real(10. * rSol)
+    grid%rCore = real(rSol)
 
     nMu = grid%nMu/2
 

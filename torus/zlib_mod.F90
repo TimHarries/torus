@@ -1,3 +1,4 @@
+#ifdef USEZLIB
 module zlib_mod
 
   use kind_mod
@@ -10,7 +11,7 @@ module zlib_mod
   integer(kind=1) :: buffer(maxBuffer)
   logical :: uncompressedDumpFiles
 
-#ifdef USEZLIB
+
 
 
   interface
@@ -55,6 +56,7 @@ module zlib_mod
      module procedure writeCompressedFileRealArray2d
      module procedure writeCompressedFileIntegerArray1d
   end interface
+
 
   interface readCompressedFile
      module procedure readCompressedFileDoubleValue
@@ -784,7 +786,6 @@ contains
     deallocate(inputBuffer)
   end subroutine readCompressedFileGeneric
 
-#endif
-
 
 end module zlib_mod
+#endif

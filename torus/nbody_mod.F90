@@ -130,7 +130,7 @@ contains
     
 
   subroutine updateSourcePositions(source, nSource, dt, grid)
-    use inputs_mod, only : maxDepthAMR, smallestCellSize
+    use inputs_mod, only : smallestCellSize
 #ifdef MPI
     use mpi
     integer :: ierr

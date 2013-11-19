@@ -15,8 +15,19 @@ module gridio_mod
   use mpi_amr_mod
 #endif
   use parallel_mod, only : torus_mpi_barrier
+
+
+#ifdef USEZLIB
   use zlib_mod
  implicit none
+#else
+ implicit none
+  logical, parameter ::  uncompresseddumpfiles = .true.
+  integer, parameter :: buffer = 0
+  integer, parameter :: nbuffer = 0
+  integer, parameter :: maxbuffer = 0
+#endif
+
 
   public
 
@@ -204,8 +215,9 @@ contains
           
           if (uncompressedDumpFiles) call MPI_BARRIER(localWorldCommunicator, ierr)
        enddo
+#ifdef USEZLIB
        if (.not.uncompressedDumpFiles) call zeroZlibBuffer()
-
+#endif
     endif
 #endif
 
@@ -723,6 +735,7 @@ contains
           call writeAttributePointerFlexi(20, "phiLimit", thisOctal%phiLimit, fileFormatted)
        
           call writeAttributePointerFlexi(20, "columnRho", thisOctal%columnRho, fileFormatted)
+          call writeAttributePointerFlexi(20, "abundance", thisOctal%abundance, fileFormatted)
           call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
           call writeAttributePointerFlexi(20, "corner", thisOctal%corner, fileFormatted)
           call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
@@ -766,6 +779,9 @@ contains
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
           call writeAttributePointerFlexi(20, "kappaTimesFlux", thisOctal%kappaTimesFlux, fileFormatted)
           call writeAttributePointerFlexi(20, "UVvector", thisOctal%UVvector, fileFormatted)
+          call writeAttributePointerFlexi(20, "UVvectorPlus", thisOctal%UVvectorPlus, fileFormatted)
+          call writeAttributePointerFlexi(20, "UVvectorMinus", thisOctal%UVvectorMinus, fileFormatted)
+
 
           call writeAttributePointerFlexi(20, "gravboundaryPartner", thisOctal%GravboundaryPartner, fileFormatted)
           call writeAttributePointerFlexi(20, "changed", thisOctal%changed, fileFormatted)
@@ -925,14 +941,16 @@ contains
 
 
     call readStaticComponents(grid, fileformatted)
+!    print *, myrankglobal, "out of readstatic"
     call writeInfo("Static components read")
 
        allocate(grid%octreeRoot)
        grid%octreeRoot%nDepth = 1
        nOctal = 0
        mynull => grid%octreeRoot
+!       print *, myrankglobal, "reading private flexi"
        call readOctreePrivateFlexi(grid%octreeRoot,mynull,fileFormatted, nOctal, grid)
-
+!       print *, myrankglobal, "done reading private flexi"
     call writeInfo("Grid read done")
     
     close(unit=20)
@@ -1337,9 +1355,11 @@ contains
           write(lUnit) dataType
           write(lUnit) value
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, value)
+#endif
        endif
     endif
   end subroutine writeAttributeStaticIntegerSingleFlexi
@@ -1365,9 +1385,11 @@ contains
           write(lUnit) dataType
           write(lUnit) value
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, value)
+#endif
        endif
     endif
   end subroutine writeAttributeStaticRealSingleFlexi
@@ -1394,10 +1416,12 @@ contains
           write(lUnit) len(trim(value))
           write(lUnit) trim(value)
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, len(trim(value)))
           call writeCompressedFile(lunit, trim(value))
+#endif
        endif
     endif
   end subroutine writeAttributeStaticCharacterSingleFlexi
@@ -1425,10 +1449,12 @@ contains
           write(lUnit) size(value)
           write(lUnit) value(1:size(value))
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, size(value))
           call writeCompressedFile(lunit, value(1:size(value)))
+#endif
        endif
     endif
   end subroutine writeAttributeStaticInteger1dFlexi
@@ -1456,10 +1482,12 @@ contains
           write(lUnit) size(value)
           write(lUnit) value(1:size(value))
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, size(value))
           call writeCompressedFile(lunit, value(1:size(value)))
+#endif
        endif
     endif
   end subroutine writeAttributeStaticLogical1dFlexi
@@ -1487,10 +1515,12 @@ contains
           write(lUnit) size(value)
           write(lUnit) value(1:size(value))
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, size(value))
           call writeCompressedFile(lunit, value(1:size(value)))
+#endif
        endif
     endif
   end subroutine writeAttributeStaticDouble1dFlexi
@@ -1516,9 +1546,11 @@ contains
           write(lUnit) dataType
           write(lUnit) value
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, value)
+#endif
        endif
     endif
   end subroutine writeAttributeStaticDoubleSingleFlexi
@@ -1544,9 +1576,11 @@ contains
           write(lUnit) dataType
           write(lUnit) value
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, value)
+#endif
        endif
     endif
   end subroutine writeAttributeStaticLogicalSingleFlexi
@@ -1574,10 +1608,12 @@ contains
           write(lUnit) size(value)
           write(lUnit) value(1:size(value))
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, size(value))
           call writeCompressedFile(lunit, value(1:size(value)))
+#endif
        endif
     endif
   end subroutine writeAttributeStaticReal1dFlexi
@@ -1605,10 +1641,12 @@ contains
           write(lUnit) size(value)
           write(lUnit) value(1:size(value))
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, size(value))
           call writeCompressedFile(lunit, value(1:size(value)))
+#endif
        endif
     endif
   end subroutine writeAttributeStaticVector1dFlexi
@@ -1634,9 +1672,11 @@ contains
           write(lUnit) dataType
           write(lUnit) value
        else
+#ifdef USEZLIB
           call writeCompressedFile(lunit, attributeName)
           call writeCompressedFile(lunit, dataType)
           call writeCompressedFile(lunit, value)
+#endif
        endif
     endif
   end subroutine writeAttributeStaticVectorSingleFlexi
@@ -1665,10 +1705,12 @@ contains
              write(lUnit) size(value)
              write(lUnit) value(1:SIZE(value))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, size(value))
              call writeCompressedFile(lunit, value(1:SIZE(value)))
+#endif
           endif
        endif
     endif
@@ -1698,10 +1740,12 @@ contains
              write(lUnit) SIZE(value)
              write(lUnit) value(1:SIZE(value))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value))
              call writeCompressedFile(lunit, value(1:SIZE(value)))
+#endif
           endif
        endif
     endif
@@ -1732,10 +1776,12 @@ contains
              write(lUnit) SIZE(value)
              write(lUnit) value(1:SIZE(value))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value))
              call writeCompressedFile(lunit, value(1:SIZE(value)))
+#endif
           endif
        endif
     endif
@@ -1765,10 +1811,12 @@ contains
              write(lUnit) SIZE(value)
              write(lUnit) value(1:SIZE(value))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value))
              call writeCompressedFile(lunit, value(1:SIZE(value)))
+#endif
           endif
        endif
     endif
@@ -1798,10 +1846,12 @@ contains
              write(lUnit) SIZE(value)
              write(lUnit) value(1:SIZE(value))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value))
              call writeCompressedFile(lunit, value(1:SIZE(value)))
+#endif
           endif
        endif
     endif
@@ -1831,11 +1881,13 @@ contains
              write(lUnit) SIZE(value,1),SIZE(value,2)
              write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value,1))
              call writeCompressedFile(lunit, SIZE(value,2))
              call writeCompressedFile(lunit, value(1:SIZE(value,1),1:SIZE(value,2)))
+#endif
           endif
        endif
     endif
@@ -1865,12 +1917,14 @@ contains
              write(lUnit) SIZE(value,1),SIZE(value,2), SIZE(value,3)
              write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2),1:SIZE(value,3))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value,1))
              call writeCompressedFile(lunit, SIZE(value,2))
              call writeCompressedFile(lunit, SIZE(value,3))
              call writeCompressedFile(lunit, value(1:SIZE(value,1),1:SIZE(value,2),1:SIZE(value,3)))
+#endif
           endif
        endif
     endif
@@ -1900,11 +1954,15 @@ contains
              write(lUnit) SIZE(value,1),SIZE(value,2)
              write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2))
           else
+#ifdef USEZLIB
              call writeCompressedFile(lunit, attributeName)
              call writeCompressedFile(lunit, dataType)
              call writeCompressedFile(lunit, SIZE(value,1))
              call writeCompressedFile(lunit, SIZE(value,2))
              call writeCompressedFile(lunit, value(1:SIZE(value,1),1:SIZE(value,2)))
+#else
+             call torus_abort("not built for compression")
+#endif
           endif
        endif
     endif
@@ -1925,7 +1983,11 @@ contains
          if (uncompressedDumpFiles) then
             write(lUnit) wtag
          else
+#ifdef USEZLIB
             call writeCompressedFile(lUnit, wTag)
+#else
+            call torus_abort("not built for compression")
+#endif
          endif
       endif
     end subroutine writeFileTag
@@ -2018,7 +2080,9 @@ contains
          if (uncompressedDumpFiles) then
             read(lUnit) value
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, value)
+#endif
          endif
       endif
     end subroutine readSingleIntegerFlexi
@@ -2035,7 +2099,9 @@ contains
          if (uncompressedDumpFiles) then
             read(lUnit) value
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, value)
+#endif
          endif
       endif
     end subroutine readSingleLogicalFlexi
@@ -2052,7 +2118,9 @@ contains
          if (uncompressedDumpFiles) then
             read(lUnit) value
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, value)
+#endif
          endif
       endif
     end subroutine readSingleRealFlexi
@@ -2069,7 +2137,9 @@ contains
          if (uncompressedDumpFiles) then
             read(lUnit) value
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, value)
+#endif
          endif
       endif
     end subroutine readSingleVectorFlexi
@@ -2086,7 +2156,9 @@ contains
          if (uncompressedDumpFiles) then
             read(lUnit) value
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, value)
+#endif
          endif
       endif
     end subroutine readSingleDoubleFlexi
@@ -2106,8 +2178,10 @@ contains
             read(lUnit) i
             read(lUnit) value(1:i)
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, i)
             call readCompressedFile(lUnit, value(1:i))
+#endif
          endif
       endif
     end subroutine readSingleCharacterFlexi
@@ -2133,9 +2207,11 @@ contains
             allocate(value(1:n))
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             allocate(value(1:n))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readDoublePointer1DFlexi
@@ -2161,10 +2237,12 @@ contains
             allocate(value(1:n,1:m))
             read(lUnit) value(1:n,1:m)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             call readCompressedFile(lunit, m)
             allocate(value(1:n,1:m))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readDoublePointer2DFlexi
@@ -2190,11 +2268,13 @@ contains
             allocate(value(1:n,1:m,1:j))
             read(lUnit) value(1:n,1:m,1:j)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             call readCompressedFile(lunit, m)
             call readCompressedFile(lunit, j)
             allocate(value(1:n,1:m,1:j))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readDoublePointer3DFlexi
@@ -2220,12 +2300,14 @@ contains
             allocate(value(1:n,1:m))
             read(lUnit) value(1:n,1:m)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             call readCompressedFile(lunit, m)
             allocate(value(1:n,1:m))
 !            write(*,*) "allocated array ",n,m
             call readCompressedFile(lunit,value)
 !            write(*,*) "found ",value(1:n,1:m)
+#endif
          endif
       endif
     end subroutine readRealPointer2DFlexi
@@ -2251,9 +2333,11 @@ contains
             allocate(value(1:n))
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             allocate(value(1:n))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readRealPointer1DFlexi
@@ -2279,9 +2363,12 @@ contains
             allocate(value(1:n))
             read(lUnit) value(1:n)
          else
+
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             allocate(value(1:n))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readLogicalPointer1DFlexi
@@ -2307,9 +2394,11 @@ contains
             allocate(value(1:n))
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             allocate(value(1:n))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readIntegerPointer1DFlexi
@@ -2335,9 +2424,11 @@ contains
             allocate(value(1:n))
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             allocate(value(1:n))
             call readCompressedFile(lunit,value)
+#endif
          endif
       endif
     end subroutine readVectorPointer1DFlexi
@@ -2358,8 +2449,10 @@ contains
             read(lUnit) n
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             call readCompressedFile(lunit,value(1:n))
+#endif
          endif
       endif
     end subroutine readArrayVectorFlexi
@@ -2381,9 +2474,11 @@ contains
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             call readCompressedFile(lunit,value(1:n))
+#endif
          endif
       endif
     end subroutine readArrayLogicalFlexi
@@ -2405,9 +2500,11 @@ contains
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             call readCompressedFile(lunit,value(1:n))
+#endif
          endif
       endif
     end subroutine readArrayIntegerFlexi
@@ -2429,9 +2526,11 @@ contains
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             call readCompressedFile(lunit,value(1:n))
+#endif
          endif
       endif
     end subroutine readArrayRealFlexi
@@ -2453,9 +2552,11 @@ contains
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             read(lUnit) value(1:n)
          else
+#ifdef USEZLIB
             call readCompressedFile(lunit, n)
             if (n > size(value)) call writeFatal("Error with array sizes in readVectorArrayFlexi")
             call readCompressedFile(lunit,value(1:n))
+#endif
          endif
       endif
     end subroutine readArrayDoubleFlexi
@@ -3176,7 +3277,9 @@ contains
          if (uncompressedDumpFiles) then
             read(20) dataType
          else
+#ifdef USEZLIB
             call readCompressedFile(20, dataType)
+#endif
          endif
       endif
       dataType = ADJUSTL(dataType)
@@ -3212,7 +3315,11 @@ contains
          if (uncompressedDumpFiles) then
             read(lUnit) dataType
          else
+#ifdef USEZLIB
             call readCompressedFile(lUnit, dataType)
+#else
+            call torus_abort("not built for compression, read")
+#endif
          endif
       endif
       dataType = ADJUSTL(dataType)
@@ -3224,7 +3331,9 @@ contains
                if (uncompressedDumpFiles) then
                   read(lUnit) rDummy
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, rDummy)
+#endif
                endif
             endif
          case("dsingle")
@@ -3234,7 +3343,9 @@ contains
                if (uncompressedDumpFiles) then
                   read(lUnit) dDummy
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, dDummy)
+#endif
                endif
             endif
          case("isingle")
@@ -3244,7 +3355,9 @@ contains
                if (uncompressedDumpFiles) then
                   read(lUnit) iDummy
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, iDummy)
+#endif
                endif
             endif
          case("vsingle")
@@ -3254,7 +3367,9 @@ contains
                if (uncompressedDumpFiles) then
                   read(lUnit) vDummy
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, vDummy)
+#endif
                endif
             endif
          case("lsingle")
@@ -3264,7 +3379,9 @@ contains
                if (uncompressedDumpFiles) then
                   read(lUnit) lDummy
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, lDummy)
+#endif
                endif
             endif
          case("csingle")
@@ -3276,8 +3393,10 @@ contains
                   read(lUnit) n
                   read(lUnit) cDummy(1:n)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   call readCompressedFile(lUnit, cDummy(1:n))
+#endif
                endif
             endif
          case("r1darray")
@@ -3291,9 +3410,11 @@ contains
                   allocate(rArray(1:n))
                   read(lUnit) rArray(1:n)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   allocate(rArray(1:n))
                   call readCompressedFile(lUnit, rArray(1:n))
+#endif
                endif
             endif
             deallocate(rArray)
@@ -3308,9 +3429,11 @@ contains
                   allocate(vArray(1:n))
                   read(lUnit) vArray(1:n)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   allocate(vArray(1:n))
                   call readCompressedFile(lUnit, vArray(1:n))
+#endif
                endif
             endif
             deallocate(vArray)
@@ -3325,9 +3448,11 @@ contains
                   allocate(dArray(1:n))
                   read(lUnit) dArray(1:n)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   allocate(dArray(1:n))
                   call readCompressedFile(lUnit, dArray(1:n))
+#endif
                endif
             endif
             deallocate(dArray)
@@ -3342,9 +3467,11 @@ contains
                   allocate(iArray(1:n))
                   read(lUnit) iArray(1:n)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   allocate(iArray(1:n))
                   call readCompressedFile(lUnit, iArray(1:n))
+#endif
                endif
             endif
             deallocate(iArray)
@@ -3359,9 +3486,11 @@ contains
                   allocate(lArray(1:n))
                   read(lUnit) lArray(1:n)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   allocate(lArray(1:n))
                   call readCompressedFile(lUnit, lArray(1:n))
+#endif
                endif
             endif
             deallocate(lArray)
@@ -3376,10 +3505,12 @@ contains
                   allocate(d2Array(1:n,1:m))
                   read(lUnit) d2Array(1:n,1:m)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   call readCompressedFile(lUnit, m)
                   allocate(d2Array(1:n,1:m))
                   call readCompressedFile(lUnit, d2Array(1:n,1:m))
+#endif
                endif
             endif
             deallocate(d2Array)
@@ -3394,11 +3525,13 @@ contains
                   allocate(d3Array(1:n,1:m,1:j))
                   read(lUnit) d3Array(1:n,1:m,1:j)
                else
+#ifdef USEZLIB
                   call readCompressedFile(lUnit, n)
                   call readCompressedFile(lUnit, m)
                   call readCompressedFile(lUnit, j)
                   allocate(d3Array(1:n,1:m,1:j))
                   call readCompressedFile(lUnit, d3Array(1:n,1:m,1:j))
+#endif
                endif
             endif
             deallocate(d3Array)
@@ -3427,7 +3560,11 @@ contains
                if (uncompressedDumpFiles) then
                   read(20, end = 666) tag
                else
+#ifdef USEZLIB
                   call readCompressedFile(20, tag)
+#else
+                  call torus_abort("not built for compression")
+#endif
                endif
             endif
             tag = ADJUSTL(tag)
@@ -3475,27 +3612,33 @@ contains
                   if (myrankGlobal == iThread) then
                      call openGridFile(gridFilename, fileformatted)
                      call readStaticComponents(grid, fileFormatted)
+!                     print *, myrankglobal, "out of readstatic"
                      close(20)
                   endif
                   call mpi_barrier(localWorldCommunicator, ierr)
                enddo
-               
+!               print *, myrankglobal, "Doing next stuff"
                if (myrankGlobal /= 0) then
                   allocate(grid%octreeRoot)
                   grid%octreeRoot%nDepth = 1
                   nOctal = 0
+!                  print *, myrankglobal, "doing its thing"
                   call getBranchOverMPI(grid%octreeRoot, null())
                   write(message, '(a,i3.3,a,i3.3)') "AMR grid read for thread: ",myrankGlobal, " set ",myHydroSetGlobal
                   write(*,*) trim(message)
                else
+
                   call openGridFile(gridFilename, fileformatted)
+
                   call readStaticComponents(grid, fileFormatted)
 !                  write(*,*) "static components for zero thread read in readgridsplitovermpi"
                   allocate(grid%octreeRoot)
                   grid%octreeRoot%nDepth = 1
                   nOctal = 0
+
                   call readZerothThread(grid%octreeRoot, null(), fileFormatted)
                endif
+
                call updateMaxDepth(grid)
                call setSmallestSubcell(grid)
                call countVoxels(grid%octreeRoot,nOctals,nVoxels)
@@ -3536,6 +3679,8 @@ contains
             thisOctal%hasChild = .false.
          endif
 
+
+
          if (nHydroThreadsGlobal == 2) then
             thisOctal%nChildren = 1
             do i = 1, nHydroThreadsGlobal
@@ -3552,6 +3697,7 @@ contains
             thisOctal%nChildren = 0 
             thisOctal%hasChild = .false.
          endif
+
 
          if (nHydroThreadsGlobal == 4) then
             thisOctal%nChildren = 1
@@ -3893,11 +4039,16 @@ contains
                if (uncompressedDumpFiles) then
                   read(20) tag
                else
+#ifdef USEZLIB
                   call readCompressedFile(20, tag)
+#else
+                  call torus_abort("not built for compression")
+#endif
                endif
             endif
             tag = ADJUSTL(tag)
 !            write(*,*) myrankglobal," tag: ",trim(tag)
+
 
             if (tag == "GRIDBEGINS") cycle
             if (tag == "GRIDENDS") exit
@@ -3995,6 +4146,9 @@ contains
                write(message,'(a,a)') "Unrecognised grid attribute: "//trim(tag)
             end select
          end do
+
+
+
    end subroutine readStaticComponents
 
 
@@ -4013,7 +4167,11 @@ contains
             if (uncompressedDumpFiles) then
                read(20) tag
             else
+#ifdef USEZLIB
                call readCompressedfile(20, tag)
+#else
+               call torus_abort("not built to use compression")
+#endif
             endif
          endif
          tag = ADJUSTL(tag)
@@ -4236,6 +4394,9 @@ contains
          case("columnRho")
             call readPointerFlexi(20, thisOctal%columnRho, fileFormatted)
 
+         case("abundance")
+            call readPointerFlexi(20, thisOctal%abundance, fileFormatted)
+
          case("corner")
             call readPointerFlexi(20, thisOctal%corner, fileFormatted)
 
@@ -4327,6 +4488,10 @@ contains
             call readPointerFlexi(20, thisOctal%kappaTimesFlux, fileFormatted)
          case("UVvector")
             call readPointerFlexi(20, thisOctal%UVvector, fileFormatted)
+         case("UVvectorPlus")
+            call readPointerFlexi(20, thisOctal%UVvectorPlus, fileFormatted)
+         case("UVvectorMinus")
+            call readPointerFlexi(20, thisOctal%UVvectorMinus, fileFormatted)
          case("gravboundaryPartner")
             call readPointerFlexi(20, thisOctal%gravboundaryPartner, fileFormatted)
          case("changed")
@@ -4390,7 +4555,10 @@ contains
       do while (.true.)
 
          call MPI_RECV(tag, 20, MPI_CHARACTER, 0, mpitag, localWorldCommunicator, status, ierr)
+
          tag = ADJUSTL(tag)
+
+
          if (tag == "OCTALBEGINS") cycle
          if (tag == "OCTALENDS") exit
          select case (tag)
@@ -4608,6 +4776,9 @@ contains
 
          case("columnRho")
             call receivePointerFlexi(thisOctal%columnRho)
+
+         case("abundance")
+            call receivePointerFlexi(thisOctal%abundance)
             
          case("corner")
             call receivePointerFlexi(thisOctal%corner)
@@ -4684,6 +4855,10 @@ contains
             call receivePointerFlexi(thisOctal%kappaTimesFlux)
          case("UVvector")
             call receivePointerFlexi(thisOctal%UVvector)
+         case("UVvectorPlus")
+            call receivePointerFlexi(thisOctal%UVvectorPlus)
+         case("UVvectorMinus")
+            call receivePointerFlexi(thisOctal%UVvectorMinus)
          case("changed")
             call receivePointerFlexi(thisOctal%changed)
          case("rLimit")
@@ -4860,6 +5035,7 @@ contains
 
       call sendAttributePointerFlexi(iThread, "ghostCell", thisOctal%ghostCell)
       call sendAttributePointerFlexi(iThread, "columnRho", thisOctal%columnRho)
+      call sendAttributePointerFlexi(iThread, "abundance", thisOctal%abundance)
       call sendAttributePointerFlexi(iThread, "corner", thisOctal%corner)
       call sendAttributePointerFlexi(iThread, "feederCell", thisOctal%feederCell)
       call sendAttributePointerFlexi(iThread, "edgeCell", thisOctal%edgeCell)
@@ -4905,6 +5081,8 @@ contains
       call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
       call sendAttributePointerFlexi(iThread, "kappaTimesFlux", thisOctal%kappaTimesFlux)
       call sendAttributePointerFlexi(iThread, "UVvector", thisOctal%UVvector)
+      call sendAttributePointerFlexi(iThread, "UVvectorPlus", thisOctal%UVvectorPlus)
+      call sendAttributePointerFlexi(iThread, "UVvectorMinus", thisOctal%UVvectorMinus)
       call sendAttributePointerFlexi(iThread, "changed", thisOctal%changed)
       call sendAttributePointerFlexi(iThread, "rLimit", thisOctal%rLimit)
 

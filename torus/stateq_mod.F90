@@ -220,7 +220,7 @@ contains
     type(VECTOR) :: rVecOctal
     type(OCTAL),pointer:: octalCopy
     
-    dtheta = pi / real(ntheta-1)
+    dtheta = real(pi) / real(ntheta-1)
     beta_mn = 0.
     totomega = 0.
     
@@ -355,8 +355,8 @@ contains
     ang = asin(min(1.,max(-1.,sinAng)))
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
-    dtheta = pi / real(ntheta-1)
-    dphi = twopi / real(nphi-1)
+    dtheta = real(pi) / real(ntheta-1)
+    dphi = real(twopi) / real(nphi-1)
     beta_cmn = 0.
     totomega = 0.
     do i = 1, ntheta
@@ -406,7 +406,7 @@ contains
                 else
 
 
-                   tau_cmn = (pi*echarge**2)/(melectron*cspeed)
+                   tau_cmn = real((pi*echarge**2)/(melectron*cspeed))
                    tau_cmn = real(tau_cmn * gDegen(m) * fStrength(m,n))
                    if (grid%adaptive) then
                       tau_cmn = real(tau_cmn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
@@ -559,7 +559,7 @@ contains
                 else
 
 
-                   tau_cmn = (pi*echarge**2)/(melectron*cspeed)
+                   tau_cmn = real((pi*echarge**2)/(melectron*cspeed))
                    tau_cmn = real(tau_cmn * gDegen(m) * fStrength(m,n))
                    tau_cmn = real(tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - (grid%n(i1,i2,i3,n)/gDegen(n)))) ! eq 5.
                    if (tau_cmn < 0.) then

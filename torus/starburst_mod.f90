@@ -314,7 +314,7 @@ contains
     end subroutine setSourceArrayProperties
 
     subroutine setSourceLumTemp(source, thisTable)
-      use inputs_mod, only : smallestCellSize
+
       type(SOURCETYPE) :: source
       type(TRACKTABLE) :: thisTable
       integer :: i, j

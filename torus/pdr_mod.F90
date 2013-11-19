@@ -43,7 +43,7 @@ contains
 
 subroutine PDR_MAIN(grid)
   use unix_mod, only: unixGetenv
-
+  use inputs_mod, only :  uv_vector
   use nrayshealpix
   implicit none
   type(gridtype) :: grid
@@ -51,18 +51,29 @@ subroutine PDR_MAIN(grid)
   real(double), allocatable :: rtmin(:), rtmax(:), gamma(:)!, duplicate(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
-  character(len=80) :: datfilename
-  integer :: n12co, nci, ncii, noi, nelect
+  character(len=80) :: datfilename, mpifilename
+  integer :: n12co, nci, ncii, noi, nelect, nrays
 #ifdef MPI
   integer :: ier
 #endif
+
+
 
   call donrayshealpix()
 
 !set up the data/allocate what needs allocated
 
 #ifdef MPI
+
+  write(mpiFilename,'(a, i4.4, a)') "pre_pdr.grid"
+  call writeAmrGrid(mpiFilename, .false., grid)
+
+  nrays = nray_func()
+  if(grid%octreeroot%oneD) nrays = 1
+
   call writeInfo("Setting up for PDR calculation.", TRIVIAL)
+  call  checkPDRAllocations(grid%octreeroot, nrays)
+  call InitLogicals(grid%octreeroot)
   call setupPDR(grid, reactant, product, alpha, beta, gamma, &
        rate, duplicate, rtmin, rtmax, n12co, nci, ncii, noi, nelect)
 
@@ -79,34 +90,54 @@ subroutine PDR_MAIN(grid)
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
   if(grid%octreeroot%oned) then
      write(datFilename, '(a, i4.4, a)') "postraytrace.dat"
-     call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-          VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+!     call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+!          VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+        call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+             VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
   endif
 
-  call writeVTKfile(grid, "postRayTrace.vtk", valueTypeString=(/"rho       ",&
-       "columnRho " /))
+!  call writeVTKfile(grid, "postRayTrace.vtk", valueTypeString=(/"rho       ",&
+!       "columnRho " /))
 !  stop
   call writeInfo("Done.", TRIVIAL)
+
+  if(uv_vector) then
+     if(grid%octreeroot%oned) then
+        call copyTemperatureToTLast(grid%octreeroot)
+        call writeInfo("Dumping the result post photoionization.", TRIVIAL)
+        write(datFilename, '(a, i4.4, a)') "photofinish.dat"
+        call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+             VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
+     endif
+  endif
+
+
   call writeInfo("Calculating dust temperature MPI.", TRIVIAL)
 
   call calculate_Dust_TemperaturesMPI(grid%octreeRoot)
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
   call writeInfo("Making initial gas temperature estimates.", TRIVIAL)
-
+  
   call iniTempGuessMPI(grid%octreeroot)
 
   call writeInfo("Calculating reaction rates in each cell.", TRIVIAL)
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
 
 
+
+
   if(grid%octreeroot%oned) then
      write(datFilename, '(a, i4.4, a)') "preAbund.dat"
-     call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-          VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+!     call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+!          VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+        call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+             VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
   else
+     print *, "writing file to pdr_calc.tvk"
      call writeVTKfile(grid, "PDR_CALC.vtk", valueTypeString=(/"rho       ",&
           "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   "/))
   endif
+
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
 
   call writeInfo("Doing initial abundance calculation.", TRIVIAL)
@@ -121,15 +152,17 @@ subroutine PDR_MAIN(grid)
 !       , ncii, nci, noi, nelect, nchemiter=100, partLTE=.true.) 
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
 
-
-  call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
-       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
-       "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "CII_1     ", "CII_2     ", &
-       "CII_3     ", "CII_4     "/))
-
+  if(.not.grid%octreeroot%oned) then
+     call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
+          "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
+          "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "CII_1     ", "CII_2     ", &
+          "CII_3     ", "CII_4     "/))
+  endif
   write(datFilename, '(a, i4.4, a)') "start.dat"
-  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-       VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+       VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
+!  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+!       VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
 
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
 !  stop
@@ -140,15 +173,17 @@ subroutine PDR_MAIN(grid)
 !  print *, "CII WEIGHTS 6", CII_WEIGHTS
   call pdr_main_loop(grid, nelect, ncii, nci, noi, n12co, reactant, &
        product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax)
-
-  call writeVTKfile(grid, "PDR_ABUND.vtk", valueTypeString=(/"rho       ",&
-       "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
-       "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "cii_1to0  ", "cii_line  ",& 
+  if(.not.grid%octreeroot%oned) then
+     call writeVTKfile(grid, "FIN.vtk", valueTypeString=(/"rho       ",&
+          "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
+          "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "cii_1to0  ", "cii_line  ",& 
        "cooling   "/))
-
+  endif
   write(datFilename, '(a, i4.4, a)') "finish.dat"
-  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-       VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+       VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
+!  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+!       VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
 
 #else
 
@@ -186,14 +221,19 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
 !    logical :: inEscProb = .true.
 
   overallconverged = .false.
+  nconverged = 0 
+  convCounter = 0
   thisIteration = 1
+
   levpop_iteration = 0
-  maxIter = 2000
+  maxIter = 5000
+!  maxIter = 30
+
 !these logicals are updated in the convergence checks
   first_time = .true.
   level_conv = .false.
 
-  call InitLogicals(grid%octreeroot)
+
   buffer = .true.
   do while(.not. overallconverged)
      
@@ -266,41 +306,53 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
      nconverged = 0
      anynotconverged = .false.
      convcounter = 1
-!     if(1==0)then
+     overallconverged = .false.
+
      if(myrankglobal /= 0) then
 
-        call checkConvergence(grid%octreeRoot, anyNotconverged, nconverged, level_conv, convcounter)
-        
-        call send_conv_data(nconverged, anynotconverged, overallconverged, level_conv, convcounter)
-     else
 
+        call checkConvergence(grid%octreeRoot, anyNotconverged, nconverged, level_conv, convcounter)
+
+        call send_conv_data(nconverged, anynotconverged, overallconverged, level_conv, convcounter)
+
+     else
         call countNConverged(nconverged, overallconverged, level_conv, convcounter)
         !              if(convCounter == 2) print *, "number converged ", nconverged
  !    endif
      endif
-     call MPI_BARRIER(MPI_COMM_WORLD, ier)
-     
+
 
      if(level_conv) levpop_iteration = 0
+ !    print *, "rank ", myrankglobal, "past barrier", ier
      
+     if(level_conv) levpop_iteration = 0
+  !   print *, "rank ", myrankglobal, "past levcheck"
+
      !thermal balance calculation
      call writeInfo("Calculating heating rates and doing thermal balance", trivial)
      !     if(level_conv 
      if(myrankglobal /= 0) then
-
-
-           call calcHeatingOverGrid(grid%octreeRoot, reactant, &
-                product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
-                nc12o, ncii, nci, noi, level_conv, first_time, grid)           
-           
-        endif
-     call MPI_BARRIER(MPI_COMM_WORLD, ier)
-     if(level_conv) first_time = .false. 
+        !     print *, "calculating the heating over grid"
+        call calcHeatingOverGrid(grid%octreeRoot, reactant, &
+             product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+             nc12o, ncii, nci, noi, level_conv, first_time, grid)           
+        !    print *, "Done"
+     endif
+!     call calcHeatingOverGrid(grid%octreeRoot, reactant, &
+!          product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
+!          nc12o, ncii, nci, noi, level_conv, first_time, grid)           
      
+!  endif
+
+  call MPI_BARRIER(MPI_COMM_WORLD, ier)
+  if(level_conv) first_time = .false. 
+  
 
      nconverged = 0
      anynotconverged = .false.
+
      convcounter = 2
+
      if(myrankglobal /= 0) then
         call checkConvergence(grid%octreeRoot, anyNotconverged, nconverged, level_conv, convcounter)
         
@@ -309,8 +361,9 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
 
         call countNConverged(nconverged, overallconverged, level_conv,convcounter)
         !              if(convCounter == 2) print *, "number converged ", nconverged
+ !    endif
      endif
-     !        print *, "LEVEL CONV IS ", level_conv, myrankglobal
+     print *, "LEVEL CONV IS ", level_conv, myrankglobal
      !     end if
      !     endif
      call MPI_BARRIER(MPI_COMM_WORLD, ier)
@@ -322,16 +375,16 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
         !        level_conv = .false.
      endif
 
-!     if(modulo(thisIteration, 10) == 0) then    
+     if(modulo(thisIteration, 10) == 0) then    
         if(grid%octreeroot%oned) then
            
-!           write(datFilename, '(a, i4.4, a)') "pdr",thisIteration,".dat"
-!           call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-!                VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+           write(datFilename, '(a, i4.4, a)') "sofar.dat"
+           call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+                VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
 
-           write(datFilename, '(a, i4.4, a)') "heatingcooling.dat"
-           call dumpHeatingCooling(grid, datFileName, VECTOR(1.4d2,  0.d0, 0.d0), &
-                VECTOR(1.d9, 0.d0, 0.d0), 1000, thisIteration)
+!           write(datFilename, '(a, i4.4, a)') "heatingcooling.dat"
+ !          call dumpHeatingCooling(grid, datFileName, VECTOR(1.4d2,  0.d0, 0.d0), &
+  !              VECTOR(1.d9, 0.d0, 0.d0), 1000, thisIteration)
            
         else
            write(filename,'(a, i4.4, a)') "pdr_", thisIteration,".vtk"
@@ -341,7 +394,7 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
                 "cooling   ", "CII_1     ", "CII_2     ", "CII_3     ", "CII_4     ", &
                 "heating   ", "tLast     "/))
         end if
-!     endif
+     endif
      
      if (thisIteration > maxIter) then
         call writeInfo("Number of PDR iterations exceeded maximum, forcing convergence", TRIVIAL)
@@ -366,14 +419,25 @@ subroutine send_conv_data(nconverged, anynotconverged,overallconverged, level_co
   logical, intent(inout) :: level_conv
   integer :: status, tag1=50, ierr, tag2=100
   logical, intent(out) :: overallconverged
+  logical :: convdummy
+  integer :: ndummy
+  convcounter = convcounter
 
 !  print *, "pre ", overallconverged
 !
-  call MPI_SEND(nconverged, 1, MPI_INTEGER, 0, tag1, MPI_COMM_WORLD,  ierr)
-  call MPI_SEND(anynotconverged, 1, MPI_LOGICAL, 0, tag2, MPI_COMM_WORLD,  ierr)
-  call MPI_RECV(level_conv, 1, MPI_LOGICAL, 0, tag1, MPI_COMM_WORLD,  status, ierr)
-  call MPI_RECV(overallconverged, 1, MPI_LOGICAL, 0, tag2, MPI_COMM_WORLD,  status, ierr)
-  
+  print *,  myrankglobal, "sending to 0"
+  ndummy = nconverged
+  call MPI_SEND(ndummy, 1, MPI_INTEGER, 0, tag1, MPI_COMM_WORLD,  ierr)
+  print *,  myrankglobal, "sending to 0 B"
+  convdummy = anynotconverged
+  call MPI_SEND(convdummy, 1, MPI_LOGICAL, 0, tag2, MPI_COMM_WORLD,  ierr)
+  print *,  myrankglobal, "recving"
+  call MPI_RECV(convdummy, 1, MPI_LOGICAL, 0, tag1, MPI_COMM_WORLD,  status, ierr)
+  level_conv = convdummy
+  print *,  myrankglobal, "recvd A"
+  call MPI_RECV(convdummy, 1, MPI_LOGICAL, 0, tag2, MPI_COMM_WORLD,  status, ierr)
+  overallconverged = convdummy
+  print *,  myrankglobal, "recvd B"
 !  print *, "post ", overallconverged
 
 !  if(.not. level_conv .and. overallconverged) then
@@ -389,21 +453,29 @@ subroutine countNConverged(nconverged, overallconverged, level_conv,convcounter)
 
   integer :: nconverged, i, convcounter
   integer :: totalConverged, status, ierr, tag1=50, tag2=100
-  logical :: anyfailed, overallconverged, level_conv
-  logical :: nfailedarray(1:nhydrothreadsglobal)
+  logical :: anyfailed, overallconverged, level_conv, senddummy
+!  logical :: nfailedarray(1:nhydrothreadsglobal), failedStat
+  logical ::  failedStat
+!  integer :: thisThread
   totalConverged = 0
   nConverged = 0
-  nfailedarray = .false.
 
-  do i = 1, nhydrothreadsglobal
-     call MPI_RECV(nConverged, 1, MPI_INTEGER, i, tag1, MPI_COMM_WORLD,  status, ierr)
-     totalConverged = totalConverged + nconverged
+!  nfailedarray = .false.
+  failedstat = .false.
+!  i = 1
+!  do while (i <= nhydrothreadsglobal)
+  do i=1, nhydrothreadsglobal
+!     thisThread = i
+ !    call MPI_RECV(nConverged, 1, MPI_INTEGER, thisThread, tag1, MPI_COMM_WORLD,  status, ierr)
+     call MPI_RECV(nConverged, 1, MPI_INTEGER, i, tag1, MPI_COMM_WORLD,  status, ierr)    
+     totalConverged = totalConverged + nconverged    
      call MPI_RECV(anyfailed, 1, MPI_LOGICAL, i, tag2, MPI_COMM_WORLD,  status, ierr)
-     nfailedarray(i) = anyfailed
+
+     if(anyfailed) failedstat = .true.
+     
+!     i = thisThread + 1
 
   enddo
-
-
 
 !getting some weird behaviour. The above scheme works but in debug mode it sometimes
 !thinks its not converged. I'm putting in this additional catch for now
@@ -415,31 +487,44 @@ subroutine countNConverged(nconverged, overallconverged, level_conv,convcounter)
 
 !  print *, "pre zero ", overallconverged, level_conv
 
-  if(any(nfailedarray) == .true.) then
+!  if(any(nfailedarray(1:nhydrothreadsglobal)) .eqv. .true.) then
+  if(failedstat) then
+
      if(level_conv) then
         level_conv = .true.
         overallconverged = .false.
      else
+
         level_conv = .false.
         overallconverged = .false.
      endif
   else
      if(level_conv) then
+
         level_conv = .true.
         overallconverged = .true.
      else
+
         level_conv = .true.
         overallconverged = .false.
      endif
   endif
 
+
   if(convcounter == 1) overallconverged = .false.
 
   do i = 1, nhydrothreadsglobal
 
-     call MPI_SEND(level_conv, 1, MPI_LOGICAL, i, tag1, MPI_COMM_WORLD,  ierr)
-     call MPI_SEND(overallConverged, 1, MPI_LOGICAL, i, tag2, MPI_COMM_WORLD,  ierr)
+     senddummy = level_conv
+     call MPI_SEND(senddummy, 1, MPI_LOGICAL, i, tag1, MPI_COMM_WORLD,  ierr)
+ !    print *, "sent to ", i, "part 1 "
+     senddummy = overallconverged
+     call MPI_SEND(senddummy, 1, MPI_LOGICAL, i, tag2, MPI_COMM_WORLD,  ierr)
+  !   print *, "sent to ", i, "part 2 "
+
   enddo
+
+!  print *, "exiting"
 
 !  if(level_conv .and. thisConverged) overallconverged = .true.
 
@@ -469,21 +554,24 @@ recursive subroutine checkConvergence(thisOctal, Notconverged, nconverged, level
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
 
-        if(.not. level_conv .and. convcounter == 1) then
-           if(thisOctal%level_converged(subcell)) then
-              nConverged = nConverged + 1
+        if(thisOctal%temperature(subcell) < 100.d0) then
+           if(.not. level_conv .and. convcounter == 1) then
+              if(thisOctal%level_converged(subcell)) then
+                 nConverged = nConverged + 1
+              else
+                 !              print *, "rank ", myrankglobal, "found a fail"
+                 !              anynotconverged = .true.
+                 !              level_conv = .false.
+                 Notconverged = .true.
+              endif
+
            else
-!              print *, "rank ", myrankglobal, "found a fail"
-              !              anynotconverged = .true.
-              !              level_conv = .false.
-              Notconverged = .true.
-           endif
-        else
-           if(thisOctal%converged(subcell)) then
-              nConverged = nConverged + 1
-           else
-              notconverged = .true.
-              !              anynotconverged = .true.
+              if(thisOctal%converged(subcell)) then
+                 nConverged = nConverged + 1
+              else
+                 notconverged = .true.
+                 !              anynotconverged = .true.
+              endif
            endif
         endif
      endif
@@ -512,7 +600,10 @@ recursive subroutine InitLogicals(thisOctal)
         thisOctal%converged(subcell) = .false.
         thisOctal%expanded(subcell) = .false.
         thisOctal%biChop(subcell) = .false.
-
+        thisOctal%coolingRate(subcell, :) = 0.d0
+        thisOctal%dust_T(subcell) = 0.d0
+        thisOctal%heatingRate(subcell,:) = 0.d0
+        thisOctal%thisColRho(subcell,:, :) = 0.d0
      endif
   enddo
 end subroutine InitLogicals
@@ -535,17 +626,10 @@ recursive subroutine zeroLevelConv(thisOctal)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-!        if(.not. thisOctal%converged(subcell)) then
+
+        if(.not. thisOctal%converged(subcell)) then
            thisOctal%level_converged(subcell) = .false.
-!        endif
-!        thisOctal%biChop(subcell) = .false.
-!        thisOctal%expanded(subcell) = .false.
-
-
-!THAW -- BE CAREFUL
-        thisOctal%converged(subcell) = .false.
-        !        endi
-
+        endif
 
 
      endif
@@ -571,7 +655,13 @@ recursive subroutine updateTLast(thisOctal)
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
 !        if(.not. thisOctal%converged(subcell)) then
 !        thisOctal%level_converged(subcell) = .false.
-        thisOctal%tLast(Subcell) = max(thisOctal%tPrev(subcell), 10.0)
+        thisOctal%tLast(Subcell) = max(thisOctal%tPrev(subcell), 10.d0)
+!        if(.not.thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
+           thisOctal%temperature(subcell) = real(thisOctal%tLast(subcell))
+        else
+           thisOctal%tLast(subcell) = dble(thisOctal%temperature(subcell))
+        endif
 !           thisOctal%expanded(subcell) = .false.
 !        endif
 !        thisOctal%converged(subcell) = .false.
@@ -583,11 +673,49 @@ recursive subroutine updateTLast(thisOctal)
 end subroutine UpdateTLast
 
 
+recursive subroutine copyTemperatureToTLast(thisOctal)
+  type(octal), pointer :: thisOCtal, child
+  integer :: j, subcell
+
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call copyTemperatureToTLast(child)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+!        if(.not. thisOctal%converged(subcell)) then
+!        thisOctal%level_converged(subcell) = .false.
+!        thisOctal%tLast(Subcell) = max(thisOctal%tPrev(subcell), 10.0)
+!        if(.not.thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+!        if(thisOctal%temperature(subcell) < 1.d2) then
+!           thisOctal%temperature(subcell) = thisOctal%tLast(subcell)
+!        else
+!           thisOctal%tLast(subcell) = thisOctal%temperature(subcell)
+!        endif
+        thisOctal%tlast(subcell) = dble(thisOctal%temperature(subcell))
+!           thisOctal%expanded(subcell) = .false.
+!        endif
+!        thisOctal%converged(subcell) = .false.
+
+!        thisOctal%biChop(subcell) = .false.
+
+     endif
+  enddo
+end subroutine CopyTemperatureToTLast
+
+
 
 recursive subroutine calcHeatingOverGrid(thisOctal, reactant, &
      product, alpha, beta, gamma, rate, duplicate, rtmin, rtmax, nelect, &
      nc12o, ncii, nci, noi, level_conv, first_time, grid)   
-  use inputs_mod, only : v_turb, mindepthAMR
+  use inputs_mod, only : v_turb
   type(gridtype) :: grid
   integer :: subcell
   type(octal), pointer :: thisOctal, child
@@ -643,7 +771,8 @@ recursive subroutine calcHeatingOverGrid(thisOctal, reactant, &
            endif
 
         if(thisOctal%converged(subcell)) cycle
-        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!        if(.not.thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
            TRACKER = 0
            TRACKER2 = 0
 
@@ -711,6 +840,7 @@ recursive subroutine calcHeatingOverGrid(thisOctal, reactant, &
                  !                if(myrankglobal == 1) then 
 
               endif
+
 
               thisOctal%tPrev(subcell) = dummytemperature
               
@@ -907,7 +1037,7 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
   integer :: ncontributed
 !  logical :: toField
 
-  real(double) :: frac2,  tval, Hplusfrac
+  real(double) :: frac2,  tval, temperature
   real(double) :: outCii, outC12O, outCI, outOI, AC12O(41, 41), AOI(5, 5), ACI(5, 5), ACII(5, 5)
   logical :: callwrites, firstCell
 
@@ -942,7 +1072,9 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then  
+
+!        if(.not.thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then  
+        if(thisOctal%temperature(subcell) < 1.d2) then
            if(thisOctal%level_converged(subcell) .or.  thisOctal%converged(subcell)) cycle
 
            !FIRST CALCULATE COLLISIONAL COEFFICIENTS
@@ -989,6 +1121,17 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 !
 !
 !           !OI
+           OI_C_COEFFS = 0.d0
+
+!           print *, "OI_NTEMP ", OI_NTEMP
+!           print *, "OI_NLEV ", OI_NLEV
+!           print *, "OI_H ", OI_H
+!!           print *, "OI_HP ", OI_HP
+ !          print *, "OI_EL ", OI_EL
+ !          print *, "OI_HE ", OI_HE
+ !          print *, "OI_H2 ", OI_H2
+ !          print *, "OI_PH2 ", OI_PH2
+ !          print *, "OI_OH2 ", OI_OH2
            CALL FIND_CCOEFF(OI_NTEMP,OI_NLEV,thisOctal%tLast(subcell),OI_TEMPERATURES,&
                 OI_H,OI_HP,OI_EL,OI_HE,OI_H2,OI_PH2,OI_OH2,&
                 OI_C_COEFFS,thisOctal%abundance(subcell, NH)*thisOctal%rho(subcell)/mhydrogen, &
@@ -996,6 +1139,9 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
                 thisOctal%abundance(subcell, NELECT)*thisOctal%rho(subcell)/mhydrogen, &
                 thisOctal%abundance(subcell, NHE)*thisOctal%rho(subcell)/mhydrogen, &
                 thisOctal%abundance(subcell, NH2)*thisOctal%rho(subcell)/mhydrogen)
+
+  !         print *, "OI_C_COEFFS ", OI_C_COEFFS
+  !         print *, "temperatures ", OI_TEMPERATURES
 !
 !           !CO
            CALL FIND_CCOEFF(C12O_NTEMP,C12O_NLEV,thisOctal%tLast(subcell),C12O_TEMPERATURES,&
@@ -1029,26 +1175,18 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 
 !           stop
 
+#ifdef OPENMP
+!$OMP PRIVATE(rVec, uHat, testPosition, CII_POP, CI_POP, OI_POP, C12O_POP, tval, temperature, i)
+!$OMP PARALLEL DO DEFAULT(SHARED)
+#endif
            do i = 1, nrays              
               rVec = VECTOR(vectors(1, i-1), vectors(2, i-1), vectors(3, i-1))
               if(thisOctal%oneD) rVec = VECTOR(-1.d0, 0.d0, 0.d0) 
-
+              
               firstCell = .true.
-!              if(thisOctal%oneD) then
-!                 if(abs(rVec%y) > 0.d0 .or. abs(rVec%z) > 0.d0 .and. rVec%x > 0.d0) then
-!                    taucii = 1.d30
-!                    tauci = 1.d30
-!                    tauoi = 1.d30
-!                    tauc12o = 1.d30
-!                    goto 666
-!                 endif
-!              endif
-           
-              uhat = rVec
-              call normalize(uhat)
-              
 
-              
+              uhat = rVec
+              call normalize(uhat)                            
 
               testPosition = startPosition                        
 !              firstCell = .true.
@@ -1057,11 +1195,14 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
                  tval = 0.d0
                  
                  call getRayTracingValuesPDR_TWO(grid, testposition, uHat, CII_POP, CI_POP, OI_POP, C12O_POP, tVal,&
-                      HplusFrac) 
+                      temperature) 
                  
 !                 print *, "CII_POP", cii_pop
+
 !                 stop
-                 if(Hplusfrac > 0.99d0) then                       
+
+!                 if(Hplusfrac > 0.999d0 .or. thisOctal%temperature(subcell) > 1.d2) then                       
+                 if(temperature > 1.d2) then                       
                     exit
                  end if
                  firstcell = .false.                 
@@ -1108,7 +1249,10 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
                  testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)              
               end do
            enddo
- 
+#ifdef OPENMP
+!$OMP END PARALLEL DO 
+#endif
+
            taucii = taucii/dble(nrays)
            
            tauci = tauci/dble(nrays)
@@ -1132,7 +1276,7 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            !              print *, tauc12o(2, 1)
            
            
-666        continue
+!666        continue
            
            !t              print *, "tauc12o", tauc12o
            thisOctal%CIItransition(subcell, :,:) = 0.d0
@@ -1179,14 +1323,18 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
             !do final population step
 !           print *, "AOI D", AOI
 
+#ifdef OPENMP
+!$OMP PRIVATE(iLEVEL, jLevel, ACII, ACI, AOI, AC12O)
+!$OMP PARALLEL DO DEFAULT(SHARED)
+#endif
            do ilevel = 1, C12O_NLEV
               outc12o = 0.d0
               outci = 0.d0
               outoi = 0.d0
               outcii = 0.d0
-
+              
               do jlevel = 1, C12O_NLEV
-!                 if(jlevel >= ilevel) exit              
+                 !                 if(jlevel >= ilevel) exit              
                  
                  if(ilevel <= CII_NLEV .and. jlevel <= CII_NLEV) then
                     outcii = outcii + thisOctal%CIItransition(subcell, ilevel, jlevel)
@@ -1218,9 +1366,9 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 !                 
 !              endif
            enddo
-
-!           print *, "AOI A", AOI
-!
+#ifdef OPENMP
+!$OMP END PARALLEL DO
+#endif
            
            DO Ilevel=1,C12O_NLEV
 
@@ -1283,7 +1431,12 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
            !
 !           print *, "rank ", myrankglobal, "doing oi gauss-jordan"
 !           CALL GAUSS_JORDAN(AOI,OI_NLEV,OI_NLEV,thisOctal%OI_POP(subcell, :),3, callwrites)
+!           print *, " "
+!           print *, "DOING OI GAUSS-JORDAN"
+!           print *, "AOI", AOI
            CALL GAUSS_JORDAN(AOI,OI_NLEV,OI_NLEV,oisol(:),3, callwrites)
+ !          print *, "sol", oisol(:)
+ !          print *, " " 
 !           print *, "rank ", myrankglobal, "done"
            
 !           print *, "rank ", myrankglobal, "doing c12o gauss-jordan"
@@ -1340,14 +1493,14 @@ recursive subroutine solvePopulations(thisOctal, grid, nelect, ncii, nci, noi, n
 
 
 !THAW - USE THIS TO FORCE CONVERGENCE
-           if(.not. thisOctal%oned) then
+!           if(.not. thisOctal%oned) then
+           if( 0 == 1) then
               if (levpopIteration.ge.120) then
-!                 if(CIIsol(:)
+                 !                 if(CIIsol(:)
                  C12Osol(:)=thisOctal%C12O_pop(subcell, :)
                  CIIsol(:)=thisOctal%CII_pop(subcell, :)
                  CIsol(:)=thisOctal%CI_pop(subcell, :)
                  OIsol(:)=thisOctal%OI_pop(subcell, :)
-
               elseif (levpopIteration.ge.75) then
                  CIIsol(:)=0.5*(CIIsol(:) + thisOctal%CII_pop(subcell,:))
                  CIsol(:)=0.5*(CIsol(:) + thisOctal%CI_pop(subcell,:))
@@ -1634,7 +1787,21 @@ do ilevel = 1, nlev
             else if(id == 3) then
                thisOctal%oiline(subcell,ilevel,jlevel) = Acoeff(ilevel, jlevel)*HP*freq(ilevel, jlevel) * &
                     & Pop(ilevel)*beta*(sourceFun-BB)/sourceFun
+!               print *, "sourcefun ", sourcefun
+!               print *, "TMP2 ", TMP2
+!               print *, "TPOP ", TPOP
+!               print *, "pop i", pop(ilevel)
+!               print *, "pop j", pop(jlevel)
+!               print *, "weight i", pop(ilevel)
+!               print *, "weight j", pop(jlevel)
+!               print *, "acoeff ", Acoeff(ilevel, jlevel)
+!               print *, "freq ", freq(ilevel, jlevel)
+!               print *, "beta ", beta
+!!               print *, ilevel, jlevel
+ !              print *, "line is ", thisOctal%oiline(subcell,ilevel,jlevel)
+ !              print *, " " 
                if(thisOctal%oiline(subcell,ilevel,jlevel) < 0.d0) thisOctal%oiline(subcell,ilevel,jlevel) = 0.d0
+
             else if(id == 4) then
                thisOctal%c12oline(subcell,ilevel,jlevel) = Acoeff(ilevel, jlevel)*HP*freq(ilevel, jlevel) * &
                     & Pop(ilevel)*beta*(sourceFun-BB)/sourceFun
@@ -1733,6 +1900,9 @@ do ilevel = 1, nlev
          thisOctal%oiTRANSITION(subcell, ilevel,jlevel)=Acoeff(ilevel, jlevel)&
               +Bcoeffs(ilevel, jlevel)*FIELD(ilevel, jlevel)&
               +Ccoeffs(ilevel, jlevel)
+!         print *, "calcing oi transition ", thisOctal%oiTRANSITION(subcell, ilevel,jlevel)
+!         print *, "A, B, C ", Acoeff(ilevel, jlevel),Bcoeffs(ilevel, jlevel),Ccoeffs(ilevel, jlevel)
+!         print *, "FIELD ", FIELD(ilevel, jlevel)
    !      thisOctal%oiTRANSITION(subcell, jlevel,ilevel)=Acoeff&
    !           +Bcoeffs*(-FIELD)&!
    !           +Ccoeffs
@@ -1853,8 +2023,9 @@ recursive subroutine abundanceSweepDrone(nChemIter, thisOctal, reactant, &
 
 !     print *, "ALPHA"
 !        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then  !.and. .not. thisOctal%level_converged(subcell)) then
-        if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0) then
-
+!        if(.not.thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
+           rate = 0.d0
            call CALCULATE_REACTION_RATES(thisOctal%tLast(subcell),thisOctal%Dust_T(subcell), &
                 thisOctal%radsurface(subcell, :),thisOctal%AV(subcell, :),thisOctal%thisColRho(subcell, :, :), &
                 &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
@@ -1868,10 +2039,17 @@ recursive subroutine abundanceSweepDrone(nChemIter, thisOctal, reactant, &
            
            if(rfile) write(101, '(1p,500e14.5)') thisOctal%AV(subcell, 1), rate
 
+!           print *, "rate input is ", rate
+!           print *, "rhoinput is ", thisOctal%rho(subcell)
+!           print *, "tlastinput is ", thisOctal%tlast(subcell)
+!           print *, "nspec, reacm nelect ", nspec, nreac, nelect
+
            call calculate_abundances_onepart(abundancesol(:), rate, &
                 thisOctal%rho(subcell)/mhydrogen, thisOctal%tLast(subcell), nspec, nreac, nelect)
 
            thisOctal%abundance(subcell, 1:33) = abundancesol(0:32)
+!           print *, "got ", abundancesol
+!           stop
            close(101)
         end if
      end if
@@ -1915,8 +2093,8 @@ recursive subroutine partitionLTE(thisOctal, n12co, ncii, nci, noi)
 !     c12o_nlev = 41
 
 !        print *, "ORION"
-     if(.not.thisOctal%ionfrac(subcell, 2) > 0.99d0)then 
-
+       !if(.not.thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2)then 
+        if(thisOctal%temperature(subcell) < 1.d2) then
            !       print *, "PERSEUS"
            CALL CALCULATE_PARTITION_FUNCTION(CII_Z_FUNCTION,CII_NLEV,CII_ENERGIES,CII_WEIGHTS,thisOctal%tLast(subcell))
            CALL CALCULATE_PARTITION_FUNCTION(CI_Z_FUNCTION,CI_NLEV,CI_ENERGIES,CI_WEIGHTS,thisOctal%tLast(subcell))
@@ -1994,7 +2172,7 @@ end subroutine rayTraceMPI
 !This is the main routine that loops over the grid and does the ray casting
 recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
 !  use mpi
-  use inputs_mod, only : hlevel, maxdepthamr
+  use inputs_mod, only :  uvfromphoto, uv_vector
 !  use healpix_module, only : vectors, nrays
   implicit none
   
@@ -2004,9 +2182,9 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
   type(octal), pointer :: child
   integer :: j
   type(vector) :: testPosition, rVec, startPosition, uhat, thisUVvector
-  real(double) :: tVal, rho, uvx, uvy, uvz, HplusFrac
+  real(double) :: tVal, rho, uvx, uvy, uvz, temperature
   integer ::  i, ncontributed, k, nrays!, dummy
-  real(double) :: abundanceArray(1:33)
+  real(double) :: abundanceArray(1:33), uvx2, uvy2, uvz2
   logical :: colrhoonly, didSurface
 
   do subcell = 1, thisoctal%maxchildren
@@ -2021,7 +2199,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
         end do
      else
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
-
+        if(thisOCtal%converged(subcell)) cycle
         nrays = nray_func()
         if(thisOctal%oneD) nrays = 1
 !        call findSubcellLocal(testPosition, sOctal, ssubcell)
@@ -2030,7 +2208,8 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
 
         thisOctal%thisColRho(subcell, :, :)  = 0.d0
         if(colrhoonly) then
-           if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+           !           if(.not. thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+           if(thisOctal%temperature(subcell) < 1.d2) then
               ncontributed = 0
               
               do i = 1, nrays
@@ -2041,43 +2220,64 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                  call normalize(uhat)
                  thisOctal%columnRho(subcell) = 0.d0                 
                  testPosition = startPosition
-!                 thisOctal%thisColRho
-                 do while (inOctal(grid%octreeRoot, testPosition))
-                    
-                    tval = 0.d0
-                    call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-                         abundancearray) 
-!                    do dummy = 1, 33
-!                       print *,"abundancearray(",dummy,")", abundancearray(dummy)
-!                       !                    print *, "BETA ", sum(abundancearray(:))
-!                    enddo
 
-                    thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval*1.d10/mhydrogen)          
-                       
+                 do while (inOctal(grid%octreeRoot, testPosition))
+                    tval = 0.d0
+                    
+                    
+!                    if(temperature > 1.d2 .or. .not. inOctal(grid%octreeRoot, testposition))then
+!                       print *, "found hot cell, escaping "
+!                       goto 555
+!                    endif
+                    
+                    
+                    
+                    call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, uvx2, uvy2, uvz2, temperature, tval, &
+                         abundancearray)
+                                        
+                    !                    do dummy = 1, 33
+                    !                       print *,"abundancearray(",dummy,")", abundancearray(dummy)
+                    !                       !                    print *, "BETA ", sum(abundancearray(:))
+                    !                    enddo
+                    
+                    thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval*1.d10/mhydrogen)       
+!                    print *, "tval is ", tval
                     do k = 1, 33
-                       thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &
+                       thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &                            
                             abundancearray(k)*tval*1.d10*rho/mhydrogen                 
                     enddo
-                    
+                   
                     testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)                           
-!                    if(Hplusfrac > 0.99d0 .or. .not. inoctal(grid%octreeroot, testposition)) then       
-!                       testPosition = testPosition - (((tVal+1.d-10*grid%halfsmallestsubcell))*uhat)       
-!                       call getRayTracingValuesPDR(grid, testPosition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-!                            abundancearray) 
-!                       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval*1.d10/mhydrogen)          
-!                       do k = 1, 33
-!!                          call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-!!                               abundancearray) 
-!                          thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &
-!                               abundancearray(k)*tval*1.d10*rho/mhydrogen                 
-!                       enddo
-!                       
-!!                       exit
-!                       goto 555
-!                    end if
-!                                 
 
- !                   if(thisOctal%oneD .and. .not. inOctal(grid%octreeroot, testposition)) then
+                    if(tval == 0.d0) then
+                       tval = 1.d-10*grid%halfsmallestsubcell
+                       testPosition = testPosition + ((tVal)*uhat)  
+                       print *, "zero tval ", tval
+                       print *, "you probably need to specify spherical F in your input deck, :-)"
+                       stop
+                    endif
+
+                    !                    if(Hplusfrac > 0.99d                    print *, "testposition is ", testposition0 .or. .not. inoctal(grid%octreeroot, testposition)) then       
+                    !have hit an ionized cell)
+                    
+                    if(temperature > 1.d2 .or.  .not. inoctal(grid%octreeroot, testposition)) then       
+                    !                       testPosition = testPosition - (((tVal+1.d-10*grid%halfsmallestsubcell))*uhat)       
+!                       call getRayTracingValuesPDR(grid, testPosition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
+                    !                            abundancearray) 
+                    !                       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval*1.d10/mhydrogen)          
+                    !                       do k = 1, 33
+                    !!                          call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
+                    !!                               abundancearray) 
+                    !                          thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &
+                    !                               abundancearray(k)*tval*1.d10*rho/mhydrogen                 
+                    !                       enddo
+                    !                       
+                    !!                       exit
+                    
+                    !                    end if
+                    !                                 
+                    
+                    !                   if(thisOctal%oneD .and. .not. inOctal(grid%octreeroot, testposition)) then
  !                      testPosition = testPosition - (((tVal+1.d-10*grid%halfsmallestsubcell))*uhat)       
  !                      call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
  !                           abundancearray) 
@@ -2086,22 +2286,19 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
  !                         thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &
  !                              abundancearray(k)*tval*1.d10*rho/mhydrogen                 
  !                      enddo
- !                      goto 555
- !!                      exit
- !                   endif
+                       goto 555
+                       !!                      exit
+                    endif
 
 
                     
                  end do
-!555              continue
+555 continue
               end do
               
            else
               thisOctal%thisColRho(subcell, :, :) = 0.d0
-!              thisOctal%columnRho(subcell) = 0.d0
-!              thisOctal%UV(subcell) = 0.d0
-!              thisOctal%AV(subcell,:) = 0.d0
-!              thisOctal%radsurface(subcell,:) = 0.d0
+
            end if
            
         else
@@ -2111,7 +2308,8 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
            thisOctal%thisColRho(subcell, :, :) = 0.d0
            thisOctal%columnrho(subcell)  = 0.d0
            
-           if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!           if(.not. thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+           if(thisOctal%temperature(subcell) < 1.d2) then
               ncontributed = 0
               
               do i = 1, nrays
@@ -2127,72 +2325,87 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
  !                print *, "position is ", testPosition
                  didSurface = .false.
                  do while (inOctal(grid%octreeRoot, testPosition))
-
+                    
                     tval = 0.d0
-                    call getRayTracingValuesPDR(grid, testPosition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-                         abundancearray) 
+!                    call getRayTracingValuesPDR(grid, testPosition, uHat, rho, uvx, uvy, uvz, temperature, tval, &
+ !                        abundancearray) 
 
+                    Call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, uvx2, uvy2, uvz2, temperature, tval, &
+                         abundancearray)
+
+                    
 !                    print *, "ALPHA ", sum(abundancearray(:))
-
+                    
                     thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval*1.d10/mhydrogen)          
                     !!                    print *, "column rho is", thisOCtal%columnrho(subcell)
                     do k = 1, 33
                        thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &
                             abundancearray(k)*tval*1.d10*rho/mhydrogen  
                     enddo
-
-
-
-
+                    
                     testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)         
+                    
+                    !                    if(Hplusfrac > 0.999d0 .or. .not. inOctal(grid%octreeRoot, testposition)  .or. thisOctal%temperature(subcell) > 1.d2) then
+                    if(temperature > 1.d2.or. .not. inOctal(grid%octreeRoot, testposition)) then
 
-                    if(Hplusfrac > 0.99d0 .or. .not. inOctal(grid%octreeRoot, testposition)) then
-!                       testPosition = testPosition - (((tVal+1.d-10*grid%halfsmallestsubcell))*uhat)       
-!                       thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval*1.d10/mhydrogen)          
-!                       call getRayTracingValuesPDR(grid, testPosition, uHat, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-!                            abundancearray) 
-!                       !!                    print *, "column rho is", thisOCtal%columnrho(subcell)
-!                       do k = 1, 33
-!                          thisOctal%thisColRho(subcell, i, k)  = thisOctal%thisColRho(subcell, i, k) + &
-!                               abundancearray(k)*tval*1.d10*rho/mhydrogen  
-!                       enddo!!
+!                       thisUVvector = VECTOR(uvx, uvy, uvz)
+!
+!                       thisUVvector = thisUVvector*1.d10/draine!
+!                       
+!                       thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     !
+!!
+ !                      didSurface = .true.
+ !                      if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
+ !                      goto 666
 
-                                                                   
-                       if(thisOctal%oned) then
-                          !THAW - not ideal that this is hardwired atm for 1D tests
-                          thisUVvector = VECTOR(10.d0*draine/1.d10, 0.d0, 0.d0)
-                       else                         
-                          thisUVvector = VECTOR(uvx, uvy, uvz)
-                       endif
+
+!there are two vectors that make up the uv field
+                       thisUVvector = VECTOR(uvx, uvy, uvz)
+
                        thisUVvector = thisUVvector*1.d10/draine!
-
+                       
                        thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
-                       !                      print *, "radsuface ", thisOctal%radsurface(subcell, i)
-                       didSurface = .true.
-                       if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
-!                       goto 666
-!                       exit
-                    end if
 
+                       didSurface = .true.
+                       if(thisOctal%radsurface(subcell, i) < 0.d0 ) then
+                          !try the other vector
+                          thisUVvector = VECTOR(uvx2, uvy2, uvz2)
+                          thisUVvector = thisUVvector*1.d10/draine!
+                       
+                          thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
+                          if(thisOctal%radsurface(subcell, i) < 0.d0 )   thisOctal%radsurface(subcell, i) = 0.d0
+
+                       endif
+                       goto 666
+                    end if
+                    
                    
                  end do
-!666 continue
+666 continue
                  
                  !                 print *, "out of loop"
                  if(.not. didSurface) then
-                    if(thisOctal%oned) then
-                       !THAW - not ideal that this is hardwired atm for 1D tests
-                       thisUVvector = VECTOR(10.d0*draine/1.d10, 0.d0, 0.d0)
-                    else                         
-                       thisUVvector = VECTOR(uvx, uvy, uvz)
-                    endif
+                    
+                    thisUVvector = VECTOR(uvx, uvy, uvz)
+                    !                    endif
                     thisUVvector = thisUVvector*1.d10/draine
                     
                     thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
                     !                    print *, "radsuface ", thisOctal%radsurface(subcell, i)
                     didSurface = .true.
-                    if(thisOctal%radsurface(subcell, i) < 0.d0 ) thisOctal%radsurface(subcell, i) = 0.d0
+                    if(thisOctal%radsurface(subcell, i) < 0.d0 ) then
+                       !try the other vector
+                       thisUVvector = VECTOR(uvx2, uvy2, uvz2)
+                       thisUVvector = thisUVvector*1.d10/draine!
+                       
+                       thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
+                       if(thisOctal%radsurface(subcell, i) < 0.d0 )   thisOctal%radsurface(subcell, i) = 0.d0
+                       
+                    endif
                  endif
+
+
+                 print *, "rad surface is ", thisOctal%radsurface(subcell, 1)
                  
                  thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*AV_fac
                  
@@ -2204,14 +2417,27 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                  
                  !                 print *, "rad surface is", thisOctal%radsurface(subcell, i)
                  
-                 if(thisOctal%radsurface(subcell, i) > 0.d0) then
-                    thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
-                         thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
-                    ncontributed = ncontributed + 1
-                    !                   if(thisOctal%oned) thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
-                    !                     thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
-                 end if
-                 !                 print *, "UV  is ", thisOctal%UV(subcell)                 
+                 if(uv_vector) then
+                    thisOctal%radsurface(subcell, i) = thisOctal%radsurface(subcell, i)*(draine/1.d10)**2
+                 endif
+
+                 if(uvfromphoto)then ! .and. 0 == 1) then        
+!                    thisOctal%UV(subcell) = modulus(thisOctal%uvvector(subcell)*1.d10/draine)
+!                    thisOctal%UV(subcell) = modulus(thisOctal%uvvectorPlus(subcell)*1.d10/draine) + & 
+!                         modulus(thisOctal%uvvectorMinus(subcell)*1.d10/draine)
+                    thisOctal%UV(subcell) = modulus(thisOctal%uvvectorPlus(subcell)*draine/1.d10) + & 
+                         modulus(thisOctal%uvvectorMinus(subcell)*draine/1.d10)
+
+                 else
+                    if(thisOctal%radsurface(subcell, i) > 0.d0) then                       
+                       thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
+                            thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+                       ncontributed = ncontributed + 1
+                       !                   if(thisOctal%oned) thisOctal%UV(subcell) = thisOctal%UV(subcell) + &
+                       !                     thisOctal%radSurface(subcell, i) * exp(-(thisOctal%AV(subcell, i)*UV_fac))
+                    end if
+                    !                 print *, "UV  is ", thisOctal%UV(subcell)                 
+                 endif
               end do
               if(thisOctal%threed) then
                  if(ncontributed /= 0) then
@@ -2219,15 +2445,15 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                  else
                     thisOctal%UV(subcell) = 0.d0
                  end if
-                 
-                 !                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(ncontributed)
               endif
+              !                 thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell)/dble(ncontributed)
+!           endif
               !              if(thisOctal%UV(subcell) < 1.d-30) thisOctal%UV(subcell) = 0.d0
            else
-              print *, "stopped on ion frac"
+!              print *, "stopped on ion frac"
               thisOctal%thisColRho(subcell, :, :) = 0.d0
               thisOctal%columnRho(subcell) = 0.d0
-              thisOctal%UV(subcell) = 0.d0
+              thisOctal%UV(subcell) =  modulus(thisOctal%uvvector(subcell)*1.d10/draine)
               thisOctal%AV(subcell,:) = 0.d0
               thisOctal%radsurface(subcell,:) = 0.d0
            end if
@@ -2243,7 +2469,6 @@ end subroutine castAllRaysOverGridMPI
 
 !This is the main routine that loops over the grid and does the ray casting
 recursive subroutine castAllRaysOverGrid(thisOctal, grid)
-  use inputs_mod, only : hlevel, maxdepthamr
 !  use healpix_module, only : vectors, nrays
   implicit none
   
@@ -2289,7 +2514,8 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
         thisOctal%av(subcell, :) = 0.d0           
         thisOctal%radsurface(subcell, :) = 0.d0           
         thisOctal%thisColRho(subcell, :, :) = 0.d0
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!        if(.not. thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
            ncontributed = 0
 !        do i = 0, nrays-1
         do i = 1, nrays
@@ -2309,7 +2535,8 @@ recursive subroutine castAllRaysOverGrid(thisOctal, grid)
 
              call distanceToCellBoundary(grid, testPosition, uHat, tVal, soctal, ssubcell)
  
-              if(sOctal%ionFrac(ssubcell,2) > 0.99d0) then
+!              if(sOctal%ionFrac(ssubcell,2) > 0.999d0 .or. thisOctal%temperature(subcell) > 1.d2) then
+                 if(thisOctal%temperature(subcell) > 1.d2) then
                  thisUVvector = sOctal%uvVector(ssubcell)*1.d10/draine
 !                 call normalize(thisUVvector)
 !                 print *, "thisUVvector ", thisUVvector
@@ -2547,7 +2774,8 @@ recursive SUBROUTINE CALCULATE_DUST_TEMPERATURES(thisOctal)
 !        P=IDlist_pdr(pp)
         !     Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
 !        PDR(P)%DUST_T=8.9D-11*NU_0*(1.71D0*PDR(P)%UVfield)+T_CMB**5
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!        if(.not. thisOctal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
            thisOctal%DUST_T(subcell)=8.9D-11*NU_0*(1.71D0*thisOctal%UV(subcell))+T_CMB**5
            
            DO J=1,NRAYS ! Loop over rays
@@ -2614,7 +2842,8 @@ recursive subroutine iniTempGuess(thisOctal)
            end if
         end do
      else
-        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.99d0) then
+!        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.999d0 .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
            Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
            thisOctal%TLast(subcell) = Tguess
            thisOctal%temperature(subcell) = real(Tguess)
@@ -2659,8 +2888,8 @@ recursive subroutine iniTempGuessMPI(thisOctal)
 
         if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
 
-        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.99d0) then
-
+!        if(.not. thisOCtal%ionfrac(subcell, 2) > 0.999d0  .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
            Tguess = 10.0D0*(1.0D0+(1.0D2*thisOctal%UV(subcell))**(1.0D0/3.0D0))
 
 
@@ -2726,7 +2955,8 @@ recursive SUBROUTINE CALCULATE_DUST_TEMPERATURESMPI(thisOctal)
 !        P=IDlist_pdr(pp)
         !     Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
 !        PDR(P)%DUST_T=8.9D-11*NU_0*(1.71D0*PDR(P)%UVfield)+T_CMB**5
-        if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!        if(.not. thisOctal%ionfrac(subcell, 2) > 0.999d0  .or. thisOctal%temperature(subcell) < 1.d2) then
+        if(thisOctal%temperature(subcell) < 1.d2) then
            thisOctal%DUST_T(subcell)=8.9D-11*NU_0*(1.71D0*thisOctal%UV(subcell))+T_CMB**5
            
            DO J=1,NRAYS ! Loop over rays

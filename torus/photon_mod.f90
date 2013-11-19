@@ -1793,7 +1793,7 @@ contains
     real :: mHot, ang, radius, r, v, rInner, vMax
 
     zAxis = VECTOR(0.,0.,1.)
-    mHot = 0.6 * mSol
+    mHot = real(0.6 * mSol)
     vMax = 30.e5
 
     rInner = real((bigG *  mHot)/(vMax**2))

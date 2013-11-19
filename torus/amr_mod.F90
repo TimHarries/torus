@@ -411,7 +411,7 @@ CONTAINS
 
   SUBROUTINE add_new_children_discwind(parent, ichild, grid, this, splitAzimuthally)
     use memory_mod
-    use inputs_mod, only : cylindrical, vturb
+    use inputs_mod, only : cylindrical!, vturb
     ! adds all eight new children to an octal
     IMPLICIT NONE
     logical, optional :: splitAzimuthally
@@ -736,7 +736,7 @@ CONTAINS
        call calcToyDiscDensity(thisOctal, subcell)
 !       call calcToyDiscDensity(thisOctal, subcell)
 
-    CASE("lexington")
+    CASE("lexington", "lexpdr")
        CALL calcLexington(thisOctal, subcell, grid)
        if (thisOctal%nDepth > 1) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
@@ -1318,7 +1318,7 @@ CONTAINS
     ! adds one new child to an octal
 
     USE inputs_mod, ONLY : cylindrical, maxMemoryAvailable
-    use mpi_global_mod, only: nThreadsGlobal
+!    use mpi_global_mod, only: nThreadsGlobal
     use octal_mod, only: subcellRadius
     use memory_mod, only : octalMemory, globalMemoryFootprint, humanReadableMemory, globalMemoryChecking
 #ifdef SPH
@@ -1634,7 +1634,7 @@ CONTAINS
        setChanged, romData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
-    use inputs_mod, only : splitOverMPI
+!    use inputs_mod, only : splitOverMPI
     IMPLICIT NONE
 
 
@@ -1894,7 +1894,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
     
-    USE inputs_mod, ONLY : cylindrical, amr3d, modelwashydro, splitOverMPI !, useHartmannTemp
+    USE inputs_mod, ONLY : modelwashydro, splitOverMPI !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -3296,6 +3296,38 @@ CONTAINS
   END SUBROUTINE locateContProbAMR
 
 
+  subroutine logSpaceGridCheck(position, dx, splitLog)
+    use inputs_mod, only : amrgridsize, amrgridcentrex, npoints, Nmag
+    
+    integer :: i, nPerDivision!, depth
+    real(double) :: DeltaX, thisdx, xmin, xmax, dx
+    type(vector) :: position
+    logical, intent(out) :: splitLog
+    
+    splitLog = .false.
+
+    nPerDivision = int(real(npoints/Nmag))
+!    print *, "nperdivision", nperdivision
+    xmin = amrgridcentrex - (amrgridsize/2.d0)
+
+    do i = Nmag, 0, -1
+       thisdx = dble(((amrgridsize/10.d0**i))*(1.d0/nperdivision))
+       DeltaX = dble(nPerDivision * thisdx)
+       xmax = xmin + DeltaX
+!       if((position%x-dx) > xmin .and. position%x < xmax) then
+       if((position%x-dx/2.) < xmax) then
+          !found where I reside...
+ !         print *, "dx ", dx
+  !        print *, "thisdx ", dx
+          if(dx > thisdx) splitLog = .true.
+       endif
+       !update Xmin for next iteration
+       xmin = xmin + DeltaX
+    enddo
+!    stop
+  end subroutine logSpaceGridCheck
+
+
   FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, wvars, splitInAzimuth,&
        romData) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
@@ -3314,14 +3346,15 @@ CONTAINS
          ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
-    use inputs_mod, only : inputnsource, sourcepos, smoothinneredge
+    use inputs_mod, only : inputnsource, sourcepos, smoothinneredge, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens
+
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
     use romanova_class, only:  romanova_density
-    use mpi_global_mod, only:  nThreadsGlobal, myRankGlobal
+    use mpi_global_mod, only:   myRankGlobal
     use magnetic_mod, only : inflowMahdavi, inflowBlandfordPayne
     use vh1_mod, only: get_density_vh1, vh1FileRequired
     use density_mod, only: density
@@ -3403,16 +3436,15 @@ CONTAINS
 
     if(wvars) then
 
-       if(minDepthAMR==maxDepthAMR) then
-          split = .false.
-          goto 101
-       end if
+
+
+
+
 
        if(thisOctal%hasChild(subcell)) then
           split = .false.
           goto 101
        end if
-
 
        if (grid%splitOverMPI) then
           if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
@@ -3420,6 +3452,23 @@ CONTAINS
              goto 101
           endif
        end if
+
+
+       if(logspacegrid) then
+          rvec = subcellCentre(thisOctal, subcell)
+          dx = grid%octreeroot%subcellSize*2.d0/(2.d0**thisOctal%nDepth)
+          call logspacegridcheck(rvec, dx, split)
+          goto 333
+       endif
+
+
+       if(minDepthAMR==maxDepthAMR) then
+          split = .false.
+          goto 101
+       end if
+
+
+
 
 
        r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
@@ -3507,10 +3556,20 @@ CONTAINS
           endif
        endif
        
-       
+333 continue       
 
 
     else
+
+       !
+       if(logspacegrid) then
+          rvec = subcellCentre(thisOctal, subcell)
+          dx = grid%octreeroot%subcellSize*2.d0/(2.d0**thisOctal%nDepth)
+          call logspacegridcheck(rvec, dx, split)
+          goto 222
+       endif
+
+
        
        select case(grid%geometry)
           
@@ -3850,7 +3909,21 @@ CONTAINS
           else
              split = .false.
           endif
+
+       case("lexpdr")
+          rVec = subcellCentre(thisoctal, subcell)
+
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          else
+             split = .false.
+          endif
           
+          if(rvec%x*1.d10/pctocm > 4.5 .and. rvec%x*1.d10/pctocm < 5.d0) then
+             print *, "got a  max ", rvec%x*1.d10/pctocm
+             if(thisOctal%ndepth < maxdepthamr) split = .true.
+          endif
+
        case("toydisc")
           if (thisOctal%nDepth < mindepthamr) then
              split = .true.
@@ -4048,44 +4121,48 @@ CONTAINS
 
        case("rv1test", "rv2test", "rv3test", "rv4test")
           if(thisOctal%nDepth < mindepthamr) split = .true.
+ 
           rVec = subcellCentre(thisOctal, subcell)
-
-          if(rVec%x < 1.d-1*pctocm/1.d10) then                    
-!             if(thisOctal%subcellSize > 1.d-6) split = .true.
-             if(thisOctal%nDepth < maxdepthAMR) split = .true.
+          !refine LHS to maxdepth                   
+          dx = grid%octreeroot%subcellSize*2.d0/(2.d0**maxDepthAMR)
+          !found the xmin 
+          if (grid%octreeroot%xmin == thisOctal%xmin) then
+             if(thisOctal%ndepth < maxdepthamr) split = .true.
           endif
-!          else if(rVec%x >= 1.d-1*pctocm/1.d10 .and. rVec%x < 1.1d0*pctocm/1.d10) then            
-!             if(thisOctal%subcellSize > 8.d-1) split = .true.
-!          else
-!             if(thisOctal%subcellSize > 0.1) split = .true.
-!             print *, "split A"
+
+          if(rvec%x < grid%octreeroot%subcellSize) then
+             if(thisOctal%ndepth < maxdepthamr) split = .true.
+          endif
+!          if(grid%octreeroot%xmin + 10.d0*dx >= rVec%x) then
+!             if(thisOctal%ndepth < maxdepthamr) split = .true.
 !          endif
-!          elseif(rVec%x >= 1.d-4*pctocm/1.d10 .and. rVec%x < 5.d-4*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-1)) split = .true.
-!             print *, "split B"
-!          elseif(rVec%x >= 5.d-4*pctocm/1.d10 .and. rVec%x < 1.d-3*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-2)) split = .true.
-!             print *, "split C"
-!          elseif(rVec%x >= 1.d-3*pctocm/1.d10 .and. rVec%x < 5.d-3*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-4)) split = .true.
-!             print *, "split D"
-!          elseif(rVec%x >= 5.d-3*pctocm/1.d10 .and. rVec%x < 1.d-2*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-8)) split = .true.
-!             print *, "split E"
-!          elseif(rVec%x >= 1.d-2*pctocm/1.d10 .and. rVec%x < 5.d-2*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-5)) split = .true.
-!             print *, "split F"
- !         elseif(rVec%x >= 5.d-2*pctocm/1.d10 .and. rVec%x < 1.d-1*pctocm/1.d10) then          
- !            if(thisOctal%nDepth < (maxdepthamr-10)) split = .true.
-! !            print *, "split G"
-!          elseif(rVec%x >= 1.d-1*pctocm/1.d10 .and. rVec%x < 5.d-1*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-5)) split = .true.
-!             print *, "split H"
-!!          elseif(rVec%x >= 5.d-1*pctocm/1.d10 .and. rVec%x < 1.d0*pctocm/1.d10) then          
-!             if(thisOctal%nDepth < (maxdepthamr-10)) split = .true.
-!!             print *, "split F"
-  !        endif
+!          
+!          
+!          if(grid%octreeroot%xmin + 100000.d0*dx < rVec%x .and. grid%octreeroot%xmin + 10.d0*dx >= rVec%x) then
+!             if(thisOctal%ndepth < maxdepthamr-1) split = .true.
+!          endif
+!          
+!!          if(grid%octreeroot%xmin + 1000000.d0*dx < rVec%x .and. grid%octreeroot%xmin + 50.d0*dx >= rVec%x) then
+ !            if(thisOctal%ndepth < maxdepthamr-2) split = .true.
+ !         endif
+! 
+!          if(rvec%x > (grid%octreeroot%xmin + grid%octreeroot%subcellsize)) then
+!             if(thisoctal%ndepth >= mindepthamr) split = .false.
+!          endif
+         
+!          if(grid%octreeroot%xmin + 1000.d0*dx < rVec%x .and. grid%octreeroot%xmin + 10000.d0*dx >= rVec%x) then
+!             if(thisOctal%ndepth < maxdepthamr-3) split = .true.
+!          endif
+!          
+!          if(grid%octreeroot%xmin + 10000.d0*dx < rVec%x .and. grid%octreeroot%xmin + 100000.d0*dx >= rVec%x) then
+!             if(thisOctal%ndepth < maxdepthamr-4) split = .true.
+!          endif
+!          
+!          if(grid%octreeroot%xmin + 100000.d0*dx < rVec%x .and. grid%octreeroot%xmin + 1000000.d0*dx >= rVec%x) then
+!             if(thisOctal%ndepth < maxdepthamr-5) split = .true.
+!          endif
           
+                         
        case("sphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           bigJ = 0.25d0
@@ -4175,7 +4252,7 @@ CONTAINS
           if ((abs(rVec%x) < 0.25d0).and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("sedov")
-          rInner = 0.02d0
+          rInner = 0.02e0
           rVec = subcellCentre(thisOctal, subcell)
           if (sqrt((rVec%x-0.5d0)**2 + rVec%z**2) < rInner) then
              split = .true.
@@ -4198,11 +4275,23 @@ CONTAINS
 
           if(thisOctal%ndepth < mindepthamr) split = .true.
 
-          dx = amrgridsize/2.d0**(thisOctal%ndepth)
-          if(rVec%x < (amrgridcentrex - (amrgridsize/2.d0)) + 2.d0*dx) split = .true.
-          if(rVec%x > (amrgridcentrex + (amrgridsize/2.d0)) - 2.d0*dx) split = .true.
-          if(rVec%z < (amrgridcentrez - (amrgridsize/2.d0)) + 2.d0*dx) split = .true.
-          if(rVec%z > (amrgridcentrez + (amrgridsize/2.d0)) - 2.d0*dx) split = .true.
+
+          if(rVec%x < 5.d-10*autocm) then
+             if(thisOctal%ndepth < maxdepthamr) split = .true.
+          elseif(rVec%x > 5.d-10*autocm  .and. rVec%x < 10.d-10*autocm)  then
+             if(thisOctal%ndepth < maxdepthamr-1) split = .true.
+          elseif(rVec%x > 10.d-10*autocm  .and. rVec%x < 15.d-10*autocm)  then
+             if(thisOctal%ndepth < maxdepthamr-2) split = .true.
+          endif
+
+!
+!          dx = amrgridsize/2.d0**(thisOctal%ndepth)
+!!
+!
+!          if(rVec%x < (amrgridcentrex - (amrgridsize/2.d0)) + 2.d0*dx) split = .true.
+!          if(rVec%x > (amrgridcentrex + (amrgridsize/2.d0)) - 2.d0*dx) split = .true.
+!          if(rVec%z < (amrgridcentrez - (amrgridsize/2.d0)) + 2.d0*dx) split = .true.
+!          if(rVec%z > (amrgridcentrez + (amrgridsize/2.d0)) - 2.d0*dx) split = .true.!
 
        case("benchmark")
           
@@ -5113,6 +5202,8 @@ CONTAINS
 
 
        end select
+
+222 continue
     end if
 
    if (thisOctal%nDepth == maxDepthAmr) then
@@ -6373,8 +6464,8 @@ endif
 
 
   subroutine calcToyDiscDensity(thisOctal, subcell)
-    use inputs_mod, only : hydrodynamics, hOnly, rinner
-    use inputs_mod, only : amrgridcentrex, amrgridcentrez
+    use inputs_mod, only :  hOnly, rinner, hydrodynamics
+    use inputs_mod, only :  amrgridcentrez
     type(octal) :: thisOctal
     integer :: subcell
     type(vector) :: rvec
@@ -6486,7 +6577,7 @@ endif
 !Ercolano+2008/Pequignot+2001 
   subroutine calcNarrowLineRegion(thisOctal,subcell)
 
-    use inputs_mod, only : hydrodynamics
+!    use inputs_mod, only : hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell   
     TYPE(vector) :: rVec
@@ -6665,7 +6756,7 @@ endif
    
     real :: rStar
     
-    rStar  = (rSol * 20.) / 1.e10    
+    rStar  = real((rSol * 20.) / 1.e10)   
     grid%rCore = rStar
     grid%rStar1 = rStar
     grid%rStar2 = 0.
@@ -7194,7 +7285,7 @@ endif
 !1. Run this with all boundaries reflective or periodic
 !2. Then run a radiation hydro calculation with periodic ±y, ±z and reflecting -x, freeoutnoin +x
   subroutine calcRadiativeRoundUpDensity(thisOctal,subcell)
-    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
+!    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use inputs_mod, only : readTurb 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7893,7 +7984,7 @@ endif
 
 
   subroutine calcCoolingShockDensity(thisOctal, subcell)
-    use inputs_mod, only : CD_version, amrgridcentrex, inflowTemp
+    use inputs_mod, only : amrgridcentrex, inflowTemp
     use inputs_mod, only : inflowrho, inflowspeed, inflowmomentum
     use inputs_mod, only : inflowpressure, inflowenergy, inflowrhoe
 
@@ -8220,6 +8311,12 @@ endif
           thisOctal%uvvector(subcell)%x = 0.d0
           thisOctal%uvvector(subcell)%y = 0.d0
           thisOctal%uvvector(subcell)%z = 0.d0
+          thisOctal%uvvectorPlus(subcell)%x = 0.d0
+          thisOctal%uvvectorPlus(subcell)%y = 0.d0
+          thisOctal%uvvectorPlus(subcell)%z = 0.d0
+          thisOctal%uvvectorMinus(subcell)%x = 0.d0
+          thisOctal%uvvectorMinus(subcell)%y = 0.d0
+          thisOctal%uvvectorMinus(subcell)%z = 0.d0
        end if
        
     else
@@ -8235,9 +8332,17 @@ endif
        if(pdrcalc .and. .not. photoionequilibrium) then
           if(rVec%x < (amrgridcentrex)) then! .and. &
  !              rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then
-             thisOctal%uvvector(subcell)%x = 40.*pi*Draine/1.d10
+             thisOctal%uvvector(subcell)%x = 100.*Draine/1.d10
              thisOctal%uvvector(subcell)%y = 0.d0
              thisOctal%uvvector(subcell)%z = 0.d0
+!             thisOctal%uvvectorPlus(subcell)%x = 0.d0
+             thisOctal%uvvectorPlus(subcell)%x = 100.*Draine/1.d10
+             thisOctal%uvvectorPlus(subcell)%y = 0.d0
+             thisOctal%uvvectorPlus(subcell)%z = 0.d0
+             thisOctal%uvvectorMinus(subcell)%x = 0.d0
+!             thisOctal%uvvectorMinus(subcell)%x = 0.d0
+             thisOctal%uvvectorMinus(subcell)%y = 0.d0
+             thisOctal%uvvectorMinus(subcell)%z = 0.d0
 !1.d0*Draine/1.d10
 
              
@@ -8272,8 +8377,8 @@ endif
 
 
   subroutine calcrv1TestDensity(thisOctal,subcell)
-    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use inputs_mod, only : pdrcalc, photoionequilibrium
+  !  use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+  !  use inputs_mod, only : pdrcalc, photoionequilibrium
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
 !    type(VECTOR) :: rVec
@@ -8288,6 +8393,12 @@ endif
     thisOctal%uvvector(subcell)%x = 10.*Draine/1.d10
     thisOctal%uvvector(subcell)%y = 0.d0
     thisOctal%uvvector(subcell)%z = 0.d0
+    thisOctal%uvvectorPlus(subcell)%x = 10.*Draine/1.d10
+    thisOctal%uvvectorPlus(subcell)%y = 0.d0
+    thisOctal%uvvectorPlus(subcell)%z = 0.d0
+    thisOctal%uvvectorMinus(subcell)%x = 0.d0
+    thisOctal%uvvectorMinus(subcell)%y = 0.d0
+    thisOctal%uvvectorMinus(subcell)%z = 0.d0
     !    endif
     
     thisOctal%inFlow(subcell) = .true.
@@ -8302,13 +8413,16 @@ endif
  
   end subroutine calcrv1TestDensity
 
+
   subroutine calcrv2TestDensity(thisOctal,subcell)
-    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use inputs_mod, only : pdrcalc, photoionequilibrium
+ !   use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+ !!   use inputs_mod, only : pdrcalc, photoionequilibrium
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
 !    type(VECTOR) :: rVec
 !    real(double) :: rMod
+
+
 
     thisOctal%rho(subcell) = 1.d3*mHydrogen
     thisOctal%temperature(subcell) = 10.d0
@@ -8316,9 +8430,15 @@ endif
     thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
     
 !    if(pdrcalc .and. .not. photoionequilibrium) then
-    thisOctal%uvvector(subcell)%x = (10.d5)*Draine/1.d10
+    thisOctal%uvvector(subcell)%x = (1.d5)*Draine/1.d10
     thisOctal%uvvector(subcell)%y = 0.d0
     thisOctal%uvvector(subcell)%z = 0.d0
+    thisOctal%uvvectorPlus(subcell)%x = (1.d5)*Draine/1.d10
+    thisOctal%uvvectorPlus(subcell)%y = 0.d0
+    thisOctal%uvvectorPlus(subcell)%z = 0.d0
+    thisOctal%uvvectorminus(subcell)%x = (1.d5)*Draine/1.d10
+    thisOctal%uvvectorminus(subcell)%y = 0.d0
+    thisOctal%uvvectorminus(subcell)%z = 0.d0
     !    endif
     
     thisOctal%inFlow(subcell) = .true.
@@ -8335,8 +8455,8 @@ endif
 
 
   subroutine calcrv3TestDensity(thisOctal,subcell)
-    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use inputs_mod, only : pdrcalc, photoionequilibrium
+!    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+!    use inputs_mod, only : pdrcalc, photoionequilibrium
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
 !    type(VECTOR) :: rVec
@@ -8351,6 +8471,15 @@ endif
     thisOctal%uvvector(subcell)%x = 10.*Draine/1.d10
     thisOctal%uvvector(subcell)%y = 0.d0
     thisOctal%uvvector(subcell)%z = 0.d0
+    thisOctal%uvvectorPlus(subcell)%x = (10.)*Draine/1.d10
+    thisOctal%uvvectorPlus(subcell)%y = 0.d0
+    thisOctal%uvvectorPlus(subcell)%z = 0.d0
+    thisOctal%uvvectorminus(subcell)%x = (10.)*Draine/1.d10
+    thisOctal%uvvectorminus(subcell)%y = 0.d0
+    thisOctal%uvvectorminus(subcell)%z = 0.d0
+
+
+
     !    endif
     
     thisOctal%inFlow(subcell) = .true.
@@ -8367,8 +8496,8 @@ endif
 
 
   subroutine calcrv4TestDensity(thisOctal,subcell)
-    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use inputs_mod, only : pdrcalc, photoionequilibrium
+!    use inputs_mod, only : amrgridcentrex, amrgridcentrey, amrgridcentrez
+!    use inputs_mod, only : pdrcalc, photoionequilibrium
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
 !    type(VECTOR) :: rVec
@@ -8381,9 +8510,15 @@ endif
     thisOctal%ionFrac(subcell,2) = 1.d-10          !HII
     
 !    if(pdrcalc .and. .not. photoionequilibrium) then
-    thisOctal%uvvector(subcell)%x = (10.d5)*Draine/1.d10
+    thisOctal%uvvector(subcell)%x = (1.d5)*Draine/1.d10
     thisOctal%uvvector(subcell)%y = 0.d0
     thisOctal%uvvector(subcell)%z = 0.d0
+    thisOctal%uvvectorPlus(subcell)%x = (1.d5)*Draine/1.d10
+    thisOctal%uvvectorPlus(subcell)%y = 0.d0
+    thisOctal%uvvectorPlus(subcell)%z = 0.d0
+    thisOctal%uvvectorminus(subcell)%x = (1.d5)*Draine/1.d10
+    thisOctal%uvvectorminus(subcell)%y = 0.d0
+    thisOctal%uvvectorminus(subcell)%z = 0.d0
     !    endif
     
     thisOctal%inFlow(subcell) = .true.
@@ -8397,6 +8532,7 @@ endif
     thisOctal%etaCont(subcell) = 0.
  
   end subroutine calcrv4TestDensity
+
 
 
   subroutine calcRadialClouds(thisOctal, subcell)
@@ -8617,9 +8753,9 @@ endif
 
   subroutine calcSphere(thisOctal,subcell)
 
-    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition
     use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro
-    use inputs_mod, only : smallestCellSize
+!    use inputs_mod, only : smallestCellSize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -8808,7 +8944,7 @@ endif
 
   subroutine calcinterptest(thisOctal,subcell)
 
-    use inputs_mod,only : amrgridsize
+!    use inputs_mod,only : amrgridsize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec,vVec,cen
@@ -8887,7 +9023,7 @@ endif
 
   subroutine maclaurinSpheroid(thisOctal,subcell)
 
-    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
+!    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity
     use utils_mod
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -8928,7 +9064,7 @@ endif
     real(double) :: gamma, ethermal
     logical :: blast
 
-    rinner = 0.01d0
+    rinner = 0.01e0
 
     gamma = 7.d0/5.d0
     thisOctal%gamma(subcell) = gamma
@@ -9168,7 +9304,7 @@ endif
 
   subroutine calcKrumholzDiscDensity(thisOctal,subcell)
 
-    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
+!    use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -9348,8 +9484,8 @@ endif
 
     gap = .false.
 
-    rInnerGap = 2. * auToCm / 1.e10
-    rOuterGap = 3. * auToCm / 1.e10
+    rInnerGap = real(2. * auToCm / 1.e10)
+    rOuterGap = real(3. * auToCm / 1.e10)
     
     rVec = subcellCentre(thisOctal,subcell)
     r = real(modulus(rVec))
@@ -9380,8 +9516,11 @@ endif
 
   subroutine RHDDisc(thisOctal,subcell)
 
-    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics, sourcemass
-    use inputs_mod, ONLY : photoionPhysics, doselfgrav, extmass, sourcepos, sourceTeff, sourceRadius
+
+    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
+    use inputs_mod, ONLY : photoionPhysics,  extmass!, stellarMass
+    use inputs_mod, ONLY : sourcepos, sourceteff, sourceradius, sourcemass
+
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real(double) :: r, hr, rd
@@ -9389,7 +9528,9 @@ endif
 !    real(double), parameter :: min_rho = 1.0d-21 ! minimum density
 !    real(double), parameter :: min_rho = 1.0d-22 ! minimum density
     real(double) :: min_rho!, vphi, vkep
-    real(double) :: ethermal, gamma, disttostar
+
+    real(double) :: ethermal, gamma, disttostar, rinnergap, routergap
+
     TYPE(vector) :: rVec
 
 !    real :: rInnerGap, rOuterGap
@@ -9398,42 +9539,59 @@ endif
     min_rho = extmass
     gap = .false.
     gamma = 1.d0
-    !rInnerGap = 2. * auToCm / 1.e10
+
+    gamma = 5.d0/3.d0
+!    rInnerGap = 2. * auToCm / 1.e10
+
 !    rOuterGap = 3. * auToCm / 1.e10
    
     rVec = subcellCentre(thisOctal,subcell)
     r = real(modulus(rVec))
 
 
-    disttostar = modulus(rVec-sourcepos(1))
+
+
+    disttostar = abs(rVec%x-sourcepos(1)%x)
     disttostar = disttostar
-    thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*disttostar*1.d10))**0.5d0
+    thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*&
+         abs(rVec%x-sourcepos(1)%x)*1.d10))**0.5d0
 
     thisOctal%rho(subcell) = min_rho
-!    thisOctal%temperature(subcell) = thisOCtal%dust_t(subcell)
-    thisOctal%temperature(subcell) = 10.
+
+!    thisOctal%temperature(subcell) = 1.d4
+    thisOctal%temperature(subcell) = thisOCtal%dust_t(subcell)
+    thisOctal%temperature(subcell) = 500.0
+
     if(photoionPhysics) then
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inFlow(subcell) = .true.
     end if
     rd = rOuter / 2.
-    r = real(sqrt(rVec%x**2 + rVec%y**2))
+    r = real(sqrt(rVec%x**2))! + rVec%y**2))
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
 !    vphi= 0.d0
-!    rinner = rinner * autocm*1.e10
+!    rinnerGap = rinner * autocm*1.e10
+    rinnerGap = 4. * autocm/1.e10
 !       print *, "r ", r
 !       print *, "rinner ", rinner
     rInner = 3.*autocm/1.e10
-    if ((r > rInner)) then!).and.(r < rOuter)) then
+    routerGap  = 300.d0*autocm/1.e10
+!    rinnerer = 
+    if ((r > rInnerGap) .and.(r < rOuterGap)) then
+!       hr = height * (r/rd)**1.125
        !       hr = height * (r/rd)**1.125
        hr = dble(((kerg*dble(thisOctal%temperature(subcell))/mhydrogen)**0.5)*((bigG*sourcemass(1)/(disttostar*1.d10)**3)**(-0.5)))
        print *, "hr is ", hr, rVec%z*1.d10, ((rVec%z*1.d10)/(2.d0*hr))**2
        ! Calculate density and check the exponential won't underflow
-       !       if ( rVec%z/hr < 30.0 ) THEN
-       !       thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
-       thisOctal%rho(subcell) = rho*exp(-((rVec%z*1.d10)/(2.d0*hr))**2)
-       !      print *, "rho is ", thisOctal%rho(subcell)
-       !       endif
+
+!       if ( rVec%z/hr < 20.0 ) THEN
+          hr = dble(((kerg*dble(thisOctal%temperature(subcell))/mhydrogen)**0.5)*((bigG*sourcemass(1)/(disttostar*1.d10)**3)**(-0.5)))
+          thisOctal%rho(subcell) = rho*exp(-((rVec%z*1.d10)/(2.d0*hr))**2)
+          thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
+
+!          thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
+!       endif
+
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
     endif
     
@@ -9493,7 +9651,7 @@ endif
     endif
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
-    thisOctal%temperature(subcell) = tcbr
+    thisOctal%temperature(subcell) = real(tcbr)
     thisOctal%microTurb(subcell) = 1d-8 !0.159e5/cspeed
     thisOctal%velocity(subcell) = VECTOR(-1d4,-1d4,-1d4)
     thisOctal%molAbundance(subcell) = molAbundance
@@ -9543,7 +9701,7 @@ endif
 
   subroutine calcTriangle(thisOctal,subcell)
 
-    use inputs_mod, only : molAbundance, tKinetic, vturb, nCol, n2max, amrGridSize
+    use inputs_mod, only : molAbundance, tKinetic, vturb, n2max, amrGridSize
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -9575,7 +9733,7 @@ endif
 
   subroutine calcArbitrary(thisOctal,subcell)
     use unix_mod, only: unixGetenv
-    use inputs_mod, only : molAbundance, tKinetic, vturb, nCol, n2max, amrGridSize
+    use inputs_mod, only : molAbundance, tKinetic, vturb, amrGridSize
     use inputs_mod, only : rhofile, nrholines
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -9699,7 +9857,7 @@ endif
     endif
 
     r1 = real(modulus(subcellCentre(thisOctal,subcell)))
-    thisOctal%temperature(subcell) = 1d-20
+    thisOctal%temperature(subcell) = 1e-20
     if(r1 > r(nr) .or. r1 < r(1)) then 
        thisOctal%nh2(subcell) = 1.e-20
        thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
@@ -9796,8 +9954,8 @@ endif
     if(r1 > r(nr)) then
        thisOctal%nh2(subcell) = 1.e-20
        thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
-       thisOctal%temperaturegas(subcell) = tcbr
-       thisOctal%temperaturedust(subcell) = tcbr
+       thisOctal%temperaturegas(subcell) = real(tcbr)
+       thisOctal%temperaturedust(subcell) = real(tcbr)
        thisOctal%microturb(subcell) = 1e-8
     elseif(r1 < r(1)) then
        thisOctal%nh2(subcell) = nh2(1)
@@ -9884,12 +10042,12 @@ endif
     rvec = subcellCentre(thisOctal,subcell)
     r = real(sqrt(rVec%x**2 + rVec%y**2))
 
-    thisOctal%temperature(subcell) = tcbr 
+    thisOctal%temperature(subcell) = real(tcbr )
     thisOctal%nh2(subcell) = 1d-20
     thisOctal%rho(subcell) = thisOctal%nh2(subcell) * 2.*mhydrogen
-    thisOctal%molabundance(subcell) = 1d-20
-    thisOctal%temperaturedust(subcell) = tcbr
-    thisOctal%temperaturegas(subcell) = tcbr
+    thisOctal%molabundance(subcell) = 1e-20
+    thisOctal%temperaturedust(subcell) = real(tcbr)
+    thisOctal%temperaturegas(subcell) = real(tcbr)
     thisOctal%microturb(subcell) = 1d-10
     thisOctal%Velocity(subcell) = VECTOR(1d-20,1d-20,1d-20)
 
@@ -10203,7 +10361,7 @@ end function readparameterfrom2dmap
        thisOctal%nh2(subcell) = 1.d-60
        thisOctal%rho(subcell) = 1.d-60 * 2. * mhydrogen
        
-       thisOctal%temperature(subcell) = tcbr
+       thisOctal%temperature(subcell) = real(tcbr)
     endif
 
     CALL fillVelocityCorners(thisOctal,ggtauVelocity)
@@ -10352,7 +10510,7 @@ end function readparameterfrom2dmap
 
 
   TYPE(vector)  function keplerianVelocity(point)
-    use inputs_mod, only : mcore,rinner
+    use inputs_mod, only :  mcore
     type(vector), intent(in) :: point
     type(vector) :: rvec
     real(double) :: v, r
@@ -12221,6 +12379,8 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
     call copyAttribute(dest%UVvector, source%UVvector)
+    call copyAttribute(dest%UVvectorplus, source%UVvectorplus)
+    call copyAttribute(dest%UVvectorminus, source%UVvectorminus)
 
 
     IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
@@ -12548,7 +12708,7 @@ end function readparameterfrom2dmap
     REAL, PARAMETER :: v0         = 100.e5
     REAL, PARAMETER :: vTerminal  = 2000.e5
     REAL, PARAMETER :: tEff       = 30.e3
-    REAL, PARAMETER :: mDot       = 1.e-7 * mSol * secsToYears 
+    REAL, PARAMETER :: mDot       = real(1.e-7 * mSol * secsToYears)
 !    REAL, PARAMETER :: mDot       = 1.e-2 * mSol * secsToYears 
     REAL, PARAMETER :: vBeta      = 1.0
     
@@ -12606,7 +12766,7 @@ end function readparameterfrom2dmap
     REAL, PARAMETER :: vTerminal  = 2000.e5
     REAL, PARAMETER :: vBeta      = 1.0
     
-    rStar = rsol
+    rStar = real(rsol)
     starPosn = VECTOR(0.d0, 0.d0,0.d0)
 
     pointVec = (point - starPosn) 
@@ -15485,7 +15645,7 @@ end function readparameterfrom2dmap
     subroutine genericAccretionSurface(surface, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use inputs_mod, only : tHotSpot, smallestCellSize, mDotParameter1, tTauriRstar
+    use inputs_mod, only : tHotSpot, mDotParameter1, tTauriRstar
     use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
     type(SURFACETYPE) :: surface
     type(VECTOR) :: rVec
@@ -15612,7 +15772,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
-       thisOctal%oldFrac = 1.d-30
+       thisOctal%oldFrac = 1.e-30
        call allocateAttribute(thisOctal%fixedTemperature, thisOctal%maxChildren)
        thisOctal%fixedTemperature = .false.
        call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
@@ -15702,7 +15862,7 @@ end function readparameterfrom2dmap
 
     if (photoionization.or.photoionPhysics) then
        call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
-       thisOctal%oldFrac = 1.d-30
+       thisOctal%oldFrac = 1.e-30
        call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
        thisOctal%dustType = 1
        ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
@@ -15752,6 +15912,8 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
 
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
@@ -15759,6 +15921,10 @@ end function readparameterfrom2dmap
        allocate(thisOctal%sourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%diffuseContribution(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%normSourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
+
+       call allocateAttribute(thisOctal%UVvector,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UVvectorPlus,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%UVvectorMinus,thisOctal%maxChildren)
 
     endif
     call allocateAttribute(thisOctal%dust_T, thisOctal%maxChildren)
@@ -15918,7 +16084,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%UVvector,thisOctal%maxChildren)
+
 
     endif
   end  subroutine allocateOctalAttributes
@@ -16090,7 +16256,10 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%gravboundaryPartner)
     call deallocateAttribute(thisOctal%radiationMomentum)
     call deallocateAttribute(thisOctal%kappaTimesFlux)
+
     call deallocateAttribute(thisOctal%UVvector)
+    call deallocateAttribute(thisOctal%UVvectorPlus)
+    call deallocateAttribute(thisOctal%UVvectorMinus)
     call deallocateAttribute(thisOctal%phi_i)
     call deallocateAttribute(thisOctal%phi_i_plus_1)
     call deallocateAttribute(thisOctal%phi_i_minus_1)

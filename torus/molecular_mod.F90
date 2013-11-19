@@ -267,7 +267,7 @@ module molecular_mod
  ! Same routine for benchmark molecule (slightly different file format)
    subroutine readBenchmarkMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
-     use inputs_mod, only : molAbundance, zeroGhosts
+     use inputs_mod, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=200):: dataDirectory, filename
@@ -363,6 +363,7 @@ module molecular_mod
      use inputs_mod, only : vturb, restart, isinLTE, &
           addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts
+
 
 !         plotlevels
 !     type(VECTOR) :: pos
@@ -578,7 +579,7 @@ module molecular_mod
 #ifdef HYDRO
               if(zeroghosts) then
                  if(thisOctal%ghostcell(subcell)) then
-                    thisOctal%molAbundance(subcell) = 1.d-30
+                    thisOctal%molAbundance(subcell) = 1.e-30
                  end if
               end if
 #endif
@@ -773,7 +774,7 @@ module molecular_mod
            else
               allocate(thisoctal%convergence(1:thisoctal%maxchildren))
            endif
-                     
+           
         endif
 
      enddo
@@ -1771,7 +1772,8 @@ end subroutine molecularLoop
 		
 ! Determine how many velocity samples should be taken per grid cell.
 ! If fixedrays then always check.
-! If ever greater than 2 then always calculate in this cell for rest of calculation.
+! If ever greater than 2 then always calculate in this cell for rest of calculation
+
         if(fixedrays .or. thisOctal%nsplit(subcell) .gt. 2) then
            startVel = velocity(currentposition, grid) 
            endPosition = currentPosition + tval * direction
@@ -2661,7 +2663,13 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       call deleteFitsFile (filename, status)
       call writeinfo('Writing Cube to Fits file: '//trim(filename), TRIVIAL)
       call writedatacube(cube, filename)
+      call writeinfo('Writing VTK', TRIVIAL)
+      call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/"J=0       ",&
+           "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       ", "rho       "/))
+      call writeinfo('Done', TRIVIAL)
+
    endif
+
 #endif
 !     call createFluxSpectra(cube, thismolecule, itrans)
 
@@ -4042,6 +4050,12 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            write(310,'(es12.5e2,4x,14(es14.6e2,tr2))') r*1.e10, pops(1:min(14,maxlevel))
 ! fracChangeGraph
            write(32,'(es12.5e2,4x,14(f8.5,tr2))') r*1.e10, fracChange(1:min(14,minlevel))
+
+      call writeinfo('Writing VTK', TRIVIAL)
+      call writeVTKfile(grid, "latestStep.vtk", valueTypeString=(/"J=0       ",&
+           "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       ", "rho       "/))
+      call writeinfo('Done', TRIVIAL)
+
 ! departcoeffs.dat
            if(getdepartcoeffs) write(34,'(es12.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)
         endif
@@ -4789,7 +4803,7 @@ END SUBROUTINE sobseq
    lowmemory        = .false.
 
 ! molecular weight is used for column density calculation
-   thisMolecule%molecularWeight = mHydrogen / amu
+   thisMolecule%molecularWeight = real(mHydrogen / amu)
 
 ! Set up 21cm line
    allocate( thisMolecule%transfreq(1) )
@@ -4965,9 +4979,9 @@ end subroutine compare_molbench
                   thisOctal%molAbundance(subcell) = real(readparameterfrom2dmap(rvec,out,.true.))
                endif
             else
-               thisOctal%temperature(subcell) = tcbr
+               thisOctal%temperature(subcell) = real(tcbr)
                thisOctal%rho(subcell) = 1d-20
-               thisOctal%molAbundance(subcell) = 1d-20
+               thisOctal%molAbundance(subcell) = 1e-20
             endif
          else
             

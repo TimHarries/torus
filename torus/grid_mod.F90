@@ -95,7 +95,7 @@ contains
     
     case("toruslogo")
        grid%geometry = "toruslogo"
-       grid%rStar1 = rSol/1.e10
+       grid%rStar1 = real(rSol/1.e10)
 
     case("whitney")
        grid%geometry = "whitney"
@@ -116,7 +116,7 @@ contains
        grid%geometry = "circumbin"
        grid%rInner = rInner
        grid%rOuter = rOuter
-       grid%rCore = rSol/1.e10
+       grid%rCore = real(rSol/1.e10)
 
     case("shakara")
        grid%geometry = "shakara"
@@ -159,7 +159,7 @@ contains
        oneKappa = .true.
 
     case("lexington","fractal","runaway")
-       grid%rCore = 18.67 * rSol / 1.e10
+       grid%rCore = real(18.67 * rSol / 1.e10)
        grid%rInner = rinner
        grid%rOuter = 2.e09
        grid%oneKappa = .true.
@@ -198,7 +198,7 @@ contains
        call initTestAMR(grid)
 
     case("starburst")
-       grid%rCore = 18.67 * rSol / 1.e10
+       grid%rCore = real(18.67 * rSol / 1.e10)
        grid%rInner = rinner
        grid%rOuter = 2.e09
        grid%oneKappa = .true.
@@ -429,7 +429,7 @@ contains
 
     grid%geometry = "ellipse"
 
-    grid%rCore = rSol / 1.e10
+    grid%rCore = real(rSol / 1.e10)
     grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
     grid%inUse = .false.
 
@@ -985,11 +985,11 @@ contains
     grid%lineEmission = .false.
 
     grid%rCore = rCool
-    sigmaScaBlue = (34.+6.6)*sigmaE * 1.e10
-    sigmaAbsBlue = 1.e-5 * sigmaE * 1.e10
+    sigmaScaBlue = real((34.+6.6)*sigmaE * 1.e10)
+    sigmaAbsBlue = real(1.e-5 * sigmaE * 1.e10)
 
-    sigmaScaRed = 1.e-5 * sigmaE * 1.e10
-    sigmaAbsRed = 1.e-5 * sigmaE * 1.e10
+    sigmaScaRed = real(1.e-5 * sigmaE * 1.e10)
+    sigmaAbsRed = real(1.e-5 * sigmaE * 1.e10)
 
     write(*,'(a)') "Filling raman grid..."
     allocate(grid%kappaAbsRed(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1),stat=ierr)

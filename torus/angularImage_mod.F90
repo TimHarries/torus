@@ -76,7 +76,7 @@ module angularImage
 
       if ( h21cm ) then 
 ! molecular weight is used for column density calculation
-         thisMolecule%molecularWeight = mHydrogen / amu
+         thisMolecule%molecularWeight = real(mHydrogen / amu)
 
 ! Set up 21cm line
          allocate( thisMolecule%transfreq(1) )
@@ -859,7 +859,7 @@ module angularImage
 
    subroutine map_dI_to_particles(grid)
 
-    use inputs_mod, only: sphdatafilename, convertRhoToHI
+    use inputs_mod, only: sphdatafilename
     use sph_data_class, only: sphdata, read_sph_data_wrapper
     use octal_mod, only: octal 
     use amr_mod, only: inOctal, findSubcellTD

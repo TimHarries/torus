@@ -450,7 +450,7 @@ contains
   end subroutine findTotalMassWithinRMPIPrivate
 
   recursive subroutine findMaxR(thisOctal, radius)
-    use inputs_mod, only : hydrodynamics, cylindricalHydro
+!   use inputs_mod, only : hydrodynamics, cylindricalHydro
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec
@@ -554,7 +554,7 @@ contains
 
   subroutine findEnergyOverAllThreads(grid, energy)
     use mpi
-    use inputs_mod, only : cylindricalHydro
+!    use inputs_mod, only : cylindricalHydro
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: energy
     real(double), allocatable :: energyOnThreads(:), temp(:)
@@ -810,7 +810,7 @@ contains
 
   subroutine receiveAcrossMpiBoundary(grid, boundaryType, receiveThread, sendThread)
     use mpi
-    use inputs_mod, only : useTensorViscosity, smallestCellSize
+    use inputs_mod, only :  smallestCellSize
 
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -1368,7 +1368,7 @@ contains
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
     use mpi
-    use inputs_mod, only : useTensorViscosity
+!    use inputs_mod, only : useTensorViscosity
     integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -1970,7 +1970,7 @@ contains
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
     use mpi
-    use inputs_mod, only : useTensorViscosity
+!    use inputs_mod, only : useTensorViscosity
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
@@ -2137,7 +2137,7 @@ contains
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
        rhoe, pressure, flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
-    use inputs_mod, only : useTensorViscosity, cylindricalHydro
+!    use inputs_mod, only : useTensorViscosity, cylindricalHydro
 
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
@@ -3533,7 +3533,7 @@ end subroutine writeRadialFile
 
  recursive subroutine dumpDensitySpectrumOther(thisOctal)
     use mpi 
-    use inputs_mod, only : griddistancescale
+!    use inputs_mod, only : griddistancescale
     implicit none
     type(OCTAL), pointer :: thisOctal, childOctal
     integer :: subcell!, childSubcell
@@ -3770,7 +3770,7 @@ end subroutine writeRadialFile
   
 #ifdef HYDRO
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
-    use inputs_mod, only : maxDepthAMR, minDepthAmr
+    use inputs_mod, only : maxDepthAMR!, minDepthAmr
     use octal_mod, only: subcellRadius
     use mpi
     use qshep3d_mod
@@ -4395,7 +4395,7 @@ end subroutine writeRadialFile
 
   subroutine returnAddNewChildCornerArrays(thisOCtal, topOctal, topOctalSubcell, grid, rhoCorner, rhoeCorner, rhouCorner, &
        rhovCorner, rhowCorner, eCorner, phiCorner, pressureCorner)
-    use inputs_mod, only : maxDepthAMR, minDepthAmr
+    use inputs_mod, only : maxDepthAMR!, minDepthAmr
     use mpi
     type(OCTAL), pointer :: thisOctal, topOctal
     type(GRIDTYPE) :: grid
@@ -4561,7 +4561,7 @@ end subroutine writeRadialFile
 
   subroutine returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell,  grid, rhoPoint, rhoePoint, &
        rhouPoint, rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint, npoints)
-    use inputs_mod, only : maxDepthAMR, minDepthAmr
+    use inputs_mod, only : maxDepthAMR!, minDepthAmr
     use mpi
     type(OCTAL), pointer :: thisOctal, topOctal
     type(GRIDTYPE) :: grid
@@ -5120,11 +5120,12 @@ end subroutine writeRadialFile
 
 #ifdef PDR
   subroutine getRayTracingValuesPDR_TWO(grid, inputposition, direction, CII_POP, CI_POP, OI_POP, C12O_POP, tVal,&
-       HplusFrac)
+       temperature)
+!       HplusFrac)
 
     use mpi
     type(GRIDTYPE) :: grid
-    real(double), intent(out) :: HplusFrac, CII_POP(5), CI_POP(5), OI_POP(5), C12O_POP(41)
+    real(double), intent(out) :: CII_POP(5), CI_POP(5), OI_POP(5), C12O_POP(41), temperature
     type(VECTOR) :: position, rVec, direction
     type(VECTOR), intent(in) :: inputposition
     real(double) :: loc(7)
@@ -5147,7 +5148,8 @@ end subroutine writeRadialFile
     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
 !58
        rVec = subcellCentre(thisOctal, subcell)
-       Hplusfrac = thisOctal%ionfrac(subcell, 2)
+!       Hplusfrac = thisOctal%ionfrac(subcell, 2)
+       temperature = thisOctal%temperature(subcell)
        CII_POP = thisOctal%CII_POP(subcell, :)!5
        CI_POP = thisOctal%CI_POP(subcell, :)!5
        OI_POP = thisOctal%OI_POP(subcell, :)!5
@@ -5174,7 +5176,8 @@ end subroutine writeRadialFile
             localWorldCommunicator, status, ierr)
   !     print *, "recvd"
        tval = tempstorage(1)
-       Hplusfrac = tempstorage(2)
+!       Hplusfrac = tempstorage(2)
+       temperature = tempstorage(2)
        do counter = 1, 5
           CII_POP(counter) = tempstorage(counter + 2)
           CI_POP(counter) = tempstorage(counter + 7)
@@ -5251,7 +5254,8 @@ end subroutine writeRadialFile
           call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
           rVec = subcellCentre(thisOctal, subcell)
           tempstorage(1) = tval
-          tempstorage(2) = thisOctal%ionfrac(subcell, 2)
+!          tempstorage(2) = thisOctal%ionfrac(subcell, 2)
+          tempstorage(2) = thisOctal%temperature(subcell)
           do counter = 1, 5
              tempstorage(counter + 2) = thisOctal%CII_POP(subcell, counter)
              tempstorage(counter + 7) = thisOctal%CI_POP(subcell, counter)
@@ -5270,18 +5274,18 @@ end subroutine writeRadialFile
 
 
 
-  subroutine getRayTracingValuesPDR(grid, inputposition, direction, rho, uvx, uvy, uvz, Hplusfrac, tval, &
-       abundanceArray)
+  subroutine getRayTracingValuesPDR(grid, inputposition, direction, rho, uvx, uvy, uvz, &
+       uvx2, uvy2, uvz2, temperature, tval, abundanceArray)
 !       radially, searchRadius)
     use mpi
     type(GRIDTYPE) :: grid
-    real(double), intent(out) :: rho, uvx, uvy, uvz, HplusFrac
+    real(double), intent(out) :: rho, uvx, uvy, uvz, temperature, uvx2, uvy2, uvz2
     type(VECTOR) :: position, rVec, direction
     type(VECTOR), intent(in) :: inputposition
     real(double) :: loc(7)
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
-    integer, parameter :: nStorage = 39
+    integer, parameter :: nStorage = 42
 !    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval, abundanceArray(1:33)
     integer :: subcell
@@ -5300,6 +5304,8 @@ end subroutine writeRadialFile
 !       print *, "finding cell at ", position
        call findSubcellLocal(position, thisOctal, subcell)
     else
+       print *, "OUTSIDE GRID ERROR"
+       stop
        notOnThread = .true.
     endif
 
@@ -5325,20 +5331,41 @@ end subroutine writeRadialFile
        uvy = tempstorage(3)
        uvz = tempstorage(4)
        tval = tempstorage(5)
-       Hplusfrac = tempstorage(6)
+!       Hplusfrac = tempstorage(6)
+       temperature = tempstorage(6)
        abundancearray(1:33) = tempstorage(7:39)
-       
-       
+       uvx2 = tempstorage(40)
+       uvy2 = tempstorage(41)
+       uvz2 = tempstorage(42)
+
+
+       if(tval == 0.d0) then
+          print *, "tval zero A"
+          stop
+       endif
+
     elseif (octalOnThread(thisOctal, subcell, myrankGlobal)) then       
 
        rVec = subcellCentre(thisOctal, subcell)
        rho = thisOctal%rho(subcell)
-       uvx = thisOctal%uvvector(subcell)%x
-       uvy = thisOctal%uvvector(subcell)%y
-       uvz = thisOctal%uvvector(subcell)%z
-       Hplusfrac = thisOctal%ionfrac(subcell, 2)
+!       uvx = thisOctal%uvvector(subcell)%x
+!       uvy = thisOctal%uvvector(subcell)%y
+!       uvz = thisOctal%uvvector(subcell)%z
+       uvx = thisOctal%uvvectorPlus(subcell)%x
+       uvy = thisOctal%uvvectorPlus(subcell)%y
+       uvz = thisOctal%uvvectorPlus(subcell)%z
+       uvx2 = thisOctal%uvvectorMinus(subcell)%x
+       uvy2 = thisOctal%uvvectorMinus(subcell)%y
+       uvz2 = thisOctal%uvvectorMinus(subcell)%z
+       temperature = thisOctal%temperature(subcell)
        abundanceArray(:) = thisOctal%abundance(subcell, :)
        call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
+
+       if(tval == 0.d0) then
+          print *, "tval zero A"
+          stop
+       endif
+
     else
 !       call torus_abort("error in pdr server")
        iThread = thisOctal%mpiThread(subcell)
@@ -5362,9 +5389,16 @@ end subroutine writeRadialFile
        uvy = tempstorage(3)
        uvz = tempstorage(4)
        tval = tempstorage(5)
-       Hplusfrac = tempstorage(6)
+       temperature = tempstorage(6)
        abundancearray(1:33) = tempstorage(7:39)
+       uvx2 = tempstorage(40)
+       uvy2 = tempstorage(41)
+       uvz2 = tempstorage(42)
 
+       if(tval == 0.d0) then
+          print *, "tval zero A"
+          stop
+       endif
 
     endif
   end subroutine getRayTracingValuesPDR
@@ -5380,7 +5414,7 @@ end subroutine writeRadialFile
 !    type(OCTAL), pointer :: topOctal
     integer :: subcell!, nworking!, topOctalSubcell
     integer :: iThread!, servingArray!, workingTHreads(nworking)
-    integer, parameter :: nStorage = 39
+    integer, parameter :: nStorage = 42
 !    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval!, tmpthread
     integer :: status(MPI_STATUS_SIZE)
@@ -5456,12 +5490,18 @@ end subroutine writeRadialFile
           call distanceToCellBoundary(grid, position, direction, tVal, thisOctal)
           rVec = subcellCentre(thisOctal, subcell)
           tempStorage(1) = thisOctal%rho(subcell)
-          tempStorage(2) = thisOctal%UVvector(subcell)%x
-          tempStorage(3) = thisOctal%UVvector(subcell)%y
-          tempStorage(4) = thisOctal%UVvector(subcell)%z
+!          tempStorage(2) = thisOctal%UVvector(subcell)%x
+!          tempStorage(3) = thisOctal%UVvector(subcell)%y
+!          tempStorage(4) = thisOctal%UVvector(subcell)%z
+          tempStorage(2) = thisOctal%UVvectorPlus(subcell)%x
+          tempStorage(3) = thisOctal%UVvectorPlus(subcell)%y
+          tempStorage(4) = thisOctal%UVvectorPlus(subcell)%z
           tempStorage(5) = tval
-          tempStorage(6) = thisOctal%ionfrac(subcell, 2)
+          tempStorage(6) = thisOctal%temperature(subcell)
           tempStorage(7:39) = thisOctal%abundance(subcell, 1:33)
+          tempStorage(40) = thisOctal%UVvectorMinus(subcell)%x
+          tempStorage(41) = thisOctal%UVvectorMinus(subcell)%y
+          tempStorage(42) = thisOctal%UVvectorMinus(subcell)%z
           call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, iThread, tag, &
                localWorldCommunicator, ierr)
        endif

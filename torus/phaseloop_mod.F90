@@ -1812,7 +1812,7 @@ CONTAINS
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
 !$OMP PRIVATE(tempOctal, tempsubcell, thistaudble, finaltau ) &
 !$OMP SHARED(iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
-!$OMP SHARED(grid, nContPhotons, nPhotons, lineEmission, lamLine, nLambda, positionAngle) &
+!$OMP SHARED(grid, nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
 !$OMP SHARED(weightLinePhoton, weightSource, flatSpec, secondSource, secondSourcePosition) &
 !$OMP SHARED(ramanSourceVelocity, doRaman) &
 !$OMP SHARED(weightContPhoton, outVec)&
@@ -2192,7 +2192,7 @@ CONTAINS
                     if (.not.contWindPhoton) then
                        fac1 = real(2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi)
                     else
-                       fac1 = oneOnfourPi
+                       fac1 = real(oneOnfourPi)
                     endif
                     
                     vray = -(thisPhoton%velocity .dot. outVec)

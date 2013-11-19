@@ -322,7 +322,7 @@ contains
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, pdrcalc
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics, UV_vector
+         lucy_undersampled, molecularPhysics, hydrodynamics!, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
@@ -360,8 +360,10 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
+
     use photoion_utils_mod, only: setupphotogrid
     use inputs_mod, only : optimizeStack
+
 #ifdef HYDRO
     use photoionAMR_mod, only: radiationHydro
 #endif
@@ -472,6 +474,8 @@ contains
         endif
         lowMemory = .false.
         call molecularLoop(grid, globalMolecule)
+        call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/"J=0       ",&
+             "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       "/))
      endif
 #endif
 

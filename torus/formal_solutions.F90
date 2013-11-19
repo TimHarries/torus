@@ -886,7 +886,7 @@ contains
     
 
     ! initialize variables
-    sqrt_pi = SQRT(piDouble)
+    sqrt_pi = real(SQRT(piDouble))
     hitcore = .false.
     rVec = aVec
     error = 0
@@ -1725,7 +1725,7 @@ contains
 
       ! the projected speed increment is smaller than dvel
       ! we add nAdd points in between.      
-      dvel = 10.e5/cspeed ! 10 km/s
+      dvel = real(10.e5/cspeed) ! 10 km/s
 
       newNTau = 0
       unsafe_position = .false.

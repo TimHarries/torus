@@ -196,7 +196,7 @@ SUBROUTINE find_Ccoeff(NTEMP,NLEV,TEMPERATURE,TEMPERATURES,H_COL,HP_COL,EL_COL,H
 !  Calculate the H2 ortho/para ratio at equilibrium for the specified
 !  temperature and the resulting fractions of H2 in para & ortho form
    FPARA=0.0D0 ; FORTHO=0.0D0
-   IF(H2_abd.GT.0.0D0) THEN
+   IF(H2_abd.GT.0.0D0 .and. TEMPERATURE/=0.d0) THEN
       FPARA=1.0D0/(1.0D0+9.0D0*EXP(-170.5D0/TEMPERATURE))
       FORTHO=1.0D0-FPARA
    ENDIF
@@ -233,7 +233,7 @@ SUBROUTINE find_Ccoeff(NTEMP,NLEV,TEMPERATURE,TEMPERATURES,H_COL,HP_COL,EL_COL,H
 
 !     Calculate the "distance" between the two temperature
 !     values, to be used in the linear interpolation below
-      IF(KLO.EQ.KHI) THEN
+      IF(KLO.EQ.KHI .or. (TEMPERATURES(PARTNER_ID,KHI)-TEMPERATURES(PARTNER_ID,KLO)) == 0.d0) THEN
          STEP=0.0D0
       ELSE
          STEP=(TEMPERATURE-TEMPERATURES(PARTNER_ID,KLO)) &

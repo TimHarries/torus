@@ -349,7 +349,7 @@ contains
     real :: vRaman
 
 
-    vRaman = 500.*1.e5/cSpeed
+    vRaman = real(500.*1.e5/cSpeed)
 
 
 
@@ -402,7 +402,7 @@ contains
     integer :: i1,i2,i3
     character(len=*) :: ramanDist
 
-    mHot = 0.6 * mSol
+    mHot = real(0.6 * mSol)
     rDisk = real(modulus(hotSourcePosition-coolStarPosition)/2.)
 
     zAxis = VECTOR(0.,0.,1.)
@@ -658,7 +658,7 @@ contains
        enddo
 
     case ("bipolar")
-       openingAng = 20.*degToRad
+       openingAng = real(20.*degToRad)
        do i = 1, grid%nx
           do j = 1, grid%ny
              do k = 1, grid%nz                
@@ -689,7 +689,7 @@ contains
     end select
 
     if (bipolar) then
-      openingAng = 20.*degToRad
+      openingAng = real(20.*degToRad)
        do i = 1, grid%nx
           do j = 1, grid%ny
              do k = 1, grid%nz                

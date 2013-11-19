@@ -37,8 +37,9 @@ contains
   end function inFlowMahdaviArray
 
   real(double) function pMahdavi(rVec)
-    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
-         TTauriDiskHeight
+!    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
+!         TTauriDiskHeight
+    use inputs_mod, only : dipoleOffset
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
     real(double) :: rDash, phiDash, beta

@@ -288,11 +288,12 @@ contains
           n = 1.125
           rVec = subcellCentre(thisOctal,subcell)
           r = real(modulus(rVec*1.d10))
-          vkep = sqrt(bigG*sourceMass(1)/r)
+          vkep = sqrt(bigG*sourceMass(1)/(r*1.d10))
           cs = soundSpeed(thisOctal, subcell)
           eta = n *(cs**2/vkep**2)
-          thisVel = vkep*(1.d0-eta*(abs(rVec%z)/r)**2)
-          thisOctal%rhow(subcell) = thisOctal%rho(subcell) * thisVel
+          thisVel = vkep*(1.d0-eta*(abs(rVec%z)/r**3)**2)
+          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
+!          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
        endif
     enddo
   end subroutine imposeAzimuthalVelocity
@@ -2554,7 +2555,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforce(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : radiationPressure, nBodyPhysics
+    use inputs_mod, only  : radiationpressure
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction
@@ -2705,7 +2706,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceCylindrical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : radiationPressure, nBodyPhysics, includePressureTerms
+    use inputs_mod, only : includePressureTerms, radiationpressure
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks
@@ -2870,7 +2871,7 @@ contains
                 !THAW - NULLIFYING TORQUE FOR DEBUGGING PURPOSES
 !                if(0 /= 0) then
                    thisoctal%rhov(subcell) = thisoctal%rhov(subcell) + dt * fVisc%y * r ! torque
-!                end if
+ !               end if
 
 !                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
 !                      write(*,*) "u speed over 200 after centrifugal forces"
@@ -3037,7 +3038,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceSpherical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : radiationPressure, nBodyPhysics, includePressureTerms
+    use inputs_mod, only : includePressureTerms, radiationpressure
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks
@@ -3374,7 +3375,7 @@ contains
     logical, save :: firstTime = .true.!, uKineticSave=.true.
 !    real(double), parameter :: Teq = 1.d0
     real(double) ::  u_A!, u_kinetic, u_B
-    real, parameter :: temperatureUnit = (2.33d0*mHydrogen/(kerg))!*(3.d0/2.d0)*((5.d0/3.d0)-1.d0)))
+    real, parameter :: temperatureUnit = real(2.33d0*mHydrogen/(kerg))!*(3.d0/2.d0)*((5.d0/3.d0)-1.d0)))
     real :: oldT
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -4019,7 +4020,7 @@ contains
 
 !copy advecting quantity q back to cell rho
   recursive subroutine copyqtorhoSpherical(thisoctal, direction)
-    use inputs_mod, only : rhoFloor
+!    use inputs_mod, only : rhoFloor
     type(vector) :: direction
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -5110,6 +5111,7 @@ end subroutine sumFluxes
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
 
        !modify rhou and rhoe due to pressure/gravitational potential gradient
+       if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
        if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
     enddo
@@ -5343,11 +5345,11 @@ end subroutine sumFluxes
                 speed = thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2
              endif
              if(speed > hydroSpeedLimit) speed = hydrospeedlimit
-
+             
              if(sphericalHydro) then
                 speed = thisOctal%rhou(subcell)**2
              end if
-
+             
              speed = sqrt(speed)/thisOctal%rho(subcell)
              tc = min(tc, dx / max(1.d-30,(cs + speed)) )
              
@@ -5408,7 +5410,7 @@ end subroutine sumFluxes
   end subroutine computeCourantV
 
   subroutine pressureGradientTimeStep(grid, dt, npairs,thread1,thread2,nbound,group,ngroup)
-    use inputs_mod, only : amr3d, doselfgrav
+    use inputs_mod, only : amr3d
     integer :: nPairs, thread1(:), thread2(:), group(:), nBound(:), ngroup
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -10047,7 +10049,7 @@ real(double) :: rho
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
-    use inputs_mod, only : amrspeedtol, amrionfractol, rhoThreshold, captureshocks
+    use inputs_mod, only : amrspeedtol, amrionfractol,  captureshocks
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -14680,7 +14682,7 @@ end subroutine minMaxDepth
              jsp = modulus(pointPosition.cross.pointVelocity)
              esp = 0.5d0*modulus(pointVelocity)**2 - bigG*source%mass/modulus(pointPosition)
              if (esp > 0.d0) then
-                rMin = 1.d30
+                rMin = 1.e30
              else
                 rMin = real(-((bigG*source%mass)/(2.d0 * esp)) * &
                      (1.d0 - sqrt(1.d0 + (2.d0 * jsp * esp)/(bigG*source%mass)**2)))

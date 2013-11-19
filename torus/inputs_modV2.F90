@@ -6,7 +6,9 @@ module inputs_mod
   use kind_mod
   use constants_mod
   use units_mod
+#ifdef USEZLIB
   use zlib_mod, only : uncompressedDumpFiles, buffer, nbuffer
+#endif
   implicit none
 
   include "input_variables.f90"
@@ -30,7 +32,9 @@ contains
     integer :: ierr
 #endif 
     logical :: ok
+#ifdef USEZLIB
     logical :: compresseddumpfiles
+#endif
     character(len=lencLine), allocatable :: cLine(:) 
     character(len=lencLine) :: thisLine
     character(len=80) :: message
@@ -132,12 +136,13 @@ contains
     call getLogical("novtkgrid", noVtkGrid, cLine, fLine, nLines, &
          "Suppress VTK grid files: ","(a,1l,1x,a)", .false., ok, .false.)
 
+#ifdef USEZLIB
     call getLogical("compressdumps", compressedDumpFiles, cLine, fLine, nLines, &
          "Use compressed dump files: ","(a,1l,1x,a)", .false., ok, .false.)
     uncompressedDumpFiles = .not.compressedDumpFiles
     nbuffer = 0
     buffer = 0
-
+#endif
     call getLogical("parallelvtu", parallelVTUfiles, cLine, fLine, nLines, &
          "Use parallel VTU files: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -367,12 +372,15 @@ contains
          "Include pdr treatment with healpix: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if(pdrcalc) then
+    call getLogical("uvfromphoto", uvfromphoto, cLine, fLine, nLines, &
+         "Use UV field from photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getInteger("hlevel", hlevel, cLine, fLine, nLines, &
             "Level of healpix refinement : ","(a,i8,a)", 2, ok, .false.)
 
        call getDouble("v_turb", v_turb, 1.d0, cLine, fLine, nLines, &
             "Turbulent velocity (cm/s): ", "(a,f7.1,1x,a)", 1.d0, ok, .false.)
-       spherical = .false.
+!       spherical = .false.
     end if
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
@@ -443,6 +451,16 @@ contains
     call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
          "Smooth AMR grid: ","(a,1l,1x,a)", .true., ok, .false.)
 
+    call getLogical("logspacegrid", logSpaceGrid, cLine, fLine, nLines, &
+         "Try and sample a log spaced  AMR grid (x-dir only): ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if(logspacegrid) then
+       call getInteger("npoints", npoints, cLine, fLine, nLines, &
+            "Number of points on grid : ","(a,i8,a)", 100, ok, .false.)
+       
+       call getInteger("nmag", nMag, cLine, fLine, nLines, &
+            "number of orders of magnitude spanned : ","(a,i8,a)", 10, ok, .false.)
+    endif
     call getReal("smoothfactor", smoothFactor, 1.0, cLine, fLine, nLines, &
          "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
@@ -1970,12 +1988,21 @@ contains
     call getLogical("UV_vector", UV_vector, cLine, fLine, nLines, &
          "Dump UV vectors to file for 3D-PDR: ","(a,1l,a)", .false., ok, .false.)
 
+    if(UV_vector) then
+       call getDouble("UV_low", UV_low, 1.d0, cLine, fLine, nLines, &
+            "Lower bound of UV energy field (eV):  ","(a,e12.3,1x,a)", 5.d0, ok, .false.)
+
+       call getDouble("UV_high", UV_high, 1.d0, cLine, fLine, nLines, &
+            "Lower bound of UV energy field (eV):  ","(a,e12.3,1x,a)", 50.d0, ok, .false.)
+    endif
+
     if(nodiffusefield .or. UV_vector) then
        call getLogical("monochromatic", monochromatic, cLine, fLine, nLines, &
             "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)
-
-       call getDouble("inputEV", inputEV, 1.d0, cLine, fLine, nLines, &
-            "Energy of monochromatic photons (eV):  ","(a,e12.3,1x,a)", 5.d0, ok, .false.)
+       if(monochromatic) then
+          call getDouble("inputEV", inputEV, 1.d0, cLine, fLine, nLines, &
+               "Energy of monochromatic photons (eV):  ","(a,e12.3,1x,a)", 5.d0, ok, .false.)
+       endif
     end if
 
 
@@ -2241,6 +2268,10 @@ contains
 
     call getReal("cfl", cflNumber, 1., cLine, fLine, nLines, &
          "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
+
+    call getLogical("gascourant", forcegascourant, cLine, fLine, nLines, &
+         "Only use the gas courant condition: ","(a,1l,a)", .false., ok, .false.)
+
 
     call getLogical("modelwashydro", modelwashydro, cLine, fLine, nLines, &
          "Grid is based on hydro or radiation hydro calculation: ","(a,1l,a)", .false., ok, .false.)
@@ -2859,6 +2890,7 @@ contains
     character(len=10) :: axisUnits
     character(len=10) :: fluxUnits
     character(len=80) :: outputImageType, imageFilename
+
     integer :: thisnpixels, npixels, nimage
     real :: lambdaImage, thisLambdaImage
     real :: imagesize, thisImageSize, wholeGrid

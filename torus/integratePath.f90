@@ -1725,7 +1725,7 @@ end subroutine integratePathAMR
     
     
     real(double) :: deltaNu, DopplerWidth
-    real :: meanMoleMass = mHydrogen
+    real :: meanMoleMass = real(mHydrogen)
     real(double) :: a
     real(double) :: Hay, dv, Vn1, Vn2, Vrel
     real(double) :: T_mid, Ne_mid, N_HI_mid, chiline_mid, projVel_mid
@@ -1757,7 +1757,7 @@ end subroutine integratePathAMR
 
     !
     ! initialize variables
-    sqrt_pi = SQRT(pi)
+    sqrt_pi = real(SQRT(pi))
     hitcore = .false.
     rVec = aVec
     escProb = 1.

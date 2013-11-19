@@ -16,6 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
+sundials = yes
 hdf = no
 memcheck = yes
 zlib = yes
@@ -28,8 +29,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
-pdr = no
-sundials = no
+pdr = yes
 hydro = yes
 molecular = yes
 photoion = yes
@@ -117,10 +117,32 @@ ifeq ($(SYSTEM), gfortran)
         F95COMP = gfortran
     endif
      ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+#    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     EXE = torus.gfortran
+    KNOWN_SYSTEM = yes
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
+endif
+
+ifeq ($(SYSTEM), thaw)
+#    ifeq ($(mpi), yes)
+        F95COMP = mpif90
+#        F95COMP+=-I/sw/hdf5_intel/include
+        MPIFLAG = -DMPI
+#    else
+#        F95COMP = gfortran
+#    endif
+#     ZLIBLIBS = -lz
+#    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormalx
+#    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+
+
+    FASTFLAG = -O3
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    EXE = torus.haworth
     KNOWN_SYSTEM = yes
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 endif
@@ -216,7 +238,6 @@ ifeq ($(SYSTEM), zen)
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
 
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
-#    DEBUGFLAG=-g3 -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
 # Uncomment this line to include MPI correctness checking 
 # It is not enabled by default as it can be slow
 #    DEBUGFLAG += -check_mpi
@@ -301,7 +322,7 @@ ifeq ($(SYSTEM), omp)
 endif
 
 ifeq ($(SYSTEM), ceres)
-    F95COMP  = mpiifort
+    F95COMP  = mpif90
     FASTFLAG  = -O3 -xhost
     DEBUGFLAG=-g -O0 -traceback -fpe0 
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
@@ -311,16 +332,8 @@ ifeq ($(SYSTEM), ceres)
     KNOWN_SYSTEM = yes
 endif
 
-ifeq ($(SYSTEM), archimedes)
-    F95COMP= mpif90
-    FASTFLAG= -O3
-    MPIFLAG = -DMPI
-    KNOWN_SYSTEM = yes
-    DEBUGFLAG= -g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
-    CFITSIOLIBS = -lcfitsio
-    ZLIBLIBS = -lz
-    EXE = torus.archimedes
-endif
+
+#CFITSIOLIBS = -L/home/thaworth/local/cfitsio/lib -lcfitsio
 
 #
 # Deal with make options
@@ -336,7 +349,11 @@ endif
 #SUNFLAG = -sundials
 
 ifeq ($(sundials), yes)
-    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials
+#    SUNDIALSLIBRARIES = -L/media/GEN/sundials/v2/lib #-sundials
+#    SUNDIALSINC = -I/media/GEN/sundials/v2/include #-sundials
+#    SUNDIALSLIBRARIES = -L/media/GEN/sundials/v2/lib #-sundials
+#    SUNDIALSINC = -I/media/GEN/sundials/v2/include #-sundials
+    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials                                                                                                                                         
     SUNDIALSINC = -I/sw/sundials-2.5.0/include #-sundials
     SLIBS = -lsundials_cvode -lsundials_nvecserial -lm
     ETCFLAG += -DUSESUNDIALS
@@ -550,7 +567,6 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
 
 F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE)
 GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
-
 #
 #
 
