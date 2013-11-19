@@ -9559,7 +9559,7 @@ endif
     thisOctal%rho(subcell) = min_rho
 
 !    thisOctal%temperature(subcell) = 1.d4
-    thisOctal%temperature(subcell) = thisOCtal%dust_t(subcell)
+    thisOctal%temperature(subcell) = real(thisOCtal%dust_t(subcell))
     thisOctal%temperature(subcell) = 500.0
 
     if(photoionPhysics) then
@@ -9585,7 +9585,8 @@ endif
        ! Calculate density and check the exponential won't underflow
 
 !       if ( rVec%z/hr < 20.0 ) THEN
-          hr = dble(((kerg*dble(thisOctal%temperature(subcell))/mhydrogen)**0.5)*((bigG*sourcemass(1)/(disttostar*1.d10)**3)**(-0.5)))
+       hr = dble(((kerg*dble(thisOctal%temperature(subcell))/mhydrogen)**0.5)*((bigG*sourcemass(1)/&
+            (disttostar*1.d10)**3)**(-0.5)))
           thisOctal%rho(subcell) = rho*exp(-((rVec%z*1.d10)/(2.d0*hr))**2)
           thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
 

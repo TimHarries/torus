@@ -101,15 +101,15 @@ subroutine PDR_MAIN(grid)
 !  stop
   call writeInfo("Done.", TRIVIAL)
 
-  if(uv_vector) then
-     if(grid%octreeroot%oned) then
+!  if(uv_vector) then
+!     if(grid%octreeroot%oned) then
         call copyTemperatureToTLast(grid%octreeroot)
-        call writeInfo("Dumping the result post photoionization.", TRIVIAL)
-        write(datFilename, '(a, i4.4, a)') "photofinish.dat"
-        call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
-             VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
-     endif
-  endif
+!        call writeInfo("Dumping the result post photoionization.", TRIVIAL)
+ !       write(datFilename, '(a, i4.4, a)') "photofinish.dat"
+  !      call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+   !          VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
+!     endif
+!  endif
 
 
   call writeInfo("Calculating dust temperature MPI.", TRIVIAL)
