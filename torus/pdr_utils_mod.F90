@@ -1879,7 +1879,7 @@ end function nray_func
 
       IF(START) THEN
          CALL SPLIE2(NCO_GRID,NH2_GRID,SCO_GRID,DIMCO,DIMH2,SCO_DERIV)
-         START=.FALSE.
+!         START=.FALSE.
       ENDIF
 
       LOGNCO=DLOG10(NCO+1.0D0)
