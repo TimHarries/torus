@@ -356,6 +356,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      outfile = sedFileName
   endif
 
+  positionangle = 0.d0
+
   call findMultiFilename(outfile, iModel, tempFilename)
   outfile = tempFilename
 
@@ -1826,7 +1828,7 @@ CONTAINS
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
 !$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImageLocal) &
 !$OMP SHARED(iInner_beg, iInner_end) &
-!$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
+!$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on, positionAngle) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
 !$OMP SHARED(o6yArray, yArray, yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) &
 !$OMP REDUCTION(+: ntot,tooFewSamples, boundaryProbs, negativeOpacity, totalOutputLuminosity)

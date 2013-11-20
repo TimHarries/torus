@@ -315,6 +315,13 @@ contains
 ! Position angle is spherical polar phi
     setImageViewVec = rotateZ(tempVec,dble(myImages(i)%positionAngle))
 
+    tempVec%x = cos(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
+    tempVec%y = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
+    tempVec%z = cos(myImages(i)%inclination)
+
+    setImageViewVec = (-1.d0) * tempVec
+
+
   end function setImageViewVec
 
 ! Return the viewing vector for the ith image

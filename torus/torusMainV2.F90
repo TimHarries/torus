@@ -146,7 +146,7 @@ program torus
      !  call torus_mpi_barrier
      !  goto 666
 
-       call writeVtkFile(grid, "rho.vtk")
+!       call writeVtkFile(grid, "rho.vtk")
      endif
      call setupGlobalSources(grid)
 

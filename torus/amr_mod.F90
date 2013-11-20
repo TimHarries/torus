@@ -3428,7 +3428,7 @@ CONTAINS
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
-    real(double) :: dx
+    real(double) :: dx, cornerDist(8), d, muval(8)
 
     splitInAzimuth = .false.
     split = .false.
@@ -3511,7 +3511,7 @@ CONTAINS
                 exit
              endif
 
-             if((neighbourOctal%nDepth - thisOctal%ndepth) > 1 .and. thisOctal%nDepth < maxDepthAMR) then
+             if((neighbourOctal%nDepth - thisOctal%ndepth) > 1 .and. thisOctal%nDepth < maxdepthAMR) then
                 split = .true.
                 exit
              end if
@@ -3756,6 +3756,35 @@ CONTAINS
              endif
           endif
           
+
+       case("lighthouse")
+          cellCentre = subcellCentre(thisOctal,subcell)
+          d = thisOctal%subcellSize/2.d0
+          cornerDist(1) = modulus(VECTOR(cellCentre%x+d, cellCentre%y+d, cellCentre%z+d))
+          cornerDist(2) = modulus(VECTOR(cellCentre%x-d, cellCentre%y+d, cellCentre%z+d))
+          cornerDist(3) = modulus(VECTOR(cellCentre%x+d, cellCentre%y-d, cellCentre%z+d))
+          cornerDist(4) = modulus(VECTOR(cellCentre%x-d, cellCentre%y-d, cellCentre%z+d))
+          cornerDist(5) = modulus(VECTOR(cellCentre%x+d, cellCentre%y+d, cellCentre%z-d))
+          cornerDist(6) = modulus(VECTOR(cellCentre%x-d, cellCentre%y+d, cellCentre%z-d))
+          cornerDist(7) = modulus(VECTOR(cellCentre%x+d, cellCentre%y-d, cellCentre%z-d))
+          cornerDist(8) = modulus(VECTOR(cellCentre%x-d, cellCentre%y-d, cellCentre%z-d))
+
+          muval(1) = (cellCentre%z+d)/max(1.d-20,modulus(VECTOR(cellCentre%x+d, cellCentre%y+d, cellCentre%z+d)))
+          muval(2) = (cellCentre%z+d)/max(1.d-20,modulus(VECTOR(cellCentre%x-d, cellCentre%y+d, cellCentre%z+d)))
+          muval(3) = (cellCentre%z+d)/max(1.d-20,modulus(VECTOR(cellCentre%x+d, cellCentre%y-d, cellCentre%z+d)))
+          muval(4) = (cellCentre%z+d)/max(1.d-20,modulus(VECTOR(cellCentre%x-d, cellCentre%y-d, cellCentre%z+d)))
+          muval(5) = (cellCentre%z-d)/max(1.d-20,modulus(VECTOR(cellCentre%x+d, cellCentre%y+d, cellCentre%z-d)))
+          muval(6) = (cellCentre%z-d)/max(1.d-20,modulus(VECTOR(cellCentre%x-d, cellCentre%y+d, cellCentre%z-d)))
+          muval(7) = (cellCentre%z-d)/max(1.d-20,modulus(VECTOR(cellCentre%x+d, cellCentre%y-d, cellCentre%z-d)))
+          muval(8) = (cellCentre%z-d)/max(1.d-20,modulus(VECTOR(cellCentre%x-d, cellCentre%y-d, cellCentre%z-d)))
+          do i = 1, 8
+             muVal(i) = acos(max(-1.d0,min(muval(i),1.d0)))
+          enddo
+          if (ANY(cornerDist(1:8) > 50.d0*autocm/1.d10).and. &
+              ANY(cornerDist(1:8) < 50.d0*autocm/1.d10).and.(thisOctal%nDepth<6).and. &
+              ANY(muVal(1:8) > 30.d0*degtorad)) then
+             split = .true.
+          endif
        case("ttauri")
           
           cellCentre = subcellCentre(thisOctal,subcell)
@@ -13748,6 +13777,7 @@ end function readparameterfrom2dmap
                    endif
                 endif
 
+
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
                    if (thisTau > neighbourTau) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
@@ -14150,6 +14180,8 @@ end function readparameterfrom2dmap
              outofmemory = .true.
              if (firstTimeMem) then
                 write(message,'(a)') "Maxmimum memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
+                call writeWarning(message)
+                write(message,'(a)') "Not splitting further."
                 call writeWarning(message)
                 firstTimeMem = .false.
              endif

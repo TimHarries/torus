@@ -465,7 +465,7 @@ contains
          "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
-         "Maximum memory available (Mb): ","(a,i12,a)", 1500, ok, .false.)
+         "Maximum memory available (Mb): ","(a,i12,a)", 2000, ok, .false.)
     maxMemoryAvailable = maxMemoryAvailable * 1000000
 
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)

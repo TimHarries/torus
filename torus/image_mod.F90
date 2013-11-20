@@ -99,7 +99,7 @@ module image_mod
 
      xPix = 0; yPix = 0
 
-     xProj =  zAxis .cross. observerDirection
+     xProj =  observerDirection .cross. zAxis
      call normalize(xProj)
      yProj = observerDirection .cross. xProj
      call normalize(yProj)
@@ -162,19 +162,21 @@ module image_mod
 
      do i = 1, nImage
 
-        xProj =  rotationAxis .cross. viewVec
+        xProj = (-1.d0)*(rotationAxis.cross.viewVec)
+
         call normalize(xProj)
-        yProj = viewVec .cross. xProj
+        yProj = (-1.d0)*(viewVec .cross. xProj)
+
         call normalize(yProj)
            
         xDist = real((thisPhoton%position) .dot. xProj)
         yDist = real((thisPhoton%position) .dot. yProj)
 
-        r = sqrt(xDist**2 + yDist**2)
-        ang = atan2(yDist, xDist)
-        ang = ang + positionAngle
-        xDist = r * real(cos(ang))
-        yDist = r * real(sin(ang))
+!        r = sqrt(xDist**2 + yDist**2)
+!        ang = atan2(yDist, xDist)
+!        ang = ang + positionAngle
+!        xDist = r * real(cos(ang))
+!        yDist = r * real(sin(ang))
            
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 

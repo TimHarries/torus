@@ -594,7 +594,7 @@ contains
 
     type(GRIDTYPE) :: grid
     integer :: j, ismoothlam, iter
-    logical :: gridConverged, doPhotoSphereSplit, smoothConverged
+    logical :: gridConverged, doPhotoSphereSplit, smoothConverged, convergedFirstTime
     character(len=80) :: message
 
 
@@ -632,17 +632,19 @@ contains
              gridConverged = .true.
              if (dophotospheresplit) call putTau(grid, grid%lamArray(j))
              call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                     inheritProps = .false., interpProps = .false., &
-                     photosphereSplit = doPhotoSphereSplit )
+                  inheritProps = .false., interpProps = .false., &
+                  photosphereSplit = doPhotoSphereSplit )
              iter = iter + 1
+             convergedFirstTime = .true.
              do
                 smoothConverged = .true.
                 ! The following is Tim's replacement for soomthAMRgrid.
                 call myScaleSmooth(smoothFactor, grid, &
                      smoothConverged,  inheritProps = .false., interpProps = .false.)
+                if (.not.smoothConverged) convergedFirstTime = .false.
                 if (smoothConverged) exit
              end do
-             if (gridConverged) exit
+             if (gridConverged.and.convergedFirstTime) exit
           enddo
        enddo
        call writeInfo("...grid smoothing complete", TRIVIAL)

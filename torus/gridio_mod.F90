@@ -670,6 +670,7 @@ contains
           call writeAttributePointerFlexi(20, "UV", thisOctal%UV, fileFormatted)
           call writeAttributePointerFlexi(20, "radsurface", thisOctal%radsurface, fileFormatted)
           call writeAttributePointerFlexi(20, "dust_T", thisOctal%dust_T, fileFormatted)
+          call writeAttributePointerFlexi(20, "abundance", thisOctal%abundance, fileFormatted)
 #endif
 
 
@@ -735,7 +736,6 @@ contains
           call writeAttributePointerFlexi(20, "phiLimit", thisOctal%phiLimit, fileFormatted)
        
           call writeAttributePointerFlexi(20, "columnRho", thisOctal%columnRho, fileFormatted)
-          call writeAttributePointerFlexi(20, "abundance", thisOctal%abundance, fileFormatted)
           call writeAttributePointerFlexi(20, "ghostCell", thisOctal%ghostCell, fileFormatted)
           call writeAttributePointerFlexi(20, "corner", thisOctal%corner, fileFormatted)
           call writeAttributePointerFlexi(20, "feederCell", thisOctal%feederCell, fileFormatted)
@@ -4293,6 +4293,8 @@ contains
             call readPointerFlexi(20, thisOctal%radsurface, fileFormatted)
          case("dust_T")
             call readPointerFlexi(20, thisOctal%dust_T, fileFormatted)
+         case("abundance")
+            call readPointerFlexi(20, thisOctal%abundance, fileFormatted)
 #endif
 
          case("photoIonCoeff")
@@ -4394,8 +4396,6 @@ contains
          case("columnRho")
             call readPointerFlexi(20, thisOctal%columnRho, fileFormatted)
 
-         case("abundance")
-            call readPointerFlexi(20, thisOctal%abundance, fileFormatted)
 
          case("corner")
             call readPointerFlexi(20, thisOctal%corner, fileFormatted)
@@ -4676,6 +4676,8 @@ contains
             call receivePointerFlexi(thisOctal%radsurface)
          case("dust_T")
             call receivePointerFlexi(thisOctal%dust_T)
+         case("abundance")
+            call receivePointerFlexi(thisOctal%abundance)
 #endif
 
          case("photoIonCoeff")
@@ -4777,9 +4779,6 @@ contains
          case("columnRho")
             call receivePointerFlexi(thisOctal%columnRho)
 
-         case("abundance")
-            call receivePointerFlexi(thisOctal%abundance)
-            
          case("corner")
             call receivePointerFlexi(thisOctal%corner)
 
@@ -4970,6 +4969,7 @@ contains
       call sendAttributePointerFlexi(iThread, "UV", thisOctal%UV)
       call sendAttributePointerFlexi(iThread, "radsurface", thisOctal%radsurface)
       call sendAttributePointerFlexi(iThread, "dust_T", thisOctal%dust_T)
+      call sendAttributePointerFlexi(iThread, "abundance", thisOctal%abundance)
 #endif
 
 
@@ -5035,7 +5035,6 @@ contains
 
       call sendAttributePointerFlexi(iThread, "ghostCell", thisOctal%ghostCell)
       call sendAttributePointerFlexi(iThread, "columnRho", thisOctal%columnRho)
-      call sendAttributePointerFlexi(iThread, "abundance", thisOctal%abundance)
       call sendAttributePointerFlexi(iThread, "corner", thisOctal%corner)
       call sendAttributePointerFlexi(iThread, "feederCell", thisOctal%feederCell)
       call sendAttributePointerFlexi(iThread, "edgeCell", thisOctal%edgeCell)
