@@ -134,8 +134,8 @@ module image_mod
      type(PHOTON) :: thisPhoton
      type(VECTOR) :: viewVec,  xProj, yProj, rotationAxis
      real :: xDist, yDist
-     real(double) :: positionAngle, ang
-     real :: r
+     real(double) :: positionAngle!, ang
+!     real :: r
      integer :: xPix, yPix
      real  :: thisVel
      real :: weight
@@ -147,6 +147,8 @@ module image_mod
      real(double) :: lambda_obs
 
      xPix = 0; yPix = 0
+
+     positionAngle=positionAngle
 
      ! observed wavelength should be Doppler shifted by local gas velocity
      if (thisPhoton%contPhoton) then
