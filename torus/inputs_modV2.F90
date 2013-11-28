@@ -380,18 +380,10 @@ contains
 
        call getDouble("v_turb", v_turb, 1.d0, cLine, fLine, nLines, &
             "Turbulent velocity (cm/s): ", "(a,f7.1,1x,a)", 1.d0, ok, .false.)
-!       spherical = .false.
     end if
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, fLine, nLines, &
          "Perform a hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    if (hydrodynamics.and.spherical.and.amr1d.and..not.sphericalHydro) then
-       call writeWarning("Spherical geometry not implemented for hydrodynamics")
-    endif
-
-    if (hydrodynamics.and.amr1d.and..not.sphericalhydro) spherical = .false.   ! not spherical grid for 1-d hydro
-
 
     call getLogical("nbody", donBodyOnly, cLine, fLine, nLines, &
          "Perform an n-body (bigG=1) calculation: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -536,7 +528,7 @@ contains
 #endif
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
     if (calcMovie) call readMovieParameters(cLine, fLine, nLines)
-    if (calcDataCube.or.calcImage.or.calcMovie) call readFitsParameters(cLine, fLine, nLines)
+    if (calcDataCube.or.calcImage.or.calcMovie.or.calcDustCube) call readFitsParameters(cLine, fLine, nLines)
     if (calcSpectrum) call readSpectrumParameters(cLine, fLine, nLines)
     if (calcPhotometry) call readPhotometryParameters(cLine, fLine, nLines)
 
@@ -591,6 +583,15 @@ contains
     integer :: i
 
     select case(geometry)
+
+
+       case("lighthouse")
+       call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+            "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .false.)
+
+       case("slab")
+       call getdouble("tauslab", tauSlab, 1.d0, cLine, fLine, nLines, &
+            "Optical depth of slab at 5500: ","(a,e12.5,a)", 1.d0, ok, .true.)
 
        case("bondi")
           call getVector("bondicen", bondiCentre, 1.d0, cLine, fLine, nLines, &
@@ -1342,6 +1343,11 @@ contains
     call getLogical("cylindrical", cylindrical, cLine, fLine, nLines, &
          "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
+         "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
+
+
+
     call getLogical("amr1d", amr1d, cLine, fLine, nLines, &
          "AMR grid is in one-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1633,12 +1639,13 @@ contains
 
              if (writeoutput) write(*,*)
           enddo
-          if (.not. readDustFromFile) &
-               call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
+
+
+          
+       endif
+
+          call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
                "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
-
-
-         endif
 
          call getLogical("henyey", henyeyGreensteinPhaseFunction, cLine, fLine, nLines, &
               "Use Henyey-Greenstein phase function: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2292,9 +2299,6 @@ contains
     call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getLogical("sphericalhydro", sphericalHydro, cLine, fLine, nLines, &
-         "Hydrodynamics in spherical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
-
 
 
     call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &
@@ -2312,7 +2316,7 @@ contains
     endif
 !
 
-    if (sphericalHydro) then
+    if (spherical) then
        amrGridCentreX = amrgridsize/2.
        dx = dble(amrgridSize)/dble(2**4-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
@@ -2741,6 +2745,13 @@ contains
     call getInteger("sliceIndex", sliceIndex, cLine, fLine, nLines, &
          "Cell index axis of image cut","(a,i8,a)", 101, ok, .false.)
 
+    call getLogical("dustcube", calcDustCube, cLine, fLine, nLines, &
+         "Calculate a dust data cube instead of an image: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (calcDustCube) then
+       call getString("lambdafile", lambdaFilename, cLine, fLine, nLines, &
+            "Wavelength file for dust cube: ","(a,a,1x,a)","none", ok, .true.)
+    endif
 
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)

@@ -89,6 +89,7 @@ program torus
 
   call setVersion("V3.0.1")
   grid%version = torusVersion
+  currentlyDoingHydroStep = .false.
   verbosityLevel = 5
   call writeBanner("TORUS "//trim(torusVersion)//" model","-",IMPORTANT)
 
@@ -145,8 +146,9 @@ program torus
      !  call writeVtkFile(grid, "mpi.vtk",  valueTypeString=(/"mpithread"/))
      !  call torus_mpi_barrier
      !  goto 666
+!        write(*,*) "OMP THREAD NUMBER ",omp_get_thread_num()
 
-!       call writeVtkFile(grid, "rho.vtk")
+       call writeVtkFile(grid, "rho.vtk")
      endif
      call setupGlobalSources(grid)
 

@@ -47,6 +47,7 @@
 !-------------------------------
 
   logical :: calcDataCube
+  logical :: calcDustCube
   logical :: calcPhotometry
   logical :: calcImage
   logical :: calcMovie
@@ -147,7 +148,6 @@
   real(double) :: etaViscosity        !Artificial viscosity parameter
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
-  logical :: sphericalHydro           ! perform the hydrodynamics in spherical coordinates
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
@@ -407,6 +407,7 @@
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
+  character(len=80) :: lambdaFilename ! wavelength file for dust cube
 
 !----------------------------------------------------------
 ! Geometry specific parameters (this is a large section !)
@@ -813,6 +814,8 @@
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
+  real(double) :: tauSlab 
+
   type(VECTOR) :: bondiCentre
 
 ! Parameters which control Torus behaviour

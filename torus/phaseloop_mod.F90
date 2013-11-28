@@ -7,7 +7,7 @@ module phaseloop_mod
 
 CONTAINS
 
-subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie, imNum)
+subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie, imNum, returnImage)
 
   use kind_mod
   use inputs_mod 
@@ -166,6 +166,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   type(IMAGETYPE) :: o6image(1)
   type(IMAGETYPE), allocatable :: obsImageSet(:)
+
+  type(IMAGETYPE), optional :: returnImage
 
   real :: r, r1, r2
   real(oct) :: t
@@ -1394,10 +1396,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
            if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
-!           call writeVtkFile(grid, "biasx.vtk", &
+!           call writeVtkFile(grid, "bias.vtk", &
 !                valueTypeString=(/"rho          ", &
 !                "dust1        ", &
 !                "bias         ", &
+!                "etacont      ", &
 !                "temperature  "/))
 
            if (doTuning) call tune(6,"Calculate bias on tau")
@@ -1669,15 +1672,21 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
 #ifdef USECFITSIO
-           call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity", real(lambda_eff))
-           if (polarizationImages) then
-              header = specfile(1:index(specfile,".fits")-1)
-              write(specFile,'(a,a)') trim(header)//"_pol.fits"
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol", real(lambda_eff))
-              write(specFile,'(a,a)') trim(header)//"_q.fits"
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq", real(lambda_eff))
-              write(specFile,'(a,a)') trim(header)//"_u.fits"
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu", real(lambda_eff))
+
+           if (.not.PRESENT(returnImage)) then
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity", real(lambda_eff))
+              if (polarizationImages) then
+                 header = specfile(1:index(specfile,".fits")-1)
+                 write(specFile,'(a,a)') trim(header)//"_pol.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol", real(lambda_eff))
+                 write(specFile,'(a,a)') trim(header)//"_q.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq", real(lambda_eff))
+                 write(specFile,'(a,a)') trim(header)//"_u.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu", real(lambda_eff))
+              endif
+           else
+              returnImage%pixel(:,:)%i = obsImageSet(i1)%pixel(:,:)%i
+              exit
            endif
 #endif
 

@@ -783,6 +783,10 @@ CONTAINS
     CASE("lighthouse")
        CALL calcLighthouseDensity(thisOctal,subcell)
 
+
+    CASE("slab")
+       CALL calcSlabDensity(thisOctal,subcell)
+
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell)
 
@@ -3348,7 +3352,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, smoothinneredge, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens
+    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens, limitscalar
 
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -3756,7 +3760,13 @@ CONTAINS
              endif
           endif
           
-
+       case("slab")
+          cellCentre = subcellCentre(thisOctal,subcell)
+          d = thisOctal%subcellSize/2.d0
+          if ((cellCentre%z < -2.d0*pctocm/1.d10).and.(thisOctal%nDepth < 7)) split = .true.
+          if  (((cellCentre%z+d) > -2.d0*pctocm/1.d10).and.((cellCentre%z-d) < -2.d0*pctocm/1.d10)) then
+             if (thisOctal%nDepth < maxDepthAMR) split = .true.
+          endif
        case("lighthouse")
           cellCentre = subcellCentre(thisOctal,subcell)
           d = thisOctal%subcellSize/2.d0
@@ -3781,9 +3791,20 @@ CONTAINS
              muVal(i) = acos(max(-1.d0,min(muval(i),1.d0)))
           enddo
           if (ANY(cornerDist(1:8) > 50.d0*autocm/1.d10).and. &
-              ANY(cornerDist(1:8) < 50.d0*autocm/1.d10).and.(thisOctal%nDepth<6).and. &
-              ANY(muVal(1:8) > 30.d0*degtorad)) then
+              ANY(cornerDist(1:8) < 50.d0*autocm/1.d10).and.(thisOctal%nDepth<11).and. &
+              ANY(muVal(1:8) > cavAngle)) then
              split = .true.
+          endif
+          rVec = VECTOR(14960., 29920., -7480.)
+          if (inSubcell(thisOctal, subcell, rVec).and.(thisOctal%nDepth<maxDepthAMR)) split = .true.
+          if (((thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30) > limitScalar).and. &
+               (thisOctal%nDepth < maxDepthAMR)) split = .true.
+
+          if (thisOctal%cylindrical) then
+             if (returndPhi(thisOctal) > minPhiResolution) then
+                split = .true.
+                splitinAzimuth = .true.
+             endif
           endif
        case("ttauri")
           
@@ -7132,7 +7153,7 @@ endif
   end subroutine calcBowshock
 
   subroutine calcLighthouseDensity(thisOctal,subcell)
-    use inputs_mod, only : grainFrac, nDustType
+    use inputs_mod, only : grainFrac, nDustType, cavAngle
     TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7144,7 +7165,7 @@ endif
     sigmaShell = 1.d0*autocm/1.d10
     rMin = 1.d0 * auToCm / 1.d10
     rMax = 300.d0 * auToCm / 1.d10
-    thetaOpening = 30.d0 * degToRad
+    thetaOpening = cavangle
 
     rVec = subcellCentre(thisOctal, subcell)
     r = modulus(rVec)
@@ -7159,6 +7180,32 @@ endif
     endif
     thisOctal%dustTypeFraction(subcell, 1:nDustType) = grainFrac(1:nDustType)
   end subroutine calcLighthouseDensity
+
+  subroutine calcSlabDensity(thisOctal,subcell)
+    use inputs_mod, only : grainFrac, nDustType, tauSlab
+    TYPE(octal),target :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real(double) rhoSlab
+    real(double) :: kappa5500
+    type(VECTOR) :: rVec
+
+    kappa5500 = 2.9368e4
+    rhoSlab = tauSlab / (kappa5500*3.d0*pctocm)
+!    Write(*,*) "rho slab " ,rhoSlab
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+    
+    thisOctal%inflow(subcell) = .false.
+    thisOctal%rho(subcell) = 1.d-30
+    if ((rVec%z < -2.d0*pctocm/1.d10).and.(rVec%z > -5.d0*pctocm/1.d10)) then
+       thisOctal%rho(subcell) = rhoSlab
+    thisOctal%inflow(subcell) = .true.
+    endif
+    thisOctal%dustTypeFraction(subcell, 1:nDustType) = grainFrac(1:nDustType)
+
+
+  end subroutine calcSlabDensity
 
 
   subroutine calcKelvinDensity(thisOctal,subcell)

@@ -39,11 +39,7 @@ contains
           call doHydrodynamics2dCylindrical(grid)
        endif
     else if (grid%octreeRoot%oneD) then
- !      if(.not. sphericalHydro) then
        call doHydrodynamics1d(grid)
-!       else
-!          call dohydro1dspherical(grid)
-!       end if
     else if (grid%octreeRoot%threeD) then
        call doHydrodynamics3d(grid)
     endif
@@ -4564,6 +4560,7 @@ end subroutine sumFluxes
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
     
+    currentlyDoingHydroStep = .true.
     direction = vector(1.d0, 0.d0, 0.d0)
 
 !Boundary conditions
@@ -4648,6 +4645,9 @@ end subroutine sumFluxes
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
+
+    currentlyDoingHydroStep = .false.
+
   end subroutine hydrostep1d
 
 
@@ -4669,6 +4669,8 @@ end subroutine sumFluxes
 
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
+
+    currentlyDoingHydroStep = .true.
 
 
 
@@ -4847,6 +4849,8 @@ end subroutine sumFluxes
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
    endif
 
+    currentlyDoingHydroStep = .false.
+
  end subroutine hydroStep3d
 
  recursive subroutine perturbPressureGrid(thisOctal)
@@ -4891,6 +4895,8 @@ end subroutine sumFluxes
     type(VECTOR) :: direction
     integer :: idir, thisBound
     logical, optional :: perturbPressure
+
+    currentlyDoingHydroStep = .true.
 
 
     !boundary conditions
@@ -5005,6 +5011,8 @@ end subroutine sumFluxes
     call imposeBoundary(grid%octreeRoot, grid)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
+
+    currentlyDoingHydroStep = .false.
  
   end subroutine hydroStep2d
 
@@ -5019,6 +5027,8 @@ end subroutine sumFluxes
     type(VECTOR) :: direction
     integer :: idir, thisBound
     selfGravity = doSelfGrav
+
+    currentlyDoingHydroStep = .true.
 
     !boundary conditions
     call computepressureGeneral(grid, grid%octreeroot, .false.) 
@@ -5138,6 +5148,7 @@ end subroutine sumFluxes
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
    
+    currentlyDoingHydroStep = .false.
 
  
   end subroutine hydroStep2dCylindrical
@@ -5150,6 +5161,9 @@ end subroutine sumFluxes
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
     
+
+    currentlyDoingHydroStep = .true.
+
     direction = vector(1.d0, 0.d0, 0.d0)
 
 !Boundary conditions
@@ -5219,6 +5233,8 @@ end subroutine sumFluxes
     call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
+
+    currentlyDoingHydroStep = .false.
 
   end subroutine hydrostep1dSpherical
 
@@ -5346,7 +5362,7 @@ end subroutine sumFluxes
              endif
              if(speed > hydroSpeedLimit) speed = hydrospeedlimit
              
-             if(sphericalHydro) then
+             if(spherical) then
                 speed = thisOctal%rhou(subcell)**2
              end if
              
@@ -5396,7 +5412,7 @@ end subroutine sumFluxes
              else
                 speed = thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2
              endif
-             if(sphericalhydro) then
+             if(spherical) then
                 speed = thisoctal%rhou(subcell)**2
              end if
              speed = sqrt(speed)/thisOctal%rho(subcell)
@@ -5724,7 +5740,11 @@ end subroutine sumFluxes
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
 !perform a single hydrodynamics step 
-          call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          if (.not.spherical) then
+             call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          else
+             call hydroStep1dSpherical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          endif
          
 !mass/energy conservation diagnostics
           call findEnergyOverAllThreads(grid, totalenergy)

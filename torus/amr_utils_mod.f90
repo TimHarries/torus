@@ -9,7 +9,10 @@ module amr_utils_mod
   use mpi_global_mod, only: myRankGlobal
   use parallel_mod, only : torus_abort
   use utils_mod, only : solveQuadDble
+  implicit none
   public
+
+  logical :: currentlyDoingHydroStep
 
   contains
 
@@ -950,11 +953,8 @@ module amr_utils_mod
           point_local = point
        endif
     else !oneD
-       if (spherical) then
-          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-       else
-          point_local = point
-       endif
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+       if (currentlyDoingHydroStep) point_local = point
     end if
 
     CALL findSubcellTDprivate(point_local,currentOctal,resultOctal,subcell)
@@ -1071,11 +1071,8 @@ module amr_utils_mod
        point_local = point
     endif
     if (thisOctal%oneD) then
-       if (spherical) then
-          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-       else
-          point_local = point
-       endif
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+       if (currentlyDoingHydroStep) point_local = point
     endif
 
 
@@ -1278,11 +1275,8 @@ module amr_utils_mod
        point_local = point
     endif
     if (thisOctal%oneD) then
-       if (spherical) then
-          point_local = VECTOR(modulus(point), 0.d0, 0.d0)
-       else
-          point_local = point
-       endif
+       point_local = VECTOR(modulus(point), 0.d0, 0.d0)
+       if (currentlyDoingHydroStep) point_local = point
     endif
 
 

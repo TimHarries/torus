@@ -2445,7 +2445,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   real, allocatable :: tauSca(:)    ! optical depth  (SIZE=maxTau)
   real, allocatable :: tauCont(:,:) !tauCont(maxTau,nLambda)
   real, allocatable  :: linePhotonAlbedo(:) ! the line photon albedo along the ray
-
+  real :: DistToTauTwoThirds
   integer  :: nTau        ! size of optical depth arrays
   real     :: escProb     ! the escape probability
   logical  :: hitcore     ! has the photon hit the core
@@ -2515,6 +2515,9 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
        nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
        error, useInterp, rStar, coolStarPosition, nSource, source)
+
+  call findTauTwoThirds(lambda, tauExt, nTau, distToTauTwoThirds)
+
   if (error < 0) then
      write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
   end if
@@ -2525,6 +2528,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(message,'(a,1pe10.3)') "Absorption depth in x-axis from centre: ",tauAbs(ntau)
      call writeInfo(message, TRIVIAL)
      write(message,'(a,1pe10.3)') "Scattering depth in x-axis from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Distance to tau=2/3 surface from centre (10^10cm): ",distToTauTwoThirds
      call writeInfo(message, TRIVIAL)
      write(message,'(a,i4)') "Number of samples: ",nTau
      call writeInfo(message, TRIVIAL)
@@ -2552,6 +2557,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   if (error < 0) then
      write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
   end if
+  call findTauTwoThirds(lambda, tauExt, nTau, distToTauTwoThirds)
   
   if (nTau > 2) then 
      write(message,'(a,1pe10.3)') "Optical depth in y-axis from centre: ",tauExt(ntau)
@@ -2559,6 +2565,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(message,'(a,1pe10.3)') "Absorption depth in y-axis from centre: ",tauAbs(ntau)
      call writeInfo(message, TRIVIAL)
      write(message,'(a,1pe10.3)') "Scattering depth in y-axis from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Distance to tau=2/3 surface from centre (10^10cm): ",distToTauTwoThirds
      call writeInfo(message, TRIVIAL)
      write(message,'(a,i4)') "Number of samples: ",nTau
      call writeInfo(message, TRIVIAL)
@@ -2586,6 +2594,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   if (error < 0) then
      write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
   end if
+  call findTauTwoThirds(lambda, tauExt, nTau, distToTauTwoThirds)
   
   if (nTau > 2) then 
      write(message,'(a,1pe10.3)') "Optical depth in z-axis from centre: ",tauExt(ntau)
@@ -2593,6 +2602,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(message,'(a,1pe10.3)') "Absorption depth in z-axis from centre: ",tauAbs(ntau)
      call writeInfo(message, TRIVIAL)
      write(message,'(a,1pe10.3)') "Scattering depth in z-axis from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Distance to tau=2/3 surface from centre (10^10cm): ",distToTauTwoThirds
      call writeInfo(message, TRIVIAL)
      write(message,'(a,i4)') "Number of samples: ",nTau
      call writeInfo(message, TRIVIAL)
@@ -2622,6 +2633,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   if (error < 0) then
      write(*,*) '   Error encountered in test towards observer!!! (error = ',error,')'
   end if     
+  call findTauTwoThirds(lambda, tauExt, nTau, distToTauTwoThirds)
      
   if (nTau > 2) then 
      write(message,'(a,1pe10.3)') "Optical depth to observer from centre: ",tauExt(ntau)
@@ -2629,6 +2641,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(message,'(a,1pe10.3)') "Absorption depth to observer from centre: ",tauAbs(ntau)
      call writeInfo(message, TRIVIAL)
      write(message,'(a,1pe10.3)') "Scattering depth to observer from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Distance to tau=2/3 surface from centre (10^10cm): ",distToTauTwoThirds
      call writeInfo(message, TRIVIAL)
      write(message,'(a,i4)') "Number of samples: ",nTau
      call writeInfo(message, TRIVIAL)
@@ -2830,6 +2844,28 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 end subroutine test_optical_depth
 
 
+subroutine findTautwoThirds(lambda, tau, ntau, dist)
+
+  real :: lambda(:), tau(:), dist
+  integer :: nTau
+  real, allocatable :: revTau(:)
+  integer :: i
+
+  if (tau(ntau) < 0.6666) then
+     dist = 0.d0
+     goto 666
+  endif
+  allocate(revTau(1:nTau))
+
+  revTau(1:nTau) = tau(nTau) - tau(1:nTau)
+  i = ntau
+  do while((revtau(i) < 0.6666).and.(i>2))
+     i = i - 1
+  enddo
+  dist = lambda(i)
+  deallocate(revTau)
+666 continue
+end subroutine findTautwoThirds
 
 
 

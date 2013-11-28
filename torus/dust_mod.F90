@@ -556,7 +556,7 @@ contains
     real :: lambda(:)
     real :: kappaAbs(:), kappaSca(:)
     real :: sigmaExt(2000),sigmaSca(2000), kappa(2000), albedo(2000), tlam(2000)
-    real :: tSca(1000), tAbs(2000), sigmaAbs(2000), junk, gfac(2000), tgfac(2000)
+    real :: tSca(2000), tAbs(2000), sigmaAbs(2000), junk, gfac(2000), tgfac(2000)
     character(len=40) :: filetype
     character(len=80) :: message, junkchar
     integer :: npts, i, j
@@ -1644,6 +1644,31 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype, grainDensity
   
 end function getMeanMass2
 
+subroutine readLambdaFile(lamFilename, lamArray, nLambda)
+  character(len=*) :: lamFilename
+  real(double) :: lamArray(:),junk
+  integer :: nLambda, i
+
+
+  call writeInfo("Reading wavelength points from file.", TRIVIAL)
+  open(77, file=lamfilename, status="old", form="formatted")
+  nLambda = 1
+  ! Count the number of entries
+333 continue
+  read(77,*,end=334) junk
+  nLambda = nLambda + 1
+  goto 333
+334 continue
+  nlambda = nlambda - 1
+  ! Rewind the file and read them in
+  rewind(77)
+  do i = 1, nLambda
+     read(77,*) lamArray(i)
+     lamArray(i) = lamArray(i) * 1e4 ! microns to angstrom
+  enddo
+  close(77)
+
+end subroutine readLambdaFile
 
 end module dust_mod
 

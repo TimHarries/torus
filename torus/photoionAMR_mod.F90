@@ -63,7 +63,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, sphericalhydro
+    use inputs_mod, only : UV_vector, spherical
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -108,7 +108,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
-    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells, tmpsphericalhydro
+    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
@@ -415,8 +415,6 @@ contains
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
                 tmpcylindricalhydro=cylindricalhydro
-                tmpsphericalhydro=sphericalhydro
-                sphericalhydro=.false.
                 cylindricalHydro = .false.
                 if (.not.timedependentRT .and. .not. xrayonly) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
@@ -424,7 +422,6 @@ contains
                      loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
-                sphericalhydro = tmpsphericalhydro                
                 call writeInfo("Done",TRIVIAL)
                 if(useionparam) then
                    call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
@@ -438,15 +435,12 @@ contains
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
                 tmpcylindricalhydro=cylindricalhydro
-                tmpsphericalhydro=sphericalhydro
-                sphericalhydro=.false.
                 cylindricalHydro = .false.
                 if (.not.timeDependentRT .and. .not. xrayonly) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
                 cylindricalHydro = tmpCylindricalHydro
-                sphericalhydro = tmpsphericalhydro
                 call writeInfo("Done",TRIVIAL)
              endif
              
@@ -776,8 +770,6 @@ contains
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
-                tmpsphericalhydro=sphericalhydro
-                sphericalhydro=.false.
                 cylindricalHydro = .false.
 !                nPhotoIter = 10
 !                nPhotoIter = int(10 - grid%idump)
@@ -788,7 +780,6 @@ contains
                         looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 endif
                 cylindricalHydro = tmpCylindricalHydro
-                sphericalhydro = tmpsphericalhydro
 
          call writeInfo("Done",TRIVIAL)
          
@@ -873,7 +864,7 @@ contains
                 call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
                      perturbPressure=.false.)
              else
-                if(sphericalhydro) then
+                if(spherical) then
                    call hydroStep1dspherical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
                 else
                    call hydroStep1d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1130,7 +1121,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, sphericalhydro, useionparam, dumpregularVTUS
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, spherical, useionparam, dumpregularVTUS
 
 
     use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d, massiveStars, forceminrho
@@ -1719,7 +1710,7 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       if(.not. cart2d .and. .not. sphericalHydro) then! .and. 0== 1) then
+       if(.not. cart2d .and. .not. spherical) then! .and. 0== 1) then
           maxDiffRadius3  = 1.d30
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 10.d0, maxDiffRadius1(iSource))

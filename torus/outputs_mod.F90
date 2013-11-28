@@ -13,7 +13,7 @@ contains
 #endif
     use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
-    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory
+    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
@@ -22,7 +22,10 @@ contains
     use inputs_mod, only : monteCarloRT, dowriteradialfile, radialfilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-    use image_utils_mod, only: getImageWavelength, getnImage
+    use image_mod
+    use image_utils_mod, only: getImageWavelength, getnImage, getimageFilename, getImagenPixelsX, &
+         getImageNPixelsY,getImageSizeX, &
+         getImageSizeY
 #ifdef MPI
 #ifdef HYDRO
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
@@ -44,9 +47,11 @@ contains
     use surface_mod, only : surfacetype
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
+    use dust_mod, only : readLambdaFile
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
+    use inputs_mod, only : lambdaFilename
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -58,13 +63,18 @@ contains
 
 !    real(double) :: rSub
     type(GRIDTYPE) :: grid
+    type(DATACUBE) :: thisCube
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 50
-    integer :: i
+    integer :: i, j
     character(len=80) :: message
-    integer :: nimage
+    real(double) :: lambdaArray(2000), dx
+    integer :: nimage, nCubeLambda
+    type(IMAGETYPE) :: imageSlice
+
     real :: lambdaImage
+    real, allocatable :: tarray(:,:)
 #ifdef MOLECULAR
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
@@ -305,7 +315,7 @@ contains
           call do_phaseloop(grid, .false., 100000, miePhase, globalnsource, globalsourcearray, nmumie)
        end if
 
-       if (calcImage.or.calcMovie) then
+       if ((calcImage.or.calcMovie).and.(.not.calcDustCube)) then
           do i = 1, nImage
              nlambda = 1
              lambdaImage = getImageWavelength(i)
@@ -321,8 +331,46 @@ contains
              end if
 #endif
              fastIntegrate=.true.
-             call do_phaseloop(grid, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+                call do_phaseloop(grid, .false., 100000, &
+                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+          enddo
+       endif
+
+       if (calcImage.and.calcDustCube) then
+          call readLambdaFile(lambdaFilename, lambdaArray, nCubeLambda)
+
+          do i = 1, nImage
+
+             npixels = getImagenPixelsY(i)
+             call setCubeParams(getImagenPixelsX(i), 1., -1.)
+             call initCube(thisCube, nv=nCubeLambda)
+             call addWavelengthAxis(thiscube, lambdaArray(1:nCubeLambda))
+             call addSpatialAxes(thisCube, dble(-getImageSizeX(i)/2.e10), dble(getImageSizeX(i)/2.e10), &
+                  dble(-getImageSizeY(i)/2.e10), dble(getImageSizeY(i)/2.e10), griddistance, 1.d-30)
+             do j = 1, nCubeLambda
+                imageSlice = initImage(i)
+                nlambda = 1
+                lambdaImage = lambdaArray(j)
+                lambdatau = lambdaimage
+                call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
+                     wavLin=.true., numLam=1, dustRadEq=.true.)
+
+                call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+                fastIntegrate=.true.
+                call do_phaseloop(grid, .false., 100000, &
+                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i, returnImage=imageSlice)
+                dx = imageSlice%xAxisCentre(2) - imageSlice%xAxisCentre(1)
+                allocate(tarray(1:thiscube%nx,1:thiscube%ny))
+                tarray = real(imageSlice%pixel(:,:)%i)
+                call ConvertArrayToMJanskiesPerStr(tarray, lambdaImage, dx, dble(gridDistance))
+                imageSlice%pixel(:,:)%i = tarray(:,:)
+                deallocate(tarray)
+                call addImageSliceToCube(thisCube, imageSlice, j)
+                call freeImage(imageSlice)
+             enddo
+             call convertSpatialAxes(thisCube, "pc")
+             if (myrankGlobal == 0) call writeDataCube(thisCube, getImageFilename(i))
+             call freeDataCube(thisCube)
           enddo
        endif
 

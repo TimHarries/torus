@@ -2774,8 +2774,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
              end if
           end do
        else
-          thisOctal%etaCont(subcell) = 1.d-40
-          if (thisOctal%temperature(subcell) > 1.d-3) then
+          thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont)
+          if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%rho(subcell) > 1.d-30)) then
 
              call addDustContinuumLucyMono(thisOctal, subcell, grid, lambda, iPhotonLambda)
              
@@ -2982,7 +2982,7 @@ subroutine setBiasOnTau(grid, iLambda)
 !                if (tau < 5.) then
 !                   thisOctal%biasCont3D(subcell) = 1.d0
 !                else
-                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-4)
+                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-2)
 !                endif
 
              endif

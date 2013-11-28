@@ -5,10 +5,11 @@ module image_mod
   use messages_mod
   use phasematrix_mod
   use photon_mod
+  use datacube_mod
 
   implicit none
 
-  public :: initImage, freeImage, addPhotonToImage, createLucyImage, writeFalseColourPPM
+  public :: initImage, freeImage, addPhotonToImage, createLucyImage, writeFalseColourPPM,  ConvertArrayToMJanskiesPerStr
 #ifdef PHOTOION
   public :: addPhotonToPhotoionImage
 #endif
@@ -17,7 +18,7 @@ module image_mod
 #endif
 
   private :: pixelLocate, writePPMAimage, imagePercentile, &
-       ConvertArrayToMJanskiesPerStr, dumpLine, dumpPointTestData
+      dumpLine, dumpPointTestData
   
   type IMAGETYPE
     type(STOKESVECTOR), pointer :: pixel(:,:) => null()
@@ -83,6 +84,17 @@ module image_mod
      initImage%totWeight = 0.
 
    end function initImage
+
+
+  subroutine addImageSliceToCube(cube, imageSlice, iLambda)
+    type(DATACUBE) :: cube
+    type(IMAGETYPE) :: imageSlice
+    integer :: iLambda
+
+    cube%intensity(1:cube%nx, 1:cube%ny, iLambda) = imageSlice%pixel(1:cube%nx, 1:cube%ny)%i
+
+  end subroutine addImageSliceToCube
+
 
 #ifdef PHOTOION
    subroutine addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFlux)
@@ -316,7 +328,7 @@ module image_mod
      subroutine ConvertArrayToMJanskiesPerStr(array, lambda, dx, distance, samplings, pointTest, cylinderTest)
        use inputs_mod, only : dumpCut, cutType, sliceIndex
        real, intent(inout)      :: array(:,:)
-       integer, intent(inout)      :: samplings(:,:)
+       integer, intent(inout), optional      :: samplings(:,:)
 !       real, intent(in)         :: lambda
        real         :: lambda
        real(double), intent(in) :: dx, distance

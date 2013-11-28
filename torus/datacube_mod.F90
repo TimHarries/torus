@@ -5,6 +5,7 @@ module datacube_mod
   use interferometry_mod
   use messages_mod
 
+
   implicit none
 
   type TELESCOPE
@@ -753,6 +754,7 @@ contains
 
   end subroutine convertVelocityAxis
 
+
 ! Set velocity axis for datacube - Equally spaced (linearly) between min and max
   subroutine addVelocityAxis(cube, vMin, vMax)
     type(DATACUBE) :: cube
@@ -773,6 +775,18 @@ contains
        cube%vAxis(1) = vmin
     endif
   end subroutine addVelocityAxis
+
+  subroutine addWavelengthAxis(cube, lambdaArray)
+    type(DATACUBE) :: cube
+    real(double):: lambdaArray(:)
+    integer :: i
+    character(len=100) :: message
+    do i = 1, cube%nv
+       cube%vAxis(i) = lambdaArray(i)/1.e4
+    enddo
+    cube%vUnit    = "microns"
+
+  end subroutine addWavelengthAxis
 
   subroutine convertIntensityToBrightnessTemperature(cube, thisWavelength)
     use constants_mod, only: kErg
