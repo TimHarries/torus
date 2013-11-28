@@ -780,7 +780,6 @@ contains
     type(DATACUBE) :: cube
     real(double):: lambdaArray(:)
     integer :: i
-    character(len=100) :: message
     do i = 1, cube%nv
        cube%vAxis(i) = lambdaArray(i)/1.e4
     enddo

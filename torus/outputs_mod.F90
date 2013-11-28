@@ -350,7 +350,7 @@ contains
              do j = 1, nCubeLambda
                 imageSlice = initImage(i)
                 nlambda = 1
-                lambdaImage = lambdaArray(j)
+                lambdaImage = real(lambdaArray(j))
                 lambdatau = lambdaimage
                 call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                      wavLin=.true., numLam=1, dustRadEq=.true.)

@@ -91,7 +91,7 @@ module image_mod
     type(IMAGETYPE) :: imageSlice
     integer :: iLambda
 
-    cube%intensity(1:cube%nx, 1:cube%ny, iLambda) = imageSlice%pixel(1:cube%nx, 1:cube%ny)%i
+    cube%intensity(1:cube%nx, 1:cube%ny, iLambda) = real(imageSlice%pixel(1:cube%nx, 1:cube%ny)%i)
 
   end subroutine addImageSliceToCube
 
