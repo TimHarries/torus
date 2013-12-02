@@ -358,7 +358,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      outfile = sedFileName
   endif
 
-  positionangle = 0.d0
+  positionangle = thisimagePA
 
   call findMultiFilename(outfile, iModel, tempFilename)
   outfile = tempFilename

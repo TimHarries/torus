@@ -156,7 +156,7 @@ module image_mod
      !
      integer :: i
      real :: filter_response
-     real(double) :: lambda_obs
+     real(double) :: lambda_obs, r, ang
 
      xPix = 0; yPix = 0
 
@@ -186,11 +186,11 @@ module image_mod
         xDist = real((thisPhoton%position) .dot. xProj)
         yDist = real((thisPhoton%position) .dot. yProj)
 
-!        r = sqrt(xDist**2 + yDist**2)
-!        ang = atan2(yDist, xDist)
-!        ang = ang + positionAngle
-!        xDist = r * real(cos(ang))
-!        yDist = r * real(sin(ang))
+        r = sqrt(xDist**2 + yDist**2)
+        ang = atan2(yDist, xDist)
+        ang = ang + positionAngle
+        xDist = r * real(cos(ang))
+        yDist = r * real(sin(ang))
            
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 

@@ -1060,13 +1060,6 @@ module amr_utils_mod
        else
           point_local = point
        endif
-
-
-!       if (.not.cylindricalHydro) then
-!          point_local = projectToXZ(point)
-!       else
-!          point_local = point
-!       endif
     else
        point_local = point
     endif
@@ -1617,28 +1610,13 @@ module amr_utils_mod
     endif
 
     if (thisOctal%oneD) then
-       if (spherical) then !@.and. .not. sphericalHydro) then
+       if (spherical.and.(.not.currentlyDoingHydroStep)) then
           r = modulus(point)
           if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
           else
              inOctal = .true.
           endif
-
-!       elseif(sphericalhydro) then
-!          r = point%x
-!          IF (r < thisOctal%xMin) THEN ; inOctal = .FALSE. 
-!          ELSEIF (r > thisOctal%xMax) THEN ; inOctal = .FALSE.
-!          ELSE
-!             inOctal = .true.
-!          ENDIF
-
-!          if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
-!          else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
- !         else
- !            inOctal = .true.
-  !        endif
-
        else
           if ( point%x < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
           else if (point%x > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.

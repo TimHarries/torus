@@ -2780,6 +2780,10 @@ contains
     call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", 6562.8, ok, .false.)
 
+
+    call getDouble("imagepa", thisimagePA, degtorad, cLine, fLine, nLines, &
+         "Position angle for image :","(a,f12.2,1x,a)", 0.d0, ok, .false.)
+
     if (nimage == 1) then
 
        call getString("imagefile", imageFilename, cLine, fLine, nLines, &

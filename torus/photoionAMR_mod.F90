@@ -341,7 +341,6 @@ contains
              do
                 gridConverged = .true.
                 call setupEdges(grid%octreeRoot, grid)
-                !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
                 call unsetGhosts(grid%octreeRoot)
                 call setupGhostCells(grid%octreeRoot, grid)
                 if (gridConverged) exit
@@ -813,6 +812,9 @@ contains
 
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
+
+       currentlyDoingHydroStep = .true.
+
        call writeInfo("calling hydro step",TRIVIAL)
        
 !       if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -878,6 +880,7 @@ contains
        endif
 !    endif
 
+    currentlyDoingHydroStep = .false.
 
 
 

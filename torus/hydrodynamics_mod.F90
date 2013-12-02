@@ -32,6 +32,7 @@ contains
   subroutine dohydrodynamics(grid)
     type(GRIDTYPE) :: grid
 
+    currentlyDoingHydroStep = .true.
     if (grid%octreeRoot%twoD) then
        if (.not.cylindricalHydro) then
           call doHydrodynamics2d(grid)
@@ -43,6 +44,7 @@ contains
     else if (grid%octreeRoot%threeD) then
        call doHydrodynamics3d(grid)
     endif
+    currentlyDoingHydroStep = .false.
     
   end subroutine dohydrodynamics
 
@@ -3129,7 +3131,6 @@ contains
              rhorv_i_plus_half = thisOctal%rhov(subcell) + (thisOctal%rhorv_i_plus_1(subcell) - &
                   thisOctal%rhov(subcell)) * fac2
 
-             fVisc =  newdivQ(thisOctal, subcell,  grid)
 
 !             call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
 !                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
@@ -4560,7 +4561,6 @@ end subroutine sumFluxes
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
     
-    currentlyDoingHydroStep = .true.
     direction = vector(1.d0, 0.d0, 0.d0)
 
 !Boundary conditions
@@ -4646,7 +4646,6 @@ end subroutine sumFluxes
     call transfertempstorage(grid%octreeroot)
 
 
-    currentlyDoingHydroStep = .false.
 
   end subroutine hydrostep1d
 
@@ -4670,7 +4669,6 @@ end subroutine sumFluxes
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
-    currentlyDoingHydroStep = .true.
 
 
 
@@ -4849,7 +4847,6 @@ end subroutine sumFluxes
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
    endif
 
-    currentlyDoingHydroStep = .false.
 
  end subroutine hydroStep3d
 
@@ -4896,7 +4893,6 @@ end subroutine sumFluxes
     integer :: idir, thisBound
     logical, optional :: perturbPressure
 
-    currentlyDoingHydroStep = .true.
 
 
     !boundary conditions
@@ -5012,7 +5008,6 @@ end subroutine sumFluxes
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
-    currentlyDoingHydroStep = .false.
  
   end subroutine hydroStep2d
 
@@ -5028,7 +5023,6 @@ end subroutine sumFluxes
     integer :: idir, thisBound
     selfGravity = doSelfGrav
 
-    currentlyDoingHydroStep = .true.
 
     !boundary conditions
     call computepressureGeneral(grid, grid%octreeroot, .false.) 
@@ -5148,7 +5142,6 @@ end subroutine sumFluxes
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
    
-    currentlyDoingHydroStep = .false.
 
  
   end subroutine hydroStep2dCylindrical
@@ -5162,7 +5155,6 @@ end subroutine sumFluxes
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
     
 
-    currentlyDoingHydroStep = .true.
 
     direction = vector(1.d0, 0.d0, 0.d0)
 
@@ -5173,7 +5165,6 @@ end subroutine sumFluxes
 
     direction = vector(1.d0, 0.d0, 0.d0)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
-    call computeDivV(grid%octreeRoot, grid)
  
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
@@ -5234,7 +5225,6 @@ end subroutine sumFluxes
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
 
-    currentlyDoingHydroStep = .false.
 
   end subroutine hydrostep1dSpherical
 
@@ -8732,6 +8722,8 @@ real(double) :: rho
     logical, optional :: flag
     logical, save :: firsttime=.true.
 
+    currentlyDoingHydroStep = .true.
+
     do subcell = 1, thisOctal%maxChildren
 
        if (thisOctal%hasChild(subcell)) then
@@ -9060,6 +9052,7 @@ real(double) :: rho
           endif
       endif
     enddo
+    currentlyDoingHydroStep = .false.
   end subroutine setupGhostCells
 
 
@@ -9075,7 +9068,10 @@ real(double) :: rho
     integer :: nProbeOutside
     character(len=10) :: boundary
 
+
     if (myrankGlobal == 0) goto 666
+
+    currentlyDoingHydroStep = .true.
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -9205,6 +9201,7 @@ real(double) :: rho
        endif
     enddo
 666 continue
+    currentlyDoingHydroStep = .false.
   end subroutine setupEdges
 
   recursive subroutine setupEdgesLevel(thisOctal, grid, nDepth)
@@ -9221,6 +9218,7 @@ real(double) :: rho
     character(len=10) :: boundary
 
     if (myrankGlobal == 0) goto 666
+    currentlyDoingHydroStep = .true.
 
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
        do i = 1, thisOctal%nChildren, 1
@@ -9309,6 +9307,7 @@ real(double) :: rho
        enddo
     endif
 666 continue
+    currentlyDoingHydroStep = .false.
   end subroutine setupEdgesLevel
 
   recursive subroutine setupGhosts(thisOctal, grid)
@@ -9324,6 +9323,8 @@ real(double) :: rho
     logical, save :: firsttime=.true.
 
     if (myrankGlobal ==0 ) goto 666
+    currentlyDoingHydroStep = .true.
+
     do subcell = 1, thisOctal%maxChildren
 
        if (thisOctal%hasChild(subcell)) then
@@ -9579,12 +9580,15 @@ real(double) :: rho
        endif
     enddo
 666 continue
+    currentlyDoingHydroStep = .false.
   end subroutine setupGhosts
 
   subroutine createGhostCells(grid)
     type(GRIDTYPE) :: grid
     integer :: nProbes, iProbe
     type(VECTOR) :: probe(4)
+
+    currentlyDoingHydroStep = .true.
     nProbes = 4
     probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
     probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
@@ -9594,6 +9598,7 @@ real(double) :: rho
        write(*,*) "calling setupghostsnew ",iprobe
        call setupGhostsNew(grid%octreeRoot, grid, probe(iProbe), dble(iProbe))
     enddo
+    currentlyDoingHydroStep = .false.
   end subroutine createGhostCells
 
   recursive subroutine setupGhostsNew(thisOctal, grid, probe, flag)
