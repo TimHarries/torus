@@ -1082,6 +1082,9 @@ contains
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
+          call getLogical("dragon", dragon, cLine, fLine, nLines, &
+               "SPH file is from dragon SPH: ","(a,1l,a)",.false., ok, .false.)
+
           call getReal("hcritPercentile", hcritPercentile, 1., cLine, fLine, nLines, &
                "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
 

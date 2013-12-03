@@ -121,7 +121,7 @@ contains
   ! Initializes an object with parameters (if possible).
   ! 
   subroutine init_sph_data(udist, umass, utime,  time, nptmass, uvel, utemp)
-    use inputs_mod, only: discardSinks
+    use inputs_mod, only: discardSinks, dragon
     implicit none
 
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
@@ -329,6 +329,7 @@ contains
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: convertRhoToHI, ih2frac, sphwithchem, iModel, discardSinks
+    use inputs_mod, only: dragon
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
 
@@ -419,9 +420,12 @@ contains
 
     read(unit(imass),*) umass
 
-    iu = indexWord("u",word,nWord)
-
-    read(unit(iu),*) utemp
+    if(dragon) then
+       iu = indexWord("temperature",word,nWord)
+    else
+       iu = indexWord("u",word,nWord)
+    endif
+       read(unit(iu),*) utemp
     
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
@@ -465,7 +469,11 @@ contains
        call writeInfo("Calculating temperature from u and u/T",FORINFO)
        sphdata%codeEnergytoTemperature = 1.0
     else
-       sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
+       if(dragon) then
+          sphdata%codeEnergytoTemperature = utemp
+       else
+          sphdata%codeEnergytoTemperature = utemp * 1.9725e-8 ! temperature from molcluster! 2. * 2.46 * (u * 1d-7) / (3. * 8.314472)
+       endif
        write(message,*) "Conversion factor between u and temperature (assumes molecular weight of 2.46): ", &
             sphdata%codeEnergytoTemperature
        call writeInfo(message, FORINFO)
@@ -549,7 +557,11 @@ part_loop: do ipart=1, nlines
 ! Set up temperature or internal energy
           if (convertRhoToHI.or.sphwithChem ) then 
              gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
-             sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
+             if(dragon) then
+                sphdata%temperature(igas) = utemp
+             else
+                sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
+             endif
           else if (haveUandUoverT) then 
              sphdata%temperature(igas) = u / junkArray(iUoverT)
           else

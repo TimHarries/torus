@@ -755,7 +755,7 @@ contains
 #endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI, &
-          hosokawaTracks, nbodyPhysics, nSphereSurface
+          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks
 #ifdef MPI
      use mpi
 #endif
@@ -785,45 +785,47 @@ contains
 
 !     print *, "delta"
      if (grid%geometry == "theGalaxy" .or. grid%geometry == "sphfile") then
-!        print *, "echo"
+!        if(.not. discardsinks .and. 0 == 1) then
+        if(.not. discardsinks) then
+           !        print *, "echo"
 #ifdef SPH
-        globalnSource = get_nptmass()
-!        print *, "using ", globalnsource, "sources"
-        if ( globalnSource > size(globalSourceArray)) then 
-           write(message,*) "Number of sources exceeds size of source array", globalnSource, size(globalSourceArray)
-           call writeFatal(message)
-        endif
-        do i = 1, globalnSource
-           globalSourceArray(i)%stellar = .true.
-           globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()
-           globalSourceArray(i)%position = get_pt_position(i) * (get_udist()/1.d10)
-           globalSourceArray(i)%velocity = get_pt_velocity(i) * get_udist() / get_utime()
-        enddo
+           globalnSource = get_nptmass()
+           !        print *, "using ", globalnsource, "sources"
+           if ( globalnSource > size(globalSourceArray)) then 
+              write(message,*) "Number of sources exceeds size of source array", globalnSource, size(globalSourceArray)
+              call writeFatal(message)
+           endif
+           do i = 1, globalnSource
+              globalSourceArray(i)%stellar = .true.
+              globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()
+              globalSourceArray(i)%position = get_pt_position(i) * (get_udist()/1.d10)
+              globalSourceArray(i)%velocity = get_pt_velocity(i) * get_udist() / get_utime()
+           enddo
 #else
-        call writeFatal("This geometry requires SPH functionality which is not built.")
+           call writeFatal("This geometry requires SPH functionality which is not built.")
 #endif
 #ifdef MPI
 #ifdef HYDRO
-        if (splitOverMPI) call gatherSinks()
+           if (splitOverMPI) call gatherSinks()
 #endif 
 #endif
-!        print *, "setting up source array properties"
-        if (nbodyPhysics.and.hosokawaTracks)  then
-           call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
-           print *, "writing source list"
-           !        call writeSourceList(globalsourceArray, globalnSource)
+           !        print *, "setting up source array properties"
+           if (nbodyPhysics.and.hosokawaTracks)  then
+              call setSourceArrayProperties(globalsourceArray, globalnSource, 1.d0)
+              print *, "writing source list"
+              !        call writeSourceList(globalsourceArray, globalnSource)
 #ifdef MPI
-           !        call MPI_BARRIER(MPI_COMM_WORLD, ier)
-           if(myrankglobal == 0) then
+              !        call MPI_BARRIER(MPI_COMM_WORLD, ier)
+              if(myrankglobal == 0) then
               !           print *, " " 
-           call writeIonizingFLuxes(globalsourceArray, globalnSource)
+                 call writeIonizingFLuxes(globalsourceArray, globalnSource)
            
-           !           call MPI_BARRIER(MPI_COMM_WORLD, ier)
-        endif
+                 !           call MPI_BARRIER(MPI_COMM_WORLD, ier)
+              endif
 #endif
+           endif
+        endif
      endif
-     endif
-
 
      if (grid%geometry == "starburst") then
 #ifdef MPI
