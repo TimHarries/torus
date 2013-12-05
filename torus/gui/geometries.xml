@@ -1,0 +1,34 @@
+<geometries>
+        <geometry name="shakara" >
+                <input name='mdisc' default='1' canGroup='no' type='double' isRequired='true' label="Disk Mass (Solar Mass)" />
+                <input name='alphadisc' default='1' canGroup='no' type='double' isRequired='true' label="Disc Density"/>
+                <input name='betadisc' default='1' canGroup='no' type='double' isRequired='true' label="Disc Scaleheight"/>
+                <input name='rinner' default='1' canGroup='no' type='double' isRequired='true' label="Inner Disc Radius"/>
+                <input name='router' default='1' canGroup='no' type='double' isRequired='true' label="Outer Disc Radius"/>
+                <input name='height' default='1' canGroup='no' type='double' isRequired='true' label="Disc Scaleheight at 100 AU"/>
+                <input name='rgapinner' default='1' canGroup='no' type='double' isRequired='true' label="Inner Radius of Gap"/>
+                <input name='rgapouter' default='1' canGroup='no' type='double' isRequired='true' label="Outer Radius of Gap"/>
+                <input name='rhogap' default='1' canGroup='no' type='double' isRequired='true' label="Minimum Gap Density (g / cm3)"/>
+                <input name='smoothinneredge' default='true' canGroup='no' type='bool' isRequired='true' label="Inner Edge Exponential Density Decay"/>
+                <input name='dusttogas' default='0.01' canGroup='no' type='double' isRequired='true' label='Dust to Gas Ratio' />
+	</geometry>
+        <geometry name="sph" label="Smooth Particle Hydro">
+            <input name='sphdatafilename' default='' canGroup='no' type='string' isRequired='true' label="SPH File" />
+            <input name='inputFileFormat' default='ascii' canGroup='no' type='string' isRequired='true' label="Input Format (ascii or binary)" />
+            <input name='sphNormLimit' default='0.5' canGroup='no' type='double' isRequired='true' label="Normalisation Threshold" />
+            <input name='kerneltype' default='0' canGroup='no' type='int' isRequired='true' label="Kernel Type" />
+            <input name='useHull' default='false' canGroup='no' type='bool' isRequired='true' label="Use Hull Particle Method" />
+            <input name='hcritPercentile' default='0.8' canGroup='no' type='double' isRequired='true' label="Percentile of hcrit" />
+            <input name='hmaxPercentile' default='0.99' canGroup='no' type='double' isRequired='true' label="Percentile of hmax" />
+            <input name='discardsinks' default='false' canGroup='no' type='bool' isRequired='true' label="Discard Sink Particles" />
+        </geometry>
+        <geometry name="fitsfile" >
+                <input name='fitsgridfile' default='' canGroup='no' type='string' isRequired='false' label='Geometry File'/>
+        </geometry>
+        <geometry name="benchmark" >
+                <input name='rinner' default='1' canGroup='no' type='double' isRequired='true' label='Inner Disc Radius (AU)'/>
+                <input name='router' default='1000' canGroup='no' type='double' isRequired='true' label='Outer Disc Radius (AU)'/>
+                <input name='height' default='100' canGroup='no' type='double' isRequired='true' label='Disc Scaleheight at 100 AU (AU)'/>
+                <input name='rho' default='8.12e-16' canGroup='no' type='double' isRequired='true' label='Density at Inner Edge of Midplane'/>
+        </geometry>
+</geometries>

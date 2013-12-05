@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<parameters>
+    <group name="misc">
+        <input name='maxmemory' default='240000' canGroup='no' type='int' isRequired='true'/>
+        <input name='outputfile' default='' canGroup='no' type='string' isRequired='false'/>
+        <input name='inputfile' default='' canGroup='no' type='string' isRequired='false'/>
+        <input name='readgrid' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='writegrid' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='justdump' default='false' canGroup='no' type='bool'/>
+        <input name='amr1d' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='amr2d' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='amr3d' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='dorefine' default='true' canGroup='no' type='bool' isRequired='true'/>
+        <input name='dounrefine' default='true' canGroup='no' type='bool' isRequired='true'/>
+        <input name='mindepthamr' default='5' canGroup='no' type='int' isRequired='true'/>
+        <input name='maxdepthamr' default='31' canGroup='no' type='int' isRequired='true'/>
+        <input name='amrgridsize' default='1000' canGroup='no' type='double' isRequired='true'/>
+        <input name='griddistancescale' default='1.d10' canGroup='no' type='double' isRequired='false'/>
+        <input name='cylindrical' default='false' canGroup='no' type='bool'/>
+        <input name='geometry' default='sphere' canGroup='no' type='string' isRequired='true'/>
+        <input name='splitovermpi' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='binaryxml' default='true' canGroup='no' type='bool'/>
+        <input name='refineonmass' default='false' canGroup='no' type='bool'/>
+        <input name='refineontemperature' default='false' canGroup='no' type='bool'/>
+        <input name='refineonionization' default='false' canGroup='no' type='bool'/>
+        <input name='dophotorefine' default='false' canGroup='no' type='bool'/>
+        <input name='amrtolerance' default='1.d-3' canGroup='no' type='double'/>
+        <input name='amrtemperaturetol' default='1.d-3' canGroup='no' type='double'/>
+        <input name='amrspeedtol' default='1.d-3' canGroup='no' type='double'/>
+        <input name='amrionfractol' default='1.d-3' canGroup='no' type='double'/>
+        <input name='amrrhoetol' default='1.d-3' canGroup='no' type='double'/>
+        <input name='masstol' default='1.d-5' canGroup='no' type='double'/>
+        <input name='timeunit' default='1.d0' canGroup='no' type='double'/>
+        <input name='lengthunit' default='1.d0' canGroup='no' type='double'/>
+        <input name='massunit' default='1.d0' canGroup='no' type='double'/>
+        <input name='radeq' default='false' canGroup='no' type='bool' isRequired="true"/>
+        <input name='nphotons' default='1000' canGroup='no' type='int' isRequired="true"/>
+    </group>
+
+    <group name="source">
+        <input name='nsource' default='1' canGroup='no' type='int' isRequired='true'/>
+        <input name='pointsource' default='false' canGroup='yes' type='bool' isRequired='true'/>
+        <input name='radius' default='1.d0' canGroup='yes' type='double' isRequired='true'/>
+        <input name='teff' default='1.d0' canGroup='yes' type='double' isRequired='true'/>
+        <input name='mass' default='1.d0' canGroup='yes' type='double' isRequired='true'/>
+        <input name='contflux' default='none' canGroup='yes' type='string' isRequired='true'/>
+        <input name='sourcepos' default='0.d0,0.d0,0.d0' canGroup='yes' type='string' isRequired='true'/>
+        <input name='velocity' default='0.d0,0.d0,0.d0' canGroup='yes' type='string' isRequired='false'/>
+        <input name='probsource' default='0.d0' canGroup='no' type='string'/>
+    </group>
+
+    <group name="dust">
+        <input name='dustphysics' default='true' canGroup='no' type='bool' isRequired='true'/>
+        <input name='iso_scatter' default='true' canGroup='no' type='bool' isRequired='true'/>
+        <input name='graintype' default='sil_dl' canGroup='no' type='string' isRequired='true'/>
+        <input name='grainFrac' default='1' canGroup='no' type='double' isRequired='true'/>
+        <input name='amin' default='0.12' canGroup='no' type='double' isRequired='true'/>
+        <input name='amax' default='0.1201' canGroup='no' type='double' isRequired='true'/>
+        <input name='qdist' default='0.01' canGroup='no' type='double' isRequired='true'/>
+    </group>
+
+    <group name="hydro">
+        <input name='radiationHydrodynamics' default='false' canGroup='no' type='bool' isRequired='true'/>
+    </group>
+
+    <group name="sed">
+        <input name='ninc' default='0' canGroup='no' type='int' isRequired='true'/>
+        <input name='inclinations' default='' canGroup='no' type='string' isRequired='false'/>
+        <input name='posangs' default='' canGroup='no' type='string' isRequired='false'/>
+        <input name='firstinc' default='' canGroup='no' type='int' isRequired='false'/>
+        <input name='lastinc' default='' canGroup='no' type='int' isRequired='false'/>
+        <input name='firstPA' default='' canGroup='no' type='int' isRequired='false'/>
+        <input name='lastPA' default='' canGroup='no' type='int' isRequired='false'/>
+        <input name='sedwavlin' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='sedcosspaced' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='sedlammin' default='0.01' canGroup='no' type='double' isRequired='true'/>
+        <input name='sedlammax' default='1000' canGroup='no' type='double' isRequired='true'/>
+        <input name='sised' default='true' canGroup='no' type='bool' isRequired='true'/>
+        <input name='filename' default='' canGroup='no' type='string' isRequired='true' />
+    </group>
+
+    <group name="image">
+        <input name='image' default='false' canGroup='no' type='bool' isRequired='true'/>
+        <input name='nphotons' default='1000' canGroup='yes' type='double'/>
+        <input name='distance' default='100' canGroup='yes' type='double'/>
+        <input name='imageaxisunits' default='AU' canGroup='yes' type='string'/>
+        <input name='imagesize' default='whole grid' canGroup='yes' type='double'/>
+        <input name='polimage' default='false' canGroup='yes' type='bool'/>
+        <input name='imagefile' default='' canGroup='no' type='string' />
+        <input name='lambdaimage' default='6562.8' canGroup='yes' type='int' />
+        <input name='imagetype' default='' canGroup='yes' type='string' />
+        <input name='npixels' default='200' canGroup='yes' type='int' />
+        <input name='inclination' default='0' canGroup='yes' type='double' />
+        <input name='positionangle' default='0' canGroup='yes' type='double' />
+        <input name='fitsbitpix' default='-32' canGroup='yes' type='int' />
+    </group>
+</parameters>

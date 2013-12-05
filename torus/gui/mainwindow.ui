@@ -1,0 +1,1980 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>600</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="acceptDrops">
+   <bool>true</bool>
+  </property>
+  <property name="windowTitle">
+   <string>Parametor</string>
+  </property>
+  <property name="unifiedTitleAndToolBarOnMac">
+   <bool>true</bool>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTabWidget" name="tabs_Main">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="acceptDrops">
+       <bool>false</bool>
+      </property>
+      <property name="tabShape">
+       <enum>QTabWidget::Rounded</enum>
+      </property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tab_General">
+       <attribute name="title">
+        <string>General</string>
+       </attribute>
+       <widget class="QGroupBox" name="grp_GeneralOptions">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>211</width>
+          <height>381</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Options</string>
+        </property>
+        <widget class="QCheckBox" name="tck_dustPhysics">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Dust Physics</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="tck_readGrid">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>50</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Read Grid</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="tck_writeGrid">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>70</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Write Grid</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="tck_isoScatter">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>90</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Isotropic Scattering</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="tck_spectrum">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>110</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Spectrum</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="tck_images">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>130</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Images</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QLabel" name="label_2">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>20</y>
+          <width>241</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Grid Input File</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_openGridInputFile">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>500</x>
+          <y>35</y>
+          <width>71</width>
+          <height>32</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Select</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_gridInputFile">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>40</y>
+          <width>261</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_gridOutputFile">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>70</y>
+          <width>241</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Grid Output File</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_openGridOutputFile">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>500</x>
+          <y>85</y>
+          <width>71</width>
+          <height>32</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Select</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_GridOutputFile">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>90</y>
+          <width>261</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="com_gridDim">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>145</y>
+          <width>141</width>
+          <height>26</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_gridDim">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>125</y>
+          <width>151</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>AMR Grid Dimensions</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_torusExecutable">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>325</y>
+          <width>241</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>External Torus Executable</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_selectTorusExecutable">
+        <property name="geometry">
+         <rect>
+          <x>500</x>
+          <y>340</y>
+          <width>71</width>
+          <height>32</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Select</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_TorusExecutable">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>345</y>
+          <width>261</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="tck_writeLogFile">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>370</y>
+          <width>191</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Write Log File</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImagePhotons">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>200</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>100000000.000000000000000</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImagePhotons">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>180</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Number of Photons</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImageDistance">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>180</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Distance to Grid (pc)</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImageDistance">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>200</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>30</number>
+        </property>
+        <property name="maximum">
+         <double>999999999.990000009536743</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_AMRMinDepth">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>250</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>1000.000000000000000</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_AMRMaxDepth">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>250</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>1000.000000000000000</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_AMRRefineMin">
+        <property name="geometry">
+         <rect>
+          <x>240</x>
+          <y>230</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Min AMR Refinement</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_AMRRefineMax">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>230</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Max AMR Refinement</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_GridSize">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>150</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="suffix">
+         <string/>
+        </property>
+        <property name="decimals">
+         <number>30</number>
+        </property>
+        <property name="maximum">
+         <double>999999999.990000009536743</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImageDistance_2">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>130</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Grid Size (10^10 cm)</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_Geometry">
+       <attribute name="title">
+        <string>Geometry</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="1" column="0">
+         <widget class="QListWidget" name="lst_Geometries">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QScrollArea" name="scrollArea">
+          <property name="autoFillBackground">
+           <bool>true</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Plain</enum>
+          </property>
+          <property name="lineWidth">
+           <number>0</number>
+          </property>
+          <property name="verticalScrollBarPolicy">
+           <enum>Qt::ScrollBarAsNeeded</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>264</width>
+             <height>327</height>
+            </rect>
+           </property>
+           <widget class="QWidget" name="formLayoutWidget">
+            <property name="geometry">
+             <rect>
+              <x>60</x>
+              <y>60</y>
+              <width>181</width>
+              <height>171</height>
+             </rect>
+            </property>
+            <layout class="QFormLayout" name="geomFormLayout">
+             <property name="sizeConstraint">
+              <enum>QLayout::SetNoConstraint</enum>
+             </property>
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+             </property>
+             <property name="rowWrapPolicy">
+              <enum>QFormLayout::WrapLongRows</enum>
+             </property>
+             <property name="leftMargin">
+              <number>10</number>
+             </property>
+             <property name="topMargin">
+              <number>10</number>
+             </property>
+             <property name="rightMargin">
+              <number>10</number>
+             </property>
+             <property name="bottomMargin">
+              <number>10</number>
+             </property>
+            </layout>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="lbl_Sources_2">
+          <property name="text">
+           <string>Available Geometries</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_Sources">
+       <attribute name="title">
+        <string>Sources</string>
+       </attribute>
+       <widget class="QLabel" name="lbl_Sources">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>91</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Sources</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_StarMass">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>70</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Mass (Solar Mass)</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_StarRadius">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>70</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Radius (Solar Radii)</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_StartName">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>30</y>
+          <width>301</width>
+          <height>20</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_SourceName">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>10</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Source Name</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_StarTemp">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>120</y>
+          <width>261</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Effective Temperature (Kelvin)</string>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="com_StarContFlux">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>190</y>
+          <width>301</width>
+          <height>22</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_StarContFlux">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>170</y>
+          <width>101</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Continuum Flux</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_StarMass">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>999.990000000000009</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_StarRadius">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>999.990000000000009</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_StarTemp">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>140</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>999999.989999999990687</double>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_AddSource">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>370</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Add Source</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_RemoveSource">
+        <property name="geometry">
+         <rect>
+          <x>120</x>
+          <y>370</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Remove Source</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_SaveSource">
+        <property name="geometry">
+         <rect>
+          <x>470</x>
+          <y>370</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Apply</string>
+        </property>
+       </widget>
+       <widget class="QListWidget" name="lst_Sources">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>30</y>
+          <width>221</width>
+          <height>331</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="grp_SourcePos">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>230</y>
+          <width>301</width>
+          <height>101</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Source Position</string>
+        </property>
+        <widget class="QLabel" name="lbl_StarPosX">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>30</y>
+           <width>71</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>X</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="spn_StarPosX">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>50</y>
+           <width>71</width>
+           <height>22</height>
+          </rect>
+         </property>
+        </widget>
+        <widget class="QLabel" name="lbl_StarPosY">
+         <property name="geometry">
+          <rect>
+           <x>110</x>
+           <y>30</y>
+           <width>71</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Y</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="spn_StarPosY">
+         <property name="geometry">
+          <rect>
+           <x>110</x>
+           <y>50</y>
+           <width>71</width>
+           <height>22</height>
+          </rect>
+         </property>
+        </widget>
+        <widget class="QLabel" name="lbl_StarPosZ">
+         <property name="geometry">
+          <rect>
+           <x>210</x>
+           <y>30</y>
+           <width>71</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Z</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="spn_StarPosZ">
+         <property name="geometry">
+          <rect>
+           <x>210</x>
+           <y>50</y>
+           <width>71</width>
+           <height>22</height>
+          </rect>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_Dust">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="title">
+        <string>Dust</string>
+       </attribute>
+       <widget class="QPushButton" name="btn_RemovePopulation">
+        <property name="geometry">
+         <rect>
+          <x>120</x>
+          <y>370</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Remove Dust</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_DustMaxSize">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>4</number>
+        </property>
+        <property name="maximum">
+         <double>999.990000000000009</double>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_DustLabel">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>30</y>
+          <width>301</width>
+          <height>20</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_SavePopulation">
+        <property name="geometry">
+         <rect>
+          <x>470</x>
+          <y>370</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Apply</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustGrainType">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>320</y>
+          <width>101</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Grain Type</string>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="com_DustGrainType">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>340</y>
+          <width>301</width>
+          <height>22</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustLabel">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>10</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Population Name</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustPowerLawIndex">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>170</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Power Law Index</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_Sources_3">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>151</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Dust Populations</string>
+        </property>
+       </widget>
+       <widget class="QListWidget" name="lst_DustPopulations">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>30</y>
+          <width>221</width>
+          <height>331</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_DustPowerLawIndex">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>190</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>4</number>
+        </property>
+        <property name="maximum">
+         <double>999999.989999999990687</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_DustMinSize">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>4</number>
+        </property>
+        <property name="maximum">
+         <double>999.990000000000009</double>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_AddPopulation">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>370</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Add Dust</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustMinGrainSize">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>70</y>
+          <width>161</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Min Grain Size (microns)</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_StarRadius_3">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>70</y>
+          <width>161</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Max Grain Size (microns)</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustGrainScaleLength">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>220</y>
+          <width>211</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Grain Size Scale Length (microns)</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_DustGrainScaleLength">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>240</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>4</number>
+        </property>
+        <property name="maximum">
+         <double>999999.989999999990687</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_DustExpCutoffExp">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>290</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>4</number>
+        </property>
+        <property name="maximum">
+         <double>999999.989999999990687</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustExpCutoffExp">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>270</y>
+          <width>211</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Exponent for Exponential Cutoff</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_DustGrainFrac">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>140</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>999999.989999999990687</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_DustToGas">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>120</y>
+          <width>211</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Grain Fraction</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_SED">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="title">
+        <string>SED</string>
+       </attribute>
+       <widget class="QDoubleSpinBox" name="spn_sedMinLambda">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>99999999.989999994635582</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_sedNamePrefix">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>10</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;File Prefix&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_sedMinLambda">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>70</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Min Wavelength (Å)</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_sedNamePrefix">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>30</y>
+          <width>301</width>
+          <height>20</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_sedMaxLambda">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>70</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Max Wavelength (Å)</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_sedMaxLambda">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>99999999.989999994635582</double>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="grp_SEDOptions">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>210</width>
+          <height>381</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Options</string>
+        </property>
+        <widget class="QCheckBox" name="chk_sedSIUnits">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Use SI Units</string>
+         </property>
+        </widget>
+        <widget class="QCheckBox" name="chk_sedWavLin">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>50</y>
+           <width>191</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Linearly Spaced Points</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QToolButton" name="btn_sedGenInc">
+        <property name="geometry">
+         <rect>
+          <x>320</x>
+          <y>360</y>
+          <width>71</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Generate</string>
+        </property>
+       </widget>
+       <widget class="QToolButton" name="spn_sedAddInc">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>360</y>
+          <width>27</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+       <widget class="QToolButton" name="spn_sedRemoveInc">
+        <property name="geometry">
+         <rect>
+          <x>290</x>
+          <y>360</y>
+          <width>27</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+       <widget class="QListWidget" name="lst_sedIncList">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>151</y>
+          <width>131</width>
+          <height>201</height>
+         </rect>
+        </property>
+        <property name="dragEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_sedInclinations">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>130</y>
+          <width>91</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Inclinations</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_sedPositionAngles">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>130</y>
+          <width>131</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Position Angles</string>
+        </property>
+       </widget>
+       <widget class="QToolButton" name="btn_sedGenPos">
+        <property name="geometry">
+         <rect>
+          <x>480</x>
+          <y>360</y>
+          <width>71</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Generate</string>
+        </property>
+       </widget>
+       <widget class="QToolButton" name="spn_sedAddPos">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>360</y>
+          <width>27</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+       <widget class="QToolButton" name="spn_sedRemovePos">
+        <property name="geometry">
+         <rect>
+          <x>450</x>
+          <y>360</y>
+          <width>27</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+       <widget class="QListWidget" name="lst_sedPosList">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>151</y>
+          <width>131</width>
+          <height>201</height>
+         </rect>
+        </property>
+        <property name="dragEnabled">
+         <bool>false</bool>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="tab_Image">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="title">
+        <string>Image</string>
+       </attribute>
+       <widget class="QPushButton" name="btn_RemoveImage">
+        <property name="geometry">
+         <rect>
+          <x>120</x>
+          <y>370</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Remove Image</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_AddImage">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>370</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Add Image</string>
+        </property>
+       </widget>
+       <widget class="QListWidget" name="lst_Images">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>30</y>
+          <width>221</width>
+          <height>331</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_Images">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>91</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Images</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImageInclination">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>190</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="minimum">
+         <double>-360.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>360.990000000000009</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImageInclination">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>170</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Inclination (°)</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImagePA">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>170</y>
+          <width>161</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Position Angle (°)</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImagePA">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>190</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="minimum">
+         <double>-360.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>360.990000000000009</double>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImagePixels">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>140</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>100000000.000000000000000</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImagePixels">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>120</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Number of Pixels</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImageWavelength">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>90</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>99999999.989999994635582</double>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImageWavelength">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>70</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Wavelength (Å)</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_ImageName">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>10</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Image Filename&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="txt_ImageName">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>30</y>
+          <width>301</width>
+          <height>20</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QGroupBox" name="grp_ImageCentre">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>270</y>
+          <width>301</width>
+          <height>91</height>
+         </rect>
+        </property>
+        <property name="title">
+         <string>Image Centre</string>
+        </property>
+        <widget class="QLabel" name="lbl_ImageCentreY">
+         <property name="geometry">
+          <rect>
+           <x>180</x>
+           <y>30</y>
+           <width>121</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Y</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="lbl_ImageCentreX">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>30</y>
+           <width>121</width>
+           <height>16</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>X</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="spn_ImageCentreY">
+         <property name="geometry">
+          <rect>
+           <x>180</x>
+           <y>50</y>
+           <width>111</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="minimum">
+          <double>-360.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>360.990000000000009</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="spn_ImageCentreX">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>50</y>
+           <width>121</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="minimum">
+          <double>-999999999.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>999999999.000000000000000</double>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QLabel" name="lbl_ImageAspect">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>120</y>
+          <width>141</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Image Aspect</string>
+        </property>
+       </widget>
+       <widget class="QDoubleSpinBox" name="spn_ImageAspect">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>140</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="maximum">
+         <double>999999999.990000009536743</double>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_SaveImage">
+        <property name="geometry">
+         <rect>
+          <x>450</x>
+          <y>370</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Apply</string>
+        </property>
+       </widget>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeType">
+       <enum>QSizePolicy::Fixed</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>30</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>600</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="nativeMenuBar">
+    <bool>true</bool>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionNew"/>
+    <addaction name="actionOpen"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSaveAs"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionUnit_Converter"/>
+   </widget>
+   <widget class="QMenu" name="menuRun">
+    <property name="title">
+     <string>Run</string>
+    </property>
+    <addaction name="actionRun_Torus"/>
+    <addaction name="separator"/>
+    <addaction name="actionCheck_Paramaters"/>
+    <addaction name="separator"/>
+    <addaction name="actionUpdate_Torus_from_Source"/>
+    <addaction name="actionUpdate_Torus_from_Executable"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionTorus_Reference"/>
+    <addaction name="separator"/>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuAnalyse">
+    <property name="title">
+     <string>Analyse</string>
+    </property>
+    <addaction name="actionSED_Viewer"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuRun"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuAnalyse"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <action name="actionClose">
+   <property name="text">
+    <string>Close</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionSaveAs">
+   <property name="text">
+    <string>Save As...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="text">
+    <string>New</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionCut">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Cut</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+X</string>
+   </property>
+  </action>
+  <action name="actionCopy">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Copy</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
+  </action>
+  <action name="actionPaste">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Paste</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+V</string>
+   </property>
+  </action>
+  <action name="actionRun_Torus">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Run Torus</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionCheck_Paramaters">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Check Paramaters File</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+R</string>
+   </property>
+  </action>
+  <action name="actionUnit_Converter">
+   <property name="text">
+    <string>Unit Converter</string>
+   </property>
+  </action>
+  <action name="actionUpdate_Torus_from_Source">
+   <property name="text">
+    <string>Update Torus from Source</string>
+   </property>
+  </action>
+  <action name="actionUpdate_Torus_from_Executable">
+   <property name="text">
+    <string>Update Torus from Executable</string>
+   </property>
+  </action>
+  <action name="actionTorus_Reference">
+   <property name="text">
+    <string>Torus Reference</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About Parametor</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::AboutRole</enum>
+   </property>
+  </action>
+  <action name="actionSED_Viewer">
+   <property name="text">
+    <string>SED Viewer</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <tabstops>
+  <tabstop>tck_dustPhysics</tabstop>
+  <tabstop>tck_readGrid</tabstop>
+  <tabstop>tck_writeGrid</tabstop>
+  <tabstop>tck_isoScatter</tabstop>
+  <tabstop>tck_spectrum</tabstop>
+  <tabstop>tck_images</tabstop>
+  <tabstop>btn_openGridInputFile</tabstop>
+  <tabstop>txt_gridInputFile</tabstop>
+  <tabstop>btn_openGridOutputFile</tabstop>
+  <tabstop>txt_GridOutputFile</tabstop>
+  <tabstop>com_gridDim</tabstop>
+  <tabstop>btn_selectTorusExecutable</tabstop>
+  <tabstop>txt_TorusExecutable</tabstop>
+  <tabstop>tck_writeLogFile</tabstop>
+  <tabstop>txt_StartName</tabstop>
+  <tabstop>spn_StarMass</tabstop>
+  <tabstop>com_StarContFlux</tabstop>
+  <tabstop>spn_StarRadius</tabstop>
+  <tabstop>spn_StarTemp</tabstop>
+  <tabstop>spn_StarPosX</tabstop>
+  <tabstop>spn_StarPosY</tabstop>
+  <tabstop>spn_StarPosZ</tabstop>
+  <tabstop>btn_AddSource</tabstop>
+  <tabstop>btn_RemoveSource</tabstop>
+  <tabstop>btn_SaveSource</tabstop>
+  <tabstop>lst_Sources</tabstop>
+  <tabstop>tabs_Main</tabstop>
+  <tabstop>txt_sedNamePrefix</tabstop>
+  <tabstop>spn_sedMinLambda</tabstop>
+  <tabstop>spn_sedMaxLambda</tabstop>
+  <tabstop>chk_sedSIUnits</tabstop>
+  <tabstop>chk_sedWavLin</tabstop>
+  <tabstop>btn_sedGenInc</tabstop>
+  <tabstop>spn_sedAddInc</tabstop>
+  <tabstop>spn_sedRemoveInc</tabstop>
+  <tabstop>lst_sedIncList</tabstop>
+  <tabstop>btn_sedGenPos</tabstop>
+  <tabstop>spn_sedAddPos</tabstop>
+  <tabstop>spn_sedRemovePos</tabstop>
+  <tabstop>lst_sedPosList</tabstop>
+  <tabstop>btn_RemoveImage</tabstop>
+  <tabstop>btn_AddImage</tabstop>
+  <tabstop>lst_Images</tabstop>
+  <tabstop>txt_ImageName</tabstop>
+  <tabstop>spn_ImagePixels</tabstop>
+  <tabstop>spn_ImageAspect</tabstop>
+  <tabstop>spn_ImageInclination</tabstop>
+  <tabstop>spn_ImagePA</tabstop>
+  <tabstop>spn_ImageWavelength</tabstop>
+  <tabstop>spn_ImageCentreY</tabstop>
+  <tabstop>spn_ImageCentreX</tabstop>
+  <tabstop>btn_SaveImage</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
