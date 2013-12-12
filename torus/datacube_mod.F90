@@ -412,7 +412,11 @@ contains
 
       subroutine addWCSinfo
         implicit none
+        real(double) :: refPix, refVal, deltaPix, startVal
 
+! 
+! Axis 1:
+!
         ! Write WCS keywords to the header
         call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
         call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
@@ -420,12 +424,35 @@ contains
         call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
         call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
 
-        call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
-        call ftpkyd(unit,'CDELT2',thisCube%yAxis(2)-thisCube%yAxis(1),-3,'coordinate increment at reference point',status)
-        call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
-        call ftpkyd(unit,'CRVAL2',thisCube%yAxis(1),-3,'coordinate value at reference point',status)
-        call ftpkys(unit,'CUNIT2', thisCube%xUnit, "y axis unit", status)
+! 
+! Axis 2:
+!
+! When dealing with Galactic co-ordinates some software assumes that the reference pixel is at b=0 so we'll
+! handle Galactic co-ordinates as a special case
+        if (thisCube%yAxisType(1:8)=="GLAT-CAR") then
+           ! Pixel size assuming uniform pixels
+           deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
+           ! startVal is the lower edge of the grid which is offset by 1/2 pixel from centre of first pixel
+           startVal  = thisCube%yAxis(1) - deltaPix*0.5
+           ! -1 x distance from start of the grid to zero terms of in number of pixels
+           refPix    = -1.0*startVal / (deltaPix)
+           ! Reference latitude is zero by definition
+           refVal    = 0.0_db                              
+        else
+           deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
+           refPix    = 0.5_db
+           refVal    = thisCube%yAxis(1)
+        endif
 
+        call ftpkyd(unit,'CRPIX2',refPix,-3,'reference pixel',status)
+        call ftpkyd(unit,'CDELT2',deltaPix,-3,'coordinate increment at reference point',status)
+        call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
+        call ftpkyd(unit,'CRVAL2',refVal,-3,'coordinate value at reference point',status)
+        call ftpkys(unit,'CUNIT2',thisCube%xUnit, "y axis unit", status)
+
+! 
+! Axis 3:
+!
         call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
         if (SIZE(thisCube%vAxis)  > 1) then
            call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
