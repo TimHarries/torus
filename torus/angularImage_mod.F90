@@ -871,10 +871,11 @@ module angularImage
     TYPE(gridtype), intent(in) :: grid
     integer :: ipart
     TYPE(vector) :: position, positionTorus, old_position
+    TYPE(vector) :: velocity, velocityTorus, old_velocity, rhatToParticle
     type(OCTAL), pointer :: thisOctal
     integer :: subcell 
 
-    real(double) :: dI, n_sample, l_coord, b_coord, CO_abund
+    real(double) :: dI, n_sample, l_coord, b_coord, vLos, CO_abund
     real(double) :: distTotorus ! conversion factor between SPH postions and Torus positions
     real(double) :: H2_frac, temperature
 
@@ -921,6 +922,19 @@ module angularImage
         old_position  = rotateY( position,     -1.0*galaxyInclination*degToRad   )
         old_position  = rotateZ( old_position, -1.0*galaxyPositionAngle*degToRad )
 
+! Calculate line of sight velocity
+        velocity = VECTOR(sphData%vxn(ipart),sphData%vyn(ipart),sphData%vzn(ipart))
+        velocityTorus = sphdata%uvel * velocity
+        old_velocity  = rotateY( velocity,     -1.0*galaxyInclination*degToRad   )
+        old_velocity  = rotateZ( old_velocity, -1.0*galaxyPositionAngle*degToRad )
+! Unit vector pointing from the observer to the particle
+        rHatToParticle = old_position - VECTOR(intPosX, intPosY, intPosZ)
+        rHatToParticle = rHatToParticle / modulus(rHatToParticle)
+! Project velocity onto line of sight
+        vLos = old_velocity.dot.rHatToParticle
+! Change the sign so that receeding material has a negative velocity (like in a data cube)
+        vLos = -vLos
+
         if(inOctal(grid%octreeRoot, positionTorus)) then
            
            call findSubcellTD(positionTorus,grid%octreeRoot,thisOctal,subcell)
@@ -950,8 +964,8 @@ module angularImage
            temperature = sphdata%temperature(ipart) * sphdata%codeEnergytoTemperature
 
 ! newmolecularlevel is a floating point number so n_sample>0.99 is a reliable way of saying one or more samples.
-           if ( n_sample > 0.99 ) write(LUIN,'(13(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
-                sphdata%rhon(ipart), dI, n_sample, H2_frac, temperature, l_coord, b_coord, CO_abund, ipart
+           if ( n_sample > 0.99 ) write(LUIN,'(14(e15.8,2x),i8)') old_position, sphdata%gasmass(ipart), sphdata%hn(ipart), &
+                sphdata%rhon(ipart), dI, n_sample, H2_frac, temperature, l_coord, b_coord, vLos, CO_abund, ipart
 
         end if
 
@@ -973,6 +987,7 @@ module angularImage
      write(LUIN,'(a)') "temperature"
      write(LUIN,'(a)') "l"
      write(LUIN,'(a)') "b"
+     write(LUIN,'(a)') "losVel"
      write(LUIN,'(a)') "CO"
      write(LUIN,'(a)') "index"
      close (LUIN)
