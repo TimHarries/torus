@@ -2938,6 +2938,7 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
  !print *, "Stromgren dump completed"
 end subroutine dumpStromgrenRadius
 
+#ifdef PDR
 !Dumps the grid to a file in a format that can be used in 3D-PDR (Bisbas et al. 2012)
 recursive subroutine SendGridBisbas(thisOctal, grid)
   use mpi
@@ -3108,7 +3109,7 @@ end subroutine terminateBisbas
     end if
  end do
   end subroutine writeGridToBisbas
-
+#endif
 
 subroutine writeRadialFile(rootFilename, grid)
   use inputs_mod, only : iModel

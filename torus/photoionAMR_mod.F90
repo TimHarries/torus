@@ -251,7 +251,7 @@ contains
           end if
 
        end if
-       
+#ifdef PDR       
        if(dumpBisbas) then
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           if(myrankglobal /= 0) then
@@ -268,7 +268,7 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           call torus_abort("3D-PDR grid dump completed. Aborting...")
        end if
-
+#endif
 !turn everything on and run a long calculation
        if(singleMegaPhoto) then
           maxPhotoionIter = 200
