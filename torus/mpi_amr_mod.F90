@@ -2946,8 +2946,8 @@ recursive subroutine SendGridBisbas(thisOctal, grid)
   type(GRIDTYPE) :: grid
   integer :: i, subcell,  ierr, nStorage
   integer, parameter :: tag = 10
-  real(double) :: tempstorage(5)
-  nStorage = 5
+  real(double) :: tempstorage(26)
+  nStorage = 26
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2963,12 +2963,55 @@ recursive subroutine SendGridBisbas(thisOctal, grid)
 !          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
           if(octalonthread(thisoctal, subcell, myrankglobal)) then
              rVec= subcellCentre(thisOctal, subcell)               
-             tempStorage(1) = rVec%x
-             tempStorage(2) = rVec%y
-             tempStorage(3) = rVec%z
-             tempStorage(4) = thisOctal%rho(subcell)
-             tempStorage(5) = thisOctal%temperature(subcell)
-
+             tempStorage(1) = rvec%x
+             tempStorage(2) = rvec%y
+             tempStorage(3) = rvec%z
+             tempStorage(4) = thisOctal%AV(subcell, 7)
+             tempStorage(5) = thisOctaL%tLast(subcell)
+             tempStorage(6) = thisOctal%dust_t(subcell)
+             tempstorage(7) = thisOctal%abundance(subcell, 31) !H2
+             tempstorage(8) = thisOctal%abundance(subcell, 32) !H
+             tempStorage(9) = thisOctal%abundance(subcell, 11) !C+ 
+             tempStorage(10) = thisOctal%abundance(subcell, 25) !C
+             tempStorage(11) = thisOctal%abundance(subcell, 28) !CO
+             tempStorage(12) = thisOctal%ciiline(subcell, 2, 1) !cii(2-->1) emissivity
+             tempStorage(13) = thisOctal%ciline(subcell, 2, 1) !ci(2-->1) emissivity
+             tempStorage(14) = thisOctal%ciline(subcell, 3, 1) !ci(3-->1) emissivity
+             tempStorage(15) = thisOctal%ciline(subcell, 3, 2) !ci(3-->2) emissivity
+             tempStorage(16) = thisOctal%oiline(subcell, 2, 1) !oi(2-->1) emissivity
+             tempStorage(17) = thisOctal%oiline(subcell, 3, 1) !oi(3-->1) emissivity
+             tempStorage(18) = thisOctal%oiline(subcell, 3, 2) !oi(3-->2) emissivity
+             tempStorage(19) = thisOctal%c12oline(subcell, 2, 1) !co(2-->1) emissivity
+             tempStorage(20) = thisOctal%c12oline(subcell, 3, 2) !co(3-->2) emissivity
+             tempStorage(21) = thisOctal%c12oline(subcell, 4, 3) !co(4-->3) emissivity
+             tempStorage(22) = thisOctal%c12oline(subcell, 5, 4) !co(5-->4) emissivity
+             tempStorage(23) = thisOctal%c12oline(subcell, 6, 5) !co(6-->5) emissivity
+             tempStorage(24) = thisOctal%c12oline(subcell, 7, 6) !co(7-->6) emissivity
+             tempStorage(25) = thisOctal%c12oline(subcell, 8, 7) !co(8-->7) emissivity
+             tempStorage(26) = thisOctal%UV(Subcell)
+!             tempStorage(4) = thisOctal%AV(subcell, 1)
+!             tempStorage(5) = thisOctaL%tLast(subcell)
+!             tempStorage(6) = thisOctal%dust_t(subcell)
+!             tempStorage(7) = thisOctal%UV(subcell)             
+!!             tempStorage(8) = thisOctal%heatingRate(subcell, 12)
+ !            tempStorage(9) = sum(thisOctal%coolingRate(subcell,:))
+ !            tempStorage(10) = 1.d0 !dummy for tval
+ !            tempStorage(11) = thisOctal%abundance(subcell, 11) !C+ 
+ !            tempStorage(12) = thisOctal%abundance(subcell, 25) !C
+ !            tempStorage(13) = thisOctal%abundance(subcell, 28) !CO
+ !            tempStorage(14) = thisOctal%coolingRate(subcell, 1)
+ !            tempStorage(15) = thisOctal%coolingRate(subcell, 2)
+ !            tempStorage(16) = thisOctal%coolingRate(subcell, 3)
+ !            tempStorage(17) = thisOctal%coolingRate(subcell, 4)
+ !            tempStorage(18) = thisOctal%cii_pop(subcell, 1)
+ !            tempStorage(19) = thisOctal%cii_pop(subcell, 2)
+ !            tempstorage(20) = thisOctal%columnRho(subcell)
+ !            tempstorage(21) = thisOctal%thisColRho(subcell, 1, 31)
+ !            tempstorage(22) = thisOctal%thisColRho(subcell, 1, 32)
+ !            tempstorage(23) = sum(thisOctal%thisColRho(subcell, 1, :))
+ !            tempstorage(24) = thisOctal%abundance(subcell, 31) !
+ !            tempstorage(25) = thisOctal%abundance(subcell, 32) !
+             nstorage = 26
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           end if
        endif
@@ -2980,8 +3023,8 @@ recursive subroutine SendGridBisbas(thisOctal, grid)
   use mpi
   integer :: ierr, nStorage, i
   integer, parameter :: tag = 10
-  real(double) :: tempstorage(5)
-  nStorage = 5
+  real(double) :: tempstorage(26)
+  nStorage = 26
 
   do i = 1, nhydrothreadsglobal
      if(i == myrankglobal) then
@@ -2993,17 +3036,22 @@ recursive subroutine SendGridBisbas(thisOctal, grid)
 
 end subroutine terminateBisbas
 
-  subroutine writeGridToBisbas(grid)
+  subroutine writeGridToBisbas()!(grid)
     use mpi
-    integer, parameter :: nstorage=5
-    type(GRIDTYPE) :: grid
+    integer, parameter :: nstorage=26
+!    type(GRIDTYPE) :: grid
     integer :: numStillSending
     type(VECTOR) :: position
-    real(double) :: rho, temperature, tempstorage(nstorage)
+    real(double) :: tempstorage(nstorage)
+    real(double) :: c, cplus, c12o!, cii_1, cii_2, H2Col, HCol
+!    real(double) :: UVtemp, heating, cooling, column, totcol
+    real(double) :: AVtemp, UV, tlast, dustt, uvtemp
     integer :: status, ierr
     integer, parameter :: tag = 10
     logical :: stillRecving
-    open(123, file="forBisbas.txt", form="formatted", status="unknown")
+    real(double) :: H, H2, CII21, CI21, CI31, CI32, OI21, OI31, OI32, CO21, CO32, CO43, &
+         CO54, CO65, CO76, CO87, tgas, tdust
+    open(123, file="PDR_result.txt", form="formatted", status="unknown")
     stillRecving = .true.
     numStillSending = nHydroThreadsGlobal
     print *, "num still sending: ", numstillsending
@@ -3022,15 +3070,43 @@ end subroutine terminateBisbas
        position%x = tempStorage(1)
        position%y = tempStorage(2)
        position%z = tempStorage(3)
-       rho = tempStorage(4)
-       temperature = tempStorage(5)
+       AVtemp = tempStorage(4)
+       tlast = tempStorage(5)
+       dustT = tempStorage(6)
+       UVtemp = tempStorage(26)
+       H = tempStorage(7)
+       H2 = tempStorage(8)
+       cplus = tempstorage(9)
+       c = tempstorage(10)
+       c12o = tempstorage(11)
+       CII21 = tempstorage(12)
+       CI21 = tempstorage(13)
+       CI31 = tempstorage(14)
+       CI32 = tempstorage(15)
+       OI21 = tempstorage(16)
+       OI31 = tempstorage(17)
+       OI32 = tempstorage(18)
+       CO21 = tempstorage(19)
+       CO32 = tempstorage(20)
+       CO43 = tempstorage(21)
+       CO54 = tempstorage(22)
+       CO65 = tempstorage(23)
+       CO76 = tempstorage(24)
+       CO87 = tempstorage(25)
+       UV = tempstorage(26)
+       
+       write(123, '(1p,40e14.5)') ((position%x*1.d10/pctocm)), &
+            ((position%y*1.d10/pctocm)), &
+            ((position%z*1.d10/pctocm)), &
+            AVtemp, UV, tGas, tDust, H, H2, Cplus, C, C12O, CII21, CI21, CI31, &
+            CI32, OI21, OI31, OI32, CO21, CO32, CO43, CO54, CO65, CO76, CO87
+            !AVtemp, tlast, dustT, UVtemp, heating, cooling, c, cplus, c12o, &
+            !cool1, cool2, cool3, cool4, cii_1, cii_2, column, H2Col, HCol, totCol, H2pop, Hpop
+!
+!          write(20,'(1p,40e14.5)') cen%x
 
-       write(123, '(1p,7e14.5)') ((position%x+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
-            ((position%y+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
-            ((position%z+(grid%octreeRoot%subcellSize))*1.d10/pctocm), &
-            rho, temperature
     end if
-    end do
+ end do
   end subroutine writeGridToBisbas
 
 
@@ -3298,6 +3374,144 @@ end subroutine writeRadialFile
 
 555 continue
   end subroutine dumpValuesAlongLinePDR
+
+
+  subroutine dumpFinalResultsAloneLine(grid, thisFile, startPoint, endPoint, nPoints)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, soctal
+    integer :: subcell
+    integer :: nPoints
+    type(VECTOR) :: startPoint, endPoint, position, direction, cen
+    real(double) :: loc(3)!, rho, rhou , rhoe, p, phi_stars, phi_gas
+!    real(double) :: temperature
+    character(len=*) :: thisFile
+    integer :: ierr
+    integer, parameter :: nStorage = 26
+    real(double) :: c, cplus, c12o!, cool1, cool2, cool3, cool4, cii_1, cii_2, H2Col, HCol
+    real(double) :: tempSTorage(nStorage)!, heating, cooling, column, totcol
+    real(double) :: AVtemp, tval!, Hpop, H2pop
+    integer, parameter :: tag = 30
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: stillLooping
+    integer :: sendThread
+    integer :: i
+    real(double) :: H, H2, CII21, CI21, CI31, CI32, OI21, OI31, OI32, CO21, CO32, CO43, &
+         CO54, CO65, CO76, CO87, tgas, tdust
+
+    i = npoints
+
+    thisOctal => grid%octreeRoot
+    position = startPoint
+    direction = endPoint - startPoint
+    call normalize(direction)
+    if (myHydroSetGlobal /= 0) goto 555
+
+    if (myrankWorldGlobal == 0) then
+
+       open(20, file=thisFile, form="formatted", status="replace")
+!       open(21, file="hc_components.dat", form="formatted", status="replace")
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+
+          cen%x = tempStorage(1)
+          cen%y = tempStorage(2)
+          cen%z = tempStorage(3)
+          AVtemp = tempStorage(4)
+          tGas = tempStorage(5)
+          tDust = tempStorage(6)
+          H = tempStorage(7)
+          H2 = tempStorage(8)
+          cplus = tempstorage(9)
+          c = tempstorage(10)
+          c12o = tempstorage(11)
+          CII21 = tempstorage(12)
+          CI21 = tempstorage(13)
+          CI31 = tempstorage(14)
+          CI32 = tempstorage(15)
+          OI21 = tempstorage(16)
+          OI31 = tempstorage(17)
+          OI32 = tempstorage(18)
+          CO21 = tempstorage(19)
+          CO32 = tempstorage(20)
+          CO43 = tempstorage(21)
+          CO54 = tempstorage(22)
+          CO65 = tempstorage(23)
+          CO76 = tempstorage(24)
+          CO87 = tempstorage(25)
+          tval = tempstorage(26)
+          write(20,'(1p,40e14.5)') cen%x, AVtemp, tGas, tDust, H, H2, Cplus, C, C12O, CII21, CI21, CI31, &
+               CI32, OI21, OI31, OI32, CO21, CO32, CO43, CO54, CO65, CO76, CO87
+
+          position = cen
+          position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
+
+       enddo
+       !Send escape trigger to other threads
+       do sendThread = 1, nHydroThreadsGlobal
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+       enddo
+       close(20)
+!       goto 555
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+             call findSubcellLocal(position, thisOctal, subcell)
+             sOctal => thisOctal
+             cen = subcellCentre(thisOctal, subcell)
+             call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+             tempStorage(1) = cen%x
+             tempStorage(2) = cen%y
+             tempStorage(3) = cen%z
+             tempStorage(4) = thisOctal%AV(subcell, 1)
+             tempStorage(5) = thisOctaL%tLast(subcell)
+             tempStorage(6) = thisOctal%dust_t(subcell)
+             tempstorage(7) = thisOctal%abundance(subcell, 31) !H2
+             tempstorage(8) = thisOctal%abundance(subcell, 32) !H
+             tempStorage(9) = thisOctal%abundance(subcell, 11) !C+ 
+             tempStorage(10) = thisOctal%abundance(subcell, 25) !C
+             tempStorage(11) = thisOctal%abundance(subcell, 28) !CO
+             tempStorage(12) = thisOctal%ciiline(subcell, 2, 1) !cii(2-->1) emissivity
+             tempStorage(13) = thisOctal%ciline(subcell, 2, 1) !ci(2-->1) emissivity
+             tempStorage(14) = thisOctal%ciline(subcell, 3, 1) !ci(3-->1) emissivity
+             tempStorage(15) = thisOctal%ciline(subcell, 3, 2) !ci(3-->2) emissivity
+             tempStorage(16) = thisOctal%oiline(subcell, 2, 1) !oi(2-->1) emissivity
+             tempStorage(17) = thisOctal%oiline(subcell, 3, 1) !oi(3-->1) emissivity
+             tempStorage(18) = thisOctal%oiline(subcell, 3, 2) !oi(3-->2) emissivity
+             tempStorage(19) = thisOctal%c12oline(subcell, 2, 1) !co(2-->1) emissivity
+             tempStorage(20) = thisOctal%c12oline(subcell, 3, 2) !co(3-->2) emissivity
+             tempStorage(21) = thisOctal%c12oline(subcell, 4, 3) !co(4-->3) emissivity
+             tempStorage(22) = thisOctal%c12oline(subcell, 5, 4) !co(5-->4) emissivity
+             tempStorage(23) = thisOctal%c12oline(subcell, 6, 5) !co(6-->5) emissivity
+             tempStorage(24) = thisOctal%c12oline(subcell, 7, 6) !co(7-->6) emissivity
+             tempStorage(25) = thisOctal%c12oline(subcell, 8, 7) !co(8-->7) emissivity
+             tempstorage(26) = tval
+             
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+             
+          Endif
+       enddo
+    endif
+
+555 continue
+  end subroutine dumpFinalResultsAloneLine
 
   subroutine dumpHeatingCooling(grid, thisFile, startPoint, endPoint, nPoints, iter)
     use mpi

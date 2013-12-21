@@ -524,7 +524,7 @@ contains
 
 #ifdef PDR
      if(pdrcalc) then
-        call PDR_MAIN(grid)     
+        call PDR_MAIN(grid, globalsourceArray, globalnSource)     
      end if
 #endif
 

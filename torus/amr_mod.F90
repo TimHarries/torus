@@ -1,4 +1,5 @@
 module amr_mod
+
   
  
   ! 21 nov
@@ -4166,7 +4167,7 @@ CONTAINS
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isosphere")
-          if(thisOctal%nDepth < maxdepthamr) split = .true.
+          if(thisOctal%nDepth < mindepthamr) split = .true.
 
 
        case("rv1test", "rv2test", "rv3test", "rv4test")
@@ -4176,11 +4177,13 @@ CONTAINS
           !refine LHS to maxdepth                   
           dx = grid%octreeroot%subcellSize*2.d0/(2.d0**maxDepthAMR)
           !found the xmin 
-          if (grid%octreeroot%xmin == thisOctal%xmin) then
+          if (grid%octreeroot%xmin == thisOctal%xmin .or. & 
+               (grid%octreeroot%xmin+dx) == thisOctal%xmin .or. &
+               (grid%octreeroot%xmin+(2.d0*dx)) == thisOctal%xmin) then
              if(thisOctal%ndepth < maxdepthamr) split = .true.
           endif
 
-          if(rvec%x < grid%octreeroot%subcellSize) then
+          if(rvec%x < grid%octreeroot%subcellSize/10.d0) then
              if(thisOctal%ndepth < maxdepthamr) split = .true.
           endif
 !          if(grid%octreeroot%xmin + 10.d0*dx >= rVec%x) then
@@ -7862,7 +7865,7 @@ endif
 
   subroutine calcBonnorEbertDensity(thisOctal,subcell)
     use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
-
+    use inputs_mod, only : pdrcalc
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -7899,6 +7902,21 @@ endif
        thisOctal%rho(subcell) = rho(nr)
        thisOctal%temperature(subcell) = 10.d0
     endif
+    
+    if (pdrcalc) then
+       thisOctal%uvvector(subcell)%x = 100.*Draine/1.d10
+       thisOctal%uvvector(subcell)%y = 0.d0
+       thisOctal%uvvector(subcell)%z = 0.d0
+       !             thisOctal%uvvectorPlus(subcell)%x = 0.d0
+       thisOctal%uvvectorPlus(subcell)%x = 100.*Draine/1.d10
+       thisOctal%uvvectorPlus(subcell)%y = 0.d0
+       thisOctal%uvvectorPlus(subcell)%z = 0.d0
+       thisOctal%uvvectorMinus(subcell)%x = 0.d0
+       !             thisOctal%uvvectorMinus(subcell)%x = 0.d0
+       thisOctal%uvvectorMinus(subcell)%y = 0.d0
+       thisOctal%uvvectorMinus(subcell)%z = 0.d0
+    endif
+
 
 !THAW - temporary uniform density to check propagation stability
     thisOctal%rho(subcell) = rho(nr)
@@ -8408,11 +8426,11 @@ endif
        if(pdrcalc .and. .not. photoionequilibrium) then
           if(rVec%x < (amrgridcentrex)) then! .and. &
  !              rvec%z < amrgridcentrez - 2.5d0*pctocm/1.d10)then
-             thisOctal%uvvector(subcell)%x = 100.*Draine/1.d10
+             thisOctal%uvvector(subcell)%x = 10.*Draine*pi/1.d10
              thisOctal%uvvector(subcell)%y = 0.d0
              thisOctal%uvvector(subcell)%z = 0.d0
 !             thisOctal%uvvectorPlus(subcell)%x = 0.d0
-             thisOctal%uvvectorPlus(subcell)%x = 100.*Draine/1.d10
+             thisOctal%uvvectorPlus(subcell)%x = 10.*Draine*pi/1.d10
              thisOctal%uvvectorPlus(subcell)%y = 0.d0
              thisOctal%uvvectorPlus(subcell)%z = 0.d0
              thisOctal%uvvectorMinus(subcell)%x = 0.d0
@@ -8705,7 +8723,7 @@ endif
   end subroutine calcRadialClouds
 
   subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
-    use inputs_mod, only : zetacutoff
+    use inputs_mod, only : zetacutoff, pdrcalc
     use constants_mod
     implicit none
     real(double) :: t, rho0
@@ -8750,7 +8768,7 @@ endif
       d2rhodr2 = (-fourPi*bigG*rho(i)**2 * (mu*mHydrogen) / (kerg * t)) - (2.d0/r(i))*drhodr + (1.d0/rho(i))*drhodr**2
       drhodr = drhodr + d2rhodr2 * dr
    enddo
-      
+
    mass = 0.d0
    eThermal = 0.d0
    eGrav = 0.d0

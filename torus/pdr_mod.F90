@@ -41,18 +41,19 @@ implicit none
 
 contains
 
-subroutine PDR_MAIN(grid)
+subroutine PDR_MAIN(grid, source, nsource)
   use unix_mod, only: unixGetenv
-  use inputs_mod, only :  uv_vector
+  use inputs_mod, only :  uv_vector, dummyval, dummyUV, drainefromuv
   use nrayshealpix
   implicit none
   type(gridtype) :: grid
   real(double), allocatable :: rate(:), alpha(:), beta(:)
   real(double), allocatable :: rtmin(:), rtmax(:), gamma(:)!, duplicate(:)
+  type(Sourcetype) :: source(:)
   integer, allocatable :: duplicate(:)
   character(len=10), allocatable :: product(:,:), reactant(:,:)
   character(len=80) :: datfilename, mpifilename
-  integer :: n12co, nci, ncii, noi, nelect, nrays
+  integer :: n12co, nci, ncii, noi, nelect, nrays, nsource
 #ifdef MPI
   integer :: ier
 #endif
@@ -74,6 +75,15 @@ subroutine PDR_MAIN(grid)
   call writeInfo("Setting up for PDR calculation.", TRIVIAL)
   call  checkPDRAllocations(grid%octreeroot, nrays)
   call InitLogicals(grid%octreeroot)
+  if(dummyUV) call assignDummyUVvector(grid%octreeroot, dummyVal)
+  if(drainefromuv) then
+     if(nsource >= 1) then
+        print *, "setting up draine field"
+        call findDraineFromUV(grid%octreeroot, ionizingflux(source(1)))
+     else
+        call torus_abort("trying to construct a draine field with no star...")
+     endif
+  endif
   call setupPDR(grid, reactant, product, alpha, beta, gamma, &
        rate, duplicate, rtmin, rtmax, n12co, nci, ncii, noi, nelect)
 
@@ -177,13 +187,35 @@ subroutine PDR_MAIN(grid)
      call writeVTKfile(grid, "FIN.vtk", valueTypeString=(/"rho       ",&
           "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
           "CO_PDR    ", "C+_PDR    ", "C_PDR     ", "cii_1to0  ", "cii_line  ",& 
-       "cooling   "/))
+          "cooling   "/))
+     if(myrankglobal /= 0) then
+        print *, "rank ", myrankglobal, "writing results to file"
+        call sendGridBisbas(grid%octreeroot, grid)
+!        call MPI_BARRIER(amrCommunicator, ierr)
+        call terminateBisbas()
+     else
+        print *, "rank ", myrankglobal, "On writing duties"
+!        call writeGridToBisbas(grid)
+        call writeGridToBisbas()
+     end if
+     print *, "rank ", myrankglobal, "is done dumping pdr result"
+ !    call MPI_BARRIER(MPI_COMM_WORLD, ierr)     
+  else
+     
+     write(datFilename, '(a, i4.4, a)') "finish.dat"
+     call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+          VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
+     
+     write(datFilename, '(a, i4.4, a)') "endResult.dat"
+     
+     call  dumpFinalResultsAloneLine(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
+          VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
   endif
-  write(datFilename, '(a, i4.4, a)') "finish.dat"
-  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(grid%octreeroot%xmin,  0.d0, 0.d0), &
-       VECTOR(grid%octreeroot%xmax, 0.d0, 0.d0), 1000)
-!  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+  !  call dumpValuesAlongLinePDR(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
 !       VECTOR(5.16d0*pctocm/1.d10, 0.d0, 0.d0), 1000)
+
+  write(mpiFilename,'(a, i4.4, a)') "endresult.grid"
+  call writeAmrGrid(mpiFilename, .false., grid)
 
 #else
 
@@ -217,7 +249,7 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
   logical :: buffer
   !  logical, save :: firstTime=.true.
   logical :: first_time, level_conv, anyNotConverged
-    character(len=80) :: datFilename
+    character(len=80) :: datFilename, mpifilename
 !    logical :: inEscProb = .true.
 
   overallconverged = .false.
@@ -387,6 +419,9 @@ subroutine pdr_main_loop(grid, nelect, ncii, nci, noi, nc12o, reactant, &
   !              VECTOR(1.d9, 0.d0, 0.d0), 1000, thisIteration)
            
         else
+           write(mpiFilename,'(a, i4.4, a)') "checkpoint.grid"
+           call writeAmrGrid(mpiFilename, .false., grid)
+
            write(filename,'(a, i4.4, a)') "pdr_", thisIteration,".vtk"
            call writeVTKfile(grid, filename, valueTypeString=(/"rho       ",&
                 "columnRho ", "UV        ", "uvvec     ", "dust_T    ", "pdrtemp   ", &
@@ -607,6 +642,39 @@ recursive subroutine InitLogicals(thisOctal)
      endif
   enddo
 end subroutine InitLogicals
+
+
+recursive subroutine assignDummyUVvector(thisOctal, dummyVal)
+  type(octal), pointer :: thisOCtal, child
+  integer :: j, subcell
+  real(double) :: dummyVal
+
+  do subcell = 1, thisoctal%maxchildren
+     if (thisoctal%haschild(subcell)) then
+        ! find the child
+        do j = 1, thisoctal%nchildren, 1
+           if (thisoctal%indexchild(j) == subcell) then
+              child => thisoctal%child(j)
+              call assignDummyUVVector(child, dummyval)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal,subcell,myrankGlobal)) cycle
+        thisOctal%uvvector(subcell)%x = dummyval*Draine/1.d10
+        thisOctal%uvvector(subcell)%y = 0.d0
+        thisOctal%uvvector(subcell)%z = 0.d0
+        !             thisOctal%uvvectorPlus(subcell)%x = 0.d0
+        thisOctal%uvvectorPlus(subcell)%x = dummyval*Draine/1.d10
+        thisOctal%uvvectorPlus(subcell)%y = 0.d0
+        thisOctal%uvvectorPlus(subcell)%z = 0.d0
+        thisOctal%uvvectorMinus(subcell)%x = 0.d0
+        !             thisOctal%uvvectorMinus(subcell)%x = 0.d0
+        thisOctal%uvvectorMinus(subcell)%y = 0.d0
+        thisOctal%uvvectorMinus(subcell)%z = 0.d0
+     endif
+  enddo
+end subroutine AssignDummyUVvector
 
 
 recursive subroutine zeroLevelConv(thisOctal)
@@ -2172,7 +2240,7 @@ end subroutine rayTraceMPI
 !This is the main routine that loops over the grid and does the ray casting
 recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
 !  use mpi
-  use inputs_mod, only :  uvfromphoto, uv_vector
+  use inputs_mod, only :  uvfromphoto, uv_vector, drainefromuv
 !  use healpix_module, only : vectors, nrays
   implicit none
   
@@ -2322,7 +2390,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                  thisOctal%columnRho(subcell) = 0.d0
                  testPosition = startPosition
  !                print *, "direction is ", uhat
- !                print *, "position is ", testPosition
+  !               print *, "position is ", testPosition
                  didSurface = .false.
                  do while (inOctal(grid%octreeRoot, testPosition))
                     
@@ -2330,9 +2398,10 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
 !                    call getRayTracingValuesPDR(grid, testPosition, uHat, rho, uvx, uvy, uvz, temperature, tval, &
  !                        abundancearray) 
 
+   !                 print *, "getting values"
                     Call getRayTracingValuesPDR(grid, testposition, uHat, rho, uvx, uvy, uvz, uvx2, uvy2, uvz2, temperature, tval, &
                          abundancearray)
-
+    !                print *, "got values"
                     
 !                    print *, "ALPHA ", sum(abundancearray(:))
                     
@@ -2363,6 +2432,8 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                        thisUVvector = VECTOR(uvx, uvy, uvz)
 
                        thisUVvector = thisUVvector*1.d10/draine!
+                       if(drainefromuv) thisUVVEctor = VECTOR(thisOctal%uv(subcell), 0.d0, 0.d0)
+                       
                        
                        thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
 
@@ -2371,7 +2442,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                           !try the other vector
                           thisUVvector = VECTOR(uvx2, uvy2, uvz2)
                           thisUVvector = thisUVvector*1.d10/draine!
-                       
+                          if(drainefromuv) thisUVVEctor = VECTOR(thisOctal%uv(subcell), 0.d0, 0.d0)
                           thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
                           if(thisOctal%radsurface(subcell, i) < 0.d0 )   thisOctal%radsurface(subcell, i) = 0.d0
 
@@ -2389,7 +2460,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                     thisUVvector = VECTOR(uvx, uvy, uvz)
                     !                    endif
                     thisUVvector = thisUVvector*1.d10/draine
-                    
+                    if(drainefromuv) thisUVVEctor = VECTOR(thisOctal%uv(subcell), 0.d0, 0.d0)
                     thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
                     !                    print *, "radsuface ", thisOctal%radsurface(subcell, i)
                     didSurface = .true.
@@ -2397,7 +2468,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                        !try the other vector
                        thisUVvector = VECTOR(uvx2, uvy2, uvz2)
                        thisUVvector = thisUVvector*1.d10/draine!
-                       
+                       if(drainefromuv) thisUVVEctor = VECTOR(thisOctal%uv(subcell), 0.d0, 0.d0)
                        thisOctal%radsurface(subcell, i) = - dotprod(uHat,thisUVvector)     
                        if(thisOctal%radsurface(subcell, i) < 0.d0 )   thisOctal%radsurface(subcell, i) = 0.d0
                        
@@ -2405,7 +2476,7 @@ recursive subroutine castAllRaysOverGridMPI(thisOctal, grid, colrhoonly)
                  endif
 
 
-                 print *, "rad surface is ", thisOctal%radsurface(subcell, 1)
+!                 print *, "rad surface is ", thisOctal%radsurface(subcell, 1)
                  
                  thisOctal%AV(subcell, i) = thisOctal%columnRho(subcell)*AV_fac
                  

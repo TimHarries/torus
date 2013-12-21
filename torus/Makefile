@@ -16,7 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
-sundials = no
+sundials = yes
 hdf = no
 memcheck = yes
 zlib = yes
@@ -29,7 +29,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
-pdr = no
+pdr = yes
 hydro = yes
 molecular = yes
 photoion = yes
@@ -353,8 +353,10 @@ ifeq ($(sundials), yes)
 #    SUNDIALSINC = -I/media/GEN/sundials/v2/include #-sundials
 #    SUNDIALSLIBRARIES = -L/media/GEN/sundials/v2/lib #-sundials
 #    SUNDIALSINC = -I/media/GEN/sundials/v2/include #-sundials
-    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials                                                                                                                                         
-    SUNDIALSINC = -I/sw/sundials-2.5.0/include #-sundials
+#    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials                                                                                                                                         
+#   SUNDIALSINC = -I/sw/sundials-2.5.0/include #-sundials
+    SUNDIALSLIBRARIES = -L/home/th457/sundials/lib #-sundials                                                                                                                                         
+    SUNDIALSINC = -I/home/th457/sundials/include #-sundials
     SLIBS = -lsundials_cvode -lsundials_nvecserial -lm
     ETCFLAG += -DUSESUNDIALS
 else

@@ -158,7 +158,50 @@ use utils_mod
 ! end interface
 
 contains
+  
+  
+  recursive subroutine findDraineFromUV(thisOCtal, ionizingflux)
+    use inputs_mod, only : sourcepos, amrgridcentrex, amrgridsize
+    type(octal), pointer :: thisOCtal, child
+    integer :: j, subcell
+    type(vector) :: rvec, diff
+    real(double) :: distance, ionizingflux, diffS
 
+
+    
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do j = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(j) == subcell) then
+                child => thisoctal%child(j)
+                call findDraineFromUV(child, ionizingflux)
+                exit
+             endif
+          enddo
+       else
+          if(.not. octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
+          if(sourcepos(1)%x > (amrgridcentrex-(amrgridsize/2.d0))) then
+!             print *, "source on grid"
+             rvec = subcellCentre(thisOCtal, subcell)
+             diff = rvec-sourcepos(1)
+             distance = modulus(diff)
+             thisOctal%UV(subcell) =  ionizingflux*6.612d-47*(pctocm/1.d10)**2/((distance*1.d10/pctocm)**2)                
+          else
+             rvec = subcellCentre(thisOCtal, subcell)
+             diffS = rvec%x-(amrgridcentrex-amrgridsize/2.d0)
+             distance = abs(diffS)
+ !            print *, "ionizing flux is ", ionizingflux
+             thisOctal%UV(subcell) =  ionizingflux*6.612d-47*(pctocm)**2/(((distance*1.d10)/pctocm)**2) 
+  !           print *, "uv is ", thisOctal%uv(subcell)
+          endif
+
+       end if
+       
+
+    enddo
+  end subroutine findDraineFromUV
 
 SUBROUTINE find_Ccoeff(NTEMP,NLEV,TEMPERATURE,TEMPERATURES,H_COL,HP_COL,EL_COL,HE_COL, &
                      & H2_COL,PH2_COL,OH2_COL,C_COEFFS,H_abd,Hp_abd,elec_abd,He_abd,H2_abd)
@@ -2829,6 +2872,8 @@ write(6,*) b(i),i
 enddo
       RETURN
     END subroutine GAUSS_JORDAN_writes
+
+
 
 
 

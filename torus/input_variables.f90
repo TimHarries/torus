@@ -39,7 +39,9 @@
   integer :: hlevel !level of healpix refinement
   real(double) :: v_turb
   logical :: uvfromphoto
-
+  logical :: dummyuv
+  logical :: drainefromuv
+  real(double) :: dummyval
 
 
 !-------------------------------

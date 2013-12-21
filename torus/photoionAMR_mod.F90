@@ -261,7 +261,8 @@ contains
              call terminateBisbas()
           else
           print *, "rank ", myrankglobal, "On writing duties"
-             call writeGridToBisbas(grid)
+             call writeGridToBisbas()
+!             call writeGridToBisbas(grid)
           end if
           print *, "rank ", myrankglobal, "is done dumping bisbas"
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)

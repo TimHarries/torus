@@ -1998,6 +1998,17 @@ contains
     call getLogical("UV_vector", UV_vector, cLine, fLine, nLines, &
          "Dump UV vectors to file for 3D-PDR: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("dummyuv", dummyuv, cLine, fLine, nLines, &
+         "Assign a dummy uv vector field: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("drainefromuv", drainefromuv, cLine, fLine, nLines, &
+         "Create draine field from star: ","(a,1l,a)", .false., ok, .false.)
+
+    if(dummyuv) then
+       call getDouble("dummyval", dummyval, 1.d0, cLine, fLine, nLines, &
+            "Assumed UV field (draines):  ","(a,e12.3,1x,a)", 100.d0, ok, .false.)
+    endif
+
     if(UV_vector) then
        call getDouble("UV_low", UV_low, 1.d0, cLine, fLine, nLines, &
             "Lower bound of UV energy field (eV):  ","(a,e12.3,1x,a)", 5.d0, ok, .false.)

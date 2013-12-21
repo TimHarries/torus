@@ -61,7 +61,7 @@ contains
 
 
 recursive subroutine checkPDRAllocations(thisOctal, nrays)
-
+use octal_mod, only : allocateattribute
 type(octal), pointer :: thisoctal, child
 integer :: subcell, nspec, i, nrays
 
@@ -82,6 +82,23 @@ integer :: subcell, nspec, i, nrays
         if(.not. associated(thisOctal%abundance)) then
            allocate(thisOctal%abundance(1:thisOctal%maxChildren, 1:nspec))
         endif
+
+        if(.not. associated(thisOctal%columnrho)) then
+           allocate(thisOctal%columnrho(1:thisOctal%maxChildren))
+        endif
+
+        if(.not. associated(thisOctal%uvvector)) then
+           call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
+        endif
+
+        if(.not. associated(thisOctal%uvvectorplus)) then
+           call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
+        endif
+
+        if(.not. associated(thisOctal%uvvectorminus)) then
+           call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
+        endif
+
 
         if(.not. associated(thisOctal%tlast)) then
            allocate(thisOctal%tLast(1:thisOctal%maxChildren))
@@ -108,7 +125,7 @@ integer :: subcell, nspec, i, nrays
         endif
 
         if(.not. associated(thisOctal%AV)) then
-           allocate(thisOctal%UV(1:thisOctal%maxChildren))
+           allocate(thisOctal%AV(1:thisOctal%maxChildren, 1:nrays))
         endif
 
         if(.not. associated(thisOctal%converged)) then
@@ -157,7 +174,7 @@ integer :: subcell, nspec, i, nrays
            allocate(thisOctal%relch(1:thisOctal%maxchildren, 1:4, 1:41))
         endif
 
-        if(.not. associated(thisOctal%relch)) then
+        if(.not. associated(thisOctal%radsurface)) then
            allocate(thisOctal%radsurface(1:thisOctal%maxchildren, 1:nrays))
         endif
 
