@@ -26,7 +26,9 @@ use phfit_mod, only : phfit2
 use xray_mod
 #endif
 use vtk_mod
-
+#ifdef PDR
+use pdr_mod
+#endif
 implicit none
 
 private
@@ -63,7 +65,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, spherical
+    use inputs_mod, only : UV_vector, spherical, pdrcalc
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -428,6 +430,11 @@ contains
                    call simpleXRAY(grid, source(1))
                    call writeInfo("Done",TRIVIAL)
                 end if
+#ifdef PDR
+                if(pdrcalc)then
+                   call pdr_main(grid, globalsourcearray, globalnsource)
+                end if
+#endif
              else
                 call writeInfo("Calling photoionization loop",TRIVIAL)
                 call setupNeighbourPointers(grid, grid%octreeRoot)
@@ -788,6 +795,11 @@ contains
             call simpleXRAY(grid, source(1))
             call writeInfo("Done",TRIVIAL)
          end if
+#ifdef PDR
+         if(pdrcalc)then
+            call pdr_main(grid, globalsourcearray, globalnsource)
+         end if
+#endif
 !         if(useionparam) then
 !            call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
 !            

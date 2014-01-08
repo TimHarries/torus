@@ -8654,10 +8654,10 @@ endif
 !    centre(5) = VECTOR(0.d0, 0.d0, -12.5d0)  
 
 !    centre(1) = VECTOR(7.5d8, 0.d0, 2.d9)
-    centre(1) = VECTOR(2.1d9, 0.d0, 2.d9)
-    centre(2) = VECTOR(1.5d9, 0.d0, 3.d9)
-    centre(3) = VECTOR(2.5d9, 0.d0, 1.d9)
-    centre(4) = VECTOR(1.d9, 0.d0, 1.25d9)
+    centre(1) = VECTOR(1.7d9, 0.d0, 1.d9)
+    centre(2) = VECTOR(2.5d9, 0.d0, 0.d9)
+    centre(3) = VECTOR(1.d9, 0.d0, -1.2d9)
+!    centre(4) = VECTOR(1.d9, 0.d0, 1.25d9)
 !    centre(1) = VECTOR(7.5d8, 0.d0, 5.d9)
 
 !    do j = 1, numClouds
