@@ -212,8 +212,8 @@ mkdir -p ${TEST_DIR}
 cd ${TEST_DIR}
 touch lock
 
-echo Checking out torus from SVN archive...
-/usr/bin/svn checkout https://repository.astro.ex.ac.uk/torus/trunk/torus/ torus > svn_log.txt 2>&1 
+echo Checking out torus from SVN archive using: ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH}
+/usr/bin/svn checkout ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH} torus > svn_log.txt 2>&1 
 grep "Checked out revision" svn_log.txt
 }
 
@@ -477,6 +477,8 @@ echo "Use the -s option to run the stable version tests."
 echo "Use the -z option to run the tests on zen."
 echo "Use the -b option to run build tests only"
 echo "Use -e followed by full path to a torus executable to use a pre-built binary"
+echo "Use -r followed by a revision number to test the specified svn version e.g. -r 4300"
+echo "Use -p followed by a svn path to check out a branch or tag e.g. -p https://repository.astro.ex.ac.uk/torus/tags/torus3.0.1"
 echo ""
 }
 
@@ -487,6 +489,8 @@ export MODE=daily
 export DO_BUILD=yes
 export CLOBBEROK=yes
 export RETURN_CODE=0 
+export TORUS_SVN_PATH=https://repository.astro.ex.ac.uk/torus/trunk/torus/
+export TORUS_SVN_REVISION=
 
 # If we're running on Zen then set the appropriate mode
 this_host=`hostname`
@@ -509,6 +513,10 @@ do
 	    export CLOBBEROK=no
 	    shift 
 	    TORUS_BINARY=$1;;
+	-r) shift
+	    export TORUS_SVN_REVISION="-r $1";;
+	-p) shift
+	    export TORUS_SVN_PATH=$1;;
 	-h) print_help
 	    exit;;
     esac
