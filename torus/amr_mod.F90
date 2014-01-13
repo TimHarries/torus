@@ -319,6 +319,106 @@ CONTAINS
    END DO
   END SUBROUTINE add_discwind
 
+  RECURSIVE SUBROUTINE addDisc(thisOctal,grid)
+    ! uses an external function to decide whether to split a subcell of
+    !   the current octal. 
+
+    use inputs_mod, only : maxDepthAMR, height, rinner, router, rho0, alphaDisc, betaDisc
+    use inputs_mod, only : heightSplitFac
+    IMPLICIT NONE
+    type(romanova) :: romData
+    TYPE(OCTAL), POINTER :: thisOctal
+    TYPE(gridtype), INTENT(INOUT) :: grid   ! need to pass the grid through to the 
+    TYPE(OCTAL), POINTER :: child
+    INTEGER              :: i, j, k    ! loop counters
+    integer :: iindex
+    integer :: isubcell
+    logical :: split
+    real(double) :: cellSize, r, thisHeightSplitFac, hr
+    type(VECTOR) :: cellCentre
+
+    DO iSubcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%hasChild(isubcell)) cycle
+
+       split = .false.
+
+       cellSize = thisOctal%subcellSize 
+       cellCentre = subcellCentre(thisOctal,isubCell)
+       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+       if ((r < 2.*autocm/1.d10).or.(r > 12.*autocm/1.d10)) then
+
+          call addDiscDensity(thisOctal, isubcell, grid)
+
+          thisHeightSplitFac = heightSplitFac
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+             
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
+          
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+             
+          if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
+             if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
+                split = .true.
+             endif
+          endif
+          
+          if ((r+cellsize/2.d0) < rInner) split = .false.
+          if ((r-cellsize/2.d0) > Router) split = .false.
+       endif
+
+
+
+       IF (split.and.(thisOctal%nDepth < maxDepthAMR)) then
+
+        CALL addNewChild(thisOctal, iSubcell, grid, adjustGridInfo=.TRUE., &
+                         inherit=.false., interp=.false.,splitAzimuthally=.false., romData=romData)
+
+          if (.not.thisOctal%hasChild(isubcell)) then
+             write(*,*) "add child failed in splitGrid"
+             do
+             enddo
+          endif
+          
+       END IF
+       
+    END DO
+
+  do i = 1, thisOctal%nChildren
+     if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
+        write(*,*) "octal children messed up"
+        do ; enddo
+        endif
+     enddo
+
+    do i = 1, thisOctal%maxChildren
+      k = -99
+      if (thisOctal%hasChild(i)) then
+        do j = 1, thisOctal%nChildren
+          if (thisOctal%indexChild(j) == i) then
+            k = j
+            exit
+          endif
+       enddo
+       if (k==-99) then
+          write(*,*) "subcell screwup"
+          do
+          enddo
+       endif
+    endif
+ enddo
+
+   if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
+      write(*,*) "nchildren screw up"
+      do;enddo
+      endif
+    
+    DO iIndex = 1, thisOctal%nChildren
+       child => thisOctal%child(iIndex)
+       CALL addDisc(child,grid)
+   END DO
+  END SUBROUTINE addDisc
+
 
 
   !
@@ -983,6 +1083,9 @@ CONTAINS
     CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
+    CASE ("adddisc")
+       CALL addDiscDensity(thisOctal, subcell ,grid)
+
     CASE ("iras04158")
        CALL iras04158(thisOctal, subcell)
 
@@ -1591,6 +1694,7 @@ CONTAINS
 #endif
 
     ! put some data in the four/eight subcells of the new child
+
 
     if (.not.doAMRhydroInterp) then
        DO subcell = 1, parent%child(newChildIndex)%maxChildren
@@ -3353,7 +3457,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, smoothinneredge, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens, limitscalar
+    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens, limitscalar, addDisc
 
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -4555,12 +4659,6 @@ CONTAINS
           pOctal => thisOctal
           if (octalOnThread(pOctal, subcell, myrankGlobal).and.(get_npart() > 0)) then
 
-             ! Set up azmimuthally splitting if cylindrical polar geometry is in use. 
-             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine )) then
-                split = .true.
-                splitInAzimuth = .true.
-             endif
-             
              ! Switch off velocity splitting if SPH velocities are not available to avoid referencing unallocated pointer
              if (.not. sphVelocityPresent() ) doVelocitySplit =.false.
              
@@ -4571,6 +4669,13 @@ CONTAINS
                 call find_n_particle_in_subcell(nparticle, ave_density, &
                      thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
              end if
+
+
+             if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine ).and.(nParticle>1)) then
+                split = .true.
+                splitInAzimuth = .true.
+             endif
+
              
              total_mass = cellVolume(thisOctal, subcell)  * 1.d30
              
@@ -4589,9 +4694,11 @@ CONTAINS
              ! placeholder for maximum expected smoothing length
              thisOctal%h(subcell) = ((maxdensity * total_mass) / mindensity)**(1.d0/3.d0)
              
+             massPerCell = amrlimitscalar
              total_mass = ave_density * total_mass
              if (total_mass > massPerCell) then
                 split = .true.
+                splitInAzimuth = .true.
                 mass_split = mass_split + 1
              endif
              
@@ -4738,6 +4845,15 @@ CONTAINS
 !!$
 !!$      end if
           endif
+
+          if (addDisc) then
+             rVec = subcellCentre(thisOctal, subcell)
+             if (sqrt(rVec%x**2 + rVec%y**2) < 1.5*autocm/1.d10) then
+                split = .false.
+                splitinazimuth = .false.
+             endif
+          endif
+
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
           limit = nint(amrLimitScalar)
@@ -4918,7 +5034,10 @@ CONTAINS
                 split = .true.
              endif
           endif
+
           
+          
+
        case("circumbin")
           
           if (thisOctal%ndepth  < 5) split = .true.
@@ -6600,6 +6719,8 @@ endif
     if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
        thisOctal%rho(subcell) = 100.*mHydrogen
+
+
        thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
        thisOctal%ne(subcell) = thisOctal%nh(subcell)
        thisOctal%nhi(subcell) = 1.e-5
@@ -8891,6 +9012,28 @@ endif
 
   end subroutine calcSphere
 
+  subroutine addDiscDensity(thisOctal,subcell,grid)
+    use inputs_mod, only : height, alphaDisc, betaDisc, rho0, rinner, rOuter
+    type(GRIDTYPE) :: grid
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    real(double) :: r, h, fac
+    type(VECTOR) :: rVec, vVec
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = sqrt(rVec%x**2 + rVec%y**2)
+    h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+    
+    
+    fac = -0.5d0 * (rVec%z/h)**2
+    fac = max(-50.d0,fac)
+    thisOctal%rho(subcell) = 1.d-30
+    if ((r > rInner).and.(r < router)) then
+       thisOctal%rho(subcell) = max(1.d-30,dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac))
+    endif
+
+  end subroutine addDiscDensity
+
   subroutine calcEnvelope(thisOctal,subcell,checkSplit)
 
     use inputs_mod, only : rInner, rOuter, n2max, amr1d, amr2d, beta
@@ -10580,7 +10723,7 @@ end function readparameterfrom2dmap
 
   end FUNCTION AGBStarVelocity
 
-  recursive subroutine hydroVelocityconvert(thisOctal)
+  recursive subroutine hydroVelocityconvert(thisOctal) 
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -10601,7 +10744,7 @@ end function readparameterfrom2dmap
           thisOctal%velocity(subcell)%z = (thisOctal%rhow(subcell)/thisOctal%rho(subcell))/cSpeed
        endif
     enddo
-  end subroutine hydroVelocityconvert
+ end subroutine hydroVelocityconvert
 
 
   TYPE(vector)  function keplerianVelocity(point)
@@ -12317,6 +12460,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%NHeI,  source%NHeI)
     call copyAttribute(dest%NHeII,  source%NHeII)
     call copyAttribute(dest%Hheating,  source%Hheating)
+    call copyAttribute(dest%tDust,  source%tDust)
     call copyAttribute(dest%Heheating,  source%Heheating)
     call copyAttribute(dest%changed,  source%changed)
 
@@ -16006,6 +16150,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%tDust, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
@@ -16267,6 +16412,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%NHeI)
     call deallocateAttribute(thisOctal%NHeII)
     call deallocateAttribute(thisOctal%Hheating)
+    call deallocateAttribute(thisOctal%tDust)
     call deallocateAttribute(thisOctal%Heheating)
     call deallocateAttribute(thisOctal%ionFrac)
 #ifdef PDR

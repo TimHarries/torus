@@ -1585,8 +1585,9 @@ contains
 
 ! Write SPH information (e.g. code units) to a file
        call info_sph("info_sph.dat")
-
+       call fitAlphaDisc(grid)
 #endif
+
     case("fitsfile")
        call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
@@ -2283,6 +2284,95 @@ recursive subroutine quickSublimate(thisOctal)
     endif
     call torus_mpi_barrier
   end subroutine SanityCheckGrid
+
+subroutine fitAlphaDisc(grid)
+  use inputs_mod, only : alphaDisc, betaDisc, height, rinner, router, limitscalar, limitscalar2, rho0, geometry, heightsplitfac
+  type(romanova) :: romData ! parameters and data for romanova geometry
+  type(GRIDTYPE) :: grid
+  real(double) :: alpha, beta, rhoDouble, heightDouble
+  real(double) :: rInnerDouble, rOuterDouble, chisq, minChisq
+  integer :: n, i1,i2,i3,i4
+  
+  rInnerDouble = 750d0
+  rOuterDouble = 23d3
+
+  alpha = 0.5
+  beta = 1.125
+  rho0 = 1.d-7
+  heightDouble = 10.d0*autocm/1.d10
+
+!  minChisq = 1.d30
+!  do i1 = 1, 10
+!     do i2 = 1, 10
+!        do i3 = 1,10
+!           do i4 = 1, 10
+!              alpha = 2.d0*dble(i1-1)/10.d0
+!              beta = 2.d0*dble(i2-1)/10.d0
+!              heightDouble = (1.d0+dble(i3-1)/10.d0 * 9.d0)*autocm/1.d10
+!              rhodouble = -11.d0 + 2.d0 * dble(i4-1)/10.d0
+!              rhodouble = 10.d0**rhodouble
+!
+!              chisq = 0.
+!              n = 0
+!              call chisqAlphaDisc(grid%octreeRoot,  alpha, beta, rhodouble, heightDouble, rInnerDouble, rOuterDouble, chisq, n)
+!              chisq = chisq / dble(n-4)
+!              if (chisq < minChisq) then
+!                 if (writeoutput) write(*,'(1p,5e12.3)') alpha, beta, heightDouble, rho0, chisq
+!                 minChisq = chisq
+!              endif
+!           enddo
+!        enddo
+!     enddo
+!  enddo
+  rinner = 10. * rSol / 1.e10
+  router = 100.*autocm/1.e10
+  height = 5.*autocm/1.d10
+  alphaDisc = 0.5
+  betaDisc = 1.
+  rho0 = 1.d-10
+  heightsplitFac = 1.
+  grid%geometry = "adddisc"
+  geometry = "adddisc"
+  call addDisc(grid%octreeRoot, grid)
+
+
+end subroutine fitAlphaDisc
+
+
+recursive subroutine chisqAlphaDisc(thisOctal, alpha, beta, rho0, height, rInner, rOuter, chisq, n)
+  real(double) :: alpha, beta, rho0, rinner, router, chisq, r, h, height, fac, rho
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  integer :: subcell, i, n
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call chisqAlphaDisc(child, alpha, beta, rho0, height, rInner, rOuter, chisq, n)
+              exit
+           end if
+        end do
+     else 
+        rVec = subcellCentre(thisOctal, subcell)
+        r = sqrt(rVec%x**2 + rVec%y**2)
+        if ((r > rInner).and.(r < rOuter).and.(thisOctal%rho(subcell) < 1.d-10).and.&
+             (thisOctal%rho(subcell) > 1.d-15)) then
+           h = height * (r / (100.d0*autocm/1.d10))**beta
+           fac = -0.5d0 * (rVec%z/h)**2
+           fac = max(-50.d0,fac)
+           rho = dble(rho0) * (dble(rInner/r))**dble(alpha) * exp(fac)
+           chisq = chisq + (thisOctal%rho(subcell)-rho)**2 / rho**2
+           n = n + 1
+        endif
+     endif
+  enddo
+end subroutine chisqAlphaDisc
+
+
 
 
 end module setupamr_mod

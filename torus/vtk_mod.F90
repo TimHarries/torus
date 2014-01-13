@@ -1047,6 +1047,9 @@ contains
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
 
+               case("tdust")
+                  write(lunit, *) real(thisOctal%tDust(subcell))
+
 #ifdef PDR
 
                case("dust_T")
@@ -3183,6 +3186,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("temperature")
                   rArray(1, n) = real(real(thisOctal%temperature(subcell)))
+
+               case("tdust")
+                  rArray(1, n) = real(real(thisOctal%tdust(subcell)))
 
 
                case("chiline")

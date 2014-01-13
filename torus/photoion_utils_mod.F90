@@ -93,6 +93,7 @@ contains
           thisOctal%ionFrac(subcell,2) = 1.
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
           thisOctal%temperature(subcell) = 1.e4
+          thisOctal%tDust(subcell) = 10.d0
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.e-10
              thisOctal%ionFrac(subcell,4) = 1.       
@@ -930,7 +931,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   n = thisIon%nLevels
   allocate(matrixA(1:n, 1:n), matrixB(1:n), tempMatrix(1:n,1:n), qeff(1:n,1:n), rates(1:n))
 
-  matrixA = 1.d-30
+  matrixA = 1.d-40
   matrixB = 0.d0
 
   call getRecombs(rates, thision, dble(temperature))
@@ -985,7 +986,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
 
   do i = 1, n
-     pops(i) = real(max(1.d-30,matrixB(i)))
+     pops(i) = real(max(0.,matrixB(i)))
   enddo
 
   deallocate(matrixA, matrixB, tempMatrix, qeff, rates)
@@ -999,13 +1000,14 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   real, intent(in) :: temperature
   integer :: i
   real :: thisGamma
-  real :: t , fac, maxTemp
+  real :: t , fac, maxTemp, minTemp
   real :: boltzFac
   logical, save :: firstTime = .true.
   !$OMP THREADPRIVATE (firstTime)
 
  ! - thap -check to see if the temperature is too hot for the gamma table                                                
   maxTemp = maxval(thisIon%transition(iTransition)%t)
+  minTemp = minval(thisIon%transition(iTransition)%t)
 
   if(temperature > maxTemp) then
     if(firstTime) then
@@ -1021,15 +1023,18 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
           real(thisIon%transition(iTransition)%t(1)))
   endif
 
-  call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
-  fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
-  thisGamma = thisIon%transition(iTransition)%gamma(i) + &
-       fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
-
-  boltzFac =  real(exp(-thisIon%transition(iTransition)%energy / (kev*temperature)))
-
-  fac = (8.63e-6 / sqrt(temperature)) * thisGamma
-
+  if (temperature >  minTemp) then
+     call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
+     fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
+     thisGamma = thisIon%transition(iTransition)%gamma(i) + &
+          fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
+     
+     boltzFac =  real(exp(-thisIon%transition(iTransition)%energy / (kev*temperature)))
+     
+     fac = (8.63e-6 / sqrt(temperature)) * thisGamma
+  else
+     fac = 1.d-33
+  endif
   deexcitation =  fac / thisIon%level(thisIon%transition(iTransition)%j)%g
 
   excitation =  fac / thisIon%level(thisIon%transition(iTransition)%i)%g * boltzFac
@@ -1361,7 +1366,7 @@ end subroutine addRecombinationEmissionLine
 
 ! ??07 Imaging
 subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
-  use lucy_mod, only: calcContinuumEmissivityLucyMono
+  use lucy_mod, only: calcContinuumEmissivityLucyMonoAtDustTemp
 
   implicit none
   
@@ -1393,7 +1398,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
   case("forbidden")
 
      call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
+     call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
      call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
 
      if (nSource > 0) then              
@@ -1406,7 +1411,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
   case("recombination")
 
      call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
+     call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
      call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
      
      if (nSource > 0) then              
@@ -1420,7 +1425,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      write(message,"(a,f8.2,a)") "Image wavelength: ", lambdaImage*angsToMicrons, " microns"
      call writeInfo(message, FORINFO)
      call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
-     call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage,iLambdaPhoton)
+     call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, lambdaImage,iLambdaPhoton)
      
      if (nSource > 0) then              
         lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
@@ -1617,6 +1622,30 @@ function recombToGround(temperature) result (alpha1)
   alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
 end function recombToGround
 
+function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Gamma)
+  real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
+  real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
+  real(double) :: nHydrogen
+
+  rGrain  = 1.d-4
+  sigmaGrain = pi * rGrain**2
+  grainVolume = (4.d0/3.d0)*pi*rGrain**3
+  grainDensity = 3.5d0
+  dustTogas = 1.d-2
+
+  if (ionizationFraction > 0.5d0) then
+     f = 11.8d0
+  else  if (tGas > 1000.d0)  then
+     f = 0.16
+  else 
+     f = 0.37
+  endif
+
+  vproton = sqrt(2.d0*(1.5d0*kerg*tGas)/mHydrogen)
+  nGrain = dustToGas * rhoGas / (grainVolume * grainDensity)
+  nHydrogen = rhoGas/mHydrogen
+  gamma = nHydrogen * nGrain * sigmaGrain * vProton * f * 2.d0 * kerg * (tGas - tDust)
+end function gasGrainCoolingRate
 
 
 

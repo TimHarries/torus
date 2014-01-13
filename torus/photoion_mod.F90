@@ -121,7 +121,7 @@ contains
     integer(bigInt) :: n_rmdr, mPhoton
     integer :: mOctal
     real, allocatable :: tempArray(:), tArray(:)
-    real(double), allocatable :: tempArrayd(:), tArrayd(:)
+    real(double), allocatable :: tempArrayd(:), tArrayd(:), tdArray(:)
 #endif
 
     !$OMP THREADPRIVATE (firstTime)
@@ -224,7 +224,7 @@ contains
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
     call writeVtkFile(grid, "dust_initial.vtk", &
-         valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
+         valueTypeString=(/"rho        ", "temperature", "tdust", "dust1      ","velocity   "/))
 
     do while(.not.converged)
        nIter = nIter + 1
@@ -504,17 +504,21 @@ contains
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
      allocate(tempArray(1:nVoxels))
      allocate(tArray(1:nVoxels))
+     allocate(tdArray(1:nVoxels))
      allocate(tempArrayd(1:nVoxels))
      allocate(tArrayd(1:nVoxels))
      tArray = 0.d0
      tempArray = 0.d0
      tArrayd = 0.d0
      tempArrayd = 0.d0
-     call packTemperatures(octalArray, nVoxels, tArray, ioctal_beg,ioctal_end)
+     call packTemperatures(octalArray, nVoxels, tArray, tdArray, ioctal_beg,ioctal_end)
      call MPI_ALLREDUCE(tArray,tempArray,nVoxels,MPI_REAL,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
+     call MPI_ALLREDUCE(tdArray,tempArrayd,nVoxels,MPI_DOUBLE,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
      tArray = tempArray
-     call unpackTemperatures(octalArray, nVoxels, tArray)
+     tdArray = tempArrayd
+     call unpackTemperatures(octalArray, nVoxels, tArray, tdArray)
      tArray = 0.d0
      tempArray = 0.d0
      call packne(octalArray, nVoxels, tArrayd, ioctal_beg,ioctal_end)
@@ -538,7 +542,7 @@ contains
      call MPI_ALLREDUCE(numDeltaNe,globalNumDeltaNe,1,MPI_INTEGER,         MPI_SUM,MPI_COMM_WORLD,ierr)
 
 
-     deallocate(tempArray, tArray, tempArrayd, tArrayd)
+     deallocate(tempArray, tArray, tempArrayd, tArrayd, tdArray)
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 #else
@@ -1121,9 +1125,10 @@ end subroutine photoIonizationloop
     integer :: subcell
     logical :: converged
     real :: t1, t2, tm
-    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
+    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, gasGrainCool
     real :: deltaT
-    real :: underCorrection = 0.5
+    real :: kappaP, dustCooling
+    real :: underCorrection = 0.9
     integer :: nIter
 ! For testing convergence
     real(double), intent(inout) :: sumDeltaT
@@ -1141,9 +1146,6 @@ end subroutine photoIonizationloop
                 
                 call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
                 
-                if (totalHeating == 0.d0) then
-                   thisOctal%temperature(subcell) = 1.e-3
-                else
                    nIter = 0
                    converged = .false.
                    
@@ -1157,6 +1159,11 @@ end subroutine photoIonizationloop
                    if (y1*y2 > 0.d0) then
                       if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
                          tm = t1
+                         write(*,*) "set at tmin"
+                         write(*,*) "heating ",totalheating
+                         write(*,*) "cooling ",hhecooling(grid, thisOctal, subcell, tm)
+                         write(*,*) "tgas, tdust ",tm,thisOctal%tDust(subcell)
+                         write(*,*) " "
                       else
                          tm  = t2
                       endif
@@ -1186,10 +1193,29 @@ end subroutine photoIonizationloop
                          write(*,*) t1, t2, y1,y2,ym
                       endif
                       
-                      if (abs((t1-t2)/t1) .le. 1.e-3) then
+                      if (abs((t1-t2)/t1) .le. 1.e-4) then
                          converged = .true.
                       endif
                       niter = niter + 1
+
+
+                      gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,1), &
+                           dble(tm), thisOctal%tDust(subcell))
+
+
+                      if (totalHeating == 0.d0) then
+                         write(*,*) "iter ",niter
+                         write(*,*) "heating ",totalheating
+                         write(*,*) "cooling ",hhecooling(grid, thisOctal, subcell, tm)
+                         write(*,*) "gasgrain ",gasGrainCool
+                         write(*,*) "dustheating ",dustheating
+                         write(*,*) "tgas, tdust ",tm,thisOctal%tDust(subcell)
+                      endif
+
+                      dustHeating = max(1.d-30,dustHeating + gasGrainCool)
+                      call returnKappa(grid, thisOctal, subcell, kappap=kappap, atThisTemperature=real(thisOctal%tDust(subcell)))
+                      thisOctal%tDust(subcell) = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
+
                    enddo
 
                    deltaT = tm - thisOctal%temperature(subcell)
@@ -1197,8 +1223,10 @@ end subroutine photoIonizationloop
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
                    sumDeltaT = sumDeltaT + deltaT
                    numDeltaT = numDeltaT + 1 
+
+! now solve the dust temperature
+
                    !             write(*,*) thisOctal%temperature(subcell), niter
-                endif
              else
                 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
@@ -1230,7 +1258,7 @@ end subroutine photoIonizationloop
     real(double) :: fac, thisRootTbetaH, betaH, betaHe, thisRootTbetaHe
     real :: thisLogT
     integer :: n
-    real(double) :: log10te,betarec, coolrec, betaff, coolff
+    real(double) :: log10te,betarec, coolrec, betaff, coolff, gasGraincool
     real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
     real(double) :: becool
     real :: kappap
@@ -1246,14 +1274,16 @@ end subroutine photoIonizationloop
     nh = thisOctal%nh(subcell)
     ne = thisOctal%ne(subcell)
                 
-
+    gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,1), &
+         dble(temperature), thisOctal%tDust(subcell))
 
     becool = 0.
     coolingRate = 0.d0
+    coolingRate = coolingRate + gasGrainCool
 
     gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
 
-    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+    coolingRate = coolingRate + 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
 
     thisLogT = log10(temperature)
     log10te = thisLogT
@@ -1307,6 +1337,7 @@ end subroutine photoIonizationloop
     end if
     coolingrate = coolingrate + coolcoll
 
+
     becool = becool +coolcoll
 
     if (PRESENT(debug)) then
@@ -1317,9 +1348,6 @@ end subroutine photoIonizationloop
        endif
     endif
 
-    if (coolingRate < 0.) then
-       write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
-    endif
 
     call locate(logT, 31, thisLogT, n)
     fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
@@ -1327,29 +1355,31 @@ end subroutine photoIonizationloop
     thisRootTbetaH = rootTbetaH(n) + (rootTbetaH(n+1)-rootTbetaH(n)) * fac
 
 
-    if (thisLogT < logT(18)) then
-       thisRootTbetaHe = rootTbetaHe(n) + (rootTbetaHe(n+1)-rootTbetaHe(n)) * fac
-    else
-       thisRootTbetaHe = 0.d0
+    if (thisLogT > 1.d0) then
+       if (thisLogT < logT(18)) then
+          thisRootTbetaHe = rootTbetaHe(n) + (rootTbetaHe(n+1)-rootTbetaHe(n)) * fac
+       else
+          thisRootTbetaHe = 0.d0
+       endif
+       
+       betaH = thisrootTbetaH / sqrt(temperature)
+       betaHe = thisrootTbetaHe / sqrt(temperature)
+       
+       coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
+
+
+       if (ne * nhii * kerg * temperature * betaH < 0.) then
+          write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
+       endif
+       
+
+       coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
+       if (ne * nheii * kerg * temperature * betaHe < 0.) then
+          write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
+       endif
+
     endif
 
-    betaH = thisrootTbetaH / sqrt(temperature)
-    betaHe = thisrootTbetaHe / sqrt(temperature)
-
-    coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
-
-
-
-    if (ne * nhii * kerg * temperature * betaH < 0.) then
-       write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
-    endif
-
-
-    coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
-
-    if (ne * nheii * kerg * temperature * betaHe < 0.) then
-       write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
-    endif
 
 
     call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate, debug=.false.)
@@ -1359,12 +1389,7 @@ end subroutine photoIonizationloop
 !    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
     coolingRate = coolingRate + crate
 
-    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-
-    dustCooling = fourPi * kappaP * (stefanBoltz/pi) * temperature**4
-
-    coolingRate = coolingRate + dustCooling
-
+666 continue
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, &
@@ -1519,7 +1544,7 @@ subroutine dumpLexington(grid, epsoverdt)
   integer :: i, j
   real(double) :: r, theta
   real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,nei
-  real(double) :: oirate, oiirate, oiiirate, oivrate
+  real(double) :: oirate, oiirate, oiiirate, oivrate, td
   real(double) :: v, epsoverdt
   type(VECTOR) :: octVec
   real :: fac
@@ -1531,6 +1556,7 @@ subroutine dumpLexington(grid, epsoverdt)
 
        call writeVtkFile(grid, "lexington.vtk", &
             valueTypeString=(/"rho        ", "temperature", "HI         ", &
+            "tdust      ", &
             "dust1      "/))
 
   open(20,file="lexington.dat",form="formatted",status="unknown")
@@ -1544,6 +1570,7 @@ subroutine dumpLexington(grid, epsoverdt)
 
      oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
      heating = 0.d0; cooling = 0.d0; netot = 0.d0
+     td = 0.
      do j = 1, 100
         call randomNumberGenerator(getDouble=theta)
         theta = theta * Pi
@@ -1590,6 +1617,7 @@ subroutine dumpLexington(grid, epsoverdt)
 !             fac*((epsOverDT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell,returnIonNumber("O IV", grid%ion, grid%nIon)))
 
         t  = t + thisOctal%temperature(subcell)
+        td = td + thisOctal%tdust(subcell)
      enddo
 
 
@@ -1597,6 +1625,7 @@ subroutine dumpLexington(grid, epsoverdt)
      ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100. !; niv=niv/100.
      neii=neii/100.; neiii=neiii/100.;t=t/100. !nei=nei/100.; neiv=neiv/100.
      netot = netot / 100
+     td = td/100.
 
      oirate = oirate / 100.
      oiirate = oiirate / 100.
@@ -1624,8 +1653,8 @@ subroutine dumpLexington(grid, epsoverdt)
 
      write(21,'(f6.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
 
-     write(20,'(f6.3,f9.1,  14f8.3)') &
-          r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,,nei
+     write(20,'(f6.3,f9.1,  15f8.3)') &
+          r*1.e10/pctocm,t,td,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,,nei
      write(22,*) r*1.e10/pctocm,netot
   enddo
   close(20)
@@ -1771,18 +1800,19 @@ subroutine twoPhotonContinuum(thisFreq)
   enddo
 end subroutine twoPhotonContinuum
 
-subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalGasHeating, epsOverDeltaT)
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
-  real(double) :: hHeating, heHeating, totalHeating, v, epsOverDeltaT, dustHeating
+  real(double) :: hHeating, heHeating, totalGasHeating, v, epsOverDeltaT, dustHeating
+  real(double) :: tGas, tDust
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! eqation 21 of kenny's
   Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
-  totalHeating = (Hheating + HeHeating + dustHeating)
+  totalGasHeating = (Hheating + HeHeating)
   
 end subroutine getHeating
 
@@ -2354,7 +2384,7 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
      thisLam = real((cSpeed / freq(i)) * 1.e8)
      if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
         call hunt(lamArray, nLambda, real(thisLam), iLam)
-        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
+        spectrum(i) = spectrum(i) + bnu(freq(i), thisOctal%tDust(subcell)) * &
              kAbsArray(iLam) *1.d-10* dFreq(i) * fourPi
      endif
   enddo
@@ -2801,10 +2831,11 @@ end subroutine readHeIIrecombination
 
 #ifdef MPI
 
-      subroutine packTemperatures(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
+      subroutine packTemperatures(octalArray, nTemps, tArray, tdarray, ioctal_beg, ioctal_end)
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real :: tArray(:)
+        real(double) :: tdArray(:)
         integer :: ioctal_beg, ioctal_end
         integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
@@ -2822,18 +2853,21 @@ end subroutine readHeIIrecombination
                  nTemps = nTemps + 1
                  if ((ioctal >= ioctal_beg).and.(ioctal<= ioctal_end)) then
                    tArray(nTemps) = thisOctal%temperature(isubcell)
+                   tdArray(nTemps) = thisOctal%tDust(isubcell)
                  else 
                    tArray(nTemps) = 0.d0
+                   tdArray(nTemps) = 0.d0
                  endif
               endif
           end do
        end do
      end subroutine packTemperatures
 
-      subroutine unpackTemperatures(octalArray, nTemps, tArray)
+      subroutine unpackTemperatures(octalArray, nTemps, tArray, tdArray)
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
         real :: tArray(:)
+        real(double) :: tdArray(:)
         integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
 
@@ -2850,6 +2884,7 @@ end subroutine readHeIIrecombination
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  thisOctal%temperature(iSubcell) = tArray(nTemps)
+                 thisOctal%tDust(iSubcell) = tdArray(nTemps)
               endif
           
           end do

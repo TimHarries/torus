@@ -1100,6 +1100,9 @@ contains
           call getLogical("useHull", useHull, cLine, fLine, nLines, &
             "Use hull particle method: ","(a,1l,a)", .false., ok, .false.)
 
+          call getLogical("adddisc", adddisc, cLine, fLine, nLines, &
+            "Add inner and outer disc to model: ","(a,1l,a)", .false., ok, .false.)
+
           call getLogical("guessNe", guessNe, cLine, fLine, nLines, &
             "Guess the electron density based on temperature: ","(a,1l,a)", .false., ok, .false.)
 
@@ -1346,6 +1349,10 @@ contains
     call getLogical("cylindrical", cylindrical, cLine, fLine, nLines, &
          "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
+         "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 10.d0, ok, .false.)
+
+
     call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
          "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
 
@@ -1358,7 +1365,7 @@ contains
          "2d RHD in cartesians: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("spherical", spherical, cLine, fLine, nLines, &
-         "AMR grid is one-dimension and spherical: ","(a,1l,1x,a)", .true., ok, .false.)
+         "AMR grid is one-dimension and spherical: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("amr2d", amr2d, cLine, fLine, nLines, &
          "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)

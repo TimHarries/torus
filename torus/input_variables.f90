@@ -424,6 +424,7 @@
   integer :: inputNSmallPackets
   character(len=80) :: intextFilename, outtextFilename ! ??? Fogel geometry
   logical :: doSpiral ! For a Shakara Sunyaev Disc
+  logical :: addDisc
   type(VECTOR) :: sphereVelocity, spherePosition ! unisphere geometry
   real(double) :: sphereMass, sphereRadius       ! unisphere geometry
   real(double) :: omega

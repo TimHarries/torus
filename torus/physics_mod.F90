@@ -337,7 +337,7 @@ contains
     use nbody_mod, only : donBodyonly
 #endif
     use source_mod, only : globalNsource, globalSourceArray, randomSource
-    use lucy_mod, only : lucyRadiativeEquilibriumAMR
+    use lucy_mod, only : lucyRadiativeEquilibriumAMR, setFixedtemperatureOnTau
     use setupamr_mod, only: doSmoothOnTau
     use disc_hydro_mod, only: verticalHydrostatic
 
@@ -386,9 +386,10 @@ contains
     real(double) :: temp, dustMass
     real :: temp2
 
-    integer :: i
+    integer :: i, ilambda
+    logical :: ok
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-    integer, parameter :: nMuMie = 50
+    integer, parameter :: nMuMie = 180
     integer :: nlower, nupper, sign
     type(GRIDTYPE) :: grid
 #ifdef MPI
@@ -444,6 +445,9 @@ contains
      call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=1500., rosselandKappa = temp)
      call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=10000., kappap = temp2)
 !     write(*,*) "Ross (1500), Planck (10000): ",temp,temp2/grid%octreeRoot%rho(1)
+
+     iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
+     call setFixedTemperatureOnTau(grid, iLambda)
 
         if (solveVerticalHydro) then
 
@@ -986,6 +990,7 @@ subroutine testSuiteRandom()
 #endif
 
 end subroutine testSuiteRandom
+
 
 
 end module physics_mod

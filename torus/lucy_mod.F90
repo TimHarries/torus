@@ -2785,6 +2785,36 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     enddo
   end subroutine calcContinuumEmissivityLucyMono
 
+  recursive subroutine  calcContinuumEmissivityLucyMonoAtDustTemp(grid, thisOctal, lamArray, lambda, iPhotonLambda)
+    type(GRIDTYPE) :: grid
+    integer :: iPhotonLambda
+    real :: lamArray(:), lambda
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcContinuumEmissivityLucyMonoAtDustTemp(grid, child, lamArray, lambda, iPhotonLambda)
+                exit
+             end if
+          end do
+       else
+          thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont)
+          if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%rho(subcell) > 1.d-30)) then
+
+             call addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid, lambda, iPhotonLambda)
+             
+          endif
+
+       endif
+    enddo
+  end subroutine calcContinuumEmissivityLucyMonoAtDustTemp
+
 
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
@@ -2836,6 +2866,27 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLa
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 
 end subroutine addDustContinuumLucyMono
+
+!-------------------------------------------------------------------------------
+
+subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
+
+  type(OCTAL), pointer :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: iPhotonLambda
+  real ::  lambda
+  real(double) :: kappaAbs
+  kappaAbs = 0.d0
+  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+
+  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
+
+  thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
+             kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
+  if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
+
+end subroutine addDustContinuumLucyMonoAtDustTemp
 
 !-------------------------------------------------------------------------------
 
@@ -3018,6 +3069,182 @@ subroutine setBiasOnTau(grid, iLambda)
 
   end subroutine setBiasOnTau
 
+subroutine setFixedTemperatureOnTau(grid, iLambda)
+    use inputs_mod, only : cylindrical, amr3d, amr1d, smallestCellSize
+    use amr_mod, only: tauAlongPath, getOctalArray
+#ifdef MPI
+    use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
+    use mpi
+#endif
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    real(double) :: tau, thisTau
+  type(VECTOR) :: rVec, direction
+  integer :: i
+    integer :: subcell
+    integer :: iLambda
+    integer                     :: nOctal        ! number of octals in grid
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    integer :: iOctal
+    integer :: iOctal_beg, iOctal_end
+    real(double) :: kappaSca, kappaAbs, kappaExt, r
+    type(VECTOR) :: arrayVec(6)
+     integer :: nDir
+#ifdef MPI
+! Only declared in MPI case
+     logical, allocatable :: eArray(:), tArray(:)
+     integer :: nVoxels, ierr
+     integer :: nFixed
+     integer :: np, n_rmdr, m
+#endif
+
+
+     kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
+
+     call writeInfo("Fixing temperature on tau...",TRIVIAL)
+
+    allocate(octalArray(grid%nOctals))
+    nOctal = 0
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    if (nOctal /= grid%nOctals) then
+       write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+       stop
+    endif
+
+    
+    ! default loop indices
+    ioctal_beg = 1
+    ioctal_end = nOctal
+
+#ifdef MPI
+    
+            ! Set the range of index for octal loop used later.     
+            np = nThreadsGlobal
+            n_rmdr = MOD(SIZE(octalArray),np)
+            m = SIZE(octalArray)/np
+            
+            if (myRankGlobal .lt. n_rmdr ) then
+               ioctal_beg = (m+1)*myRankGlobal + 1
+               ioctal_end = ioctal_beg + m
+            else
+               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+               ioctal_end = ioctal_beg + m - 1
+            end if
+            
+#endif
+
+
+!$OMP PARALLEL DEFAULT (NONE) &
+!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
+!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
+     call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
+
+     if (amr3d) then
+        nDir = 6
+     else
+        nDir = 4
+     endif
+
+     if (amr1d) ndir = 2
+     if (nDir == 4) then
+        arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
+        arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
+        arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
+        arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
+     endif
+
+     if (nDir == 2) then
+        arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
+        arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+     endif
+
+
+!$OMP DO SCHEDULE (DYNAMIC, 1)
+    do iOctal =  iOctal_beg, iOctal_end
+       thisOctal => octalArray(iOctal)%content
+
+       do subcell = 1, thisOctal%maxChildren
+
+          if (.not.thisOctal%hasChild(subcell)) then
+
+             rVec = subcellCentre(thisOctal, subcell)
+             if (thisOctal%threed) then
+                rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
+             endif
+              
+             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+             kappaExt = kappaAbs + kappaSca
+             if (thisOctal%subcellSize*kappaExt < 0.1d0) then
+                thisOctal%biasCont3D(subcell) = 1.d0
+             else
+
+                tau = 1.d30
+                if (amr3d) then
+                   if (cylindrical) then
+                      ndir = 6
+                      arrayVec(1) = VECTOR(0.d0, 0.d0, 1.d0)
+                      arrayVec(2) = VECTOR(0.d0, 0.d0,-1.d0)
+                      arrayVec(3) = VECTOR(rVec%x, rVec%y,0.d0)
+                      call normalize(arrayVec(3))
+                      arrayVec(4) = (-1.d0)*arrayVec(3)
+                      arrayVec(3) = rotateZ(arrayVec(3), 0.1d0*degtorad)
+                      arrayVec(4) = rotateZ(arrayVec(4), 0.1d0*degtorad)
+                      arrayVec(5) = arrayVec(3).cross.arrayVec(1)
+                      call normalize(arrayVec(5))
+                      arrayVec(6) = (-1.d0)*arrayVec(5)
+                   else
+                      ndir = 6
+                      arrayVec(1) = VECTOR(0.d0, 0.d0, 1.d0)
+                      arrayVec(2) = VECTOR(0.d0, 0.d0,-1.d0)
+                      arrayVec(3) = VECTOR(1.d0, 0.d0, 0.d0)
+                      arrayVec(4) = VECTOR(-1.d0, 0.d0,0.d0)
+                      arrayVec(5) = VECTOR(0.d0, 1.d0, 0.d0)
+                      arrayVec(6) = VECTOR(0.d0,-1.d0, 0.d0)
+                   endif
+                endif
+
+
+                do i = 1, ndir 
+                  direction = arrayVec(i)
+                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 10.d0, startOctal=thisOctal, startSubcell=subcell)
+                   tau = min(tau, thisTau)
+                enddo
+
+                rVec = subcellCentre(thisOctal, subcell)
+                r = sqrt(rVec%x**2 + rVec%y**2)
+
+                if ((tau > 5.).and.(r > 2.*autocm/1.d10).and.(r < 12.d0*autocm)) thisOctal%fixedTemperature(subcell) = .true.
+            
+             endif
+          endif
+       enddo
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+#ifdef MPI
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+
+     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     allocate(eArray(1:nVoxels))
+     allocate(tArray(1:nVoxels))
+     eArray = .false.
+     call packFixed(octalArray, nFixed, eArray, ioctal_beg, ioctal_end)
+     call MPI_ALLREDUCE(eArray,tArray,nFixed,MPI_LOGICAL,&
+         MPI_LOR,MPI_COMM_WORLD,ierr)
+     eArray = tArray
+     call unpackFixed(octalArray, nFixed, eArray)
+     deallocate(eArray, tArray)
+#endif
+
+    deallocate(octalArray)
+!    call writeVtkFile(grid, "bias.vtk", &
+!            valueTypeString=(/"bias"/))
+     call writeInfo("Done.",TRIVIAL)
+
+  end subroutine setFixedTemperatureOnTau
+
   subroutine packBias(octalArray, nBias, eArray, iOctal_beg, iOctal_end)
     type(OCTALWRAPPER) :: octalArray(:)
     integer :: iOctal_beg, iOctal_end
@@ -3073,6 +3300,62 @@ subroutine setBiasOnTau(grid, iLambda)
        end do
     end do
   end subroutine unpackBias
+
+  subroutine packFixed(octalArray, nFixed, eArray, iOctal_beg, iOctal_end)
+    type(OCTALWRAPPER) :: octalArray(:)
+    integer :: iOctal_beg, iOctal_end
+    integer :: nFixed
+    logical :: eArray(:)
+    integer :: iOctal, iSubcell
+    type(OCTAL), pointer :: thisOctal
+
+       !
+       ! Update the bias values of grid computed by all processors.
+       !
+    nFixed = 0
+    do iOctal = 1, SIZE(octalArray)
+       
+       thisOctal => octalArray(iOctal)%content
+          
+       do iSubcell = 1, thisOctal%maxChildren
+                
+          if (.not.thisOctal%hasChild(iSubcell)) then
+             nFixed = nFixed + 1
+             if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                eArray(nFixed) = octalArray(iOctal)%content%fixedTemperature(iSubcell)
+             else 
+                eArray(nFixed) = .false.
+             endif
+          endif
+          
+       end do
+    end do
+  end subroutine packFixed
+
+  subroutine unpackFixed(octalArray, nFixed, eArray)
+    type(OCTALWRAPPER) :: octalArray(:)
+    integer :: nFixed
+    logical :: eArray(:)
+    integer :: iOctal, iSubcell
+    type(OCTAL), pointer :: thisOctal
+
+    !
+    ! Update the bias values of grid computed by all processors.
+    !
+    nFixed = 0
+    do iOctal = 1, SIZE(octalArray)
+
+       thisOctal => octalArray(iOctal)%content
+          
+       do iSubcell = 1, thisOctal%maxChildren
+          
+          if (.not.thisOctal%hasChild(iSubcell)) then
+             nFixed = nFixed + 1
+             octalArray(iOctal)%content%fixedTemperature(iSubcell) = eArray(nFixed)
+          endif
+       end do
+    end do
+  end subroutine unpackFixed
 
   recursive subroutine allocateMemoryForLucy(thisOctal)
     use octal_mod, only: allocateattribute

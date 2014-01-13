@@ -681,6 +681,7 @@ contains
           
           call writeAttributePointerFlexi(20, "nCrossings", thisOctal%nCrossings, fileFormatted)
           call writeAttributePointerFlexi(20, "hHeating", thisOctal%hHeating, fileFormatted)
+          call writeAttributePointerFlexi(20, "tDust", thisOctal%tDust, fileFormatted)
           call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
           call writeAttributePointerFlexi(20, "undersampled", thisOctal%undersampled, fileFormatted)
           call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
@@ -4306,6 +4307,8 @@ contains
             call readPointerFlexi(20, thisOctal%nCrossings, fileFormatted)
          case("hHeating")
             call readPointerFlexi(20, thisOctal%hHeating, fileFormatted)
+         case("tDust")
+            call readPointerFlexi(20, thisOctal%tDust, fileFormatted)
          case("heHeating")
             call readPointerFlexi(20, thisOctal%heHeating, fileFormatted)
 
@@ -4689,6 +4692,8 @@ contains
             call receivePointerFlexi(thisOctal%nCrossings)
          case("hHeating")
             call receivePointerFlexi(thisOctal%hHeating)
+         case("tDust")
+            call receivePointerFlexi(thisOctal%tDust)
          case("heHeating")
             call receivePointerFlexi(thisOctal%heHeating)
 
@@ -4979,6 +4984,7 @@ contains
 
       call sendAttributePointerFlexi(iThread, "nCrossings", thisOctal%nCrossings)
       call sendAttributePointerFlexi(iThread, "hHeating", thisOctal%hHeating)
+      call sendAttributePointerFlexi(iThread, "tDust", thisOctal%tDust)
       call sendAttributePointerFlexi(iThread, "heHeating", thisOctal%heHeating)
       call sendAttributePointerFlexi(iThread, "undersampled", thisOctal%undersampled)
       call sendAttributePointerFlexi(iThread, "nDiffusion", thisOctal%nDiffusion)

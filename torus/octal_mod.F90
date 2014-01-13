@@ -283,6 +283,7 @@ MODULE octal_mod
     real(double),  pointer, DIMENSION(:) :: NHeII => null()            ! HeII
     real(double),  pointer, dimension(:) :: Hheating => null()
     real(double),  pointer, dimension(:) :: Heheating => null()
+    real(double), dimension(:), pointer  :: tDust  => null()
    
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()

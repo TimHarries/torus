@@ -1920,7 +1920,6 @@ end subroutine radiationHydro
                 end if
                 totalPower = totalPower + epsOverDeltaT*photonPacketWeight
                 
-!                print *, "weight ", photonpacketweight, spectrumweight
 
                 if(binPhotons) then
                    do i = 1, nFreq

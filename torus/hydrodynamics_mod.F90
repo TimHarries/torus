@@ -12887,6 +12887,11 @@ end subroutine refineGridGeneric2
 
     nHydroThreads = nHydroThreadsGlobal
 
+    if (amr1d) then
+       call selfGrav1D(grid)
+       goto 666
+    endif
+
 
     call updateDensityTree(grid%octreeRoot)
 
@@ -13346,6 +13351,89 @@ end subroutine minMaxDepth
         endif
      enddo
    end subroutine sumCOM
+
+
+   subroutine selfGrav1d(grid)
+     use mpi
+     type(GRIDTYPE) :: grid
+     real(double) :: mass, radius, localMass, r
+     integer :: iThread
+     integer :: ierr
+     integer, parameter :: tag = 23
+
+     do iThread = 1, nHydroThreadsGlobal
+
+        if (iThread == myRankGlobal) then
+           call setupPhi1d(grid, grid%octreeRoot)
+        else
+           call findTotalMassWithinRServer(grid, iThread)
+        endif
+     enddo
+     do iThread = 1, nHydroThreadsGlobal
+        if (iThread /= myRankGlobal) then
+           r = 1.d30
+           call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+        endif
+     enddo
+   end subroutine selfGrav1d
+
+
+
+   recursive subroutine setupPhi1D(grid, thisOctal)
+     use mpi
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal, child
+     integer :: subcell, i
+     type(VECTOR) :: rVec
+     real(double) :: r, mass, localmass
+     integer :: ithread
+     integer :: ierr, j
+     integer, parameter :: tag = 23
+     integer :: status(MPI_STATUS_SIZE)
+
+     do subcell = 1, thisoctal%maxchildren
+        if (thisoctal%haschild(subcell)) then
+           ! find the child
+           do i = 1, thisoctal%nchildren, 1
+              if (thisoctal%indexchild(i) == subcell) then
+                 child => thisoctal%child(i)
+                 call setupPhi1d(grid, child)
+                 exit
+              end if
+           end do
+        else
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+           rVec = subcellCentre(thisOctal, subcell)
+           r = rVec%x
+           mass = 0.d0
+           localMass = 0.d0
+
+           do iThread = 1, nHydroThreadsGlobal
+              if (myRankGlobal == iThread) then
+                 localMass = 0.d0
+                 call findTotalMassWithinRMPIPrivate(grid%octreeRoot, r, localMass)
+              else
+                 call MPI_SEND(radius, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+              endif
+           enddo
+
+
+           do j = 1, nHydroThreadsGlobal
+              if (j /= iThread) then
+                 call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, status, ierr)
+                 mass = mass + localMass
+              endif
+           enddo
+           thisOctal%phi_i(subcell) = -bigG * mass / (r * 1.d10)
+           thisOctal%phi_gas(subcell) = -bigG * mass / (r * 1.d10)
+
+        endif
+     enddo
+   end subroutine setupPhi1d
+
+     
+
 
    recursive subroutine createDensityinEtaline(grid, thisOctal, nDepth)
      type(GRIDTYPE) :: grid

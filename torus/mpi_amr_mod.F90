@@ -3137,8 +3137,8 @@ end subroutine writeRadialFile
     real(double) :: temperature
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 11
-    real(double) :: tempSTorage(nStorage), tval
+    integer, parameter :: nStorage = 12
+    real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillLooping
@@ -3176,6 +3176,7 @@ end subroutine writeRadialFile
           phi_stars = tempStorage(9)
           phi_gas = tempStorage(10)
           temperature = tempStorage(11)
+          kappaTimesflux = tempStorage(12)
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
 
              if(cen%x > 0.0078125d0 .and. cen%x < (1.d0+0.0078125d0)) then                
@@ -3184,7 +3185,7 @@ end subroutine writeRadialFile
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
-             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas
+             write(20,'(1p,8e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
           position = cen
@@ -3227,6 +3228,7 @@ end subroutine writeRadialFile
              tempStorage(9) = thisOctal%phi_stars(subcell)             
              tempStorage(10) = thisOctal%phi_gas(subcell)             
              tempStorage(11) = thisOctal%temperature(subcell)
+             tempStorage(12) = modulus(thisOctal%kappaTimesFlux(subcell))
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
        enddo
