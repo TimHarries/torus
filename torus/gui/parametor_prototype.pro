@@ -12,6 +12,11 @@ TEMPLATE = app
 RC_FILE = parametor.rc
 QT += svg
 
+unix {
+    LIBS += -L/usr/local/qwt-6.1.1-svn/lib -lqwt
+    INCLUDEPATH += /usr/local/qwt-6.1.1-svn/include
+}
+
 macx {
     #APP_BUNDLE_FILES.files = torus_input_definitions.xml
     #APP_BUNDLE_FILES.path = Contents/Resources
