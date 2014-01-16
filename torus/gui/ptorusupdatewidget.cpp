@@ -98,7 +98,8 @@ void PTorusUpdateWidget::compileToBin() {
             //Do Possible Cleanup
             QFile::remove(wrkDirStr + "/torus.tar.gz");
             QDir cleanup(wrkDirStr + "/torus");
-            cleanup.removeRecursively();
+	    // Commented out by DMA as it was causing the Zen build to fail
+	    //            cleanup.removeRecursively();
 
             //Assume that we have everything we need
             QFile tarFile(tarFilePath);

@@ -2,7 +2,7 @@
 #define PTORUSUPDATEWIDGET_H
 
 #include <QDialog>
-#include <QTemporaryDir>
+//#include <QTemporaryDir>
 #include <QFileSystemWatcher>
 #include <QFile>
 #include <QDir>
@@ -47,7 +47,7 @@ private:
     bool isUnixLikeSystem;
     QProcess *buildProcess;
     QProcess *extractProcess;
-    QTemporaryDir *tempDir;
+    //    QTemporaryDir *tempDir;
     QDir *buildDir;
     QFileSystemWatcher *watcher;
     QStringList fileList;
