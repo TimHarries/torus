@@ -2287,11 +2287,10 @@ recursive subroutine quickSublimate(thisOctal)
 
 subroutine fitAlphaDisc(grid)
   use inputs_mod, only : alphaDisc, betaDisc, height, rinner, router, limitscalar, limitscalar2, rho0, geometry, heightsplitfac
-  type(romanova) :: romData ! parameters and data for romanova geometry
   type(GRIDTYPE) :: grid
-  real(double) :: alpha, beta, rhoDouble, heightDouble
-  real(double) :: rInnerDouble, rOuterDouble, chisq, minChisq
-  integer :: n, i1,i2,i3,i4
+  real(double) :: alpha, beta, heightDouble !, rhoDouble
+  real(double) :: rInnerDouble, rOuterDouble!, chisq, minChisq
+!  integer :: n, i1,i2,i3,i4
   
   rInnerDouble = 750d0
   rOuterDouble = 23d3

@@ -224,7 +224,7 @@ contains
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
     call writeVtkFile(grid, "dust_initial.vtk", &
-         valueTypeString=(/"rho        ", "temperature", "tdust", "dust1      ","velocity   "/))
+         valueTypeString=(/"rho        ", "temperature", "tdust      ", "dust1      ","velocity   "/))
 
     do while(.not.converged)
        nIter = nIter + 1
@@ -514,7 +514,7 @@ contains
      call packTemperatures(octalArray, nVoxels, tArray, tdArray, ioctal_beg,ioctal_end)
      call MPI_ALLREDUCE(tArray,tempArray,nVoxels,MPI_REAL,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
-     call MPI_ALLREDUCE(tdArray,tempArrayd,nVoxels,MPI_DOUBLE,&
+     call MPI_ALLREDUCE(tdArray,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
      tArray = tempArray
      tdArray = tempArrayd
@@ -1127,7 +1127,7 @@ end subroutine photoIonizationloop
     real :: t1, t2, tm
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, gasGrainCool
     real :: deltaT
-    real :: kappaP, dustCooling
+    real :: kappaP
     real :: underCorrection = 0.9
     integer :: nIter
 ! For testing convergence
@@ -1243,7 +1243,7 @@ end subroutine photoIonizationloop
     real(double) :: nHii, nHeii, ne, nh
     real :: temperature
     logical, optional :: debug
-    real(double) :: coolingRate, crate, dustCooling
+    real(double) :: coolingRate, crate
     real(double) :: gff
     real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
                                4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
@@ -1389,7 +1389,6 @@ end subroutine photoIonizationloop
 !    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
     coolingRate = coolingRate + crate
 
-666 continue
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda, nfreq, &
@@ -1805,7 +1804,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   type(OCTAL) :: thisOctal
   integer :: subcell
   real(double) :: hHeating, heHeating, totalGasHeating, v, epsOverDeltaT, dustHeating
-  real(double) :: tGas, tDust
+
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! eqation 21 of kenny's

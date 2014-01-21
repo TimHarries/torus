@@ -3135,7 +3135,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
 !$OMP PARALLEL DEFAULT (NONE) &
-!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
+!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec, r) &
 !$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 

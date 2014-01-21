@@ -13356,7 +13356,7 @@ end subroutine minMaxDepth
    subroutine selfGrav1d(grid)
      use mpi
      type(GRIDTYPE) :: grid
-     real(double) :: mass, radius, localMass, r
+     real(double) :: r !, mass, radius, localMass
      integer :: iThread
      integer :: ierr
      integer, parameter :: tag = 23

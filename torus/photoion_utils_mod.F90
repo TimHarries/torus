@@ -986,7 +986,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
 
   do i = 1, n
-     pops(i) = real(max(0.,matrixB(i)))
+     pops(i) = real(max(0.0_db,matrixB(i)))
   enddo
 
   deallocate(matrixA, matrixB, tempMatrix, qeff, rates)
@@ -1025,7 +1025,8 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
 
   if (temperature >  minTemp) then
      call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
-     fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
+     fac = (t - thisIon%transition(iTransition)%t(i)) / &
+          (thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
      thisGamma = thisIon%transition(iTransition)%gamma(i) + &
           fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
      

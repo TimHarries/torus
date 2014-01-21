@@ -348,7 +348,7 @@ CONTAINS
        r = sqrt(cellcentre%x**2 + cellcentre%y**2)
        if ((r < 2.*autocm/1.d10).or.(r > 12.*autocm/1.d10)) then
 
-          call addDiscDensity(thisOctal, isubcell, grid)
+          call addDiscDensity(thisOctal, isubcell)
 
           thisHeightSplitFac = heightSplitFac
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
@@ -1084,7 +1084,7 @@ CONTAINS
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
     CASE ("adddisc")
-       CALL addDiscDensity(thisOctal, subcell ,grid)
+       CALL addDiscDensity(thisOctal, subcell)
 
     CASE ("iras04158")
        CALL iras04158(thisOctal, subcell)
@@ -9012,13 +9012,12 @@ endif
 
   end subroutine calcSphere
 
-  subroutine addDiscDensity(thisOctal,subcell,grid)
+  subroutine addDiscDensity(thisOctal,subcell)
     use inputs_mod, only : height, alphaDisc, betaDisc, rho0, rinner, rOuter
-    type(GRIDTYPE) :: grid
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real(double) :: r, h, fac
-    type(VECTOR) :: rVec, vVec
+    type(VECTOR) :: rVec
 
     rVec = subcellCentre(thisOctal, subcell)
     r = sqrt(rVec%x**2 + rVec%y**2)
