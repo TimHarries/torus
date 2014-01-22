@@ -4739,7 +4739,7 @@ end subroutine sumFluxes
        call setuppressure(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        
-       call setupUi(grid%octreeRoot, grid, direction, dt/2.d0)
+       call setupUi(grid%octreeRoot, grid, direction, dt)
        call setupUpm(grid%octreeRoot, grid, direction)
        call setupRhoPhi(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
