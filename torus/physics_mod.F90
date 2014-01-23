@@ -259,6 +259,9 @@ contains
                 case("kurucz")
                    call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
                         source(isource)%radius*1.d10)
+                case("tlusty")
+                   call fillSpectrumTlusty(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
+                        source(isource)%radius*1.d10)
                 case DEFAULT
                    call readSpectrum(source(isource)%spectrum, inputcontfluxfile(isource), ok)
                 end select

@@ -342,6 +342,64 @@ module spectrum_mod
 
     end subroutine readSpectrum
 
+
+    subroutine readTlustySpectrumIni(spectrum, filename, ok)
+      type(SPECTRUMTYPE) :: spectrum
+      logical :: ok
+      character(len=*) :: filename
+      real :: fTemp(120000),xTemp(120000), x, f
+      character(len=80) :: cLine
+      integer :: nLambda, i
+
+      ok = .true.
+      open(20,file=filename,form="formatted",status="old", err=666)
+      nLambda = 1
+10    continue
+      read(20,'(a)',end=20) cline
+      if (len(trim(cline)).gt.0) then
+         if (cLine(1:1) /="#") then
+            read(cLine,*,err=10) x, f
+         else 
+            goto 10
+         endif
+      else
+         goto 10
+      endif
+      xtemp(nLambda) = x/cspeed
+      fTemp(nLambda) = max(f,1.e-30)
+      nLambda = nLambda + 1
+      goto 10
+20    continue
+      close(20)
+      nLambda = nLambda - 1
+      if (nLambda == 0) then
+         call writeFatal("Error reading continuum flux file: "//trim(filename))
+      endif
+      allocate(spectrum%flux(1:nLambda))
+      allocate(spectrum%lambda(1:nLambda))
+      allocate(spectrum%dlambda(1:nLambda))
+      allocate(spectrum%prob(1:nLambda))
+      allocate(spectrum%ppw(1:nLambda))
+      spectrum%nLambda = nLambda
+      spectrum%flux(1:nLambda) = fTemp(1:nLambda)
+      spectrum%lambda(1:nLambda) = xTemp(1:nLambda)
+      do i = 2, nLambda-1
+         spectrum%dlambda(i) = 0.5*((xtemp(i+1)+xtemp(i))-(xtemp(i)+xtemp(i-1)))
+      enddo
+      spectrum%dlambda(1) = xtemp(2)-xtemp(1)
+      spectrum%dlambda(nLambda) = xtemp(nlambda)-xtemp(nLambda-1)
+      call probSpectrum(spectrum)
+
+      goto 999
+
+666   continue
+      ok = .false.
+      call writeFatal("Error in opening file: "//trim(filename))
+999   continue
+
+    end subroutine readTlustySpectrumIni
+
+
     subroutine readSpectrumFromDump(spectrum, lunit)
       type(SPECTRUMTYPE) :: spectrum
       integer ::lunit, nLambda
@@ -644,6 +702,101 @@ module spectrum_mod
 
     end subroutine fillSpectrumKurucz
 
+
+    subroutine fillSpectrumTlusty(spectrum, teff, mass, radius, freeup)
+      type(SPECTRUMTYPE) :: spectrum, spec1, spec2
+      real(double) :: teff, mass, radius
+      real(double) :: logg
+      logical, optional :: freeUp
+      logical :: ok1, ok2, ok
+      integer, parameter :: nFiles = 96
+      real,save :: teffArray(nFiles)
+      integer :: i, j
+      real(double) :: t
+      real :: loggArray(8)
+      logical, save :: firstTime = .true.
+      character(len=200) :: thisFile1, thisFile2, dataDirectory
+      character(len=80) :: label1, label2, message
+      integer :: i1, i2
+      integer, parameter :: nKurucz = 96
+      type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
+      character(len=80),save :: klabel(nKurucz)
+      if (firstTime) call  readTlustyGrid(klabel, kspectrum, nKurucz)
+         
+
+      logg = log10(bigG * mass / radius**2)
+
+      ok = .true.
+      call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+
+!      loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
+      loggArray = (/ 300., 325., 350., 375., 400., 425., 450., 475. /)
+      if (firsttime) then
+         open(31, file=trim(dataDirectory)//"/tlusty/filelist.dat", form="formatted", status="old")
+         do i = 1, nFiles
+            read(31, *) teffArray(i)
+         end do
+         close(31)
+         firstTime = .false.
+      endif
+
+      if ((teff > teffArray(1)).and.(teff < teffArray(nFiles))) then
+         call locate(teffArray, nFiles, real(teff), i)
+         call locate(loggArray, 11, real(logg*100.), j)
+
+         t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
+         if (t  > 0.5) j = j + 1
+         t = (teff - teffArray(i))/(teffArray(i+1)-teffArray(i))
+         i1 = i
+         i2 = i + 1
+         call createTlustyFilename(teffArray(i1), loggArray(j), thisFile1, label1)
+         call createTlustyFilename(teffArray(i2), loggArray(j), thisFile2, label2)
+         
+         write(message, '(a,a)') "Interpolating TLUSTY atmospheres between: ",trim(label1)
+         call writeInfo(message, TRIVIAL)
+         write(message, '(a,a)') "                                        : ",trim(label2)
+         call writeInfo(message, TRIVIAL)
+         
+         call readTlustySpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
+         if (.not.ok1) then
+            if (writeoutput) then
+               write(*,*) "Can't find TLUSTY spectrum: ",trim(thisfile1)," ",trim(label1)
+               !            do i = 1, nKurucz
+               !               write(*,*) trim(label1), " and ", trim(klabel(i))
+               !            enddo
+!            stop
+            endif
+         endif
+         call readTlustySpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok2)
+         if (.not.ok2) then
+            if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",trim(thisfile2), " ", trim(label2)
+         endif
+         
+         if (ok1.and.ok2) then
+            call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
+         else
+            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+         endif
+      else
+            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+         endif
+
+
+         if (PRESENT(freeUp)) then
+         if (freeup) then
+            do i = 1, nKurucz
+               call freeSpectrum(kspectrum(i))
+            enddo
+            firstTime = .true.
+         endif
+      endif
+      call freeSpectrum(spec1)
+      call freeSpectrum(spec2)
+      call probSpectrum(spectrum)
+      
+    end subroutine fillSpectrumTlusty
+
      subroutine createInterpolatedSpectrum(spectrum, spec1, spec2, t)
        use utils_mod, only: loginterp_dble
        type(SPECTRUMTYPE) :: spectrum, spec1, spec2
@@ -660,7 +813,6 @@ module spectrum_mod
           spectrum%flux(i) = 10.d0**(log10(y1) + t * (log10(y2) - log10(y1)))
        enddo
      end subroutine createInterpolatedSpectrum
-
 
      subroutine createKuruczFileName(teff, logg, thisfile, thislabel)
        real :: teff, logg
@@ -679,6 +831,28 @@ module spectrum_mod
        thisLabel = fluxfile
        thisFile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
      end subroutine createKuruczFileName
+
+
+     subroutine createTlustyFileName(teff, logg, thisfile, thislabel)
+       real :: teff, logg
+       integer :: i
+       character(len=*) thisfile, thisLabel
+       character(len=80) :: fluxfile, dataDirectory
+       
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       
+       
+       if (teff < 10000.) then
+          write(fluxfile,'(a,i4,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"
+       else
+          write(fluxfile,'(a,i5,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"          
+       endif
+       thisLabel = fluxfile
+       thisFile = trim(dataDirectory)//"/tlusty/"//trim(fluxfile)
+     end subroutine createTlustyFileName
+
+
+
 
      subroutine readKuruczGrid(label, spectrum, nFiles)
        character(len=*) :: label(:)
@@ -707,6 +881,33 @@ module spectrum_mod
 
      end subroutine readKuruczGrid
 
+     subroutine readTlustyGrid(label, spectrum, nFiles)
+       character(len=*) :: label(:)
+       type(SPECTRUMTYPE) :: spectrum(:)
+       integer :: nFiles
+       character(len=200) :: tfile,fluxfile,dataDirectory 
+       logical :: ok
+       integer :: i
+       ok = .true.
+       
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       
+       call writeInfo("Reading Kurucz grid...",TRIVIAL)
+       
+       tfile = trim(dataDirectory)//"/tlusty/files.dat"
+       open(31, file = tfile, status = "old", form="formatted")
+       do i = 1, nFiles
+          read(31,*) fluxfile
+          label(i) = trim(fluxfile)
+          tfile = trim(dataDirectory)//"/tlusty/"//trim(fluxfile)
+          call readTlustySpectrumini(spectrum(i), tfile, ok)
+          spectrum(i)%flux = spectrum(i)%flux * pi ! astrophysical to real fluxes
+       enddo
+       close(31)
+       call writeInfo("Done.",TRIVIAL)
+
+     end subroutine readTlustyGrid
+     
      subroutine readKuruczSpectrum(thisSpectrum,thisLabel, label, spectrum, nFiles, ok)
        character(len=*) :: label(:), thisLabel
        type(SPECTRUMTYPE) :: spectrum(:), thisSpectrum
@@ -723,6 +924,23 @@ module spectrum_mod
           endif
        enddo
      end subroutine readKuruczSpectrum
+
+     subroutine readTlustySpectrum(thisSpectrum,thisLabel, label, spectrum, nFiles, ok)
+       character(len=*) :: label(:), thisLabel
+       type(SPECTRUMTYPE) :: spectrum(:), thisSpectrum
+       integer :: nFiles
+       logical :: ok
+       integer :: i
+       
+       ok = .false.
+       do i = 1, nFiles
+          if (trim(label(i)).eq.trim(thisLabel)) then
+             call copySpectrum(thisSpectrum, spectrum(i))
+             ok = .true.
+             exit
+          endif
+       enddo
+     end subroutine readTlustySpectrum
 
 
   end module spectrum_mod
