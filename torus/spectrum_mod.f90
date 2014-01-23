@@ -365,7 +365,7 @@ module spectrum_mod
       else
          goto 10
       endif
-      xtemp(nLambda) = x/cspeed
+      xtemp(nLambda) = x/real(cspeed)
       fTemp(nLambda) = max(f,1.e-30)
       nLambda = nLambda + 1
       goto 10
