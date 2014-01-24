@@ -347,7 +347,7 @@ module spectrum_mod
       type(SPECTRUMTYPE) :: spectrum
       logical :: ok
       character(len=*) :: filename
-      real :: fTemp(120000),xTemp(120000), x, f
+      real :: fTemp(200000),xTemp(200000), x, f
       character(len=80) :: cLine
       integer :: nLambda, i
 
@@ -365,12 +365,18 @@ module spectrum_mod
       else
          goto 10
       endif
-      xtemp(nLambda) = x/real(cspeed)
+      f = f*x**2/(1.e8*real(cspeed))*real(fourpi)
+!      f = f/(1.e8*real(cspeed))*real(fourpi)
+      xtemp(nLambda) = real(cspeed)/x*1.e8
       fTemp(nLambda) = max(f,1.e-30)
       nLambda = nLambda + 1
       goto 10
 20    continue
       close(20)
+!      xtemp(1:nlambda) = xtemp(nLambda:1:-1)
+ !     ftemp(1:nlambda) = ftemp(nLambda:1:-1)
+!      xtemp = xtemp(nLambda:1:-1)
+ !     ftemp = ftemp(nLambda:1:-1)
       nLambda = nLambda - 1
       if (nLambda == 0) then
          call writeFatal("Error reading continuum flux file: "//trim(filename))
@@ -381,6 +387,8 @@ module spectrum_mod
       allocate(spectrum%prob(1:nLambda))
       allocate(spectrum%ppw(1:nLambda))
       spectrum%nLambda = nLambda
+!      spectrum%flux(1:nLambda) = fTemp(1:nLambda:-1)
+ !     spectrum%lambda(1:nLambda) = xTemp(1:nLambda:-1)
       spectrum%flux(1:nLambda) = fTemp(1:nLambda)
       spectrum%lambda(1:nLambda) = xTemp(1:nLambda)
       do i = 2, nLambda-1
@@ -709,7 +717,7 @@ module spectrum_mod
       real(double) :: logg
       logical, optional :: freeUp
       logical :: ok1, ok2, ok
-      integer, parameter :: nFiles = 96
+      integer, parameter :: nFiles = 69
       real,save :: teffArray(nFiles)
       integer :: i, j
       real(double) :: t
@@ -718,7 +726,7 @@ module spectrum_mod
       character(len=200) :: thisFile1, thisFile2, dataDirectory
       character(len=80) :: label1, label2, message
       integer :: i1, i2
-      integer, parameter :: nKurucz = 96
+      integer, parameter :: nKurucz = 69
       type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
       character(len=80),save :: klabel(nKurucz)
       if (firstTime) call  readTlustyGrid(klabel, kspectrum, nKurucz)
@@ -743,7 +751,7 @@ module spectrum_mod
 
       if ((teff > teffArray(1)).and.(teff < teffArray(nFiles))) then
          call locate(teffArray, nFiles, real(teff), i)
-         call locate(loggArray, 11, real(logg*100.), j)
+         call locate(loggArray, 8, real(logg*100.), j)
 
          t = ((logg*100.) - loggArray(j))/(loggArray(j+1) - loggArray(j))
          if (t  > 0.5) j = j + 1
@@ -892,7 +900,7 @@ module spectrum_mod
        
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        
-       call writeInfo("Reading Kurucz grid...",TRIVIAL)
+       call writeInfo("Reading Tlusty grid...",TRIVIAL)
        
        tfile = trim(dataDirectory)//"/tlusty/files.dat"
        open(31, file = tfile, status = "old", form="formatted")
@@ -901,7 +909,8 @@ module spectrum_mod
           label(i) = trim(fluxfile)
           tfile = trim(dataDirectory)//"/tlusty/"//trim(fluxfile)
           call readTlustySpectrumini(spectrum(i), tfile, ok)
-          spectrum(i)%flux = spectrum(i)%flux * pi ! astrophysical to real fluxes
+          !tlusty already in real flux i think
+!          spectrum(i)%flux = spectrum(i)%flux !* pi ! astrophysical to real fluxes
        enddo
        close(31)
        call writeInfo("Done.",TRIVIAL)

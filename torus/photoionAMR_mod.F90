@@ -1,6 +1,7 @@
 #ifdef PHOTOION
 !Photoionization module - started on October 4th 2005 by th 
 
+
 module photoionAMR_mod
 
 #ifdef MPI
@@ -404,6 +405,25 @@ contains
 !            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
        if(.not. noPhoto) then
+
+          if ((myrankglobal==1)) then
+             print *, "writing spectrum"
+             !                   firsttime = .false.
+             open(67,file="spectrum.dat",status="replace",form="formatted")
+             !       write(67,*) "% ",thisOctal%temperature(subcell)
+             do i = 1, Source(1)%spectrum%nlambda
+                write(67,*) (cspeed/Source(1)%spectrum%lambda(i))*1.e8, Source(1)%spectrum%flux(i)
+             enddo
+             close(67)
+             open(68,file="lamspectrum.dat",status="replace",form="formatted")
+             !       write(67,*) "% ",thisOctal%temperature(subcell)
+             do i = 1, Source(1)%spectrum%nlambda
+                write(68,*) (Source(1)%spectrum%lambda(i)), Source(1)%spectrum%flux(i)
+             enddo
+             close(68)
+          endif
+
+
 
           looplimitTime = deltaTForDump
           looplimittime = 1.d30
@@ -1579,7 +1599,6 @@ end subroutine radiationHydro
 
 
 
-
     !nmonte selector: Only works for fixed grids at present
     if (inputnMonte == 0) then
        
@@ -1787,6 +1806,9 @@ end subroutine radiationHydro
       nMonte = nTotalMonte / max(nSmallPackets,1)
        call clearContributions(grid%octreeRoot)
 
+
+
+
        if(monochromatic) then
           if (source(1)%outsidegrid) then
              if(cart2d) then
@@ -1911,6 +1933,8 @@ end subroutine radiationHydro
 
                 tPhoton = 0.d0
                 spectrumweight = 1.d0
+
+                
                 if(monochromatic) then
                    thisFreq = ((inputEV)*evtoerg)/hcgs
                 else
