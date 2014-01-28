@@ -1739,6 +1739,11 @@ contains
 
     call getInteger("nsource", inputNSource, cLine, fLine, nLines, &
          "Number of sources: ","(a,i2,a)",1,ok,.true.)
+
+
+    call getReal("metallicity", stellarMetallicity, 1.0, cLine, fLine, nLines, &
+         "Metallicity of sources in terms of solar: ","(a,f6.1,1x,a)", 1.0, ok, .false.)
+
     do i = 1, inputnSource
        if (writeoutput) write(*,*) " "
        write(message,'(a,i1)') "Source number: ",i

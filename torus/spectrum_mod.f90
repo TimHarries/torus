@@ -712,6 +712,7 @@ module spectrum_mod
 
 
     subroutine fillSpectrumTlusty(spectrum, teff, mass, radius, freeup)
+      use inputs_mod, only :  stellarMetallicity
       type(SPECTRUMTYPE) :: spectrum, spec1, spec2
       real(double) :: teff, mass, radius
       real(double) :: logg
@@ -741,7 +742,17 @@ module spectrum_mod
 !      loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
       loggArray = (/ 300., 325., 350., 375., 400., 425., 450., 475. /)
       if (firsttime) then
-         open(31, file=trim(dataDirectory)//"/tlusty/filelist.dat", form="formatted", status="old")
+         if(stellarMetallicity == 0.5) then
+            open(31, file=trim(dataDirectory)//"/tlusty/z0p5sol/filelist.dat", form="formatted", status="old")
+         elseif(stellarMetallicity == 1.0) then
+            open(31, file=trim(dataDirectory)//"/tlusty/zsol/filelist.dat", form="formatted", status="old")
+         elseif(stellarMetallicity == 2.0) then
+            open(31, file=trim(dataDirectory)//"/tlusty/z2sol/filelist.dat", form="formatted", status="old")
+         else
+            print *, "can only have 0.5, 1.0 or 2.0 times solar metallicity at present"
+            stop
+         endif
+
          do i = 1, nFiles
             read(31, *) teffArray(i)
          end do
@@ -842,7 +853,8 @@ module spectrum_mod
 
 
      subroutine createTlustyFileName(teff, logg, thisfile, thislabel)
-       real :: teff, logg
+       use inputs_mod, only :  stellarMetallicity
+       real :: teff, logg       
        integer :: i
        character(len=*) thisfile, thisLabel
        character(len=80) :: fluxfile, dataDirectory
@@ -856,11 +868,14 @@ module spectrum_mod
           write(fluxfile,'(a,i5,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"          
        endif
        thisLabel = fluxfile
-       thisFile = trim(dataDirectory)//"/tlusty/"//trim(fluxfile)
+       if(stellarMetallicity == 0.5) then
+          thisFile = trim(dataDirectory)//"/tlusty/z0p5sol/"//trim(fluxfile)
+       elseif(stellarMetallicity == 1.0) then
+          thisFile = trim(dataDirectory)//"/tlusty/zsol/"//trim(fluxfile)
+       elseif(stellarMetallicity == 2.0) then
+          thisFile = trim(dataDirectory)//"/tlusty/z2sol/"//trim(fluxfile)
+       endif
      end subroutine createTlustyFileName
-
-
-
 
      subroutine readKuruczGrid(label, spectrum, nFiles)
        character(len=*) :: label(:)
@@ -890,6 +905,7 @@ module spectrum_mod
      end subroutine readKuruczGrid
 
      subroutine readTlustyGrid(label, spectrum, nFiles)
+       use inputs_mod, only : stellarMetallicity
        character(len=*) :: label(:)
        type(SPECTRUMTYPE) :: spectrum(:)
        integer :: nFiles
@@ -901,13 +917,26 @@ module spectrum_mod
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        
        call writeInfo("Reading Tlusty grid...",TRIVIAL)
-       
-       tfile = trim(dataDirectory)//"/tlusty/files.dat"
+       if(stellarmetallicity == 0.5) then
+          tfile = trim(dataDirectory)//"/tlusty/z0p5sol/files.dat"                 
+       elseif(stellarmetallicity == 1.0) then             
+          tfile = trim(dataDirectory)//"/tlusty/zsol/files.dat"       
+       elseif(stellarmetallicity == 2.0) then             
+          tfile = trim(dataDirectory)//"/tlusty/z2sol/files.dat"       
+       endif
+
        open(31, file = tfile, status = "old", form="formatted")
        do i = 1, nFiles
           read(31,*) fluxfile
           label(i) = trim(fluxfile)
-          tfile = trim(dataDirectory)//"/tlusty/"//trim(fluxfile)
+          if(stellarmetallicity == 0.5) then
+             tfile = trim(dataDirectory)//"/tlusty/z0p5sol/"//trim(fluxfile)             
+          elseif(stellarmetallicity == 1.0) then
+             tfile = trim(dataDirectory)//"/tlusty/zsol/"//trim(fluxfile)
+          elseif(stellarmetallicity == 2.0) then
+             tfile = trim(dataDirectory)//"/tlusty/z2sol/"//trim(fluxfile)
+          endif
+
           call readTlustySpectrumini(spectrum(i), tfile, ok)
           !tlusty already in real flux i think
 !          spectrum(i)%flux = spectrum(i)%flux !* pi ! astrophysical to real fluxes

@@ -324,6 +324,7 @@
   type(VECTOR) :: sourcePos(10), sourceVel(10)
   character(len=80) :: inputContFluxFile(10)
   character(len=80) :: contFluxFile
+  real :: stellarMetallicity
 
   ! variables for a second source of radiation
   logical :: secondSource                    ! second photon source?
