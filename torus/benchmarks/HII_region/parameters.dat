@@ -55,5 +55,6 @@ writegrid F
 
 ! Geometry specific parameters
 
+spherical T
 rinner 30.0
 
