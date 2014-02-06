@@ -1057,6 +1057,9 @@ CONTAINS
     CASE ("RHDDisc")
        CALL RHDDisc(thisOctal, subcell)
 
+    CASE ("parker")
+       CALL parkerwind(thisOctal, subcell)
+
     CASE ("molebench")
        thisoctal%rho(subcell) = -9.9d99
        CALL molecularBenchmark(thisOctal, subcell)
@@ -4426,6 +4429,9 @@ CONTAINS
           
           massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
           if ((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) split = .true.
+
+       case("parker")
+          rVec = subcellCentre(thisOctal, subcell)
 
        case("RHDDisc")
           rVec = subcellCentre(thisOctal, subcell)
@@ -9749,6 +9755,28 @@ endif
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine benchmarkDisk
+
+  subroutine parkerWind(thisOctal,subcell)
+    use inputs_mod, only : amrgridsize, maxdepthamr
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(vector) :: rvec
+    real(double) :: dx
+    
+    rvec = subcellcentre(thisoctal, subcell)
+    dx = amrgridsize/2.**(maxdepthamr)
+    if(rvec%x < dx .and. abs(rvec%z) < dx) then
+       thisOctal%rho(subcell) = 1.d4*mhydrogen
+    else
+       thisOctal%rho(subcell) = 1.d0*mhydrogen
+    endif
+
+    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%iequationOfState(subcell) = 1
+    thisOctal%velocity(subcell) = vector(0.d0, 0.d0, 0.d0)
+
+  end subroutine parkerWind
+
 
   subroutine RHDDisc(thisOctal,subcell)
 
