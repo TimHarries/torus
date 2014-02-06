@@ -302,7 +302,7 @@ contains
     integer :: i
     type(octal), pointer :: thisOctal, child
     integer :: subcell
-    real(double) :: vkep, r, cs, n, eta, thisVel, upperbound, dx
+    real(double) :: vkep, r, thisVel, dx
     type(vector) :: rvec
 
    do subcell = 1, thisoctal%maxchildren
