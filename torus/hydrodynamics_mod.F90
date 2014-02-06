@@ -269,7 +269,7 @@ contains
     integer :: i
     type(octal), pointer :: thisOctal, child
     integer :: subcell
-    real(double) :: vkep, r, cs, n, eta, thisVel
+    real(double) :: vkep, r, cs, n, eta, thisVel, x
     type(vector) :: rvec
 
    do subcell = 1, thisoctal%maxchildren
@@ -286,15 +286,48 @@ contains
           n = 1.125
           rVec = subcellCentre(thisOctal,subcell)
           r = real(modulus(rVec*1.d10))
-          vkep = sqrt(bigG*sourceMass(1)/(r*1.d10))
+          x = rvec%x*1.d10
+          vkep = sqrt(bigG*sourceMass(1)/(x))
           cs = soundSpeed(thisOctal, subcell)
           eta = n *(cs**2/vkep**2)
-          thisVel = vkep*(1.d0-eta*(abs(rVec%z)/r**3)**2)
-          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
+          thisVel = vkep*(1.d0-eta*(abs(rVec%z*1.d10)/x**3)**2)
+          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel*x
 !          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
        endif
     enddo
   end subroutine imposeAzimuthalVelocity
+
+  recursive subroutine imposeFontVelocity(thisOctal)
+    use inputs_mod, only : sourceMass, amrgridsize, maxdepthamr, amrgridcentrez
+    integer :: i
+    type(octal), pointer :: thisOctal, child
+    integer :: subcell
+    real(double) :: vkep, r, cs, n, eta, thisVel, upperbound, dx
+    type(vector) :: rvec
+
+   do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call imposefontVelocity(child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          r = abs(rVec%x)*1.d10
+          dx = amrgridsize/(2.**maxdepthamr)
+!          upperbound = amrgridcentrez - 0.5d0*amrgridsize + dx
+          if(abs(rvec%z) < dx) then
+             vkep = sqrt(bigG*sourceMass(1)/(r))
+             thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel*r
+          endif
+!          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
+       endif
+    enddo
+  end subroutine imposeFontVelocity
 
   recursive subroutine updatedensitytree(thisoctal)
     use mpi

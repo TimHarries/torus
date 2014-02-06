@@ -1060,6 +1060,9 @@ CONTAINS
     CASE ("parker")
        CALL parkerwind(thisOctal, subcell)
 
+    CASE ("fontdisc")
+       CALL fontdisc(thisOctal, subcell)
+
     CASE ("molebench")
        thisoctal%rho(subcell) = -9.9d99
        CALL molecularBenchmark(thisOctal, subcell)
@@ -4431,6 +4434,9 @@ CONTAINS
           if ((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) split = .true.
 
        case("parker")
+          rVec = subcellCentre(thisOctal, subcell)
+
+       case("fontdisc")
           rVec = subcellCentre(thisOctal, subcell)
 
        case("RHDDisc")
@@ -9761,21 +9767,61 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(vector) :: rvec
-    real(double) :: dx
+    real(double) :: dx, ethermal
     
     rvec = subcellcentre(thisoctal, subcell)
     dx = amrgridsize/2.**(maxdepthamr)
+
     if(rvec%x < dx .and. abs(rvec%z) < dx) then
        thisOctal%rho(subcell) = 1.d4*mhydrogen
     else
        thisOctal%rho(subcell) = 1.d0*mhydrogen
+    endif
+    thisOctal%temperature(subcell) = 10.d0
+
+    ethermal = (1.d0/(1.d0*mHydrogen)) * kerg * thisOctal%temperature(subcell)
+    thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * ethermal
+    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(0.5d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%iequationOfState(subcell) = 1
+    thisOctal%velocity(subcell) = vector(0.d0, 0.d0, 0.d0)
+
+  end subroutine parkerWind
+
+
+  subroutine FontDisc(thisOctal,subcell)
+    use inputs_mod, only : amrgridsize, maxdepthamr, amrgridcentrex, amrgridcentrez
+    use inputs_mod, only : sourcemass
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(vector) :: rvec
+    real(double) :: dx, rg, alpha, cs
+    real(double) :: upperbound
+    
+    alpha = 3.d0/2.d0
+
+    
+    
+    rvec = subcellcentre(thisoctal, subcell)
+    dx = amrgridsize/2.**(maxdepthamr)
+
+    cs = sqrt(kerg*10.0/mhydrogen)
+
+    rg = bigG*sourceMass(1)/cs**2
+
+    upperbound = amrgridcentrez - 0.5*amrgridsize + dx
+    
+    
+    if(abs(rvec%z) < dx) then
+       thisOctal%rho(subcell) = 1.d8*mhydrogen*(rvec%x/rg)**(-alpha)
+    else
+       thisOctal%rho(subcell) = 1.d4*mhydrogen
     endif
 
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%iequationOfState(subcell) = 1
     thisOctal%velocity(subcell) = vector(0.d0, 0.d0, 0.d0)
 
-  end subroutine parkerWind
+  end subroutine FontDisc
 
 
   subroutine RHDDisc(thisOctal,subcell)

@@ -66,7 +66,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, spherical, pdrcalc
+    use inputs_mod, only : UV_vector, spherical, pdrcalc, forceminrho
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -78,7 +78,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
-         imposeazimuthalvelocity, forcegascourant
+         imposeazimuthalvelocity, forcegascourant, imposefontvelocity
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -323,6 +323,8 @@ contains
        if(grid%currentTime == 0.d0) then
           if(grid%geometry == "RHDDisc") then
              call imposeazimuthalvelocity(grid%octreeroot)
+          elseif(grid%geometry == "fontdisc") then
+             call imposefontvelocity(grid%octreeroot)
           endif
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
@@ -910,6 +912,14 @@ contains
              !          else
              !             call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav)
           end if
+          if(grid%geometry == "RHDDisc") then
+             call imposeazimuthalvelocity(grid%octreeroot)
+          elseif(grid%geometry == "fontdisc") then
+             call imposefontvelocity(grid%octreeroot)
+             if (forceMinRho) then
+                call enforceminrhofont(grid%octreeroot) 
+             endif
+          endif
        endif
 !    endif
 
@@ -4289,6 +4299,40 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     enddo
   end subroutine enforceMinRho
+
+  recursive subroutine enforceMinRhofont(thisOctal)
+    use inputs_mod, only : maxdepthamr, amrgridsize, sourcemass
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  real(double) :: dx, alpha, rg, cs
+  type(vector) :: rvec
+
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call enforceMinRhofont(child)
+                exit
+             end if
+          end do
+       else
+          dx = amrgridsize/2.d0**maxdepthamr
+          rvec = subcellcentre(thisoctal, subcell)
+          if(abs(rvec%z) < dx) then
+             cs = sqrt(kerg*10.0/mhydrogen)
+             rg = bigG*sourceMass(1)/cs**2
+             alpha = 3.d0/2.d0
+             if(thisOctal%rho(subcell) < 1.d8*mhydrogen*(rvec%x/rg)**(-alpha)) then
+                
+                thisOctal%rho(subcell) = 1.d8*mhydrogen*(rvec%x/rg)**(-alpha)
+             endif
+          endif
+       endif
+    enddo
+  end subroutine enforceMinRhofont
 
   recursive subroutine testIonFront(thisOctal, currentTime)
   type(octal), pointer   :: thisOctal
