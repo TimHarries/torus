@@ -9818,7 +9818,8 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(vector) :: rvec
     
-    real(double) :: h, midRho, scaleHeight, r, disttostar!, cs, vkep
+!    real(double) :: h, midRho, scaleHeight, r, disttostar!, cs, vkep
+    real(double) ::midRho, scaleHeight, r, disttostar!, cs, vkep
     real(double) :: innerrad
     rvec = subcellcentre(thisoctal, subcell)
 

@@ -9429,8 +9429,8 @@ real(double) :: rho
              rVec = subcellCentre(thisOctal,subcell)
              if (rvec%x < 0.d0) then
                 thisOctal%ghostCell(subcell) = .true.
-!                thisOctal%boundaryCondition(subcell) = 1
-                thisOctal%boundaryCondition(subcell) = 4
+                thisOctal%boundaryCondition(subcell) = 1
+!                thisOctal%boundaryCondition(subcell) = 4
 
 ! now look at next cell to the right
 
