@@ -321,13 +321,62 @@ contains
           dx = amrgridsize/(2.**maxdepthamr)
 !          upperbound = amrgridcentrez - 0.5d0*amrgridsize + dx
           if(abs(rvec%z) < dx) then
-             vkep = sqrt(bigG*sourceMass(1)/(r))
-             thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel*r
+          vkep = sqrt(bigG*sourceMass(1)/(r))
+          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel*r
           endif
 !          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
        endif
     enddo
   end subroutine imposeFontVelocity
+
+
+  recursive subroutine imposeKeplerianVelocity(thisOctal)
+    use inputs_mod, only : sourceMass, amrgridsize, maxdepthamr, amrgridcentrez
+    integer :: i
+    type(octal), pointer :: thisOctal, child
+    integer :: subcell
+    real(double) :: vkep, r, thisVel, dx, n, cs, eta, x
+    type(vector) :: rvec
+
+   do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call imposeKeplerianVelocity(child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          r = abs(rVec%x)*1.d10
+  !        dx = amrgridsize/(2.**maxdepthamr)
+          !          upperbound = amrgridcentrez - 0.5d0*amrgridsize + dx
+!  !        if(abs(rvec%x) > 2.d0*dx) then
+!   !       if(abs(rvec%x) > 3.d0*dx) then
+          vkep = sqrt(bigG*sourceMass(1)/(r))
+          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * vkep*r
+!          endif
+             !          endif
+          !          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
+
+
+!          n = 1.125
+ !         rVec = subcellCentre(thisOctal,subcell)
+  !        r = real(modulus(rVec*1.d10))
+   !       x = rvec%x*1.d10
+    !      vkep = sqrt(bigG*sourceMass(1)/(x**3))
+     !     cs = soundSpeed(thisOctal, subcell)
+      !!    eta = n *(cs**2/vkep**2)
+        !  thisVel = vkep*(1.d0-eta*(abs(rVec%z*1.d10)/x**3)**2)
+         ! thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel*x
+
+
+
+       endif
+    enddo
+  end subroutine imposeKeplerianVelocity
 
   recursive subroutine updatedensitytree(thisoctal)
     use mpi
@@ -2896,7 +2945,10 @@ contains
 
 
                 thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
-                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
+                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)!/dx!**2
+
+!                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
+ !                    / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 
 
                 !THAW - NULLIFYING TORQUE FOR DEBUGGING PURPOSES
@@ -5106,7 +5158,7 @@ end subroutine sumFluxes
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
        !set up grid values
-       call computepressureGeneral(grid, grid%octreeroot, .true.) 
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
        call setupUi(grid%octreeRoot, grid, direction, dt)
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
@@ -9377,7 +9429,8 @@ real(double) :: rho
              rVec = subcellCentre(thisOctal,subcell)
              if (rvec%x < 0.d0) then
                 thisOctal%ghostCell(subcell) = .true.
-                thisOctal%boundaryCondition(subcell) = 1
+!                thisOctal%boundaryCondition(subcell) = 1
+                thisOctal%boundaryCondition(subcell) = 4
 
 ! now look at next cell to the right
 
@@ -12882,8 +12935,8 @@ end subroutine refineGridGeneric2
 !          thisMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)!*1.d30
 !          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)/R
 !          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)/R
-          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)/R
-          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)/R
+          thisOctal%phi_gas(subcell) = - bigG*sourcemass(1)/R**2
+          thisOctal%phi_i(subcell) = - bigG*sourcemass(1)/R**2
           thisOctal%phi_stars(subcell) = 0.d0
        end if
     end do

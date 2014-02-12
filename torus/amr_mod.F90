@@ -1057,6 +1057,9 @@ CONTAINS
     CASE ("RHDDisc")
        CALL RHDDisc(thisOctal, subcell)
 
+    CASE ("simpledisc")
+       CALL simpledisc(thisOctal, subcell)
+
     CASE ("parker")
        CALL parkerwind(thisOctal, subcell)
 
@@ -4434,10 +4437,28 @@ CONTAINS
           if ((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) split = .true.
 
        case("parker")
-          rVec = subcellCentre(thisOctal, subcell)
-
+!          rVec = subcellCentre(thisOctal, subcell)
+          if(thisOctal%ndepth < mindepthamr) split = .true.
        case("fontdisc")
+ !         rVec = subcellCentre(thisOctal, subcell)
+          if(thisOctal%ndepth < mindepthamr) split = .true.
+
+       case("simpledisc")
+          if(thisOctal%ndepth < mindepthamr) split = .true.
+  
           rVec = subcellCentre(thisOctal, subcell)
+          
+          if(modulus(rvec) < 5.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr) split = .true.
+          elseif(modulus(rvec) < 10.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-1) split = .true.
+          elseif(modulus(rvec) < 30.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-2) split = .true.
+          elseif(modulus(rvec) < 40.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-3) split = .true.
+          elseif(modulus(rvec) < 80.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-4) split = .true.
+          endif
 
        case("RHDDisc")
           rVec = subcellCentre(thisOctal, subcell)
@@ -9788,6 +9809,51 @@ endif
   end subroutine parkerWind
 
 
+  subroutine simpleDisc(thisOctal,subcell)
+    use inputs_mod, only : amrgridsize, maxdepthamr, amrgridcentrex, amrgridcentrez
+    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
+    use inputs_mod, ONLY : photoionPhysics,  extmass!, stellarMass
+    use inputs_mod, ONLY : sourcepos, sourceteff, sourceradius, sourcemass
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(vector) :: rvec
+    
+    real(double) :: h, midRho, scaleHeight, r, disttostar!, cs, vkep
+    real(double) :: innerrad
+    rvec = subcellcentre(thisoctal, subcell)
+
+    r = real(modulus(rVec))
+    disttostar = abs(rVec%x-sourcepos(1)%x)
+    disttostar = disttostar
+    if(disttostar /= 0.d0) then
+       thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*&
+            abs(rVec%x-sourcepos(1)%x)*1.d10))**0.5d0
+    else
+       thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*&
+            abs((rVec%x+1.d-10)-sourcepos(1)%x)*1.d10))**0.5d0
+    endif
+    thisOctal%temperature(subcell) = real(thisOCtal%dust_t(subcell))
+    thisOctal%rho(subcell) = extmass
+    innerrad = 10.d0
+
+    !    print *, "x ", rvec%x, rinner*autocm/1.e10, router*autocm/1.e10
+    
+    if(abs(rvec%x) > innerrad*autocm/1.e10 .and. abs(rvec%x) < 300.*autocm/1.e10) then
+       !calc mid-plane density
+       midRho = rho*(abs(rvec%x)/(innerrad*autocm/1.e10))**(-9.d0/4.d0)
+
+       scaleHeight =  sqrt((kerg*thisOctal%temperature(subcell)*abs(rvec%x*1.d10)**3)/(mhydrogen*bigG*sourcemass(1)))       
+       print *, "mid rho ", midrho, rvec%x, innerrad*autocm/1.e10
+       print *, "H", scaleheight, thisOctal%temperature(subcell)
+       thisOctal%rho(subcell) = midRho*exp(-(rvec%z)**2/(2.*(scaleHeight/1.d10)**2))
+    endif
+    thisOctal%rho(subcell) = max(thisOctal%rho(subcell), extmass)
+
+    thisOctal%iequationofstate = 1
+
+
+  end subroutine simpleDisc
+
   subroutine FontDisc(thisOctal,subcell)
     use inputs_mod, only : amrgridsize, maxdepthamr, amrgridcentrex, amrgridcentrez
     use inputs_mod, only : sourcemass
@@ -9857,10 +9923,6 @@ endif
    
     rVec = subcellCentre(thisOctal,subcell)
     r = real(modulus(rVec))
-
-
-
-
     disttostar = abs(rVec%x-sourcepos(1)%x)
     disttostar = disttostar
     thisOctal%dust_t(subcell) = sourceTeff(1)*((sourceRadius(1)*rsol)/(2.d0*&

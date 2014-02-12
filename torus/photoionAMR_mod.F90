@@ -78,7 +78,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
-         imposeazimuthalvelocity, forcegascourant, imposefontvelocity
+         imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -325,6 +325,8 @@ contains
              call imposeazimuthalvelocity(grid%octreeroot)
           elseif(grid%geometry == "fontdisc") then
              call imposefontvelocity(grid%octreeroot)
+          elseif(grid%geometry == "simpledisc") then
+             call imposekeplerianvelocity(grid%octreeroot)
           endif
           direction = VECTOR(1.d0, 0.d0, 0.d0)
           call calculateRhoU(grid%octreeRoot, direction)
@@ -364,11 +366,13 @@ contains
           
 !          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           
-          call evenUpGridMPI(grid,.false.,.true., evenuparray)      
-          call setAllUnchanged(grid%octreeRoot)
-          call refineGridGeneric(grid, amrtolerance, evenuparray)
-          call writeInfo("Evening up grid", TRIVIAL)    
-          call evenUpGridMPI(grid, .false.,.true., evenuparray)
+          if(dorefine) then
+             call evenUpGridMPI(grid,.false.,.true., evenuparray)      
+             call setAllUnchanged(grid%octreeRoot)
+             call refineGridGeneric(grid, amrtolerance, evenuparray)
+             call writeInfo("Evening up grid", TRIVIAL)    
+             call evenUpGridMPI(grid, .false.,.true., evenuparray)
+          endif
           call resetnh(grid%octreeRoot)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -394,7 +398,7 @@ contains
 !       else
 !          call ionizeGrid(grid%octreeRoot)
 !       endif
-       if (.not.timeDependentRT .and. .not. uv_vector) then
+       if (.not.timeDependentRT .and. .not. uv_vector .and. .not. useionparam) then
           if (startFromNeutral) then
              call neutralGrid(grid%octreeRoot)
           else
@@ -516,11 +520,13 @@ contains
                 call evenUpGridMPI(grid, .false., .true., evenuparray)
              endif
              
-             call evenUpGridMPI(grid,.false.,.true., evenuparray)      
-             call setAllUnchanged(grid%octreeRoot)
-             call refineGridGeneric(grid, amrtolerance, evenuparray)
-             call writeInfo("Evening up grid", TRIVIAL)    
-             call evenUpGridMPI(grid, .false.,.true., evenuparray)
+             if(dorefine) then
+                call evenUpGridMPI(grid,.false.,.true., evenuparray)      
+                call setAllUnchanged(grid%octreeRoot)
+                call refineGridGeneric(grid, amrtolerance, evenuparray)
+                call writeInfo("Evening up grid", TRIVIAL)    
+                call evenUpGridMPI(grid, .false.,.true., evenuparray)
+             endif
              if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
              call resetnh(grid%octreeRoot)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -547,7 +553,8 @@ contains
                 end if
                                 
                 call zeroSourcepotential(grid%octreeRoot)
-                if ((globalnSource > 0).and.(.not.cylindricalHydro)) then
+!                if ((globalnSource > 0).and.(.not.cylindricalHydro)) then
+                if ((globalnSource > 0)) then
                    call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, &
                         smallestCellSize/2.d0)
                 endif
@@ -919,6 +926,11 @@ contains
              if (forceMinRho) then
                 call enforceminrhofont(grid%octreeroot) 
              endif
+          elseif(grid%geometry == "simpledisc") then
+             call imposekeplerianvelocity(grid%octreeroot)
+             if (forceMinRho) then
+                call enforceminrhodisc(grid%octreeroot) 
+             endif
           endif
        endif
 !    endif
@@ -931,15 +943,15 @@ contains
 
 
           if (myRankGlobal /= 0) then
-             
-             call setAllUnchanged(grid%octreeRoot)
-!             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
-!             call evenUpGridMPI(grid,.false.,.true., evenuparray)
-!             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
-             if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
-             call refineGridGeneric(grid, amrtolerance, evenuparray, refinedSomeCells=refinedSomeCells)
-             if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
-
+             if(dorefine) then
+                call setAllUnchanged(grid%octreeRoot)
+                !             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+                !             call evenUpGridMPI(grid,.false.,.true., evenuparray)
+                !             if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+                if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
+                call refineGridGeneric(grid, amrtolerance, evenuparray, refinedSomeCells=refinedSomeCells)
+                if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
+             endif
              if (refinedSomeCells) then
                 if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
                 call writeInfo("Evening up grid", TRIVIAL)
@@ -3346,7 +3358,7 @@ end subroutine radiationHydro
 !        end if
 !        
 !!!        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-        if(doPhotoRefine) then!
+        if(doPhotoRefine .and. 0 == 1) then!
            dprCounter = dprCounter + 1
            if(dprCounter == 4) then
               call setAllUnchanged(grid%octreeRoot)
@@ -4299,6 +4311,43 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     enddo
   end subroutine enforceMinRho
+
+  recursive subroutine enforceMinRhodisc(thisOctal)
+    use inputs_mod, only : sourcepos, maxdepthamr, amrgridsize
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  type(vector) :: rvec
+  real(double) :: dx
+  logical, save :: message=.true.
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call enforceMinRho(child)
+                exit
+             end if
+          end do
+       else
+          if(thisOctal%rho(subcell)/mhydrogen < 1.d0) then
+             thisOctal%rho(subcell) = mhydrogen
+          endif
+          dx = amrgridsize/(2.d0**maxdepthamr)
+          rvec = subcellCentre(thisoctal, subcell)
+          if(modulus(rvec-sourcepos(1)) < 2.d0*dx) then
+             if(message) then
+                print *, "accreting"
+                message = .false.
+             endif
+             thisOctal%rho(subcell) = 1.d2*mhydrogen
+          endif
+
+
+       endif
+    enddo
+  end subroutine enforceMinRhodisc
 
   recursive subroutine enforceMinRhofont(thisOctal)
     use inputs_mod, only : maxdepthamr, amrgridsize, sourcemass

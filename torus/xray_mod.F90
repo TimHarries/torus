@@ -358,19 +358,19 @@ end subroutine solveIonizationBalance_Xray
 
 !SIMPLIFIED XRAY treatment using the ionization parameter scheme of Owen+2010
 subroutine simpleXRay(grid, thisSource)!
-
+  use inputs_mod, only : xheat
   implicit none
 
   type(gridtype) :: grid
   type(sourcetype) :: thisSource
   integer :: i, ier
   
-  if(myrankglobal /= 0) then
+  if(myrankglobal /= 0 .and. xheat) then
      do i = 1, nhydrothreadsglobal
 !        print *, myrankglobal, "starting ", i
         if(myrankglobal == i) then
 !           print *, "thread ", myrankglobal, "doing raytracing"
-           call calculateColumnToStar(grid%octreeRoot, grid, thisSource%position)
+           call calculateColumnToStar(grid%octreeRoot, grid, thisSource%position,thisSource%luminosity/1.d6)
 !           print *, "thread ", myrankglobal, "done tracing"
            call shutdownserversXRAY()
         else
@@ -383,8 +383,9 @@ subroutine simpleXRay(grid, thisSource)!
      end do            
   end if
   call MPI_BARRIER(MPI_COMM_WORLD, ier)
-  call calcIonParamTemperature(grid%octreeRoot, thisSource%luminosity/1.d6,  thisSource%position)
-
+  if(xheat) then
+     call calcIonParamTemperature(grid%octreeRoot, thisSource%luminosity/1.d6,  thisSource%position)
+  endif
 
 end subroutine simpleXRay
 
@@ -484,13 +485,13 @@ end function calcOwen
 !get the column density from the cell to the star
 !for use with the ionization parameter scheme used
 !by James Owen
-recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
+recursive subroutine calculateColumnToStar(thisOctal, grid, starpos, lum)
   use inputs_mod, only : sourceRadius, sourceTeff
   integer :: j
   type(octal), pointer :: thisOctal, child!, soctal
   integer :: subcell!, ssubcell
   type(vector) :: testposition, startposition, uhat, starpos
-  real(double) :: tval, rho, disttostar
+  real(double) :: tval, rho, disttostar, Lum
   type(gridtype) :: grid
   logical :: foundstar 
 
@@ -500,7 +501,7 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
         do j = 1, thisoctal%nchildren, 1
            if (thisoctal%indexchild(j) == subcell) then
               child => thisoctal%child(j)
-              call calculateColumnToStar(child, grid, starpos)
+              call calculateColumnToStar(child, grid, starpos, lum)
               exit
            end if
         end do
@@ -547,6 +548,12 @@ recursive subroutine calculateColumnToStar(thisOctal, grid, starpos)
                  call getRayTracingValuesXRAY(grid, testposition, uHat, rho,  tval, getTval=.true.) 
                  thisOctal%columnRho(subcell) = thisOctal%columnRho(subcell) + (rho*tval)
                  testPosition = testPosition + ((tVal+1.d-10*grid%halfsmallestsubcell)*uhat)
+
+                 if(Lum / ((thisOctal%columnrho(subcell)*disttostar*1.d20/mhydrogen)) < 1.d-6) then
+                    thisOctal%columnrho(subcell) = 1.d50
+                    foundstar = .true.
+                 endif
+
               endif              
             
            end do
