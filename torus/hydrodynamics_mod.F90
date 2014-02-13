@@ -302,7 +302,7 @@ contains
     integer :: i
     type(octal), pointer :: thisOctal, child
     integer :: subcell
-    real(double) :: vkep, r, thisVel, dx
+    real(double) :: r, thisVel, dx
     type(vector) :: rvec
 
    do subcell = 1, thisoctal%maxchildren
@@ -321,7 +321,7 @@ contains
           dx = amrgridsize/(2.**maxdepthamr)
 !          upperbound = amrgridcentrez - 0.5d0*amrgridsize + dx
           if(abs(rvec%z) < dx) then
-          vkep = sqrt(bigG*sourceMass(1)/(r))
+          thisVel = sqrt(bigG*sourceMass(1)/(r))
           thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel*r
           endif
 !          thisOctal%rhov(subcell) = thisOctal%rho(subcell) * thisVel
@@ -335,7 +335,7 @@ contains
     integer :: i
     type(octal), pointer :: thisOctal, child
     integer :: subcell
-    real(double) :: vkep, r, thisVel, dx, n, cs, eta, x
+    real(double) :: vkep,  r
     type(vector) :: rvec
 
    do subcell = 1, thisoctal%maxchildren
