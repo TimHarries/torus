@@ -389,8 +389,7 @@ contains
     real(double) :: temp, dustMass
     real :: temp2
 
-    integer :: i, ilambda
-    logical :: ok
+    integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
     integer :: nlower, nupper, sign
