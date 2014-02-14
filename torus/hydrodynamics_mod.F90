@@ -4764,16 +4764,16 @@ end subroutine sumFluxes
     call transferTempStorage(grid%octreeRoot)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
-    if (selfGravity) then
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
-       call zeroSourcepotential(grid%octreeRoot)
-       if (globalnSource > 0) then
-          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
-       endif
-       call sumGasStarGravity(grid%octreeRoot)
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-   endif
+!    if (selfGravity) then
+!       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+!       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+!       call zeroSourcepotential(grid%octreeRoot)
+!       if (globalnSource > 0) then
+!          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+!       endif
+!       call sumGasStarGravity(grid%octreeRoot)
+!       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+!   endif
 
 !self gravity (periodic)
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
@@ -4923,7 +4923,7 @@ end subroutine sumFluxes
 
    if (selfGravity) then
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)!, multigrid=.true.)
       call zeroSourcepotential(grid%octreeRoot)
       if (globalnSource > 0) then
          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
@@ -12216,7 +12216,7 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweep2level
 
-  recursive subroutine gSweep2new(thisOctal, grid, fracChange)
+  recursive subroutine gSweep2new(thisOctal, grid, fracChange, it)
     use inputs_mod, only : smallestCellSize
     use mpi
     type(GRIDTYPE) :: grid
@@ -12234,7 +12234,8 @@ end subroutine refineGridGeneric2
     real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
-    real(double), parameter :: SOR = 1.2d0
+    real(double), parameter :: SOR = 1.9d0
+    integer :: it
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
 
@@ -12244,7 +12245,7 @@ end subroutine refineGridGeneric2
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call gsweep2new(child, grid, fracChange)
+                call gsweep2new(child, grid, fracChange, it)
                 exit
              end if
           end do
@@ -12349,7 +12350,7 @@ end subroutine refineGridGeneric2
 
 
 
-             tauMin  = (0.5d0/dble(2**maxDepthAMR))**2/4.d0
+             tauMin  = (1.d0/dble(2**maxDepthAMR))**2
              deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
 
              dx = thisOctal%subcellSize
@@ -12378,16 +12379,14 @@ end subroutine refineGridGeneric2
 !             endif
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
-
-
-
+             
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
-!                frac = abs(sumd2phidx2 - thisOctal%source(subcell)) / thisOctal%source(subcell)
                 thisOctal%chiline(subcell) = abs(sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell))/ &
                      (fourPi * gGrav * thisOctal%rho(subcell))
-                frac = abs((oldPhi - newPhi)/oldPhi)
+                frac = thisOctal%chiLine(subcell)
+!                frac = abs((oldPhi - newPhi)/oldPhi)
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
@@ -12609,9 +12608,9 @@ end subroutine refineGridGeneric2
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
     integer :: n, ndir
-    real(double) :: x1, x2, g(6)
+    real(double) :: x1, x2, g(6),g2(6) 
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
-    real(double) :: sorFactor, deltaPhi
+    real(double) :: sorFactor, deltaPhi, d2phidx2(3), dx, sumd2phidx2
     real(double) :: xnext, px, py, pz,qViscosity(3,3), rm1, um1, pm1
     sorFactor = 1.2d0
 
@@ -12656,8 +12655,8 @@ end subroutine refineGridGeneric2
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
-
-!                g(n) =   (phi - thisOctal%phi_i(subcell))/(x2 - x1)
+                dx = abs(x2-x1)
+                g2(n) =   (phigas - thisOctal%phi_gas(subcell))/((x2 - x1)*gridDistanceScale)
 !                g(n) =   (phi - thisOctal%phi_i(subcell))/thisOctal%subcellSize !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !                if (slow) then
@@ -12665,6 +12664,17 @@ end subroutine refineGridGeneric2
 !                endif
 
                 enddo
+
+                if (thisOctal%threed) then
+                   d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                   d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                   d2phidx2(3) = (g2(5) - g2(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                   sumd2phidx2 = SUM(d2phidx2(1:3))
+                else
+                   d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                   d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                   sumd2phidx2 = SUM(d2phidx2(1:2))
+                endif
 
                 if (thisOctal%twoD) then
                    newphi = 0.25d0*(SUM(g(1:4))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
@@ -12678,8 +12688,11 @@ end subroutine refineGridGeneric2
                 deltaPhi = newPhi - thisOctal%phi_gas(subcell)
                 newPhi = thisOctal%phi_gas(subcell) + sorFactor * deltaPhi
 
+                sumd2phidx2 = (sum(g(1:6)) - 6.d0*thisOctal%phi_gas(subcell))/(thisOctal%subcellSize*gridDistanceScale)**2
+
                 if (thisOctal%phi_gas(subcell) /= 0.d0) then
                    frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
+                   frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
 !                   frac = (0.166666666666666667d0*SUM(g(1:6))-fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell))
                    fracChange = max(frac, fracChange)
                 else
@@ -12955,6 +12968,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
+!    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -12966,8 +12980,8 @@ end subroutine refineGridGeneric2
     tol2 = 1.d-6
 
     if (amr3d) then
-       tol = 1.d-4
-       tol2 = 1.d-5
+       tol = 1.d-2
+       tol2 = 1.d-1
     endif
 
 
@@ -13054,6 +13068,7 @@ end subroutine refineGridGeneric2
 !             call writeVtkFile(grid, plotfile, &
 !                  valueTypeString=(/"phigas ", "rho    "/))
 
+!             write(*,*) it,MAXVAL(fracChange(1:nHydroThreads)),tol
           enddo
           if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
           call updatePhiTree(grid%octreeRoot, iDepth)
@@ -13110,7 +13125,7 @@ end subroutine refineGridGeneric2
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        fracChange = 0.d0
 !       call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), it)
-       call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal))
+       call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal), it)
        it = it + 1
 
        if (cylindricalHydro) then
@@ -13128,10 +13143,11 @@ end subroutine refineGridGeneric2
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreads))
 
-!       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!             call writeVtkFile(grid, plotfile, &
-!                  valueTypeString=(/"phigas ", "rho    "/))
-
+!       if (mod(it,100) == 0) then
+!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
+!       endif
 
 !       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo

@@ -4051,10 +4051,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 ! fracChangeGraph
            write(32,'(es12.5e2,4x,14(f8.5,tr2))') r*1.e10, fracChange(1:min(14,minlevel))
 
-      call writeinfo('Writing VTK', TRIVIAL)
+!      call writeinfo('Writing VTK', TRIVIAL)
       call writeVTKfile(grid, "latestStep.vtk", valueTypeString=(/"J=0       ",&
            "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       ", "rho       "/))
-      call writeinfo('Done', TRIVIAL)
+!      call writeinfo('Done', TRIVIAL)
 
 ! departcoeffs.dat
            if(getdepartcoeffs) write(34,'(es12.5e2,4x,5(es14.6e2,tr2))') r*1.e10, dc(1:5)

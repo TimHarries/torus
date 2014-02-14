@@ -439,8 +439,8 @@ contains
         if (.not.variableDustSublimation) call doSmoothOnTau(grid)
 
         
-        scatteredlightWavelength = 2.2d4 ! 2.2 microns
-        storeScattered = .true.
+!        scatteredlightWavelength = 2.2d4 ! 2.2 microns
+!        storeScattered = .true.
 #ifdef MPI
         call randomNumberGenerator(randomSeed=.true.)
 #endif
@@ -449,8 +449,8 @@ contains
      call returnKappa(grid, grid%octreeRoot, 1, atthistemperature=10000., kappap = temp2)
 !     write(*,*) "Ross (1500), Planck (10000): ",temp,temp2/grid%octreeRoot%rho(1)
 
-     iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
-     call setFixedTemperatureOnTau(grid, iLambda)
+!     iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
+!     call setFixedTemperatureOnTau(grid, iLambda)
 
         if (solveVerticalHydro) then
 

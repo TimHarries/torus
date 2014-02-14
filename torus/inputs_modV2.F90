@@ -1367,8 +1367,11 @@ contains
     call getLogical("cart2d", cart2d, cLine, fLine, nLines, &
          "2d RHD in cartesians: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getLogical("spherical", spherical, cLine, fLine, nLines, &
-         "AMR grid is one-dimension and spherical: ","(a,1l,1x,a)", .false., ok, .false.)
+    spherical = .false.
+    if (amr1d) then
+       call getLogical("spherical", spherical, cLine, fLine, nLines, &
+            "AMR grid is one-dimension and spherical: ","(a,1l,1x,a)", .true., ok, .false.)
+    endif
 
     call getLogical("amr2d", amr2d, cLine, fLine, nLines, &
          "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)

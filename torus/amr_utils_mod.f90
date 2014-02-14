@@ -1146,6 +1146,7 @@ module amr_utils_mod
            write(*,*) "inoctal max", thisOctal%xMax,thisOctal%yMax,thisOctal%zMax
 
           PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
+          write(*,*) "currentlydoinghydrostep ",currentlydoinghydrostep
           write(*,*) point
           write(*,*) sqrt(point%x**2+point%y**2)
           write(*,*) atan2(point%y,point%x)*radtodeg

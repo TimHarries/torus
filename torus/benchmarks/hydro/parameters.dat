@@ -18,6 +18,7 @@ cfl 0.3
 amr3d F
 amr2d F
 amr1d T
+spherical F
 
 amrgridsize 1.
 amrgridcentrex 0.5

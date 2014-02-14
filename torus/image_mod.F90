@@ -188,7 +188,7 @@ module image_mod
 
         r = sqrt(xDist**2 + yDist**2)
         ang = atan2(yDist, xDist)
-        ang = ang + positionAngle
+        ang = ang + positionAngle + pi
         xDist = real(r * cos(ang))
         yDist = real(r * sin(ang))
            
@@ -520,7 +520,7 @@ module image_mod
        inquire(file=filename, exist=oldFilePresent)
        if (oldFilePresent) then 
           call writeInfo("Removing old file", FORINFO)
-          call deleteFitsFile ( filename, status )
+          call system("rm chisq.fits")
        end if
 
        !
