@@ -9244,6 +9244,7 @@ endif
 
   subroutine calcGravtest(thisOctal,subcell)
 
+    use inputs_mod, only : cylindricalHydro
     real(double) :: sphereRadius1, sphereMass1
     real(double) :: sphereRadius2, sphereMass2
     type(VECTOR) ::  spherePosition1,  spherePosition2

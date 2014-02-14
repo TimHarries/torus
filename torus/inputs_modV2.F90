@@ -2341,7 +2341,7 @@ contains
        amrGridCentreX = amrgridsize/2.
        dx = dble(amrgridSize)/dble(2**4-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       amrGridCentrez = amrgridsize/2.
+       amrGridCentrez = 0. !amrgridsize/2.
        vtkIncludeGhosts = .false.
        !       endif
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &

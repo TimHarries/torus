@@ -2065,7 +2065,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
                 write(*,*) subcellCentre(tempOctal,i)
              enddo
 
-             do;enddo
+!             do;enddo
           endif
 
        endif

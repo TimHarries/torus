@@ -12201,8 +12201,8 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
                 frac = abs(sumd2phidx2 - thisOctal%source(subcell))/thisOctal%source(subcell)
-                thisOctal%chiline(subcell) = sumd2phidx2 - thisOctal%source(subcell)
-                frac = abs((oldPhi - newPhi)/oldPhi)
+                thisOctal%chiline(subcell) = frac
+!                frac = abs((oldPhi - newPhi)/oldPhi)
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
@@ -12234,7 +12234,7 @@ end subroutine refineGridGeneric2
     real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
-    real(double), parameter :: SOR = 1.9d0
+    real(double), parameter :: SOR = 1.2d0
     integer :: it
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
@@ -12350,7 +12350,7 @@ end subroutine refineGridGeneric2
 
 
 
-             tauMin  = (1.d0/dble(2**maxDepthAMR))**2
+             tauMin  = 0.5d0*(1.d0/dble(2**maxDepthAMR))**2
              deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
 
              dx = thisOctal%subcellSize
@@ -12968,7 +12968,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -12976,11 +12976,11 @@ end subroutine refineGridGeneric2
        goto 666
     endif
 ! endif
-    tol = 1.d-5
-    tol2 = 1.d-6
+    tol = 1.d-1
+    tol2 = 1.d-1
 
     if (amr3d) then
-       tol = 1.d-2
+       tol = 1.d-1
        tol2 = 1.d-1
     endif
 
@@ -13061,17 +13061,22 @@ end subroutine refineGridGeneric2
 !             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
 !                  MAXVAL(fracChange(1:nHydroThreads)),tol
 
+
              do i = iDepth, maxDepthAMR-1
                 call updatePhiTree(grid%octreeRoot, i)
              enddo
-!             write(plotfile,'(a,i1,a,i4.4,a)') "grav_",idepth,"_",it,".vtk"
-!             call writeVtkFile(grid, plotfile, &
-!                  valueTypeString=(/"phigas ", "rho    "/))
+
+
 
 !             write(*,*) it,MAXVAL(fracChange(1:nHydroThreads)),tol
           enddo
+
+!          write(plotfile,'(a,i1,a)') "grav_",idepth,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas ", "rho    "/))
+
+
           if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
-          call updatePhiTree(grid%octreeRoot, iDepth)
 
        enddo
     endif
@@ -13133,7 +13138,6 @@ end subroutine refineGridGeneric2
           call transferTempStorage(grid%octreeRoot, justGrav = .true.)
        endif
 
-
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange = tempFracChange
 
@@ -13149,9 +13153,13 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
-!       if (writeoutput) write(*,*) "frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo
     if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
+
+
+          call writeVtkFile(grid, "grav.vtk", &
+               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 
 666 continue
 
