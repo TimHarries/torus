@@ -425,7 +425,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   end if
 
 
-  if (grid%geometry(1:6) == "ttauri" .or. grid%geometry(1:9) == "luc_cir3d" .or. &
+  if (grid%geometry(1:9) == "luc_cir3d" .or. &
        grid%geometry == "cmfgen" .or. grid%geometry == "romanova") then
      call emptySurface(starSurface)
   end if
@@ -523,18 +523,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         !        call fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, xfac)
            case("wind")
 
-        case ("ttauri")
-#ifdef STATEQ
-            call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
-                     readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
-                     curtains, dipoleOffset, nLower, nUpper)
-#else
-            call writeFatal("ttauri geometry requires STATEQ pre-processing key")
-#endif
-                     
-!       call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
-!       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
-
         case("resonance")
 !           call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp)
 
@@ -552,7 +540,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
 
 
-     if (grid%geometry(1:6) == "ttauri" .or. grid%geometry(1:9) == "luc_cir3d" .or. &
+     if (grid%geometry(1:9) == "luc_cir3d" .or. &
          grid%geometry == "romanova") then      
         ! Nu must be set again here since it is not assigned when the population/grid 
         ! file is read from a file!  (RK changed here.)
@@ -560,13 +548,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         call contread(contFluxFile, nu, coreContinuumFlux)
         call buildSphere(grid%starPos1, dble(grid%rCore), starSurface, 400, dble(teff), &
              source(1)%spectrum)
-        if (grid%geometry == "ttauri") then
-           call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-        elseif (grid%geometry == "romanova") then
-           call createTTauriSurface2(starSurface,  romData, nu, coreContinuumFlux,fAccretion) 
-        else
-           call createSurface(starSurface, nu, coreContinuumFlux,fAccretion)            
-        end if           
         call testSurface(starSurface)
 
        if (grid%adaptive) then
@@ -601,7 +582,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
        phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
        call readAMRgrid(phasePopFilename,readFileFormatted,grid)
      end if
- end if
+  end if
  call MPI_BARRIER(MPI_COMM_WORLD, ierr)    ! sync everybody here
 #endif
 
@@ -895,8 +876,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !              else
 !                 albedo = linePhotonAlbedo(j)
 !              endif
-
-        !if (grid%geometry == "ttauri" .or. grid%geometry == "windtest") then
         if (grid%geometry == "windtest") then
            totWindContinuumEmission = 0.
            if (writeoutput) write(*,'(a)') "! Wind continuum emission switched off."
@@ -988,14 +967,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            if (writeoutput) write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
         endif
            
-        if (grid%geometry == "ttauri") then
-           write (*,'(a,e12.3)') 'T Tauri star: continuum emission: ',totCoreContinuumEmission
-           fAccretion = fAccretion * (nuStart-nuEnd)
-           write (*,'(a,e12.3)') 'T Tauri accretion: continuum emission: ',fAccretion
-           write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
-           totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
-           write (*,'(a,e12.3)') 'T Tauri total core continuum emission: ',totCoreContinuumEmission
-        endif
 
         if (grid%geometry == "luc_cir3d".or. grid%geometry == "romanova") then
            write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
@@ -1265,43 +1236,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
 
-     !====================================================================================
-     ! Perform formal integration
-     !===================================================================================
-     if ((grid%geometry == "ttauri" .or. grid%geometry == "romanova") &
-          .and. formalsol) then
-        if (doTuning) call tune(6, "One Formal Sol") ! start a stopwatch  
-        write(*,*) "Started formal integration of flux...."
-        if (.not. ALLOCATED(flux)) ALLOCATE(flux(grid%nlambda))
-        if (nInclination >= 1) then
-           write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
-           obsfluxfile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
-        else
-           obsfluxfile = trim(OutFile)
-        end if
-        if (nphase > 1) then
-           write(tempChar,'(i3.3)') iPhase
-           obsfluxfile = trim(obsfluxfile)//TRIM(tempChar)
-        end if
-
-	! As of 04-aug-2006, this routine does not include the
-        ! scattering flux!  Should be modified later.  (RK)
-        call compute_obs_line_flux(lamline, REAL(mHydrogen), DBLE(grid%rstar1), &
-             dble(TTauriRouter/1.0e10), dble(amrGridSize)/2.001d0/SQRT(2.0d0), &
-             starSurface, &
-             form_nr_wind, form_nr_acc, form_nr_core, form_nphi,  &
-             outVec, objectDistance, grid, sampleFreq, opaqueCore,  &
-             flux, grid%lamArray, grid%nlambda, obsfluxfile, &
-             thin_disc_on, (ttau_disc_on .and. .not. ttau_turn_off_disc), &
-             (ttau_jet_on .and. .not. ttau_turn_off_jet), ttau_discwind_on, imNum, &
-             (ttau_disc_on .and. .not. ttau_turn_off_disc), ttauri_disc, thinLine, lineOff, &
-             do_pos_disp) 
-        write(*,*) "...Finished  formal integration of flux...."
-        write(*,*) " "
-        if (doTuning) call tune(6, "One Formal Sol") ! stop a stopwatch
-        ! jumps to the end of inclination loops  (this should be replaced with while loop later)
-        goto 777  
-     end if
 
      iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
      if (doTuning) call tune(6,"Calculate bias on tau")
@@ -2476,11 +2410,11 @@ CONTAINS
               end if
               
               if (contPhoton) then
-                 if ((thisChi+thisSca) >= 0.) then
+                 if ((thisChi+thisSca) > 0.) then
                     albedo = thisSca / (thisChi + thisSca)
                  else
                     albedo = 0.
-                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
+!                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
                     !                 stop
                  endif
               else
@@ -3053,9 +2987,6 @@ CONTAINS
     ! Redefining the rotation axis here.
     !
     select case (grid%geometry)
-    case ("ttauri")
-       rotationAxis = grid%diskNormal
-       if (writeoutput) write(*,*) "rotation axis",rotationAxis
     case("luc_cir3d","cmfgen") 
        rotationAxis = VECTOR(0.,0.,1.)
        if (writeoutput) write(*,*) "rotation axis",rotationAxis
@@ -3138,8 +3069,6 @@ subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
 
 
   if (geometry == "warpeddisc") rotateView = .true.
-
-  if ((geometry == "ttauri").or.(geometry == "magstream")) rotateView = .true.
 
   if ((geometry == "toruslogo")) then
      rotateView = .true.

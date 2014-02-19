@@ -186,7 +186,8 @@ contains
        if (myrankGlobal==1) close(28)
     endif
 
-    if (atomicPhysics.and.calcSpectrum.and.(.not.monteCarloRT)) then
+if (.false.) then
+!    if (atomicPhysics.and.calcSpectrum.and.(.not.monteCarloRT)) then
 
        if (cmf) then
           call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
@@ -376,33 +377,33 @@ contains
 
     endif
 
-#ifdef CMFATOM
-    if (atomicPhysics.and.(calcspectrum.or.calcimage.or.calcMovie)) then
-       mie = .false.
-       lineEmission = .true.
-       grid%lineEmission = .true.
-       if ( calcspectrum ) then 
-          write(*,*) "calling setupxarray ",nv
-          call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
-          write(*,*) "nlambda after setupxarray",nlambda,nv
-          nlambda = nv
-          call do_phaseloop(grid, .true., 100000, miePhase, globalnsource, globalsourcearray, nmumie) 
-       end if
-
-       if (calcImage.or.calcMovie) then
-          do i = 1, nImage
-             nlambda = 1
-             lambdaImage = getImageWavelength(i)
-             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
-                  wavLin=.true., numLam=1, dustRadEq=.true.)
-
-             call do_phaseloop(grid, .false., 100000, &
-                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
-          enddo
-       endif
-
-    endif
-#endif
+!#ifdef CMFATOM
+!    if (atomicPhysics.and.(calcspectrum.or.calcimage.or.calcMovie)) then
+!       mie = .false.
+!       lineEmission = .true.
+!       grid%lineEmission = .true.
+!       if ( calcspectrum ) then 
+!          write(*,*) "calling setupxarray ",nv
+!          call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
+!          write(*,*) "nlambda after setupxarray",nlambda,nv
+!          nlambda = nv
+!          call do_phaseloop(grid, .true., 100000, miePhase, globalnsource, globalsourcearray, nmumie) 
+!       end if
+!
+!       if (calcImage.or.calcMovie) then
+!          do i = 1, nImage
+!             nlambda = 1
+!             lambdaImage = getImageWavelength(i)
+!             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
+!                  wavLin=.true., numLam=1, dustRadEq=.true.)
+!
+!             call do_phaseloop(grid, .false., 100000, &
+!                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+!          enddo
+!       endif
+!
+!    endif
+!#endif
     if (sourceHistory) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource)
     endif
