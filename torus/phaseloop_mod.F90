@@ -22,7 +22,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use source_mod, only: SOURCETYPE
   use photon_mod, only: PHOTON, initPhoton, scatterPhoton, initplanetphoton
   use math_mod, only: thermalElectronVelocity, interpGridScalar2
-  use romanova_class, only: romanova
   use surface_mod, only: SURFACETYPE, buildSphere, createsurface, createttaurisurface2, createttaurisurface, &
        emptysurface, testsurface
   use filter_set_class, only: filter_set, get_nfilter, get_filter_name, get_filter_set_name, FWHM_filters, &
@@ -84,8 +83,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real :: rstar = 0.0 
   real :: vel = 0.0 
   type(VECTOR) :: coolStarPosition = VECTOR(0., 0., 0.)
-  real :: Taccretion=0.0, fAccretion=0.0, sAccretion=0.0
-  real(double) :: Laccretion=0.d0
+  real :: fAccretion=0.0
   real(double) :: corecontinuumflux = 0.0
   type(SURFACETYPE) :: starSurface
   real  :: sigmaAbs0=0.0, sigmaSca0=0.0  ! cross section at the line centre
@@ -97,7 +95,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   type(BLOBTYPE) :: blobs(1)
   real :: dtime = 0.0
 
-  type(romanova) :: romData ! parameters and data for romanova geometry
   real(double) :: finalTau
 
 ! local parameters
@@ -172,7 +169,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real :: r, r1, r2
   real(oct) :: t
   integer :: ntau, j
-  real(double), allocatable        :: flux(:)
 
   type(STOKESVECTOR) :: yArray(nLambda)
   type(STOKESVECTOR) :: oldyArray(nLambda)
@@ -230,7 +226,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   character(len=80) :: tempChar, tempChar2
   character(len=80) :: phasePopFilename
   character(len=80) :: outFile, originalOutFile, filename
-  character(len=80) :: specfile, obsfluxfile
+  character(len=80) :: specfile
 
   logical :: ok
   type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
@@ -1648,7 +1644,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         end do
      end if
 
-777  continue
      end do incLoop ! end of multiple inclination loop
      
      if (associated(starSurface%element)) then
