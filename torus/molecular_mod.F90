@@ -1099,7 +1099,18 @@ stage_loop: do iStage = 1, 2
             if(renewInputRays) then
                nRay = 1000
             end if
-            if(fixedrays) cycle
+! If we have reached this point then iStage=1 and we should cycle stage_loop if 
+! we are doing random rays. After the cycle we will repeat the loop with 
+! iStage=2 and juststarted = .false.
+            if(.not.fixedrays) cycle stage_loop
+         endif
+
+! Sanity check to make sure iStage and fixedRays match
+         if (fixedrays.and.iStage/=1) then
+            call writeFatal("Trying to run fixed rays with iStage/=1")
+         endif
+         if (.not.fixedrays.and.iStage/=2) then
+            call writeFatal("Trying to run random rays with iStage/=2")
          endif
 
          gridConvergedTest = .false.

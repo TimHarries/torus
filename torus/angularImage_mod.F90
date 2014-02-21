@@ -50,7 +50,7 @@ module angularImage
       use datacube_mod, only: DATACUBE, initCube, addVelocityAxis, freeDataCube, convertVelocityAxis
       use amr_mod, only: amrGridVelocity
       use h21cm_mod, only: h21cm_lambda, h21cm
-      use inputs_mod, only: nv, minVel, maxVel, wanttau
+      use inputs_mod, only: nv, minVel, maxVel, wanttau, statisticalEquilibrium
       use molecular_mod, only: globalMolecule
 #ifdef USECFITSIO
       use datacube_mod, only : writeDataCube, dataCubeFilename
@@ -172,7 +172,10 @@ module angularImage
       call freeDataCube(cube)
 
       if (nColOnly) call write_CO_vs_H2
-     
+
+! Map convergence information to Galactic co-ordinates if statistical equilibrium calculation has been used. 
+      if (statisticalEquilibrium) call map_convergence_to_lb(grid)
+
     end subroutine make_angular_image
 
 !-----------------------------------------------------------------------------------------------------------
@@ -1021,6 +1024,74 @@ subroutine write_CO_vs_H2
   deallocate (CO_H2_dist)
 
 end subroutine write_CO_vs_H2
+
+!-----------------------------------------------------------------------------------------
+! Now that we have done the ray trace we will match up cell by cell convergence information with positions in 
+! Galactic co-ordinates. This allows patches of poor convergence to be identified in the data cube. 
+
+subroutine map_convergence_to_lb(grid)
+  use octal_mod
+  implicit none
+  type(gridtype), intent(in) :: grid
+#ifdef MPI
+    character(len=3)    :: char_my_rank
+#endif
+    character(len=30)   :: outfilename
+    integer, parameter  :: LUOUT = 10 ! unit number of output file
+
+! For MPI runs we write out convergence information to a separate file 
+! for each MPI process
+#ifdef MPI
+     write(char_my_rank, '(i3)') myRankGlobal
+     outfilename="convergence_"//TRIM(ADJUSTL(char_my_rank))//".dat"
+#else
+     outfilename="convergence.dat"
+#endif
+
+     open(file=outfilename, status="replace",form="formatted", unit=LUOUT)
+     call map_convergence_to_lb_local(grid%octreeRoot)
+     close(LUOUT)
+
+   contains
+
+    recursive subroutine map_convergence_to_lb_local(thisOctal)
+
+      type(octal), pointer   :: thisOctal
+      type(octal), pointer  :: child 
+      integer :: i, subcell
+
+      real(double) :: nsample, l_coord, b_coord, convergence
+      integer :: niter, slowestLevel
+
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call map_convergence_to_lb_local(child)
+                  exit
+               end if
+            end do
+         else
+
+            nsample =  thisOctal%newmolecularlevel(4,subcell)
+            if  ( nsample > 0.99 ) then 
+               l_coord = thisOctal%newmolecularlevel(2,subcell)
+               b_coord = thisOctal%newmolecularlevel(3,subcell)
+! The next three variables are calculated as in vtk_mod 
+               niter        = int(thisOctal%convergence(subcell)/100)
+               convergence  = mod(thisOctal%convergence(subcell),1.0)
+               slowestLevel = floor(mod(thisoctal%convergence(subcell),100.0))
+               write(LUOUT,'(i6,2x,2(f7.2,2x),e15.8,2x,i3)') niter, l_coord, b_coord, convergence, slowestLevel
+            endif
+
+         end if
+      end do
+
+    end subroutine map_convergence_to_lb_local
+
+  end subroutine map_convergence_to_lb
 
 end module angularImage
 #endif
