@@ -23,10 +23,9 @@ module datacube_mod
      character(len=10) :: vUnit ! units for velocity
      character(len=10) :: xUnit ! units for space
      character(len=10) :: IntensityUnit ! units for intensity
-
-     integer, pointer :: nsubpixels(:,:,:) => null() ! contains resolution information 
-     integer, pointer :: converged(:,:,:) => null() ! contains convergence information (should take 1 or 0)
-     real(double),pointer :: weight(:,:) => null()    ! Weighting for integration (used to find spectra)
+! Weighting for integration (used to find spectra) (molecular_mod::GaussinWeighting) or
+! Density weighted temperature (angularImage_mod)
+     real(double),pointer :: weight(:,:) => null()    
      integer :: nx 
      integer :: ny
      integer :: nv
@@ -79,7 +78,7 @@ contains
 
 #ifdef USECFITSIO
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, &
-       write_nCol, write_axes, write_WV)
+       write_Weight, write_nCol, write_axes, write_WV)
 
     use fits_utils_mod
     implicit none
@@ -92,6 +91,7 @@ contains
     logical, optional, intent(in) :: write_ipos
     logical, optional, intent(in) :: write_ineg
     logical, optional, intent(in) :: write_Tau
+    logical, optional, intent(in) :: write_Weight
     logical, optional, intent(in) :: write_nCol
     logical, optional, intent(in) :: write_axes
     logical, optional, intent(in) :: write_WV
@@ -105,6 +105,7 @@ contains
     logical :: do_write_ipos
     logical :: do_write_ineg
     logical :: do_write_Tau
+    logical :: do_write_Weight
     logical :: do_write_nCol
     logical :: do_write_xaxis
     logical :: do_write_yaxis
@@ -128,6 +129,14 @@ contains
        do_write_Tau = write_Tau
     else
        do_write_Tau = .true. 
+    end if
+
+    if ( .not. associated(thisCube%weight) ) then 
+       do_write_Weight = .false.
+    else if ( present(write_Weight) ) then 
+       do_write_Weight = write_Weight
+    else
+       do_write_Weight = .true. 
     end if
 
     if ( .not. associated(thisCube%nCol) ) then 
@@ -254,7 +263,7 @@ contains
        call ftppre(unit,group,fpixel,nelements,thisCube%tau,status)
     endif
 
-    if(associated(thisCube%weight)) then
+    if( do_write_Weight ) then
        
        ! 3rd HDU : weight
        call FTCRHD(unit, status)
@@ -316,25 +325,8 @@ contains
        call ftpprd(unit,group,fpixel,nelements,thisCube%vAxis,status)
     endif
        
-    if(associated(thisCube%nSubpixels)) then
-       ! 7th HDU : nsubpixels
-       call FTCRHD(unit, status)
-       bitpix=32
-       naxis=3
-       naxes(1)=thisCube%nx
-       naxes(2)=thisCube%ny
-       naxes(3)=thisCube%nv
-       nelements=naxes(1)*naxes(2)*naxes(3)
-       
-       !  Write the required header keywords.
-       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
-       !  Write the array to the FITS file.
-       call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
-    endif
-
     if( do_write_nCol ) then
-       ! 8th HDU : nCol
+       ! 7th HDU : nCol
        call FTCRHD(unit, status)
        bitpix=FitsBitpix
        naxis=2
@@ -355,7 +347,7 @@ contains
 
     if( do_write_ipos) then
 
-       ! 9th HDU : positive intensity contribution
+       ! 8th HDU : positive intensity contribution
        call FTCRHD(unit, status)
        bitpix=FitsBitpix
        naxis=3
@@ -377,7 +369,7 @@ contains
 
     if( do_write_ineg) then
 
-       ! 10th HDU : negative intensity contribution
+       ! 9th HDU : negative intensity contribution
        call FTCRHD(unit, status)
        bitpix=FitsBitpix
        naxis=3
@@ -587,6 +579,11 @@ contains
   !***********************************************************
 
 ! Initialises cube - sets intensity for cube to 0 
+!
+! thisCube%weight is only allocated when using angularImage_mod. If you want to re-instate 
+! the GaussianWeighting subroutine in molecular_mod then you'll need to allocate 
+! thisCube%weight here. D. Acreman, March 2014.
+!
   subroutine initCube(thisCube, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey)
 
     type(DATACUBE) :: thisCube
@@ -625,7 +622,12 @@ contains
           thisCube%yAxisType = "GLAT-CAR"
           thisCube%vAxisType = "VELO-LSR"
           thisCube%intensityUnit = "K (Tb)  "
-       end if
+! Weighted temperature is only required when nv=1 i.e. column density mode
+          if ( nv==1 ) then 
+             allocate(thisCube%weight(1:nx,1:ny))
+             thisCube%weight(:,:) = 0.0 
+          end if
+       endif
     end if
 
     thisCube%nx = nx
@@ -635,18 +637,10 @@ contains
     allocate(thisCube%yAxis(1:ny))
     allocate(thisCube%vAxis(1:nv))
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
-
     allocate(thisCube%nCol(1:nx,1:ny))
-!    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
-!    allocate(thisCube%converged(1:nx,1:ny,1:nv))
-!    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
     thisCube%nCol = 0.d0
-
-!    thisCube%nsubpixels = 0.d0
-!    thisCube%converged = 0
-!    thisCube%weight = 1.d0
 
     if ( present(wantTau) ) then 
        if (wantTau) then
@@ -835,16 +829,6 @@ end subroutine TranslateCubeIntensity
 
 subroutine freeDataCube(thiscube)
   type(DATACUBE) :: thiscube
-
-    if (associated(thisCube%nsubpixels)) then
-       deallocate(thiscube%nSubpixels)
-       nullify(thiscube%nSubpixels)
-    end if
-
-    if (associated(thisCube%converged)) then 
-       deallocate(thiscube%converged)
-       nullify(thiscube%converged)
-    end if
 
     if (associated(thisCube%weight)) then 
        deallocate(thiscube%weight)

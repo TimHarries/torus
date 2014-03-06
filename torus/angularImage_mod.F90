@@ -40,6 +40,9 @@ module angularImage
   real(double), parameter, private :: minH2 = 17.0
   real(double), parameter, private :: maxH2 = 22.0
 
+! number of elements in temp/out array
+  integer, parameter, private :: temp_dim=6
+
 !$OMP THREADPRIVATE(this_gal_lat, this_gal_lon)
 !$OMP THREADPRIVATE (vr_format)
 
@@ -135,37 +138,50 @@ module angularImage
 
          call writeinfo("Writing intensity to intensity_"//trim(dataCubeFileName), TRIVIAL)
          call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
-              write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+              write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+              write_Weight=.false.)
 
          if ( nColOnly ) then
             ! We're using an intensity array to write column density so fix the units
             cube%IntensityUnit = "cm^-2     "
             call writeinfo("Writing H2 column density to nCol_H2_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "nCol_H2_"//trim(dataCubeFileName), write_Intensity=.false., &
-                 write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+                 write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+              write_Weight=.false.)
 
             call writeinfo("Writing CO column density to nCol_CO_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "nCol_CO_"//trim(dataCubeFileName), write_Intensity=.false., &
-                 write_ipos=.false., write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+                 write_ipos=.false., write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+              write_Weight=.false.)
+
+            call writeinfo("Writing density weighted temperature to weightedT_"//trim(dataCubeFileName), TRIVIAL)
+            call writedatacube(cube, "weightedT_"//trim(dataCubeFileName), write_Intensity=.false., &
+                 write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+              write_Weight=.true.)
+
          elseif ( splitCubes ) then 
             call writeinfo("Writing positive intensity to intensity_pos_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "intensity_pos_"//trim(dataCubeFileName), write_Intensity=.false., &
-                 write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+                 write_ipos=.true., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+              write_Weight=.false.)
 
             call writeinfo("Writing negative intensity to intensity_neg_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "intensity_neg_"//trim(dataCubeFileName), write_Intensity=.false., &
-                 write_ipos=.false., write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+                 write_ipos=.false., write_ineg=.true., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+              write_Weight=.false.)
          end if
 
          if ( wanttau ) then 
             call writeinfo("Writing optical depth to tau_"//trim(dataCubeFileName), TRIVIAL)
             call writedatacube(cube, "tau_"//trim(dataCubeFileName), write_Intensity=.false., &
-                 write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
+                 write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false., &
+              write_Weight=.false.)
          end if
 
          call writeinfo("Writing column density to nCol_"//trim(dataCubeFileName), TRIVIAL)
          call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
-              write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
+              write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false., &
+              write_Weight=.false.)
 
       end if
 #endif
@@ -203,7 +219,6 @@ module angularImage
      real(double) :: thisLambda
      real, allocatable :: temp(:,:,:) 
      integer :: ix1, ix2
-     integer, parameter :: temp_dim=5 ! number of elements in temp array
 
 #ifdef MPI
      ! For MPI implementations
@@ -267,6 +282,8 @@ module angularImage
            cube%i0_pos(:,:,iv) = temp(:,:,4)
            cube%i0_neg(:,:,iv) = temp(:,:,5)
         end if
+
+        if (associated(cube%weight)) cube%weight(:,:) = temp(:,:,6)
 
         if(writeoutput) then
            call tune(6, message)  ! stop a stopwatch
@@ -418,16 +435,17 @@ module angularImage
    real(double) :: avgIntensityNew, avgIntensityOld
    real(double) :: varIntensityNew, varIntensityOld
    real(double) :: avgNColNew, avgNColOld
-   real(double) :: nCol
+   real(double) :: nCol, weightedTem
 
    logical :: converged
    real(double) :: deltaV
 
-   real(double) :: out(5) 
+   real(double) :: out(temp_dim) 
 
    avgIntensityOld = 0.
    varIntensityOld = 0.
    avgNColOld      = 0.0
+   weightedTem     = 0.0
 
    converged = .false. ! failed flag
      
@@ -446,7 +464,8 @@ module angularImage
 
      if ( ncolOnly ) then 
         call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0, &
-             nCol_H2=i0_pos, nCol_CO=i0_neg, tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
+             nCol_H2=i0_pos, nCol_CO=i0_neg, tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity, &
+             weightedTem=weightedTem)
      else
         call intensityalongrayRev(rayposition,thisViewVec,grid,thisMolecule,itrans,deltaV,i0,i0_pos,i0_neg, &
              tau=opticaldepth, nCol=nCol, observerVelocity=observerVelocity )
@@ -464,6 +483,7 @@ module angularImage
          out(3) = avgNColNew
          out(4) = i0_pos
          out(5) = i0_neg
+         out(6) = weightedTem
       elseif(iray .gt. 10000) then
          converged = .false.
          out(1) = avgIntensityNew
@@ -471,6 +491,7 @@ module angularImage
          out(3) = avgNColNew
          out(4) = i0_pos
          out(5) = i0_neg
+         out(6) = weightedTem
          exit
       else
          avgIntensityOld = avgIntensityNew
@@ -481,6 +502,7 @@ module angularImage
          out(3) = avgNColNew
          out(4) = i0_pos
          out(5) = i0_neg
+         out(6) = weightedTem
       endif
 
    enddo
@@ -488,7 +510,7 @@ module angularImage
  end function AngPixelIntensity
 
    subroutine intensityAlongRayRev(position, direction, grid, thisMolecule, iTrans, deltaV,i0,i0_pos,i0_neg,tau, &
-        nCol, nCol_H2, nCol_CO, observerVelocity)
+        nCol, nCol_H2, nCol_CO, weightedTem, observerVelocity)
 
      use inputs_mod, only : useDust, densitysubsample, nv, vturb
      use h21cm_mod, only: h21cm
@@ -510,6 +532,7 @@ module angularImage
      real(double), optional, intent(out) :: nCol
      real(double), optional, intent(out) :: nCol_H2 ! H2 column density
      real(double), optional, intent(out) :: nCol_CO ! CO column density
+     real(double), optional, intent(out) :: weightedTem
      type(VECTOR), optional, intent(in) ::  observerVelocity
      type(OCTAL), pointer :: thisOctal
      integer :: subcell
@@ -538,6 +561,8 @@ module angularImage
      real(double) :: distToObs, gridSize
 
      logical, parameter :: doWriteLosInfo=.false. 
+
+     real(double) :: sum_nCO, sum_nCO_T, nCO
 
      BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
 
@@ -587,6 +612,8 @@ module angularImage
      if (present(nCol))    nCol    = 0.d0
      if (present(nCol_H2)) nCol_H2 = 0.d0
      if (present(nCol_CO)) nCol_CO = 0.d0 
+     sum_nCO   = 0.0_db
+     sum_nCO_T = 0.0_db
 
      thisOctal => grid%octreeRoot
      icount = 0
@@ -684,6 +711,13 @@ module angularImage
         if(present(nCol_CO)) then
            nCol_CO = nCol_CO + thisOctal%molabundance(subcell) * thisOctal%nH2(subcell) * tval * 1.d10
         end if
+
+        if (present(weightedTem)) then
+! CO number density (molabundance stores CO abundance relative to H2)
+           nCO       = thisOctal%molabundance(subcell) * thisOctal%nH2(subcell)
+           sum_nCO   = sum_nCO   + nCO
+           sum_nCO_T = sum_nCO_T + nCO * thisOctal%temperature(subcell)
+        endif
 
         dsvector = ds * otherDirection
 
@@ -786,6 +820,16 @@ module angularImage
      enddo ingrid_loop
          
      if (nColOnly) call CO_vs_H2
+
+! Calculate temperature weighted by CO number density. If there was no CO in this pixel return zero. 
+     if (present(weightedTem)) then
+        if (sum_nCO == 0.0 ) then
+           weightedTem = 0.0
+        else
+           weightedTem = sum_nCO_T / sum_nCO
+        endif
+
+     endif
 
 666  continue
 
