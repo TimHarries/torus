@@ -40,7 +40,7 @@ module discwind_class
 
 
   !----------------------------------------------------------
-  type discwind
+  type discwind_type
      ! disc wind conditions
      real(double) :: d           ![10^10cm] displacement of souce point from the center of star
      real(double) :: Rmin        ! the inner most radius of the disc [10^10cm]
@@ -81,7 +81,7 @@ module discwind_class
      real(double) :: Mstar ! [M_sun]  mass of the central object
      real(double) :: Hdisc ! [10^10cm]  disc height 
 
-  end type discwind
+  end type discwind_type
   
 
 
@@ -97,7 +97,7 @@ module discwind_class
 !     module procedure ave_discwind_density_slow
   end interface
 
-  type(DISCWIND) :: globalDiscWind
+  type(DISCWIND_TYPE) :: globalDiscWind
 
 contains
   ! =====================================================================
@@ -107,7 +107,7 @@ contains
   ! initializing the discwind with default parameters
   subroutine int_discwind_default(this)
     implicit none
-    type(discwind), intent(inout) :: this 
+    type(discwind_type), intent(inout) :: this 
     this%d = 6.96d0*10.d0    ! [10^10cm] 10 solar radius
     this%Rmin=6.96d0*5.d0    ! the inner most radius of the disc [10^10cm]
     this%Rmax=10d0*this%Rmin ! outer limit of the disc [10^10cm]
@@ -129,7 +129,7 @@ contains
        Mdot, alpha, beta, Rs, f, Twind, Mstar, Hdisc)
     implicit none 
     
-    type(discwind), intent(inout) :: this 
+    type(discwind_type), intent(inout) :: this 
     !
     ! disc wind conditions
     real(double),intent(in) :: d       ![10^10cm] displacement of souce point from the center of star
@@ -186,7 +186,7 @@ contains
        Mdot, alpha, beta, Rs, f, Twind, Mstar, Hdisc)
     implicit none 
     
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     !
     real(double),intent(out) :: d       ![10^10cm] displacement of souce point from the center of star
     real(double),intent(out) :: Rmin    ! the inner most radius of the disc [10^10cm]
@@ -226,7 +226,7 @@ contains
   real(double) function component(this, name) 
     implicit none 
     
-    type(discwind), intent(in) :: this 
+    type(discwind_type), intent(in) :: this 
     character(LEN=*), intent(in) :: name 
     
     select case (name)
@@ -276,7 +276,7 @@ contains
   function temperature_disc(this, R) RESULT(out)
     implicit none
     real(double) :: out
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: R ! [10^10cm] of distance from z-axis
     
     out = this%Tmax * (r/this%Rmin)**this%gamma  ! [K]
@@ -291,7 +291,7 @@ contains
   ! (private)
   real(double) function speed_of_sound(this, r)  
     implicit none
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: R ! [10^10cm] of distance from z-axis
         
     ! using the function in this module
@@ -305,7 +305,7 @@ contains
   ! (private) 
   real(double) function escape_velocity(this, r) 
     implicit none
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: r ! [10^10cm] of distance from the center of the star
     real(double) :: Radius
     real(double) :: Mass
@@ -339,7 +339,7 @@ contains
   real(double) function discwind_Vr(this, x, y, z)
     implicit none
     !
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: x, y, z      ! [10^10 cm] coordinates of a point
     !
     real(double) :: r  ! [10^10cm]  distance from the souce point
@@ -377,7 +377,7 @@ contains
   real(double) function discwind_Vphi(this, x, y, z)
     implicit none
     !
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: x, y, z      ! [10^10 cm] coordinates of a point
     !
     real(double) :: r  ! [10^10cm]  distance from the souce point
@@ -427,7 +427,7 @@ contains
   !
   type(vector) function discwind_velocity(this, r_vec) 
     implicit none
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     type(vector), intent(in) :: r_vec
     !
     !
@@ -495,7 +495,7 @@ contains
   ! 
   logical function in_discwind(this, xpos,ypos,zpos, subcellsize)
     implicit none
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
     real(double), optional, intent(in) :: subcellsize
     !
@@ -551,7 +551,7 @@ contains
 
 
   logical function all_in_discwind(thisOctal, subcell, this)
-    type(DISCWIND) :: this
+    type(DISCWIND_TYPE) :: this
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: x, y, z, d, xcen
@@ -583,7 +583,7 @@ contains
     implicit none
     real(double) :: out
     !
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: rho ! [10^10cm]  cylindical diatance from the center
     !
     real(double) :: Mdot, Rmax, Rmin, R, delta, fac, p
@@ -618,7 +618,7 @@ contains
     implicit none
     real(double) :: out  ! in [g/cm^3]
     !
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
     !
     real(double) :: x, y, z, d     ! [cm]  
@@ -678,7 +678,7 @@ contains
     
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     ! the value the decideSplit function uses to  decide whether or not to split cell.
     real(double), intent(in) :: limitscalar 
     
@@ -712,7 +712,7 @@ contains
 
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
     TYPE(VECTOR)     :: cellCentre 
@@ -773,7 +773,7 @@ contains
 
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
     TYPE(VECTOR)     :: cellCentre 
@@ -827,7 +827,7 @@ contains
 
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     
     real(oct)  :: cellSize, x, y, z
     TYPE(VECTOR)     :: cellCentre 
@@ -880,7 +880,7 @@ contains
     
     TYPE(octal), POINTER   :: thisOctal
     TYPE(gridtype)         :: grid
-    TYPE(discwind), INTENT(IN)  :: this
+    TYPE(discwind_type), INTENT(IN)  :: this
     
     TYPE(octal), POINTER   :: pChild
     
@@ -916,7 +916,7 @@ contains
 
     TYPE(octal), POINTER   :: thisOctal
     TYPE(gridtype)         :: grid
-    TYPE(discwind), INTENT(IN)  :: this
+    TYPE(discwind_type), INTENT(IN)  :: this
 
     TYPE(octal), POINTER   :: pChild
   
@@ -948,7 +948,7 @@ contains
     use inputs_mod, only : vturb
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    TYPE(discwind), INTENT(IN)  :: thisWind
+    TYPE(discwind_type), INTENT(IN)  :: thisWind
     type(VECTOR) :: rVec
     real(double) :: x, y, z
     integer :: subcell, i

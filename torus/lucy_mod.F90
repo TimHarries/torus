@@ -30,7 +30,7 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mDisc, dusttogas, dustSettling
-    use inputs_mod, only : writelucyTmpfile
+    use inputs_mod, only : writelucyTmpfile, discWind
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -76,7 +76,7 @@ contains
     integer(double) :: nDiffusion
     integer(double) :: nScat, nAbs
     integer(bigInt) :: nMonte, iMonte
-    integer :: thisPhotonAbs
+    integer :: thisPhotonAbs, thisPhotonSca
     real(oct) :: thisFreq
     real(oct) :: albedo
     logical :: escaped
@@ -239,7 +239,7 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if ((.not.dustSettling).and.(grid%geometry == "shakara")) then
+    if ((.not.discWind).and.(.not.dustSettling).and.(grid%geometry == "shakara")) then
        dustMass = 0.d0
        call fillDustShakara(grid, grid%octreeRoot, dustMass)
        if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
@@ -451,7 +451,7 @@ contains
                 !$OMP PRIVATE(thisOctal, albedo, r) &
                 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
                 !$OMP PRIVATE(i, j, T1) &
-                !$OMP PRIVATE(thisPhotonAbs) &
+                !$OMP PRIVATE(thisPhotonAbs, thisPhotonSca) &
                 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
                 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
                 !$OMP PRIVATE(oldUHat, packetWeight, wavelengthWeight) &
@@ -482,6 +482,7 @@ contains
                    
 
                    thisPhotonAbs = 0
+                   thisPhotonSca = 0
                    call randomSource(source, nSource, iSource, packetWeight)
                    call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
                    packetWeight = packetWeight * weight
@@ -574,6 +575,11 @@ contains
                                  thisOctal%dustTypeFraction(subcell, 1:nDusttype))
 
                             nScat = nScat + 1
+                            thisPhotonSca = thisPhotonSca + 1
+                            if (thisPhotonSca > 50000) then
+                               nKilled = nKilled + 1
+                               cycle photonLoop
+                            endif
                             uHat = uNew
 
                          else
@@ -1834,7 +1840,7 @@ contains
 
              if (.not.thisOctal%fixedTemperature(subcell)) then
                 if (thisOctal%nCrossings(subcell) .ge. 10) then
-                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + real(deltaT))
+                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + 0.5*real(deltaT))
                 endif
  
                 if (thisOctal%inflow(subcell).and.(thisOctal%nCrossings(subcell) .lt. minCrossings)) then

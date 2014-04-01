@@ -5,6 +5,10 @@ use utils_mod, only: locate
 use unix_mod, only: unixGetenv
 use gridtype_mod, only : GRIDTYPE
 use messages_mod
+use netcdf
+use mpi_global_mod
+use parallel_mod
+
 implicit none
 
 type lineListType
@@ -25,8 +29,10 @@ type molecularKappaGrid
    real :: mu
    integer :: nLam
    integer :: nTemps
-   real, pointer :: lamArray(:) => null()
-   real, pointer :: tempArray(:) => null()
+   integer :: nPressures
+   real(double), pointer :: lamArray(:) => null()
+   real(double), pointer :: tempArray(:) => null()
+   real(double), pointer :: pressureArray(:) => null()
    real(double), pointer :: kapArray(:,:) => null()
 end type molecularKappaGrid
 
@@ -46,13 +52,8 @@ type tsujiKPtable
 end type tsujiKPtable
 
 
-type(molecularKappaGrid), save :: TioLookuptable
-type(molecularKappaGrid), save :: chLookuptable
-type(molecularKappaGrid), save :: nhLookuptable
-type(molecularKappaGrid), save :: ohLookuptable
-type(molecularKappaGrid), save :: h2Lookuptable
-type(molecularKappaGrid), save :: coLookuptable
-type(molecularKappaGrid), save :: h2oLookuptable
+type(molecularKappaGrid), save :: Lookuptable(10)
+integer :: nLookUpTables
 
 
 type(tsujiPPtable), save :: tsujipplookuptable
@@ -175,92 +176,51 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
   kapArray(1:nLam) = kapArray(1:nLam) * abundance 
 end subroutine createSample
 
-subroutine createKappaGrid(lookuptable, nTemps, t1, t2, nLam, lamArray)
+subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
   implicit none
-  real :: lamArray(:)
-  type(molecularKappaGrid) :: lookuptable 
-  integer :: nTemps, nLam
-  real :: t1, t2
-  integer :: i
-  integer :: nLines
-  real, allocatable :: excitationLower(:),excitationUpper(:)
-  real, allocatable  :: g(:)
-  real, allocatable :: kappa(:)
-  real, allocatable :: lambda(:)
-  logical :: gridReadFromdisc
-  character(len=80) :: fname
+  real(double) :: lamArray(:)
+  type(molecularKappaGrid) :: lookuptable(:)
+  integer :: nLam, i
+  logical :: gridReadFromdisc, reset
   gridReadFromDisc = .false.
 
-  nLines = 0
 
-  if (writeoutput) write(*,*) "Creating opacity look-up table..."
-
-  if (Writeoutput) write(*,*) "Attempting to read a previous look-up table: ",trim(lookuptable%filename)
-
-  call readKappaGrid(lookuptable,nTemps, nLam, gridReadFromDisc)
-
-  if (gridreadfromdisc.and.writeoutput) then
-     write(fname,'(a,a)') trim(lookuptable%molecule),"_kappa.dat"
-     open(69,file=fname,status="unknown",form="formatted")
-     do i = 1, nLam
-        write(69,*) lamArray(i),lookupTable%kapArray(nTemps/2,i)
-     enddo
-     close(69)
-  endif
-
-  if (.not.gridReadFromDisc) then
-     if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
-     LookupTable%nTemps = nTemps
-     LookupTable%nLam = nLam
-     
-     allocate(LookupTable%tempArray(1:nTemps))
-     allocate(LookupTable%lamArray(1:nLam))
-     allocate(LookupTable%kapArray(1:nTemps, 1:nLam))
-     
-     LookupTable%lamArray(1:nLam) = lamArray(1:nLam)
-     
-
-     select case(Lookuptable%molecule)
-
-
-        case("H2O")
-           allocate(lambda(1:65912356))
-           allocate(g(1:65912356))
-           allocate(kappa(1:65912356))
-           allocate(excitationLower(1:65912356))
-           call readh2o(nLines, lambda, kappa, excitationLower, g)
-
-        case DEFAULT
-           allocate(lambda(1:38000000))
-           allocate(g(1:38000000))
-           allocate(kappa(1:38000000))
-           allocate(excitationLower(1:38000000))
-           allocate(excitationUpper(1:38000000))
-           call readKurucz(lookuptable%source, nLines, lambda, kappa, excitationlower, excitationUpper, g)
-
-     end select
-     
-     do i = 1, nTemps
-        LookupTable%tempArray(i) = t1 + (t2-t1)*real(i-1)/real(nTemps-1)
-     enddo
-     do i = 1, nTemps
-        call createSample(LookupTable%tempArray(i), lamArray, LookupTable%kapArray(i,1:nLam), nLam, &
-             nLines, lambda, kappa, g, excitationLower, excitationUpper, lookuptable%mu, lookuptable%abundance)
-     enddo
-     if (writeoutput) call writeKappaGrid(lookuptable)
-     deallocate(lambda, g, kappa, excitationLower, excitationUpper)
-  endif
-
-
-  if (writeoutput) write(*,*) lookuptable%molecule," opacity lookup table complete."
+  do i = 1, nLookupTables
+     if (writeoutput) write(*,*) "Creating opacity look-up table..."
+     if (.not.reset) then
+        if (Writeoutput) write(*,*) "Attempting to read a previous look-up table: ",trim(lookuptable(i)%filename)
+        call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
+        call torus_mpi_barrier()
+        call sleep(1)
+     endif
+     if ((.not.gridReadFromDisc).or.reset) then
+        if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
+        
+        if (myrankGlobal == 0) then
+           call readAbsCoeffFileAmundsen(lookupTable(i)%source, lookupTable(i), nLam, lamArray)
+           call writeKappaGrid(lookuptable(i))
+        endif
+        call torus_mpi_barrier()
+        call sleep(5)
+        if (myrankGlobal /= 0) then
+           call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
+           if (.not.gridReadFromDisc) then
+              write(*,*) myrankGlobal, " had problem reading: ",trim(lookuptable(i)%filename)
+           endif
+        endif
+     endif
+     if (writeoutput) write(*,*) lookuptable(i)%molecule," opacity lookup table complete."
+  enddo
 end subroutine createKappaGrid
 
-subroutine readKappaGrid(lookuptable,  wantedntemps, wantednlam, gridreadfromdisc)
+subroutine readKappaGrid(lookuptable,  wantednlam, wantedlamArray, gridreadfromdisc)
   type(molecularKappaGrid) :: lookuptable 
-  integer :: wantednTemps, wantednlam
+  integer :: wantednlam
   integer :: nTemps, nLam
   logical :: gridreadFromDisc
-
+  real(double) :: wantedLamArray(:)
+  logical :: resizeLookup
+  
   gridReadFromDisc = .false.
 
   open(21, file=lookuptable%filename, status="old", form="unformatted",err=666)
@@ -269,9 +229,11 @@ subroutine readKappaGrid(lookuptable,  wantedntemps, wantednlam, gridreadfromdis
   read(21) lookuptable%abundance
   read(21) nTemps, nLam
 
-  if ((nTemps /= wantedNtemps).or.(nLam /= wantednLam)) then
-     write(*,*) "TiO lookup-table on disc is not of correct size"
-     goto 666
+  resizeLookup = .false.
+  if (nLam /= wantednLam) then
+     if (writeoutput) write(*,*) "TiO lookup-table on disc is not of correct size ",nlam,wantedNlam
+     if (writeoutput) write(*,*) "Attemping to re-size"
+     resizeLookup = .true.
   endif
 
   LookupTable%nTemps = nTemps
@@ -285,8 +247,39 @@ subroutine readKappaGrid(lookuptable,  wantedntemps, wantednlam, gridreadfromdis
   read(21) LookupTable%kapArray(1:nTemps, 1:nLam)
   close(21)
   gridReadFromDisc = .true.
+
+  if (resizeLookup) call resizeLookuptable(lookupTable, wantednLam, wantedLamArray)
+
 666 continue
 end subroutine readKappaGrid
+
+
+subroutine resizeLookuptable(lookuptable, nLambda, lamArray)
+  type(molecularKappaGrid) :: lookuptable 
+  integer :: nLambda
+  real(double) :: lamArray(:), fac
+  integer :: i, j, k
+  real(double), allocatable :: tempKapArray(:,:)
+
+  allocate(tempKapArray(1:lookuptable%nTemps, 1:nLambda))
+
+  do j = 1, lookupTable%nTemps
+     do i = 1, nLambda
+        call locate(lookupTable%lamArray, lookuptable%nLam, lamArray(i), k)
+        fac = (lamArray(i)-lookupTable%lamArray(k))/(lookupTable%lamArray(k+1)-lookupTable%lamArray(k))
+        tempKapArray(j,i) = lookupTable%kapArray(j,k) + fac * (lookupTable%kapArray(j,k+1)-lookupTable%kapArray(j,k))
+     enddo
+  enddo
+  deallocate(lookupTable%lamArray, lookupTable%kapArray)
+  allocate(lookupTable%lamArray(1:nLambda))
+  lookupTable%nlam = nLambda
+  lookupTable%lamArray = lamArray
+
+  allocate(lookupTable%kapArray(1:lookupTable%nTemps,1:nLambda))
+  lookupTable%kapArray = tempKapArray
+  deallocate(tempKapArray)
+end subroutine resizeLookuptable
+
 
 subroutine writeKappaGrid(lookuptable)
   type(molecularKappaGrid) :: lookuptable 
@@ -306,7 +299,8 @@ end subroutine writeKappaGrid
 
 subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
   type(molecularKappaGrid) :: lookuptable 
-  real :: temperature, thisTemp
+  real :: temperature
+  real(double) :: thisTemp
   real(double),optional :: kappaAbs(:),kappaSca(:)
   real :: fac
   integer :: i
@@ -348,41 +342,48 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
 !  Nh = rho/mHydrogen
 !  ne = Ne_lte(nh, dble(temperature))
 !  nHI = nh - ne
+  allocate(tarray(1:LookupTable(1)%nlam))
 
   nhi = rho/mhydrogen
   if (PRESENT(kappaAbs)) then
-     allocate(tarray(1:tioLookupTable%nlam))
-     call returnKappaArray(temperature, tioLookupTable, kappaAbs=tArray)
-     kappaAbs = tArray(ilambda)
-     deallocate(tArray)
+     kappaAbs = 0.
+     do i = 1, nLookupTables
+        call returnKappaArray(temperature, LookupTable(i), kappaAbs=tArray)
+        kappaAbs = kappaAbs + tArray(ilambda)
+     enddo
   endif
      
 
   if (PRESENT(kappaAbsArray)) then
      kappaAbsArray = 0.d0
-
-     call returnKappaArray(temperature, tioLookupTable, kappaAbs=kappaAbsArray)
+     do i = 1, nLookupTables
+        call returnKappaArray(temperature, LookupTable(i), kappaAbs=tarray)        
+        if (any(tarray > 1.d20)) then
+           write(*,*) i,tarray
+        endif
+        kappaAbsArray = kappaAbsArray + tarray
+     enddo
   endif
 
   if (PRESENT(kappaSca)) then
-     kappaSca = nhI * atomhydrogenRayXsection(dble(lambda))*1.e10
+     kappaSca = atomhydrogenRayXsection(dble(lambda))*1.e10 / (2.33d0 * mHydrogen)
 !     kappaSca = kappaSca + ne * sigmaE * 1.d10
-     kappaSca = 1.d-30
+!     kappaSca = 1.d-30
   endif
   if (PRESENT(kappaScaArray)) then
      if (firstTime) then
         allocate(rayScatter(1:grid%nLambda))
         do i = 1, grid%nLambda
-           rayScatter(i) = real(nhi * atomhydrogenRayXsection(dble(grid%lamArray(i)))*1.d10)
+           rayScatter(i) = real(atomhydrogenRayXsection(dble(grid%lamArray(i)))*1.d10)
         enddo
         
         firstTime = .false.
      endif
-     kappaScaArray = rayScatter
-     kappaScaArray = 1.d-30
-!     kappaSca = kappaSca + ne * sigmaE * 1.d10
+     kappaScaArray = rayScatter / (2.33d0 * mHydrogen)
+
   endif
 
+  deallocate(tArray)
 
 end subroutine returnGasKappaValue
   
@@ -435,6 +436,7 @@ real(double) function atomhydrogenRayXsection(lambda) result(tot)
      fac = deltaOmega / omega_21
      tot = (0.0433056/fac**2) * (1.d0 - 1.792*fac - 23.637d0*fac**2 - &
           83.1393*fac**3 - 244.1453d0*fac**4 - 699.473d0*fac**5)
+     tot = max(1.d-30,tot)
      tot = tot * sigmaE
   endif
 end function atomhydrogenRayXsection
@@ -703,89 +705,60 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitationLower,excitationUpp
 
 end subroutine readKurucz
 
-subroutine createAllMolecularTables(nTemps, t1, t2, nLam, lamArray)
+subroutine createAllMolecularTables(nLam, lamArray, reset)
   implicit none
-  integer :: nTemps, nLam
-  real :: t1, t2, lamArray(:)
-  character(len=80) :: dataDirectory, filename
-  integer :: i
+  integer :: nLam
+  real(double) :: lamArray(:)
+  character(len=80) :: dataDirectory
+  logical, optional :: reset
+  logical :: doReset
+
+  doreset = .false.
+  if (PRESENT(reset)) doReset = reset
+
   dataDirectory = " "
-  ! h2o
-
-!  h2oLookupTable%molecule = "H2O"
-!  h2oLookupTable%mu = 1.+1.+16.
-!  h2oLookupTable%filename = "h2olookuptable.dat"
-!  call unixGetenv("TORUS_DATA", dataDirectory, i)
-!  filename = trim(dataDirectory)//"/"//"h2o.dat"
-!  h2oLookupTable%source = filename 
-!  call createKappaGrid(h2olookuptable, nTemps, t1, t2, nLam, lamArray)
-
-  ! tio
-
-  tioLookupTable%molecule = "TiO"
-  tioLookupTable%mu = 48.+16.
-  tioLookupTable%abundance = 1.e-6
-  tioLookupTable%filename = "tiolookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = "tioschwenke.asc" !trim(dataDirectory)//"/"//"tio.dat"
-  tioLookupTable%source = filename 
-  call createKappaGrid(tiolookuptable, nTemps, t1, t2, nLam, lamArray)
 
 
-  ! ch
+  nLookupTables = 8
 
-  chLookupTable%molecule = "CH"
-  chLookupTable%mu = 12.+1.
-  chLookupTable%abundance = 1.e-6
-  chLookupTable%filename = "chlookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"ch.asc"
-  chLookupTable%source = filename 
-  call createKappaGrid(chlookuptable, nTemps, t1, t2, nLam, lamArray)
+  LookupTable(1)%molecule = "TiO"
+  LookupTable(1)%source = "/data/dsa206/Abs_coeff/abs_coeff_TiO_Plez.nc"
+  LookupTable(1)%filename = "tiolookuptable.dat"
 
-  ! nh
+  LookupTable(2)%molecule = "CH4"
+  LookupTable(2)%source = "/data/dsa206/Abs_coeff/abs_coeff_CH4_YT10to10.nc"
+  LookupTable(2)%filename = "ch4lookuptable.dat"
 
-  nhLookupTable%molecule = "NH"
-  nhLookupTable%mu = 14.+1.
-  nhLookupTable%abundance = 1.e-6
-  nhLookupTable%filename = "nhlookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"nh.asc"
-  nhLookupTable%source = filename 
-  call createKappaGrid(nhlookuptable, nTemps, t1, t2, nLam, lamArray)
+  LookupTable(3)%molecule = "H2-H2"
+  LookupTable(3)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2-H2_HITRAN.nc"
+  LookupTable(3)%filename = "h2h2lookuptable.dat"
 
-  ! oh
+  LookupTable(4)%molecule = "H2-He"
+  LookupTable(4)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2-He_HITRAN.nc"
+  LookupTable(4)%filename = "h2helookuptable.dat"
 
-  ohLookupTable%molecule = "OH"
-  ohLookupTable%mu = 16.+1.
-  ohLookupTable%abundance = 1.e-6
-  ohLookupTable%filename = "ohlookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"oh.asc"
-  ohLookupTable%source = filename 
-  call createKappaGrid(ohlookuptable, nTemps, t1, t2, nLam, lamArray)
+  LookupTable(5)%molecule = "H2O"
+  LookupTable(5)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2O_BT2.nc"
+  LookupTable(5)%filename = "h2olookuptable.dat"
 
-  ! h2
+  LookupTable(6)%molecule = "NH3"
+  LookupTable(6)%source = "/data/dsa206/Abs_coeff/abs_coeff_NH3_BYTe.nc"
+  LookupTable(6)%filename = "nh3lookuptable.dat"
 
-  h2LookupTable%molecule = "H2"
-  h2LookupTable%mu = 2.
-  h2LookupTable%abundance = 0.5
-  h2LookupTable%filename = "h2lookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"h2.asc"
-  h2LookupTable%source = filename 
-  call createKappaGrid(h2lookuptable, nTemps, t1, t2, nLam, lamArray)
+  LookupTable(7)%molecule = "CO"
+  LookupTable(7)%source = "/data/dsa206/Abs_coeff/abs_coeff_CO_HITEMP.nc"
+  LookupTable(7)%filename = "colookuptable.dat"
 
-  ! co
+  LookupTable(8)%molecule = "VO"
+  LookupTable(8)%source = "/data/dsa206/Abs_coeff/abs_coeff_VO_Plez.nc"
+  LookupTable(8)%filename = "volookuptable.dat"
 
-  coLookupTable%molecule = "CO"
-  coLookupTable%mu = 12.+16.
-  coLookuptable%abundance = 1.e-6
-  coLookupTable%filename = "colookuptable.dat"
-  call unixGetenv("TORUS_DATA", dataDirectory, i)
-  filename = trim(dataDirectory)//"/"//"co.asc"
-  coLookupTable%source = filename 
-  call createKappaGrid(colookuptable, nTemps, t1, t2, nLam, lamArray)
+
+  LookupTable(:)%abundance = 1.e-5
+  lookupTable(:)%mu = 0.
+
+  call createKappaGrid(lookuptable, nLam, lamArray, doReset)
+  
 
 end subroutine createAllMolecularTables
 
@@ -899,6 +872,112 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
   if (writeoutput) write(*,*) "Done."
 
 end subroutine readH2O
+
+
+SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)
+  type(MOLECULARKAPPAGRID) :: thisKappaTable
+  integer :: nPTPairs, nnu
+  integer :: ncidin
+  integer, parameter :: ncvars = 30, ncdims = 30
+  integer, dimension(ncvars) :: invarid
+  integer, dimension(ncdims):: indimid
+  real(double), allocatable :: nu(:), tArray(:), pArray(:)
+  real(double), allocatable :: kAbs(:), tempkAbs(:)
+  real(double) :: lamArray(:)
+  real(double), allocatable :: lamKappa(:)
+  integer :: nLambda
+  character(len=*) :: thisFile
+  character(len=256) :: dim_name
+  integer :: i
+  integer :: nTemps, it, iPT, i1, i2, j
+  real(double) :: lam1, lam2, dLam, thisKap
+
+  nTemps = 20
+  iPT = 1
+  call nf90_check(nf90_open(thisFile, NF90_NOWRITE, ncidin))
+  call nf90_check(nf90_inq_dimid(ncidin, "pt_pair", indimid(1)))
+  call nf90_check(nf90_inquire_dimension(ncidin, indimid(1), dim_name, nPTpairs))
+
+  call nf90_check(nf90_inq_dimid(ncidin, "nu", indimid(2)))
+  call nf90_check(nf90_inquire_dimension(ncidin, indimid(2), dim_name, nNu))
+  allocate(pArray(1:nPTpairs), tArray(1:nPTpairs))
+  allocate(nu(1:nNu))
+
+
+  call nf90_check(nf90_inq_varid(ncidin, "nu", invarid(2)))
+  call nf90_check(nf90_inq_varid(ncidin, "p_calc", invarid(3)))
+  call nf90_check(nf90_inq_varid(ncidin, "t_calc", invarid(4)))
+  call nf90_check(nf90_inq_varid(ncidin, "kabs", invarid(5)))
+
+
+
+  call nf90_check(nf90_get_var(ncidin, invarid(2), nu))
+  call nf90_check(nf90_get_var(ncidin, invarid(3), pArray))
+  call nf90_check(nf90_get_var(ncidin, invarid(4), tArray))
+
+
+  thisKappaTable%source = trim(thisFile)
+  thisKappaTable%nLam = nLambda
+  thisKappaTable%nTemps = nTemps
+  allocate(lamKappa(1:nNu))
+  do i = nNu, 1, -1
+     lamKappa(i) = 1.d10/(nu(nNu-i+1))
+  enddo
+  allocate(thisKappaTable%tempArray(1:nTemps))
+  allocate(thisKappaTable%lamArray(1:nLambda))
+  allocate(thisKappaTable%kapArray(1:nTemps, 1:nLambda))
+  thisKappaTable%lamArray(1:nLambda) = lamArray(1:nLambda)
+  thisKappaTable%tempArray(1:nTemps) = tArray(1:nTemps)
+
+  do it = 1, nTemps
+     allocate(kAbs(1:nNu))
+     allocate(tempkAbs(1:nNu))
+     call nf90_check(nf90_get_var(ncidin, invarid(5), tempkAbs, start = (/ 1, it /), count=(/ nNu, 1 /)))
+     do j = nNu, 1, -1
+        kAbs(j) = tempKabs(nNu-j+1)
+     enddo
+     deallocate(tempKabs)
+     do i = 1, nLambda
+        if (i == 1) then 
+           dLam = 0.5d0 * (lamArray(2)-lamArray(1))
+           lam1 = lamArray(1) - dLam
+           lam2 = lamArray(1) + dlam
+        else if (i == nLambda) then
+           dLam = 0.5d0*(lamArray(nLambda) - lamArray(nLambda-1))
+           lam1 = lamArray(nLambda) - dlam
+           lam2 = lamArray(nLambda) + dlam
+        else
+           lam1 = 0.5d0*(lamArray(i)+lamArray(i-1))
+           lam2 = 0.5d0*(lamArray(i+1) + lamArray(i))
+        endif
+        call locate(lamKappa, nNu, lam1, i1)
+        call locate(lamKappa, nNu, lam2, i2)
+        thisKap = 0.d0
+        do j = i1, i2
+           thisKap = thisKap + kAbs(j)
+        enddo
+        thisKap = thisKap / dble(i2-i1+1)
+        thisKappaTable%kapArray(it, i) = thisKap
+     enddo
+     deallocate(kAbs)
+    enddo
+
+    thisKappaTable%kapArray = thisKappaTable%kapArray * 10.d0 * thisKappaTable%abundance * 1.d10 ! from m^2/kg to cm^2/g and then to code
+    
+  END SUBROUTINE readAbsCoeffFileAmundsen
+
+  SUBROUTINE nf90_check(errcode)
+
+    INTEGER,INTENT(IN) :: errcode
+
+    IF (errcode == NF90_NOERR) THEN
+       RETURN
+    ELSE
+       WRITE(*,*)'io_mod: NetCDF error ',nf90_strerror(errcode)
+       STOP
+    endif
+
+  END SUBROUTINE nf90_check
 
   
 

@@ -520,7 +520,8 @@ module image_mod
        inquire(file=filename, exist=oldFilePresent)
        if (oldFilePresent) then 
           call writeInfo("Removing old file", FORINFO)
-          call system("rm chisq.fits")
+          write(message,'(a,a)') "rm ",trim(filename)
+          call system(message)
        end if
 
        !

@@ -250,6 +250,10 @@ contains
     call getLogical("photoionphysics", photoionPhysics, cLine, fLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("gasopacityphysics", gasOpacityPhysics, cLine, fLine, nLines, &
+         "Include gas opacity (TiO, VO etc) in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+    includeGasOpacity = gasopacityphysics
+
     call getLogical("nbodyphysics", nBodyPhysics, cLine, fLine, nLines, &
          "Include n-body physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1267,6 +1271,9 @@ contains
        call getLogical("dospiral", dospiral, cLine, fLine, nLines, &
                "Add a spiral density wave: : ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("planetdisc", planetDisc, cLine, fLine, nLines, &
+               "Add a disc around the planet: : ","(a,1l,1x,a)", .false., ok, .false.)
+
        if (solveVerticalHydro) then
           call getInteger("nhydro", nhydro,  cline, fLine, nLines, &
                "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
@@ -1294,8 +1301,20 @@ contains
        call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
             "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
-       call getDouble("rhoambient", rhoAmbient, 1.d0, cLine, fLine, nLines, &
-            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+
+       call getLogical("discwind", discWind, cLine, fLine, nLines, &
+               "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
+       if (discWind) then
+          call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Inner radius of the wind [AU]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+          call getDouble("DW_Rmax", DW_rMax, autocm/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Outer radius of the disc [AU]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+          call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+       endif
 
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
@@ -1871,6 +1890,11 @@ contains
        call getDouble("biasphiint", biasPhiInterval, degtorad, cLine, fLine, nLines, &
             "Azimuthal interval for biased direction: ","(a,f5.0,a)",-1.d0, ok, .false.)
     endif
+
+
+    call getLogical("hotspot", hotSpot, cLine, fLine, nLines, &
+         "Add a hotspot to the source: ","(a,1l,1x,a)",.false., ok, .false.)
+
   end subroutine readSourceParameters
 
   subroutine readMolecularPhysicsParameters(cLine, fLine, nLines)
@@ -3029,6 +3053,8 @@ contains
     call getReal("movielambda", thisLambdaImage, 1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", lambdaImage, ok, .false.)
 
+    outputimageType = "stokes"
+
     if (photoionPhysics) then
        call getString("movietype", outputimageType, cLine, fLine, nLines, &
             "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
@@ -3070,8 +3096,8 @@ contains
        write(imageFilename,'(a,i4.4,a)') "movie",i,".fits"
 
        ang = twoPi * dble(i-1)/dble(nImage)
-       viewVec = VECTOR(0.d0,0.d0, -1.d0)
-       viewVec = rotateY(viewVec, dble(ang))
+       viewVec = VECTOR(sin(thisInc),0.d0, cos(thisInc))
+       viewVec = rotateZ(viewVec, dble(ang))
        if (writeoutput) write(*,*) i, viewvec
        call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
             thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance, viewVec=viewVec)

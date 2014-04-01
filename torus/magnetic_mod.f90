@@ -202,6 +202,43 @@ contains
     velocityAlphaDisc = ttauriKeplerianVelocity(point)
   end function velocityAlphaDisc
 
+  subroutine safierFits(solution, chi, zeta0dash, h0, zeta, psi, eta)
+    character(len=1) :: solution
+    real(double) :: eta, chi, zeta, psi ! safier 1993 ApJ 408 115
+    real(double) :: a(8), b(0:9)
+    real(double) :: psi1, psi2, zeta1, zeta2, psi0
+    real(double) :: zeta1dash, zeta2dash, zeta0dash, zetadash
+    real(double) :: h0
+    select case (solution)
+       case("C")
+          a(1) = 0.21; a(2) = 0.30; a(3) = 1.23; a(4) = 0.21
+          a(5) = 1.27; a(6) = 0.92; a(7) = 0.04; a(8) = 0.28
+          b(0) = 0.035; b(1) = 12.16; b(2) = 0.65; b(3) = 0.33
+          b(4) = 1.0; b(5) = 0.40; b(6) = 0.50; b(7) = 0.0 
+          b(8) = 1.25; b(9) = 0.6
+       case DEFAULT
+          write(*,*) "Solution ",solution, " not found in safierFits"
+          stop
+    end select
+    chi = max(1.d-20,chi)
+    psi0 = 0.03
+    zeta1 = (1.d0 + a(1)*(chi-h0) + a(2)*(chi-h0)**a(3))*exp(-a(4)*(chi-h0))
+    psi1 = (b(0) + b(6) * (chi - h0) + b(7)*(chi - h0)**2)*exp(-b(8)*(chi-h0)**b(9))
+    zeta2 = a(5) * (chi - h0)**a(6) * exp(-4.d0*a(7)*(chi-h0)**a(8))
+    psi2 = b(1)*exp(-1.d0/max(1.d-20,(b(2)*(chi-h0)**b(3)))) * exp(-b(4)/max(1.d-20,((chi-h0)*b(5))))
+
+    zeta1dash = -a(4)*exp(-a(4)*(chi-h0)) * (1.d0 + a(1)*(chi-h0)+a(2)*(chi-h0)**a(3)) + &
+         (a(1)+a(2)*a(3)*(chi-h0)*(a(3)-1.d0))*exp(-a(4)*(chi-h0))
+
+    zeta2dash = a(5)*a(6)*(chi-h0)**(a(6)-1.d0) * exp(-4.d0*a(7)*(chi-h0)**a(8)) + &
+         a(5)*(chi-h0)*a(6)*(-4.d0*a(8)*a(7)*(chi-h0)**(a(8)-1.d0)*exp(-4.d0 * a(7) * (chi-h0)**a(8)))
+    zetadash = zeta1dash + zeta2dash
+
+    zeta = zeta1 + zeta2
+    psi = psi1 + psi2
+
+    eta = psi0 * (1.d0 - h0*zeta0dash)/(zeta * psi * (zeta - chi * zetaDash))
+  end subroutine safierFits
 
   type (VECTOR) function TTauriKeplerianVelocity(point)
     use inputs_mod, only : ttauriMstar

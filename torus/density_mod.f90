@@ -864,18 +864,23 @@ contains
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral, &
-         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient
+         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
+    use inputs_mod, only : sourcePos, sourceMass, sourceRadius
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
-    integer :: i
-    real(double) :: phi, dist
+    integer :: i,j 
+    real(double) :: phi, dist, minr
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
-    real ::  phi1, phi2, dphi, r1, turns, d
-    type(VECTOR),save :: stream1(nStream), stream2(nStream), spiralVec
-    real(double) :: rSpiral, rSpiralInner, rSpiralOuter, rhoLocal, mu, r_c, rhoEnv, mu_0, theta
+    real ::  phi1, phi2, dphi, r1, turns, d, phiWidth, rWidth
+    type(VECTOR),save :: stream1(nStream), stream2(nStream),  rVec, rPlanet
+    real(double) :: rSpiral, rSpiralInner, rSpiralOuter, rhoLocal, mu, r_c, rhoEnv, mu_0, theta, rhoSpiral
+    real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
+    real(double) :: mPlanetDisc, hillRadius, epsilon, r0, dr, rdash, phidash, rspiralDash, width
+    type(VECTOR) :: dirSpiral, perpSpiral, spiralvec
+    integer, parameter  :: nSpiral =10000
     logical :: ok
     real :: x1, x2
 
@@ -883,6 +888,9 @@ contains
     rSpiralOuter = rGapOuter
 
     if (firstTime) then
+
+
+
 
        phi1 = real(pi)
        phi2 = real(pi+pi/2.)
@@ -993,22 +1001,6 @@ contains
        rhoOut = rhoOut * deltaCav
     endif
 
-    if (doSpiral) then
-       if ((r > rGapInner).and.(r < rGapOuter)) then
-          if (phi <= pi) then
-             h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-             fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
-             fac = max(-50.d0,fac)
-             rhoLocal = rhoGap * exp(fac)
-             rSpiral = rSpiralInner + (rSpiralOuter - rSpiralInner) * dble(phi)/pi
-             spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
-             dist = modulus(VECTOR(spiralVec%x - point%x, spiralVec%y - point%y, 0.d0))
-             fac = (dist/(0.1d0*r))
-             rhoOut = rhoOut + rhoLocal * 4.d0 * exp(-fac)
-          endif
-       endif
-    endif
-
 
     rhoOut = max(rhoOut, cavDens)
     r = (modulus(point)*1.e10)
@@ -1034,9 +1026,48 @@ contains
           rhoEnv = cavdens
        endif
     endif
-       
+       if (smoothInnerEdge) then
+          fac = 1.d0
+          if (r < 1.02d0*rinner) then
+             fac = (1.02d0*rinner - r)/(0.02d0*rinner)
+             fac = 10.d0*fac
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+       endif
+
+
     rhoOut = max(rhoOut, rhoEnv)
     rhoOut = max(rhoOut, rhoAmbient)
+
+
+
+    if (planetDisc) then
+       hillRadius = modulus(sourcePos(2)-sourcePos(1))*sqrt(sourceMass(2)/(3.d0*sourceMass(1)))
+       rOuterPlanetDisc = 0.3d0 * hillRadius
+       rInnerPlanetDisc = 1.d0 * sourceRadius(2)
+       rPlanet = sourcePos(2)
+       mPlanetDisc = 1.d-2 * sourceMass(2)
+       betaPlanetDisc = 1.125d0
+       alphaPlanetDisc = 2.125d0
+       heightPlanetDisc = 10.d0*autocm/1.d10
+       rhoPlanetDisc  = real(mPlanetDisc *(betaPlanetDisc-alphaPlanetDisc+2.) / ( twoPi**1.5 * (heightPlanetDisc*1.e10)/real(100.d0*autocm)**betaPlanetDisc  &
+            * (rInnerPlanetDisc*1.e10)**alphaPlanetDisc * &
+            (((rOuterPlanetDisc*1.e10)**(betaPlanetDisc-alphaPlanetDisc+2.)-(rInnerPlanetDisc*1.e10)**(betaPlanetDisc-alphaPlanetDisc+2.))) ))
+
+
+
+       r = sqrt((point%x-rplanet%x)**2 + (point%y-rPlanet%y)**2)
+!       write(*,*) r/rOuterPlanetDisc
+       if ((r < rOuterPlanetDisc).and.(r>rInnerPlanetDisc)) then
+          h = heightPlanetDisc * (r / (100.d0*autocm/1.d10))**betaPlanetDisc
+          fac = -0.5d0 * (dble(point%z)/h)**2
+          fac = max(-50.d0,fac)
+          rhoOut = rhoPlanetDisc * (dble(rInnerPlanetDisc/r))**dble(alphaPlanetDisc) * exp(fac)
+!          write(*,*) "planet disc ",rhoout
+       endif
+    endif
+       
 
 
   end function shakaraSunyaevDisc

@@ -233,7 +233,7 @@ endif
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
 
-    FASTFLAG= -O3 # -ipo
+    FASTFLAG=  # -ipo
 #    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
 
@@ -263,6 +263,8 @@ ifeq ($(SYSTEM), zen)
        F95COMP+=-I/sw/hdf5_intel/include
        STARLIBS=-L/sw/hdf5_intel/lib
     endif
+    NCDF_INC=-I/sw/netcdf-4.3.0/include/
+    NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
     ZLIBLIBS = -lz	
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
@@ -277,6 +279,8 @@ ifeq ($(SYSTEM), zensingle)
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
+    NCDF_INC=-I/sw/netcdf-4.3.0/include/
+    NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
     EXE=torus.zensingle
     STATICLIBS= -Bstatic
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
@@ -452,7 +456,7 @@ ifeq ($(pdr), yes)
   sundials=yes
   CPPFLAG = -cpp
 else
-  CPPFLAG = 
+  CPPFLAG =
 endif
 
 ifeq ($(molecular), yes)
@@ -567,7 +571,7 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
 # Compilers and compiler flags
 #
 
-F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE)
+F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE) $(NCDF_INC)
 GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
 #
 #
@@ -584,7 +588,7 @@ all: depends $(ALLOBJ)
 	    $(F90) $(TRACEFLAG) $(SUNDIALSLIBRARIES) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) $(COBJ) \
-	    $(SLIBS)
+	    $(SLIBS) $(NCDF_LIB)
 
     else
 	    @echo ""

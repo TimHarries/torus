@@ -346,6 +346,8 @@ contains
     type(VECTOR) :: tVec, perpVec, newVec
     type(PHASEMATRIX) :: miePhase(:,:,:)
     
+    normFac(1:nDusttype) = dustTypeFraction(1:nDustType)
+    if (SUM(dustTypeFraction(1:nDustType)) /= 0.d0) &
     normfac(1:nDustType) = dustTypeFraction(1:nDustType)/SUM(dustTypeFraction(1:nDusttype))
 
     call locate(lamArray, nLambda, wavelength, ilam)

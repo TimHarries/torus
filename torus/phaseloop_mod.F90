@@ -45,7 +45,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 #endif
   use TTauri_mod
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
-  use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau
+  use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, addDustContinuumLucyMono
   use timing, only: tune
   use formal_solutions, only: compute_obs_line_flux
   use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
@@ -263,6 +263,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: totalOutputLuminosity
   real :: probContPhoton
   character(len=80) :: thisImageType
+  type(octal),  pointer :: thisOctal
+  integer :: subcell
   logical :: stokesImage 
 
   ! intrinsic profile variables
@@ -964,15 +966,15 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         endif
            
 
-        if (grid%geometry == "luc_cir3d".or. grid%geometry == "romanova") then
-           write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
-           fAccretion = fAccretion * (nuStart-nuEnd)
-           write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
-           if (fAccretion /= 0.d0) then
-              write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
-              totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
-           endif
-        endif
+!        if (grid%geometry == "luc_cir3d".or. grid%geometry == "romanova") then
+!           write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
+!           fAccretion = fAccretion * (nuStart-nuEnd)
+!           write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
+!           if (fAccretion /= 0.d0) then
+!              write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
+!              totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
+!           endif
+!        endif
 
 
         
@@ -1300,7 +1302,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                 grid%lamArray(ilambdaPhoton), iLambdaPhoton)
-
+!           thisOctal => grid%octreeRoot
+!           call findSubcellLocal(VECTOR(autocm*2.d0/1.d10,0.d0,0.d0), thisOctal, subcell)
+!           do j = 1, grid%nlambda
+!              call addDustContinuumLucyMono(thisOctal, subcell, grid,  grid%lamArray(j), j)
+!              if (Writeoutput) write(*,*) "eta ",j,thisOctal%etaCont(subcell)
+!           enddo
            if(freefreeSED) then
 #ifdef PHOTOION
               call  addRadioContinuumEmissivityMono(grid%octreeRoot, grid%lamArray(ilambdaPhoton), .true.)
@@ -1585,6 +1592,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            close(20)
         endif
      endif
+
+     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
 
      if (stokesimage) then
         do i1 = 1, nImageLocal

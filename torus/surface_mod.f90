@@ -580,6 +580,31 @@ end subroutine readSurface
   end subroutine createHotRing
 
 
+  subroutine createHotSpot(surface)
+    type(SURFACETYPE),intent(inout) :: surface
+    integer :: i
+    real(double) :: thetaSpot, phiSpot, rSpot, ang
+    type(VECTOR) :: rVec
+
+    thetaSpot = 65.d0 * degtorad
+    phiSpot = 0.d0
+    rSpot = 20.d0 * degToRad
+
+    rVec = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
+    do i = 1, SIZE(surface%element)
+
+       ang = acos(rVec.dot.surface%element(i)%norm)
+       if (ang < rSpot) then
+          surface%element(i)%hot = .true.
+       else
+          !surface%element(i)%flux = fluxPhoto
+          surface%element(i)%hot = .false.
+       endif
+
+    enddo
+  end subroutine createHotSpot
+
+
   !
   !
   ! For a uniform suraface (for a general use)
@@ -784,7 +809,8 @@ end subroutine readSurface
   
   subroutine createProbs(surface,lineFreq,coreContFlux,fAccretion)
     type(SURFACETYPE),intent(inout) :: surface
-    real(double), intent(in) :: coreContFlux ! erg s^-1 cm^-2 Hz^-1
+    real(double)  :: coreContFlux ! erg s^-1 cm^-2 Hz^-1
+    real(double) :: flux
     real, intent(in) :: lineFreq
     real, intent(out) :: fAccretion ! 1.e-20 erg s^-1 Hz^-1
     integer :: i, lineIndex
@@ -794,7 +820,13 @@ end subroutine readSurface
     
     ! find the line frequency in the tabulated fluxes
     call locate(surface%nuArray,SIZE(surface%nuArray),dble(lineFreq),lineIndex)
-    
+    flux = logint_dble(dble(lineFreq),surface%nuArray(lineIndex),&
+         surface%nuArray(lineIndex+1),&
+         surface%hnuArray(lineIndex),&
+         surface%hnuArray(lineIndex+1))
+    write(*,*) "core ", flux,lineindex,SIZE(surface%nuArray),surface%hnuarray
+
+
     do i = 1, SIZE(surface%element)
       if (surface%element(i)%hot) then
         !accretionFlux = logint(lineFreq,surface%nuArray(lineIndex),&
@@ -806,9 +838,9 @@ end subroutine readSurface
                                surface%element(i)%hotFlux(lineIndex),&
                                surface%element(i)%hotFlux(lineIndex+1))
         fAccretion = fAccretion + (accretionFlux * surface%element(i)%area)                 
-        surface%element(i)%prob = real((accretionFlux + coreContFlux) * surface%element(i)%area)
+        surface%element(i)%prob = real((accretionFlux + flux) * surface%element(i)%area)
       else
-        surface%element(i)%prob = real(coreContFlux * surface%element(i)%area)
+        surface%element(i)%prob = real(flux * surface%element(i)%area)
       end if
     end do
     !! have to average fAccretion over stellar surface to get it in same units as coreContFlux 

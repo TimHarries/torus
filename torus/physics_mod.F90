@@ -271,7 +271,7 @@ contains
                 !       lamEnd = 1000.d4
                 !       nlambda = 1000
                 call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-                     source(isource)%surface, 100, source(isource)%teff, &
+                     source(isource)%surface, 100, source(isource)%teff, & 
                      source(isource)%spectrum)
                 call sumSurface(source(isource)%surface, sumSurfaceluminosity)
                 fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
@@ -323,12 +323,13 @@ contains
     use phasematrix_mod
     use dust_mod
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
-    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, pdrcalc
+    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, pdrcalc, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics!, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
+    use gas_opacity_mod
 #ifdef CMFATOM
     use modelatom_mod, only : globalAtomArray
     use cmf_mod, only : atomloop
@@ -384,11 +385,11 @@ contains
 #endif
 
     real, pointer :: xArray(:) => null()
+    real(double), pointer :: xArrayDouble(:) => null()
     integer :: nLambda 
     real(double) :: packetWeight
-    real(double) :: temp, dustMass
+    real(double) :: temp, dustMass, ksca, kabs
     real :: temp2
-
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
@@ -416,6 +417,21 @@ contains
 !    end if
 !#endif
 !#endif
+
+    if (gasOpacityPhysics) then
+       call setupXarray(grid, xarray, nLambda, dustRadeq=.true.)
+       allocate(xArrayDouble(1:nLambda))
+       xArrayDouble = dble(xArray)
+       call createAllMolecularTables(nLambda, xArrayDouble)
+       deallocate(xArrayDouble)
+       if (writeoutput) then
+          do i = 1, nLambda
+             call returnGasKappaValue(grid, 2000., 1.d0, kappaAbs=kabs, kappaSca=ksca, lambda=xarray(i), ilambda=i)
+             write(*,'(1p,5e13.4)') xArray(i),kabs+ksca,kabs,ksca, ksca/(ksca+kabs)
+          enddo
+       endif
+    endif
+
 
 
      if (dustPhysics.and.radiativeEquilibrium) then
@@ -761,7 +777,7 @@ contains
 #endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI, &
-          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks
+          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot
 #ifdef MPI
      use mpi
 #endif
@@ -867,6 +883,20 @@ contains
        globalNSource = 1
     endif
 
+    if (hotSpot) then
+       coreContinuumFlux = 0.d0
+
+       call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
+            globalsourcearray(1)%surface, nSphereSurface, &
+            globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
+       call hotSpotSurface(globalsourcearray(1)%surface, real(cspeed/(6562.8d-8)), coreContinuumFlux,fAccretion, lAccretion) 
+       call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
+       if (writeoutput) write(*,*) "Added accretion luminosity of ",lAccretion/lsol, " lsol"
+       if (writeoutput) write(*,*) "Accretion luminosity in stellar units ",lAccretion/globalsourceArray(1)%luminosity
+       globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
+       globalNSource = 1
+    endif
+
 !    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
 
 
@@ -924,7 +954,6 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
   end if
   call allocateMemoryForDust(grid%octreeRoot)
     if (includeGasOpacity) then
-       call createAllMolecularTables(100, 10.0, 2000.0, nLambda, xArray)
     endif
 
 

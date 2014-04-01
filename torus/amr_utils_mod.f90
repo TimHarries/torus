@@ -1567,7 +1567,7 @@ module amr_utils_mod
           IF     (r < thisOctal%r - thisOctal%subcellSize - eps) THEN ; inOctal = .FALSE. 
           ELSEIF (r > thisOctal%r + thisOctal%subcellSize + eps) THEN ; inOctal = .FALSE.
 !          ELSEIF (dphi > thisOctal%dphi/2.d0) THEN ; inOctal = .FALSE.
-          ELSEIF (phi > thisOctal%phimax) THEN ; inOctal = .FALSE.
+          ELSEIF (phi >= thisOctal%phimax) THEN ; inOctal = .FALSE.
           ELSEIF (phi < thisOctal%phimin) THEN ; inOctal = .FALSE.
           ELSEIF (point%z < thisOctal%zMin) THEN ; inOctal = .FALSE.
           ELSEIF (point%z > thisOctal%zMax) THEN ; inOctal = .FALSE.

@@ -11,7 +11,7 @@ use gridtype_mod, only: GRIDTYPE
 use vtk_mod, only: writeVTKfile
 use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, returndPhi
 use amr_mod, only: returnKappa, tauAlongPath, inOctal, amrGridValues, &	
-     countVoxels, getOctalArray, octalOnThread
+     countVoxels, getOctalArray, octalOnThread, randomPositionInCell
 implicit none
 
 
@@ -1044,7 +1044,7 @@ end subroutine gaussSeidelSweep
              call amrgridvalues(grid%octreeRoot, rVec, startOctal=sOctal, foundOctal=walkOctal, foundSubcell=walkSubcell)
           else
              call randomNumberGenerator(getReal=r)
-             rVec = subcellCentre(walkOctal, walkSubcell)
+             rVec = subcellCentre(walkOctal, walkSubcell) + ((0.1d0 * grid%halfSmallestSubcell) * randomUnitVector())
              rHat = VECTOR(rVec%x,rVec%y, 0.d0)
              call normalize(rHat)
              if (r < 0.25) then

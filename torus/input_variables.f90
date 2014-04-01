@@ -16,6 +16,7 @@
   logical :: atomicPhysics
   logical :: nbodyPhysics
   logical :: dustPhysics
+  logical :: gasOpacityPhysics
 
 !--------------------------
 ! Type of model calculation
@@ -313,6 +314,7 @@
 
   logical :: readSources
   logical :: moveSources
+  logical :: hotspot
   character(len=80) :: sourceFilename
   logical :: sourceHistory
   character(len=80) :: sourceHistoryFilename
@@ -489,6 +491,7 @@
   real :: rGap, mPlanet, gapWidth
   real :: rGapInner, rGapOuter, rhoGap, deltaCav
   logical :: planetGap
+  logical :: planetDisc
 
   ! single dust blob parameters (WR137 type model)
   !
@@ -528,6 +531,7 @@
   real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
   real :: Thotspot
   logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere
+  logical :: discWind
   real :: TTauriRstar ! stellar radius (in R_sol units)
   real(double) :: holeRadius ! radius of inner hole to geometrically thin, optically thick disc
   real :: TTauriMstar ! stellar mass   (in M_sol units)

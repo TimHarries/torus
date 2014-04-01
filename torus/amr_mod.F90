@@ -46,7 +46,7 @@ CONTAINS
     !   that they can be used for interpolation.
 
     IMPLICIT NONE
-    type(discwind) :: this
+    type(discwind_type) :: this
     TYPE(octal), INTENT(INOUT) :: thisOctal
     logical, optional :: debug
     logical :: writedebug
@@ -256,7 +256,7 @@ CONTAINS
     IMPLICIT NONE
     TYPE(OCTAL), POINTER :: thisOctal
     TYPE(gridtype), INTENT(INOUT) :: grid   ! need to pass the grid through to the 
-    type(discwind), intent(in)  :: this     
+    type(discwind_type), intent(in)  :: this     
     ! the value the decideSplit function uses to  decide whether or not to split cell.
     real(double), intent(in) :: limitscalar 
     !
@@ -432,7 +432,7 @@ CONTAINS
        DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, limitscalar, ttauriMstar
     real(double) :: DW_Hdisc
     type(GRIDTYPE) :: grid
-    type(DISCWIND) :: myDiscWind
+    type(DISCWIND_type) :: myDiscWind
 
     call new(mydiscWind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
        DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, dble(ttauriMstar)/msol, DW_Hdisc)
@@ -453,7 +453,7 @@ CONTAINS
 
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    type(discwind), intent(in) :: this
+    type(discwind_type), intent(in) :: this
     
     real(oct)  :: cellSize, d
     TYPE(VECTOR)     :: cellCentre
@@ -521,7 +521,7 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
                                           !   calculate the variables stored in
                                           !   the tree.
-    TYPE(discwind), INTENT(IN)  :: this
+    TYPE(discwind_type), INTENT(IN)  :: this
     INTEGER       :: subcell           ! loop counter
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: newChildIndex     ! the storage location for the new child
@@ -3467,7 +3467,7 @@ CONTAINS
     use inputs_mod, only : inputnsource, sourcepos, smoothinneredge, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens, limitscalar, addDisc
-
+    use inputs_mod, only : discWind, planetDisc, sourceMass
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3477,6 +3477,7 @@ CONTAINS
     use vh1_mod, only: get_density_vh1, vh1FileRequired
     use density_mod, only: density
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
+    use magnetic_mod, only : safierfits
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
 #endif
@@ -3513,7 +3514,7 @@ CONTAINS
     real(double), save :: rgrid(1000)
     real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
-    real(double)          :: minDensity, maxDensity
+    real(double)          :: minDensity, maxDensity, hillRadius
     INTEGER               :: nsample = 400
     INTEGER               :: npt_subcell
 !    real(double) :: timenow
@@ -3542,11 +3543,12 @@ CONTAINS
     real(double) :: massPerCell, n_bin_az
     real(double) :: vgradx, vgrady, vgradz, vgrad
     INTEGER      :: nparticle, limit
+    real(double) :: chi, zeta0dash, psi, eta, zeta
     real(double) :: dummyDouble
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
-    real(double) :: dx, cornerDist(8), d, muval(8)
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2
 
     splitInAzimuth = .false.
     split = .false.
@@ -5007,7 +5009,7 @@ CONTAINS
           
           if (thisOctal%cylindrical) then
              dphi = returndPhi(thisOctal)
-             if ((r > 0.5*rGapInner).and.(r < 2.*rGapOuter)) then
+             if ((r > 0.1*rGapInner).and.(r < 5.*rGapOuter)) then
                 if (dphi > minPhiResolution) then
                    split = .true.
                    splitinAzimuth = .true.
@@ -5068,7 +5070,121 @@ CONTAINS
              endif
           endif
 
-          
+
+          if (discWind) then
+            cellCentre = subcellCentre(thisOctal, subcell)
+            cellSize = thisOctal%subcellSize
+            zeta0dash = tan(60.d0*degtorad)
+
+            cellCentre = subcellCentre(thisOctal, subcell) + VECTOR(-cellsize/2.d0, 0.d0, -cellSize/2.d0)
+            chi = abs(cellcentre%z)/DW_rMin
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r1 = DW_rMin*zeta
+            chi = abs(cellcentre%z)/DW_rMax
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r2 = DW_rMax*zeta
+            if ((cellCentre%x > r1).and.(cellCentre%x  < r2)) then
+               if (thisOctal%subcellSize > (DW_rMax-DW_rMin)/5.d0) split = .true.
+            endif
+
+            cellCentre = subcellCentre(thisOctal, subcell) + VECTOR(+cellsize/2.d0, 0.d0, -cellSize/2.d0)
+            chi = abs(cellcentre%z)/DW_rMin
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r1 = DW_rMin*zeta
+            chi = abs(cellcentre%z)/DW_rMax
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r2 = DW_rMax*zeta
+            if ((cellCentre%x > r1).and.(cellCentre%x  < r2)) then
+               if (thisOctal%subcellSize > (DW_rMax-DW_rMin)/5.d0) split = .true.
+            endif
+
+            cellCentre = subcellCentre(thisOctal, subcell) + VECTOR(-cellsize/2.d0, 0.d0, +cellSize/2.d0)
+            chi = abs(cellcentre%z)/DW_rMin
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r1 = DW_rMin*zeta
+            chi = abs(cellcentre%z)/DW_rMax
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r2 = DW_rMax*zeta
+            if ((cellCentre%x > r1).and.(cellCentre%x  < r2)) then
+               if (thisOctal%subcellSize > (DW_rMax-DW_rMin)/5.d0) split = .true.
+            endif
+
+            cellCentre = subcellCentre(thisOctal, subcell) + VECTOR(+cellsize/2.d0, 0.d0, +cellSize/2.d0)
+            chi = abs(cellcentre%z)/DW_rMin
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r1 = DW_rMin*zeta
+            chi = abs(cellcentre%z)/DW_rMax
+            call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+            r2 = DW_rMax*zeta
+            if ((cellCentre%x > r1).and.(cellCentre%x  < r2)) then
+               if (thisOctal%subcellSize > (DW_rMax-DW_rMin)/5.d0) split = .true.
+            endif
+          endif
+          if (thisOctal%ndepth  < mindepthamr) split = .true.
+
+
+
+          if (planetDisc) then
+             if (thisOctal%cylindrical) then
+
+
+                hillRadius = modulus(sourcePos(2)-sourcePos(1))*sqrt(sourceMass(2)/(3.d0*sourceMass(1)))
+                rVec = sourcePos(2) - cellCentre
+                r = modulus(rVec)
+
+                rVec = sourcePos(2) + VECTOR(0.d0, hillRadius*0.01d0, 0.d0)
+                if (inSubcell(thisOctal, subcell, rVec)) then
+                  dphi = returndphi(thisOctal)
+                  if (dphi * sqrt(cellCentre%x**2 + cellCentre%y**2) > 0.05d0*hillRadius) then
+                     split = .true.
+                     splitInAzimuth = .true.
+                  endif
+                endif
+                rVec = sourcePos(2) + VECTOR(0.d0, -hillRadius*0.01d0, 0.d0)
+                if (inSubcell(thisOctal, subcell, rVec)) then
+                  dphi = returndphi(thisOctal)
+                  if (dphi * sqrt(cellCentre%x**2 + cellCentre%y**2) > 0.05d0*hillRadius) then
+                     split = .true.
+                     splitInAzimuth = .true.
+                  endif
+                endif
+
+
+                if (r < hillRadius) then
+                   fac = radtodeg*(0.02d0 * hillradius / sqrt(cellCentre%x**2 + cellCentre%y**2))
+                   if (dPhi*radtodeg > fac) then
+                      splitInAzimuth = .true.
+                      split = .true.
+                   endif
+                  if (thisOctal%subcellsize > 0.02d0*hillRadius) then
+                     split = .true.
+                  endif
+                endif
+             endif
+          endif
+
+
+          if (thisOctal%cylindrical) then
+             if (split.and.(.not.splitInAzimuth)) then
+                phi = atan2(cellcentre%y, cellcentre%x)
+                if (phi < 0.d0) phi = phi + twopi
+                dphi = returndPhi(thisOctal)
+                phi1 = phi - dphi
+                if (phi1 < 0.d0) phi1 = phi1 + twoPi
+                phi2 = phi + dphi
+                if (dPhi*radtodeg > 10.) then
+                   if (((phi1*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                        (phi1*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                        ((phi2*radtodeg > 180.d0-phiRefine/2.d0).and. &
+                        (phi2*radtodeg < 180.d0+phiRefine/2.d0)).or. &
+                        ((phi1*radtodeg < 180.d0-phiRefine/2.d0).and. &
+                        (phi2*radtodeg > 180.d0+phiRefine/2.d0))) then
+                      splitInAzimuth = .true.
+                      split = .true.
+                   endif
+                endif
+             endif
+          endif
           
 
        case("circumbin")
@@ -11338,7 +11454,6 @@ end function readparameterfrom2dmap
        thisOctal%rhov(subcell) = modulus(keplerianVelocity(rVec))*thisOctal%rho(subcell) * (r *gridDistanceScale)*cSpeed
     endif
 
-
     if (dustPhysics) then
        rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
        rhoFid = shakaraSunyaevDisc(rVec, grid)
@@ -11360,7 +11475,71 @@ end function readparameterfrom2dmap
           thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
        endif
     endif
+
+
   end subroutine shakaraDisk
+
+
+  subroutine fillgridSafier(grid)
+    use inputs_mod, only : DW_rMin, DW_rMax, grainfrac, ndusttype, sourceMass, DW_mdot, rSublimation 
+    use magnetic_mod, only : safierFits
+    type(OCTAL), pointer :: thisOctal
+    type(VECTOR) :: rVec
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+
+
+    integer :: i, j
+    real(double) :: r0, chi, eta, zeta0dash, zeta, psi, rho1, thisRho
+    logical :: doDust
+
+    rho1 = 3.5d-15*(dw_mdot/5.d-8)*(sourceMass(1)/msol)**-0.5d0 * (log(DW_rmax/DW_rmin)/2.5d0)**-1.d0
+          
+
+    zeta0Dash = tan(60.d0*degToRad)
+    thisOctal => grid%octreeRoot
+    do i = 1, 1000
+       r0 = DW_rMin + (DW_rMax - DW_rMin)*dble(i-1)/999.d0
+       do j = 1, 10000
+          chi = 1.d-6+10.d0 * dble(j-1)/9999.d0
+
+          call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+          
+          rVec = VECTOR(r0 * zeta, 0.d0, r0*chi)
+          if (inOctal(grid%octreeRoot, rVec)) then
+             call findSubcellLocal(rVec, thisOctal,subcell)
+
+             thisRho = eta * rho1 * (r0 / (autocm/1.d10))**(-1.5d0)
+             doDust = .false.
+             if (thisRho > thisOctal%rho(subcell)) then
+                thisOctal%rho(subcell) = max(thisOctal%rho(subcell), thisRho)
+                doDust = .true.
+             endif
+
+             rVec%z = -rVec%z
+             call findSubcellLocal(rVec, thisOctal,subcell)
+
+             if (thisRho > thisOctal%rho(subcell)) then
+                thisOctal%rho(subcell) = max(thisOctal%rho(subcell), thisRho)
+             endif
+
+             if (doDust) then
+                rVec = subcellCentre(thisOctal, subcell)
+                r0 = rSublimation
+                chi = abs(rVec%z)/r0
+                call safierFits("C", chi, zeta0dash, 0.d0, zeta, psi, eta)
+                r0 = r0*zeta
+                if (rVec%x > r0) then
+                   thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+                else
+                   thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-20
+                   write(*,*) "seeting to zero"
+                endif
+             endif
+          endif
+       enddo
+    enddo
+  end subroutine fillgridSafier
 
   subroutine warpedDisk(thisOctal,subcell,grid)
     use density_mod, only: density
@@ -13657,10 +13836,10 @@ end function readparameterfrom2dmap
        else
           kappaScaArray(1:nlambda) = thisOctal%kappaSca(subcell,:)
        endif
-!       if (includeGasOpacity) then
-!          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
-!          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
-!       endif
+       if (includeGasOpacity) then
+          call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
+          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda) !*thisOctal%rho(subcell)
+       endif
     endif
 
 
@@ -13813,12 +13992,12 @@ end function readparameterfrom2dmap
             tlambda = lambda
          endif
          call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, kappaSca=tGas)
-         kappaSca = kappaSca + tGas*thisOctal%rho(subcell)
+         kappaSca = kappaSca + tGas *thisOctal%rho(subcell)
       endif
 
       if (PRESENT(kappaScaArray)) then
          call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell), tlambda, kappaScaArray=tGasArray)
-         kappaScaArray = kappaScaArray + tGasArray*thisOctal%rho(subcell)
+         kappaScaArray = kappaScaArray + tGasArray *thisOctal%rho(subcell)
       endif
    endif
 
@@ -14277,7 +14456,7 @@ end function readparameterfrom2dmap
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: cellCentre, corner(8)
+    type(VECTOR) :: cellCentre
     integer :: subcell, i
     
     do subcell = 1, thisOctal%maxChildren
@@ -14291,11 +14470,12 @@ end function readparameterfrom2dmap
              end if
           end do
        else
-!          thisOctal%inflow(subcell) = .false.
-          cellCentre = subcellCentre(thisOctal, subcell)
-          call subcellCorners(thisOctal, subcell, corner)
-          if (inflowBlandfordPayne(corner(1:thisoctal%maxChildren))&
-               .and.inflowBlandfordPayne(cellCentre)) then
+          thisOctal%inflow(subcell) = .false.
+!          cellCentre = subcellCentre(thisOctal, subcell)
+!          call subcellCorners(thisOctal, subcell, corner)
+!          if (inflowBlandfordPayne(corner(1:thisoctal%maxChildren))&
+!               .and.inflowBlandfordPayne(cellCentre)) then
+
              thisOctal%inflow(subcell) = .true.
              thisOctal%rho(subcell) = rhoBlandfordPayne(cellCentre)
              thisOctal%velocity(subcell) = velocityBlandfordPayne(cellCentre)
@@ -14303,10 +14483,10 @@ end function readparameterfrom2dmap
              thisOctal%fixedTemperature(subcell) = .true.
 
 !             IF ((thisoctal%threed).and.(subcell == 8)) &
-                  CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
+!                  CALL fillVelocityCorners(thisOctal,velocityBlandfordPayne)
           
 !             IF ((thisoctal%twod).and.(subcell == 4)) &
-                  CALL fillVelocityCorners(thisOctal,VelocityBlandfordPayne)
+!                  CALL fillVelocityCorners(thisOctal,VelocityBlandfordPayne)
 
           endif
 
@@ -14314,7 +14494,6 @@ end function readparameterfrom2dmap
 
 
 
-       endif
     enddo
   end subroutine assignDensitiesBlandfordPayne
 
@@ -16110,6 +16289,66 @@ end function readparameterfrom2dmap
     CALL sumSurface(surface)
 
   end subroutine genericAccretionSurface
+
+    subroutine hotSpotSurface(surface, lineFreq,coreContFlux,fAccretion,totalLum)
+
+    USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
+    use inputs_mod, only : tHotSpot, mDotParameter1, tTauriRstar
+    use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
+    type(SURFACETYPE) :: surface
+    type(VECTOR) :: rVec
+    real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
+    integer :: i
+    real(double) :: totalLum
+    REAL(double), INTENT(IN) :: coreContFlux
+    REAL, INTENT(IN) :: lineFreq
+    REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
+    real(double) :: astar, thisR, thisMdot, thisRho
+    real(double) :: thetaSpot, phiSpot, rSpot, ang
+
+    if (Writeoutput) write(*,*) "calculating generic hotspot surface ",surface%nElements
+
+    accretingArea = 0.d0
+    totalArea = 0.d0
+    totallum = 0.d0
+    totalmdot = 0.d0
+
+    thetaSpot = 65.d0 * degtorad
+    phiSpot = 0.d0
+    T = 10000.d0
+    rSpot = 20.d0 * degToRad
+
+    rVec = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
+    do i = 1, SIZE(surface%element)
+       area = (surface%element(i)%area*1.d20)
+       totalArea = totalArea + area
+
+       ang = acos(rVec.dot.surface%element(i)%norm)
+       if (ang < rSpot) then
+          surface%element(i)%hot = .true.
+
+          allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
+
+          
+          surface%element(i)%hotFlux(:) = &
+               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:)))
+          surface%element(i)%temperature = real(T)
+          accretingArea = accretingArea + area
+
+       else
+          surface%element(i)%hot = .false.
+       endif
+    enddo
+
+
+    if (writeoutput) then
+       write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
+    endif
+
+    CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
+    CALL sumSurface(surface)
+
+  end subroutine hotSpotSurface
 
 
   subroutine allocateOctalAttributes(grid, thisOctal)

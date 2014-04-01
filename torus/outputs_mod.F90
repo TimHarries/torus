@@ -7,6 +7,7 @@ module outputs_mod
 contains
 
   subroutine doOutputs(grid)
+    use gas_opacity_mod
 #ifdef CMFATOM
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
@@ -14,7 +15,7 @@ contains
     use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube
-    use inputs_mod, only : iTransLine, iTransAtom, gridDistance
+    use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, nv, ncubes
@@ -75,6 +76,8 @@ contains
 
     real :: lambdaImage
     real, allocatable :: tarray(:,:)
+    real(double), allocatable :: xArrayDouble(:)
+    real(double) :: kabs, ksca
 #ifdef MOLECULAR
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
@@ -299,6 +302,19 @@ if (.false.) then
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
                wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
+          if (gasOpacityPhysics) then
+             allocate(xArrayDouble(1:nLambda))
+             xArrayDouble = dble(xArray)
+             call createAllMolecularTables(nLambda, xArrayDouble, reset=.true.)
+             deallocate(xArrayDouble)
+             if (writeoutput) then
+                do j = 1, nLambda
+                   call returnGasKappaValue(grid, 2000., 1.d0, kappaAbs=kabs, kappaSca=ksca, lambda=xarray(j), ilambda=j)
+                   write(*,'(1p,5e13.4)') xArray(j),kabs+ksca,kabs,ksca, ksca/(ksca+kabs)
+                enddo
+             endif
+          endif
+
 #ifdef PHOTOION
           if(postsublimate) then
              call writeInfo("Sublimating dust")
@@ -325,6 +341,21 @@ if (.false.) then
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+
+             if (gasOpacityPhysics) then
+                allocate(xArrayDouble(1:nLambda))
+                xArrayDouble = dble(xArray)
+                call createAllMolecularTables(nLambda, xArrayDouble)
+                deallocate(xArrayDouble)
+                if (writeoutput) then
+                   do j = 1, nLambda
+                      call returnGasKappaValue(grid, 2000., 1.d0, kappaAbs=kabs, kappaSca=ksca, lambda=xarray(j), ilambda=j)
+                      write(*,'(1p,5e13.4)') xArray(j),kabs+ksca,kabs,ksca, ksca/(ksca+kabs)
+                   enddo
+                endif
+             endif
+
+
 #ifdef PHOTOION
              if(postsublimate) then
                 call writeInfo("Sublimating dust")
@@ -369,7 +400,7 @@ if (.false.) then
                 call addImageSliceToCube(thisCube, imageSlice, j)
                 call freeImage(imageSlice)
              enddo
-             call convertSpatialAxes(thisCube, "pc")
+!             call convertSpatialAxes(thisCube, "au")
              if (myrankGlobal == 0) call writeDataCube(thisCube, getImageFilename(i))
              call freeDataCube(thisCube)
           enddo

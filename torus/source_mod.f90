@@ -33,6 +33,7 @@
      real(double) :: distance
      real(double) :: prob ! probability of packet from this source
      logical :: stellar
+     logical :: viscosity
      logical :: diffuse ! isrf, cmb
      type(VECTOR) :: angMomentum
      real(double) :: accretionRadius
@@ -228,6 +229,7 @@
       write(lunit) source%onCorner
       write(lunit) source%distance
       write(lunit) source%stellar
+      write(lunit) source%viscosity
       write(lunit) source%diffuse
       write(lunit) source%angMomentum
       write(lunit) source%accretionRadius
@@ -254,6 +256,7 @@
       read(lunit) source%onCorner
       read(lunit) source%distance
       read(lunit) source%stellar
+      read(lunit) source%viscosity
       read(lunit) source%diffuse
       read(lunit) source%angMomentum
       read(lunit) source%accretionRadius
@@ -605,6 +608,7 @@
       logical :: ok
 
       source%stellar = .false.
+      source%viscosity = .false.
       source%diffuse = .true.
 
       call unixGetenv("TORUS_DATA", dataDirectory, i)
@@ -633,6 +637,7 @@
       type(SOURCETYPE) :: source
 
       source%stellar = .false.
+      source%viscosity = .false.
       source%diffuse = .true.
 
       call fillSpectrumBB(source%spectrum, 2.8d0, 1000.d0, 1.d9, 1000)
@@ -679,10 +684,45 @@
       position = thisPoint + (distToGrid+1.d-3*grid%halfSmallestSubcell)*direction
     end subroutine getIsotropicPositionDirection
 
+    subroutine getViscosityPositionDirection(position, direction, grid)
+      use amr_utils_mod, only : distanceToGridFromOutside, inOctal
+      type(GRIDTYPE) :: grid
+      real(double) :: z, ang, distToGrid
+      type(VECTOR) :: entryPoint, norm, v, n, zAxis, thisPoint
+      type(VECTOR),intent(out) :: position, direction
+      logical :: ok
+
+      zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+      entryPoint = randomUnitVector()
+      norm = (-1.d0)*entryPoint
+      ok = .false.
+
+      do while (.not.ok)
+
+         call randomNumberGenerator(getDouble=z)
+         z = sqrt(z)
+         ang = acos(z)
+         n = norm .cross. zAxis
+         call normalize(n)
+         v = norm
+         v = arbitraryRotate(v, ang, n)
+         call randomNumberGenerator(getDouble=ang)
+         ang = ang * twoPi
+         v = arbitraryRotate(v, ang, norm)
+         
+         direction = v
+         thisPoint = entryPoint*4d0*grid%octreeRoot%subcellSize
+         
+         distToGrid = distanceToGridFromOutside(grid, thisPoint, direction, hitGrid=ok)
+
+      enddo
+      position = thisPoint + (distToGrid+1.d-3*grid%halfSmallestSubcell)*direction
+    end subroutine getViscostyPositionDirection
+
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
       use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval 
-      use inputs_mod, only : amrgridcentrey, amrgridcentrex, amrgridcentrez
+      use inputs_mod, only : amrgridcentrey, amrgridcentrex, amrgridcentrez, hotSpot
       type(GRIDTYPE) :: grid
       real(double) :: r, t, u, v, w, ang
       real(double), optional :: weight
@@ -733,6 +773,11 @@
             ! A limb darkening law should be applied here for 
             ! for general case here.....
             direction = fromPhotoSphereVector(rHat)
+
+            if (hotSpot) then
+               call getPhotoVec(source%surface, position, direction)
+            endif
+
          endif
          !Thaw- if source is on a corner, direct all photons into computational domain
          !These are re-weighted to account for bias in photoionAMR_mod

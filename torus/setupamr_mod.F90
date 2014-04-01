@@ -28,12 +28,12 @@ contains
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
     use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics
-    use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere
+    use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics, logspacegrid, nmag
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics, logspacegrid, nmag, dospiral
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -342,6 +342,8 @@ contains
           call writeInfo(message,FORINFO)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+
+
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)
@@ -428,6 +430,9 @@ contains
              call writeInfo("Calling quickSublimate",FORINFO)
              call quickSublimate(grid%octreeRoot)
 
+          case("shakara")
+             if (discWind) call fillgridSafier(grid)
+             if (doSpiral) call addSpiralWake(grid)
           case("ttauri")
              if (ttauriMagnetosphere) then
                 call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
@@ -2370,6 +2375,75 @@ recursive subroutine chisqAlphaDisc(thisOctal, alpha, beta, rho0, height, rInner
      endif
   enddo
 end subroutine chisqAlphaDisc
+
+
+subroutine addSpiralWake(grid)
+
+  use inputs_mod, only : sourcePos, rInner, rOuter, rho0, betaDisc, alphaDisc, height
+
+  type(GRIDTYPE) :: grid
+  real(double) :: r, r0, epsilon, phi, rSpiral
+  type(VECTOR) :: spiralVec, thisVec
+  integer :: i, j, k, m
+  integer :: nr, nphi, ndr, nz, subcell
+  real(double) :: dphi, dr, rwidth, phiwidth, fac, rhoSpiral, h, z, largescalefac
+  type(OCTAL), pointer :: thisOctal
+  thisOctal => grid%octreeRoot
+  r0 = modulus(sourcePos(2))
+  nr = 100000
+  nphi = 10
+  ndr = 100
+  nz = 100
+  epsilon = 0.1
+  if (Writeoutput) write(*,*) "Adding spiral wake..."
+  do i = 1, nr
+     if (Writeoutput) write(*,*) i,nr
+  
+     r  = rinner + (rOuter - rInner)*dble(i-1)/dble(nr-1)
+
+       r = r/r0
+       if (r > 1.d0) then
+          phi = (2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
+       else
+          phi = -(2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
+       endif
+       phi = phi + pi
+       rSpiral = r * r0
+       spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
+
+       phi = atan2(spiralVec%y, spiralVec%x)
+       dr = abs(r-rSpiral)
+
+       rwidth = r * fourpi * epsilon**2
+       phiWidth = fourPi * epsilon
+
+       h = height * (rspiral / (100.d0*autocm/1.d10))**betaDisc
+       do m = 1, nz
+          z = -5.d0*h  + 10.d0*h*dble(m-1)/dble(nz-1)
+          fac = -0.5d0 * (dble(z)/h)**2
+          fac = max(-50.d0,fac)
+          rhoSpiral = dble(rho0) * (dble(rInner/rSpiral))**dble(alphaDisc) * exp(fac)
+
+!          do j = 1, nphi
+             do k = 1, ndr
+                dphi = -phiWidth/2.d0 + dble(j-1)/dble(nphi-1) *  phiWidth
+                dphi = 0.d0
+                dr = -rWidth/2.d0 + dble(k-1)/dble(ndr-1) * rWidth
+                thisVec = VECTOR((rSpiral+dr)*cos(phi+dphi),(rSpiral+dr)*sin(phi+dphi),z)
+                call findSubcellLocal(thisVec, thisOctal, subcell)
+                
+                fac = (dr/rwidth) + dphi/phiWidth
+                largescaleFac = abs((rSpiral-r0)/r0)
+                
+                if ((dphi < phiWidth).and.(dr < rWidth)) then
+                   thisOctal%rho(subcell) = max(thisOctal%rho(subcell), rhoSpiral * 10.d0 * exp(-fac)*exp(-largescalefac))
+                endif
+            enddo
+!       enddo
+    enddo
+ enddo
+  if (Writeoutput) write(*,*) "Done."
+end subroutine addSpiralWake
 
 
 
