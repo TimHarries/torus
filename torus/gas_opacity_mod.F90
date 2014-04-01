@@ -194,7 +194,6 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
         if (Writeoutput) write(*,*) "Attempting to read a previous look-up table: ",trim(lookuptable(i)%filename)
         call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
         call torus_mpi_barrier()
-        call sleep(1)
      endif
      if ((.not.gridReadFromDisc).or.reset) then
         if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
@@ -206,7 +205,6 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
            call writeKappaGrid(lookuptable(i))
         endif
         call torus_mpi_barrier()
-        call sleep(5)
         if (myrankGlobal /= 0) then
            call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
            if (.not.gridReadFromDisc) then
