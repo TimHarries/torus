@@ -717,7 +717,7 @@
 
       enddo
       position = thisPoint + (distToGrid+1.d-3*grid%halfSmallestSubcell)*direction
-    end subroutine getViscostyPositionDirection
+    end subroutine getViscosityPositionDirection
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)

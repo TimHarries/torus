@@ -870,16 +870,15 @@ contains
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
-    integer :: i,j 
-    real(double) :: phi, dist, minr
+    integer :: i
+    real(double) :: phi, dist
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
-    real ::  phi1, phi2, dphi, r1, turns, d, phiWidth, rWidth
-    type(VECTOR),save :: stream1(nStream), stream2(nStream),  rVec, rPlanet
-    real(double) :: rSpiral, rSpiralInner, rSpiralOuter, rhoLocal, mu, r_c, rhoEnv, mu_0, theta, rhoSpiral
+    real ::  phi1, phi2, dphi, r1, turns, d
+    type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
+    real(double) :: rSpiralInner, rSpiralOuter,  mu, r_c, rhoEnv, mu_0, theta
     real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
-    real(double) :: mPlanetDisc, hillRadius, epsilon, r0, dr, rdash, phidash, rspiralDash, width
-    type(VECTOR) :: dirSpiral, perpSpiral, spiralvec
+    real(double) :: mPlanetDisc, hillRadius
     integer, parameter  :: nSpiral =10000
     logical :: ok
     real :: x1, x2
@@ -1051,9 +1050,11 @@ contains
        betaPlanetDisc = 1.125d0
        alphaPlanetDisc = 2.125d0
        heightPlanetDisc = 10.d0*autocm/1.d10
-       rhoPlanetDisc  = real(mPlanetDisc *(betaPlanetDisc-alphaPlanetDisc+2.) / ( twoPi**1.5 * (heightPlanetDisc*1.e10)/real(100.d0*autocm)**betaPlanetDisc  &
+       rhoPlanetDisc  = real(mPlanetDisc *(betaPlanetDisc-alphaPlanetDisc+2.) / &
+            ( twoPi**1.5 * (heightPlanetDisc*1.e10)/real(100.d0*autocm)**betaPlanetDisc  &
             * (rInnerPlanetDisc*1.e10)**alphaPlanetDisc * &
-            (((rOuterPlanetDisc*1.e10)**(betaPlanetDisc-alphaPlanetDisc+2.)-(rInnerPlanetDisc*1.e10)**(betaPlanetDisc-alphaPlanetDisc+2.))) ))
+            (((rOuterPlanetDisc*1.e10)**(betaPlanetDisc-alphaPlanetDisc+2.)- &
+            (rInnerPlanetDisc*1.e10)**(betaPlanetDisc-alphaPlanetDisc+2.))) ))
 
 
 

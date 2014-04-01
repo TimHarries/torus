@@ -5,9 +5,12 @@ use utils_mod, only: locate
 use unix_mod, only: unixGetenv
 use gridtype_mod, only : GRIDTYPE
 use messages_mod
-use netcdf
 use mpi_global_mod
 use parallel_mod
+
+#ifdef NETCDF
+use netcdf
+#endif
 
 implicit none
 
@@ -24,7 +27,7 @@ end type lineListType
 type molecularKappaGrid
    character(len=80) :: filename
    character(len=80) :: source
-   character(len=3) :: molecule
+   character(len=5) :: molecule
    real :: abundance ! relative to N(H)
    real :: mu
    integer :: nLam
@@ -197,7 +200,9 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
         if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
         
         if (myrankGlobal == 0) then
+#ifdef NETCDF
            call readAbsCoeffFileAmundsen(lookupTable(i)%source, lookupTable(i), nLam, lamArray)
+#endif
            call writeKappaGrid(lookuptable(i))
         endif
         call torus_mpi_barrier()
@@ -302,10 +307,10 @@ subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
   real :: temperature
   real(double) :: thisTemp
   real(double),optional :: kappaAbs(:),kappaSca(:)
-  real :: fac
+  real(double) :: fac
   integer :: i
 
-  thisTemp = max(LookupTable%tempArray(1), min(temperature, LookupTable%tempArray(LookupTable%nTemps)))
+  thisTemp = max(LookupTable%tempArray(1), min(dble(temperature), LookupTable%tempArray(LookupTable%nTemps)))
 
 !  if ((temperature < LookupTable%tempArray(1)).or.(temperature > LookupTable%tempArray(LookupTable%nTemps))) then
 !     write(*,*) "! temperature is outside opacity array bounds"
@@ -874,7 +879,9 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 end subroutine readH2O
 
 
+#ifdef NETCDF
 SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)
+
   type(MOLECULARKAPPAGRID) :: thisKappaTable
   integer :: nPTPairs, nnu
   integer :: ncidin
@@ -963,9 +970,10 @@ SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)
     enddo
 
     thisKappaTable%kapArray = thisKappaTable%kapArray * 10.d0 * thisKappaTable%abundance * 1.d10 ! from m^2/kg to cm^2/g and then to code
-    
   END SUBROUTINE readAbsCoeffFileAmundsen
+#endif    
 
+#ifdef NETCDF
   SUBROUTINE nf90_check(errcode)
 
     INTEGER,INTENT(IN) :: errcode
@@ -978,7 +986,7 @@ SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)
     endif
 
   END SUBROUTINE nf90_check
-
+#endif
   
 
 end module gas_opacity_mod

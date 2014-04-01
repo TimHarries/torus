@@ -2384,7 +2384,7 @@ subroutine addSpiralWake(grid)
   type(GRIDTYPE) :: grid
   real(double) :: r, r0, epsilon, phi, rSpiral
   type(VECTOR) :: spiralVec, thisVec
-  integer :: i, j, k, m
+  integer :: i, k, m
   integer :: nr, nphi, ndr, nz, subcell
   real(double) :: dphi, dr, rwidth, phiwidth, fac, rhoSpiral, h, z, largescalefac
   type(OCTAL), pointer :: thisOctal
@@ -2426,7 +2426,7 @@ subroutine addSpiralWake(grid)
 
 !          do j = 1, nphi
              do k = 1, ndr
-                dphi = -phiWidth/2.d0 + dble(j-1)/dble(nphi-1) *  phiWidth
+!                dphi = -phiWidth/2.d0 + dble(j-1)/dble(nphi-1) *  phiWidth
                 dphi = 0.d0
                 dr = -rWidth/2.d0 + dble(k-1)/dble(ndr-1) * rWidth
                 thisVec = VECTOR((rSpiral+dr)*cos(phi+dphi),(rSpiral+dr)*sin(phi+dphi),z)

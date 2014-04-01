@@ -810,12 +810,13 @@ end subroutine readSurface
   subroutine createProbs(surface,lineFreq,coreContFlux,fAccretion)
     type(SURFACETYPE),intent(inout) :: surface
     real(double)  :: coreContFlux ! erg s^-1 cm^-2 Hz^-1
-    real(double) :: flux
+    real(double) :: flux, junk
     real, intent(in) :: lineFreq
     real, intent(out) :: fAccretion ! 1.e-20 erg s^-1 Hz^-1
     integer :: i, lineIndex
     real :: accretionFlux ! erg s^-1 cm^-2 Hz^-1
 
+    junk = coreContFlux
     fAccretion = 0.0
     
     ! find the line frequency in the tabulated fluxes

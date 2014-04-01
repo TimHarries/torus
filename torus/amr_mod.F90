@@ -11493,7 +11493,7 @@ end function readparameterfrom2dmap
     real(double) :: r0, chi, eta, zeta0dash, zeta, psi, rho1, thisRho
     logical :: doDust
 
-    rho1 = 3.5d-15*(dw_mdot/5.d-8)*(sourceMass(1)/msol)**-0.5d0 * (log(DW_rmax/DW_rmin)/2.5d0)**-1.d0
+    rho1 = 3.5d-15*(dw_mdot/5.d-8)*(sourceMass(1)/msol)**(-0.5d0) * (log(DW_rmax/DW_rmin)/2.5d0)**(-1.d0)
           
 
     zeta0Dash = tan(60.d0*degToRad)
@@ -16297,13 +16297,12 @@ end function readparameterfrom2dmap
     use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
     type(SURFACETYPE) :: surface
     type(VECTOR) :: rVec
-    real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
+    real(double) :: area, T,  totalArea, accretingArea,  totalMdot
     integer :: i
     real(double) :: totalLum
     REAL(double), INTENT(IN) :: coreContFlux
     REAL, INTENT(IN) :: lineFreq
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
-    real(double) :: astar, thisR, thisMdot, thisRho
     real(double) :: thetaSpot, phiSpot, rSpot, ang
 
     if (Writeoutput) write(*,*) "calculating generic hotspot surface ",surface%nElements

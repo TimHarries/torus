@@ -83,7 +83,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real :: rstar = 0.0 
   real :: vel = 0.0 
   type(VECTOR) :: coolStarPosition = VECTOR(0., 0., 0.)
-  real :: fAccretion=0.0
   real(double) :: corecontinuumflux = 0.0
   type(SURFACETYPE) :: starSurface
   real  :: sigmaAbs0=0.0, sigmaSca0=0.0  ! cross section at the line centre
@@ -263,8 +262,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: totalOutputLuminosity
   real :: probContPhoton
   character(len=80) :: thisImageType
-  type(octal),  pointer :: thisOctal
-  integer :: subcell
   logical :: stokesImage 
 
   ! intrinsic profile variables
