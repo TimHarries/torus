@@ -11,7 +11,7 @@ program compareLex
   integer, parameter :: nlines=500     ! number of lines to read from files
   integer, parameter :: nion_check = 1 ! number of species to check 
   real, parameter :: tolerance = 0.10  ! Maximum tolerance
-  real :: fac1, fac2, avcheck, tav
+  real :: fac1, fac2, avcheck, tav, junk
   integer :: nav, nt
   character(len=*), parameter :: torus_file = "lexington.dat"
   character(len=*), parameter :: ref_file   = "lexington_benchmark.dat"
@@ -53,7 +53,7 @@ program compareLex
   tav = 0.
   nt = 0
 lines:  do i = 1, nlines
-     read(20,*,iostat=status) r, newT, newfrac(1:nIonsNew)
+     read(20,*,iostat=status) r, newT, junk, newfrac(1:nIonsNew)
      if ( status /= 0 ) then 
         write(*,*) "Error reading from "//torus_file
         stop

@@ -1214,8 +1214,11 @@ end subroutine photoIonizationloop
 
                       dustHeating = max(1.d-30,dustHeating + gasGrainCool)
                       call returnKappa(grid, thisOctal, subcell, kappap=kappap, atThisTemperature=real(thisOctal%tDust(subcell)))
-                      thisOctal%tDust(subcell) = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
-
+                      if (kappap == 0.d0) then
+                            thisOctal%tDust(subcell) = 10.d0
+                         else
+                            thisOctal%tDust(subcell) = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
+                         endif
                    enddo
 
                    deltaT = tm - thisOctal%temperature(subcell)

@@ -16,6 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
+netcdf = no
 sundials = no
 hdf = no
 memcheck = yes
@@ -232,7 +233,6 @@ endif
 
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
-
     FASTFLAG=  # -ipo
 #    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
@@ -348,6 +348,10 @@ ifeq ($(cfitsio), no)
    CFITSIOLIBS  =
 else
    ETCFLAG += -DUSECFITSIO
+endif
+
+ifeq ($(netcdf), yes)
+   ETCFLAG += -DNETCDF
 endif
 
 #SUNFLAG = -sundials
