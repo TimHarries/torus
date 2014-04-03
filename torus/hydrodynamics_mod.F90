@@ -12200,9 +12200,9 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
-                frac = abs(sumd2phidx2 - thisOctal%source(subcell))/thisOctal%source(subcell)
+!                frac = abs(sumd2phidx2 - thisOctal%source(subcell))/thisOctal%source(subcell)
+                frac = abs((oldPhi - newPhi)/oldPhi)
                 thisOctal%chiline(subcell) = frac
-!                frac = abs((oldPhi - newPhi)/oldPhi)
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
@@ -12383,10 +12383,10 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
-                thisOctal%chiline(subcell) = abs(sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell))/ &
-                     (fourPi * gGrav * thisOctal%rho(subcell))
-                frac = thisOctal%chiLine(subcell)
-!                frac = abs((oldPhi - newPhi)/oldPhi)
+                frac = abs((oldPhi - newPhi)/oldPhi)
+!                frac = abs(sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell))/ &
+!                     (fourPi * gGrav * thisOctal%rho(subcell))
+                thisOctal%chiLine(subcell) = frac
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
@@ -12692,7 +12692,7 @@ end subroutine refineGridGeneric2
 
                 if (thisOctal%phi_gas(subcell) /= 0.d0) then
                    frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
-                   frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
+!                   frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
 !                   frac = (0.166666666666666667d0*SUM(g(1:6))-fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell))
                    fracChange = max(frac, fracChange)
                 else
@@ -12968,7 +12968,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -12976,16 +12976,12 @@ end subroutine refineGridGeneric2
        goto 666
     endif
 ! endif
-    tol = 1.d-1
-    tol2 = 1.d-1
-
-    if (amr3d) then
-       tol = 1.d-1
-       tol2 = 1.d-1
-    endif
+    tol = 1.d-5
+    tol2 = 1.d-6
 
 
-    nHydroThreads = nHydroThreadsGlobal
+
+    Nhydrothreads = nHydroThreadsGlobal
 
     if (amr1d) then
        call selfGrav1D(grid)
@@ -13068,12 +13064,12 @@ end subroutine refineGridGeneric2
 
 
 
-!             write(*,*) it,MAXVAL(fracChange(1:nHydroThreads)),tol
+!             if (writeoutput) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads)),tol
           enddo
 
 !          write(plotfile,'(a,i1,a)') "grav_",idepth,".vtk"
 !          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    "/))
+!               valueTypeString=(/"phigas ", "rho    ","chiline "/))
 
 
           if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
@@ -13908,7 +13904,7 @@ end subroutine minMaxDepth
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB
      integer :: subcell, i
-     integer, parameter :: npole = 2
+     integer, parameter :: npole = 4
      integer :: ithread
      integer :: tag, ierr, ipole
      integer :: status(MPI_STATUS_SIZE)
@@ -13992,7 +13988,7 @@ end subroutine minMaxDepth
      logical, optional :: reset
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, uHat
-     integer, parameter :: npole = 2
+     integer, parameter :: npole = 4
      integer :: level
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB
@@ -14017,6 +14013,10 @@ end subroutine minMaxDepth
            
            Ml(ipole) = 0.d0
            call multipoleExpansionCylindricalLevel(grid%OctreeRoot, com, Ml(ipole), ipole, level)
+
+
+
+
            
            do iThread = 1, nHydroThreadsGlobal
               

@@ -67,7 +67,7 @@ contains
     type(DATACUBE) :: thisCube
     real, pointer :: xArray(:)=>null()
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-    integer, parameter :: nMuMie = 50
+    integer, parameter :: nMuMie = 180
     integer :: i, j
     character(len=80) :: message
     real(double) :: lambdaArray(2000), dx
