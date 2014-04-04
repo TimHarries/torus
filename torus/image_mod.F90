@@ -934,6 +934,11 @@ module image_mod
   end subroutine collateImages
 
 
+
+
+#endif
+
+#ifdef CFITSIO
   subroutine deletefile(filename,status)
 
     !  A simple little routine to delete a FITS file
@@ -967,9 +972,6 @@ module image_mod
 !  Free the unit number for later reuse
       call ftfiou(unit, status)
     end subroutine deletefile
-
-
 #endif
-
 end module image_mod
 
