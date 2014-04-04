@@ -938,7 +938,7 @@ module image_mod
 
 #endif
 
-#ifdef CFITSIO
+#ifdef USECFITSIO
   subroutine deletefile(filename,status)
 
     !  A simple little routine to delete a FITS file
