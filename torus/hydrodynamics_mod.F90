@@ -12968,7 +12968,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
