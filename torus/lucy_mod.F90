@@ -30,7 +30,7 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, maxMemoryAvailable, convergeOnUndersampled, mDisc, dusttogas, dustSettling
-    use inputs_mod, only : writelucyTmpfile, discWind
+    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -767,7 +767,7 @@ contains
 
           nCellsInDiffusion = 0
           nUndersampled = 0
-!          if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
+          if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
           call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
           percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
 

@@ -520,8 +520,7 @@ module image_mod
        inquire(file=filename, exist=oldFilePresent)
        if (oldFilePresent) then 
           call writeInfo("Removing old file", FORINFO)
-          write(message,'(a,a)') "rm ",trim(filename)
-          call system(message)
+          call deleteFile(filename, status)
        end if
 
        !
@@ -933,6 +932,42 @@ module image_mod
      deallocate(tempIntArray2)
 
   end subroutine collateImages
+
+
+  subroutine deletefile(filename,status)
+
+    !  A simple little routine to delete a FITS file
+
+    integer :: status,unit,blocksize
+    character(len=*) filename
+
+    !  Simply return if status is greater than zero
+    if (status .gt. 0)return
+
+    !  Get an unused Logical Unit Number to use to open the FITS file
+    call ftgiou(unit,status)
+
+    !  Try to open the file, to see if it exists
+    call ftopen(unit,filename,1,blocksize,status)
+
+    if (status .eq. 0)then
+       !         file was opened;  so now delete it 
+       call ftdelt(unit,status)
+    else if (status .eq. 103)then
+       !         file doesn't exist, so just reset status to zero and clear errors
+       status=0
+       call ftcmsg
+    else
+       !         there was some other error opening the file; delete the file anyway
+       status=0
+       call ftcmsg
+       call ftdelt(unit,status)
+    end if
+
+!  Free the unit number for later reuse
+      call ftfiou(unit, status)
+    end subroutine deletefile
+
 
 #endif
 
