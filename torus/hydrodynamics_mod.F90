@@ -413,7 +413,10 @@ contains
              mass(j) =  testoctal%rho(j) * v(j) * 1.d30
           enddo
           totMass = sum(mass(1:n))
-          parentOctal%rho(m) = totmass / (cellVolume(parentOctal,m)*1.d30)
+
+          if (cellVolume(parentOctal,m) > 0.d0) then
+             parentOctal%rho(m) = totmass / (cellVolume(parentOctal,m)*1.d30)
+          endif
 
 
           parentoctal%phi_gas(m) = sum(testoctal%phi_gas(1:n))/dble(n)
