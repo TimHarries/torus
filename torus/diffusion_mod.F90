@@ -224,6 +224,7 @@ contains
        stop
     endif
 
+
 #ifdef MPI
     ! FOR MPI IMPLEMENTATION=======================================================
     np      = nThreadsGlobal
@@ -254,7 +255,6 @@ contains
  call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
    if (rankComplete) exit blockLoop 
 #endif
-write(*,*) my_rank, ioctal_beg,ioctal_end
 
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
@@ -705,7 +705,7 @@ write(*,*) my_rank, ioctal_beg,ioctal_end
  !    print *,'Process ',my_rank,' finished updating values in Gauss-Seidel sweep...' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 #endif
-!    if (writeoutput) write(*,*) "Demax ",demax
+    if (writeoutput) write(*,*) "Demax ",demax,tol
     if (deMax > tol) converged = .false.
     deallocate(octalArray)
 #ifdef MPI
