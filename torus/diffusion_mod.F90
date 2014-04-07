@@ -254,7 +254,7 @@ contains
  call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
    if (rankComplete) exit blockLoop 
 #endif
-
+write(*,*) my_rank, ioctal_beg,ioctal_end
 
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
@@ -263,7 +263,7 @@ contains
 !$OMP PRIVATE(phi, DeltaPhi, rVec, DeltaR, DeltaZ) &
 !$OMP SHARED(overCorrect, octalArray) & 
 !$OMP SHARED(grid, tol, demax, ioctal_beg, ioctal_end) 
-!$OMP DO SCHEDULE(static)
+!$OMP DO SCHEDULE(dynamic)
     do iOctal =  iOctal_beg, iOctal_end
 
        thisOctal => octalArray(iOctal)%content

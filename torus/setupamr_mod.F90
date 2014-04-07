@@ -2379,10 +2379,11 @@ end subroutine chisqAlphaDisc
 
 subroutine addSpiralWake(grid)
 
-  use inputs_mod, only : sourcePos, rInner, rOuter, rho0, betaDisc, alphaDisc, height
+  use inputs_mod, only : sourcePos, rInner, rOuter, rho0, betaDisc, alphaDisc, height, sourceMass
+  use inputs_mod, only : rGapInner, rGapOuter
 
   type(GRIDTYPE) :: grid
-  real(double) :: r, r0, epsilon, phi, rSpiral
+  real(double) :: r, r0, epsilon, phi, rSpiral, hillRadius
   type(VECTOR) :: spiralVec, thisVec
   integer :: i, k, m
   integer :: nr, nphi, ndr, nz, subcell
@@ -2393,55 +2394,59 @@ subroutine addSpiralWake(grid)
   nr = 100000
   nphi = 10
   ndr = 100
-  nz = 100
+  nz = 201
   epsilon = 0.1
+  hillRadius = modulus(sourcePos(2)-sourcePos(1))*sqrt(sourceMass(2)/(3.d0*sourceMass(1)))
   if (Writeoutput) write(*,*) "Adding spiral wake..."
   do i = 1, nr
      if (Writeoutput) write(*,*) i,nr
-  
+
      r  = rinner + (rOuter - rInner)*dble(i-1)/dble(nr-1)
 
-       r = r/r0
-       if (r > 1.d0) then
-          phi = (2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
-       else
-          phi = -(2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
-       endif
-       phi = phi + pi
-       rSpiral = r * r0
-       spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
+     if (abs(r-r0) > 0.3*hillRadius) then
+     
+     r = r/r0
+     if (r > 1.d0) then
+        phi = (2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
+     else
+        phi = -(2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
+     endif
+     phi = phi + pi
+     rSpiral = r * r0
+     spiralVec = VECTOR(rSpiral*cos(phi), rSpiral*sin(phi), 0.d0)
 
-       phi = atan2(spiralVec%y, spiralVec%x)
-       dr = abs(r-rSpiral)
+     phi = atan2(spiralVec%y, spiralVec%x)
+     dr = abs(r-rSpiral)
 
-       rwidth = r * fourpi * epsilon**2
-       phiWidth = fourPi * epsilon
+     rwidth = r * fourpi * epsilon**2
+     phiWidth = fourPi * epsilon
 
-       h = height * (rspiral / (100.d0*autocm/1.d10))**betaDisc
-       do m = 1, nz
-          z = -5.d0*h  + 10.d0*h*dble(m-1)/dble(nz-1)
-          fac = -0.5d0 * (dble(z)/h)**2
-          fac = max(-50.d0,fac)
-          rhoSpiral = dble(rho0) * (dble(rInner/rSpiral))**dble(alphaDisc) * exp(fac)
+     h = height * (rspiral / (100.d0*autocm/1.d10))**betaDisc
+     do m = 1, nz
+        z = -5.d0*h  + 10.d0*h*dble(m-1)/dble(nz-1)
+        fac = -0.5d0 * (dble(z)/h)**2
+        fac = max(-50.d0,fac)
+        rhoSpiral = dble(rho0) * (dble(rInner/rSpiral))**dble(alphaDisc) * exp(fac)
 
-!          do j = 1, nphi
-             do k = 1, ndr
-!                dphi = -phiWidth/2.d0 + dble(j-1)/dble(nphi-1) *  phiWidth
-                dphi = 0.d0
-                dr = -rWidth/2.d0 + dble(k-1)/dble(ndr-1) * rWidth
-                thisVec = VECTOR((rSpiral+dr)*cos(phi+dphi),(rSpiral+dr)*sin(phi+dphi),z)
-                call findSubcellLocal(thisVec, thisOctal, subcell)
-                
-                fac = (dr/rwidth) + dphi/phiWidth
-                largescaleFac = abs((rSpiral-r0)/r0)
-                
-                if ((dphi < phiWidth).and.(dr < rWidth)) then
-                   thisOctal%rho(subcell) = max(thisOctal%rho(subcell), rhoSpiral * 10.d0 * exp(-fac)*exp(-largescalefac))
-                endif
-            enddo
-!       enddo
-    enddo
- enddo
+        do k = 1, ndr
+           dphi = 0.d0
+           dr = -rWidth/2.d0 + dble(k-1)/dble(ndr-1) * rWidth
+           thisVec = VECTOR((rSpiral+dr)*cos(phi+dphi),(rSpiral+dr)*sin(phi+dphi),z)
+           call findSubcellLocal(thisVec, thisOctal, subcell)
+
+           fac = (abs(dr)/rwidth) + dphi/phiWidth
+           largescaleFac = abs((rSpiral-r0)/(2.d0*r0))
+
+           if ((dphi < phiWidth).and.(abs(dr) < rWidth)) then
+              thisOctal%rho(subcell) = max(thisOctal%rho(subcell), rhoSpiral * 10.d0 * exp(-fac)*exp(-largescalefac))
+           endif
+        enddo
+     enddo
+  endif
+  enddo
+
+
+
   if (Writeoutput) write(*,*) "Done."
 end subroutine addSpiralWake
 

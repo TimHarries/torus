@@ -1655,7 +1655,7 @@ subroutine dumpLexington(grid, epsoverdt)
 
      write(21,'(f6.3,1p,6e12.3,0p)') r*1.e10/pctocm,heating,cooling,oirate,oiirate,oiiirate,oivrate
 
-     write(20,'(f6.3,f9.1,  15f8.3)') &
+     write(20,'(f6.3,f9.1,f9.1,  14f8.3)') &
           r*1.e10/pctocm,t,td,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,neii,neiii!,neiv,niv,,nei
      write(22,*) r*1.e10/pctocm,netot
   enddo

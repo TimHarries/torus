@@ -53,7 +53,7 @@ program compareLex
   tav = 0.
   nt = 0
 lines:  do i = 1, nlines
-     read(20,*,iostat=status) r, newT, junk, newfrac(1:nIonsNew)
+     read(20,*,iostat=status) r, newT, newfrac(1:nIonsNew)
      if ( status /= 0 ) then 
         write(*,*) "Error reading from "//torus_file
         stop
