@@ -863,7 +863,7 @@ contains
 
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, doSpiral, &
+         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, &
          deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
     use inputs_mod, only : sourcePos, sourceMass, sourceRadius
     use utils_mod, only: solveQuad

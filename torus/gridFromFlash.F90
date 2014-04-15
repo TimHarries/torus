@@ -29,12 +29,16 @@ module gridFromFlash
   real(kind=db), private, allocatable, save :: vx(:,:,:,:)
   real(kind=db), private, allocatable, save :: vy(:,:,:,:)
   real(kind=db), private, allocatable, save :: vz(:,:,:,:)
+#ifdef USEHDF
   real(kind=db), private, save :: minRho, minTem, minVx, minVy, minVz
   real(kind=db), private, save :: maxRho, maxTem, maxVx, maxVy, maxVz
+#endif
 
 ! Block refinement level
   integer, private, allocatable, save :: lrefine(:)
+#ifdef USEHDF
   integer, private, save :: maxRefine ! maximum level of refinement
+#endif
 ! Block bounding boxes
   real(kind=db), private, allocatable, save :: boundBox(:,:,:)
 

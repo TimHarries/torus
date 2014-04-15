@@ -933,7 +933,7 @@ module amr_utils_mod
   !   only searches in downwards direction (TD = top-down) , so
   !   probably best to start from root of tree
 
-    use inputs_mod, only : cylindricalHydro, spherical
+    use inputs_mod, only : cylindricalHydro
 
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
@@ -1033,7 +1033,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use inputs_mod, only : suppresswarnings, cylindricalHydro, spherical
+    use inputs_mod, only : suppresswarnings, cylindricalHydro
 
     IMPLICIT NONE
     TYPE(vector), INTENT(IN) :: point
@@ -1230,7 +1230,7 @@ module amr_utils_mod
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-    use inputs_mod, only : cylindricalHydro, spherical
+    use inputs_mod, only : cylindricalHydro
 
     IMPLICIT NONE
     integer :: nDepth

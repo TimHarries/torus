@@ -57,8 +57,9 @@ module interferometry_mod
             do m = 1, nx
                do n = 1, ny
                   dft(i,j) = dft(i,j) + &
-                       cmplx(image(m,n), 0.d0) &
-                       * exp(cmplx(-twoPi,0.d0) * cmplx(0.d0, 1.d0) * cmplx((xAxis(m)*uAxis(i) + yAxis(n)*vAxis(j)),0.d0))
+                       cmplx(image(m,n), 0.d0,kind=db) &
+                       * exp(cmplx(-twoPi,0.d0,kind=db) * cmplx(0.d0, 1.d0,kind=db) &
+                             * cmplx((xAxis(m)*uAxis(i) + yAxis(n)*vAxis(j)),0.d0,kind=db))
                enddo
             enddo
          enddo
@@ -77,8 +78,8 @@ module interferometry_mod
       do m = 1, nx
          do n = 1, ny
             nu = nu + &
-            dble(cmplx(image(m,n), 0.d0) &
-                 * exp(cmplx(-twoPi,0.d0) * cmplx(0.d0, 1.d0) * cmplx((xAxis(m)*u + yAxis(n)*v),0.d0)))
+            dble(cmplx(image(m,n), 0.d0,kind=db) &
+                 * exp(cmplx(-twoPi,0.d0,kind=db) * cmplx(0.d0, 1.d0,kind=db) * cmplx((xAxis(m)*u + yAxis(n)*v),0.d0,kind=db)))
          enddo
       enddo
       nu = nu / SUM(image)
