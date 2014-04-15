@@ -119,6 +119,16 @@ contains
        minutes = INT(cputime/60.)
        seconds = MOD(cputime,60.)
        
+! Trap the negative timing bug. DMA 15/4/14
+       if (minutes<0) then
+          write(*,*) "Diagnsotic messages: minutes<0 in tune"
+          write(*,*) "cputime= ", cputime
+          write(*,*) "cputime/60.= ", cputime/60.
+          write(*,*) "minutes= ", minutes
+          write(*,*) "cpu_start=", cpu_start(id_num)
+          write(*,*) "End of diagnsotic messages"
+       endif
+
 40     format(a12,1x,a30,1x,i6,1x, a5,1x,f9.4,1x,a5)
 
        open(unit=1,file='tune.dat',status='old', position = 'append')
