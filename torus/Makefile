@@ -449,6 +449,7 @@ endif
 # Add flags required for sphNG compatibility
 ifeq ($(withsphng), yes)
   ETCFLAG +=  -mcmodel=medium -i-dynamic
+  ETCFLAG +=  -DWITHSPHNG
 endif
 
 ifeq ($(hydro), yes)

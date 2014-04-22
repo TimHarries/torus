@@ -920,7 +920,8 @@ contains
     real(double) :: x, y, z, xc, yc, zc
     type(sourcetype) :: a_star
     integer :: i, nstar
-    real(double) :: dummy_d, R_disc, R2_disc, R2_cell, d2
+    real(double) :: dummy_d1, dummy_d2, dummy_d3, dummy_d4
+    real(double) :: R_disc, R2_disc, R2_cell, d2
     TYPE(vector)     :: cellCenter
 
     nstar = get_nstar(this)
@@ -935,8 +936,8 @@ contains
     do i = 1, nstar
        a_star = get_a_star(this,i)
        ! retrive some disc parameters from sphData
-       call get_stellar_disc_parameters(i, R_disc, dummy_d, &
-            dummy_d, dummy_d, dummy_d)       
+       call get_stellar_disc_parameters(i, R_disc, dummy_d1, &
+            dummy_d2, dummy_d3, dummy_d4)       
        
        ! position of the star
        x = a_star%position%x

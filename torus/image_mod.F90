@@ -5,7 +5,9 @@ module image_mod
   use messages_mod
   use phasematrix_mod
   use photon_mod
+#ifdef FITSCUBE
   use datacube_mod
+#endif
 
   implicit none
 
@@ -85,7 +87,7 @@ module image_mod
 
    end function initImage
 
-
+#ifdef FITSCUBE
   subroutine addImageSliceToCube(cube, imageSlice, iLambda)
     type(DATACUBE) :: cube
     type(IMAGETYPE) :: imageSlice
@@ -94,7 +96,7 @@ module image_mod
     cube%intensity(1:cube%nx, 1:cube%ny, iLambda) = real(imageSlice%pixel(1:cube%nx, 1:cube%ny)%i)
 
   end subroutine addImageSliceToCube
-
+#endif
 
 #ifdef PHOTOION
    subroutine addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFlux)

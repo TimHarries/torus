@@ -323,7 +323,7 @@ CONTAINS
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
-    use inputs_mod, only : maxDepthAMR, height, rinner, router, rho0, alphaDisc, betaDisc
+    use inputs_mod, only : maxDepthAMR, height, rinner, router, betaDisc
     use inputs_mod, only : heightSplitFac
     IMPLICIT NONE
     type(romanova) :: romData
@@ -3460,13 +3460,12 @@ CONTAINS
     use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
          maxdepthamr, vturbmultiplier, rGapInner, rGapOuter
     use inputs_mod, only: planetgap, heightSplitFac, refineCentre, doVelocitySplit, ttauriRstar
-    use inputs_mod, only: DW_rMin, DW_rMax,rSublimation, ttauriwind, ttauridisc, ttauriwarp, &
-         ttauriRinner, amr2d
+    use inputs_mod, only: DW_rMin, DW_rMax,rSublimation, ttauridisc, ttauriwarp, ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
-    use inputs_mod, only : inputnsource, sourcepos, smoothinneredge, logspacegrid
+    use inputs_mod, only : inputnsource, sourcepos, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez, cavdens, limitscalar, addDisc
+    use inputs_mod, only : cavdens, limitscalar, addDisc
     use inputs_mod, only : discWind, planetDisc, sourceMass
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -3478,6 +3477,9 @@ CONTAINS
     use density_mod, only: density
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
     use magnetic_mod, only : safierfits
+! Currently commented out. Reinstate if required. 
+!    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
 #endif
@@ -8993,7 +8995,7 @@ endif
   end subroutine calcRadialClouds
 
   subroutine bonnorEbertRun(t, mu, rho0,  nr, r, rho)
-    use inputs_mod, only : zetacutoff, pdrcalc
+    use inputs_mod, only : zetacutoff
     use constants_mod
     implicit none
     real(double) :: t, rho0
@@ -9360,7 +9362,6 @@ endif
 
   subroutine calcGravtest(thisOctal,subcell)
 
-    use inputs_mod, only : cylindricalHydro
     real(double) :: sphereRadius1, sphereMass1
     real(double) :: sphereRadius2, sphereMass2
     type(VECTOR) ::  spherePosition1,  spherePosition2
@@ -9927,9 +9928,8 @@ endif
 
 
   subroutine simpleDisc(thisOctal,subcell)
-    use inputs_mod, only : amrgridsize, maxdepthamr, amrgridcentrex, amrgridcentrez
-    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
-    use inputs_mod, ONLY : photoionPhysics,  extmass!, stellarMass
+    use inputs_mod, ONLY : rho !, rInner, rOuter, height
+    use inputs_mod, ONLY : extmass !, stellarMass
     use inputs_mod, ONLY : sourcepos, sourceteff, sourceradius, sourcemass
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -9973,7 +9973,7 @@ endif
   end subroutine simpleDisc
 
   subroutine FontDisc(thisOctal,subcell)
-    use inputs_mod, only : amrgridsize, maxdepthamr, amrgridcentrex, amrgridcentrez
+    use inputs_mod, only : amrgridsize, maxdepthamr, amrgridcentrez
     use inputs_mod, only : sourcemass
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -10011,7 +10011,7 @@ endif
   subroutine RHDDisc(thisOctal,subcell)
 
 
-    use inputs_mod, ONLY : rInner, rOuter, height, rho, hydrodynamics
+    use inputs_mod, ONLY : rInner, rOuter, rho, hydrodynamics !, height
     use inputs_mod, ONLY : photoionPhysics,  extmass!, stellarMass
     use inputs_mod, ONLY : sourcepos, sourceteff, sourceradius, sourcemass
 
@@ -10064,7 +10064,7 @@ endif
     rinnerGap = 4. * autocm/1.e10
 !       print *, "r ", r
 !       print *, "rinner ", rinner
-    rInner = 3.*autocm/1.e10
+    rInner = 3.*real(autocm)/1.e10
     routerGap  = 300.d0*autocm/1.e10
 !    rinnerer = 
     if ((r > rInnerGap) .and.(r < rOuterGap)) then
@@ -11345,7 +11345,7 @@ end function readparameterfrom2dmap
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
     use density_mod, only: density, shakaraSunyaevDisc
-    use inputs_mod, only : rInner, rOuter, erInner, erOuter, alphaDisc, betaDisc
+    use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
     use inputs_mod, only : rSublimation
@@ -16293,7 +16293,6 @@ end function readparameterfrom2dmap
     subroutine hotSpotSurface(surface, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use inputs_mod, only : tHotSpot, mDotParameter1, tTauriRstar
     use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
     type(SURFACETYPE) :: surface
     type(VECTOR) :: rVec
@@ -16354,9 +16353,12 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
-    use inputs_mod, only : grainFrac, pdrcalc, hlevel, xraycalc, useionparam
+    use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
+#ifdef PDR
+    use inputs_mod, only :  hlevel
+#endif
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
 !    integer, parameter :: nTheta = 10 , nphi = 10

@@ -25,7 +25,7 @@ module disc_class
 
   private::  &
        &   int_alpha_disc, &
-       &   scale_size, &
+!!$       &   scale_size, &
        &   need_to_split, &
        &   add_new_children, &
        &   assign_values, &
@@ -319,33 +319,33 @@ contains
 
   
 
-  !
-  ! Find the scale size of a disc for given sizes of 
-  ! minimum and maximum size scales allowed (ds_min and ds_max), 
-  ! and minumum and maximum distance (e.g. radius or height above the disk..), i.e.
-  ! s_min and s_max.
-  function scale_size(s, s_min, s_max, ds_min, ds_max, logscale) RESULT(out)
-    implicit none
-    real(double) :: out
-    ! distance from center of a star or from the disk plane
-    real(double), intent(in) :: s,  s_min, s_max, ds_min, ds_max
-    logical, intent(in) :: logscale
-    real(double)  :: p,ss
-
-    ss=s
-    if (logscale) then
-       if (s<s_min) ss =s_min
-       if (s>s_max) ss =s_max    
-       p = LOG10(ds_max/ds_min) / (s_max - s_min)
-       out = ds_min * 10.0d0**(p*(ss-s_min))
-    else ! linear scale
-       if (s<s_min) ss =s_min
-       if (s>s_max) ss =s_max   
-       p = (ds_max-ds_min) / (s_max - s_min)
-       out = ds_min +  p*(ss-s_min)       
-    end if
-
-  end function scale_size
+!!$  !
+!!$  ! Find the scale size of a disc for given sizes of 
+!!$  ! minimum and maximum size scales allowed (ds_min and ds_max), 
+!!$  ! and minumum and maximum distance (e.g. radius or height above the disk..), i.e.
+!!$  ! s_min and s_max.
+!!$  function scale_size(s, s_min, s_max, ds_min, ds_max, logscale) RESULT(out)
+!!$    implicit none
+!!$    real(double) :: out
+!!$    ! distance from center of a star or from the disk plane
+!!$    real(double), intent(in) :: s,  s_min, s_max, ds_min, ds_max
+!!$    logical, intent(in) :: logscale
+!!$    real(double)  :: p,ss
+!!$
+!!$    ss=s
+!!$    if (logscale) then
+!!$       if (s<s_min) ss =s_min
+!!$       if (s>s_max) ss =s_max    
+!!$       p = LOG10(ds_max/ds_min) / (s_max - s_min)
+!!$       out = ds_min * 10.0d0**(p*(ss-s_min))
+!!$    else ! linear scale
+!!$       if (s<s_min) ss =s_min
+!!$       if (s>s_max) ss =s_max   
+!!$       p = (ds_max-ds_min) / (s_max - s_min)
+!!$       out = ds_min +  p*(ss-s_min)       
+!!$    end if
+!!$
+!!$  end function scale_size
 
 
 

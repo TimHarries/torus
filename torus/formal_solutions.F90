@@ -28,8 +28,8 @@ module formal_solutions
        setup_grid, &
        find_position_displacement,&
        in_this_area, &
-       refine_ray_grid_by_tau, &
-       refine_ray_constant_vel !,&
+       refine_ray_grid_by_tau!, &
+!       refine_ray_constant_vel !,&
 !       create_obs_flux_map
   
 
@@ -1693,68 +1693,68 @@ contains
     end subroutine refine_ray_grid_by_tau
 
 
-    !
-    !
-    ! Add extra points where velocity is changing slowly
-    subroutine refine_ray_constant_vel(L, nTau, projVel,  maxtau, newL, newNTau,&
-         inFlow, newInFlow, do_alphadisc_check, alphadisc_par, pos_start, dir_ray)
-
-      implicit none
-
-      integer, intent(in) :: nTau, maxtau
-      real, intent(in) :: L(nTau)
-      real(double), intent(in) :: projVel(nTau)
-      integer, intent(inout) :: newNtau
-      real, intent(inout)  :: newL(maxtau)
-      logical, intent(inout)  :: InFlow(nTau)
-      logical, intent(inout)  :: newInFlow(maxtau)
-      logical, intent(in) :: do_alphadisc_check      ! if T the disc check will be done
-      type(alpha_disc), intent(in) :: alphadisc_par  ! parameters for alpha disc
-      type(VECTOR), intent(in) :: pos_start     ! startingpoint
-      type(VECTOR), intent(in) :: dir_ray       ! direction of ray
-      !
-      real(double) :: dProjVel  ! automatic array
-      real(double) :: dlam
-      integer :: nAdd =5
-      integer :: i, j
-!      real, parameter :: dvel  = 10.e5/cSpeed
-      real :: dvel
-      logical :: unsafe_position
-      type(VECTOR) :: pos     
-
-
-      ! the projected speed increment is smaller than dvel
-      ! we add nAdd points in between.      
-      dvel = real(10.e5/cspeed) ! 10 km/s
-
-      newNTau = 0
-      unsafe_position = .false.
-      do i = 2, nTau
-         dProjVel = projVel(i) - projVel(i-1)
-         if (do_alphadisc_check) then
-            pos = pos_start + dble(L(i))*dir_ray ! position of ray segment.
-            unsafe_position = in_alpha_disc(alphadisc_par, pos)
-         end if
-
-         if (abs(dProjVel) < dVel .and. (.not. unsafe_position)) then
-!            nAdd = nint(abs(dProjVel)/dVel)
-            dlam = (L(i)-L(i-1))/real(nAdd+1)
-            do j = 1, nAdd+1
-               newNtau = newNtau + 1
-               newL(newNTau) = real(real(j-1)*dlam + L(i-1))
-               newInFlow(newNTau) = inFlow(i-1)
-            enddo
-         else
-            newNtau = newNtau + 1
-            newL(newNTau) = L(i-1)
-            newInFlow(newNTau) = inFlow(i-1)
-         endif
-      enddo
-      newNtau = newNtau + 1
-      newL(newNTau) = L(nTau)
-      newInFlow(newNTau) = inFlow(nTau)
-    end subroutine refine_ray_constant_vel
-
-
+!!$    !
+!!$    !
+!!$    ! Add extra points where velocity is changing slowly
+!!$    subroutine refine_ray_constant_vel(L, nTau, projVel,  maxtau, newL, newNTau,&
+!!$         inFlow, newInFlow, do_alphadisc_check, alphadisc_par, pos_start, dir_ray)
+!!$
+!!$      implicit none
+!!$
+!!$      integer, intent(in) :: nTau, maxtau
+!!$      real, intent(in) :: L(nTau)
+!!$      real(double), intent(in) :: projVel(nTau)
+!!$      integer, intent(inout) :: newNtau
+!!$      real, intent(inout)  :: newL(maxtau)
+!!$      logical, intent(inout)  :: InFlow(nTau)
+!!$      logical, intent(inout)  :: newInFlow(maxtau)
+!!$      logical, intent(in) :: do_alphadisc_check      ! if T the disc check will be done
+!!$      type(alpha_disc), intent(in) :: alphadisc_par  ! parameters for alpha disc
+!!$      type(VECTOR), intent(in) :: pos_start     ! startingpoint
+!!$      type(VECTOR), intent(in) :: dir_ray       ! direction of ray
+!!$      !
+!!$      real(double) :: dProjVel  ! automatic array
+!!$      real(double) :: dlam
+!!$      integer :: nAdd =5
+!!$      integer :: i, j
+!!$!      real, parameter :: dvel  = 10.e5/cSpeed
+!!$      real :: dvel
+!!$      logical :: unsafe_position
+!!$      type(VECTOR) :: pos     
+!!$
+!!$
+!!$      ! the projected speed increment is smaller than dvel
+!!$      ! we add nAdd points in between.      
+!!$      dvel = real(10.e5/cspeed) ! 10 km/s
+!!$
+!!$      newNTau = 0
+!!$      unsafe_position = .false.
+!!$      do i = 2, nTau
+!!$         dProjVel = projVel(i) - projVel(i-1)
+!!$         if (do_alphadisc_check) then
+!!$            pos = pos_start + dble(L(i))*dir_ray ! position of ray segment.
+!!$            unsafe_position = in_alpha_disc(alphadisc_par, pos)
+!!$         end if
+!!$
+!!$         if (abs(dProjVel) < dVel .and. (.not. unsafe_position)) then
+!!$!            nAdd = nint(abs(dProjVel)/dVel)
+!!$            dlam = (L(i)-L(i-1))/real(nAdd+1)
+!!$            do j = 1, nAdd+1
+!!$               newNtau = newNtau + 1
+!!$               newL(newNTau) = real(real(j-1)*dlam + L(i-1))
+!!$               newInFlow(newNTau) = inFlow(i-1)
+!!$            enddo
+!!$         else
+!!$            newNtau = newNtau + 1
+!!$            newL(newNTau) = L(i-1)
+!!$            newInFlow(newNTau) = inFlow(i-1)
+!!$         endif
+!!$      enddo
+!!$      newNtau = newNtau + 1
+!!$      newL(newNTau) = L(nTau)
+!!$      newInFlow(newNTau) = inFlow(nTau)
+!!$    end subroutine refine_ray_constant_vel
+!!$
+!!$
 end module formal_solutions
 

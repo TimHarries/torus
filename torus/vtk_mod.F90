@@ -77,8 +77,8 @@ contains
       use octal_mod, only: returndPhi
 #ifdef MPI
       use mpi
-#endif
       use inputs_mod, only : vtkIncludeGhosts
+#endif
       type(OCTAL), pointer :: thisOctal, child
       type(GRIDTYPE) :: grid
       integer :: lunit
@@ -203,8 +203,8 @@ contains
 
     recursive subroutine recursiveGetPoints(grid, thisOctal,nPoints, points, includeGhosts)
       use octal_mod, only: returndPhi
-      use inputs_mod, only : hydrodynamics
 #ifdef MPI
+      use inputs_mod, only : hydrodynamics
       use mpi
 #endif
 
@@ -415,8 +415,8 @@ contains
     recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset, grid, xml)
 #ifdef MPI
       use mpi
-#endif
       use inputs_mod, only : vtkIncludeGhosts, hydrodynamics
+#endif
       type(OCTAL), pointer :: thisOctal, child
       logical :: xml
       type(GRIDTYPE) :: grid
@@ -552,8 +552,8 @@ contains
     recursive subroutine recursivewriteOffsetsXML(thisOctal,lunit, nCount, iOffset, grid)
 #ifdef MPI
       use mpi
-#endif
       use inputs_mod, only : vtkIncludeGhosts, hydrodynamics
+#endif
       type(OCTAL), pointer :: thisOctal, child
 
       type(GRIDTYPE) :: grid
@@ -2791,7 +2791,10 @@ end subroutine writeXMLVtkFileAMR
   end subroutine getValues
 
     recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n, includeGhosts)
-      use inputs_mod, only : lambdaSmooth, hydrodynamics, gridDistanceScale
+      use inputs_mod, only : lambdaSmooth, gridDistanceScale
+#ifdef MPI
+      use inputs_mod, only : hydrodynamics
+#endif
       type(OCTAL), pointer :: thisOctal, child
       logical :: includeGhosts
       type(GRIDTYPE) :: grid
@@ -4030,8 +4033,8 @@ end subroutine writeParallelXMLVtkFileAMR
       use octal_mod, only: returndPhi
 #ifdef MPI
       use mpi
-#endif
       use inputs_mod, only : hydrodynamics
+#endif
 
       type(OCTAL), pointer :: thisOctal, child
       integer(bigint) :: connectivity(:), nUniquePoints

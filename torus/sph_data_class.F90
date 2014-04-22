@@ -121,7 +121,7 @@ contains
   ! Initializes an object with parameters (if possible).
   ! 
   subroutine init_sph_data(udist, umass, utime,  time, nptmass, uvel, utemp)
-    use inputs_mod, only: discardSinks, dragon
+    use inputs_mod, only: discardSinks
     implicit none
 
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
@@ -192,6 +192,7 @@ contains
 
   end subroutine init_sph_data
 
+#ifdef WITHSPHNG
   ! 
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
@@ -300,6 +301,7 @@ contains
     ENDIF
 
   end subroutine init_sphtorus
+#endif
 
 ! Wrapper subroutine which calls the appropriate read subroutine 
 ! according to the string inputFileFormat
@@ -1470,17 +1472,17 @@ contains
     
   end function get_rhon
 
-  ! Returns the temperature of gas particle at the postion of
-  ! i-th particle.
-  
-  function get_temp(i) RESULT(out)
-    implicit none
-    real(double) :: out 
-    Integer, intent(in) :: i
-
-    out  = sphdata%temperature(i)
-    
-  end function get_temp
+!!$  ! Returns the temperature of gas particle at the postion of
+!!$  ! i-th particle.
+!!$  
+!!$  function get_temp(i) RESULT(out)
+!!$    implicit none
+!!$    real(double) :: out 
+!!$    Integer, intent(in) :: i
+!!$
+!!$    out  = sphdata%temperature(i)
+!!$    
+!!$  end function get_temp
 
   function sphVelocityPresent () RESULT(out)
     implicit none
