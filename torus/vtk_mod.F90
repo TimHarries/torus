@@ -3287,6 +3287,10 @@ end subroutine writeXMLVtkFileAMR
                case("rhov")
                   rArray(1, n) = real(thisOctal%rhov(subcell))
 
+               case("vrot")
+                  rVec = subcellCentre(thisOctal,subcell)
+                  rArray(1, n) = real(1.d-5*thisOctal%rhov(subcell)/(thisOctal%rho(subcell)*(rVec%x*1.d10)))
+
                case("columnRho")
                   rArray(1, n) = real(thisOctal%columnRho(subcell)*1.d10/mhydrogen)
 

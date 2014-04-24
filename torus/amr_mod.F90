@@ -11373,7 +11373,7 @@ end function readparameterfrom2dmap
     thisOctal%temperature(subcell) = 100. 
     rd = rOuter / 2.
 
-    thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+    if (associated(thisOctal%dustTypeFraction)) thisOctal%dustTypeFraction(subcell,:) = 1.d-20
 
     thisOctal%rho(subcell) = 1.d-30
     if (associated(thisOctal%nh)) &

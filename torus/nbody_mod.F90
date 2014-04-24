@@ -462,28 +462,28 @@ contains
     do iSource = 1, nSource
        rVec = source(isource)%position - position
        r = modulus(rVec)
-       if (r > thisOctal%subcellSize) then
+!       if (r > thisOctal%subcellSize) then
           fVec = rVec/modulus(rVec)
           force = force + ((bigG*mass*source(isource)%mass * splineSoftening(r*gridDistanceScale,eps))*fVec)
-       else
-          if (cylindricalHydro) then
-             dm = mass / 64.d0
-             do i = 1, 8
-                do j = 1, 8
-                   dx = thisOctal%subcellSize/8.d0
-                   r1 = position%x + dble(i-1)/8.d0 *dx  - 4.d0*dx
-                   r2 = position%x + dble(i-1)/8.d0 *dx + dx - 4.d0*dx
-                   dm = thisOctal%rho(subcell) * 1.d30 * pi * (r2**2 - r1**2) * dx
-                   thisPos = position + VECTOR(position%x + dble(i-1)/8.d0 *dx + dx/2.d0 - 4.d0*dx, &
-                        0.d0, position%z + dble(j-1)/8.d0 * dx + dx/2.d0 - 4.d0*dx)
-                   rVec = source(isource)%position - thisPos
-                   r = modulus(rVec) * gridDistanceScale
-                   fVec = rVec/modulus(rVec)
-                   force = force + ((bigG*dm*source(isource)%mass * splineSoftening(r, eps))*fVec)
-                enddo
-             enddo
-          endif
-       endif
+!       else
+!          if (cylindricalHydro) then
+!             dm = mass / 64.d0
+!             do i = 1, 8
+!                do j = 1, 8
+!                   dx = thisOctal%subcellSize/8.d0
+!                   r1 = position%x + dble(i-1)/8.d0 *dx  - 4.d0*dx
+!                   r2 = position%x + dble(i-1)/8.d0 *dx + dx - 4.d0*dx
+!                   dm = thisOctal%rho(subcell) * 1.d30 * pi * (r2**2 - r1**2) * dx
+!                   thisPos = position + VECTOR(position%x + dble(i-1)/8.d0 *dx + dx/2.d0 - 4.d0*dx, &
+!                        0.d0, position%z + dble(j-1)/8.d0 * dx + dx/2.d0 - 4.d0*dx)
+!                   rVec = source(isource)%position - thisPos
+!                   r = modulus(rVec) * gridDistanceScale
+!                   fVec = rVec/modulus(rVec)
+!                   force = force + ((bigG*dm*source(isource)%mass * splineSoftening(r, eps))*fVec)
+!                enddo
+!             enddo
+!          endif
+!       endif
             
     enddo
     force = force / V
@@ -496,12 +496,22 @@ contains
 
 ! spline softening from Appendix A of Federrath et al., 2010, ApJ 713, 269
 
-    if (fac < 0.5d0) then
+!    if (fac < 0.5d0) then
+!       splineSoftening = (4.d0 / rSoft**2) * ( (8.d0/3.d0) * fac - (48.d0/5.d0)*fac**3 + 8.d0 * fac**4)
+!    else if ((fac >= 0.5d0).and.(fac < 1.d0)) then
+!       splineSoftening = (4.d0/rSoft**2) * ( (16.d0/3.d0) * fac - 12.d0 * fac**2 + (48.d0/5.d0) * fac**3 - &
+!            (8.d0/3.d0) * fac**4 - (1.d0/60.d0) * (1.d0/fac)**2)
+!    else
+!       splineSoftening = 1.d0 / r**2
+!    endif
 
-       splineSoftening = (4.d0 / rSoft**2) * ( (8.d0/3.d0) * fac - (48.d0/5.d0)*fac**3 + 8.d0 * fac**4)
-    else if ((fac >= 0.5d0).and.(fac < 1.d0)) then
-       splineSoftening = (4.d0/rSoft**2) * ( (16.d0/3.d0) * fac - 12.d0 * fac**2 + (48.d0/5.d0) * fac**3 - &
-            (8.d0/3.d0) * fac**4 - (1.d0/60.d0) * fac**2)
+! spline softening from Appendix A2 of Price and Monaghan 
+
+    if (fac < 1.d0) then
+       splineSoftening = (1.d0 / rSoft**2) * ( (4.d0/3.d0) * fac - (6.d0/5.d0)*fac**3 + 0.5d0 * fac**4)
+    else if ((fac >= 1.d0).and.(fac < 2.d0)) then
+       splineSoftening = (1.d0/rSoft**2) * ( (8.d0/3.d0) * fac - 3.d0 * fac**2 + (6.d0/5.d0) * fac**3 - &
+            (1.d0/6.d0) * fac**4 - (1.d0/15.d0) * (1.d0/fac)**2)
     else
        splineSoftening = 1.d0 / r**2
     endif

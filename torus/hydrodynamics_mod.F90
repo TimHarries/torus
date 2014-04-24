@@ -2887,7 +2887,8 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                  4.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                  2.5d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
 
@@ -5398,6 +5399,51 @@ end subroutine sumFluxes
     enddo
   end subroutine computeCourantTimeGasSource
 
+  recursive subroutine computeCourantTimeGasSourceCylindrical(grid, thisOctal, nsource, source, tc)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    integer :: subcell, i, isource
+    real(double) :: tc
+    type(VECTOR) :: acc, force
+    real(double) :: eps, dx
+  
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call computeCourantTimeGasSourceCylindrical(grid, child, nsource, source, tc)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          if (.not.thisOctal%ghostCell(subcell)) then
+
+
+             eps = 2.5d0*smallestCellSize * gridDistanceScale
+             dx = thisOctal%subcellSize * gridDistanceScale
+
+             acc = VECTOR(0.d0, 0.d0, 0.d0)
+             do isource = 1, globalnSource
+                call calculateForceFromSinks(thisOctal, subcell, source, nSource, eps, force)
+                acc = acc + (1.d0/thisOctal%rho(subcell))*force
+             enddo
+             tc = min(tc, sqrt(dx/max(modulus(acc),1.d-30)))
+
+          endif
+ 
+       endif
+    enddo
+  end subroutine computeCourantTimeGasSourceCylindrical
+
+
 
 
 
@@ -6697,9 +6743,9 @@ end subroutine sumFluxes
           if (iUnrefine == 5) then
 
 
-          call writeVtkFile(grid, "beforeunrefine.vtk", &
-               valueTypeString=(/"rho          ", &
-                                 "mpistore     "/))
+!          call writeVtkFile(grid, "beforeunrefine.vtk", &
+!               valueTypeString=(/"rho          ", &
+!                                 "mpistore     "/))
 
              if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
@@ -6754,6 +6800,7 @@ end subroutine sumFluxes
                "chiline      ", &
                "rhou         ", &
                "rhov         ", &
+               "vrot         ", &
                "rhow         ", &
                "phi          ", &
                "pressure     ", &
@@ -6794,7 +6841,7 @@ end subroutine sumFluxes
     integer :: i, it, iUnrefine
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
-    real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous, vBulk, vSound
+    real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous, vBulk, vSound, dt_grav
     type(VECTOR) :: initAngMom
     
     type(VECTOR) :: direction, viewVec, totalAngMom
@@ -7021,9 +7068,9 @@ end subroutine sumFluxes
        jt = jt + 1
        tc = 0.d0
 
-       tc = 0.d0
        dt_pressure = 1.d30
        dt_viscous = 1.d30
+       dt_grav = 1.d30
        vBulk = 0.d0
        vSound = 0.d0
        if (myrankGlobal /= 0) then
@@ -7032,23 +7079,26 @@ end subroutine sumFluxes
           call computeCourantV(grid, grid%octreeRoot, vBulk, vSound)
           if (includePRessureTerms) call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescaleCylindrical(grid%octreeRoot, grid, dt_viscous)
+          call computeCourantTimeGasSourceCylindrical(grid, grid%octreeRoot, globalnsource, globalsourcearray, dt_grav)
        endif
 
        call MPI_ALLREDUCE(vBulk, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
        vBulk = tempDouble
        call MPI_ALLREDUCE(vSound, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
        vSound = tempDouble
-
-
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
        call MPI_ALLREDUCE(dt_viscous, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_viscous = tempDouble
+       call MPI_ALLREDUCE(dt_grav, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       dt_grav = tempDouble
+
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads))
        dt = MIN(dt_pressure, dt)
        dt = MIN(dt_viscous, dt)
+       dt = MIN(dt_grav, dt)
        dt = dt * dble(cflNumber)
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
@@ -7056,6 +7106,7 @@ end subroutine sumFluxes
           write(*,*) "maximum sound speed ",Vsound/1.d5
           write(*,*) "Courant time from P ",dt_pressure
           write(*,*) "Courant time from visc ",dt_viscous
+          write(*,*) "Courant time from grav source on gas ",dt_grav
        endif
 
        write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
@@ -7170,6 +7221,7 @@ end subroutine sumFluxes
                "mass         ", &
                "rhou         ", &
                "rhov         ", &
+               "vrot         ", &
                "rhow         ", &
                "phi          ", &
                "pressure     ", &
@@ -15399,6 +15451,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              cellMass = thisOctal%rho(subcell) * thisCellVolume
 
 
+
+
+
+
              onAxis = .false.
              if (cylindricalHydro) then
                 onAxis = .not.(cellCentre%x - thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize < 0.d0)
@@ -15418,7 +15474,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      0.d0, &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
-                if (onAxis) cellVelocity = VECTOR(0.d0, 0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+!                if (onAxis) cellVelocity = VECTOR(0.d0, 0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))
              endif
 
 
@@ -15443,6 +15499,26 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              localAccretedMass = 0.d0
              localAccretedMom = VECTOR(0.d0, 0.d0, 0.d0)
              localAngMom = VECTOR(0.d0, 0.d0, 0.d0)
+
+
+             if (thisOctal%twoD) then
+                if (rhoLocal > rhoThreshold) then
+                   localaccretedMass = (rhoLocal - rhoThreshold) * cellVolume(thisOctal,Subcell)*1.d30
+                   localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell) * thiscellVolume)
+                   localAccretedAngMom = localAngMom.dot.VECTOR(0.d0, 0.d0, 1.d0)
+                   localAccretedMom = localaccretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                        0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                   thisOctal%rho(subcell) = rhoThreshold
+                   thisOctal%rhou(subcell) = 0.d0
+                   thisOctal%rhov(subcell) = 0.d0
+                   thisOctal%rhow(subcell) = 0.d0
+                   accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
+                   accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
+                endif
+                cellBound = .false.
+             endif
+
+
              if (cellBound) then
                 if (rhoLocal > rhoThreshold) then
                    
@@ -15469,15 +15545,12 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                    if (thisOctal%threed) then
                       localAngMom =  ((cellCentre - source(isource)%position)*1.d10) .cross. localAccretedMom
                       localAccretedAngMom = modulus(localAngMom)
-                   else
-                      localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell) * thiscellVolume)
-                      localAccretedAngMom = (localAngMom.dot.VECTOR(0.d0, 0.d0, 1.d0)) * &
-                           localAccretedMass/CellMass
                    endif
 
                    accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
-                   accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
-                   
+		   if (thisOctal%threed) then
+                         accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
+                   endif
                    if (thisOctal%threed) then
                       gasMom = gasMom - localaccretedMom
                       thisOctal%rho(subcell) = rhoThreshold
@@ -15493,7 +15566,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       cellVelocity = gasMom / cellMass
                       thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
                       thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
-                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - localAccretedAngMom/thisCellVolume
+                      if (thisOctal%rhov(subcell) < 0.d0) then
+                         write(*,*) "warning negative rho v. vel = ",(1.d-5)*thisOctal%rhov(subcell)/thisOctal%rho(subcell)
+                         write(*,*) "rho ",thisOctal%rho(subcell)
+                      endif
                    endif
                    thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) * (rhoLocal-rhoThreshold)/rhoLocal
                 endif
