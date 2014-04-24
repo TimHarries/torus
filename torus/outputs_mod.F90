@@ -329,7 +329,7 @@ if (.false.) then
 
 
           fastIntegrate=.true.
-          call do_phaseloop(grid, .false., 100000, miePhase, globalnsource, globalsourcearray, nmumie)
+          call do_phaseloop(grid, .false., 10000, miePhase, globalnsource, globalsourcearray, nmumie)
        end if
 
        if ((calcImage.or.calcMovie).and.(.not.calcDustCube)) then
@@ -363,7 +363,7 @@ if (.false.) then
              end if
 #endif
              fastIntegrate=.true.
-                call do_phaseloop(grid, .false., 100000, &
+                call do_phaseloop(grid, .false., 10000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
           enddo
        endif
@@ -389,7 +389,7 @@ if (.false.) then
 
                 call setupDust(grid, xArray, nLambda, miePhase, nMumie)
                 fastIntegrate=.true.
-                call do_phaseloop(grid, .false., 100000, &
+                call do_phaseloop(grid, .false., 10000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i, returnImage=imageSlice)
                 dx = imageSlice%xAxisCentre(2) - imageSlice%xAxisCentre(1)
                 allocate(tarray(1:thiscube%nx,1:thiscube%ny))
@@ -418,7 +418,7 @@ if (.false.) then
 !          call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
 !          write(*,*) "nlambda after setupxarray",nlambda,nv
 !          nlambda = nv
-!          call do_phaseloop(grid, .true., 100000, miePhase, globalnsource, globalsourcearray, nmumie) 
+!          call do_phaseloop(grid, .true., 10000, miePhase, globalnsource, globalsourcearray, nmumie) 
 !       end if
 !
 !       if (calcImage.or.calcMovie) then
@@ -428,7 +428,7 @@ if (.false.) then
 !             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
 !                  wavLin=.true., numLam=1, dustRadEq=.true.)
 !
-!             call do_phaseloop(grid, .false., 100000, &
+!             call do_phaseloop(grid, .false., 10000, &
 !                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
 !          enddo
 !       endif

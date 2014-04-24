@@ -11353,7 +11353,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -11366,6 +11366,9 @@ end function readparameterfrom2dmap
 
     rVec = subcellCentre(thisOctal,subcell)
     r = real(modulus(rVec))
+
+
+
     thisOctal%inflow(subcell) = .true.
     thisOctal%temperature(subcell) = 100. 
     rd = rOuter / 2.
@@ -11440,18 +11443,20 @@ end function readparameterfrom2dmap
 !       if (r > rOuter*0.99d0) then
 !          thisOctal%rho(subcell) = thisOctal%rho(subcell) * exp(-(r-rOuter*0.99d0)/(0.01d0*rOuter))
 !       endif
+       sinTheta = sqrt(1.d0-(abs(rVec%z)/modulus(rVec))**2)
+       v = sqrt(bigG * mSol /(r*1.d10))
 
-       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
-       thisOctal%temperature(subcell) = 10. !real((1.d-15*10.d0)/thisOCtal%rho(subcell))
+
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-15_db)
+       thisOctal%temperature(subcell) = 1. !real((1.d-15*10.d0)/thisOCtal%rho(subcell))
        thisOctal%velocity(subcell) = keplerianVelocity(rvec)
-       thisOctal%boundaryCondition(subcell) = 4
        thisOctal%iEquationOfState(subcell) = 1
        thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
        thisOctal%gamma(subcell) = 7.d0/5.d0
        ethermal = real(1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell))
        thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
        thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-       thisOctal%rhov(subcell) = modulus(keplerianVelocity(rVec))*thisOctal%rho(subcell) * (r *gridDistanceScale)*cSpeed
+       thisOctal%rhov(subcell) = modulus(keplerianVelocity(rVec))*thisOctal%rho(subcell) * (r *gridDistanceScale)*cSpeed * sinTheta
     endif
 
     if (dustPhysics) then

@@ -64,6 +64,25 @@ type(tsujiKPtable), save :: tsujikplookuptable
 
 contains
 
+subroutine freeTable(lookuptable)
+  type(molecularKappaGrid) :: lookupTable
+  if (associated(lookuptable%lamArray)) then
+     deallocate(lookuptable%lamArray)
+  endif
+
+  if (associated(lookuptable%tempArray)) then
+     deallocate(lookuptable%tempArray)
+  endif
+
+  if (associated(lookuptable%pressureArray)) then
+     deallocate(lookuptable%pressureArray)
+  endif
+  if (associated(lookuptable%kapArray)) then
+     deallocate(lookuptable%kapArray)
+  endif
+
+end subroutine freeTable
+
 subroutine readTio(nLines,lambda,kappa,excitation,g)
 
   implicit none
@@ -203,13 +222,12 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
            call readAbsCoeffFileAmundsen(lookupTable(i)%source, lookupTable(i), nLam, lamArray)
 #endif
            call writeKappaGrid(lookuptable(i))
+           call freeTable(lookuptable(i))
         endif
         call torus_mpi_barrier()
-        if (myrankGlobal /= 0) then
-           call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
-           if (.not.gridReadFromDisc) then
-              write(*,*) myrankGlobal, " had problem reading: ",trim(lookuptable(i)%filename)
-           endif
+        call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
+        if (.not.gridReadFromDisc) then
+           write(*,*) myrankGlobal, " had problem reading: ",trim(lookuptable(i)%filename)
         endif
      endif
      if (writeoutput) write(*,*) lookuptable(i)%molecule," opacity lookup table complete."
@@ -364,7 +382,10 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
         if (any(tarray > 1.d20)) then
            write(*,*) i,tarray
         endif
-        kappaAbsArray = kappaAbsArray + tarray
+!        write(*,*) "i " ,i 
+!        write(*,*) "kabs ",kappaabsArray(1:lookuptable(i)%nlam)
+!        write(*,*) "tarr ",tArray(1:lookuptable(i)%nlam)
+        kappaAbsArray(1:lookuptable(i)%nlam) = kappaAbsArray(1:lookuptable(i)%nlam) + tarray(1:lookuptable(i)%nlam)
      enddo
   endif
 
@@ -727,38 +748,50 @@ subroutine createAllMolecularTables(nLam, lamArray, reset)
   LookupTable(1)%molecule = "TiO"
   LookupTable(1)%source = "/data/dsa206/Abs_coeff/abs_coeff_TiO_Plez.nc"
   LookupTable(1)%filename = "tiolookuptable.dat"
+  LookupTable(1)%abundance = 1.e-7
+  lookupTable(1)%mu = 64.
 
   LookupTable(2)%molecule = "CH4"
   LookupTable(2)%source = "/data/dsa206/Abs_coeff/abs_coeff_CH4_YT10to10.nc"
   LookupTable(2)%filename = "ch4lookuptable.dat"
+  LookupTable(2)%abundance = 1.e-8
+  lookupTable(2)%mu = 16.
 
   LookupTable(3)%molecule = "H2-H2"
   LookupTable(3)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2-H2_HITRAN.nc"
   LookupTable(3)%filename = "h2h2lookuptable.dat"
+  LookupTable(3)%abundance = 1.
+  lookupTable(3)%mu = 2.
 
   LookupTable(4)%molecule = "H2-He"
   LookupTable(4)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2-He_HITRAN.nc"
   LookupTable(4)%filename = "h2helookuptable.dat"
+  LookupTable(4)%abundance = 1.
+  lookupTable(4)%mu = 2.
 
   LookupTable(5)%molecule = "H2O"
   LookupTable(5)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2O_BT2.nc"
   LookupTable(5)%filename = "h2olookuptable.dat"
+  LookupTable(5)%abundance = 1.e-8
+  lookupTable(5)%mu = 18.
 
   LookupTable(6)%molecule = "NH3"
   LookupTable(6)%source = "/data/dsa206/Abs_coeff/abs_coeff_NH3_BYTe.nc"
   LookupTable(6)%filename = "nh3lookuptable.dat"
+  LookupTable(6)%abundance = 1.e-8
+  lookupTable(6)%mu = 17.
 
   LookupTable(7)%molecule = "CO"
   LookupTable(7)%source = "/data/dsa206/Abs_coeff/abs_coeff_CO_HITEMP.nc"
   LookupTable(7)%filename = "colookuptable.dat"
+  LookupTable(7)%abundance = 1.e-5
+  lookupTable(7)%mu = 28.
 
   LookupTable(8)%molecule = "VO"
   LookupTable(8)%source = "/data/dsa206/Abs_coeff/abs_coeff_VO_Plez.nc"
   LookupTable(8)%filename = "volookuptable.dat"
-
-
-  LookupTable(:)%abundance = 1.e-5
-  lookupTable(:)%mu = 0.
+  LookupTable(8)%abundance = 1.e-8
+  lookupTable(8)%mu = 67.
 
   call createKappaGrid(lookuptable, nLam, lamArray, doReset)
   
@@ -966,8 +999,8 @@ SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)
      enddo
      deallocate(kAbs)
     enddo
-
-    thisKappaTable%kapArray = thisKappaTable%kapArray * 10.d0 * thisKappaTable%abundance * 1.d10 ! from m^2/kg to cm^2/g and then to code
+    thisKappaTable%kapArray = thisKappaTable%kapArray * thisKappaTable%abundance * thisKappaTable%mu / 2.33d0
+    thisKappaTable%kapArray = thisKappaTable%kapArray * 10.d0 * 1.d10 ! from m^2/kg to cm^2/g and then to code
   END SUBROUTINE readAbsCoeffFileAmundsen
 #endif    
 

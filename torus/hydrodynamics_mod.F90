@@ -2887,7 +2887,7 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                  4.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
 
@@ -7081,7 +7081,7 @@ end subroutine sumFluxes
 
 !perform a hydrodynamics step in the x and z directions
           call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-          call calculateTemperatureFromEnergy(grid%octreeRoot)
+!          call calculateTemperatureFromEnergy(grid%octreeRoot)
        end if
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 

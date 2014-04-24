@@ -1,14 +1,7 @@
-
-! written by tjh
-
-
-! v1.0 on 13/01/05
-
 module gaussian_mod
 
-
-  use kind_mod
   use vector_mod
+  use kind_mod
 
   implicit none
 

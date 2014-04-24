@@ -865,7 +865,7 @@ contains
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, &
          deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
-    use inputs_mod, only : sourcePos, sourceMass, sourceRadius
+    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -943,6 +943,15 @@ contains
           if (r < 1.02d0*rinner) then
              fac = (1.02d0*rinner - r)/(0.02d0*rinner)
              fac = 10.d0*fac
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+       endif
+
+       if (hydrodynamics) then
+          fac = 1.d0
+          if (r < 1.5d0*rinner) then
+             fac = (1.5d0*rinner - r)/(0.05d0*rinner)
              fac = exp(-fac)
              rhoOut = rhoOut * fac
           endif
@@ -1046,7 +1055,7 @@ contains
        rOuterPlanetDisc = 0.3d0 * hillRadius
        rInnerPlanetDisc = 1.d0 * sourceRadius(2)
        rPlanet = sourcePos(2)
-       mPlanetDisc = 1.d-2 * sourceMass(2)
+       mPlanetDisc = 1.d-4 * sourceMass(2)
        betaPlanetDisc = 1.125d0
        alphaPlanetDisc = 2.125d0
        heightPlanetDisc = 10.d0*autocm/1.d10

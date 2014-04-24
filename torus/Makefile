@@ -233,7 +233,7 @@ endif
 
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
-    FASTFLAG=  # -ipo
+    FASTFLAG= 
 #    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
 
