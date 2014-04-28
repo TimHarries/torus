@@ -11448,7 +11448,7 @@ end function readparameterfrom2dmap
 
 
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
-       thisOctal%temperature(subcell) = min(100.,100. * (r/Rinner)**(-4./3.))
+       thisOctal%temperature(subcell) = min(100.,100. * real((r/Rinner)**(-4.d0/3.d0)))
        thisOctal%velocity(subcell) = keplerianVelocity(rvec)
        thisOctal%iEquationOfState(subcell) = 1
        thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
