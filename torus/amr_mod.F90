@@ -11346,7 +11346,7 @@ end function readparameterfrom2dmap
   subroutine shakaraDisk(thisOctal,subcell,grid)
     use density_mod, only: density, shakaraSunyaevDisc
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
-    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale
+    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
     use inputs_mod, only : rSublimation
 
@@ -11447,8 +11447,8 @@ end function readparameterfrom2dmap
        v = sqrt(bigG * mSol /(r*1.d10))
 
 
-       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-15_db)
-       thisOctal%temperature(subcell) = 1. !real((1.d-15*10.d0)/thisOCtal%rho(subcell))
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
+       thisOctal%temperature(subcell) = min(100.,100. * (r/Rinner)**(-4./3.))
        thisOctal%velocity(subcell) = keplerianVelocity(rvec)
        thisOctal%iEquationOfState(subcell) = 1
        thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)

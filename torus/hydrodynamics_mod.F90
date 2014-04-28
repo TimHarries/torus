@@ -5207,12 +5207,15 @@ end subroutine sumFluxes
        if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
        call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
        if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
+
+
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call imposeBoundary(grid%octreeRoot, grid)
+       call transferTempStorage(grid%octreeRoot)
+
     enddo
 
 
-    call computepressureGeneral(grid, grid%octreeroot, .false.) 
-    call imposeBoundary(grid%octreeRoot, grid)
-    call transferTempStorage(grid%octreeRoot)
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
@@ -5399,7 +5402,7 @@ end subroutine sumFluxes
     enddo
   end subroutine computeCourantTimeGasSource
 
-  recursive subroutine computeCourantTimeGasSourceCylindrical(grid, thisOctal, nsource, source, tc)
+  recursive subroutine courantTimeGasSourceCylindrical(grid, thisOctal, nsource, source, tc)
     use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -5418,7 +5421,7 @@ end subroutine sumFluxes
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call computeCourantTimeGasSourceCylindrical(grid, child, nsource, source, tc)
+                call courantTimeGasSourceCylindrical(grid, child, nsource, source, tc)
                 exit
              end if
           end do
@@ -5441,7 +5444,7 @@ end subroutine sumFluxes
  
        endif
     enddo
-  end subroutine computeCourantTimeGasSourceCylindrical
+  end subroutine courantTimeGasSourceCylindrical
 
 
 
@@ -5582,10 +5585,12 @@ end subroutine sumFluxes
   end subroutine pressureGradientTimeStep
 
   recursive subroutine pressureTimeStep(thisoctal, dt)
-    use inputs_mod, only : gridDistanceScale, smallestCellSize
+    use inputs_mod, only : gridDistanceScale, smallestCellSize, cylindricalHydro
+    use source_mod, only : globalSourceArray
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
+    type(VECTOR) :: rVec
     integer :: subcell, i
     real(double) :: dt, dx, acc
     
@@ -5615,6 +5620,8 @@ end subroutine sumFluxes
                   (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
 
              acc = max(1.d-30, abs(acc))
+
+
              dt = min(dt, sqrt(smallestCellSize*gridDistanceScale/acc))
 
 
@@ -7079,7 +7086,7 @@ end subroutine sumFluxes
           call computeCourantV(grid, grid%octreeRoot, vBulk, vSound)
           if (includePRessureTerms) call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescaleCylindrical(grid%octreeRoot, grid, dt_viscous)
-          call computeCourantTimeGasSourceCylindrical(grid, grid%octreeRoot, globalnsource, globalsourcearray, dt_grav)
+          call courantTimeGasSourceCylindrical(grid, grid%octreeRoot, globalnsource, globalsourcearray, dt_grav)
        endif
 
        call MPI_ALLREDUCE(vBulk, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
@@ -7101,7 +7108,7 @@ end subroutine sumFluxes
        dt = MIN(dt_grav, dt)
        dt = dt * dble(cflNumber)
        if (writeoutput) then
-          write(*,*) "Courant time from v ",dt
+          write(*,*) "Courant time from v ",MINVAL(tc(1:nHydroThreads))
           write(*,*) "maximum bulk speed ",Vbulk/1.d5
           write(*,*) "maximum sound speed ",Vsound/1.d5
           write(*,*) "Courant time from P ",dt_pressure
@@ -7154,9 +7161,9 @@ end subroutine sumFluxes
           if (iUnrefine == 5) then
 
 
-          call writeVtkFile(grid, "beforeunrefine.vtk", &
-               valueTypeString=(/"rho          ", &
-                                 "mpistore     "/))
+!          call writeVtkFile(grid, "beforeunrefine.vtk", &
+!               valueTypeString=(/"rho          ", &
+!                                 "mpistore     "/))
 
              if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
              call unrefineCells(grid%octreeRoot, grid, nUnrefine, amrtolerance)
@@ -15460,7 +15467,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 onAxis = .not.(cellCentre%x - thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize < 0.d0)
              endif
 
-
              if (thisOctal%threeD) then
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
@@ -15500,24 +15506,16 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              localAccretedMom = VECTOR(0.d0, 0.d0, 0.d0)
              localAngMom = VECTOR(0.d0, 0.d0, 0.d0)
 
-
-             if (thisOctal%twoD) then
-                if (rhoLocal > rhoThreshold) then
-                   localaccretedMass = (rhoLocal - rhoThreshold) * cellVolume(thisOctal,Subcell)*1.d30
-                   localAngMom =  VECTOR(0.d0, 0.d0, thisOctal%rhov(subcell) * thiscellVolume)
-                   localAccretedAngMom = localAngMom.dot.VECTOR(0.d0, 0.d0, 1.d0)
-                   localAccretedMom = localaccretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                        0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))
-                   thisOctal%rho(subcell) = rhoThreshold
-                   thisOctal%rhou(subcell) = 0.d0
-                   thisOctal%rhov(subcell) = 0.d0
-                   thisOctal%rhow(subcell) = 0.d0
-                   accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
-                   accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
-                endif
-                cellBound = .false.
+             if (cylindricalHydro) then
+                cellBound = .true.
+                localAccretedAngMom = thiscellVolume * thisOctal%rhov(subcell) 
+                accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
+!                localAccretedMom = thiscellVolume * VECTOR(thisOctal%rhou(subcell), 0.d0, thisOctal%rhow(subcell))
+!                accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
+!                thisOctal%rhou(subcell) = 0.d0
+                thisOctal%rhov(subcell) = 0.d0
+!                thisOctal%rhow(subcell) = 0.d0
              endif
-
 
              if (cellBound) then
                 if (rhoLocal > rhoThreshold) then
@@ -15566,6 +15564,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       cellVelocity = gasMom / cellMass
                       thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
                       thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
+                      thisOctal%rhov(subcell) = 0.
                       if (thisOctal%rhov(subcell) < 0.d0) then
                          write(*,*) "warning negative rho v. vel = ",(1.d-5)*thisOctal%rhov(subcell)/thisOctal%rho(subcell)
                          write(*,*) "rho ",thisOctal%rho(subcell)
