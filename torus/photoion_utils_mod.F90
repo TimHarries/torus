@@ -1034,7 +1034,7 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
      
      fac = (8.63e-6 / sqrt(temperature)) * thisGamma
   else
-     fac = 1.d-33
+     fac = 1.e-33
   endif
   deexcitation =  fac / thisIon%level(thisIon%transition(iTransition)%j)%g
 

@@ -445,13 +445,13 @@ contains
 
 
   subroutine calculateForceFromSinks(thisOctal, subcell, source, nSource, eps, force)
-    use inputs_mod, only : gridDistanceScale, cylindricalHydro
+    use inputs_mod, only : gridDistanceScale !, cylindricalHydro
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(SOURCETYPE) :: source(:)
-    type(VECTOR) :: position, rVec, force, fVec, thisPos
-    integer :: nSource, iSource, i, j
-    real(double) :: eps, mass, r, V, dm, dx, r1, r2
+    type(VECTOR) :: position, rVec, force, fVec !, thisPos
+    integer :: nSource, iSource !, i, j
+    real(double) :: eps, mass, r, V !, dm, dx, r1, r2
     
     V = 1.d30 * cellVolume(thisOctal, subcell)
     force = VECTOR(0.d0, 0.d0, 0.d0)
