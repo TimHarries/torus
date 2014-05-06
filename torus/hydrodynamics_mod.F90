@@ -5590,7 +5590,6 @@ end subroutine sumFluxes
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: rVec
     integer :: subcell, i
     real(double) :: dt, dx, acc
     
@@ -15546,7 +15545,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                    endif
 
                    accretedLinMomentum(isource) = accretedLinMomentum(isource) + localAccretedMom
-		   if (thisOctal%threed) then
+                   if (thisOctal%threed) then
                          accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
                    endif
                    if (thisOctal%threed) then
