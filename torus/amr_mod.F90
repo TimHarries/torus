@@ -1598,6 +1598,16 @@ CONTAINS
        endif
     endif
 
+    if ((parent%twoD).and.nHydroThreadsGlobal == 64) then
+       if (parent%child(newChildIndex)%nDepth > 3) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 4
+             parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
     if ((parent%threed).and.nHydrothreadsGlobal == 512) then
        if (parent%child(newChildIndex)%nDepth > 3) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
@@ -5617,6 +5627,17 @@ CONTAINS
             endif
          endif
       endif
+
+      if (thisOctal%twod.and.(nHydroThreadsGlobal==64)) then
+         if (thisOctal%nDepth <= 3) then
+            split = .true.
+         else
+            if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+               split = .false.
+            endif
+         endif
+      endif
+
    endif
 
 101 continue
@@ -9562,14 +9583,14 @@ endif
     real(double) :: rhoRing, Tring
 
     rhoRing = 1.d-15
-    rhoAmbient = 1.d-18
+    rhoAmbient = 1.d-22
     tRing = 1.e-7
     tAmbient = 1.e-2
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)
     rVec = subcellCentre(thisOctal, subcell)
     r = sqrt(rVec%x**2 + rVec%y**2)
     r0 = 1.25d4
-    theta = acos(rVec%z/sqrt(rVec%x**2+rVec%z**2))
+    theta = atan2(sqrt(rVec%x**2+rVec%y**2),rVec%z)
     v = sqrt(bigG * msol /(r*1.d10))*sin(theta)
     vVec = rVec .cross. zAxis
     call normalize(vVec)
@@ -9578,15 +9599,16 @@ endif
     thisOctal%rho(subcell) = rhoambient
     thisOctal%temperature(subcell) = real(Tambient)
     thisOctal%velocity(subcell) = vVec
-    if ((abs(rVec%z)-(thisOctal%subcellSize/2.d0)) < 0.1d0*Smallestcellsize) then
+    if ((abs(rVec%z)) < 0.1d0*Smallestcellsize) then
        fac = exp(-((rVec%x-r0)/(0.1d0*r0))**2)
        thisOctal%rho(subcell) = rhoAmbient + (rhoRing-rhoAmbient)* fac
        thisOctal%temperature(subcell) = real(tAmbient * rhoAmbient/thisOctal%rho(subcell))
+       thisOctal%rhoV(subcell) = thisOctal%rho(subcell) * v * (r * 1.d10)
     else
        thisOctal%rho(subcell) = rhoambient
        thisOctal%temperature(subcell) = real(tambient)
+       thisOctal%rhoV(subcell) = 0.
     endif
-    thisOctal%rhoV(subcell) = thisOctal%rho(subcell) * v * (r * 1.d10)
 
     eKinetic = 0.5d0 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
 
@@ -11209,7 +11231,7 @@ end function readparameterfrom2dmap
    
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = (1.d2)*mHydrogen
-    if (modulus(rVec) < rCavity) thisOctal%rho(subcell) = 1.d-26
+    if (modulus(rVec) < rCavity) thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
@@ -11240,12 +11262,6 @@ end function readparameterfrom2dmap
     thisOctal%phi_i(subcell) = 0.d0
     thisOctal%iEquationOfState(subcell) = 1
 
-    zplusbound = 1
-    zminusbound = 1
-    xplusbound = 1
-    xminusbound = 1
-    yplusbound = 1
-    yminusbound = 1
   end subroutine assign_radpresstest
 
   subroutine assign_whitney(thisOctal,subcell,grid)
@@ -12061,7 +12077,7 @@ end function readparameterfrom2dmap
           END IF
 
           ! check the child's parent pointer
-          IF ( .NOT. ASSOCIATED(thisOctal%child(iIndex)%parent,thisOctal) ) THEN
+          IF ( .NOT. ASSOCIATED(thisOctal%child(iIndex)%parent,thisOctal) .AND. (thisOctal%nDepth > 1)) THEN
             PRINT *, "Error: In checkAMRgridPrivate, child has wrong %parent"
             CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
           END IF
@@ -18353,6 +18369,30 @@ end function readparameterfrom2dmap
              endif
           endif
        endif
+
+       if (nHydroThreadsGlobal == 64) then
+          nFirstLevel = (myRank-1) / 16 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else if (thisOctal%nDepth == 2) then
+             nFirstLevel = (myRank-1) / 4  + 1
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+       endif
     endif
 
     if (thisOctal%threeD) then
@@ -18364,6 +18404,7 @@ end function readparameterfrom2dmap
              check = .false.
           endif
        endif
+
        if (nHydroThreadsGlobal == 64) then
           nFirstLevel = (myRank-1) / 8 + 1
           if (thisOctal%nDepth == 1) then

@@ -190,7 +190,7 @@ module image_mod
 
         r = sqrt(xDist**2 + yDist**2)
         ang = atan2(yDist, xDist)
-        ang = ang + positionAngle + pi
+        ang = ang + positionAngle
         xDist = real(r * cos(ang))
         yDist = real(r * sin(ang))
            

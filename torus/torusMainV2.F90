@@ -149,6 +149,7 @@ program torus
 !        write(*,*) "OMP THREAD NUMBER ",omp_get_thread_num()
 
        call writeVtkFile(grid, "rho.vtk")
+       call writeVtkFile(grid, "mpi.vtk",valueTypeString=(/"rho        ","mpithread        "/))
      endif
      call setupGlobalSources(grid)
 

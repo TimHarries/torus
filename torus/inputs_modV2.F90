@@ -2022,6 +2022,10 @@ contains
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
+       call getLogical("isothermal", isoThermal, cLine, fLine, nLines, &
+            "Isothermal (no photoionization loop): ","(a,1l,1x,a)", .false., ok, .false.)
+
+
     call getLogical("usemetals", usemetals, cLine, fLine, nLines, &
          "Use metals in photoionization calculation: ","(a,1l,a)", .true., ok, .false.)
 
@@ -2363,9 +2367,9 @@ contains
     if (cylindricalHydro) then
        !       if(.not. useionparam) then
        amrGridCentreX = amrgridsize/2.
-       dx = dble(amrgridSize)/dble(2**4-4)
+       dx = dble(amrgridSize)/dble(2**5-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       amrGridCentrez = 0. !amrgridsize/2.
+       amrGridCentrez =  0.5*amrGridSize / real(2**maxDepthAMR) ! 0.
        vtkIncludeGhosts = .false.
        !       endif
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &

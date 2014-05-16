@@ -631,9 +631,7 @@ module spectrum_mod
       integer, parameter :: nKurucz = 410
       type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
       character(len=80),save :: klabel(nKurucz)
-      if (firstTime) call  readKuruczGrid(klabel, kspectrum, nKurucz)
-         
-
+      if (firstTime) call readKuruczGrid(klabel, kspectrum, nKurucz)
 
       logg = log10(bigG * mass / radius**2)
 

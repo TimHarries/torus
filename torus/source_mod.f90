@@ -84,8 +84,6 @@
       integer :: i, j
 
 
-      print *, "nsource is ", nsource
-
       if ( nsource<1 ) return
 
       if (writeoutput) &

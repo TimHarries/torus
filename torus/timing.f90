@@ -1,7 +1,8 @@
 module timing
 
+  use kind_mod
 
-  public :: tune
+  public :: tune, mySleep
 
 
 contains
@@ -150,5 +151,26 @@ contains
     rSec = real(count)/real(countRate)
   end subroutine wallTime
 
+  subroutine mySleep(delay)
+    use messages_mod
+    implicit none
+    integer(bigInt) ::  count,countRate
+    real(double) :: rSec, startTime, endTime, thisTime, delay
+    character(len=80) :: message
+    call system_clock(count=count,count_rate=countRate)
+
+
+    startTime = dble(count)/dble(countRate)
+    endTime = startTime + delay
+    thisTime = startTime
+
+    write(message,'(a,f7.1,a)') "Sleeping for ",delay, " seconds."
+    call writeInfo(message,TRIVIAL)
+    do while(thisTime < endTime)
+       call system_clock(count=count,count_rate=countRate)
+       thisTime = dble(count)/dble(countRate)
+    end do
+    call writeInfo("Done.",TRIVIAL)
+  end subroutine mySleep
 end module timing
 

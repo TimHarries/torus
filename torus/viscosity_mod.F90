@@ -452,7 +452,7 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child
-    real(double) :: divV, r, vTheta
+    real(double) :: divV, r, vTheta, fac
     integer :: subcell, i
     type(VECTOR) :: rVec
   
@@ -490,22 +490,22 @@ contains
 
 ! now tau_rr
 
-             thisOctal%qViscosity(subcell,1,1) = thisOctal%etaline(subcell) *  thisOctal%rho(subcell) * &
+             thisOctal%qViscosity(subcell,1,1) = thisOctal%etaline(subcell) * &
              (2.d0 * dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) - 0.6666666666d0 * divV)
 
 ! now tau_thetatheta
-             thisOctal%qViscosity(subcell,2,2) =  thisOctal%etaline(subcell) *  thisOctal%rho(subcell) * &
+             thisOctal%qViscosity(subcell,2,2) =  thisOctal%etaline(subcell) * &
              (2.d0 * thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*r) - 0.6666666666d0 * divV)
 
 ! now tau_zz
 
-             thisOctal%qViscosity(subcell,3,3) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
+             thisOctal%qViscosity(subcell,3,3) = thisOctal%etaline(subcell) * &
              (2.d0 * dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid) - 0.6666666666d0 * divV)
 
 ! now tau_rtheta
 
              vTheta = thisOctal%rhov(subcell) / (thisOctal%rho(subcell)*r)
-             thisOctal%qViscosity(subcell,1,2) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
+             thisOctal%qViscosity(subcell,1,2) = thisOctal%etaline(subcell) * &
                   (dudx(thisOctal, subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) - (vTheta/r))
 
 ! now tau_thetar
@@ -514,9 +514,9 @@ contains
 
 ! now tau_thetaz
 
-             thisOctal%qViscosity(subcell,2,3) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
+             thisOctal%qViscosity(subcell,2,3) = thisOctal%etaline(subcell) * &
              dudx(thisOctal, subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(0.d0, 0.d0, 1.d0), grid)
-
+ 
 
 ! now tau_thetaz
              
@@ -525,14 +525,26 @@ contains
 
 ! now tau_rz
 
-             thisOctal%qViscosity(subcell,1,3) = thisOctal%etaline(subcell) * thisOctal%rho(subcell) * &
+             thisOctal%qViscosity(subcell,1,3) = thisOctal%etaline(subcell) * &
              (dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) + &
               dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), VECTOR(0.d0, 0.d0, 1.d0), grid))
 
 ! now tau_zr
 
              thisOctal%qViscosity(subcell,3,1) = thisOctal%qViscosity(subcell,1,3) 
-!             if (thisOctal%rho(subcell) > 1.d-16) then
+
+
+
+             fac = thisOctal%etaLine(subcell) * r  * &
+                  (dudx(thisOctal,subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid)/r &
+                     - (thisOctal%rhov(subcell)/(thisOctal%rho(subcell)*r**3)) )
+
+!             if (thisOctal%rho(subcell) > 1.d-14) then
+!                write(*,*) "Q ",thisOctal%qViscosity(subcell,1,2), " mu r domegabydr ", fac, " ratio ", thisOctal%qViscosity(subcell,1,2)/fac
+!                write(*,*) "kep ",sqrt(bigG * msol) * (-3.d0/2.d0)*r**(-5.d0/2.d0), &
+!                     " model ",dudx(thisOctal,subcell, VECTOR(0.d0, 1.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid)/r
+!                fac = sqrt(bigG *mSol /r)
+!                write(*,*) "kep v ",fac, " model ",thisOctal%rhoV(subcell)/(thisOctal%rho(subcell)*r)
 !                write(*,*)  " "
 !                write(*,'(a,1p,3e9.1)') "qvisc ",thisOctal%qViscosity(subcell,1,1:3)
 !                write(*,'(a,1p,3e9.1)') "      ",thisOctal%qViscosity(subcell,2,1:3)

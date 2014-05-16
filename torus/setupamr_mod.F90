@@ -27,7 +27,7 @@ contains
     use grid_mod
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
     use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
-    use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics
+    use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics, variableDustSublimation
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
@@ -152,6 +152,7 @@ contains
 
        amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
+       if (writeoutput) write(*,*) "amr grid centre ", amrgridcentre
 
        select case (geometry)
 
@@ -413,7 +414,7 @@ contains
 #ifdef HYDRO
            if(hydrodynamics) then
               call findMassOverAllThreads(grid, totalmass)
-              write(message,'(a,1pe12.5,a)') "Total mass in grid (solar masses): ",totalMass/lsol
+              write(message,'(a,1pe12.5,a)') "Total mass in grid (solar masses): ",totalMass/msol
               call writeInfo(message,TRIVIAL)
            endif
 #endif
@@ -428,7 +429,7 @@ contains
 
           case("theGalaxy","fitsfile")
              call writeInfo("Calling quickSublimate",FORINFO)
-             call quickSublimate(grid%octreeRoot)
+             if (variableDustsublimation) call quickSublimate(grid%octreeRoot)
 
           case("shakara")
              if (discWind) call fillgridSafier(grid)

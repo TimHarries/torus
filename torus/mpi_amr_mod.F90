@@ -37,6 +37,8 @@ contains
              nHydroThreadsGlobal = 64
           else if (amr3d.and.(mod(nThreadsGlobal, 9) == 0)) then
              nHydroThreadsGlobal = 8
+          else if (amr2d.and.(mod(nThreadsGlobal, 65) == 0)) then
+             nHydroThreadsGlobal = 64
           else if (amr2d.and.(mod(nThreadsGlobal, 17) == 0)) then
              nHydroThreadsGlobal = 16
           else if (amr2d.and.(mod(nThreadsGlobal, 5) == 0)) then
@@ -251,7 +253,7 @@ contains
 
     
   recursive subroutine findTotalMassMPI(thisOctal, totalMass, minRho, maxRho)
-    use inputs_mod, only : hydrodynamics, cylindricalHydro
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec
@@ -287,8 +289,14 @@ contains
                          dv = thisOctal%subcellSize**2
                       endif
                    else if (thisOctal%oned) then
-                      dv = thisOctal%subcellSize                      
-
+                      if (spherical) then
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         rVec = subcellCentre(thisOctal,subcell)
+                         if (rVec%x < 0.d0) dv = 0.d0
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                      else
+                         dv = thisOctal%subcellSize**2
+                      endif
                    endif
                 endif
                 !             totalVolume = totalVolume + dv
@@ -2938,6 +2946,56 @@ subroutine dumpStromgrenRadius(grid, thisFile, startPoint, endPoint, nPoints)
  !print *, "Stromgren dump completed"
 end subroutine dumpStromgrenRadius
 
+subroutine write1dlist(grid, thisFile)
+  use mpi
+  type(GRIDTYPE) :: grid
+  character(len=*) :: thisFile
+  integer :: iThread, ierr
+
+  if (myHydroSetGlobal == 0) then
+
+     do iThread = 1, nHydrothreadsGlobal
+
+        if (iThread == myRankGlobal) then
+           if (iThread == 1) then
+              open(55, file=thisfile, form="formatted", status="unknown")
+           else
+              open(55, file=thisfile, form="formatted", status="old",position="append")
+           endif
+           call write1dListToFile(grid%octreeRoot, ithread)
+           close(55)
+        endif
+
+        call MPI_BARRIER(localWorldCommunicator, ierr)
+
+     enddo
+
+  endif
+end subroutine write1dlist
+
+recursive subroutine write1dlisttoFile(thisOctal, ithread)
+  type(OCTAL), pointer :: thisOctal, child
+  type(VECTOR) :: rVec
+  integer :: ithread, i, subcell
+
+  if (thisOctal%nChildren > 0) then
+     do i = 1, thisOctal%nChildren, 1
+        child => thisOctal%child(i)
+        call write1dlisttofile(child, ithread)
+     end do
+  else
+     
+     do subcell = 1, thisOctal%maxChildren
+        
+        if (octalOnThread(thisOctal, subcell,ithread)) then
+           rVec = subcellCentre(thisOctal, subcell)
+           write(55,*) rVec%x, thisOctal%rho(subcell), thisOctal%ghostcell(subcell)
+        endif
+     enddo
+  endif
+end subroutine write1dlisttoFile
+
+
 #ifdef PDR
 !Dumps the grid to a file in a format that can be used in 3D-PDR (Bisbas et al. 2012)
 recursive subroutine SendGridBisbas(thisOctal, grid)
@@ -4158,6 +4216,16 @@ end subroutine writeRadialFile
        endif
     endif
 
+    if ((parent%twod).and.(nHydroThreadsGlobal) == 64) then
+       if (parent%child(newChildIndex)%nDepth > 3) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 4
+             parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
@@ -5198,6 +5266,12 @@ end subroutine writeRadialFile
 !          evenUpArray = (/1, 2, 3, 4, 5, 1, 6, 3, 7, 8, 1, 2, 9, 7, 5, 1/)
           evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16/)
 !          evenUpArray = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16/)
+       else if((nHydrothreadsGlobal) == 64) then
+          !new version so as to not screw up shephard's method
+          evenUpArray = (/1, 2, 3, 4, 5, 6,  7, 8, 9, 10, 11, 12, 13, 14, 15, 16, & !pane 1
+               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, & !pane 2           
+               33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, & !pane 3           
+               49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64/) !pane 4      
        end if
     else if(grid%octreeRoot%threeD) then
        if((nHydrothreadsGlobal) == 8) then
@@ -6429,6 +6503,16 @@ subroutine labelSingleSubcellMPI(parent, iChild, newChildIndex)
        else
           do i = 1, 8
              parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
+    if ((parent%twoD).and.(nHydroThreadsGlobal) == 64) then
+       if (parent%child(newChildIndex)%nDepth > 3) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 4
+             parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
           enddo
        endif
     endif

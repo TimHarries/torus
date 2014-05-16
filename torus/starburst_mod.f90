@@ -294,11 +294,7 @@ contains
             write(*,*) "accretion lum: ",lumAcc/lsol
             write(*,*) "fraction ",fractionOfAccretionLum
          endif
-         if (i < nSource) then
-            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
-         else
-            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10, freeUp=.true.)
-         endif
+         call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
          if (tAcc > 0.d0) call addToSpectrumBB(source(i)%spectrum, tAcc, 1.d0)
          call normalizedSpectrum(source(i)%spectrum)
       enddo

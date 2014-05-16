@@ -199,6 +199,7 @@ subroutine createSample(temperature, lamArray, kapArray, nLam, nLines, lambda, &
 end subroutine createSample
 
 subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
+  use timing, only : mySleep
   implicit none
   real(double) :: lamArray(:)
   type(molecularKappaGrid) :: lookuptable(:)
@@ -220,14 +221,20 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
         if (myrankGlobal == 0) then
 #ifdef NETCDF
            call readAbsCoeffFileAmundsen(lookupTable(i)%source, lookupTable(i), nLam, lamArray)
+#else
+           write(*,*) "Code not linked with NETCDF. Aborting."
+           stop
 #endif
            call writeKappaGrid(lookuptable(i))
            call freeTable(lookuptable(i))
+           write(*,*) "calling sleep"
+           call mySleep(5.d0)
         endif
         call torus_mpi_barrier()
         call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
         if (.not.gridReadFromDisc) then
            write(*,*) myrankGlobal, " had problem reading: ",trim(lookuptable(i)%filename)
+           stop
         endif
      endif
      if (writeoutput) write(*,*) lookuptable(i)%molecule," opacity lookup table complete."
@@ -250,6 +257,10 @@ subroutine readKappaGrid(lookuptable,  wantednlam, wantedlamArray, gridreadfromd
   read(21) lookuptable%abundance
   read(21) nTemps, nLam
 
+  if (nLam == 0) then
+     if (writeoutput) write(*,*) "Kappa file has zero wavelength array. Error. "
+     goto 666
+  endif
   resizeLookup = .false.
   if (nLam /= wantednLam) then
      if (writeoutput) write(*,*) "TiO lookup-table on disc is not of correct size ",nlam,wantedNlam

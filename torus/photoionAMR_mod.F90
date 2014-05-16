@@ -84,7 +84,7 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal
     use parallel_mod, only: torus_abort
     use mpi
     type(GRIDTYPE) :: grid
@@ -118,7 +118,7 @@ contains
     integer :: optID
     logical, save :: firstWN=.true.
     integer :: niter
-    real(double) :: epsoverdeltat
+    real(double) :: epsoverdeltat, totalMass
 
 
     nPhotoIter = 1
@@ -311,6 +311,10 @@ contains
     if (myrankGlobal /= 0) then
 
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       do i = 1, nPairs
+          if (myrankWorldglobal==1) &
+               write(*,'(a,i4,i4,a,i4,a,i4,a,i4)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
+       enddo
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call resetnh(grid%octreeRoot)
@@ -413,7 +417,6 @@ contains
        if(.not. noPhoto) then
 
           if ((myrankglobal==1)) then
-             print *, "writing spectrum"
              !                   firsttime = .false.
              open(67,file="spectrum.dat",status="replace",form="formatted")
              !       write(67,*) "% ",thisOctal%temperature(subcell)
@@ -444,11 +447,16 @@ contains
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-                if (.not.timedependentRT .and. .not. xrayonly) &
+                if (.not.timedependentRT .and. .not. xrayonly .and. (.not.isothermal)) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, &
                      loopLimitTime, &
                      looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
+
+                if (isoThermal) then
+                   call neutralGrid(grid%octreeRoot)
+                   call setPhotoionIsothermal(grid%octreeRoot)
+                endif
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
                 if(useionparam) then
@@ -469,10 +477,16 @@ contains
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-                if (.not.timeDependentRT .and. .not. xrayonly) &
+                if (.not.timeDependentRT .and. .not. xrayonly .and. (.not.isothermal)) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
+
+                if (isoThermal) then
+                   call neutralGrid(grid%octreeRoot)
+                   call setPhotoionIsothermal(grid%octreeRoot)
+                endif
+
                 cylindricalHydro = tmpCylindricalHydro
                 call writeInfo("Done",TRIVIAL)
              endif
@@ -810,11 +824,17 @@ contains
 !                nPhotoIter = 10
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
-                if(.not. xrayonly) then
+                if(.not. xrayonly .and. (.not.isothermal)) then
                    call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
                         lamArray, nPhotoIter, loopLimitTime, &
                         looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
                 endif
+
+                if (isoThermal) then
+                   call neutralGrid(grid%octreeRoot)
+                   call setPhotoionIsothermal(grid%octreeRoot)
+                endif
+
                 cylindricalHydro = tmpCylindricalHydro
 
          call writeInfo("Done",TRIVIAL)
@@ -1008,6 +1028,10 @@ contains
        grid%currentTime = grid%currentTime + dt
 
        if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = grid%currentTime
+
+       call findMassOverAllThreads(grid, totalMass)
+       if (writeoutput) write(*,*) "Total mass on grid is ", totalmass/mSol
+
        
        if (myRankWorldGlobal == 1) write(*,*) "Current time: ",grid%currentTime
 
@@ -1084,7 +1108,8 @@ contains
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
                "diff         ","dust1        ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
-               "vphi         ","jnu          ","mu           "/))
+               "vphi         ","jnu          ","mu           ", &
+               "fvisc1       ","fvisc2       ","fvisc3       "/))
 
 
           if(densitySpectrum) then
@@ -1118,6 +1143,10 @@ contains
              call writeSourceArray(mpifilename)
           endif
 
+          if (spherical) then
+             write(mpiFilename,'(a,i4.4,a)') "cells",grid%idump,".dat"
+             call write1dlist(grid, mpifilename)
+          endif
 !          if (.not.CylindricalHydro) then
              write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
              call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
@@ -1859,7 +1888,6 @@ end subroutine radiationHydro
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
 
        if (myrankWorldGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
-       if (myrankWorldGlobal == 1) write(*,*) "nhydrosetsglobal ",nHydroSetsGlobal
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (myrankWorldGlobal == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
@@ -3475,6 +3503,32 @@ recursive subroutine  setDiffusionZoneOnRadius(thisOctal, position, maxRadius)
      end if
   end do
 end subroutine setDiffusionZoneOnRadius
+
+recursive subroutine  setPhotoionIsothermal(thisOctal)
+  use inputs_mod, only : tMinGlobal
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call setPhotoionIsoThermal(child)
+              exit
+           end if
+        end do
+     else
+        thisOctal%temperature(subcell) = tMinGlobal
+        if (.not.associated(thisOctal%kappaTimesFlux)) then
+           allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
+        endif
+        thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0,0.d0,0.d0)
+     end if
+  end do
+end subroutine setPhotoionIsothermal
 
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
@@ -5359,15 +5413,16 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
     endif
 
-    if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-24)) then
-       kappaExt  = 1.d-30
+    if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-26)) then
+       kappaExt  = 0.
     endif
+
 
     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
          + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
 
 
-    if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+!    if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     if(uv_vector) then
 !       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
@@ -8078,6 +8133,12 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           zHat = VECTOR(0.d0, 0.d0, 1.d0)
           uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
        endif
+       if (thisOctal%oneD) then
+          rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+          call normalize(rHat)
+          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
+       endif
+
        thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
        thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
        rVec = rVec + uHat * r0

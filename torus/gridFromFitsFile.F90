@@ -32,7 +32,8 @@ module gridFromFitsFile
 
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
-  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:), ionfrac_double(:,:,:)
+  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:), ionfrac_double(:,:,:), &
+       tr1_double(:,:,:)
 
 ! If true use the ideal gas EOS to calculate temperature
   logical, parameter, private :: idealGas=.false.
@@ -299,7 +300,7 @@ npd_loop:            do n=1,npd
 
 ! Find out how many axes there are
       call ftgkyj(unit,"GRIDNDIM",naxis,comment,status)
-      write(message,*) "There are ", naxis, "axes"
+      write(message,*) "There are ", naxis, " axes"
       call writeInfo(message,TRIVIAL)
 
 ! Find out the size of the axis
@@ -314,6 +315,7 @@ npd_loop:            do n=1,npd
       allocate(density_double     (axis_size(1), axis_size(2), axis_size(3)) )
       allocate(temperature_double (axis_size(1), axis_size(2), axis_size(3)) )
       allocate(ionfrac_double (axis_size(1), axis_size(2), axis_size(3)) )
+      allocate(tr1_double (axis_size(1), axis_size(2), axis_size(3)) )
 
       call ftgkye(unit,"XMIN0",xmin0,comment,status)
       call ftgkye(unit,"XMIN1",xmin1,comment,status)
@@ -347,6 +349,11 @@ npd_loop:            do n=1,npd
       dy = dy / 1.e10
       dz = dz / 1.e10
 
+      if (writeoutput) then
+         write(*,*) "xAxis runs from ",xAxis(1), xAxis(axis_size(1))
+         write(*,*) "yAxis runs from ",yAxis(1), xAxis(axis_size(2))
+         write(*,*) "zAxis runs from ",zAxis(1), xAxis(axis_size(3))
+      endif
 ! Move to the next extension
       call ftmrhd(unit,1,hdutype,status)
       call ftgkys(unit,"EXTNAME",record,comment,status)
@@ -373,6 +380,21 @@ npd_loop:            do n=1,npd
 
 ! Read in the data.
       call ftgpvd(unit,group,1,npixels,nullvall,ionfrac_double(:,:,:),anynull,status)
+
+
+      call FTMNHD(unit, 0, "TR1", 0, status)
+      call ftgkys(unit,"EXTNAME",record,comment,status)
+      if (status==0) then
+         write(message,*) "Reading TR1 from field with EXTNAME= ", trim(record)
+         call writeInfo(message,TRIVIAL)
+      else
+         call writeFatal("Could not find TR1 in HDU")
+         stop
+      endif
+
+! Read in the data.
+      call ftgpvd(unit,group,1,npixels,nullvall,tr1_double(:,:,:),anynull,status)
+
 
       call FTMNHD(unit, 0, "Eint", 0, status)
       call ftgkys(unit,"EXTNAME",record,comment,status)
@@ -573,6 +595,7 @@ npd_loop:            do n=1,npd
 !-------------------------------------------------------------------------------
 
     subroutine assign_from_fitsfile_interp(thisOctal, subcell)
+      use inputs_mod, only : nDustType
       use octal_mod
       use utils_mod, only : locate
 
@@ -588,8 +611,8 @@ npd_loop:            do n=1,npd
       thisOctal%rho(subcell) = 1.d-30
       inPionDomain = .false.
       if (amr2d) then
-         inPionDomain = (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2))).and. &
-              (rVec%z >= xAxis(1)).and.(rVec%z <= xAxis(axis_size(1)))
+         inPionDomain = (rVec%z >= xAxis(1)).and.(rVec%z <= xAxis(axis_size(1))).and. &
+              (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2)))
       else if (amr3d) then
          inPionDomain = (rVec%x >= xAxis(1)).and.(rVec%x <= xAxis(axis_size(1))).and. &
               (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
@@ -640,6 +663,20 @@ npd_loop:            do n=1,npd
                                     +  density_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
                                    +  density_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
                                    +  density_double(thisI+1,thisJ+1,1)* (     u)*(     v) 
+            thisOctal%temperature(subcell) =     temperature_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
+                                    +  temperature_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
+                                   +  temperature_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
+                                   +  temperature_double(thisI+1,thisJ+1,1)* (     u)*(     v) 
+            if (.not.associated(thisOctal%dustTypeFraction)) then
+               allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+            endif
+            thisOctal%dustTypeFraction(subcell,1) =  0.01d0 * (1.d0-(   tr1_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
+                                    +  tr1_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
+                                   +  tr1_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
+                                   +  tr1_double(thisI+1,thisJ+1,1)* (     u)*(     v) ))
+            if (thisOctal%temperature(subcell) > 1.d6) thisOctal%dustTypeFraction(subcell,1) = 0.d0
+
+
          endif
       endif
 
@@ -666,6 +703,7 @@ npd_loop:            do n=1,npd
       if (allocated (density_double))     deallocate(density_double)
       if (allocated (temperature_double))     deallocate(temperature_double)
       if (allocated (ionfrac_double))     deallocate(ionfrac_double)
+      if (allocated (tr1_double))     deallocate(tr1_double)
 
     end subroutine deallocate_gridFromFitsFile
 #endif
