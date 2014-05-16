@@ -595,7 +595,6 @@ npd_loop:            do n=1,npd
 !-------------------------------------------------------------------------------
 
     subroutine assign_from_fitsfile_interp(thisOctal, subcell)
-      use inputs_mod, only : nDustType
       use octal_mod
       use utils_mod, only : locate
 
@@ -663,12 +662,12 @@ npd_loop:            do n=1,npd
                                     +  density_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
                                    +  density_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
                                    +  density_double(thisI+1,thisJ+1,1)* (     u)*(     v) 
-            thisOctal%temperature(subcell) =     temperature_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
+            thisOctal%temperature(subcell) = real( temperature_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
                                     +  temperature_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
                                    +  temperature_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
-                                   +  temperature_double(thisI+1,thisJ+1,1)* (     u)*(     v) 
+                                   +  temperature_double(thisI+1,thisJ+1,1)* (     u)*(     v) )
             if (.not.associated(thisOctal%dustTypeFraction)) then
-               allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+               allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1))
             endif
             thisOctal%dustTypeFraction(subcell,1) =  0.01d0 * (1.d0-(   tr1_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
                                     +  tr1_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &

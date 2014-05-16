@@ -311,10 +311,10 @@ contains
     if (myrankGlobal /= 0) then
 
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       do i = 1, nPairs
-          if (myrankWorldglobal==1) &
-               write(*,'(a,i4,i4,a,i4,a,i4,a,i4)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
-       enddo
+!       do i = 1, nPairs
+!          if (myrankWorldglobal==1) &
+!               write(*,'(a,i4,i4,a,i4,a,i4,a,i4)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
+!       enddo
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call resetnh(grid%octreeRoot)

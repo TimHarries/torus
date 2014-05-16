@@ -155,7 +155,7 @@ contains
     use messages_mod
     implicit none
     integer(bigInt) ::  count,countRate
-    real(double) :: rSec, startTime, endTime, thisTime, delay
+    real(double) :: startTime, endTime, thisTime, delay
     character(len=80) :: message
     call system_clock(count=count,count_rate=countRate)
 

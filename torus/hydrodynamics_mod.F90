@@ -824,7 +824,7 @@ contains
              sigma = thisOctal%rho(subcell) * thisOctal%subcellSize * gridDistanceScale
              cs =soundSpeed(thisOctal, subcell)
              toomreQ = (cs * omegaK) / (pi * bigG * sigma)
-	     thisOctal%etaCont(subcell) = toomreQ
+             thisOctal%etaCont(subcell) = toomreQ
              fac = 1.d0
              if (.not.thisOctal%ghostCell(subcell)) then
                 if (toomreQ < Qcrit) then
