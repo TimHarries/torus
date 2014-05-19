@@ -228,15 +228,17 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
            call writeKappaGrid(lookuptable(i))
            call freeTable(lookuptable(i))
            write(*,*) "calling sleep"
-           call mySleep(5.d0)
+           call mySleep(10.d0)
         endif
         call torus_mpi_barrier()
+        call waitForFile(lookuptable(i)%filename)
         call readKappaGrid(lookuptable(i), nLam, lamArray, gridReadFromDisc)
         if (.not.gridReadFromDisc) then
            write(*,*) myrankGlobal, " had problem reading: ",trim(lookuptable(i)%filename)
            stop
         endif
      endif
+     call torus_mpi_barrier()
      if (writeoutput) write(*,*) lookuptable(i)%molecule," opacity lookup table complete."
   enddo
 end subroutine createKappaGrid
@@ -920,6 +922,26 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 
 end subroutine readH2O
 
+subroutine waitForFile(thisFile)
+  character(len=*) :: thisFile
+  integer :: i
+  integer, parameter :: maxWait = 10000000
+
+  i = 1
+10 continue
+  open(20,file=thisFile,status="old",form="unformatted",err=20)
+  close(20)
+  goto 666
+20 continue
+  i = i + 1
+  if (i > maxWait) then
+     write(*,*) "Tried to open file ",maxWait, " times"
+     stop
+  endif
+  goto 10
+
+666 continue
+end subroutine waitForFile
 
 #ifdef NETCDF
 SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)

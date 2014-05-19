@@ -783,7 +783,7 @@ contains
     integer :: subcell, i, nr, neighbourSubcell
     type(GRIDTYPE) :: grid
     real(double) :: alpha, HoverR, r, mass, omegaK, rAxis(:), mr(:)
-    real(double), parameter :: Qcrit = 2.d0
+    real(double), parameter :: Qcrit = 5.d0
     real(double) :: toomreQ, cs, sigma, fac, thisRho
     type(VECTOR) :: rVec, rVec2
     
@@ -13194,7 +13194,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -13370,9 +13370,9 @@ end subroutine refineGridGeneric2
 !            MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (mod(it,100) == 0) then
-!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
+          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+          call writeVtkFile(grid, plotfile, &
+               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2

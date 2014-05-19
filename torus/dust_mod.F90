@@ -972,6 +972,7 @@ contains
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
 
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+          write(*,*) "thistau ",thistau, thisOctal%dustTypeFraction(subcell,1), thisOctal%oldFrac(subcell), " frac ",frac
           if (thisTau > tauMax) then
              frac = tauMax / thisTau 
              thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac
@@ -1541,7 +1542,7 @@ contains
 
 
   recursive subroutine allocateMemoryForDust(thisOctal)
-    use inputs_mod, only : nDustType
+    use inputs_mod, only : nDustType, grainFrac
     use octal_mod, only: allocateAttribute
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -1562,7 +1563,8 @@ contains
              call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
              call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
              call allocateAttribute(thisOctal%dustTypeFraction, thisOctal%maxChildren, nDustType)
-             thisOctal%dustTypeFraction(subcell,1) = 1.d0
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = grainfrac(1:nDusttype)
+             thisOctal%oldfrac(subcell) = grainFrac(1)
           endif
        endif
     enddo
