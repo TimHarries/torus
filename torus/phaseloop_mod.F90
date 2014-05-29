@@ -740,7 +740,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         endif
 
         totEnvelopeEmission = totDustContinuumEmission
-        chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
+        write(*,*) "tot dust ",totdustcontinuumemission,lcore,nsource,grid%lamArray(1),grid%lamArray(nlambda)
+        chanceDust = 0.d0
+        if ((totDustContinuumEmission+lcore) > 0.d0) then
+           chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
+        endif
 !        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
 !        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
 
@@ -2539,6 +2543,11 @@ CONTAINS
                     call tauAlongPathFast(ilambdaPhoton, grid,obsPhoton%position, obsPhoton%direction, finalTau,&
                          startOctal = currentOctal, startSubcell=currentSubcell , nTau=nTau, xArray=lambda, tauArray=tauExt)
                  endif
+
+!                 write(*,*) myrankGlobal," scattered towards observer ",tauExt(ntau),ntau
+!                 write(*,*) "direction ",obsPhoton%direction
+
+
 
                  if (intPathError == -10) then 
                     tooFewSamples = tooFewSamples + 1  

@@ -140,6 +140,7 @@ module image_mod
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, positionAngle, lambda0_cont)
+     use inputs_mod, only : imageOrigin
      use filter_set_class
      use phasematrix_mod
 
@@ -185,8 +186,8 @@ module image_mod
 
         call normalize(yProj)
            
-        xDist = real((thisPhoton%position) .dot. xProj)
-        yDist = real((thisPhoton%position) .dot. yProj)
+        xDist = real((thisPhoton%position-imageOrigin) .dot. xProj)
+        yDist = real((thisPhoton%position-imageOrigin) .dot. yProj)
 
         r = sqrt(xDist**2 + yDist**2)
         ang = atan2(yDist, xDist)

@@ -2435,7 +2435,7 @@ CONTAINS
                           minWallDistance,margin,threed)
     ! this subroutine finds the closest subcell wall in the direction the
     !   photon is travelling. 
-
+    use inputs_mod, only : amr2d
     IMPLICIT NONE
           
     TYPE(vector), INTENT(IN)       :: currentPoint ! current ray position
@@ -2473,12 +2473,13 @@ CONTAINS
     REAL(oct) :: compZ, currentZ, tval, x1, x2
     REAL(oct) :: r1, theta, mu, disttor1
 
-    TYPE(vector) :: xDir, zDir
+    TYPE(vector) :: xDir, zDir, rVec, subcen
     logical :: ok
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
 !    REAL(oct), parameter :: frac =1.e-6_oc  
     REAL(oct), parameter :: frac =1.e-2_oc  
+
 
     if (threed) then
        
@@ -2488,6 +2489,8 @@ CONTAINS
     ! there are six subcell walls - and each wall is part of a plane    
     !   parallel with an axis. we use the direction of the photon to 
     !   find the three planes that the photon will intersect.
+
+
     
     IF ( direction%x > 0.0_oc ) THEN
       walldistanceX = (centre%x - currentPoint%x + subcellSize / 2.0_oc  ) / ABS(direction%x) 
@@ -2495,7 +2498,7 @@ CONTAINS
       wallDistanceX = (currentPoint%x - centre%x + subcellSize / 2.0_oc ) / ABS(direction%x) 
     ELSE 
       wallDistanceX = HUGE(wallDistanceX) 
-    END IF
+    ENDIF
 
     IF ( direction%y > 0.0_oc ) THEN
       wallDistanceY = (centre%y - currentPoint%y + subcellSize / 2.0_oc ) / ABS(direction%y) 
@@ -2503,7 +2506,7 @@ CONTAINS
       wallDistanceY = (currentPoint%y - centre%y + subcellSize / 2.0_oc ) / ABS(direction%y) 
     ELSE 
       wallDistanceY = HUGE(wallDistanceX) 
-    END IF
+   ENDIF
         
     IF ( direction%z > 0.0_oc ) THEN
       wallDistanceZ = (centre%z - currentPoint%z + subcellSize / 2.0_oc ) / ABS(direction%z) 
@@ -2511,7 +2514,7 @@ CONTAINS
       wallDistanceZ = (currentPoint%z - centre%z + subcellSize / 2.0_oc ) / ABS(direction%z) 
     ELSE 
       wallDistanceZ = HUGE(wallDistanceX) 
-    END IF
+   ENDIF
 
     minWallDistance = MIN(wallDistanceX,wallDistanceY,wallDistanceZ)
 
@@ -2534,13 +2537,13 @@ CONTAINS
          PRINT *, ' '
       else
          continue
-      end if
+      endif
       
       error = -20
       num_err = num_err + 1
       
       RETURN      
-    END IF
+    ENDIF
        
        
     IF ( wallDistanceX < wallDistanceY .AND. &
@@ -2555,7 +2558,7 @@ CONTAINS
           PRINT *, 'wallDistances = ',wallDistanceX,&
           wallDistanceY,wallDistanceZ, margin 
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
@@ -2564,7 +2567,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
 
@@ -2578,7 +2581,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*yHat)
       ELSE
         wallFromOrigin = centre%y - (subcellSize / 2.0_oc) 
@@ -2587,7 +2590,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*yHat)
       ENDIF
       
@@ -2601,7 +2604,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*zHat)
       ELSE
         wallFromOrigin = centre%z - (subcellSize / 2.0_oc)
@@ -2610,7 +2613,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*zHat)
       ENDIF
 
@@ -2629,7 +2632,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
@@ -2638,7 +2641,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
       IF ( direction%y > 0.0_oc ) THEN             
@@ -2656,7 +2659,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
@@ -2665,7 +2668,7 @@ CONTAINS
       IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*xHat)
       ENDIF
       IF ( direction%z > 0.0_oc ) THEN             
@@ -2684,7 +2687,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*yHat)
       ELSE
         wallFromOrigin = centre%y - (subcellSize / 2.0_oc)
@@ -2693,7 +2696,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*yHat)
       ENDIF
       IF ( direction%z > 0.0_oc ) THEN             
@@ -2705,7 +2708,7 @@ CONTAINS
     ! we now consider the case where the ray is leaving through one
     !   of the corners of the cell.
          
-    ELSEIF ( wallDistanceX == wallDistanceY  .AND. &
+    ELSE IF ( wallDistanceX == wallDistanceY  .AND. &
              wallDistanceY == wallDistanceZ ) THEN
       wallNormal =  xHat
       IF ( direction%x > 0.0_oc ) THEN
@@ -2715,7 +2718,7 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint + (halfSmallestSubcell*xHat)
       ELSE
         wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
@@ -2724,9 +2727,9 @@ CONTAINS
         IF ( found .EQV. .FALSE. ) THEN 
           PRINT *, "Panic: wall intersection not found"
           DO ; END DO ; STOP ! sit in loop for debugging purposes
-        END IF
+        ENDIF
         locator = exitpoint - (halfSmallestSubcell*xHat)
-      ENDIF
+     ENDIF
       IF ( direction%y > 0.0_oc ) THEN             
         locator = locator + (halfSmallestSubcell*yHat)
       ELSE  
@@ -2743,9 +2746,9 @@ CONTAINS
       PRINT *, 'Panic: Fell through direction finder!'
       stop
 !      DO ; END DO ; STOP ! sit in loop for debugging purposes
-    END IF
+    ENDIF
 
-    else       
+    else if (amr2d) then
 
        ! two-d case written by TJH on 27/1/05
        ! this code isn't ugly and it does work !!!!
@@ -2840,7 +2843,49 @@ CONTAINS
 
 !       write(*,*) tval, exitpoint
 
+    else
+
+
+       distToR1 = 1.d30
+       distToR2 = 1.d30
+
+       rVec = currentPoint
+       call normalize(rVec)
+       cosmu = ((-1.d0)*direction).dot.rVec
+       d = modulus(currentPoint)
+
+       ! distance to outer radius
+
+       r2 = centre%x + subcellSize/2.d0
+       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+       distToR2 = max(x1,x2)
+!             write(*,*) "r2",x1,x2,disttor2
+
+       !   inner radius
+
+       r1 = centre%x - subcellSize/2.d0
+       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+       cosmu =((-1.d0)*rVec).dot.direction
+       mu = acos(max(-1.d0,min(1.d0,cosmu)))
+       distTor1 = 1.e30
+       if (mu  < theta ) then
+          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+          distTor1 = min(x1,x2)
+       endif
+!             write(*,*) "r1",x1,x2,disttor1,mu,theta
+
+       tval = min(distTor1, distTor2)
+
+       minWallDistance = tVal
+   
+       exitPoint = currentPoint + tval * direction
+       locator = exitPoint + frac*halfSmallestSubcell * direction
+
     endif
+
+
+
+
 
   END SUBROUTINE getExitPoint 
 
@@ -4344,13 +4389,14 @@ CONTAINS
           
                          
        case("sphere")
-          if (thisOctal%nDepth < minDepthAMR) split = .true.
+!          if (thisOctal%subcellSize > (rGrid(i+1)-rGrid(i))) then
+!             if (thisOctal%nDepth < minDepthAMR) split = .true.
+!          endif
           bigJ = 0.25d0
           cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))
           rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * (thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
-          massTol  = rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
-!          massTol = (1.d0/8.d0)*rhoThreshold*1.d30*smallestCellSize**3
-          if (((thisOctal%rho(subcell)*1.d30*thisOctal%subcellSize**3) > massTol) &
+          massTol  = 0.011d0*rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
+          if (((thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30) > massTol) &
                .and.(thisOctal%nDepth < maxDepthAMR)) then
              split = .true.
 !             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
@@ -15962,9 +16008,11 @@ end function readparameterfrom2dmap
   end subroutine tauAlongPath
 
   subroutine tauAlongPathFast(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
-       xArray, tauArray, distanceToEdge)
+       xArray, tauArray, distanceToEdge, debug)
+    use source_mod, only : globalSourceArray, globalNsource, distanceToSource
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
+    logical, optional :: debug
     real, optional,intent(out) :: xArray(:), tauArray(:)
     integer, optional, intent(out) :: nTau
     integer :: iLambda
@@ -15975,18 +16023,38 @@ end function readparameterfrom2dmap
     type(OCTAL), pointer :: thisOctal, sOctal
     type(OCTAL), pointer, optional :: startOctal
     integer, optional :: startSubcell
-    real(double) :: fudgeFac = 1.d-1
-    real(double) :: kappaSca, kappaAbs, kappaExt
+    real(double), parameter :: fudgeFac = 1.d-1
+    real(double) :: kappaSca, kappaAbs, kappaExt, distance
     integer :: subcell
     logical, optional :: ross
+    logical :: hitGrid, hitSource
+    integer :: sourceNumber
     kappaAbs = 0.d0; kappaSca = 0.d0
     tau = 0.d0
     currentPosition = rVec
+
+
     if (PRESENT(nTau)) then
        xArray(1) = 0.d0
        tauArray(1) = 0.d0
        ntau = 1
     endif
+
+    if (PRESENT(debug)) write(*,*) "inoctal ",inOctal(grid%octreeRoot, currentPosition)
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
+       distToNextCell = distanceToGridFromOutside(grid, currentPosition, direction, hitGrid) 
+       if (hitGrid) then
+          currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+          ntau = ntau + 1
+          tauArray(ntau) = tauArray(nTau-1)
+          xArray(nTau) = real(xArray(nTau-1) + distToNextCell)
+       else
+          goto 666
+       endif
+    endif
+
+
+
 
     if (PRESENT(startOctal)) then
        thisOctal => startOctal
@@ -16027,7 +16095,22 @@ end function readparameterfrom2dmap
           if (tau > tauMax) exit
        endif
     end do
+
 666 continue
+    if (present(debug)) then
+       write(*,*) "current pos ",currentposition,modulus(currentposition)
+       write(*,*) "direction ", direction
+       write(*,*) "source pos ",globalSourceArray(globalnSource)%position
+    endif
+
+    call distanceToSource(globalSourceArray, globalnSource, currentPosition, direction, hitSource, distance, sourcenumber)
+       if (present(debug)) write(*,*) "hit source ",hitsource
+    if (hitSource) then
+       nTau = nTau + 1
+       tauArray(nTau) = 1.d20
+       xArray(nTau) = xArray(ntau-1) + distance
+       tau = 1.d20
+    endif
   end subroutine tauAlongPathFast
 
   subroutine tauAlongPath2(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell)

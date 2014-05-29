@@ -963,7 +963,9 @@ contains
 
           if (.not.associated(thisOctal%origDustTypeFraction)) then
              allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
-             thisOctal%origDustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+             do i = 1, thisOctal%maxChildren
+                thisOctal%origDustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+             enddo
           endif
           thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%origDustTypeFraction(subcell,1:nDustType) * frac
 
@@ -972,7 +974,6 @@ contains
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
 
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
-          write(*,*) "thistau ",thistau, thisOctal%dustTypeFraction(subcell,1), thisOctal%oldFrac(subcell), " frac ",frac
           if (thisTau > tauMax) then
              frac = tauMax / thisTau 
              thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac

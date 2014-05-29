@@ -2534,7 +2534,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(message,'(a,i4)') "Number of samples: ",nTau
      call writeInfo(message, TRIVIAL)
      write(message,*) " "
-  call writeInfo(message, TRIVIAL)
+     call writeInfo(message, TRIVIAL)
   end if
 
   !

@@ -272,7 +272,7 @@ contains
              case("vanleer")
                 !write(*,*) "vanleer"
                 thisoctal%philimit(subcell) = (thisoctal%rlimit(subcell) + &
-                abs(thisoctal%rlimit(subcell))) / (1 + abs(thisoctal%rlimit(subcell)))
+                abs(thisoctal%rlimit(subcell))) / (1.d0 + abs(thisoctal%rlimit(subcell)))
                
 !i.e no flux limiter
              case("donorcell")
@@ -765,8 +765,8 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
           if (.not.thisOctal%ghostCell(subcell)) then
              rVec = subcellCentre(thisOctal, subcell)
-             if ( ((rVec%z+thisOctal%subcellSize/2.d0) > 0.d0).and. &
-                  ((rVec%z-thisOctal%subcellSize/2.d0) < 0.d0) ) then
+             if ( ((rVec%z) > 0.d0).and. &
+                  ((rVec%z-thisOctal%subcellSize/2.d0-0.1d0*smallestCellSize) < 0.d0) ) then
                 nr = nr + 1
                 rAxis(nr) = rVec%x
              endif
@@ -842,7 +842,7 @@ contains
                    call findSubcellLocal(rVec2,neighbourOctal, neighbourSubcell)
                    if (neighbourOctal%rho(neighbourSubcell) > rhoThreshold) then
                       thisRho = neighbourOctal%rho(neighbourSubcell)
-                      write(*,*) "setting rho from ",thisOctal%rho(subcell), " to " ,thisRho
+!                      write(*,*) "setting rho from ",thisOctal%rho(subcell), " to " ,thisRho
                    endif
                 endif
              endif
@@ -1182,7 +1182,7 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call updatecellqCylindrical(child, dt, direction)
+                call updatecellqspherical(child, dt, direction)
                 exit
              end if
           end do
@@ -1536,6 +1536,7 @@ contains
     integer :: subcell, i, neighboursubcell, nd
     type(vector) :: direction, locator!, rotator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, dt
+    real(double) :: rhou_i_plus_1, x_interface_i_p_half
     real(double) :: xnext, weight, px, py, pz, x_interface
     real(double) :: pressure_i_plus_1, pressure_i, pressure_i_minus_1, pressure_i_minus_2
     real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1
@@ -1583,6 +1584,20 @@ contains
              
              x_interface = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
 
+             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+
+             rho_i_plus_1 = rho
+             rhou_i_plus_1 = direction.dot.VECTOR(rhou,rhov,rhow)
+             pressure_i_plus_1 = pressure             
+             x_i_plus_1 = px
+             x_interface_i_p_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
+
+
+
              if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
                 write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
                 print *, "cen ", subcellCentre(thisOctal, subcell)
@@ -1607,6 +1622,17 @@ contains
                   (1.d0-weight)*rhou_i_minus_1/rho_i_minus_1
              if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
              thisOctal%u_i(subcell) = thisRhou / thisOctal%rho(subcell)
+
+
+! now the cell at i+1/2
+
+             weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+             
+             if (.not.associated(thisOctal%u_interface_i_plus_1)) allocate(thisOctal%u_interface_i_plus_1(1:thisOctal%maxChildren))
+             thisoctal%u_interface_i_plus_1(subcell) = &
+                  weight * rhou_i_plus_1/rho_i_plus_1+ &
+                  (1.d0-weight)*thisRhou/thisoctal%rho(subcell)
+
 
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
              if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
@@ -1760,7 +1786,29 @@ contains
                   rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
    
+
+             
              thisoctal%flux_i_plus_1(subcell) = flux
+
+
+!             if (nd < thisOctal%nDepth) then ! neighbouring cell is coarser, use local u_interface for flux
+!                if (thisoctal%u_interface_i_plus_1(subcell).ge.0.d0) then
+!                   thisoctal%flux_i_plus_1(subcell) = thisoctal%u_interface_i_plus_1(subcell) * thisoctal%q_i(subcell)
+!                else
+!                   thisoctal%flux_i_plus_1(subcell) = thisoctal%u_interface_i_plus_1(subcell) * thisoctal%q_i_plus_1(subcell)
+!                endif
+!             endif
+
+
+!             if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6)).and.(direction%z > 0.9d0)) then
+!                write(*,*) "flux ", -flux, thisOctal%flux_i_plus_1(subcell), thisOctal%u_interface_i_plus_1(subcell)/1.d5
+!                write(*,*) "neighbour u_i ",neighbourOctal%u_interface(neighboursubcell)/1.d5
+!                write(*,*) "neighbour q_i ",neighbourOctal%q_i(neighboursubcell)
+!                write(*,*) "neighbour flux ",neighbourOctal%q_i(neighboursubcell)*neighbourOctal%u_interface(neighboursubcell)
+!                write(*,*) "q_i_p_1 ", thisOctal%q_i_plus_1(subcell)
+!             endif
+
+
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -2937,11 +2985,15 @@ contains
              
              debug = .false.
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
-             if ((speed > 1000.d0).and.(myHydroSetGlobal == 0)) then
-                write(*,*) "speed before" ,speed
-                debug = .true.
-             endif
 
+!             if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6))) then
+!                debug = .true.
+!             endif
+
+             if (debug.and.(myHydroSetGlobal == 0)) then
+                write(*,*) "speed before" ,speed
+             endif
+             
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrankGlobal," error in setting up x_i values"
@@ -3027,8 +3079,8 @@ contains
 !!!                      write(*,*) "u speed over 200 after pressure forces"
   !                 endif
                    if (debug) then
-                      write(*,*) "change in mom from pressure in x ",- dt * &
-                           (p_i_plus_half - p_i_minus_half) / dx
+                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from pressure in x ",(- dt * &
+                           (p_i_plus_half - p_i_minus_half) / dx)/(thisOctal%rho(subcell)*1.d5)
                    endif
                 endif
 
@@ -3052,7 +3104,7 @@ contains
 !                   endif
 
                 if (debug) then
-                   write(*,*) "change in mom from viscosity in x ", dt * fVisc%x
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from viscosity in x ", dt * fVisc%x/(thisOctal%rho(subcell)*1.d5)
                 endif
 
 
@@ -3071,8 +3123,8 @@ contains
 !                   endif
 
                 if (debug) then
-                   write(*,*) "change in mom from gravity in x ", dt * & !gravity due to gas
-                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed  gravity in x ", (dt*gravforcefromsinks%x + dt * & !gravity due to gas
+                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx) / (thisOctal%rho(subcell)*1.d5)
                 endif
 
 
@@ -3085,8 +3137,8 @@ contains
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)!/dx!**2
 
                 if (debug) then
-                   write(*,*) "change in mom from centrifugal term ", dt * (thisOctal%rhov(subcell)**2) &
-                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from centrifugal term ", (dt * (thisOctal%rhov(subcell)**2) &
+                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3))/(thisOctal%rho(subcell)*1.d5)
                 endif
 
 !                thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * (thisOctal%rhov(subcell)**2) &
@@ -3114,7 +3166,8 @@ contains
 
 
                 if (debug) then
-                   write(*,*) "change in mom from centrifugal term in x (change in km/s): ", + dt * (thisOctal%rhov(subcell)**2) &
+                   if (myHydroSetGlobal == 0) write(*,*) "change in mom from centrifugal term in x (change in km/s): ", &
+                        + dt * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)**2*thisOctal%x_i(subcell)**3)/1.d5
                 endif
 
@@ -3124,7 +3177,8 @@ contains
                         dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
 
                    if (debug) then
-                      write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in x ", &
+                           (dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed)/(thisOctal%rho(subcell)*1.d5)
 
                    endif
 !                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
@@ -3172,8 +3226,8 @@ contains
 
                 endif
                 if (debug) then
-                   write(*,*) "change in mom from pressure in z ",- dt * &
-                     (p_i_plus_half - p_i_minus_half) / dx
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from pressure in z ",(- dt * &
+                     (p_i_plus_half - p_i_minus_half) / dx)/(thisOctal%rho(subcell)*1.d5)
                 endif
 
 ! alpha viscosity
@@ -3188,7 +3242,7 @@ contains
 
 
                 if (debug) then
-                   write(*,*) "change in mom from viscosity in z ", dt * fVisc%z
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from viscosity in z ", dt * fVisc%z/(thisOctal%rho(subcell)*1.d5)
                 endif
 
 
@@ -3204,8 +3258,8 @@ contains
 
 
                 if (debug) then
-                   write(*,*) "change in mom from gravity in z ", dt * & !gravity due to gas
-                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from gravity in z ", (dt * gravforcefromsinks%z + dt * & !gravity due to gas
+                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx)/(thisoctal%rho(subcell)*1.d5)
                 endif
 
 !                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
@@ -3221,7 +3275,8 @@ contains
 !                   endif
 
                    if (debug) then
-                      write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in x ", &
+                           (dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed)/(thisOctal%rho(subcell)*1.d5)
                    endif
 
                 endif
@@ -3850,9 +3905,27 @@ contains
              end if
           end do
        else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
           thisoctal%q_i(subcell) = thisoctal%rho(subcell)
         
+!          if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6))) then
+!             if (myHydroSetGlobal ==0) then
+!                write(*,*) "before rho advection pos ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+!          endif
+!          if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, -990.d3))) then
+!             if (myHydroSetGlobal ==0) then
+!                write(*,*) "before rho advection neg ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+!          endif
+!          if (inSubcell(thisOctal, subcell, VECTOR(140.d3, 0.d0, 625d3))) then
+!             if (myHydroSetGlobal ==0) then
+!                write(*,*) "before rho advection cen ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+!          endif
+
+
        endif
     enddo
   end subroutine copyrhotoq
@@ -4042,9 +4115,16 @@ contains
              end if
           end do
        else
-  
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
           thisoctal%q_i(subcell) = thisoctal%rhow(subcell)
         
+!          if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6))) then
+!             if (myHydroSetGlobal == 0) write(*,*) "before advect rhow pos ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!          endif
+!          if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, -990d3))) then
+!             if (myHydroSetGlobal == 0) write(*,*) "before advect rhow neg ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!          endif
        endif
     enddo
   end subroutine copyrhowtoq
@@ -4120,6 +4200,7 @@ contains
           end do
        else
   
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           if (.not.thisoctal%ghostcell(subcell)) then
              thisoctal%rhov(subcell) = thisoctal%q_i(subcell)
           endif
@@ -4145,9 +4226,21 @@ contains
              end if
           end do
        else
-  
+            if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
           if (.not.thisoctal%ghostcell(subcell)) then
              thisoctal%rhow(subcell) = thisoctal%q_i(subcell)
+!             if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6))) then
+!                if (myHydroSetGlobal == 0) write(*,*) "after advect rhow pos ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+!             if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, -990d3))) then
+!                if (myHydroSetGlobal == 0) write(*,*) "after advect rhow neg ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+
+!             if (inSubcell(thisOctal, subcell, VECTOR(140.d3, 0.d0, 625d3))) then
+!                if (myHydroSetGlobal == 0) write(*,*) "after advect rhow cen ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+
           endif
         
        endif
@@ -4179,6 +4272,7 @@ contains
           if (.not.thisoctal%ghostcell(subcell)) then
              thisoctal%rho(subcell) = max(thisoctal%q_i(subcell),rhofloor)
           endif
+
           if (thisoctal%rho(subcell) < 0.d0) then
              write(*,*) "rho warning ", thisoctal%rho(subcell), subcellcentre(thisoctal, subcell)
              write(*,*) "rhou, rhov, rhow ", thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
@@ -4241,6 +4335,16 @@ contains
           if (.not.thisoctal%ghostcell(subcell)) then
              thisoctal%rho(subcell) = max(thisoctal%q_i(subcell),rhoFloor)
 
+!          if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6))) then
+!             if (myHydroSetGlobal ==0) then
+!                write(*,*) "after rho advection pos ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+!          endif
+!          if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, -990d3))) then
+!             if (myHydroSetGlobal ==0) then
+!                write(*,*) "after rho advection neg ",thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
+!             endif
+!          endif
 !             if (rhoFloor > thisOctal%q_i(subcell)) then
 !                fac = thisOctal%q_i(subcell)/rhoFloor
 !                thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
@@ -5362,6 +5466,11 @@ end subroutine sumFluxes
 
     enddo
 
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setupUi(grid%octreeRoot, grid, direction, dt)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    
 
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
@@ -13194,7 +13303,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -13370,9 +13479,9 @@ end subroutine refineGridGeneric2
 !            MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (mod(it,100) == 0) then
-          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas ", "rho    ","chiline"/))
+!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2

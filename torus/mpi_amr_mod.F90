@@ -2145,13 +2145,13 @@ contains
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
        rhoe, pressure, flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
-!    use inputs_mod, only : useTensorViscosity, cylindricalHydro
+    use inputs_mod, only :  cylindricalHydro
 
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
     real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi, phigas, qViscosity(3,3)
-    real(double) :: fac, rm1, rum1, pm1, temperature
-    type(VECTOR) :: direction
+    real(double) :: fac, rm1, rum1, pm1, temperature,fac1,fac2
+    type(VECTOR) :: direction,rvec
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
 !    call normalize(direction)
@@ -2179,6 +2179,8 @@ contains
        pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
        
      else if (neighbourOctal%twoD) then
+        fac1 = 0.5d0
+        fac2 = 0.5d0
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1
           nSubcell(2) = 3
@@ -2188,26 +2190,48 @@ contains
        else if (direction%z > 0.9d0) then
           nSubcell(1) = 1
           nSubcell(2) = 2
+          if (cylindricalHydro) then
+             rVec = subcellCentre(neighbourOctal,1)             
+             fac1 = pi*((rVec%x+neighbourOctal%subcellSize/2.d0)**2 - (rVec%x-neighbourOctal%subcellsize/2.d0)**2)
+             rVec = subcellCentre(neighbourOctal,2)             
+             fac2 = pi*((rVec%x+neighbourOctal%subcellSize/2.d0)**2 - (rVec%x-neighbourOctal%subcellsize/2.d0)**2)
+             fac = fac1+fac2
+             fac1 = fac1/fac
+             fac2 = fac2/fac
+          endif
        else
           nSubcell(1) = 3
           nSubcell(2) = 4
+          if (cylindricalHydro) then
+             rVec = subcellCentre(neighbourOctal,3)             
+             fac1 = pi*((rVec%x+neighbourOctal%subcellSize/2.d0)**2 - (rVec%x-neighbourOctal%subcellsize/2.d0)**2)
+             rVec = subcellCentre(neighbourOctal,4)             
+             fac2 = pi*((rvec%x+neighbourOctal%subcellSize/2.d0)**2 - (rVec%x-neighbourOctal%subcellsize/2.d0)**2)
+             fac = fac1+fac2
+             fac1 = fac1/fac
+             fac2 = fac2/fac
+          endif
        endif
-       q = 0.5d0*(neighbourOctal%q_i(nSubcell(1)) + neighbourOctal%q_i(nSubcell(2)))
-       rho = 0.5d0*(neighbourOctal%rho(nSubcell(1)) + neighbourOctal%rho(nSubcell(2)))
-       rhoe = 0.5d0*(neighbourOctal%rhoe(nSubcell(1)) + neighbourOctal%rhoe(nSubcell(2)))
-       rhou = 0.5d0*(neighbourOctal%rhou(nSubcell(1)) + neighbourOctal%rhou(nSubcell(2)))
-       rhov = 0.5d0*(neighbourOctal%rhov(nSubcell(1)) + neighbourOctal%rhov(nSubcell(2)))
-       rhow = 0.5d0*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)))
-       pressure = 0.5d0*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)))
-       temperature = 0.5d0*(neighbourOctal%temperature(nSubcell(1)) + neighbourOctal%temperature(nSubcell(2)))
-       flux = 0.5d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)))
-       phi = 0.5d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)))
-       phigas = 0.5d0*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)))
-       rm1 = 0.5d0*(neighbourOctal%rho_i_minus_1(nSubcell(1)) + neighbourOctal%rho_i_minus_1(nSubcell(2)))
-       rum1 = 0.5d0*(neighbourOctal%u_i_minus_1(nSubcell(1)) + neighbourOctal%u_i_minus_1(nSubcell(2)))
-       pm1 = 0.5d0*(neighbourOctal%pressure_i_minus_1(nSubcell(1)) + neighbourOctal%pressure_i_minus_1(nSubcell(2)))
 
-       qViscosity = 0.5d0*(neighbourOctal%qViscosity(nSubcell(1),:,:) + neighbourOctal%qViscosity(nSubcell(2),:,:))
+!       if (inSubcell(neighbourOctal, 3, VECTOR(50.d3, 0.d0, 1.07d6))) then
+!          if (myHydroSetGlobal ==0) write(*,*) "fac1,fac2" , fac1,fac2
+!       endif
+
+       q = fac1*neighbourOctal%q_i(nSubcell(1)) + fac2*neighbourOctal%q_i(nSubcell(2))
+       rho = fac1*neighbourOctal%rho(nSubcell(1)) + fac2*neighbourOctal%rho(nSubcell(2))
+       rhoe = fac1*neighbourOctal%rhoe(nSubcell(1)) + fac2*neighbourOctal%rhoe(nSubcell(2))
+       rhou = fac1*neighbourOctal%rhou(nSubcell(1)) + fac2*neighbourOctal%rhou(nSubcell(2))
+       rhov = fac1*neighbourOctal%rhov(nSubcell(1)) + fac2*neighbourOctal%rhov(nSubcell(2))
+       rhow = fac1*neighbourOctal%rhow(nSubcell(1)) + fac2*neighbourOctal%rhow(nSubcell(2))
+       pressure = fac1*neighbourOctal%pressure_i(nSubcell(1)) + fac2*neighbourOctal%pressure_i(nSubcell(2))
+       temperature = fac1*neighbourOctal%temperature(nSubcell(1)) + fac2*neighbourOctal%temperature(nSubcell(2))
+       flux = fac1*neighbourOctal%flux_i(nSubcell(1)) + fac2*neighbourOctal%flux_i(nSubcell(2))
+       phi = fac1*neighbourOctal%phi_i(nSubcell(1)) + fac2*neighbourOctal%phi_i(nSubcell(2))
+       phigas = fac1*neighbourOctal%phi_gas(nSubcell(1)) + fac2*neighbourOctal%phi_gas(nSubcell(2))
+       rm1 = fac1*neighbourOctal%rho_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%rho_i_minus_1(nSubcell(2))
+       rum1 = fac1*neighbourOctal%u_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%u_i_minus_1(nSubcell(2))
+       pm1 = fac1*neighbourOctal%pressure_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%pressure_i_minus_1(nSubcell(2))
+       qViscosity = fac1*neighbourOctal%qViscosity(nSubcell(1),:,:) + fac2*neighbourOctal%qViscosity(nSubcell(2),:,:)
 
     else if (neighbourOctal%threed) then
        if (direction%x > 0.9d0) then

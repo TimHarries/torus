@@ -409,6 +409,7 @@
 
   logical :: monteCarloRT
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
+  type(VECTOR) :: imageOrigin
   real :: imageside    ! data cube size for molecular_mod and angularImage_mod
   integer :: ncubes ! number of data cubes
   integer :: nv ! number of velocity channels

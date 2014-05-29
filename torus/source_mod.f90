@@ -720,9 +720,9 @@
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
       use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval 
-      use inputs_mod, only : amrgridcentrey, amrgridcentrex, amrgridcentrez, hotSpot
+      use inputs_mod, only : amrgridcentrey, amrgridcentrex, amrgridcentrez, hotSpot, amrGridSize
       type(GRIDTYPE) :: grid
-      real(double) :: r, t, u, v, w, ang
+      real(double) :: r, t, u, v, w, ang, planetBiasWeight
       real(double), optional :: weight
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
@@ -762,21 +762,20 @@
                   direction = VECTOR(u, v, w)
                   
                endif
-            
+               
                   
                
-         else
-            rHat = randomUnitVector()
-            position = source%position + source%radius*rHat
-            ! A limb darkening law should be applied here for 
-            ! for general case here.....
-            direction = fromPhotoSphereVector(rHat)
-
-            if (hotSpot) then
-               call getPhotoVec(source%surface, position, direction)
+            else
+               rHat = randomUnitVector()
+               position = source%position + source%radius*rHat
+               ! A limb darkening law should be applied here for 
+               ! for general case here.....
+               direction = fromPhotoSphereVector(rHat)
+               if (hotSpot) then
+                  call getPhotoVec(source%surface, position, direction)
+               endif
+               
             endif
-
-         endif
          !Thaw- if source is on a corner, direct all photons into computational domain
          !These are re-weighted to account for bias in photoionAMR_mod
          if (source%onCorner) then
@@ -858,8 +857,19 @@
                end if
             end if
          else if(grid%octreeroot%oned) then
-            position%z = amrgridcentrez
-            position%y = amrgridcentrey
+
+               rHat = randomUnitVector()
+               position = source%position + source%radius*rHat
+               ! A limb darkening law should be applied here for 
+               ! for general case here.....
+               direction = fromPhotoSphereVector(rHat)
+               if (hotSpot) then
+                  call getPhotoVec(source%surface, position, direction)
+               endif
+               call biasTowardsPlanet(position, rHat, VECTOR(0.d0, 0.d0, 0.d0), dble(amrGridSize), &
+                    planetBiasweight, direction)
+               if (PRESENT(weight)) weight = weight * planetBiasWeight
+
          end if
       endif
       !Thaw - photons from corner sources should be directed into the grid

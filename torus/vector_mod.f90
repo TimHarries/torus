@@ -806,6 +806,42 @@ contains
     distance = modulus(a .cross. b) / modulus(a)
   end function minimumDistanceFromPointToLine
     
+  subroutine biasTowardsPlanet(stellarSurfacePosition, surfaceNormal, planetPosition, planetRadius, planetBiasweight, direction)
+    use constants_mod
+    type(VECTOR) :: stellarSurfacePosition, surfaceNormal, planetPosition, direction
+    type(VECTOR) :: towardsPlanetCentre, towardsPlanetTop, vectorInSurface
+    real(double) :: planetRadius, planetBiasWeight, distToPlanetCentre, theta, r, rTheta
+
+    planetBiasWeight = 1.d0
+    towardsPlanetCentre = planetPosition - stellarSurfacePosition
+    distToPlanetCentre = modulus(towardsPlanetCentre)
+    call normalize(towardsPlanetCentre)
+
+    towardsPlanetTop = (planetPosition + planetRadius * surfaceNormal) - stellarSurfacePosition
+    if ((towardsPlanetTop.dot.surfaceNormal) < 0.d0) then ! planet below local horizon
+       goto 666
+    endif
+
+    theta = asin(planetRadius/distToplanetCentre)
+    call randomNumberGenerator(getDouble=r)
+    rTheta = acos(cos(theta) + r * (1.d0 - cos(theta)))
+    vectorInSurface =  surfaceNormal .cross. towardsPlanetCentre
+    call normalize(vectorInSurface)
+    direction = towardsPlanetCentre
+    direction = arbitraryRotate(direction, rTheta, vectorInSurface) 
+
+    call randomNumberGenerator(getDouble=r)
+    rTheta = r * twoPi
+    direction =  arbitraryRotate(direction, rTheta, towardsPlanetCentre)
+
+!    direction = randomUnitVector()
+!    do while (.not.(((direction.dot.surfaceNormal) > 0.).and.(acos(direction.dot.towardsPlanetCentre)<theta)))
+!       direction = randomUnitVector()
+!    end do
+    planetBiasWeight = twoPi*(1.d0-cos(theta))/fourPi
+
+666 continue
+  end subroutine biasTowardsPlanet
 
 
 end module vector_mod

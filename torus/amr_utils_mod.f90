@@ -589,6 +589,10 @@ module amr_utils_mod
       call normalize(rhat)
       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
       cosmu = rHat.dot.direction
+      if (cosmu < 0.d0) then
+         if (PRESENT(hitgrid)) hitgrid = .false.
+         goto 666
+      endif
       mu = acos(max(-1.d0,min(1.d0,cosmu)))
       distTor1 = 1.e30
       if (mu  < theta ) then
@@ -603,6 +607,8 @@ module amr_utils_mod
             endif
          endif
          tval = min(x1,x2)
+      else
+         if (present(hitgrid)) hitgrid = .false.
       endif
       goto 666
    endif

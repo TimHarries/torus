@@ -2369,7 +2369,7 @@ contains
        amrGridCentreX = amrgridsize/2.
        dx = dble(amrgridSize)/dble(2**5-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       amrGridCentrez =  0.5*amrGridSize / real(2**maxDepthAMR) ! 0.
+       amrGridCentrez =  0.!0.5*amrGridSize / real(2**maxDepthAMR) ! 0.
        vtkIncludeGhosts = .false.
        !       endif
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
@@ -2792,6 +2792,10 @@ contains
     call getReal("imagesize", imageSize, 1.0, cLine, fLine, nLines, &
          trim(message), "(a,1pe10.2,1x,a)", wholeGrid, ok, .false.)
 
+    call getVector("imageorigin", imageOrigin, 1.d0, cLine, fLine, nLines, &
+                  "Origin for image (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+
     call getString("imagefluxunits", fluxUnits, cLine, fLine, nLines,&
          "Flux units for image:", "(a,a,1x,a)", "MJy/str", ok, .false.)
 
@@ -2981,6 +2985,9 @@ contains
 
     call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .false.)
+
+    call getVector("imageorigin", imageOrigin, 1.d0, cLine, fLine, nLines, &
+                  "Origin for image (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
 
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)

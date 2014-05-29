@@ -206,9 +206,9 @@ contains
 !       deltaTforDump = 3.14d11
 !       tend = 50.d0*deltaTforDump
 
-       if (grid%geometry(1:6) == "sphere") then
-          call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
-       endif
+!       if (grid%geometry(1:6) == "sphere") then
+!          call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
+!       endif
 
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
@@ -1106,10 +1106,10 @@ contains
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         ","dust1        ",  &
+               "diff         ","dust1        ","u_i          ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
                "vphi         ","jnu          ","mu           ", &
-               "fvisc1       ","fvisc2       ","fvisc3       "/))
+               "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
 
 
           if(densitySpectrum) then
@@ -1384,7 +1384,7 @@ end subroutine radiationHydro
     logical, save :: firstWarning = .true.
     real(double) :: maxDiffRadius(1:100)
     real(double) :: maxDiffRadius1(1:100), maxDiffRadius2(1:100)
-    real(double) :: maxDiffRadius3(1:100)
+    real(double) :: maxDiffRadius3(1:100), tauWanted
     integer :: receivedStackSize, nToSend
 
 
@@ -1789,6 +1789,7 @@ end subroutine radiationHydro
              call writeInfo(message, TRIVIAL)
              call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, subTemp=1500.d0, minLevel=1.d-10)
           endif
+!          call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust1"/))
           if (maxIter == 1) call  sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax=1.e30, subTemp=1500.d0)
        end if
 
@@ -1798,13 +1799,14 @@ end subroutine radiationHydro
 
        if(.not. cart2d .and. .not. spherical) then! .and. 0== 1) then
           maxDiffRadius3  = 1.d30
+          tauWanted = 1.d0
           do isource = 1, globalnSource
-             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), 10.d0, maxDiffRadius1(iSource))
+             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, maxDiffRadius1(iSource))
              call MPI_BCAST(maxDiffRadius1(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-             call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), 10.d0, maxDiffRadius2(iSource))
+             call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), tauWanted, maxDiffRadius2(iSource))
              call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              if (amr3D) then
-                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), 10.d0, maxDiffRadius3(iSource))
+                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), tauWanted, maxDiffRadius3(iSource))
                 call MPI_BCAST(maxDiffRadius3(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              endif
              call MPI_BARRIER(localWorldCommunicator, ierr)
@@ -3266,22 +3268,22 @@ end subroutine radiationHydro
     failed = .false.
 
      anyUndersampled = .false.
-     if(grid%geometry == "hii_test") then
-        minCrossings = 100
-     else if(grid%geometry == "lexington") then
-        if(grid%octreeroot%oned) then
-           minCrossings = 50000
-        else
-           minCrossings = 30000
-        end if
-        !     else if(singleMegaPhoto) then
-        !        minCrossings = 50000 
-     else if(.not. hOnly) then
-        minCrossings = 3000
-     else
-        !        minCrossings = 5000
-        minCrossings = 10
-     end if
+!     if(grid%geometry == "hii_test") then
+!        minCrossings = 100
+!     else if(grid%geometry == "lexington") then
+!        if(grid%octreeroot%oned) then
+!           minCrossings = 50000
+!        else
+!           minCrossings = 30000
+!        end if
+!        !     else if(singleMegaPhoto) then
+!        !        minCrossings = 50000 
+!     else if(.not. hOnly) then
+!        minCrossings = 3000
+!     else
+!        !        minCrossings = 5000
+!        minCrossings = 10
+!     end if
 
    !Thaw - auto convergence testing I. Temperature, will shortly make into a subroutine
      maxDeltaT = -1.d30
