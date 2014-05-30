@@ -9710,7 +9710,7 @@ endif
   subroutine calcBondiHoyleDensity(thisOctal,subcell)
 
     use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe, &
-         inflowTemp
+         inflowTemp, amr3d
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -9732,8 +9732,11 @@ endif
 
     soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
     inflowSpeed = 3.d0*soundSpeed
-    thisOctal%velocity(subcell) = VECTOR(inflowSpeed/cSpeed, 0.d0, 0.d0)
-
+    if (amr3d) then
+       thisOctal%velocity(subcell) = VECTOR(inflowSpeed/cSpeed, 0.d0, 0.d0)
+    else
+       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, inflowSpeed/cSpeed)
+    endif
     eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%iEquationOfState(subcell) = 1

@@ -366,7 +366,6 @@ contains
     do while(stillServing)
 
        call MPI_RECV(radius, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
-
        if (radius > 1.d29) then
           stillServing = .false.
        else
@@ -445,8 +444,8 @@ contains
                             dv = thisOctal%subcellSize**2
                          endif
                       else if (thisOctal%oned) then
-                         dv = thisOctal%subcellSize                      
-                         
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
                       endif
                    endif
                    totalMass = totalMass + thisOctal%rho(subcell) * dv

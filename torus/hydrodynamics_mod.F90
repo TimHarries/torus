@@ -1012,7 +1012,7 @@ contains
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call constructfluxCYlindrical(grid, child, dt, direction, writeDebug)
+                call constructfluxSpherical(grid, child, dt, direction, writeDebug)
                 exit
              end if
           end do
@@ -1035,7 +1035,7 @@ contains
              endif
         
              if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) "problem with the x_i values"
+                write(*,*) "problem with the x_i values ",myrankglobal,thisOctal%nDepth
                 stop
              endif
 
@@ -1326,6 +1326,7 @@ contains
           end do
        else
           thisoctal%x_i(subcell) = returnCodeUnitLength(griddistancescale*(subcellcentre(thisoctal, subcell) .dot. direction))
+!          write(*,*) "x_i ",thisOctal%x_i(subcell),myrankglobal
        endif
     enddo
   end subroutine setupx
@@ -3050,7 +3051,7 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                  1.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
 
 
 
@@ -3414,8 +3415,8 @@ contains
                   thisOctal%rhov(subcell)) * fac2
 
 
-!             call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-!                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+             call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
+                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
              thisOctal%fViscosity(subcell) = fVisc * 1.d20
 !             if (modulus(fVisc) /= 0.d0) write(*,*) "fvisc ",fvisc
 
@@ -3463,7 +3464,7 @@ contains
 !                   endif
 !
 !
- !               thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
+               thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + dt * gravForceFromSinks%x ! grav due to sinks
 
 !                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
 !                      write(*,*) "u speed over 200 after sink gravity forces"
@@ -5497,10 +5498,12 @@ end subroutine sumFluxes
 
 !Perform a single hydrodynamics step, in the x direction, for the 1D case. 
   subroutine  hydrostep1dSpherical(grid, dt, npairs, thread1, thread2, nbound, group, ngroup)
+    use inputs_mod, only : doSelfGrav
     type(gridtype) :: grid
     real(double) :: dt
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
+    logical :: selfGravity
     
 
 
@@ -5510,6 +5513,14 @@ end subroutine sumFluxes
     call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
+
+    if (doSelfGrav) then
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call zeroSourcepotential(grid%octreeRoot)
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+    endif
+
 
     direction = vector(1.d0, 0.d0, 0.d0)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
@@ -5571,8 +5582,21 @@ end subroutine sumFluxes
 !impose boundary conditions again
 
     if (severeDamping) call damp(grid%octreeRoot)
-
-
+    
+    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
+    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
+       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+    endif
+    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
+    
+    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
+    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
+       call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+    else
+       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
+    endif
+    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
+    
     call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
     call transfertempstorage(grid%octreeroot)
@@ -6129,10 +6153,6 @@ end subroutine sumFluxes
           dt = nextDumpTime - currentTime
        endif
        
-
-       print *, "dt, tdump ", dt, tdump
-      
-
 
        if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
@@ -9141,7 +9161,9 @@ real(double) :: rho
     logical :: corner
     logical, optional :: flag
     logical, save :: firsttime=.true.
+    logical :: tmp
 
+    tmp = currentlyDoingHydroStep
     currentlyDoingHydroStep = .true.
 
     do subcell = 1, thisOctal%maxChildren
@@ -9472,7 +9494,7 @@ real(double) :: rho
           endif
       endif
     enddo
-    currentlyDoingHydroStep = .false.
+    currentlyDoingHydroStep = tmp
   end subroutine setupGhostCells
 
 
@@ -9487,8 +9509,9 @@ real(double) :: rho
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
     character(len=10) :: boundary
+    logical :: tmp
 
-
+    tmp = currentlyDoingHydroStep
     if (myrankGlobal == 0) goto 666
 
     currentlyDoingHydroStep = .true.
@@ -9621,7 +9644,7 @@ real(double) :: rho
        endif
     enddo
 666 continue
-    currentlyDoingHydroStep = .false.
+    currentlyDoingHydroStep = tmp
   end subroutine setupEdges
 
   recursive subroutine setupEdgesLevel(thisOctal, grid, nDepth)
@@ -9636,7 +9659,9 @@ real(double) :: rho
     type(VECTOR) :: probe(6)
     integer :: nProbeOutside
     character(len=10) :: boundary
+    logical :: tmp
 
+    tmp = currentlyDoingHydroStep 
     if (myrankGlobal == 0) goto 666
     currentlyDoingHydroStep = .true.
 
@@ -9727,7 +9752,7 @@ real(double) :: rho
        enddo
     endif
 666 continue
-    currentlyDoingHydroStep = .false.
+    currentlyDoingHydroStep = tmp
   end subroutine setupEdgesLevel
 
   recursive subroutine setupGhosts(thisOctal, grid)
@@ -9741,7 +9766,9 @@ real(double) :: rho
     type(VECTOR) :: probe(6), currentDirection
     integer :: nProbeOutside
     logical, save :: firsttime=.true.
+    logical :: tmp
 
+    tmp = currentlyDoingHydroStep
     if (myrankGlobal ==0 ) goto 666
     currentlyDoingHydroStep = .true.
 
@@ -10001,7 +10028,7 @@ real(double) :: rho
        endif
     enddo
 666 continue
-    currentlyDoingHydroStep = .false.
+    currentlyDoingHydroStep = tmp
   end subroutine setupGhosts
 
   subroutine createGhostCells(grid)
@@ -13806,21 +13833,25 @@ end subroutine minMaxDepth
      type(GRIDTYPE) :: grid
      real(double) :: r !, mass, radius, localMass
      integer :: iThread
-     integer :: ierr
-     integer, parameter :: tag = 23
+     integer :: ierr, j
+     integer, parameter :: tag = 54
 
      do iThread = 1, nHydroThreadsGlobal
 
         if (iThread == myRankGlobal) then
            call setupPhi1d(grid, grid%octreeRoot)
+           r = 1.d30
+           do j = 1, nHydroThreadsGlobal
+              if (j /= myrankGlobal) then
+                 call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, ierr)
+              endif
+           enddo
         else
            call findTotalMassWithinRServer(grid, iThread)
         endif
      enddo
      do iThread = 1, nHydroThreadsGlobal
         if (iThread /= myRankGlobal) then
-           r = 1.d30
-           call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
         endif
      enddo
    end subroutine selfGrav1d
@@ -13836,7 +13867,7 @@ end subroutine minMaxDepth
      real(double) :: r, mass, localmass
      integer :: ithread
      integer :: ierr, j
-     integer, parameter :: tag = 23
+     integer, parameter :: tag = 54
      integer :: status(MPI_STATUS_SIZE)
 
      do subcell = 1, thisoctal%maxchildren
@@ -13853,29 +13884,30 @@ end subroutine minMaxDepth
            if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
            rVec = subcellCentre(thisOctal, subcell)
-           r = rVec%x
-           mass = 0.d0
-           localMass = 0.d0
-
-           do iThread = 1, nHydroThreadsGlobal
-              if (myRankGlobal == iThread) then
-                 localMass = 0.d0
-                 call findTotalMassWithinRMPIPrivate(grid%octreeRoot, r, localMass)
-              else
-                 call MPI_SEND(radius, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-              endif
-           enddo
-
-
-           do j = 1, nHydroThreadsGlobal
-              if (j /= iThread) then
-                 call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, status, ierr)
-                 mass = mass + localMass
-              endif
-           enddo
-           thisOctal%phi_i(subcell) = -bigG * mass / (r * 1.d10)
-           thisOctal%phi_gas(subcell) = -bigG * mass / (r * 1.d10)
-
+           if (.not.rVec%x < 0.d0) then
+              r = rVec%x
+              mass = 0.d0
+              localMass = 0.d0
+              
+              do iThread = 1, nHydroThreadsGlobal
+                 if (myRankGlobal == iThread) then
+                    localMass = 0.d0
+                    call findTotalMassWithinRMPIPrivate(grid%octreeRoot, r, localMass)
+                 else
+                    call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                 endif
+              enddo
+              
+              
+              do j = 1, nHydroThreadsGlobal
+                 if (j /= myrankGlobal) then
+                    call MPI_RECV(localMass, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, status, ierr)
+                    mass = mass + localMass
+                 endif
+              enddo
+              thisOctal%phi_i(subcell) = -bigG * mass / (r * 1.d10)
+              thisOctal%phi_gas(subcell) = -bigG * mass / (r * 1.d10)
+           endif
         endif
      enddo
    end subroutine setupPhi1d
@@ -15764,7 +15796,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              endif
 
 
-             if (.not.cylindricalHydro) then
+             if (.not.(cylindricalHydro.or.spherical)) then
                 eGrav = cellMass * thisOctal%phi_i(subcell)
              else
                  call calculatePotentialFromSinks(thisOctal, subcell, source, nSource, eGrav)
@@ -15775,7 +15807,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              ekinetic = 0.5d0 * cellMass * modulus(cellVelocity-source(isource)%velocity)**2
 
              cellBound = .not.((eKinetic + eThermal + eGrav > 0.d0).and.(rhoLocal > rhoThreshold))
-             if (cylindricalHydro) CellBound = .true.
+             if (cylindricalHydro.or.spherical) CellBound = .true.
              if (.not.cellBound) then
                 write(*,*) "Cell in accretion radius but not bound ",eKinetic+eGrav+eThermal
                 write(*,*) "eGrav ",eGrav
