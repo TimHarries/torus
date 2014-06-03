@@ -33,7 +33,7 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, hydrodynamics, logspacegrid, nmag, dospiral
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -53,6 +53,9 @@ contains
 #ifdef PHOTOION
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff, &
          hasPhotoionAllocations, allocatePhotoionAttributes
+#endif
+#ifdef HYDRO
+    use inputs_mod, only : hydrodynamics
 #endif
 #endif
     use vh1_mod
@@ -590,8 +593,8 @@ contains
 
   subroutine doSmoothOnTau(grid)
 
-    use inputs_mod, only: doSmoothGridTau, dustPhysics, lambdaSmooth, cylindrical
-    use inputs_mod, only: photoionPhysics, variableDustSublimation, dosmoothgrid, smoothfactor
+    use inputs_mod, only: doSmoothGridTau, dustPhysics, lambdaSmooth!, cylindrical
+    use inputs_mod, only: dosmoothgrid, smoothfactor !,  photoionPhysics, variableDustSublimation, 
     use utils_mod, only: locate
     use lucy_mod, only: putTau
     use grid_mod, only: grid_info
@@ -2292,7 +2295,7 @@ recursive subroutine quickSublimate(thisOctal)
   end subroutine SanityCheckGrid
 
 subroutine fitAlphaDisc(grid)
-  use inputs_mod, only : alphaDisc, betaDisc, height, rinner, router, limitscalar, limitscalar2, rho0, geometry, heightsplitfac
+  use inputs_mod, only : alphaDisc, betaDisc, height, rinner, router, rho0, geometry, heightsplitfac
   type(GRIDTYPE) :: grid
   real(double) :: alpha, beta, heightDouble !, rhoDouble
   real(double) :: rInnerDouble, rOuterDouble!, chisq, minChisq
@@ -2303,7 +2306,7 @@ subroutine fitAlphaDisc(grid)
 
   alpha = 0.5
   beta = 1.125
-  rho0 = 1.d-7
+  rho0 = 1.e-7
   heightDouble = 10.d0*autocm/1.d10
 
 !  minChisq = 1.d30
@@ -2329,12 +2332,12 @@ subroutine fitAlphaDisc(grid)
 !        enddo
 !     enddo
 !  enddo
-  rinner = 10. * rSol / 1.e10
-  router = 100.*autocm/1.e10
-  height = 5.*autocm/1.d10
+  rinner = 10. * real(rSol   / 1.d10 )
+  router = 100.* real(autocm / 1.d10 )
+  height = 5.*   real(autocm / 1.d10 )
   alphaDisc = 0.5
   betaDisc = 1.
-  rho0 = 1.d-10
+  rho0 = 1.e-10
   heightsplitFac = 1.
   grid%geometry = "adddisc"
   geometry = "adddisc"
@@ -2381,7 +2384,6 @@ end subroutine chisqAlphaDisc
 subroutine addSpiralWake(grid)
 
   use inputs_mod, only : sourcePos, rInner, rOuter, rho0, betaDisc, alphaDisc, height, sourceMass
-  use inputs_mod, only : rGapInner, rGapOuter
 
   type(GRIDTYPE) :: grid
   real(double) :: r, r0, epsilon, phi, rSpiral, hillRadius

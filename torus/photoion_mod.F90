@@ -35,13 +35,13 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation, dustPhysics
-    use inputs_mod, only : uv_vector
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
     use spectrum_mod, only: getwavelength
     use dust_mod, only: stripDustAway, sublimateDust
 #ifdef MPI
+    use inputs_mod, only : uv_vector
     use parallel_mod, only: mpiBlockHandout, mpiGetblock
     use mpi
 #endif

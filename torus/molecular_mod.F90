@@ -361,8 +361,13 @@ module molecular_mod
 
      use grid_mod, only: freeGrid
      use inputs_mod, only : vturb, restart, isinLTE, &
-          addnewmoldata, setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
-          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics, zeroghosts
+          setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
+          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics !, addnewmoldata
+#ifdef MPI
+#ifdef HYDRO
+     use inputs_mod, only: zeroghosts
+#endif
+#endif
 
 
 !         plotlevels
@@ -857,7 +862,7 @@ module molecular_mod
      use inputs_mod, only : blockhandout, tolerance, &
           usedust, amr1d, amr3d, plotlevels,  &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
-          zeroGhosts, forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
+          forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
      use dust_mod
      use parallel_mod
      use vtk_mod
@@ -868,6 +873,7 @@ module molecular_mod
 #ifdef MPI
      use mpi
 #ifdef HYDRO
+     use inputs_mod, only: zeroghosts
      use hydrodynamics_mod, only : setupedges, setupghosts
 #endif
 #endif

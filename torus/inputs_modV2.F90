@@ -1913,8 +1913,9 @@ contains
                "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("suppresswarnings", suppressWarnings, cLine, fLine, nLines, &
             "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.) 
-       call getLogical("addnewmoldata", addnewmoldata, cLine, fLine, nLines, &
-            "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
+! Not currenlty used
+!       call getLogical("addnewmoldata", addnewmoldata, cLine, fLine, nLines, &
+!            "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
        call getString("moleculefile", moleculefile, cLine, fLine, nLines, &
             "Input molecule filename: ","(a,a,1x,a)","none", ok, .true.)
        call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &

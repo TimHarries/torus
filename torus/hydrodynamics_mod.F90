@@ -326,7 +326,7 @@ contains
   end subroutine imposeAzimuthalVelocity
 
   recursive subroutine imposeFontVelocity(thisOctal)
-    use inputs_mod, only : sourceMass, amrgridsize, maxdepthamr, amrgridcentrez
+    use inputs_mod, only : sourceMass, amrgridsize, maxdepthamr!, amrgridcentrez
     integer :: i
     type(octal), pointer :: thisOctal, child
     integer :: subcell
@@ -359,7 +359,7 @@ contains
 
 
   recursive subroutine imposeKeplerianVelocity(thisOctal)
-    use inputs_mod, only : sourceMass, amrgridsize, maxdepthamr, amrgridcentrez
+!    use inputs_mod, only : sourceMass, amrgridsize, maxdepthamr, amrgridcentrez
     integer :: i
     type(octal), pointer :: thisOctal, child
     integer :: subcell
@@ -682,7 +682,7 @@ contains
 
 
   subroutine setupAlphaViscosity(grid, alpha, HoverR)
-    use inputs_mod, only : amrGridSize, minDepthAMR, rhoThreshold
+!    use inputs_mod, only : amrGridSize, minDepthAMR, rhoThreshold
     use mpi
     type(GRIDTYPE) :: grid
     real(double) :: alpha, HOverR, r
@@ -1627,7 +1627,8 @@ contains
 
 ! now the cell at i+1/2
 
-             weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+             weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / &
+                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
              
              if (.not.associated(thisOctal%u_interface_i_plus_1)) allocate(thisOctal%u_interface_i_plus_1(1:thisOctal%maxChildren))
              thisoctal%u_interface_i_plus_1(subcell) = &
@@ -3105,7 +3106,8 @@ contains
 !                   endif
 
                 if (debug) then
-                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from viscosity in x ", dt * fVisc%x/(thisOctal%rho(subcell)*1.d5)
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from viscosity in x ", &
+                        dt * fVisc%x/(thisOctal%rho(subcell)*1.d5)
                 endif
 
 
@@ -3138,7 +3140,8 @@ contains
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)!/dx!**2
 
                 if (debug) then
-                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from centrifugal term ", (dt * (thisOctal%rhov(subcell)**2) &
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from centrifugal term ", &
+                        (dt * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3))/(thisOctal%rho(subcell)*1.d5)
                 endif
 
@@ -3243,7 +3246,8 @@ contains
 
 
                 if (debug) then
-                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from viscosity in z ", dt * fVisc%z/(thisOctal%rho(subcell)*1.d5)
+                   if (myHydroSetGlobal == 0) write(*,*) "change in speed from viscosity in z ", &
+                        dt * fVisc%z/(thisOctal%rho(subcell)*1.d5)
                 endif
 
 
@@ -5398,8 +5402,6 @@ end subroutine sumFluxes
     real(double) :: dt
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
-    logical :: selfGravity
-    
 
 
     direction = vector(1.d0, 0.d0, 0.d0)
@@ -5766,7 +5768,6 @@ end subroutine sumFluxes
 
   recursive subroutine pressureTimeStep(thisoctal, dt)
     use inputs_mod, only : gridDistanceScale, smallestCellSize, cylindricalHydro, includePressureTerms
-    use source_mod, only : globalSourceArray
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -13214,7 +13215,7 @@ end subroutine refineGridGeneric2
   end subroutine simpleGravity
 
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
-    use inputs_mod, only :  maxDepthAMR, dirichlet, amr3d, simpleGrav
+    use inputs_mod, only :  maxDepthAMR, dirichlet, simpleGrav
     use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid

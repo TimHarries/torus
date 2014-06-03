@@ -2473,7 +2473,7 @@ CONTAINS
     REAL(oct) :: compZ, currentZ, tval, x1, x2
     REAL(oct) :: r1, theta, mu, disttor1
 
-    TYPE(vector) :: xDir, zDir, rVec, subcen
+    TYPE(vector) :: xDir, zDir, rVec
     logical :: ok
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
@@ -11271,7 +11271,6 @@ end function readparameterfrom2dmap
   end subroutine assign_hii_test
 
   subroutine assign_radpresstest(thisOctal,subcell)
-    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use inputs_mod, only : rCavity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -16112,8 +16111,8 @@ end function readparameterfrom2dmap
        if (present(debug)) write(*,*) "hit source ",hitsource
     if (hitSource) then
        nTau = nTau + 1
-       tauArray(nTau) = 1.d20
-       xArray(nTau) = xArray(ntau-1) + distance
+       tauArray(nTau) = 1.e20
+       xArray(nTau) = xArray(ntau-1) + real(distance)
        tau = 1.d20
     endif
   end subroutine tauAlongPathFast

@@ -29,6 +29,7 @@ use xray_mod
 use vtk_mod
 #ifdef PDR
 use pdr_mod
+use inputs_mod, only: pdrcalc, dumpBisbas
 #endif
 implicit none
 
@@ -65,8 +66,8 @@ contains
   subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
-    use inputs_mod, only : addSinkParticles, cylindricalHydro, dumpBisbas, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, spherical, pdrcalc, forceminrho
+    use inputs_mod, only : addSinkParticles, cylindricalHydro, vtuToGrid, timedependentRT,dorefine, alphaViscosity
+    use inputs_mod, only : UV_vector, spherical, forceminrho
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -1206,12 +1207,12 @@ end subroutine radiationHydro
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, iterTime, &
        monteCheck, evenuparray, optID, iterStack, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
-         readGrid, dustOnly, minCrossings, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
+         readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, spherical, useionparam, dumpregularVTUS
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUS !, minCrossings
 
 
-    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho
+    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1801,15 +1802,18 @@ end subroutine radiationHydro
           maxDiffRadius3  = 1.d30
           tauWanted = 1.d0
           do isource = 1, globalnSource
-             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, maxDiffRadius1(iSource))
+             call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, &
+                  maxDiffRadius1(iSource))
              call MPI_BCAST(maxDiffRadius1(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
              if (amr2d.or.amr3d) then
-                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), tauWanted, maxDiffRadius2(iSource))
+                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), tauWanted, &
+                     maxDiffRadius2(iSource))
                 call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              endif
              if (amr3D) then
-                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), tauWanted, maxDiffRadius3(iSource))
+                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), tauWanted, &
+                     maxDiffRadius3(iSource))
                 call MPI_BCAST(maxDiffRadius3(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              endif
              call MPI_BARRIER(localWorldCommunicator, ierr)

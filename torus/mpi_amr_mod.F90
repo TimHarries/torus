@@ -515,7 +515,6 @@ contains
   end subroutine findTotalMassWithinRMPIPrivate
 
   recursive subroutine findTotalPhiOutsideRMPIPrivate(thisOctal, radius, totalPhi)
-    use inputs_mod, only : hydrodynamics, cylindricalHydro
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec

@@ -231,7 +231,7 @@
   character(len=80), protected :: moleculefile
   logical, protected :: restart
   logical, protected :: molRestartTest
-  logical, protected :: addnewmoldata
+!  logical, protected :: addnewmoldata ! Not currently used
   logical, protected :: dongstep ! controls Ng Acceleration
   logical, protected :: modelwashydro
   logical, protected :: forceIniRay

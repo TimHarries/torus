@@ -1098,7 +1098,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         end if
 
 
-        imagePA = thisimagePA
+        imagePA = real(thisimagePA)
 
         if (writeoutput) then
            write(message,*) " "

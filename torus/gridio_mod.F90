@@ -152,7 +152,7 @@ contains
 #ifdef MPI
     use mpi
 #endif
-    use inputs_mod, only : iModel, amr3d, amr2d
+    use inputs_mod, only : iModel
     use utils_mod, only : findMultiFilename
     character(len=*) :: rootfilename
     character(len=80) :: filename
@@ -378,7 +378,9 @@ contains
 
     recursive subroutine writeOctreePrivateFlexi(thisOctal,fileFormatted, grid)
        ! writes out an octal from the grid octree
+#ifdef MPI
       use inputs_mod, only : amr2d, amr3d
+#endif
        type(octal), intent(in), target :: thisOctal
        logical, intent(in)             :: fileFormatted
        type(gridtype) :: grid

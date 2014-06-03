@@ -3620,7 +3620,7 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-    use inputs_mod, only : amrGridSize, ttauriwind, ttauriRouter, dw_rmax
+    use inputs_mod, only : amrGridSize, ttauriwind, ttauriRouter
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     integer :: nRay
@@ -4250,7 +4250,7 @@ contains
 
 
   subroutine createRayGridGeneric(cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
-    use inputs_mod, only :  ttaurirouter, dw_rmax, amrgridsize
+    use inputs_mod, only :  ttaurirouter, amrgridsize
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube

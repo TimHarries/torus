@@ -323,11 +323,11 @@ contains
     use phasematrix_mod
     use dust_mod
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
-    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, pdrcalc, gasOpacityPhysics
+    use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics!, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
-    use inputs_mod, only : mCore, solveVerticalHydro, sigma0, scatteredLightWavelength,  storeScattered
+    use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
     use gas_opacity_mod
 #ifdef CMFATOM
@@ -359,6 +359,7 @@ contains
 #ifdef PDR
 !!    use nrayshealpix, only : donrayshealpix
     use pdr_mod, only : PDR_MAIN!, castAllRaysOverGrid
+    use inputs_mod, only pdrcalc
 #endif
 
 #ifdef MPI
@@ -366,7 +367,7 @@ contains
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
 
     use photoion_utils_mod, only: setupphotogrid
-    use inputs_mod, only : optimizeStack
+!    use inputs_mod, only : optimizeStack
 
 #ifdef HYDRO
     use photoionAMR_mod, only: radiationHydro
@@ -773,10 +774,11 @@ contains
 #ifdef MPI
 #ifdef HYDRO
      use hydrodynamics_mod, only : gatherSinks
+     use inputs_mod, only: splitOverMPI
 #endif
 #endif
      use source_mod, only : globalNsource, globalSourceArray
-     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, splitOverMPI, &
+     use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot
 #ifdef MPI
      use mpi
