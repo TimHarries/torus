@@ -287,7 +287,7 @@ contains
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
        !$OMP PRIVATE (freqWeight, thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
-       !$OMP SHARED (nlambda, writeoutput, UV_vector)
+       !$OMP SHARED (nlambda, writeoutput)
 
 
        !$OMP DO SCHEDULE (STATIC)
