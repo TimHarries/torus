@@ -406,6 +406,23 @@ contains
 
        if (grid%splitOverMPI) then ! this section chooses whether we need to write the octal
 
+          if (nHydroThreadsGlobal == 2) then
+             if (myrankGlobal == 0) then 
+                if (thisOctal%nDepth == 1) then
+                   writeThisOctal = .true.
+                else
+                   writeThisOctal = .false.
+                endif
+             else
+                if (thisOctal%nDepth == 1) then
+                   writeThisOctal = .false.
+                else
+                   thisOctalPointer => thisOctal
+                   writeThisOctal = octalOnThread(thisOctalPointer, 1, myRankGlobal)
+                endif
+             endif
+          endif
+
           if (nHydroThreadsGlobal == 4) then
              if (myrankGlobal == 0) then 
                 if (thisOctal%nDepth == 1) then
@@ -573,6 +590,17 @@ contains
        tempHasChild = thisOctal%hasChild
 
        if (grid%splitOverMpi) then ! this sets up the number of children for the zeroth thread
+
+          if (nHydroThreadsGlobal == 2) then
+             if ((thisOctal%nDepth == 1) .and. (myRankGlobal==0)) then
+                tempNChildren = 2
+                do i = 1, 2
+                   tempIndexChild(i) = i
+                enddo
+                tempHasChild = .true.
+             endif
+          endif
+
 
           if (nHydroThreadsGlobal == 4) then
              if ((thisOctal%nDepth == 1) .and. (myRankGlobal==0)) then
@@ -1038,6 +1066,19 @@ contains
 
       if (grid%splitOverMPI) then ! this sets the nummber of children correctly for the threads
 
+         if (nHydroThreadsGlobal == 2) then
+            if (myrankGlobal == 0) then
+               thisOctal%nChildren = 0
+            else
+               if (thisOctal%nDepth == 1) then
+                  thisOctal%nChildren = 1
+                  thisOctal%hasChild = .false.
+                  thisOctal%indexChild(1) = myRankGlobal
+                  thisOctal%hasChild(myRankGlobal) = .true.
+               endif
+            endif
+         endif
+
          if (nHydroThreadsGlobal == 4) then
             if (myrankGlobal == 0) then
                thisOctal%nChildren = 0
@@ -1170,6 +1211,39 @@ contains
       endif
 
       if (grid%splitOVerMPI) then
+
+         if (nHydroThreadsGlobal == 2) then
+            if (thisOctal%nDepth > 1) then
+               if (thisOctal%nChildren > 0) then 
+                  allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                  do iChild = 1, thisOctal%nChildren, 1
+                     thisChild => thisOctal%child(iChild)
+                     call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                  end do
+               end if
+            else
+               if (myrankGlobal == 0) then
+                  thisOctal%nChildren = 0
+                  thisOctal%hasChild = .false.
+               else
+                  if (thisOctal%nChildren > 0) then 
+                     allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                     do iChild = 1, thisOctal%nChildren, 1
+                        do iThread = 1, myRankGlobal
+                           thisChild => thisOctal%child(iChild)
+                           topOctal => thisChild
+                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                           if (iThread /= myRankGlobal) then
+                              call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
+                           else
+                              exit
+                           endif
+                        enddo
+                     end do
+                  end if
+               endif
+            endif
+         endif
 
          if (nHydroThreadsGlobal == 4) then
             if (thisOctal%nDepth > 1) then
@@ -3815,6 +3889,7 @@ contains
 
 
 
+
          if (nHydroThreadsGlobal == 2) then
             thisOctal%nChildren = 1
             do i = 1, nHydroThreadsGlobal
@@ -3828,10 +3903,10 @@ contains
                call readBranchFromFile(i, fileFormatted)
             enddo
 
+!            write(*,*) myrankglobal, "setting nchildren to zero"
             thisOctal%nChildren = 0 
             thisOctal%hasChild = .false.
          endif
-
 
          if (nHydroThreadsGlobal == 4) then
             thisOctal%nChildren = 1

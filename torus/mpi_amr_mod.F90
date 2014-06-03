@@ -376,6 +376,33 @@ contains
     enddo
   end subroutine findTotalMassWithinRServer
 
+  subroutine findTotalPhiOutsideRServer(grid, receiveThread)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double) :: radius, totalPhi
+    integer :: ierr
+    integer :: receiveThread
+    integer, parameter :: tag = 55
+    logical :: stillServing
+    integer :: status(MPI_STATUS_SIZE)
+
+    stillServing = .true.
+
+    call findTotalPhiOutsideRMPI(grid, radius, totalPhi, reset=.true.)
+
+    do while(stillServing)
+
+       call MPI_RECV(radius, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
+       if (radius > 1.d29) then
+          stillServing = .false.
+       else
+          totalphi = 0.d0
+          call findTotalPhiOutsideRMPI(grid, radius, totalPhi)
+          call MPI_SEND(totalPhi, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine findTotalPhiOutsideRServer
+
 
   subroutine findTotalMassWithinRMPI(grid, radius, totalMass, reset)
     type(GRIDTYPE) :: grid
@@ -407,6 +434,37 @@ contains
        call findTotalMassWithinRMPIPrivate(grid%octreeRoot, radius, totalMass)
     endif
   end subroutine findTotalMassWithinRMPI
+
+  subroutine findTotalPhiOutsideRMPI(grid, radius, totalPhi, reset)
+    type(GRIDTYPE) :: grid
+    real(double) :: radius
+    real(double) :: totalPhi
+    logical, optional :: reset
+    logical :: doReset
+    logical, save :: firstTime = .true.
+    real(double), save :: savedRadius, savedPhi
+
+    doReset = .false.
+    if (PRESENT(reset)) then
+       doReset = reset
+    endif
+    if (doReset) firstTime = .true.
+    
+    if (firstTime) then
+       savedRadius = 1.d30
+       call findMinR(grid%octreeRoot, savedRadius)
+       savedPhi = 0.d0
+       call findTotalPhiOutsideRMPIPrivate(grid%octreeRoot, savedRadius, savedPhi)
+       firstTime = .false.
+    endif
+
+    if (radius < savedRadius) then
+       totalPhi = savedPhi
+    else
+       totalPhi = 0.d0
+       call findTotalPhiOutsideRMPIPrivate(grid%octreeRoot, radius, totalPhi)
+    endif
+  end subroutine findTotalPhiOutsideRMPI
 
 
   recursive subroutine findTotalMassWithinRMPIPrivate(thisOctal, radius, totalMass)
@@ -456,6 +514,37 @@ contains
     enddo
   end subroutine findTotalMassWithinRMPIPrivate
 
+  recursive subroutine findTotalPhiOutsideRMPIPrivate(thisOctal, radius, totalPhi)
+    use inputs_mod, only : hydrodynamics, cylindricalHydro
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: totalPhi, radius
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalPhiOutsideRMPIPrivate(child, radius,totalPhi)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                rVec = subcellCentre(thisOctal, subcell)
+                if (modulus(rVec) > radius) then
+                   totalPhi = totalPhi - thisOctal%phi_gas(subcell) 
+                endif
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findTotalPhiOutsideRMPIPrivate
+
   recursive subroutine findMaxR(thisOctal, radius)
 !   use inputs_mod, only : hydrodynamics, cylindricalHydro
   type(octal), pointer   :: thisOctal
@@ -486,6 +575,37 @@ contains
        end if
     enddo
   end subroutine findMaxR
+
+  recursive subroutine findMinR(thisOctal, radius)
+!   use inputs_mod, only : hydrodynamics, cylindricalHydro
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: radius
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findMinR(child, radius)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if(.not. thisoctal%ghostcell(subcell)) then
+             rVec = subcellCentre(thisOctal, subcell)
+             if (modulus(rVec) < radius) then
+                radius = modulus(rVec)
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findMinR
 
   subroutine findAngMomOverAllThreads(grid, angMom, centre)
     use mpi
@@ -3266,7 +3386,7 @@ end subroutine writeRadialFile
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
-             write(20,'(1p,8e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux
+             write(20,'(1p,9e11.3)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
           position = cen
@@ -3915,7 +4035,6 @@ end subroutine writeRadialFile
     if (hitGrid) then
        position = position + (tval+0.01d0*smallestcellsize)*uHat
     else
-       write(*,*) "missed grid in tauRadius"
        stop
     endif
     tau = 0.d0
@@ -3984,7 +4103,6 @@ end subroutine writeRadialFile
                 call returnKappa(grid, thisOctal, subcell, kappap = kappap)
                 tau = tau + dble(kappap) * tval * 1.d10
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
-!		write(*,*) "pos ",position, "tau ",tau
                 if (tau > tauWanted) then
                    tauRad = modulus(position)
                    tempStorage(1) = 1.d30

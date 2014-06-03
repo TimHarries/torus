@@ -583,7 +583,7 @@ module amr_utils_mod
 
    if (thisOctal%oneD.and.spherical) then
    
-      r1 = thisOctal%subcellSize*2.d0
+      r1 = thisOctal%subcellSize + thisOctal%centre%x
       d = modulus(point)
       rHat = (-1.d0)*posVec
       call normalize(rhat)

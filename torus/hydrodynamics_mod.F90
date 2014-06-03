@@ -3370,14 +3370,7 @@ contains
                 write(*,*) "thread ",thisoctal%mpithread(subcell)
              endif
 
-  !           if (direction%x > 0.d0) then
-                rhou = thisoctal%rhou(subcell)
-!             else if (direction%y > 0.d0) then
-!                rhou = thisOctal%rhov(subcell)
-!             else
-!                rhou = thisOctal%rhow(subcell)
- !            endif
-
+             rhou = thisoctal%rhou(subcell)
              dx = thisoctal%subcellsize * griddistancescale
 
              dv = cellVolume(thisOctal, subcell) * 1.d30
@@ -3422,7 +3415,6 @@ contains
 
              dx = x_i_plus_half - x_i_minus_half
 
-             if (direction%x > 0.d0) then
 
 
                 if (includePressureTerms) then
@@ -3549,106 +3541,9 @@ contains
                 write(*,*) "speed after " ,speed
              endif
 
-
-
-             else
-
-                if (includePressureTerms) then
-                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
-                        (p_i_plus_half - p_i_minus_half) / dx
-
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after pressure forces"
-                   endif
-
-
-                endif
-                if (debug) then
-                   write(*,*) "change in mom from pressure in z ",- dt * &
-                     (p_i_plus_half - p_i_minus_half) / dx
-                endif
-
-! alpha viscosity
-!                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) + dt * fVisc%z
-
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after viscous forces"
-                   endif
-
-
-!                write(*,*) "ratio vr/vtheta: ",thisOctal%rhou(subcell)/(thisOctal%rhov(subcell)/r), thisOctal%rho(subcell),r/1e14
-
-
-                if (debug) then
-                   write(*,*) "change in mom from viscosity in z ", dt * fVisc%z
-                endif
-
-
-                thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
-                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
-
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after gas gravity forces"
-                   endif
-
-
-                thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + dt * gravForceFromSinks%z ! grav due to sinks
-
-
-                if (debug) then
-                   write(*,*) "change in mom from gravity in z ", dt * & !gravity due to gas
-                     thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
-                endif
-
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after sink gravity forces"
-                   endif
-
-                if (radiationPressure) then
-                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
-
-                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
-                      write(*,*) "w speed over 200 after rad pressure forces"
-                   endif
-
-                   if (debug) then
-                      write(*,*) "change in mom from rad pressure in x ", dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
-                   endif
-
-                endif
-
-!Modify the cell rhoe due to pressure and gravitaitonal potential gradient
- !            if (thisoctal%iequationofstate(subcell) /= 1) then             
-!
- !               thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt * &
-  !                (p_i_plus_half * u_i_plus_half - p_i_minus_half * u_i_minus_half) / dx
-!
-!
-!                thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt * &
-!!!                     (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
-!                      thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / (2.d0*dx)
-!
-!
-!!                thisoctal%rhoe(subcell) = thisoctal%rhoe(subcell) - dt* & !gravity
-! !!                 rhou  * (phi_i_plus_half - phi_i_minus_half) / dx
-
-!!
-  !              if (useTensorviscosity.and.(direction%x > 0.d0)) then
-   !                thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt*thisOctal%chiline(subcell)
- !               endif
-!
-  !           endif
-             speed = sqrt(thisOctal%rhou(subcell)**2)/thisOctal%rho(subcell)/1.d5
-             if ((debug).and.(myHydroSetGlobal == 0)) then
-                write(*,*) "speed after " ,speed
-             endif
           endif
        endif
-
-
-    endif
- enddo
+    enddo
   end subroutine pressureforceSpherical
 
 
@@ -13834,10 +13729,12 @@ end subroutine minMaxDepth
      real(double) :: r !, mass, radius, localMass
      integer :: iThread
      integer :: ierr, j
-     integer, parameter :: tag = 54
+     real(double) :: mass
+     integer, parameter :: tag = 54, tag1 = 55
+
+     call findMassOverAllthreads(grid, mass)
 
      do iThread = 1, nHydroThreadsGlobal
-
         if (iThread == myRankGlobal) then
            call setupPhi1d(grid, grid%octreeRoot)
            r = 1.d30
@@ -13851,9 +13748,21 @@ end subroutine minMaxDepth
         endif
      enddo
      do iThread = 1, nHydroThreadsGlobal
-        if (iThread /= myRankGlobal) then
+        if (iThread == myRankGlobal) then
+           call integratePhi1d(grid, grid%octreeRoot, mass)
+           r = 1.d30
+           do j = 1, nHydroThreadsGlobal
+              if (j /= myrankGlobal) then
+                 call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag1, localWorldCommunicator, ierr)
+              endif
+           enddo
+        else
+           call findTotalPhiOutsideRServer(grid, iThread)
         endif
      enddo
+
+
+
    end subroutine selfGrav1d
 
 
@@ -13897,7 +13806,7 @@ end subroutine minMaxDepth
                     call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                  endif
               enddo
-              
+              mass = mass + localMass
               
               do j = 1, nHydroThreadsGlobal
                  if (j /= myrankGlobal) then
@@ -13905,12 +13814,65 @@ end subroutine minMaxDepth
                     mass = mass + localMass
                  endif
               enddo
-              thisOctal%phi_i(subcell) = -bigG * mass / (r * 1.d10)
-              thisOctal%phi_gas(subcell) = -bigG * mass / (r * 1.d10)
+              thisOctal%phi_gas(subcell) = (bigG * mass / (r * 1.d10)**2)*(thisOctal%subcellSize*1.d10)
            endif
         endif
      enddo
    end subroutine setupPhi1d
+
+   recursive subroutine integratePhi1D(grid, thisOctal, gridmass)
+     use mpi
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal, child
+     integer :: subcell, i
+     type(VECTOR) :: rVec
+     real(double) :: r, phi, localphi, gridMass
+     integer :: ithread
+     integer :: ierr, j
+     integer, parameter :: tag = 55
+     integer :: status(MPI_STATUS_SIZE)
+
+     do subcell = 1, thisoctal%maxchildren
+        if (thisoctal%haschild(subcell)) then
+           ! find the child
+           do i = 1, thisoctal%nchildren, 1
+              if (thisoctal%indexchild(i) == subcell) then
+                 child => thisoctal%child(i)
+                 call integratePhi1d(grid, child, gridMass)
+                 exit
+              end if
+           end do
+        else
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+           rVec = subcellCentre(thisOctal, subcell)
+           if (.not.rVec%x < 0.d0) then
+              r = rVec%x
+              phi = 0.d0
+              localphi = 0.d0
+              
+              do iThread = 1, nHydroThreadsGlobal
+                 if (myRankGlobal == iThread) then
+                    localPhi = 0.d0
+                    call findTotalPhiOutsideRMPIPrivate(grid%octreeRoot, r, localPhi)
+                 else
+                    call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                 endif
+              enddo
+              phi = phi  + localPhi
+              
+              do j = 1, nHydroThreadsGlobal
+                 if (j /= myrankGlobal) then
+                    call MPI_RECV(localphi, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, status, ierr)
+                    phi = phi + localPhi
+                 endif
+              enddo
+              thisOctal%phi_gas(subcell) = phi - bigG * gridMass / ((grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize)*1.d10)
+              thisOctal%phi_i(subcell) = phi - bigG * gridMass / ((grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize)*1.d10)
+           endif
+        endif
+     enddo
+   end subroutine integratePhi1D
 
      
 
@@ -15779,7 +15741,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 onAxis = .not.(cellCentre%x - thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize < 0.d0)
              endif
 
-             if (thisOctal%threeD) then
+             if (thisOctal%threeD.or.spherical) then
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
@@ -15839,6 +15801,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                    if (thisOctal%threed) then
                       gasMom = (cellVolume(thisOctal, subcell) * 1.d30)  * &
                            VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))
+                   else if (spherical) then
+                      gasMom = (cellVolume(thisOctal, subcell) * 1.d30)  * &
+                           VECTOR(thisOctal%rhou(subcell), 0.d0, 0.d0)
                    else
                       gasMom = (cellVolume(thisOctal, subcell) * 1.d30)  * &
                            VECTOR(thisOctal%rhou(subcell), 0.d0, thisOctal%rhow(subcell))
@@ -15847,6 +15812,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                    if (thisOctal%threed) then
                       localAccretedMom = localaccretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
                            thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                   else if (spherical) then
+                      localAccretedMom = localaccretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), 0.d0, 0.d0)
                    else
                       if (onAxis) then
                          localAccretedMom = VECTOR(thisOctal%rhou(subcell), &
@@ -15874,6 +15841,12 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
                       thisOctal%rhov(subcell) =  thisOctal%rho(subcell) * cellVelocity%y
                       thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
+                   else if (spherical) then
+                      gasMom = gasMom - localaccretedMom
+                      thisOctal%rho(subcell) = rhoThreshold
+                      cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
+                      cellVelocity = gasMom / cellMass
+                      thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
                    else
                       gasMom = gasMom - localaccretedMom
                       thisOctal%rho(subcell) = rhoThreshold

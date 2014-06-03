@@ -1097,6 +1097,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            viewVec     = getSedViewVec(iInclination)
         end if
 
+
+        imagePA = thisimagePA
+
         if (writeoutput) then
            write(message,*) " "
            call writeInfo(message, TRIVIAL)
@@ -1125,7 +1128,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
        endif
        outVec = (-1.d0)*viewVec
        thisVec = viewVec
-
+     
        if (rotateView.and.(nPhase /= 1)) then
          write(*,'(a)') "Rotating view..."
          phi = real(-rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1))

@@ -1211,7 +1211,7 @@ end subroutine radiationHydro
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, spherical, useionparam, dumpregularVTUS
 
 
-    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr3d, massiveStars, forceminrho
+    use inputs_mod, only : resetDiffusion, usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1797,14 +1797,17 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
-       if(.not. cart2d .and. .not. spherical) then! .and. 0== 1) then
+       if (.not. cart2d) then
           maxDiffRadius3  = 1.d30
           tauWanted = 1.d0
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, maxDiffRadius1(iSource))
              call MPI_BCAST(maxDiffRadius1(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-             call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), tauWanted, maxDiffRadius2(iSource))
-             call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+
+             if (amr2d.or.amr3d) then
+                call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), tauWanted, maxDiffRadius2(iSource))
+                call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+             endif
              if (amr3D) then
                 call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), tauWanted, maxDiffRadius3(iSource))
                 call MPI_BCAST(maxDiffRadius3(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
@@ -1817,9 +1820,12 @@ end subroutine radiationHydro
              if (amr3d) then
                 if (writeoutput) write(*,*) "r1, r2, r3 ",maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource)
                 maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource) + maxDiffRadius3(iSource))/3.d0
-             else
+             else if (amr2d) then
                 if (writeoutput) write(*,*) "r1, r2 ",maxDiffRadius1(isource), maxDiffRadius2(iSource)
                 maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource))/2.d0
+             else
+                if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
+                maxDiffRadius(isource) = maxDiffRadius1(isource)
              endif
              if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
@@ -3537,7 +3543,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
   use inputs_mod, only : periodicX, periodicY, periodicZ, amrgridcentrey
-  use inputs_mod, only : amrgridcentrez, radpressuretest
+  use inputs_mod, only : amrgridcentrez, radpressuretest, rhofloor
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -3636,7 +3642,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
        endif
     endif
-    if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-24)) then
+    if (radpressureTest.and.(thisOctal%rho(subcell) < rhofloor*1.1d0)) then
        kappaAbsDb = 1.d-30
        kappaScaDb = 1.d-30
     endif

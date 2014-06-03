@@ -11971,7 +11971,7 @@ end function readparameterfrom2dmap
   SUBROUTINE checkAMRgrid(grid,checkNoctals)
     ! does some checking that the cells in an AMR grid are
     !   set up and linked to correctly.
-
+    use inputs_mod, only : amr1d, spherical, hydrodynamics
     TYPE(gridType), INTENT(IN) :: grid
     LOGICAL, INTENT(IN) :: checkNoctals ! whether to confirm grid%nOctals
     
@@ -12107,6 +12107,7 @@ end function readparameterfrom2dmap
 
           ! see if the child's coordinates really lie in the parent subcell
           IF ( .NOT. inSubcell(thisOctal,iSubcell,point=thisOctal%child(iIndex)%centre) ) THEN
+             if (.not.(hydrodynamics.and.amr1d.and.spherical)) then
             PRINT *, "Error: In checkAMRgridPrivate, child isn't in parentSubcell"
             PRINT *, "       thisOctal%centre = ",thisOctal%centre 
             PRINT *, "       iSubcell = ", iSubcell
@@ -12114,6 +12115,7 @@ end function readparameterfrom2dmap
             PRINT *, "       thisOctal%child(iIndex)%centre = ",thisOctal%child(iIndex)%centre 
             PRINT *, "       iIndex = ", iIndex
             CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+            endif
           END IF
 
           ! see if the child is of the correct size
