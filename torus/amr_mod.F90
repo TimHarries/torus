@@ -11278,7 +11278,7 @@ end function readparameterfrom2dmap
     real(double) :: eThermal!, numDensity
    
     rVec = subcellCentre(thisOctal,subcell)
-    thisOctal%rho(subcell) = (1.d2)*mHydrogen
+    thisOctal%rho(subcell) = (1.d4)*mHydrogen
     if (modulus(rVec) < rCavity) thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.

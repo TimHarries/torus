@@ -79,7 +79,7 @@ module constants_mod
   real(double), parameter :: nuHydrogen = (hydE0eVdb/(ergToEv)) / (hCgs)
 
   real(double), parameter :: stefanBoltz = 5.6705d-5 ! erg/cm^2 s
-  real(double), parameter :: lSol = 3.85d33          !erg/s
+  real(double), parameter :: lSol = 3.846d33          !erg/s
   ! speeds
 
   real(double), parameter :: cSpeed = 2.99792458d10  ! cm/s

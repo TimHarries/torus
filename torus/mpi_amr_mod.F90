@@ -2260,6 +2260,205 @@ contains
   end subroutine getNeighbourValues
 
 
+  subroutine getNeighbourValues2(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
+    use mpi
+    use inputs_mod, only : smallestCellSize
+
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
+    type(VECTOR) :: direction, rVec, pVec, locator
+    integer :: subcell, neighbourSubcell, tSubcell
+    integer :: nBound, nDepth, j
+    integer, intent(out) :: nd
+
+    real(double), intent(out) :: q(2), rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), qnext, x, pressure(2), flux(2), phi, phigas
+    real(double), intent(out) :: xplus, px, py, pz, qViscosity(3,3), rm1, rum1, pm1
+    real(double) :: temperature
+
+    nbound = getNboundFromDirection(direction)
+
+    if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
+       write(*,*) "Bonndary error for twod: ",nbound
+       x = -2.d0
+       x = sqrt(x)
+    endif
+    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then ! .or. &
+!         thisOctal%mpiThread(subcell) == neighbourOctal%mpiThread(neighboursubcell)) then
+
+       nd = neighbourOctal%nDepth
+
+       x = neighbourOctal%x_i(neighbourSubcell)
+       pVEc = subcellCentre(neighbourOctal, neighbourSubcell)
+
+       px = pVec%x
+       py = pVec%y
+       pz = pVec%z
+
+       if (thisOctal%nDepth == neighbourOctal%nDepth) then ! same level
+
+          q(1:2)   = neighbourOctal%q_i(neighbourSubcell)
+          rho(1:2) = neighbourOctal%rho(neighbourSubcell)
+          rhoe(1:2) = neighbourOctal%rhoe(neighbourSubcell)
+          rhou(1:2) = neighbourOctal%rhou(neighbourSubcell)
+          rhov(1:2) = neighbourOctal%rhov(neighbourSubcell)
+          rhow(1:2) = neighbourOctal%rhow(neighbourSubcell)
+          pressure(1:2) = neighbourOctal%pressure_i(neighbourSubcell)
+          flux(1:2) = neighbourOctal%flux_i(neighbourSubcell)
+          phi = neighbourOctal%phi_i(neighbourSubcell)
+          phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+          qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
+
+          rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+       else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
+          q(1:2)   = neighbourOctal%q_i(neighbourSubcell)
+          rho(1:2) = neighbourOctal%rho(neighbourSubcell)
+          rhoe(1:2) = neighbourOctal%rhoe(neighbourSubcell)
+          rhou(1:2) = neighbourOctal%rhou(neighbourSubcell)
+          rhov(1:2) = neighbourOctal%rhov(neighbourSubcell)
+          rhow(1:2) = neighbourOctal%rhow(neighbourSubcell)
+          pressure(1:2) = neighbourOctal%pressure_i(neighbourSubcell)
+          phi = neighbourOctal%phi_i(neighbourSubcell)
+          phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+          qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
+
+          rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+          flux(1:2) = neighbourOctal%flux_i(neighbourSubcell)
+       else
+
+          do j = 1, 2
+
+             rVec = subcellCentre(thisOctal, subcell)
+             if (abs(direction%x) > 0.9d0) then
+                
+                if (j == 1) then
+                   locator = VECTOR(rVec%x + (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction%x, 0.d0, &
+                        rVec%z - 0.25d0 * thisOctal%subcellSize)
+                else
+                   locator = VECTOR(rVec%x + (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction%x, 0.d0, &
+                        rVec%z + 0.25d0 * thisOctal%subcellSize)
+                endif
+             else ! z direction
+                if (j == 1) then
+                   locator = VECTOR(rVec%x - 0.25d0 * thisOctal%subcellSize, 0.d0, &
+                        rVec%z + (thisOctal%subcellSize/2.d0 + smallestCellSize * 0.1d0)*direction%z)
+                else
+                   locator = VECTOR(rVec%x + 0.25d0 * thisOctal%subcellSize, 0.d0, &
+                        rVec%z + (thisOctal%subcellSize/2.d0 + smallestCellSize * 0.1d0)*direction%z)
+                endif
+             endif
+             tOctal => thisOctal
+             call findSubcellLocal(rVec, tOctal, tSubcell)
+
+             q(j)   = tOctal%q_i(tSubcell)
+             rho(j) = tOctal%rho(tSubcell)
+             rhoe(j) = tOctal%rhoe(tSubcell)
+             rhou(j) = tOctal%rhou(tSubcell)
+             rhov(j) = tOctal%rhov(tSubcell)
+             rhow(j) = tOctal%rhow(tSubcell)
+             pressure(j) = tOctal%pressure_i(tSubcell)
+             phi = neighbourOctal%phi_i(neighbourSubcell)
+             phigas = neighbourOctal%phi_gas(neighbourSubcell)
+             xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+             qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
+
+             rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+             rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+             pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+             flux(j) = tOctal%flux_i(tSubcell)
+          enddo
+       endif
+
+       
+       rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+            direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+       if (inOctal(grid%octreeRoot, rVec)) then
+          tOctal => neighbourOctal
+          tSubcell = neighbourSubcell
+          call findSubcellLocal(rVec, tOctal, tSubcell)
+          
+          if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
+             qnext = tOctal%q_i(tSubcell)
+          else
+             if (associated(neighbourOctal%mpiBoundaryStorage)) then
+                qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
+             else
+                qNext = 0.d0
+             endif
+          endif
+       else
+          qNext = 0.d0
+       endif
+
+
+
+    else
+
+
+       if (.not.associated(thisOctal%mpiBoundaryStorage)) then
+          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, &
+               neighbourOctal%mpiThread(neighboursubcell), &
+               thisOctal%mpiThread(subcell)
+          write(*,*) "direction",  direction,nBound
+          write(*,*) "depth ",thisOctal%nDepth
+          write(*,*) "nChildren ",thisOctal%nChildren
+          write(*,*) "rho ",thisOctal%rho(subcell)
+          write(*,*) "this centre",subcellCentre(thisOctal, subcell)
+          write(*,*) "neig centre",subcellCentre(neighbourOctal, neighboursubcell)
+          x = -2.d0
+          x = sqrt(x)
+       endif
+
+       x = thisOctal%mpiBoundaryStorage(subcell, nBound, 7)
+       xplus = thisOctal%mpiBoundaryStorage(subcell, nBound, 14)
+
+       nd =  nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
+
+       nDepth = nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
+
+       q   = thisOctal%mpiBoundaryStorage(subcell, nBound, 1)
+       rho = thisOctal%mpiBoundaryStorage(subcell, nBound, 2)
+       rhoe = thisOctal%mpiBoundaryStorage(subcell, nBound, 3)
+       rhou = thisOctal%mpiBoundaryStorage(subcell, nBound, 4)
+       rhov = thisOctal%mpiBoundaryStorage(subcell, nBound, 5)
+       rhow = thisOctal%mpiBoundaryStorage(subcell, nBound, 6)
+       qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
+       pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
+       flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
+       phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
+       phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
+       px = thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
+       py = thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
+       pz = thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
+       rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
+       rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
+       pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
+
+
+       qViscosity(1,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
+       qViscosity(1,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
+       qViscosity(1,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
+       qViscosity(2,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
+       qViscosity(2,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
+       qViscosity(2,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
+       qViscosity(3,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
+       qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
+       qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
+
+
+    endif
+  end subroutine getNeighbourValues2
+
+
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
        rhoe, pressure, flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
@@ -3328,17 +3527,18 @@ end subroutine writeRadialFile
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     use mpi
+    use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
     integer :: nPoints
-    type(VECTOR) :: startPoint, endPoint, position, direction, cen
+    type(VECTOR) :: startPoint, endPoint, position, direction, cen, rVec
     real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas
-    real(double) :: temperature
+    real(double) :: temperature, r
     character(len=*) :: thisFile
     integer :: ierr
     integer, parameter :: nStorage = 12
-    real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux
+    real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux, rpress
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillLooping
@@ -3385,7 +3585,8 @@ end subroutine writeRadialFile
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
-             write(20,'(1p,9e11.3)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, temperature
+             rpress = globalSourceArray(1)%luminosity/ (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
+             write(20,'(1p,10e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux/cspeed, rpress, temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
           position = cen
@@ -3428,7 +3629,9 @@ end subroutine writeRadialFile
              tempStorage(9) = thisOctal%phi_stars(subcell)             
              tempStorage(10) = thisOctal%phi_gas(subcell)             
              tempStorage(11) = thisOctal%temperature(subcell)
-             tempStorage(12) = modulus(thisOctal%kappaTimesFlux(subcell))
+             rVec = subcellCentre(thisOctal,subcell)
+             r = rVec%x * 1.d10
+             tempStorage(12) = modulus(thisOctal%kappaTimesFlux(subcell))*cellVolume(thisOctal,subcell)*1.d30/(fourPi*r**2)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
        enddo

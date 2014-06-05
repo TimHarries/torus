@@ -292,6 +292,116 @@ contains
        enddo
   end subroutine fluxlimiter
 
+  recursive subroutine fluxlimiter2(thisoctal)
+    use inputs_mod, only : limiterType
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, j
+    real(double) :: a, b, dq, dx
+    character(len=80) :: message
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call fluxlimiter2(child)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+
+          do j = 1, 2
+             dq = thisoctal%q_i(subcell) - thisoctal%q_amr_i_minus_1(subcell,j)
+! When dq is very small there could be a floating point overflow in thisoctal%rlimit so check size of dq
+             if (dq /= 0.d0) then
+                if (thisoctal%u_amr_interface(subcell,j) .ge. 0.d0) then
+                   thisoctal%rlimit(subcell) = (thisoctal%q_amr_i_minus_1(subcell,j) - thisoctal%q_i_minus_2(subcell)) / dq
+                else
+                   thisoctal%rlimit(subcell) = (thisoctal%q_amr_i_plus_1(subcell,j) - thisoctal%q_i(subcell)) / dq
+                endif
+             else
+                thisoctal%rlimit(subcell) = 1.d0
+             endif
+
+
+             select case (limitertype)
+
+!superbee flux limiter is default
+             case("superbee")
+                a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
+                b = min(2.d0, thisoctal%rlimit(subcell))
+                thisoctal%philimit_amr(subcell,j) = max(0.d0, a, b)
+                
+
+!Use with caution, this is not in the literature, developed by THAW
+!Tries to improve flux limiter by accounting for non-constant grid spacing
+             case("modified_superbee")
+                if (dq /= 0.d0) then
+                   if (thisoctal%u_interface(subcell) .ge. 0.d0) then
+                      thisoctal%rlimit(subcell) = (thisoctal%q_amr_i_minus_1(subcell,j) - thisoctal%q_i_minus_2(subcell)) / dq
+                      dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+
+                      thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_minus_1(subcell) - &
+                           thisoctal%x_i_minus_2(subcell))
+
+                   else
+                      thisoctal%rlimit(subcell) = (thisoctal%q_amr_i_plus_1(subcell,j) - thisoctal%q_i(subcell)) / dq
+                      dx = 0.5d0*(thisoctal%x_i_plus_1(subcell) - thisoctal%x_i_minus_1(subcell))
+                
+                      thisoctal%rlimit(subcell)=thisoctal%rlimit(subcell)*dx/(thisoctal%x_i_plus_1(subcell) - &
+                           thisoctal%x_i(subcell))
+                   endif
+                else
+                   thisoctal%rlimit(subcell) = 1.d0
+                endif
+
+                a = min(1.d0, 2.d0*thisoctal%rlimit(subcell))
+                b = min(2.d0, thisoctal%rlimit(subcell))
+                thisoctal%philimit_amr(subcell,j) = max(0.d0, a, b)
+
+             case("minmod")
+                
+                a = min(1.d0, thisoctal%rlimit(subcell))
+                thisoctal%philimit_amr(subcell,j) = max(0.d0, a)
+                
+             case("MC")
+                a = min((1.d0+thisoctal%rlimit(subcell))/2.d0, 2.d0, (2.d0*thisoctal%rlimit(subcell)))
+                thisoctal%philimit_amr(subcell,j) = max(0.d0, a)
+
+             case("fromm")
+                thisoctal%philimit_amr(subcell,j) = 0.5d0*(1.d0 + thisoctal%rlimit(subcell))
+                
+
+             case("vanleer")
+                !write(*,*) "vanleer"
+                thisoctal%philimit_amr(subcell,j) = (thisoctal%rlimit(subcell) + &
+                abs(thisoctal%rlimit(subcell))) / (1.d0 + abs(thisoctal%rlimit(subcell)))
+               
+!i.e no flux limiter
+             case("donorcell")
+                thisOctal%philimit(subcell) = 0.d0
+
+
+             case default
+                write(message,'(a,a)') "flux limiter not recognised: ", trim(limitertype)
+                call writefatal(message)
+                stop
+             end select
+!             if (thisoctal%ghostcell(subcell)) thisoctal%philimit(subcell) = 1.d0
+!                        thisoctal%philimit(subcell) = 1.d0
+          enddo
+       endif
+
+    enddo
+  end subroutine fluxlimiter2
+
   recursive subroutine imposeAzimuthalVelocity(thisOctal)
     use inputs_mod, only : sourceMass
     integer :: i
@@ -991,6 +1101,73 @@ contains
     enddo
   end subroutine constructfluxCylindrical
 
+!Set up the i-1/2 flux for each cell on the grid
+  recursive subroutine constructfluxCylindrical2(grid, thisoctal, dt, direction, writeDebug)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisoctal, neighbourOctal
+    type(VECTOR) :: direction, locator
+    type(octal), pointer  :: child 
+    integer :: subcell, i, neighbourSubcell, j
+    real(double) :: dt, dx, speed
+    real(double) :: q(2), rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), x, qnext, pressure(2), flux(2), phi, phigas, xnext, px, py, pz
+    real(double) :: qViscosity(3,3), rm1, um1, pm1
+    integer :: nd
+    logical :: debug, writeDebug
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call constructfluxCYlindrical2(grid, child, dt, direction, writeDebug)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%edgeCell(subcell)) cycle
+          locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*smallestCellsize)
+          neighbouroctal => thisoctal
+          call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+          call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+
+          ! need to construct flux correctly at this point
+          if (.not.thisoctal%edgecell(subcell)) then
+
+
+             do j = 1, 2
+                if (thisoctal%u_interface(subcell).ge.0.d0) then
+                   thisoctal%flux_amr_i(subcell,j) = thisoctal%u_amr_interface(subcell,j) * thisoctal%q_amr_i_minus_1(subcell,j)
+                else
+                   thisoctal%flux_amr_i(subcell,j) = thisoctal%u_amr_interface(subcell,j) * thisoctal%q_i(subcell)
+                endif
+                
+                if (thisoctal%x_i(subcell) == thisoctal%x_i_minus_1(subcell)) then
+                   write(*,*) "problem with the x_i values"
+                   stop
+                endif
+
+
+                
+
+                dx = thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell)
+
+                thisoctal%flux_amr_i(subcell,j) = thisoctal%flux_amr_i(subcell, j) + &
+                     0.5d0 * abs(thisoctal%u_amr_interface(subcell,j)) * &
+                     (1.d0 - abs(thisoctal%u_amr_interface(subcell,j) * dt / &
+                     dx)) * &
+                     thisoctal%philimit_amr(subcell ,j) * (thisoctal%q_i(subcell) - thisoctal%q_amr_i_minus_1(subcell,j))
+
+             enddo
+          endif
+       endif
+    enddo
+  end subroutine constructfluxCylindrical2
+
 
 !Set up the i-1/2 flux for each cell on the grid
   recursive subroutine constructfluxSpherical(grid, thisoctal, dt, direction, writeDebug)
@@ -1164,6 +1341,66 @@ contains
        endif
     enddo
   end subroutine updatecellqCylindrical
+
+!Perform the actual advection
+  recursive subroutine updatecellqCylindrical2(thisoctal, dt, direction)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: direction, rVec
+    integer :: subcell, i, j
+    logical :: radial
+    real(double) :: dt, dv, df, area_i(2), area_i_plus_1(2)
+
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call updatecellqCylindrical2(child, dt, direction)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          if ((.not.thisoctal%ghostcell(subcell))) then
+
+
+
+             radial = .true. 
+             if (direction%x < 0.1d0) then
+                radial = .false.
+             endif
+             rVec = subcellCentre(thisOctal,subcell)
+             if (radial) then
+                area_i(1:2) = twoPi * ((thisOctal%x_i(subcell)-gridDistanceScale*thisOctal%subcellSize/2.d0) &
+                     * thisOctal%subcellSize * gridDistanceScale)/2.d0
+                area_i_plus_1(1:2) = twoPi * ((thisOctal%x_i(subcell)+gridDistanceScale*thisOctal%subcellSize/2.d0) &
+                     * thisOctal%subcellSize * gridDistanceScale)/2.d0
+             else
+                area_i(1) = pi * ((rVec%x*gridDistanceScale)**2 - &
+                     (rVec%x*gridDistanceScale-thisOctal%subcellSize*gridDistanceScale/2.d0)**2)
+                area_i(2) = pi * ((rVec%x*gridDistanceScale+thisOctal%subcellSize*gridDistanceScale/2.d0)**2 - &
+                     (rVec%x*gridDistanceScale)**2)
+
+                area_i_plus_1(1:2) = area_i(1:2)
+             endif
+
+             dv = cellVolume(thisOctal, subcell)*1.d30
+             do j = 1, 2
+                df = (thisoctal%flux_amr_i_plus_1(subcell,j) * area_i_plus_1(j) - &
+                     thisoctal%flux_amr_i(subcell,j) * area_i(j))
+                thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dv)
+             enddo
+
+          endif
+       endif
+    enddo
+  end subroutine updatecellqCylindrical2
 
 
 !Perform the actual advection
@@ -1422,6 +1659,70 @@ contains
        endif
     enddo
   end subroutine setupqx
+
+!set up neighbour positions and values of the advecting quantity
+  recursive subroutine setupqx2(thisoctal, grid, direction)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer   :: neighbouroctal
+    type(octal), pointer  :: child 
+    real(double) :: rhoe(2), rhou(2), rhov(2), rhow(2), rho(2), q(2), x, qnext, pressure(2), flux(2), phi, phigas
+    real(double) :: xnext, px, py, pz, qViscosity(3,3), rm1, um1, pm1
+    integer :: subcell, i, neighboursubcell
+    integer :: nd
+    type(vector) :: direction, locator, reversedirection
+
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setupqx2(child, grid, direction)
+                exit
+             end if
+          end do
+       else
+
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          thisoctal%x_i_minus_1(subcell) = 0.d0
+          thisoctal%x_i_plus_1(subcell) = 0.d0
+
+          if (.not.thisoctal%edgecell(subcell)) then
+
+             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+
+             thisoctal%x_i_plus_1(subcell) = x
+             thisoctal%q_amr_i_plus_1(subcell,1:2) = q(1:2)
+
+             reversedirection = (-1.d0) * direction
+             
+             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+             thisoctal%x_i_minus_1(subcell) = x
+!             thisoctal%x_i_minus_2(subcell) = xnext
+             thisoctal%q_amr_i_minus_1(subcell,1:2) = q(1:2)
+             thisoctal%q_i_minus_2(subcell) = qnext
+
+             if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
+                write(*,*) myrankGlobal," error in setting up x_i values"
+                write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell)
+             endif
+
+          endif
+       endif
+    enddo
+  end subroutine setupqx2
 
 !set up neighbour densities and gravtiational potentials
   recursive subroutine setuprhophi(thisoctal, grid, direction)
@@ -1682,6 +1983,166 @@ contains
 
   end subroutine setupui
 
+!set up neighbour densities and cell interface advecting velocities - x direction
+  recursive subroutine setupui_amr(thisoctal, grid, direction, dt)
+    use mpi
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer   :: neighbouroctal
+    type(octal), pointer  :: child 
+    real(double) :: rho(2), rhou(2), rhov(2), rhow(2), q(2), qnext, x, rhoe(2), pressure(2), flux(2), phi, phigas, qViscosity(3,3)
+    integer :: subcell, i, neighboursubcell, nd, j
+    type(vector) :: direction, locator!, rotator
+    real(double) :: rhou_i_minus_1(2), rho_i_minus_1(2), dt
+    real(double) :: rhou_i_plus_1(2), x_interface_i_p_half
+    real(double) :: xnext, weight, px, py, pz, x_interface
+    real(double) :: pressure_i_plus_1(2), pressure_i, pressure_i_minus_1(2), pressure_i_minus_2
+    real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1(2)
+    real(double) :: rm1, um1, pm1
+    real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
+    real(double) :: dx
+    real(double) :: u_i, u_i_minus_1
+    real(double) :: dpdx_i, dpdx_i_minus_half, dpdx_i_minus_1, thisRhou
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setupui_amr(child, grid, direction, dt)
+                exit
+             end if
+          end do
+       else
+          
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          !thaw - edgecell is correct.
+          if (.not.thisoctal%edgecell(subcell)) then !xxx changed fromghostcell
+             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+
+             rho_i_minus_1(1:2) = rho(1:2)
+             do j = 1, 2
+                rhou_i_minus_1(j) = direction.dot.VECTOR(rhou(j),rhov(j),rhow(j))
+             enddo
+             pressure_i_minus_1(1:2) = pressure(1:2)
+             x_i_minus_1 = px
+
+             rho_i = thisOctal%rho(subcell)
+             pressure_i = thisOctal%pressure_i(subcell)
+             x_i = thisOctal%x_i(subcell)
+
+             rho_i_minus_2 = rm1
+             pressure_i_minus_2 = pm1
+             x_i_minus_2 = xnext
+
+             
+             x_interface = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
+
+             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+
+             rho_i_plus_1(1:2) = rho(1:2)
+             do j = 1, 2
+                rhou_i_plus_1(j) = direction.dot.VECTOR(rhou(j),rhov(j),rhow(j))
+             enddo
+             pressure_i_plus_1(1:2) = pressure(1:2)
+             x_i_plus_1 = px
+             x_interface_i_p_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
+
+
+
+             if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
+                write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
+                print *, "cen ", subcellCentre(thisOctal, subcell)
+                if (.not.octalonthread(neighbouroctal, neighboursubcell, myrankGlobal)) then
+                   print *, "AND IT WASNT ON THREAD"
+                end if
+!                print *, "EDGE", thisOctal%edgecell(subcell)
+ !               print *, "GHOST", thisOctal%ghostcell(subcell)
+             else
+ !               print *, "good at u_i"
+             endif
+             weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
+
+
+             if ((any(rho_i_minus_1(1:2) == 0.d0)).or.(thisOctal%rho(subcell) == 0.d0)) then
+                write(*,*) "bug in setupui ",rho_i_minus_1, thisOctal%rho(subcell)
+             endif
+             !This is the velocity for the i'th cell at i-1/2
+             thisRhou = direction.dot.VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))
+             thisoctal%u_amr_interface(subcell,1:2) = &
+                  weight*thisRhou/thisoctal%rho(subcell) + &
+                  (1.d0-weight)*rhou_i_minus_1(1:2)/rho_i_minus_1(1:2)
+             if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
+             thisOctal%u_i(subcell) = thisRhou / thisOctal%rho(subcell)
+
+
+! now the cell at i+1/2
+
+             weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+             
+             if (.not.associated(thisOctal%u_interface_i_plus_1)) allocate(thisOctal%u_interface_i_plus_1(1:thisOctal%maxChildren))
+             thisoctal%u_amr_interface_i_plus_1(subcell,1:2) = &
+                  weight * rhou_i_plus_1(1:2)/rho_i_plus_1(1:2)+ &
+                  (1.d0-weight)*thisRhou/thisoctal%rho(subcell)
+
+
+             
+             ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
+!             if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
+!
+!                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
+!                     grid%halfsmallestsubcell)
+!                neighbouroctal => thisoctal
+!                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+!                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+!                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
+!                     xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+!
+!                rho_i_plus_1 = rho
+!                pressure_i_plus_1 = pressure
+!                x_i_plus_1 = px
+!
+!                !now we have i,i+1,i-1 and i-2 can apply rhie-chow
+!                !you basically subtract the local pressure gradient and add the average ambient one
+!
+!                u_i = thisRhou / thisOctal%rho(subcell)
+!                u_i_minus_1 = rhou_i_minus_1 / rho_i_minus_1
+!
+!                dx = thisOctal%subcellSize * gridDistanceScale
+!
+!                dpdx_i_minus_half = (pressure_i - pressure_i_minus_1) / dx
+!                dpdx_i = (pressure_i_plus_1 - pressure_i_minus_1) / (2.d0*dx)
+!                dpdx_i_minus_1 = (pressure_i - pressure_i_minus_2) / (2.d0*dx)
+!
+!
+!                if(dpdx_i_minus_1 /= 0.d0 .and. dpdx_i_minus_half /= 0.d0 .and. &
+!                     dpdx_i /= 0.d0) then
+!!the approximation screws up if applied to cells that are symmetric on one side only
+!!i.e. in a model with zero gradient boundaries you get preferential flow in in - direction
+!                   thisOctal%u_interface(subcell) = 0.5d0*(u_i + u_i_minus_1) - &
+!                        (dt/(0.5d0*(rho_i_minus_1 + rho_i)))*dpdx_i_minus_half + &
+!                        0.5d0 * ((dt/rho_i)*dpdx_i + (dt/rho_i_minus_1)*dpdx_i_minus_1)
+!                end if
+!
+!          endif
+
+             
+          end if
+       endif
+    enddo
+
+  end subroutine setupui_amr
+
 
 !setup the flux at i+1/2 and if necessary modify flux at i-1/2
 !note that thisOctal%flux_i is the flux at i-1/2
@@ -1839,6 +2300,60 @@ contains
        endif
     enddo
   end subroutine setupfluxCylindrical
+
+!setup the flux at i+1/2 and if necessary modify flux at i-1/2
+!note that thisOctal%flux_i is the flux at i-1/2
+  recursive subroutine setupfluxCylindrical2(thisoctal, grid, direction)
+    use mpi
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer   :: neighbouroctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, neighboursubcell
+    type(vector) :: direction, locator
+    real(double) :: rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), x, q(2), qnext, pressure(2), flux(2), phi, phigas,qViscosity(3,3)
+    integer :: nd
+    real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
+
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setupfluxCylindrical2(child, grid, direction)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          if (.not.thisoctal%edgecell(subcell)) then
+             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+
+             
+             thisoctal%flux_amr_i_plus_1(subcell,1:2) = flux(1:2)
+
+
+             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1, um1, pm1, qViscosity)
+
+             thisoctal%flux_amr_i_minus_1(subcell,1:2) = flux(1:2)
+             
+
+          endif
+       endif
+    enddo
+  end subroutine setupfluxCylindrical2
 
 
 !setup the flux at i+1/2 and if necessary modify flux at i-1/2
@@ -4441,6 +4956,21 @@ contains
   end subroutine advectrhoCylindrical
 
 !copy cell rho to q, advect q, copy q back to cell rho
+  subroutine advectrhoCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+
+    call copyrhotoq(grid%octreeroot)
+    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    call copyqtorhoCylindrical(grid%octreeroot, direction)
+
+  end subroutine advectrhoCylindrical_amr
+
+!copy cell rho to q, advect q, copy q back to cell rho
   subroutine advectrhoSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -4469,6 +4999,22 @@ contains
     call copyqtorhorv(grid%octreeroot)
 
   end subroutine advectrhorvCylindrical
+
+!copy cell rho to q, advect q, copy q back to cell rho
+  subroutine advectrhorvCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+
+    call copyrhorvtoq(grid%octreeroot)
+    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    call copyqtorhorv(grid%octreeroot)
+
+  end subroutine advectrhorvCylindrical_amr
+
 
 !copy cell rho to q, advect q, copy q back to cell rho
   subroutine advectrhorvSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
@@ -4557,6 +5103,22 @@ contains
   end subroutine advectrhoeCylindrical
 
 !copy cell rhoe to q, advect q, copy q back to cell rhoe
+  subroutine advectrhoeCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+
+    call copyrhoetoq(grid%octreeroot)
+    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    call copyqtorhoe(grid%octreeroot)
+
+  end subroutine advectrhoeCylindrical_amr
+
+!copy cell rhoe to q, advect q, copy q back to cell rhoe
   subroutine advectrhoeSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -4605,6 +5167,22 @@ contains
 !    call setOnAxisRhoU(grid%octreeRoot)
 
   end subroutine advectrhouCylindrical
+
+!copy cell rhou to q, advect q, copy q back to cell rhou
+  subroutine advectrhouCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+
+    call copyrhoutoq(grid%octreeroot)
+    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug=.true.)
+    call copyqtorhou(grid%octreeroot)
+
+  end subroutine advectrhouCylindrical_amr
 
 !copy cell rhou to q, advect q, copy q back to cell rhou
   subroutine advectrhouSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
@@ -4672,6 +5250,22 @@ contains
   end subroutine advectrhowCylindrical
 
 !copy cell rhow to q, advect q, copy q back to cell rhow
+  subroutine advectrhowCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+
+    call copyrhowtoq(grid%octreeroot)
+    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+    call copyqtorhow(grid%octreeroot)
+
+  end subroutine advectrhowCylindrical_amr
+
+!copy cell rhow to q, advect q, copy q back to cell rhow
   subroutine advectrhowSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -4737,6 +5331,33 @@ contains
     call updatecellqCylindrical(grid%octreeroot, dt, direction)
 
   end subroutine advectqCylindrical
+
+!Perform the advection on q
+  subroutine advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug)
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+    logical,optional :: dowriteDebug
+    logical :: writeDebug
+
+    writeDebug = .false.
+    if (present(dowritedebug)) writeDebug = doWRiteDebug
+
+    call setupx(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call setupqx2(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call fluxlimiter2(grid%octreeroot)
+    call constructfluxCylindrical2(grid, grid%octreeroot, dt, direction, writeDebug)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call setupfluxCylindrical2(grid%octreeroot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, usethisbound=usethisbound)
+    call updatecellqCylindrical2(grid%octreeroot, dt, direction)
+
+  end subroutine advectqCylindrical_amr
 
 !Perform the advection on q
   subroutine advectqSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug)
@@ -5393,6 +6014,149 @@ end subroutine sumFluxes
 
  
   end subroutine hydroStep2dCylindrical
+
+!Perform a single hydrodynamics step, in r and z directions, for the 2D cylindrical case.     
+  subroutine hydroStep2dCylindrical_amr(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
+    use inputs_mod, only : doselfGrav, doGasGravity, alphaViscosity
+    type(GRIDTYPE) :: grid
+    logical :: selfGravity
+    integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+    real(double) :: timeStep, dt
+    type(VECTOR) :: direction
+    integer :: idir, thisBound
+    selfGravity = doSelfGrav
+
+
+    !boundary conditions
+    call computepressureGeneral(grid, grid%octreeroot, .false.) 
+    call imposeBoundary(grid%octreeRoot, grid)
+    call transferTempStorage(grid%octreeRoot)
+
+
+    if (selfGravity) then
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call zeroSourcepotential(grid%octreeRoot)
+       call sumGasStarGravity(grid%octreeRoot)
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+    endif
+
+    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+    call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
+    if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
+
+
+
+
+    do iDir = 1, 3
+       select case (iDir)
+          case(1)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
+          case(2)
+             direction = VECTOR(0.d0, 0.d0, 1.d0)
+             dt = timeStep
+             thisBound = 3
+          case(3)
+             direction = VECTOR(1.d0, 0.d0, 0.d0)
+             dt = timeStep / 2.d0
+             thisBound = 2
+       end select
+       
+
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call setupCylindricalViscosity(grid%octreeRoot, grid)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+
+       call setupX(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupQX(grid%octreeRoot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+
+       !set up grid values
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+
+       call setupUi_amr(grid%octreeRoot, grid, direction, dt)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)   
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+
+       !advect rho, velocities and rhoe
+       call advectRhoCylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoUCylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoWCylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoRVCylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call advectRhoECylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+
+
+       !calculate and set up pressures   
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call setupupm(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
+
+       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call computepressureGeneral(grid, grid%octreeroot, .true.)
+       call setupRhoPhi(grid%octreeRoot, grid, direction)       
+       call setuprhorvplusminus1(grid%octreeRoot, grid)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+       call setupPressure(grid%octreeRoot, grid, direction)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+
+       !modify rhou and rhoe due to pressure/gravitational potential gradient
+       if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
+       call pressureForceCylindrical(grid%octreeRoot, dt, grid, direction)
+       if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
+
+
+       call computepressureGeneral(grid, grid%octreeroot, .false.) 
+       call imposeBoundary(grid%octreeRoot, grid)
+       call transferTempStorage(grid%octreeRoot)
+
+    enddo
+
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
+    call setupUi(grid%octreeRoot, grid, direction, dt)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    
+
+
+   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
+      call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+   endif
+
+   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
+      if (doselfGrav) then
+         call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+      else
+         if (globalnSource == 1) then
+            globalSourceArray(1)%position =  globalSourceArray(1)%position + &
+                 (dt * globalSourceArray(1)%velocity/1.d10)
+         endif
+      endif
+   else
+      globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
+   endif
+   
+
+ 
+  end subroutine hydroStep2dCylindrical_amr
 
 
 !Perform a single hydrodynamics step, in the x direction, for the 1D case. 
@@ -15746,7 +16510,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
-             else
+             else if (thisOctal%twoD) then
                 r = cellCentre%x*1.d10
                 rv = thisOctal%rhov(subcell) / (r * thisOctal%rho(subcell))
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
@@ -15755,7 +16519,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      0.d0, &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
-!                if (onAxis) cellVelocity = VECTOR(0.d0, 0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             else
+                r = cellCentre%x*1.d10
+                cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
+                     0.d0, 0.d0)
              endif
 
 
@@ -15799,7 +16566,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 !                   write(*,*) myrankGlobal, " localaccretedmass ",localaccretedmass
                    accretedMass(isource) = accretedMass(isource) + localAccretedMass
 
-                   if (thisOctal%threed) then
+                   if (thisOctal%threed.or.spherical) then
                       gasMom = (cellVolume(thisOctal, subcell) * 1.d30)  * &
                            VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))
                    else if (spherical) then
@@ -15810,7 +16577,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                            VECTOR(thisOctal%rhou(subcell), 0.d0, thisOctal%rhow(subcell))
                    endif
 
-                   if (thisOctal%threed) then
+                   if (thisOctal%threed.or.spherical) then
                       localAccretedMom = localaccretedMass * VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
                            thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell))
                    else if (spherical) then
@@ -15825,7 +16592,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       endif
                    endif
 
-                   if (thisOctal%threed) then
+                   if (thisOctal%threed.or.spherical) then
                       localAngMom =  ((cellCentre - source(isource)%position)*1.d10) .cross. localAccretedMom
                       localAccretedAngMom = modulus(localAngMom)
                    endif
@@ -15834,7 +16601,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                    if (thisOctal%threed) then
                          accretedAngMomentum(isource) = accretedAngMomentum(isource) + VECTOR(0.d0, 0.d0, localAccretedAngMom)
                    endif
-                   if (thisOctal%threed) then
+                   if (thisOctal%threed.or.spherical) then
                       gasMom = gasMom - localaccretedMom
                       thisOctal%rho(subcell) = rhoThreshold
                       cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30

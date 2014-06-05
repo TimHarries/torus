@@ -1150,7 +1150,7 @@ contains
           endif
 !          if (.not.CylindricalHydro) then
              write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
-             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(1.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
 !          endif
 
@@ -2006,7 +2006,6 @@ end subroutine radiationHydro
                 end if
                 totalPower = totalPower + epsOverDeltaT*photonPacketWeight
                 
-
                 if(binPhotons) then
                    do i = 1, nFreq
                       if((wavelength/1.e8) < lams(i+1) .and. (wavelength/1.e8) > lams(i)) then
@@ -3646,9 +3645,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
        endif
     endif
-    if (radpressureTest.and.(thisOctal%rho(subcell) < rhofloor*1.1d0)) then
-       kappaAbsDb = 1.d-30
-       kappaScaDb = 1.d-30
+    if (radpressureTest.and.thisOctal%rho(subcell)<1.d-24) then
+       kappaAbsDb = 0.d0
+       kappaScaDb = 0.d0
+    else
+       if (thisLam < 2.d5) then
+          kappaScaDb = 0.d0
+          kappaAbsDb = (100.d0/thisOctal%subcellSize)
+       endif
     endif
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
@@ -3827,6 +3831,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           oldOctal => thisOctal
           thisOctVec = octVec
 
+
 ! calculate the distance to the next cell
 
 !          if (rVec%z < 0.d0) then
@@ -3834,6 +3839,19 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !             write(*,*) "uHat ",uHat
 !          endif
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+
+
+
+          if (radpressureTest.and. thisOctal%rho(subcell)<1.d-24) then
+             kappaAbsDb = 0.d0
+             kappaScaDb = 0.d0
+          else
+             if (thisLam < 2.d5) then
+                kappaScaDb = 0.d0
+                kappaAbsDb = (100.d0/thisOctal%subcellSize)
+             endif
+          endif
+
 
           octVec = rVec
 
@@ -3885,6 +3903,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
             iLambda=iLam,lambda=real(thisLam),&
             kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
        thisOctVec = octVec
+
+
 
        if (.not.inFlow) kappaAbsdb =0.0d0
 
@@ -5333,7 +5353,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, &
        photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
-    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low
+    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low, rhoFloor
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat
@@ -5425,14 +5445,18 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
     endif
 
-    if (radpressureTest.and.(thisOctal%rho(subcell) < 1.d-26)) then
-       kappaExt  = 0.
+    if (radpressureTest.and. thisOctal%rho(subcell)<1.d-24) then
+       kappaext = 0.d0
+    else
+       if (grid%lamArray(ilambda) < 2.d5) then
+          kappaExt = (100.d0/thisOctal%subcellSize)
+       endif
     endif
+
 
 
     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
          + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
-
 
 !    if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 

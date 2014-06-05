@@ -353,10 +353,15 @@ MODULE octal_mod
 
     ! hydrodynamics
     real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()
+    real(double), pointer :: q_amr_i_minus_1(:,:) => null(), q_amr_i_plus_1(:,:) => null()
     real(double), pointer :: x_i(:) => null(), x_i_plus_1(:) => null(), x_i_minus_1(:) => null(), x_i_minus_2(:) => null()
     real(double), pointer :: u_interface(:) => null(), u_i_plus_1(:) => null(), u_i_minus_1(:) => null(), u_i(:) => null()
-    real(double), pointer :: u_interface_i_plus_1(:) => null()
+    real(double), pointer :: u_interface_i_plus_1(:) => null(), philimit_amr(:,:) => null()
+    real(double), pointer :: u_amr_interface(:,:) => null()
+    real(double), pointer :: u_amr_interface_i_plus_1(:,:) => null()
     real(double), pointer :: flux_i(:) => null(), flux_i_plus_1(:) => null(), flux_i_minus_1(:) => null()
+    real(double), pointer :: flux_amr_i(:,:) => null(), flux_amr_i_plus_1(:,:) => null(), flux_amr_i_minus_1(:,:) => null()
+    real(double), pointer :: area_i(:,:) => null(), area_i_minus_1(:,:) => null()
     real(double), pointer :: phiLimit(:) => null(), rLimit(:) => null()
     logical, pointer :: ghostCell(:) => null(), feederCell(:) => null(), corner(:) => null()
     logical, pointer :: edgeCell(:) => null(), refinedLastTime(:) => null()
