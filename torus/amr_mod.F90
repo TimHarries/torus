@@ -12907,6 +12907,20 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%phi_i_minus_1, source%phi_i_minus_1)
     call copyAttribute(dest%pressure_i_plus_1, source%pressure_i_plus_1)
 
+
+
+
+    call copyAttribute(dest%q_amr_i_minus_1, source%q_amr_i_minus_1)
+    call copyAttribute(dest%q_amr_i_plus_1, source%q_amr_i_plus_1)
+    call copyAttribute(dest%u_interface, source%u_interface)
+    call copyAttribute(dest%u_amr_interface, source%u_amr_interface)
+    call copyAttribute(dest%u_amr_interface_i_plus_1, source%u_amr_interface_i_plus_1)
+    call copyAttribute(dest%flux_amr_i, source%flux_amr_i)
+    call copyAttribute(dest%flux_amr_i_plus_1, source%flux_amr_i_plus_1)
+    call copyAttribute(dest%flux_amr_i_minus_1, source%flux_amr_i_minus_1)
+    call copyAttribute(dest%phiLimit_amr, source%phiLimit_amr)
+
+
     call copyAttribute(dest%u_interface, source%u_interface)
     call copyAttribute(dest%u_i, source%u_i)
     call copyAttribute(dest%u_i_plus_1, source%u_i_plus_1)
@@ -16743,6 +16757,17 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%q_i_minus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%q_i_minus_2,thisOctal%maxchildren)
 
+       call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 2)
+
+       
 
        call allocateAttribute(thisOctal%fviscosity,thisOctal%maxchildren)
 
@@ -16751,7 +16776,6 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%x_i_minus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%x_i_minus_2,thisOctal%maxchildren)
 
-       call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_minus_1,thisOctal%maxchildren)
@@ -16955,6 +16979,8 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%x_i_minus_1)
     call deallocateAttribute(thisOctal%x_i_minus_2)
     call deallocateAttribute(thisOctal%u_interface)
+    call deallocateAttribute(thisOctal%u_amr_interface)
+    call deallocateAttribute(thisOctal%u_amr_interface_i_plus_1)
     call deallocateAttribute(thisOctal%u_i)
     call deallocateAttribute(thisOctal%u_i_plus_1)
     call deallocateAttribute(thisOctal%u_i_minus_1)
@@ -16962,6 +16988,17 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%flux_i_plus_1)
     call deallocateAttribute(thisOctal%flux_i_minus_1)
     call deallocateAttribute(thisOctal%phiLimit)
+
+    call deallocateAttribute(thisOctal%q_amr_i_minus_1)
+    call deallocateAttribute(thisOctal%q_amr_i_plus_1)
+    call deallocateAttribute(thisOctal%u_interface)
+    call deallocateAttribute(thisOctal%u_amr_interface)
+    call deallocateAttribute(thisOctal%flux_amr_i)
+    call deallocateAttribute(thisOctal%flux_amr_i_plus_1)
+    call deallocateAttribute(thisOctal%flux_amr_i_minus_1)
+    call deallocateAttribute(thisOctal%phiLimit_amr)
+
+
     call deallocateAttribute(thisOctal%rLimit)
     call deallocateAttribute(thisOctal%ghostCell)
     call deallocateAttribute(thisOctal%columnRho)

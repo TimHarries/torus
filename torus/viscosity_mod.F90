@@ -618,7 +618,7 @@ contains
 
              fVisc =  newdivQ(thisOctal, subcell,  grid)
              acc = max(abs(fVisc%x), abs(fVisc%y),abs(fvisc%z))/ thisOctal%rho(subcell)
-!             acc = max(abs(fVisc%x), 1.d-30)/ thisOctal%rho(subcell)
+             acc = max(acc, 1.d-30)
 
              thisTime = sqrt(smallestCellSize*gridDistanceScale/acc)
              dt = min(thisTime, dt)

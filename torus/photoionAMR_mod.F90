@@ -76,7 +76,7 @@ contains
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
-         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, &
+         perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, hydroStep2dCylindrical_amr, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
          imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity
@@ -898,7 +898,8 @@ contains
        if (myrankGlobal /= 0) then
           if (cylindricalHydro) then
              call writeInfo("Calling cylindrical coord hydro step", TRIVIAL)
-             call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+!             call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+             call hydroStep2dCylindrical_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           else
              if(grid%currentTime==0.d0 .and. grid%geometry == "SB_WNHII")then
                 if(grid%octreeRoot%twoD) then

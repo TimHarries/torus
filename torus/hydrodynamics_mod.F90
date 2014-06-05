@@ -8087,7 +8087,8 @@ end subroutine sumFluxes
 
 
 !perform a hydrodynamics step in the x and z directions
-          call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+!          call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          call hydroStep2dCylindrical_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 !          call calculateTemperatureFromEnergy(grid%octreeRoot)
        end if
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
