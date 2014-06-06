@@ -2274,7 +2274,6 @@ contains
 
     real(double), intent(out) :: q(2), rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), qnext, x, pressure(2), flux(2), phi, phigas
     real(double), intent(out) :: xplus, px, py, pz, qViscosity(3,3), rm1, rum1, pm1
-    real(double) :: temperature
 
     nbound = getNboundFromDirection(direction)
 
@@ -3586,7 +3585,8 @@ end subroutine writeRadialFile
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
              rpress = globalSourceArray(1)%luminosity/ (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
-             write(20,'(1p,10e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux/cspeed, rpress, temperature
+             write(20,'(1p,10e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux/cspeed, rpress, &
+                  temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
           position = cen

@@ -1111,11 +1111,11 @@ contains
     type(VECTOR) :: direction, locator
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell, j
-    real(double) :: dt, dx, speed
+    real(double) :: dt, dx
     real(double) :: q(2), rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), x, qnext, pressure(2), flux(2), phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
     integer :: nd
-    logical :: debug, writeDebug
+    logical :: writeDebug
   
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -2003,9 +2003,10 @@ contains
     real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1(2)
     real(double) :: rm1, um1, pm1
     real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
-    real(double) :: dx
-    real(double) :: u_i, u_i_minus_1
-    real(double) :: dpdx_i, dpdx_i_minus_half, dpdx_i_minus_1, thisRhou
+    real(double) :: thisRhou
+!    real(double) :: dx
+!    real(double) :: u_i, u_i_minus_1
+!    real(double) :: dpdx_i, dpdx_i_minus_half, dpdx_i_minus_1
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -2091,7 +2092,8 @@ contains
 
 ! now the cell at i+1/2
 
-             weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+             weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / (thisOctal%x_i_plus_1(subcell) - &
+                  thisOctal%x_i(subcell))
              
              if (.not.associated(thisOctal%u_interface_i_plus_1)) allocate(thisOctal%u_interface_i_plus_1(1:thisOctal%maxChildren))
              thisoctal%u_amr_interface_i_plus_1(subcell,1:2) = &
@@ -2316,7 +2318,7 @@ contains
     type(vector) :: direction, locator
     real(double) :: rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), x, q(2), qnext, pressure(2), flux(2), phi, phigas,qViscosity(3,3)
     integer :: nd
-    real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
+    real(double) :: xnext, px, py, pz, rm1, um1, pm1
 
 
     do subcell = 1, thisoctal%maxchildren
@@ -5292,7 +5294,8 @@ contains
     type(vector) :: direction
 
     call copyrhoutoq(grid%octreeroot)
-    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug=.true.)
+    call advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, &
+         dowritedebug=.true.)
     call copyqtorhou(grid%octreeroot)
 
   end subroutine advectrhouCylindrical_amr
@@ -5419,7 +5422,8 @@ contains
   end subroutine advectq
 
 !Perform the advection on q
-  subroutine advectqCylindrical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug)
+  subroutine advectqCylindrical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, &
+       dowritedebug)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: usethisbound
@@ -5446,7 +5450,8 @@ contains
   end subroutine advectqCylindrical
 
 !Perform the advection on q
-  subroutine advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug)
+  subroutine advectqCylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, &
+       dowritedebug)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: usethisbound
@@ -5473,7 +5478,8 @@ contains
   end subroutine advectqCylindrical_amr
 
 !Perform the advection on q
-  subroutine advectqSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, dowritedebug)
+  subroutine advectqSpherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, &
+       dowritedebug)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
     integer :: usethisbound

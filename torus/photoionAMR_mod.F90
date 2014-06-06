@@ -3549,7 +3549,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
      nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
 
   use inputs_mod, only : periodicX, periodicY, periodicZ, amrgridcentrey
-  use inputs_mod, only : amrgridcentrez, radpressuretest, rhofloor
+  use inputs_mod, only : amrgridcentrez, radpressuretest
   use mpi
 
    type(GRIDTYPE) :: grid
@@ -5356,7 +5356,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, &
        photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
-    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low, rhoFloor
+    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat
