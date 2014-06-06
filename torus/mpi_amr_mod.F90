@@ -2304,7 +2304,7 @@ contains
           rhov(1:2) = neighbourOctal%rhov(neighbourSubcell)
           rhow(1:2) = neighbourOctal%rhow(neighbourSubcell)
           pressure(1:2) = neighbourOctal%pressure_i(neighbourSubcell)
-          flux(1:2) = neighbourOctal%flux_i(neighbourSubcell)
+          flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,1:2)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
@@ -2331,7 +2331,7 @@ contains
           rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
           pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
 
-          flux(1:2) = neighbourOctal%flux_i(neighbourSubcell)
+          flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,1:2)
        else
 
           do j = 1, 2
@@ -2356,7 +2356,7 @@ contains
                 endif
              endif
              tOctal => thisOctal
-             call findSubcellLocal(rVec, tOctal, tSubcell)
+             call findSubcellLocal(locator, tOctal, tSubcell)
 
              q(j)   = tOctal%q_i(tSubcell)
              rho(j) = tOctal%rho(tSubcell)
@@ -2374,7 +2374,7 @@ contains
              rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
              pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
 
-             flux(j) = tOctal%flux_i(tSubcell)
+             flux(j) = tOctal%flux_amr_i(tSubcell,j)
           enddo
        endif
 

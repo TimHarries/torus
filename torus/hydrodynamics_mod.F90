@@ -32,6 +32,8 @@ contains
   subroutine dohydrodynamics(grid)
     type(GRIDTYPE) :: grid
 
+    call allocateHydrodynamicsAttributes(grid%octreeRoot)
+
     currentlyDoingHydroStep = .true.
     if (grid%octreeRoot%twoD) then
        if (.not.cylindricalHydro) then
@@ -1395,6 +1397,7 @@ contains
                 df = (thisoctal%flux_amr_i_plus_1(subcell,j) * area_i_plus_1(j) - &
                      thisoctal%flux_amr_i(subcell,j) * area_i(j))
                 thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dv)
+!                write(*,*) j, thisOctal%flux_amr_i_plus_1(subcell,j), thisOctal%flux_amr_i(subcell,j), area_i_plus_1(j), area_i(j)
              enddo
 
           endif
@@ -2339,7 +2342,6 @@ contains
 
              
              thisoctal%flux_amr_i_plus_1(subcell,1:2) = flux(1:2)
-
 
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
@@ -4301,6 +4303,117 @@ contains
        endif
     enddo
   end subroutine cutVacuum
+
+  recursive subroutine allocateHydrodynamicsAttributes(thisoctal)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call allocateHydrodynamicsAttributes(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+
+       call allocateAttribute(thisOctal%q_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%q_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%q_i_minus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%q_i_minus_2,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,2)
+       call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 2)
+
+       
+
+       call allocateAttribute(thisOctal%fviscosity,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%x_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%x_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%x_i_minus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%x_i_minus_2,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%u_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%u_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%flux_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%flux_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%flux_i_minus_1,thisOctal%maxchildren)
+
+
+       call allocateAttribute(thisOctal%phiLimit,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%qViscosity,thisOctal%maxchildren,3,3)
+
+       call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%feederCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%refinedLastTime,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%pressure_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%pressure_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%pressure_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%divV,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rhou,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhov,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhow,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rhoe,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhoeLastTime,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%energy,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%phi_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_gas,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_stars,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%phi_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rho_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rho_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%rhorv_i_plus_1,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhorv_i_minus_1,thisOctal%maxchildren)
+
+       call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%boundaryCell,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gravboundaryPartner,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%changed,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%rLimit,thisOctal%maxChildren)
+
+       call allocateAttribute(thisOctal%iEquationOfState,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gamma,thisOctal%maxChildren)
+
+
+       call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
+
+
+
+  
+       endif
+    enddo
+  end subroutine allocateHydrodynamicsAttributes
 
 
 !copy cell rho to advecting quantity q
@@ -13991,7 +14104,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -14161,16 +14274,16 @@ end subroutine refineGridGeneric2
        fracChange = tempFracChange
 
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreads))
 
-!       if (mod(it,100) == 0) then
-!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
-!       endif
+       if (mod(it,100) == 0) then
+          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+          call writeVtkFile(grid, plotfile, &
+               valueTypeString=(/"phigas ", "rho    ","chiline"/))
+       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo

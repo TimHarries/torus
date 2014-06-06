@@ -79,7 +79,7 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, hydroStep2dCylindrical_amr, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
-         imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity
+         imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity, allocatehydrodynamicsAttributes
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -296,6 +296,8 @@ contains
 
 !    call writeVtkFile(grid, "preghosts.vtk", &
 !         valueTypeString=(/"ghosts     ", "mpithread  " /))
+
+    call allocateHydrodynamicsAttributes(grid%octreeRoot)
 
     if (myrankGlobal /= 0) then
        call writeInfo("Setting up even up array", TRIVIAL)
