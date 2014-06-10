@@ -2083,7 +2083,6 @@ contains
              endif
              weight = 1.d0 - (thisOctal%x_i(subcell) - x_interface) / (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
 
-
              if ((any(rho_i_minus_1(1:2) == 0.d0)).or.(thisOctal%rho(subcell) == 0.d0)) then
                 write(*,*) "bug in setupui ",rho_i_minus_1, thisOctal%rho(subcell)
              endif
@@ -2100,7 +2099,7 @@ contains
 
              weight = 1.d0 - (thisOctal%x_i_plus_1(subcell) - x_interface_i_p_half) / (thisOctal%x_i_plus_1(subcell) - &
                   thisOctal%x_i(subcell))
-             
+
              if (.not.associated(thisOctal%u_interface_i_plus_1)) allocate(thisOctal%u_interface_i_plus_1(1:thisOctal%maxChildren))
              thisoctal%u_amr_interface_i_plus_1(subcell,1:2) = &
                   weight * rhou_i_plus_1(1:2)/rho_i_plus_1(1:2)+ &
@@ -3524,13 +3523,24 @@ contains
              debug = .false.
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
 
-             if (inSubcell(thisOctal, subcell, VECTOR(10.d3, 0.d0, 1.11d6))) then
-                debug = .true.
-             endif
+!             if (inSubcell(thisOctal, subcell, VECTOR(10.d3, 0.d0, 1.11d6))) then
+!                debug = .true.
+!             endif
 
              if (debug.and.(myHydroSetGlobal == 0)) then
                 write(*,*) "speed before" ,speed
+                write(*,*) "direction ",direction
+                write(*,*) "u_interface ",thisOctal%u_amr_interface(subcell,1:2)/1.d5
+                   write(*,*) "flux small i+1 ",thisOctal%flux_amr_i_plus_1(subcell,1:2)
+                   write(*,*) "flux small i  ",thisOctal%flux_amr_i(subcell,1:2)
              endif
+
+!             if (inSubcell(thisOctal, subcell, VECTOR(10.d3, 0.d0, 1.15d6))) then
+!                if (myHydroSetGlobal == 0) then
+!                   write(*,*) "big u_interface ",thisOctal%u_amr_interface(subcell,1:2)/1.d5
+!                   write(*,*) "big flux ",thisOctal%flux_amr_i(subcell,1:2)
+!                endif
+!             endif
              
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then

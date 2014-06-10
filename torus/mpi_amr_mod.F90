@@ -2334,7 +2334,20 @@ contains
           rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
           pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
 
-          flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,1:2)
+          if (abs(direction%x) > 0.9d0) then ! radial
+             if ((subcell == 1).or.(subcell == 2)) then
+                flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
+             else
+                flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+             endif
+          else ! vertical
+             if ((subcell == 1).or.(subcell == 3)) then
+                flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
+             else
+                flux(1:2) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+             endif
+          endif
+
        else
 
           do j = 1, 2
