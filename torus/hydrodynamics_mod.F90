@@ -1142,7 +1142,7 @@ contains
 
 
              do j = 1, 2
-                if (thisoctal%u_interface(subcell).ge.0.d0) then
+                if (thisoctal%u_amr_interface(subcell,j).ge.0.d0) then
                    thisoctal%flux_amr_i(subcell,j) = thisoctal%u_amr_interface(subcell,j) * thisoctal%q_amr_i_minus_1(subcell,j)
                 else
                    thisoctal%flux_amr_i(subcell,j) = thisoctal%u_amr_interface(subcell,j) * thisoctal%q_i(subcell)
@@ -1351,7 +1351,7 @@ contains
     type(octal), pointer  :: child 
     type(VECTOR) :: direction, rVec
     integer :: subcell, i, j
-    logical :: radial
+    logical :: radial, debug
     real(double) :: dt, dv, df, area_i(2), area_i_plus_1(2)
 
   
@@ -1371,10 +1371,12 @@ contains
 
           if ((.not.thisoctal%ghostcell(subcell))) then
 
-
+             debug = .false.
+             if (inSubcell(thisOctal, subcell, VECTOR(20d3, 0.d0, 1.14e6))) debug=.true.
+             if (inSubcell(thisOctal, subcell, VECTOR(10d3, 0.d0, 1.11e6))) debug=.true.
 
              radial = .true. 
-             if (direction%x < 0.1d0) then
+             if (abs(direction%x) < 0.1d0) then
                 radial = .false.
              endif
              rVec = subcellCentre(thisOctal,subcell)
@@ -1397,7 +1399,11 @@ contains
                 df = (thisoctal%flux_amr_i_plus_1(subcell,j) * area_i_plus_1(j) - &
                      thisoctal%flux_amr_i(subcell,j) * area_i(j))
                 thisoctal%q_i(subcell) = thisoctal%q_i(subcell) - dt * (df/dv)
-!                write(*,*) j, thisOctal%flux_amr_i_plus_1(subcell,j), thisOctal%flux_amr_i(subcell,j), area_i_plus_1(j), area_i(j)
+!                if (debug.and..not.radial) then
+!                   write(*,*) "j ", j, thisOctal%subcellSize
+!                   write(*,*) "flux ", thisOctal%flux_amr_i_plus_1(subcell,j), thisOctal%flux_amr_i(subcell,j), area_i_plus_1(j), area_i(j)
+!                   write(*,*) "u_i ",thisOctal%u_amr_interface(subcell,j)
+!                Endif
              enddo
 
           endif
@@ -2100,8 +2106,19 @@ contains
                   weight * rhou_i_plus_1(1:2)/rho_i_plus_1(1:2)+ &
                   (1.d0-weight)*thisRhou/thisoctal%rho(subcell)
 
-
-             
+!             if (inSubcell(thisOctal, subcell, VECTOR(10d3,0.d0, 1.14d6))) then
+!                if (direction%z > 0.9) then
+!                   write(*,*) "big u_i ", thisOctal%u_i(subcell)
+!                   write(*,*) "big u_interface ",thisOctal%u_amr_interface(subcell,1:2)
+!                endif
+!             endif
+!             if (inSubcell(thisOctal, subcell, VECTOR(10d3,0.d0, 1.11d6))) then
+!                if (direction%z > 0.9) then
+!                   write(*,*) "small u_i ", thisOctal%u_i(subcell)
+!                   write(*,*) "small u_interface ",thisOctal%u_amr_interface(subcell,1:2)
+!                   write(*,*) "small u_interface + 1 ",thisOctal%u_amr_interface_i_plus_1(subcell,1:2)
+!                endif
+ !            endif
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
 !             if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
 !
@@ -3507,9 +3524,9 @@ contains
              debug = .false.
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
 
-!             if (inSubcell(thisOctal, subcell, VECTOR(50.d3, 0.d0, 1.07d6))) then
-!                debug = .true.
-!             endif
+             if (inSubcell(thisOctal, subcell, VECTOR(10.d3, 0.d0, 1.11d6))) then
+                debug = .true.
+             endif
 
              if (debug.and.(myHydroSetGlobal == 0)) then
                 write(*,*) "speed before" ,speed
@@ -6197,7 +6214,7 @@ end subroutine sumFluxes
 
        !set up grid values
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
-       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call setupUi_amr(grid%octreeRoot, grid, direction, dt)
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
@@ -6219,14 +6236,14 @@ end subroutine sumFluxes
        !calculate and set up pressures   
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call computepressureGeneral(grid, grid%octreeroot, .false.) 
-       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call setupUi_amr(grid%octreeRoot, grid, direction, dt)
        call setuppressure(grid%octreeroot, grid, direction)
        call setupupm(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
        call setuppressure(grid%octreeroot, grid, direction)
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=thisBound)
 
-       call setupUi(grid%octreeRoot, grid, direction, dt)
+       call setupUi_amr(grid%octreeRoot, grid, direction, dt)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call setupUpm(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -9135,7 +9152,7 @@ real(double) :: rho
 
                      if (abs(dir%x) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
-                         thisOctal%tempStorage(subcell,4) = -bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
                          thisOctal%tempStorage(subcell,8) = bOctal%phi_i(bsubcell)
                       endif
@@ -14110,7 +14127,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -14280,16 +14297,16 @@ end subroutine refineGridGeneric2
        fracChange = tempFracChange
 
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
 
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreads))
 
-       if (mod(it,100) == 0) then
-          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas ", "rho    ","chiline"/))
-       endif
+!       if (mod(it,100) == 0) then
+!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
+!       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
     enddo

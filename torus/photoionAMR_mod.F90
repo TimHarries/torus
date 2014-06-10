@@ -436,7 +436,6 @@ contains
           endif
 
 
-
           looplimitTime = deltaTForDump
           looplimittime = 1.d30
           iterTime = 1.e30
@@ -760,7 +759,7 @@ contains
 !       write(mpiFilename,'(a, i4.4, a)') "preStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-!            "hydrovelocity","sourceCont   ","pressure     ", "rhou         "/))
+!            "hydrovelocity","sourceCont   ","pressure     ", "rhou         ","dust1       "/))
 
 
 
@@ -3648,13 +3647,15 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
        endif
     endif
-    if (radpressureTest.and.thisOctal%rho(subcell)<1.d-24) then
-       kappaAbsDb = 0.d0
-       kappaScaDb = 0.d0
-    else
-       if (thisLam < 2.d5) then
+    if (radpressureTest) then
+       if (thisOctal%rho(subcell)<1.d-24) then
+          kappaAbsDb = 0.d0
           kappaScaDb = 0.d0
-          kappaAbsDb = (100.d0/thisOctal%subcellSize)
+       else
+          if (thisLam < 2.d5) then
+             kappaScaDb = 0.d0
+             kappaAbsDb = (100.d0/thisOctal%subcellSize)
+          endif
        endif
     endif
     if (inFlow) then
@@ -3845,13 +3846,15 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 
 
-          if (radpressureTest.and. thisOctal%rho(subcell)<1.d-24) then
-             kappaAbsDb = 0.d0
-             kappaScaDb = 0.d0
-          else
-             if (thisLam < 2.d5) then
+          if (radpressureTest) then
+             if (thisOctal%rho(subcell)<1.d-24) then
+                kappaAbsDb = 0.d0
                 kappaScaDb = 0.d0
-                kappaAbsDb = (100.d0/thisOctal%subcellSize)
+             else
+                if (thisLam < 2.d5) then
+                   kappaScaDb = 0.d0
+                   kappaAbsDb = (100.d0/thisOctal%subcellSize)
+                endif
              endif
           endif
 
@@ -5448,13 +5451,16 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
     endif
 
-    if (radpressureTest.and. thisOctal%rho(subcell)<1.d-24) then
-       kappaext = 0.d0
-    else
-       if (grid%lamArray(ilambda) < 2.d5) then
-          kappaExt = (100.d0/thisOctal%subcellSize)
+    if (radpressureTest) then
+       if (thisOctal%rho(subcell)<1.d-24) then
+          kappaext = 0.d0
+       else
+          if (grid%lamArray(ilambda) < 2.d5) then
+             kappaExt = (100.d0/thisOctal%subcellSize)
+          endif
        endif
     endif
+
 
 
 

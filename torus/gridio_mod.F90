@@ -179,6 +179,9 @@ contains
        endif
     endif
 #endif
+#ifdef USEZLIB
+       if (.not.uncompressedDumpFiles) call zeroZlibBuffer()
+#endif
 
 
     if (.not.grid%splitOverMPI) then
@@ -191,30 +194,35 @@ contains
 
        if (myHydroSetGlobal /= 0) goto 666
 
+       call MPI_BARRIER(localWorldCommunicator, ierr)
+
        do iThread = 0, nHydroThreadsGlobal
 
          if (iThread == myRankGlobal) then
  
-          if (.not.uncompressedDumpFiles) then
-             if (iThread > 0) then
-                call MPI_RECV(nBuffer, 1, MPI_INTEGER, ithread-1, tag, localWorldCommunicator, status, ierr)
-                call MPI_RECV(buffer, maxBuffer, MPI_BYTE, ithread-1, tag, localWorldCommunicator, status, ierr)
-             endif
-          endif
+            if (.not.uncompressedDumpFiles) then
+               if (iThread > 0) then
+                  call MPI_RECV(nBuffer, 1, MPI_INTEGER, ithread-1, tag, localWorldCommunicator, status, ierr)
+                  call MPI_RECV(buffer, maxBuffer, MPI_BYTE, ithread-1, tag, localWorldCommunicator, status, ierr)
+               endif
+            endif
+            
+            call writeAmrGridSingle(filename, fileFormatted, grid)
+            
+            if (.not.uncompressedDumpFiles) then
+               if (iThread < nHydroThreadsGlobal) then
+                  call MPI_SEND(nBuffer, 1, MPI_INTEGER, iThread+1, tag, localWorldCommunicator, ierr)
+                  call MPI_SEND(buffer, maxBuffer, MPI_BYTE, iThread+1, tag, localWorldCommunicator, ierr)
+               endif
+            endif
 
-          call writeAmrGridSingle(filename, fileFormatted, grid)
-
-          if (.not.uncompressedDumpFiles) then
-             if (iThread < nHydroThreadsGlobal) then
-                call MPI_SEND(nBuffer, 1, MPI_INTEGER, iThread+1, tag, localWorldCommunicator, ierr)
-                call MPI_SEND(buffer, maxBuffer, MPI_BYTE, iThread+1, tag, localWorldCommunicator, ierr)
-             endif
-          endif
-
-          endif
+         endif
           
           if (uncompressedDumpFiles) call MPI_BARRIER(localWorldCommunicator, ierr)
        enddo
+
+       call MPI_BARRIER(localWorldCommunicator, ierr)
+
 #ifdef USEZLIB
        if (.not.uncompressedDumpFiles) call zeroZlibBuffer()
 #endif
@@ -243,6 +251,9 @@ contains
     
     integer, dimension(8) :: timeValues ! system date and time
     integer               :: error      ! error code
+#ifdef MPI
+    integer               :: ierr       ! error code
+#endif
     logical :: writeHeader
     character(len=20) :: positionStatus
 
@@ -272,9 +283,7 @@ contains
           call openUncompressedFile(20, updatedFilename)
        else
 #ifdef USEZLIB
-!          write(*,*) myrankGlobal, " attempting to open ",trim(updatedFilename)
           call openCompressedFile(20, updatedFilename, positionStatus=positionStatus)
-!          write(*,*) myrankGlobal, " has opened ",trim(updatedFilename)
 #else
           call writeFatal("zlib is needed to read compressed files")
 #endif
@@ -340,7 +349,7 @@ contains
     call writeOctreePrivateFlexi(grid%octreeRoot,fileFormatted, grid)
     if (uncompressedDumpFiles) then
        close(unit=20)
-    else
+    else   
 #ifdef USEZLIB
        if (.not.grid%splitOverMpi) then
           call closeCompressedFile(20,flushBuffer=.true.)
@@ -355,6 +364,10 @@ contains
        call writeFatal("zlib is needed for writing compressed files")
 #endif
     endif
+
+!#ifdef MPI
+!    call MPI_BARRIER(localWorldCommunicator, ierr)
+!#endif
     call writeInfo("File written and closed",TRIVIAL)
        
     
@@ -4318,6 +4331,7 @@ contains
 
             select case (trim(tag))
             case("version")
+!               write(*,*) "tag ",trim(tag)
                call readSingleFlexi(20, grid%version, fileFormatted)
                write(message,'(a,a,a,a)') "Dump file written by TORUS version  ", trim(torusVersion)
                call writeInfo(message, IMPORTANT)

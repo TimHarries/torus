@@ -945,7 +945,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 33
+    integer, parameter :: nStorage = 35
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
@@ -1144,6 +1144,8 @@ contains
                 tempStorage(32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
 
                 tempStorage(33) = neighbourOctal%temperature(neighbourSubcell)
+                tempStorage(34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
+                tempStorage(35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
 
 !                write(*,*) myrank," set up tempstorage with ", &
 
@@ -1189,6 +1191,9 @@ contains
                 tempStorage(32) = qViscosity(3,3)
 
                 tempStorage(33) = temperature
+                tempStorage(34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
+                tempStorage(35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+
              endif
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
@@ -2282,8 +2287,7 @@ contains
        x = -2.d0
        x = sqrt(x)
     endif
-    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then ! .or. &
-!         thisOctal%mpiThread(subcell) == neighbourOctal%mpiThread(neighboursubcell)) then
+    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
 
        nd = neighbourOctal%nDepth
 
@@ -2453,6 +2457,8 @@ contains
        qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
        qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
 
+       flux(1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+       flux(2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
 
     endif
   end subroutine getNeighbourValues2

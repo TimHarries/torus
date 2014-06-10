@@ -146,14 +146,10 @@ contains
 
     if (PRESENT(positionStatus)) then
        if (trim(positionStatus)=="append") then
-!          write(*,*) "opening ",trim(thisFilename), " with pos status ",trim(positionStatus)
           open(lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
        else if (trim(positionStatus)=="newfile") then
-!          write(*,*) "opening ",trim(thisFilename), " as a new file"
           inquire(file=thisFilename, exist=fileExists)
-!          write(*,*) "inquire says file exists ",fileExists
           inquire(unit=lunit, opened=luOpened)
-!          write(*,*) "inquire says logical unit opened ",luOpened
           open(lunit, file=thisFilename, form="unformatted", status="replace")
        endif
     else
@@ -193,6 +189,7 @@ contains
        nBuffer = 0
        buffer = 0
     endif
+    call flush(lunit)
     close(lunit)
 
   end subroutine closeCompressedFile
