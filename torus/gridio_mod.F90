@@ -251,9 +251,6 @@ contains
     
     integer, dimension(8) :: timeValues ! system date and time
     integer               :: error      ! error code
-#ifdef MPI
-    integer               :: ierr       ! error code
-#endif
     logical :: writeHeader
     character(len=20) :: positionStatus
 
@@ -365,9 +362,6 @@ contains
 #endif
     endif
 
-!#ifdef MPI
-!    call MPI_BARRIER(localWorldCommunicator, ierr)
-!#endif
     call writeInfo("File written and closed",TRIVIAL)
        
     

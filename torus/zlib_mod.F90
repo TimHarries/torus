@@ -189,7 +189,6 @@ contains
        nBuffer = 0
        buffer = 0
     endif
-    call flush(lunit)
     close(lunit)
 
   end subroutine closeCompressedFile
