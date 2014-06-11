@@ -2005,14 +2005,14 @@ contains
     real(double) :: rhou_i_minus_1(2), rho_i_minus_1(2), dt
     real(double) :: rhou_i_plus_1(2), x_interface_i_p_half
     real(double) :: xnext, weight, px, py, pz, x_interface
-    real(double) :: pressure_i_plus_1(2), pressure_i, pressure_i_minus_1(2), pressure_i_minus_2
+    real(double) :: pressure_i_plus_1(2), pressure_i(2), pressure_i_minus_1(2), pressure_i_minus_2(2)
     real(double) :: rho_i, rho_i_minus_2, rho_i_plus_1(2)
     real(double) :: rm1, um1, pm1
     real(double) :: x_i, x_i_plus_1, x_i_minus_1, x_i_minus_2
     real(double) :: thisRhou
-!    real(double) :: dx
-!    real(double) :: u_i, u_i_minus_1
-!    real(double) :: dpdx_i, dpdx_i_minus_half, dpdx_i_minus_1
+    real(double) :: dx
+    real(double) :: u_i(2), u_i_minus_1(2)
+    real(double) :: dpdx_i(2), dpdx_i_minus_half(2), dpdx_i_minus_1(2)
 
     do subcell = 1, thisoctal%maxchildren
        if (thisoctal%haschild(subcell)) then
@@ -2105,57 +2105,53 @@ contains
                   weight * rhou_i_plus_1(1:2)/rho_i_plus_1(1:2)+ &
                   (1.d0-weight)*thisRhou/thisoctal%rho(subcell)
 
-!             if (inSubcell(thisOctal, subcell, VECTOR(10d3,0.d0, 1.14d6))) then
-!                if (direction%z > 0.9) then
-!                   write(*,*) "big u_i ", thisOctal%u_i(subcell)
-!                   write(*,*) "big u_interface ",thisOctal%u_amr_interface(subcell,1:2)
-!                endif
-!             endif
-!             if (inSubcell(thisOctal, subcell, VECTOR(10d3,0.d0, 1.11d6))) then
-!                if (direction%z > 0.9) then
-!                   write(*,*) "small u_i ", thisOctal%u_i(subcell)
-!                   write(*,*) "small u_interface ",thisOctal%u_amr_interface(subcell,1:2)
-!                   write(*,*) "small u_interface + 1 ",thisOctal%u_amr_interface_i_plus_1(subcell,1:2)
-!                endif
- !            endif
              ! for info, see http://ses.library.usyd.edu.au/bitstream/2123/376/2/adt-NU20010730.12021505_chapter_4.pdf
-!             if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
-!
-!                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
-!                     grid%halfsmallestsubcell)
-!                neighbouroctal => thisoctal
-!                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-!                call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-!                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
-!                     xnext, px, py, pz, rm1, um1, pm1, qViscosity)
-!
-!                rho_i_plus_1 = rho
-!                pressure_i_plus_1 = pressure
-!                x_i_plus_1 = px
-!
+             if(rhiechow .and. .not. thisOctal%ghostcell(subcell)) then
+
+                locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*&
+                     grid%halfsmallestsubcell)
+                neighbouroctal => thisoctal
+                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+                call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
+                     xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+
+
+                rho_i_plus_1(1:2) = rho(1:2)
+                do j = 1, 2
+                   rhou_i_plus_1(j) = direction.dot.VECTOR(rhou(j),rhov(j),rhow(j))
+                enddo
+                pressure_i_plus_1(1:2) = pressure(1:2)
+                x_i_plus_1 = px
+
 !                !now we have i,i+1,i-1 and i-2 can apply rhie-chow
 !                !you basically subtract the local pressure gradient and add the average ambient one
 !
-!                u_i = thisRhou / thisOctal%rho(subcell)
-!                u_i_minus_1 = rhou_i_minus_1 / rho_i_minus_1
-!
-!                dx = thisOctal%subcellSize * gridDistanceScale
-!
-!                dpdx_i_minus_half = (pressure_i - pressure_i_minus_1) / dx
-!                dpdx_i = (pressure_i_plus_1 - pressure_i_minus_1) / (2.d0*dx)
-!                dpdx_i_minus_1 = (pressure_i - pressure_i_minus_2) / (2.d0*dx)
-!
-!
-!                if(dpdx_i_minus_1 /= 0.d0 .and. dpdx_i_minus_half /= 0.d0 .and. &
-!                     dpdx_i /= 0.d0) then
+                u_i = thisRhou / thisOctal%rho(subcell)
+
+                u_i_minus_1(1:2) = rhou_i_minus_1(1:2) / rho_i_minus_1(1:2)
+
+                dx = thisOctal%subcellSize * gridDistanceScale
+
+                dpdx_i_minus_half(1:2) = (pressure_i(1:2) - pressure_i_minus_1(1:2)) / dx
+                dpdx_i(1:2) = (pressure_i_plus_1(1:2) - pressure_i_minus_1(1:2)) / (2.d0*dx)
+                dpdx_i_minus_1(1:2) = (pressure_i(1:2) - pressure_i_minus_2(1:2)) / (2.d0*dx)
+
+
+                if(dpdx_i_minus_1(1) /= 0.d0 .and. dpdx_i_minus_half(1) /= 0.d0 .and. &
+                     dpdx_i(1) /= 0.d0.and.dpdx_i_minus_1(2) /= 0.d0 .and. dpdx_i_minus_half(2) /= 0.d0 .and. &
+                     dpdx_i(2) /= 0.d0) then
+
 !!the approximation screws up if applied to cells that are symmetric on one side only
 !!i.e. in a model with zero gradient boundaries you get preferential flow in in - direction
-!                   thisOctal%u_interface(subcell) = 0.5d0*(u_i + u_i_minus_1) - &
-!                        (dt/(0.5d0*(rho_i_minus_1 + rho_i)))*dpdx_i_minus_half + &
-!                        0.5d0 * ((dt/rho_i)*dpdx_i + (dt/rho_i_minus_1)*dpdx_i_minus_1)
-!                end if
-!
-!          endif
+
+                   thisOctal%u_amr_interface(subcell,1:2) = 0.5d0*(u_i(1:2) + u_i_minus_1(1:2)) - &
+                        (dt/(0.5d0*(rho_i_minus_1(1:2) + rho_i)))*dpdx_i_minus_half(1:2) + &
+                        0.5d0 * ((dt/rho_i)*dpdx_i(1:2) + (dt/rho_i_minus_1(1:2))*dpdx_i_minus_1(1:2))
+
+                end if
+
+          endif
 
              
           end if
