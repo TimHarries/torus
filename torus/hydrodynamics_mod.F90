@@ -5831,6 +5831,8 @@ end subroutine sumFluxes
    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
 
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
+
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
    else
@@ -6140,9 +6142,13 @@ end subroutine sumFluxes
       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
    endif
 
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
+
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
+         if (Writeoutput) write(*,*) "Updating source position"
          call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+         if (Writeoutput) write(*,*) "Done."
       else
          if (globalnSource == 1) then
             globalSourceArray(1)%position =  globalSourceArray(1)%position + &
@@ -6159,7 +6165,7 @@ end subroutine sumFluxes
 
 !Perform a single hydrodynamics step, in r and z directions, for the 2D cylindrical case.     
   subroutine hydroStep2dCylindrical_amr(grid, timeStep, nPairs, thread1, thread2, nBound, group, nGroup)
-    use inputs_mod, only : doselfGrav, doGasGravity, alphaViscosity
+    use inputs_mod, only : doselfGrav, doGasGravity, alphaViscosity, advectHydro
     type(GRIDTYPE) :: grid
     logical :: selfGravity
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -6183,6 +6189,9 @@ end subroutine sumFluxes
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
+
+    dt = timestep
+    if (advectHydro) then
 
     if (myrankWorldglobal == 1) call tune(6,"Alpha viscosity")
     call setupAlphaViscosity(grid, alphaViscosity, 0.1d0)
@@ -6277,15 +6286,18 @@ end subroutine sumFluxes
     call setupUi(grid%octreeRoot, grid, direction, dt)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     
-
+    endif
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
       call domyAccretion(grid, globalsourceArray, globalnSource, dt)
    endif
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
+         if (writeoutput) write(*,*) "Updating source positions..."
          call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+         if (writeoutput) write(*,*) "Done."
       else
          if (globalnSource == 1) then
             globalSourceArray(1)%position =  globalSourceArray(1)%position + &
@@ -6296,7 +6308,6 @@ end subroutine sumFluxes
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
    
-
  
   end subroutine hydroStep2dCylindrical_amr
 
@@ -6393,6 +6404,7 @@ end subroutine sumFluxes
     if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
     
     if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
        call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
     else
@@ -7021,6 +7033,13 @@ end subroutine sumFluxes
           else
              write(plotfile,'(a,i4.4,a)') "torus1Dhydro_",it,".dat"
           end if
+
+          if (writeoutput) then
+             write(plotfile,'(a,i4.4,a)') "source",grid%idump,".dat"
+             globalSourceArray(:)%time = grid%currentTime
+             call writeSourceArray(plotfile)
+          endif
+
          
           if(grid%geometry == "SB_isoshck" .or. grid%geometry == "SB_coolshk") then
              call  dumpValuesAlongLine(grid, plotfile, &
@@ -7931,7 +7950,7 @@ end subroutine sumFluxes
 !The main routine for 2D hydrodynamics in cylindrical coordinates
   subroutine doHydrodynamics2dCylindrical(grid)
     use inputs_mod, only : tEnd, tDump, doRefine, doUnrefine, amrTolerance, modelwashydro, doselfgrav
-    use inputs_mod, only : vtutogrid
+    use inputs_mod, only : vtutogrid, advectHydro
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(512), temptc(512), mu
@@ -8209,6 +8228,7 @@ end subroutine sumFluxes
 
        write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
 
+       if (.not.advectHydro) dt = tdump
        if ((currentTime + dt).gt.tEnd) then
           nextDumpTime = tEnd
           dt = nextDumpTime - currentTime
@@ -8362,6 +8382,9 @@ end subroutine sumFluxes
              call writeSourceArray(plotfile)
           endif
                
+          write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
+          call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
+
 
           if (dumpRadial) then
              write(plotfile,'(a,i4.4,a)') "radial",it,".dat"
@@ -14331,16 +14354,15 @@ end subroutine refineGridGeneric2
 
   real(double) function getPressure(thisOctal, subcell)
 #ifdef PHOTOION
-    use inputs_mod, only : photoionPhysics, honly, simpleMu, radpressureTest
+    use inputs_mod, only : photoionPhysics, honly, simpleMu, radpressureTest, mu
     use ion_mod, only : nGlobalIon, globalIonArray, returnMu, returnmusimple
 #endif
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: eKinetic, eThermal, K, u2, eTot
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    real(double) :: mu, rhoPhys, gamma, cs, rhoNorm, rhov
+    real(double) :: rhoPhys, gamma, cs, rhoNorm, rhov
     type(VECTOR) :: rVec
-    mu = 0.d0
 
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic
@@ -14374,16 +14396,6 @@ end subroutine refineGridGeneric2
           if (photoionPhysics) then
              mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
              if(honly .and. simpleMu) mu = returnMuSimple(thisOctal, subcell)
-          else
-             mu = 2.33d0
-!             if(grid%geometry == "SB_1D_2Da" .or. grid%geometry == "SB_CD_1Db" &
-!                  .or. grid%geometry == "SB_1D_2Da" .or. grid%geometry == "SB_CD_1Db") then                
-!             mu = 1.d0
-!             end if
-!             if(grid%geometry == "SB_gasmix") then
-!                mu = 1.4d0
-!             end if
-             
           endif
           
 !          if (writeoutput) write(*,*) "mu ",mu
@@ -15148,7 +15160,7 @@ end subroutine minMaxDepth
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB
      integer :: subcell, i
-     integer, parameter :: npole = 4
+     integer, parameter :: npole = 6
      integer :: ithread
      integer :: tag, ierr, ipole
      integer :: status(MPI_STATUS_SIZE)
@@ -15232,7 +15244,7 @@ end subroutine minMaxDepth
      logical, optional :: reset
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, uHat
-     integer, parameter :: npole = 4
+     integer, parameter :: npole = 6
      integer :: level
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB

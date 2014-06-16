@@ -2340,9 +2340,15 @@ contains
     call getLogical("gascourant", forcegascourant, cLine, fLine, nLines, &
          "Only use the gas courant condition: ","(a,1l,a)", .false., ok, .false.)
 
+    call getLogical("advecthydro", advectHydro, cLine, fLine, nLines, &
+         "Perform hydrodynamic advection: ","(a,1l,a)", .true., ok, .false.)
+
 
     call getLogical("modelwashydro", modelwashydro, cLine, fLine, nLines, &
          "Grid is based on hydro or radiation hydro calculation: ","(a,1l,a)", .false., ok, .false.)
+
+    call getDouble("mu", mu, 1.d0, cLine, fLine, nLines, &
+         "Mean molecular weight:  ","(a,f5.2,1x,a)", 2.d33, ok, .false.)
 
     call getDouble("etaviscosity", etaViscosity, 1.d0, cLine, fLine, nLines, &
          "Viscosity eta parameter:  ","(a,e12.3,1x,a)", 3.d0, ok, .false.)

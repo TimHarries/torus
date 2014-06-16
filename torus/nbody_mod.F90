@@ -147,6 +147,7 @@ contains
     common /path/ kmax,kount,dxsav,xp ,yp
     kmax = 0
 
+
     call calculateEps(smallestCellSize, source, nsource,eps)
 
     nvar = nSource * 6

@@ -141,6 +141,7 @@
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
   logical :: simpleGrav               !Do self gravity calculation
+  logical :: advectHydro              ! perform advection
   logical :: doGasGravity             ! Include gas gravity in calculation
   logical :: dirichlet                !Use dirichlet boundary conditions - otherwise periodic used by default
   logical :: severeDamping            ! Turn on damping
@@ -150,6 +151,7 @@
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   logical :: forcegascourant          !use the gas condition only
   real(double) :: rhoFloor            !min density in grid
+  real(double) :: mu                  !mean molecular weight
   real(double) :: etaViscosity        !Artificial viscosity parameter
   logical :: useTensorViscosity       ! Use tensor form for artificial viscosity
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates

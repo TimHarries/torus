@@ -9192,7 +9192,7 @@ endif
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
-    real(double) :: eThermal, rMod,  rhoSphere, rDash
+    real(double) :: eThermal, rMod,  rhoSphere, rDash, fac
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec-spherePosition)
@@ -9217,7 +9217,9 @@ endif
           if (hydrodynamics) thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
        endif
     else
-       thisOctal%rho(subcell) = 1.d-2 * rhoSphere
+       fac = 1.d-2
+       if (rhosphere > 1.d-8) fac = 1.d-20
+       thisOctal%rho(subcell) = fac * rhoSphere
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
@@ -9847,7 +9849,7 @@ endif
   end subroutine calcBondiDensity
 
   subroutine calcShuDensity(thisOctal,subcell)
-    use inputs_mod, only : gridDistanceScale
+    use inputs_mod, only : gridDistanceScale, mu
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
@@ -9866,10 +9868,16 @@ endif
 !    integer :: i, j
 
     bigA = 29.3d0
-    a = sqrt(kerg*10.d0/(2.33d0*mHydrogen))
-    r0 = msol / (a**2 * bigA / bigG)
+    a = sqrt(kerg*10.d0/(mu * mHydrogen))
+    r0 = 5e16
+    temp = 10.
+    p = rho/(mu*mHydrogen)*kerg*temp
     if (firstTime) then
        if (writeoutput) write(*,*) "Radius of sphere is ",r0
+       if (writeoutput) write(*,*) "Mass accretion rate should be ",(133.d0 * a**3 / bigG)/msol / secstoYears
+       if (writeoutput) write(*,*) "Sound speed ",a/1.d5
+       if (writeoutput) write(*,*) "rho(r0) ",a**2 * bigA / (fourPi * bigG *r0**2)
+       if (writeoutput) write(*,*) "mu ",mu
        firstTime = .false.
     endif
     rVec = subcellCentre(thisOctal, subcell)
@@ -9881,11 +9889,10 @@ endif
     u = 0.d0
     temp = 10.d0
     if (r > r0) then 
-       rho = 0.1d0 * a**2 * bigA / (fourPi*bigG * r0**2)
-       temp = 100.d0
+       rho = 0.01d0 * a**2 * bigA / (fourPi*bigG * r0**2)
+       temp = 10.d0
     endif
 
-    p = rho/(2.33d0*mHydrogen)*kerg*temp
 
 
     thisOctal%temperature(subcell) = real(temp)
@@ -9895,7 +9902,7 @@ endif
 
 
 
-    eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
+    eThermal = kerg * thisOctal%temperature(subcell)/(mu*mHydrogen)
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%iEquationOfState(subcell) = 1
 

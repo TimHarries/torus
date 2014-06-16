@@ -740,10 +740,11 @@ contains
 
 
   real function whitneyDensity(point, grid)
-    use inputs_mod
+    use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavangle, cavdens, &
+         rstellar, drouter, drinner 
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN), optional   :: grid
-    real :: r, mu, mu_0, rhoEnv, r_c
+    real :: r, mu, mu_0, rhoEnv, r_c, rho0
     real :: h, rhoDisc, alpha
     real(double) :: fac, theta
     logical :: withGrid
@@ -1152,10 +1153,9 @@ contains
 
   real(double) function melvinDensity(point, grid) 
 
-    use inputs_mod
     TYPE(gridtype), INTENT(IN), optional :: grid
     TYPE(VECTOR), INTENT(IN) :: point
-    real :: r,  mStar, rCav, r_c, r_d
+    real :: r,  mStar, rCav, r_c, r_d, mdot, rho0, beta
     real :: openingAngle, mu, mu_0, bigR, zMaxxed
     real :: z, H_R, H_0, alpha
     real :: rhoEnv, rhoDisc
