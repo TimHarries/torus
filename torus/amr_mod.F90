@@ -3778,6 +3778,18 @@ CONTAINS
           endif
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           
+       case("shu")
+          if (inputnSource > 0) then
+             do iSource = 1, inputnSource
+                if (inSubcell(thisOctal,subcell, sourcePos(isource)) &
+                     .and. (thisOctal%nDepth < maxDepthAMR)) then
+                   split = .true.
+                   exit
+                endif
+             enddo
+          endif
+
+
        case("whitney")          
           cellSize = thisOctal%subcellSize * 1.d10
           cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
@@ -9729,7 +9741,7 @@ endif
     rVec = subcellCentre(thisOctal, subcell)
     inflowTemp = 10.d0
     thisOctal%temperature(subcell) = 10.d0
-    thisOCtal%rho(subcell) = 1.d-23
+    thisOCtal%rho(subcell) = 1.d-25
     thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
 
     soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
@@ -9744,7 +9756,7 @@ endif
     thisOctal%iEquationOfState(subcell) = 1
 
     inflowPressure = thisOctal%pressure_i(subcell)
-    inflowRho = 1.d-23
+    inflowRho = 1.d-25
     inflowMomentum = inflowRho * inflowSpeed
     inflowEnergy = thisOctal%energy(subcell)
     inflowRhoE = inflowEnergy * inflowRho
@@ -9828,13 +9840,13 @@ endif
     call bondi(x, y, z)
     v = y * soundSpeed
 
-!    write(*,*) "theoretical ",fourPi*1.d-25*rBondi**2 * 1.12d0*soundSpeed/msol*(365.25*24.*3600.)
     if (firstTime) then
        firstTime = .false.
        if (writeoutput) then
           write(*,*) "Bondi radius (cm): ",rBondi
           write(*,*) "Bondi radius/cell size: ",rBondi/(smallestCellSize*1.d10)
           write(*,*) "Mass accretion rate ",fourPi*1.d-25*rBondi**2*soundSpeed/msol*(365.25*24.*3600.)
+          write(*,*) "theoretical ",fourPi*1.d-25*rBondi**2 * 1.12d0*soundSpeed/msol*(365.25*24.*3600.)
        endif
     endif
     thisOctal%temperature(subcell) = 10.d0
@@ -9871,7 +9883,6 @@ endif
     a = sqrt(kerg*10.d0/(mu * mHydrogen))
     r0 = 5e16
     temp = 10.
-    p = rho/(mu*mHydrogen)*kerg*temp
     if (firstTime) then
        if (writeoutput) write(*,*) "Radius of sphere is ",r0
        if (writeoutput) write(*,*) "Mass accretion rate should be ",(133.d0 * a**3 / bigG)/msol / secstoYears
@@ -9885,7 +9896,8 @@ endif
     call normalize(vVec)
     r = modulus(rVec)*gridDistanceScale
 
-    rho = a**2 * bigA / (fourPi*bigG * r**2)
+    rho = a**2 * bigA / (fourPi*bigG * max(r,1.d-30)**2)
+    p = rho/(mu*mHydrogen)*kerg*temp
     u = 0.d0
     temp = 10.d0
     if (r > r0) then 
@@ -11285,7 +11297,7 @@ end function readparameterfrom2dmap
     real(double) :: eThermal!, numDensity
    
     rVec = subcellCentre(thisOctal,subcell)
-    thisOctal%rho(subcell) = (1.d4)*mHydrogen
+    thisOctal%rho(subcell) = (1.d2)*mHydrogen
     if (modulus(rVec) < rCavity) thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.

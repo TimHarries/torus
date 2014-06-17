@@ -3594,7 +3594,7 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                  1.d-1 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                   2.d0*smallestCellSize*gridDistanceScale, gravForceFromSinks)
 
 
 
@@ -5833,6 +5833,7 @@ end subroutine sumFluxes
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
+
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
    else
@@ -6291,6 +6292,7 @@ end subroutine sumFluxes
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
       call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
+
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
@@ -6404,7 +6406,6 @@ end subroutine sumFluxes
     if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
     
     if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
     if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
        call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
     else
@@ -6729,7 +6730,7 @@ end subroutine sumFluxes
              if (cylindricalHydro) then
                 acc = (1.d0/thisOctal%rho(subcell)) * (thisOctal%rhov(subcell)**2) &
                      / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
-                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-30)))
+                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-10)))
              endif
 
           endif
@@ -7894,6 +7895,8 @@ end subroutine sumFluxes
        
        currentTime = currentTime + dt
 
+       if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = currentTime
+
        !Perform another boundary partner check
        call checkBoundaryPartners(grid%octreeRoot, grid)
 
@@ -8253,6 +8256,8 @@ end subroutine sumFluxes
           call hydroStep2dCylindrical_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 !          call calculateTemperatureFromEnergy(grid%octreeRoot)
        end if
+
+
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !get total mass/energy on the grid, for diagnostics
@@ -8312,6 +8317,7 @@ end subroutine sumFluxes
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        
        currentTime = currentTime + dt
+       if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = currentTime
 
        if (writeoutput) write(*,'(a,f7.2)') "Percent left until dump ",100.d0*(nextDumpTime - currentTime)/tdump
 
@@ -8337,7 +8343,6 @@ end subroutine sumFluxes
                "u_i          ", &
                "hydrovelocity", &
                "chiline      ", &
-               "etacont      ", &
                "mass         ", &
                "rhou         ", &
                "rhov         ", &
@@ -8378,6 +8383,7 @@ end subroutine sumFluxes
 !                                 /))
 
           if (writeoutput) then
+             write(*,*) "rank ",myrankglobal, " writing source array"
              write(plotfile,'(a,i4.4,a)') "source",it,".dat"
              call writeSourceArray(plotfile)
           endif
@@ -14667,19 +14673,19 @@ end subroutine minMaxDepth
            call findTotalMassWithinRServer(grid, iThread)
         endif
      enddo
-     do iThread = 1, nHydroThreadsGlobal
-        if (iThread == myRankGlobal) then
-           call integratePhi1d(grid, grid%octreeRoot, mass)
-           r = 1.d30
-           do j = 1, nHydroThreadsGlobal
-              if (j /= myrankGlobal) then
-                 call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag1, localWorldCommunicator, ierr)
-              endif
-           enddo
-        else
-           call findTotalPhiOutsideRServer(grid, iThread)
-        endif
-     enddo
+!     do iThread = 1, nHydroThreadsGlobal
+!        if (iThread == myRankGlobal) then
+!           call integratePhi1d(grid, grid%octreeRoot, mass)
+!           r = 1.d30
+!           do j = 1, nHydroThreadsGlobal
+!              if (j /= myrankGlobal) then
+!                 call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag1, localWorldCommunicator, ierr)
+!              endif
+!           enddo
+!        else
+!           call findTotalPhiOutsideRServer(grid, iThread)
+!        endif
+!     enddo
 
 
 
@@ -14734,7 +14740,8 @@ end subroutine minMaxDepth
                     mass = mass + localMass
                  endif
               enddo
-              thisOctal%phi_gas(subcell) = (bigG * mass / (r * 1.d10)**2)*(thisOctal%subcellSize*1.d10)
+!              thisOctal%phi_gas(subcell) = (bigG * mass / (r * 1.d10)**2)*(thisOctal%subcellSize*1.d10)
+              thisOctal%phi_gas(subcell) = -(bigG * mass / (r * 1.d10))
            endif
         endif
      enddo
@@ -16367,7 +16374,7 @@ end subroutine minMaxDepth
     do iSource = 1, nSource
        if (writeoutput) write(*,*) "Accreting gas onto source ",isource
 
-       write(*,*) "mass accretion rate on rank ",myrankGlobal, " is ",accretedMass(isource)/timestep/msol/secstoyears
+!       write(*,*) "mass accretion rate on rank ",myrankGlobal, " is ",accretedMass(isource)/timestep/msol/secstoyears
 
        call MPI_ALLREDUCE(accretedMass(iSource), temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
        accretedMass(iSource) = temp
