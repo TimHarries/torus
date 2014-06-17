@@ -941,7 +941,7 @@ contains
              if (.not.thisOctal%ghostCell(subcell)) then
                 if (toomreQ < Qcrit) then
                    fac = min((Qcrit**2 / toomreQ**2),100.d0)
-                   write(*,*) "q ",toomreQ,fac
+!                   write(*,*) "q ",toomreQ,fac
                 endif
              endif
 
@@ -3594,7 +3594,7 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                  1.d-1 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
 
 
 
@@ -5825,16 +5825,16 @@ end subroutine sumFluxes
    endif
  
    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
-   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
-      call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+   if ((globalnSource > 0).and.(timestep > 0.d0).and.nBodyPhysics) then
+      call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
 
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
 
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
-      call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+      call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
    else
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
@@ -6139,10 +6139,10 @@ end subroutine sumFluxes
 
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
-      call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+      call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
 
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
@@ -6289,9 +6289,9 @@ end subroutine sumFluxes
     endif
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
-      call domyAccretion(grid, globalsourceArray, globalnSource, dt)
+      call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
@@ -16366,6 +16366,8 @@ end subroutine minMaxDepth
 
     do iSource = 1, nSource
        if (writeoutput) write(*,*) "Accreting gas onto source ",isource
+
+       write(*,*) "mass accretion rate on rank ",myrankGlobal, " is ",accretedMass(isource)/timestep/msol/secstoyears
 
        call MPI_ALLREDUCE(accretedMass(iSource), temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
        accretedMass(iSource) = temp

@@ -466,6 +466,7 @@ contains
 !       if (r > thisOctal%subcellSize) then
           fVec = rVec/modulus(rVec)
           force = force + ((bigG*mass*source(isource)%mass * splineSoftening(r*gridDistanceScale,eps))*fVec)
+!         force = force + ((bigG*mass*source(isource)%mass  / (r*gridDistanceScale)**2)*fVec)
 !       else
 !          if (cylindricalHydro) then
 !             dm = mass / 64.d0
