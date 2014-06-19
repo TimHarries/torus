@@ -3594,7 +3594,7 @@ contains
              fVisc =  newdivQ(thisOctal, subcell,  grid)
 
              call calculateForceFromSinks(thisOctal, subcell, globalsourceArray, globalnSource, &
-                   2.d0*smallestCellSize*gridDistanceScale, gravForceFromSinks)
+                  2.d0 * smallestCellSize*gridDistanceScale, gravForceFromSinks)
 
 
 
@@ -6289,13 +6289,13 @@ end subroutine sumFluxes
     
     endif
 
-   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics) then
+   if ((globalnSource > 0).and.(timestep > 0.d0).and.nBodyPhysics) then
       call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
 
-   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
+   if ((globalnSource > 0).and.(timestep > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
          if (writeoutput) write(*,*) "Updating source positions..."
          call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
@@ -8253,7 +8253,17 @@ end subroutine sumFluxes
 
 !perform a hydrodynamics step in the x and z directions
 !          call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+
+       call writeVtkFile(grid, "beforestep.vtk", &
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+            ,"mpithread    ", "pressure     ","ghosts       ","edges        " /))
+
           call hydroStep2dCylindrical_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+
+       call writeVtkFile(grid, "afterstep.vtk", &
+            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+            ,"mpithread    ", "pressure     ","ghosts       ","edges        " /))
+
 !          call calculateTemperatureFromEnergy(grid%octreeRoot)
        end if
 

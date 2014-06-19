@@ -3509,7 +3509,7 @@ CONTAINS
 
     use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use inputs_mod, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
-         ttauriRouter, sphereRadius
+         ttauriRouter, sphereRadius, amr1d, amr2d, amr3d
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
     use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
@@ -3605,7 +3605,7 @@ CONTAINS
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
-    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v
 
     splitInAzimuth = .false.
     split = .false.
@@ -3779,16 +3779,14 @@ CONTAINS
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           
        case("shu")
-          if (inputnSource > 0) then
-             do iSource = 1, inputnSource
-                if (inSubcell(thisOctal,subcell, sourcePos(isource)) &
-                     .and. (thisOctal%nDepth < maxDepthAMR)) then
-                   split = .true.
-                   exit
-                endif
-             enddo
+          rVec = subcellCentre(thisOctal, subcell)
+          if (thisOctal%nDepth < maxDepthAmr) then
+             if (modulus(rVec) < 5.d0*thisOctal%subcellSize) split = .true.
           endif
-
+          v = cellVolume(thisOctal, subcell) * 1.d30
+          massTol = 0.1d0*v*rhoThreshold
+          if (((thisOctal%rho(subcell)*v) > massTol) &
+               .and.(thisOctal%nDepth < maxDepthAMR)) split = .true.
 
        case("whitney")          
           cellSize = thisOctal%subcellSize * 1.d10
