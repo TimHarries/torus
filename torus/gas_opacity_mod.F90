@@ -330,6 +330,26 @@ subroutine writeKappaGrid(lookuptable)
 
 end subroutine writeKappaGrid
 
+subroutine writeOpacityAtTemperature(thisTemp, lookupTable)
+  type(molecularKappaGrid) :: lookupTable
+  real(double) :: thisTemp
+  real(double), allocatable :: kappaAbs(:)
+  integer :: i, j
+  character(len=80) :: thisFile
+
+  allocate(kappaAbs(1:lookupTable%nLam))
+  call returnKappaArray(real(thisTemp), lookupTable, kappaAbs)
+  call locate(LookupTable%tempArray, LookupTable%nTemps, thisTemp, j)
+
+  write(thisFile,'(a,a,a,i5.5,a)') "kappa_",trim(lookuptable%molecule),"_",nint(thisTemp),".dat"
+  open(20,file=thisFile,status="unknown",form="formatted")
+  do i = 1, lookupTable%nLam
+     write(20,*) lookuptable%lamArray(i), lookuptable%kapArray(j,i)
+  enddo
+  close(20)
+end subroutine writeOpacityAtTemperature
+
+
 
 subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
   type(molecularKappaGrid) :: lookuptable 
@@ -749,7 +769,7 @@ subroutine createAllMolecularTables(nLam, lamArray, reset)
   character(len=80) :: dataDirectory
   logical, optional :: reset
   logical :: doReset
-
+  integer :: i
   doreset = .false.
   if (PRESENT(reset)) doReset = reset
 
@@ -808,6 +828,9 @@ subroutine createAllMolecularTables(nLam, lamArray, reset)
 
   call createKappaGrid(lookuptable, nLam, lamArray, doReset)
   
+  do i = 1, nLookupTables
+     call writeOpacityAtTemperature(2000.d0, lookupTable(i))
+  enddo
 
 end subroutine createAllMolecularTables
 
