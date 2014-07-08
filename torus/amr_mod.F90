@@ -4835,7 +4835,8 @@ CONTAINS
              !         maxdensity_split = maxdensity_split + 1
              !      endif
              
-             
+! The velocity splitting condition is described in Rundle et al, 2010, MNRAS, 407, 986
+! There are hardwired values here so caveat emptor if you use this option
              if(.not. split .and. (nparticle .ge. 2) .and. doVelocitySplit ) then
                 if(ave_density .gt. 1d-13) then
                    T = 10.d0 * (ave_density * 1d13)**(0.4d0)
