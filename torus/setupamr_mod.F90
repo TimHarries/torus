@@ -431,8 +431,10 @@ contains
 
 
           case("theGalaxy","fitsfile")
-             call writeInfo("Calling quickSublimate",FORINFO)
-             if (variableDustsublimation) call quickSublimate(grid%octreeRoot)
+             if (variableDustsublimation) then
+                call writeInfo("Calling quickSublimate",FORINFO)
+                call quickSublimate(grid%octreeRoot)
+             endif
 
           case("shakara")
              if (discWind) call fillgridSafier(grid)

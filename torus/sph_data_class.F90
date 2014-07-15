@@ -307,7 +307,10 @@ contains
 ! according to the string inputFileFormat
 ! D. Acreman, June 2012
   subroutine read_sph_data_wrapper
-    use inputs_mod, only: inputFileFormat, sphdatafilename, sphwithchem, molecularPhysics
+    use inputs_mod, only: inputFileFormat, sphdatafilename, sphwithchem, molecularPhysics, limitScalar
+
+    real(double) :: minMass, maxMass
+    character(len=150) :: message
 
 ! Basic sanity check of input variables
     if (sphwithchem.and.(.not.molecularPhysics))  &
@@ -325,6 +328,31 @@ contains
        call writeFatal("Unrecognised file format "//inputFileFormat)
 
     end select
+
+! Report particle masses and check mass splitting condition against the particle masses
+! Do this in the wrapper routine as it is the same for all types of input file
+    minMass = minVal(sphdata%gasmass) * sphdata%umass
+    maxMass = maxVal(sphdata%gasmass) * sphdata%umass
+    call writeInfo("",forInfo)
+    if (minMass == maxMass) then
+       write(message,'(a,es10.4,a,es10.4,a)') "Equal mass particles of ", minMass, "g = ", minMass/mSol, " solar masses" 
+       call writeInfo(message,forInfo)
+    else
+       write(message,'(a,es10.4,a,es10.4,a)') "Minimum particle mass  ", minMass, "g = ", minMass/mSol, " solar masses"
+       call writeInfo(message,forInfo)
+       write(message,'(a,es10.4,a,es10.4,a)') "Maximum particle mass  ", maxMass, "g = ", maxMass/mSol, " solar masses"
+       call writeInfo(message,forInfo)
+    endif
+
+    write(message,'(a,es10.4,a,es10.4,a)') "Mass splitting condition  ", limitScalar, "g = ", limitScalar/mSol, " solar masses"
+    call writeInfo(message,forInfo)
+    if (limitscalar >= minMass) then
+       write(message,'(a,f15.2,a)') "Mass splitting condition is ", limitscalar/minMass, " particle masses"
+       call writeInfo(message,forInfo)
+    else
+       call writeWarning("Mass splitting condition is less than minimum particle mass")
+    endif
+    call writeInfo("",forInfo)
 
   end subroutine read_sph_data_wrapper
 
