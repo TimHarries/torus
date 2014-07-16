@@ -24,8 +24,8 @@ contains
 
 ! maxwell garnett formula (see Maron & Maron, 2005, MNRAS, 357, 873)
 
-    epsilonEffective = epsilonMatrix + 3.d0 * fillingFactor * epsilonMatrix * &
-         (epsilonInclusion - epsilonMatrix)/(epsilonInclusion + 2.d0*epsilonMatrix - &
+    epsilonEffective = epsilonMatrix + 3.0 * fillingFactor * epsilonMatrix * &
+         (epsilonInclusion - epsilonMatrix)/(epsilonInclusion + 2.0*epsilonMatrix - &
          fillingFactor * (epsilonInclusion - epsilonMatrix))
 
 !    write(*,*) "eps maxwell ",epsilonEffective
@@ -74,14 +74,14 @@ contains
   subroutine refractiveIndexToPermittivity(n, k, epsilonReal, epsilonImg)
     real :: n, k, epsilonReal, epsilonImg
     epsilonReal = n**2 - k**2
-    epsilonImg = 2.d0 * n * k
+    epsilonImg = 2.0 * n * k
   end subroutine refractiveIndexToPermittivity
 
   subroutine permittivityToRefractiveIndex(epsilonReal, epsilonImg, n, k)
     real :: n, k, epsilonReal, epsilonImg
 
-    n = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) + epsilonImg)/2.d0 )
-    k = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) - epsilonImg)/2.d0 )
+    n = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) + epsilonImg)/2.0 )
+    k = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) - epsilonImg)/2.0 )
   end subroutine permittivityToRefractiveIndex
 
   subroutine dumpPolarizability(miePhase, nMuMie, lambda, nLambda)
@@ -101,7 +101,7 @@ contains
     lamArray(3) = 2.19 
 
     do i = 1, 3
-       thisLambda = lamArray(1) * micronsToAngs
+       thisLambda = lamArray(1) * real(micronsToAngs)
        call locate(lambda, nlambda, thisLambda, k)
        write(lamLabel,'(f4.2)') lamArray(i)
        lamLabel(2:2) = "p"
@@ -109,7 +109,7 @@ contains
        open(23, file=thisFile, status="unknown", form="formatted")
        do j = 1, nMuMie
           mu = 2.*real(j-1)/real(nMumie-1)-1.
-          ang = acos(mu) * radtoDeg
+          ang = acos(mu) * real(radtoDeg)
           write(23,'(f8.2,f8.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
        enddo
        close(23)
