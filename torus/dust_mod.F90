@@ -85,7 +85,6 @@ contains
   end subroutine permittivityToRefractiveIndex
 
   subroutine dumpPolarizability(miePhase, nMuMie, lambda, nLambda)
-    use inputs_mod, only : amax
     use phasematrix_mod, only : phasematrix
     type(PHASEMATRIX) :: miePhase(:,:,:)
     integer :: nMuMie
