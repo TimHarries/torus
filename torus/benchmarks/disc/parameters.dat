@@ -39,7 +39,7 @@ rho 8.16136e-18  ! density at inner edge midplane (g/cc)
 
 ! Dust grain properties
 
-iso_scatter F      ! Assume isotropic scattering (assumed by benchmark)
+iso_scatter T      ! Assume isotropic scattering (assumed by benchmark)
 graintype1 sil_dl  ! Draine and Lee silicates
 grainfrac1 0.01    ! grain mass fraction (in terms of gas)
 amin1 0.12         ! minimum grain size (microns)
