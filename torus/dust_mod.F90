@@ -18,6 +18,32 @@ module dust_mod
 
 contains
 
+  subroutine dumpPolarizability(miePhase, nMuMie, lambda, nLambda)
+    type(PHASEMATRIX) :: miePhase(:,:,:)
+    integer :: nMuMie
+    real :: lambda(:), thisLambda
+    integer :: nLambda
+    real, double :: facArray(3)
+    integer :: i, j, k
+    facArray(1) = 1.d0
+    facArray(2) = 2.d0
+    facArray(3) = 100.d0
+    do i = 1, 3
+       thisLamba = twoPi * amax(1) / facArray(i)
+       call locate(lamArray, lambda, thisLambda, k)
+       write(thisFile, '(a,i3.3,a)') "polarisability_",nint(facArray(i)),".dat"
+       open(23, file=thisFile, status="unknown", form="formatted")
+       do j = 1, nMuMie
+          mu = 2.*real(j-1)/real(nMumie-1)-1.
+          ang = acos(mu)
+          write(23) ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
+       enddo
+       close(23)
+    enddo
+  end subroutine dumpPolarizability
+
+       
+
   subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
     use unix_mod, only: unixGetenv
     real :: lambda(:)
