@@ -12850,6 +12850,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
     call copyAttribute(dest%cornerVelocity, source%cornerVelocity)
+    call copyAttribute(dest%cornerRho, source%cornerRho)
 
     call copyAttribute(dest%probDistLine, source%probDistLine)
     call copyAttribute(dest%probDistCont,  source%probDistCont)

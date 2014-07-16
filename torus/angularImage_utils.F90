@@ -42,9 +42,9 @@ module angularImage_utils
 ! Height of model "galaxy" in kpc
       real(double), parameter :: z_gal=1.0
 ! Density inside the galaxy
-      real(double), parameter :: rho_in=1.0e-23
+      real(double), parameter :: rho_in=1.0e-23_db
 ! Density outside the galaxy
-      real(double), parameter :: rho_out=1.0e-33
+      real(double), parameter :: rho_out=1.0e-33_db
 ! Circular velocity in km/s
       real(double), parameter :: v_circ = 220.0 
 ! Local velocity
@@ -79,14 +79,9 @@ module angularImage_utils
          vy =        (v_circ*1.0e5/cspeed) * cos(theta)
       endif
 
-      thisVel = VECTOR(vx,vy,0.0)
-      thisOctal%velocity= thisVel
-
-! Set corner values from first subcell. This test case uses uniform values so they don't vary across an octal.
-      if (subcell == 1) then 
-         thisoctal%cornervelocity(:) = thisoctal%velocity(1)
-         thisoctal%cornerrho(:)      = thisoctal%rho(1)
-      endif
+      thisVel                     = VECTOR(vx,vy,0.0)
+      thisOctal%velocity          = thisVel
+      thisoctal%cornervelocity(:) = thisVel
 
     end subroutine calcAngImgTest
 
