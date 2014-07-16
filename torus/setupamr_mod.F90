@@ -606,7 +606,7 @@ contains
     type(GRIDTYPE) :: grid
     integer :: j, ismoothlam, iter
     logical :: gridConverged, doPhotoSphereSplit, smoothConverged, convergedFirstTime
-    character(len=80) :: message
+    character(len=80) :: message, thisFile
 
 
     ! Smooth the grid with respect to optical depth, if requested
@@ -645,7 +645,9 @@ contains
              call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
                   inheritProps = .false., interpProps = .false., &
                   photosphereSplit = doPhotoSphereSplit )
+             write(thisFile,'(a,i5.5,a)') "smooth",iter,".vtk"
              iter = iter + 1
+             call writeVtkFile(grid, thisFile)
              convergedFirstTime = .true.
              do
                 smoothConverged = .true.

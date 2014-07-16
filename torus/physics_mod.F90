@@ -954,6 +954,10 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
      call resetNewDirectionMie
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
   end if
+
+  if (nLambda > 1) then
+     call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
+  endif
   call allocateMemoryForDust(grid%octreeRoot)
     if (includeGasOpacity) then
     endif

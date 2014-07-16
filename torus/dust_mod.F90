@@ -18,25 +18,99 @@ module dust_mod
 
 contains
 
+  subroutine effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, fillingFactor)
+    real :: fillingFactor, epsReal, epsImag
+    complex :: epsilonEffective, epsilonMatrix, epsilonInclusion
+
+! maxwell garnett formula (see Maron & Maron, 2005, MNRAS, 357, 873)
+
+    epsilonEffective = epsilonMatrix + 3.d0 * fillingFactor * epsilonMatrix * &
+         (epsilonInclusion - epsilonMatrix)/(epsilonInclusion + 2.d0*epsilonMatrix - &
+         fillingFactor * (epsilonInclusion - epsilonMatrix))
+
+!    write(*,*) "eps maxwell ",epsilonEffective
+! bruggeman formula (same paper)
+
+    call searchBisection(epsReal,real(epsilonMatrix), real(epsilonInclusion), fillingFactor)
+    call searchBisection(epsImag,imag(epsilonMatrix), imag(epsilonInclusion), fillingFactor)
+    epsilonEffective = cmplx(epsReal, epsImag)
+!    write(*,*) "eps bruggeman ",epsilonEffective
+
+  end subroutine effectiveMedium
+
+  subroutine searchBisection(eps, epsMatrix, epsInclusion, f)
+    real :: eps, epsMatrix, epsInclusion,f 
+    real :: a, b, c, fa, fb, fc
+    logical :: converged
+    a = 1.e-10
+    b = 100.
+    converged = .false.
+    do while (.not.converged)
+       fa = bruggeman(a, epsMatrix, epsInclusion, f)
+       fb = bruggeman(b, epsMatrix, epsInclusion, f)
+       c = 0.5 * (a + b)
+       fc = bruggeman(c, epsMatrix, epsInclusion, f)
+       if (fa*fc < 0.d0) then
+          b = c
+       else
+          a = c
+       endif
+       if (abs(a-b)/abs(a+b) < 1.d-6) then
+          converged = .true.
+       endif
+
+    end do
+    eps = 0.5*(a+b)
+  end subroutine searchBisection
+
+
+    real function bruggeman(eps, epsMatrix, epsInclusion, f)
+      real :: eps, epsMatrix, epsInclusion, f
+
+      bruggeman = f * (epsInclusion - eps)/(epsInclusion+2.*eps) + &
+           (1.-f)*(epsMatrix - eps)/(epsMatrix + 2.*eps)
+    end function bruggeman
+
+  subroutine refractiveIndexToPermittivity(n, k, epsilonReal, epsilonImg)
+    real :: n, k, epsilonReal, epsilonImg
+    epsilonReal = n**2 - k**2
+    epsilonImg = 2.d0 * n * k
+  end subroutine refractiveIndexToPermittivity
+
+  subroutine permittivityToRefractiveIndex(epsilonReal, epsilonImg, n, k)
+    real :: n, k, epsilonReal, epsilonImg
+
+    n = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) + epsilonImg)/2.d0 )
+    k = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) - epsilonImg)/2.d0 )
+  end subroutine permittivityToRefractiveIndex
+
   subroutine dumpPolarizability(miePhase, nMuMie, lambda, nLambda)
+    use inputs_mod, only : amax
+    use phasematrix_mod, only : phasematrix
     type(PHASEMATRIX) :: miePhase(:,:,:)
     integer :: nMuMie
     real :: lambda(:), thisLambda
     integer :: nLambda
-    real, double :: facArray(3)
+    real :: lamArray(3), ang, mu
     integer :: i, j, k
-    facArray(1) = 1.d0
-    facArray(2) = 2.d0
-    facArray(3) = 100.d0
+    character(len=80) :: thisFile
+    character(len=4) :: lamLabel
+
+    lamArray(1) = 1.22
+    lamArray(2) = 1.63
+    lamArray(3) = 2.19 
+
     do i = 1, 3
-       thisLamba = twoPi * amax(1) / facArray(i)
-       call locate(lamArray, lambda, thisLambda, k)
-       write(thisFile, '(a,i3.3,a)') "polarisability_",nint(facArray(i)),".dat"
+       thisLambda = lamArray(1) * micronsToAngs
+       call locate(lambda, nlambda, thisLambda, k)
+       write(lamLabel,'(f4.2)') lamArray(i)
+       lamLabel(2:2) = "p"
+       write(thisFile, '(a,a,a)') "polarizability_",lamLabel,"_microns.dat"
        open(23, file=thisFile, status="unknown", form="formatted")
        do j = 1, nMuMie
           mu = 2.*real(j-1)/real(nMumie-1)-1.
-          ang = acos(mu)
-          write(23) ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
+          ang = acos(mu) * radtoDeg
+          write(23,'(f8.2,f8.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
        enddo
        close(23)
     enddo
@@ -44,9 +118,11 @@ contains
 
        
 
-  subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
+  subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg, porousFillingFactor)
+    
     use unix_mod, only: unixGetenv
     real :: lambda(:)
+    real :: porousFillingFactor
     integer :: nLambda, nRef
     real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
     real(double) :: dydx
@@ -56,6 +132,8 @@ contains
     character(len=100) :: textline, cjunk
     real :: junk1, junk2
     real :: mReal(:), mImg(:), t,  x(5000), y1(5000,3), y2(5000,3)
+    complex :: epsilonEffective, epsilonMatrix, epsilonInclusion
+    real :: epsilonImg, epsilonReal
     logical :: firstTime = .true.
     dataDirectory = " "
     select case(graintype)
@@ -300,11 +378,25 @@ contains
                (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef))))
           mImg(i) = real(10.d0**mImg(i))
        endif
+
+
+       if (porousFillingFactor > 0.d0) then
+          call refractiveIndexToPermittivity(mReal(i), mImg(i), epsilonReal, epsilonImg)
+          epsilonMatrix = cmplx(epsilonReal, epsilonImg)
+          epsilonInclusion = cmplx(1.d0, 0.d0)
+          call effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, porousFillingFactor)
+          epsilonReal = real(epsilonEffective)
+          epsilonImg = imag(epsilonEffective)
+          call permittivityToRefractiveIndex(epsilonReal, epsilonImg, mreal(i), mImg(i))
+       endif
+
     enddo
+
+
 
   end subroutine getRefractiveIndex
 
-  subroutine fillGridMie(grid, aMin, aMax, a0, qDist, pDist, &
+  subroutine fillGridMie(grid, aMin, aMax, a0, qDist, pDist, fillingFactor,&
        ngrain, abundance, grainname, thisDust)
 !DEC$ NOOPTIMIZE
     use inputs_mod, only : grainFrac, grainDensity
@@ -320,6 +412,7 @@ contains
     type(GRIDTYPE) :: grid
     integer :: thisDust
     real :: aMin, aMax,a0, qDist, pDist
+    real :: fillingFactor
     real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
     real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
@@ -354,6 +447,7 @@ contains
     call writeFormatted("(a,e12.3)","    a0    = ",  a0, TRIVIAL)
     call writeFormatted("(a,e12.3)","    qDist = ",  qDist, TRIVIAL)
     call writeFormatted("(a,e12.3)","    pDist = ",  pDist, TRIVIAL)
+    call writeFormatted("(a,f10.3)","Porousity = ",  fillingFactor, TRIVIAL)
 
 
     allocate(mReal(1:grid%nLambda))
@@ -378,8 +472,8 @@ contains
 
     ! Find the index of refractions for all types of grains available
     do j = 1, ngrain
-       call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
-       mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+       call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg, FillingFactor)
+       mReal2d(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
        mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
     end do
 
@@ -504,7 +598,7 @@ contains
 
        meanParticleMass = 0.
        do i = 1, ngrain
-          meanParticleMass = meanParticleMass + getMeanMass2(aMin, aMax, a0, qDist, pDist, &
+          meanParticleMass = meanParticleMass + getMeanMass2(fillingFactor, aMin, aMax, a0, qDist, pDist, &
                grainname(i),graindensity(i))*abundance(i)
        enddo
        grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
@@ -1320,7 +1414,7 @@ contains
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
-         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction
+         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
@@ -1361,7 +1455,7 @@ contains
 !          call writeInfo(message, FORINFO)
           do i = 1, nDustType
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-             call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+             call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), porousFillingFactor(i),&
                   ngrain, X_grain, grainname, i)
           enddo
        else
@@ -1445,7 +1539,7 @@ contains
 
              ! Find the index of refractions for all types of grains available
              do k = 1, ngrain
-                call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg)
+                call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg, porousFillingFactor(k))
                 mReal2D(k,:) = tmReal(:)  ! copying the values to a 2D maxtrix
                 mImg2D(k,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
              end do
@@ -1597,13 +1691,13 @@ contains
     enddo
   end subroutine allocateMemoryForDust
   
-real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype, grainDensity)  
+real function getMeanMass2(porousFillingFactor, aMin, aMax, a0, qDist, pDist, graintype, grainDensity)  
 
   use constants_mod
   use mieDistCrossSection_mod, only: PowerInt
 
   implicit none
-  real, intent(in) :: aMin, aMax, a0, qDist, pDist
+  real, intent(in) :: aMin, aMax, a0, qDist, pDist, porousFillingFactor
   real :: a1, a2, vol, fac
   integer :: i
   integer, parameter :: n = 1000
@@ -1634,6 +1728,7 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype, grainDensity
      density = grainDensity
   end select
 
+  grainDensity = grainDensity * (1. - porousFillingFactor)
 
   if (aMin == aMax) then
      vol = real((4./3.)* pi * (aMin*microntocm)**3)

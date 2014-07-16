@@ -388,6 +388,7 @@
   real :: pDist(maxDustTypes)   !  p exponent in the equation above.
   real(double) :: dustHeight(maxDustTypes)   !  p exponent in the equation above.
   real(double) :: dustBeta(maxDustTypes)   !  p exponent in the equation above.
+  real :: porousFillingFactor(maxDustTypes)
 
 !------------------------------
 ! Inclinations for SEDs/images 

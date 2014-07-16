@@ -11392,11 +11392,11 @@ end function readparameterfrom2dmap
 
     rsub = autocm/1.d10
     r1 = 1000.d0*autocm/1.d10
-    r2 = 1000.d0*autocm/1.d10
+    r2 = 500.d0*autocm/1.d10
 
     sourcePos = VECTOR(-5.d6, 0.d0, 2.5d6)
     pos1 = VECTOR(2000.d0*autocm/1.d10, 0.d0, 0.d0)
-    pos2 = VECTOR(6000.d0*autocm/1.d10, 0.d0, 0.d0)
+    pos2 = VECTOR(-2000.d0*autocm/1.d10, 0.d0, 0.d0)
 
     mass1 = 10.d0 * msol
     mass2 = 5.d0 * msol

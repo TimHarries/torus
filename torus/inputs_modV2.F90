@@ -1587,7 +1587,7 @@ contains
     real :: grainFracTotal
     integer :: i
     character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, grainDensityLabel, &
-         aMaxLabel, qDistLabel, pdistLabel, a0label
+         aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel
 
        oneKappa = .true.
 
@@ -1633,6 +1633,7 @@ contains
              write(qDistLabel, '(a,i1.1)') "qdist",i
              write(pDistLabel, '(a,i1.1)') "pdist",i
              write(a0Label, '(a,i1.1)') "a0",i
+             write(fillingFactorLabel, '(a,i1.1)') "porousity",i
              
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
              !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
@@ -1647,6 +1648,10 @@ contains
 
              call getReal(grainDensityLabel, grainDensity(i), 1., cLine, fLine, nLines, &
                   "Grain density (g/cc): ","(a,f8.5,1x,a)",3.6 , ok, .false.)
+
+             call getReal(fillingFactorLabel, porousFillingFactor(i), 1., cLine, fLine, nLines, &
+                  "Porousity: ","(a,f5.2,1x,a)", 0. , ok, .false.)
+
 
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
