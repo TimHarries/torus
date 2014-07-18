@@ -400,9 +400,13 @@ if (.false.) then
                 call addImageSliceToCube(thisCube, imageSlice, j)
                 call freeImage(imageSlice)
              enddo
+#ifdef USECFITSIO
 !             call convertSpatialAxes(thisCube, "au")
              if (myrankGlobal == 0) call writeDataCube(thisCube, getImageFilename(i))
              call freeDataCube(thisCube)
+#else
+             call writeWarning("Torus was build without FITS support. No data cube written.")
+#endif
           enddo
        endif
 

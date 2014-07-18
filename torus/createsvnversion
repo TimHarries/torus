@@ -1,12 +1,14 @@
-#!/bin/csh
+#!/bin/bash
+
+# Converted to bash (from csh) as some systems don't have c shell (e.g. post-zen)
+# D. Acreman 18 Jul 2014
 
 # Check whether subversion is available
 which svnversion > /dev/null
 
 # Set the version number using svnversion if available or set to unknown otherwise
-if ($? == 0) then 
+if [ $? -eq 0 ]; then 
     echo 'character(len=20), parameter :: svnversion = "-'`svnversion`'"' > svn_version.h
 else
     echo 'character(len=20), parameter :: svnversion = "-'unknown'"' > svn_version.h
-endif
-
+fi

@@ -644,7 +644,7 @@ ctags:
 svnver:
     ifeq ($(getsvnver), yes)
 	    @echo "calling createsvnversion"
-	    @./createsvnversion.csh 
+	    @./createsvnversion 
 	    @echo "...done"
     endif
 
