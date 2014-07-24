@@ -32,7 +32,7 @@ contains
 ! bruggeman formula (same paper)
 
     call searchBisection(epsReal,real(epsilonMatrix), real(epsilonInclusion), fillingFactor)
-    call searchBisection(epsImag,imag(epsilonMatrix), imag(epsilonInclusion), fillingFactor)
+    call searchBisection(epsImag,aimag(epsilonMatrix), aimag(epsilonInclusion), fillingFactor)
     epsilonEffective = cmplx(epsReal, epsImag)
 !    write(*,*) "eps bruggeman ",epsilonEffective
 
@@ -385,7 +385,7 @@ contains
           epsilonInclusion = cmplx(1.d0, 0.d0)
           call effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, porousFillingFactor)
           epsilonReal = real(epsilonEffective)
-          epsilonImg = imag(epsilonEffective)
+          epsilonImg = aimag(epsilonEffective)
           call permittivityToRefractiveIndex(epsilonReal, epsilonImg, mreal(i), mImg(i))
        endif
 
