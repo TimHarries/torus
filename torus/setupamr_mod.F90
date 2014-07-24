@@ -1598,7 +1598,10 @@ contains
 
 ! Write SPH information (e.g. code units) to a file
        call info_sph("info_sph.dat")
-       call fitAlphaDisc(grid)
+
+! N.B. This subroutine changes the geometry parameters
+!       call fitAlphaDisc(grid)
+
 #endif
 
     case("fitsfile")
@@ -2298,57 +2301,57 @@ recursive subroutine quickSublimate(thisOctal)
     call torus_mpi_barrier
   end subroutine SanityCheckGrid
 
-subroutine fitAlphaDisc(grid)
-  use inputs_mod, only : alphaDisc, betaDisc, height, rinner, router, rho0, geometry, heightsplitfac
-  type(GRIDTYPE) :: grid
-  real(double) :: alpha, beta, heightDouble !, rhoDouble
-  real(double) :: rInnerDouble, rOuterDouble!, chisq, minChisq
-!  integer :: n, i1,i2,i3,i4
-  
-  rInnerDouble = 750d0
-  rOuterDouble = 23d3
-
-  alpha = 0.5
-  beta = 1.125
-  rho0 = 1.e-7
-  heightDouble = 10.d0*autocm/1.d10
-
-!  minChisq = 1.d30
-!  do i1 = 1, 10
-!     do i2 = 1, 10
-!        do i3 = 1,10
-!           do i4 = 1, 10
-!              alpha = 2.d0*dble(i1-1)/10.d0
-!              beta = 2.d0*dble(i2-1)/10.d0
-!              heightDouble = (1.d0+dble(i3-1)/10.d0 * 9.d0)*autocm/1.d10
-!              rhodouble = -11.d0 + 2.d0 * dble(i4-1)/10.d0
-!              rhodouble = 10.d0**rhodouble
-!
-!              chisq = 0.
-!              n = 0
-!              call chisqAlphaDisc(grid%octreeRoot,  alpha, beta, rhodouble, heightDouble, rInnerDouble, rOuterDouble, chisq, n)
-!              chisq = chisq / dble(n-4)
-!              if (chisq < minChisq) then
-!                 if (writeoutput) write(*,'(1p,5e12.3)') alpha, beta, heightDouble, rho0, chisq
-!                 minChisq = chisq
-!              endif
-!           enddo
-!        enddo
-!     enddo
-!  enddo
-  rinner = 10. * real(rSol   / 1.d10 )
-  router = 100.* real(autocm / 1.d10 )
-  height = 5.*   real(autocm / 1.d10 )
-  alphaDisc = 0.5
-  betaDisc = 1.
-  rho0 = 1.e-10
-  heightsplitFac = 1.
-  grid%geometry = "adddisc"
-  geometry = "adddisc"
-  call addDisc(grid%octreeRoot, grid)
-
-
-end subroutine fitAlphaDisc
+!!$subroutine fitAlphaDisc(grid)
+!!$  use inputs_mod, only : alphaDisc, betaDisc, height, rinner, router, rho0, geometry, heightsplitfac
+!!$  type(GRIDTYPE) :: grid
+!!$  real(double) :: alpha, beta, heightDouble !, rhoDouble
+!!$  real(double) :: rInnerDouble, rOuterDouble!, chisq, minChisq
+!!$!  integer :: n, i1,i2,i3,i4
+!!$  
+!!$  rInnerDouble = 750d0
+!!$  rOuterDouble = 23d3
+!!$
+!!$  alpha = 0.5
+!!$  beta = 1.125
+!!$  rho0 = 1.e-7
+!!$  heightDouble = 10.d0*autocm/1.d10
+!!$
+!!$!  minChisq = 1.d30
+!!$!  do i1 = 1, 10
+!!$!     do i2 = 1, 10
+!!$!        do i3 = 1,10
+!!$!           do i4 = 1, 10
+!!$!              alpha = 2.d0*dble(i1-1)/10.d0
+!!$!              beta = 2.d0*dble(i2-1)/10.d0
+!!$!              heightDouble = (1.d0+dble(i3-1)/10.d0 * 9.d0)*autocm/1.d10
+!!$!              rhodouble = -11.d0 + 2.d0 * dble(i4-1)/10.d0
+!!$!              rhodouble = 10.d0**rhodouble
+!!$!
+!!$!              chisq = 0.
+!!$!              n = 0
+!!$!              call chisqAlphaDisc(grid%octreeRoot,  alpha, beta, rhodouble, heightDouble, rInnerDouble, rOuterDouble, chisq, n)
+!!$!              chisq = chisq / dble(n-4)
+!!$!              if (chisq < minChisq) then
+!!$!                 if (writeoutput) write(*,'(1p,5e12.3)') alpha, beta, heightDouble, rho0, chisq
+!!$!                 minChisq = chisq
+!!$!              endif
+!!$!           enddo
+!!$!        enddo
+!!$!     enddo
+!!$!  enddo
+!!$  rinner = 10. * real(rSol   / 1.d10 )
+!!$  router = 100.* real(autocm / 1.d10 )
+!!$  height = 5.*   real(autocm / 1.d10 )
+!!$  alphaDisc = 0.5
+!!$  betaDisc = 1.
+!!$  rho0 = 1.e-10
+!!$  heightsplitFac = 1.
+!!$  grid%geometry = "adddisc"
+!!$  geometry = "adddisc"
+!!$  call addDisc(grid%octreeRoot, grid)
+!!$
+!!$
+!!$end subroutine fitAlphaDisc
 
 
 recursive subroutine chisqAlphaDisc(thisOctal, alpha, beta, rho0, height, rInner, rOuter, chisq, n)

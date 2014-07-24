@@ -844,7 +844,7 @@
   character(len=80) :: absolutePath
   integer(bigInt)   :: maxMemoryAvailable
   logical           :: blockHandout ! Enable MPI block handout
-  character(len=10) :: geometry
+  character(len=10), protected :: geometry
   integer(kind=bigInt) :: nPhotons ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector
