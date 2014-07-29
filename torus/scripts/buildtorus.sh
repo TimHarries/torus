@@ -88,7 +88,7 @@ fi
 # Create svn version header
 #
 cd torus
-./createsvnversion.csh
+./createsvnversion
 cd ..
 
 ####################################
