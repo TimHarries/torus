@@ -2924,7 +2924,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use inputs_mod, only : gridDistance, beamsize, nv, imageside, &
-          maxVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune
+          maxVel, minVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune
 #ifdef USECFITSIO
     use inputs_mod, only : writetempfits
     use fits_utils_mod
@@ -2938,7 +2938,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      type(GRIDTYPE) :: grid
      type(DATACUBE) :: cube
      type(VECTOR) :: viewvec, observerVec, imagebasis(2)
-     real(double) :: minVel
      real(double) :: deltaV
      integer :: iTrans
      integer :: iv
@@ -2971,6 +2970,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         nv = 1
         deltaV = 0.d0
         maxvel = 0.d0
+        minvel = 0.d0
         write(message, *) "Continuum @ ", lamline / 1e4, " um" ! ang to micron
         call writeinfo(message, TRIVIAL)
      endif
@@ -2978,8 +2978,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      mytelescope%label = 'JCMT'
      mytelescope%diameter = 15.d2 ! diameter in cm
      mytelescope%beamsize = beamsize
-
-     minVel = (-1.d0) * maxVel
 
      call writeinfo("Initialising datacube",TRIVIAL)
 
@@ -5113,8 +5111,6 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
   !$OMP THREADPRIVATE (firstTime, haveBeenwarned, bnuBckGrnd)
 
-     write(*,*) "in intensity along ray2"
-
      if(present(tautest)) then
         dotautest = tautest
      else
@@ -5179,10 +5175,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
    
      rayLength = 0.d0
 
-     write(*,*) "inoctal ",inOctal(grid%octreeRoot, currentPosition), currentPosition
      do while(inOctal(grid%octreeRoot, currentPosition).and.(rayLength < maxLengthOfRay))
 
-        write(*,*) icount
         icount = icount + 1
 
         call findSubcelllocal(currentPosition, thisOctal, subcell)
