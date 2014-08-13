@@ -1481,11 +1481,11 @@ contains
     call getReal("amrgridsize", amrGridSize, 1.0, cLine, fLine, nLines, &
          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000.0, ok, .false.) 
     call getUnitDouble("amrgridcentrex", amrGridCentreX, "distance" , cLine, fLine, nLines, &
-         "Grid centre X-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre X-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.) 
     call getUnitDouble("amrgridcentrey", amrGridCentreY, "distance" , cLine, fLine, nLines, &
-         "Grid centre Y-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre Y-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.) 
     call getUnitDouble("amrgridcentrez", amrGridCentreZ, "distance", cLine, fLine, nLines, &
-         "Grid centre Z-coordinate: ","(a,1p,e9.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre Z-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.) 
 
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = dble(amrGridSize)/2.d0
