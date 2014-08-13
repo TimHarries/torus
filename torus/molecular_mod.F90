@@ -2519,16 +2519,12 @@ doNg:       if(ng) then
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
-        gridDistance, imageside
+        gridDistance, imageside, wantTau
 #ifdef USECFITSIO
    use fits_utils_mod
 #endif
 #ifdef MPI
    use mpi
-#endif
-
-#ifdef USECFITSIO
-   integer :: status
 #endif
 
    type(GRIDTYPE) :: grid
@@ -2675,11 +2671,27 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    
 #ifdef USECFITSIO
    if (writeoutput) then
-      status = 0
-      call writeinfo('Deleting previous Fits file', TRIVIAL)
-      call deleteFitsFile (filename, status)
-      call writeinfo('Writing Cube to Fits file: '//trim(filename), TRIVIAL)
-      call writedatacube(cube, filename)
+
+! FITS file
+
+! Old way which writes multiple FITS extensions
+!      call writeinfo('Writing Cube to Fits file: '//trim(filename), TRIVIAL)
+!      call writedatacube(cube, filename)
+
+! Write separate cubes which are easier to handle when not using kvis
+      call writeinfo("Writing intensity to intensity_"//trim(filename), TRIVIAL)
+      call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+      call writeinfo("Writing column density to nCol_"//trim(filename), TRIVIAL)
+      call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
+      if ( wanttau ) then 
+         call writeinfo("Writing optical depth to tau_"//trim(filename), TRIVIAL)
+         call writedatacube(cube, "tau_"//trim(dataCubeFileName), write_Intensity=.false., &
+              write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
+      endif
+
+! Write VTK file
       call writeinfo('Writing VTK', TRIVIAL)
       call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/"J=0       ",&
            "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       ", "rho       "/))

@@ -694,7 +694,7 @@ contains
     endif
 
     if (gridDistance > 0.0 ) then 
-       write(message,*) "Angular pixel resolution : ", (dxInCm/griddistance)*radiansToArcSec, " arcseconds"
+       write(message,'(a,1pe12.3,a)') "Angular pixel resolution : ", (dxInCm/griddistance)*radiansToArcSec, " arcseconds"
        call writeinfo(message,TRIVIAL)
     else
        write(message,*) "Distance to grid should be > 0 but it is ", gridDistance

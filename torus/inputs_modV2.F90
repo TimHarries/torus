@@ -2578,8 +2578,6 @@ contains
          "Minimum Velocity Channel (km/s): ","(a,f8.1,1x,a)", -1.0d0*maxVel, ok, .false.)
     call getLogical("h21cm", h21cm, cLine, fLine, nLines, &
          "Calculate data cube of 21cm emission: ","(a,1l,a)", .false., ok, .false.)
-    call getLogical("splitCubes", splitCubes, cLine, fLine, nLines, &
-         "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
     call getReal("wvbackground", WV_background, 1.0, cLine, fLine, nLines, &
          "Background to subtract for moment maps: ","(a,f4.1,1x,a)", -1.0, ok, .false.)
 
@@ -2595,6 +2593,9 @@ contains
 
     ! Read parameters used by galactic plane survey 
     if ( internalView ) then 
+
+       call getLogical("splitCubes", splitCubes, cLine, fLine, nLines, &
+            "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
 
        call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
             "Data cube spatial aspect ratio: ","(a,f4.1,1x,a)", 1.0, ok, .false.)
