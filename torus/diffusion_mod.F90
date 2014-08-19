@@ -705,7 +705,7 @@ contains
  !    print *,'Process ',my_rank,' finished updating values in Gauss-Seidel sweep...' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 #endif
-    if (writeoutput) write(*,*) "Demax ",demax,tol
+!    if (writeoutput) write(*,*) "Demax ",demax,tol
     if (deMax > tol) converged = .false.
     deallocate(octalArray)
 #ifdef MPI

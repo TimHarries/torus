@@ -10,11 +10,12 @@ private :: seedFromClockTime, RAN3_double, localSort
 contains
 
   subroutine randomNumberGenerator(reset, putIseed, getIseed, syncIseed, randomSeed, getReal, getDouble, &
-       getRealArray,getDoubleArray, getRealArray2d,getDoubleArray2d)
+       getRealArray,getDoubleArray, getRealArray2d,getDoubleArray2d, fixedSeed, inputSeed)
     integer(bigInt),intent(in), optional :: putIseed
     integer(bigInt),intent(out), optional :: getIseed
     logical, optional, intent(in) :: reset
     logical, intent(in), optional :: syncIseed
+    logical, intent(in), optional :: fixedSeed
     logical, intent(in), optional :: randomSeed
     real, intent(out), optional :: getReal
     real, intent(out), optional :: getRealArray(:)
@@ -22,6 +23,7 @@ contains
     real(double), intent(out), optional :: getDouble
     real(double), intent(out), optional :: getDoubleArray(:)
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
+    integer(bigInt), optional :: inputSeed
     integer(bigInt), save :: iSeed = 0 
     integer(bigInt) :: iseed_syncval
     real(double) :: r
@@ -74,6 +76,16 @@ contains
        r = ran3_double(iseed, reset=.true.)
 !$OMP END PARALLEL
     endif
+
+    if (PRESENT(fixedSeed)) then
+!$OMP PARALLEL
+       call seedFromInputSeed(inputSeed, iSeed)
+       r = ran3_double(iseed, reset=.true.)
+!$OMP END PARALLEL
+    endif
+
+
+
 
     if (PRESENT(getDouble)) then
        getDouble = ran3_double(iseed)
@@ -424,6 +436,28 @@ contains
      
     ibig = (j+(myRankWorldGlobal+1)*nt)*ibig
   END SUBROUTINE seedFromClockTime
+
+  SUBROUTINE seedFromInputSeed(inputSeed, iSeed)
+    use mpi_global_mod, only: myRankWorldGlobal
+    integer(bigint) :: iSeed, inputSeed
+    integer(bigint) :: threadSeed
+    integer :: j, nt
+#ifdef _OPENMP
+     integer ::  omp_get_thread_num
+     integer ::  omp_get_num_threads
+#endif
+
+    j = 0
+    nt = 1
+#ifdef _OPENMP
+     j = omp_get_thread_num()+1
+     nt = omp_get_num_threads()
+#endif
+     
+     iSeed = (j+(myRankWorldGlobal+1)*nt)*inputSeed
+
+
+   END SUBROUTINE seedFromInputSeed
 
 
   real(double) FUNCTION RAN3_double(IDUM, reset) result (ran3)

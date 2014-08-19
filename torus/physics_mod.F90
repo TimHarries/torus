@@ -322,7 +322,7 @@ contains
   subroutine doPhysics(grid)
     use phasematrix_mod
     use dust_mod
-    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
+    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics, writepolar, polarwavelength
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics!, UV_vector
@@ -432,6 +432,7 @@ contains
           enddo
        endif
     endif
+
 
 
 
@@ -596,7 +597,7 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
-     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature
+     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, polarWavelength
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
@@ -613,6 +614,11 @@ contains
 
      if (associated(xarray)) deallocate(xarray)
 
+     if (writePolar) then
+        nLambda = numLam
+        allocate(xarray(1:nLambda))
+        xArray(1) = real(polarWavelength)
+     endif
      
      if (PRESENT(dustRadEq)) then
         if (dustRadEq) then
@@ -905,7 +911,7 @@ contains
 end subroutine setupGlobalSources
 
 subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
-  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile, includeGasOpacity
+  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile, includeGasOpacity, writepolar
   use phasematrix_mod
   use dust_mod
   use gas_opacity_mod
@@ -955,12 +961,7 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
   end if
 
-  if (nLambda > 1) then
-     call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
-  endif
-  call allocateMemoryForDust(grid%octreeRoot)
-    if (includeGasOpacity) then
-    endif
+  if (associated(grid%octreeRoot)) call allocateMemoryForDust(grid%octreeRoot)
 
 
 

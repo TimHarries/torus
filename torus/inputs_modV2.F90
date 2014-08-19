@@ -129,9 +129,14 @@ contains
     call getInteger("verbosity", verbosityLevel, cLine, fLine, nLines, &
          "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
 
+    call getbigInteger("seed", inputSeed, cLine, fLine, nLines, &
+         "Random number seed","(a,i12,a)", 0, ok, .false.)
+
 
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
          "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
+
+
 
     call getLogical("novtkgrid", noVtkGrid, cLine, fLine, nLines, &
          "Suppress VTK grid files: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -165,9 +170,6 @@ contains
 
     call getLogical("debug", debug, cLine, fLine, nLines, &
          "Output debug information: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getLogical("setupamr", doSetupAMRgrid, cLine, fLine, nLines, &
-         "Set up or readin and AMR grid: ","(a,1l,1x,a)", .true., ok, .false.)
 
 
     call getLogical("multimodels", multimodels, cLine, fLine, nLines, &
@@ -394,6 +396,9 @@ contains
 
     call getLogical("nbody", donBodyOnly, cLine, fLine, nLines, &
          "Perform an n-body (bigG=1) calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("nbodytest", nBodyTest, cLine, fLine, nLines, &
+         "Test the nbody forces: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if(photoionEquilibrium .and. hydrodynamics) radiationhydrodynamics=.true.
 
@@ -1368,6 +1373,9 @@ contains
 
     gridUsesAMR = .true.
 
+    call getLogical("setupamr", doSetupAMRgrid, cLine, fLine, nLines, &
+         "Set up or readin and AMR grid: ","(a,1l,1x,a)", .true., ok, .false.)
+
     call getLogical("cylindrical", cylindrical, cLine, fLine, nLines, &
          "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1398,7 +1406,7 @@ contains
     call getLogical("amr3d", amr3d, cLine, fLine, nLines, &
          "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if (.not.(amr1d.or.amr2d.or.amr3d)) then
+    if ((.not.(amr1d.or.amr2d.or.amr3d)).and.doSetupAMRgrid) then
        call writeFatal("AMR dimensionality must be specified")
        stop
     endif
@@ -1506,7 +1514,7 @@ contains
          "Use velocity splitting condition for SPH to grid: ","(a,1l,1x,a)",.false., ok, .false.)
 
     call getString("geometry", geometry, cLine, fLine, nLines, &
-         "Geometry: ","(a,a,a)","sphere",ok, .true.)
+         "Geometry: ","(a,a,a)","none",ok, .false.)
 
 ! For setting up a grid from a Flash HDF5 dump
     if (checkPresent("flashfilename", cline, nlines)) call readFlashParameters
@@ -1633,7 +1641,7 @@ contains
              write(qDistLabel, '(a,i1.1)') "qdist",i
              write(pDistLabel, '(a,i1.1)') "pdist",i
              write(a0Label, '(a,i1.1)') "a0",i
-             write(fillingFactorLabel, '(a,i1.1)') "porousity",i
+             write(fillingFactorLabel, '(a,i1.1)') "porosity",i
              
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
              !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
@@ -1650,7 +1658,7 @@ contains
                   "Grain density (g/cc): ","(a,f8.5,1x,a)",3.6 , ok, .false.)
 
              call getReal(fillingFactorLabel, porousFillingFactor(i), 1., cLine, fLine, nLines, &
-                  "Porousity: ","(a,f5.2,1x,a)", 0. , ok, .false.)
+                  "Porosity: ","(a,f5.2,1x,a)", 0. , ok, .false.)
 
 
              if (.not. readDustFromFile) &
@@ -1690,6 +1698,15 @@ contains
          call getLogical("henyey", henyeyGreensteinPhaseFunction, cLine, fLine, nLines, &
               "Use Henyey-Greenstein phase function: ","(a,1l,1x,a)", .false., ok, .false.)
 
+         call getLogical("writepolar", writePolar, cLine, fLine, nLines, &
+              "Write polarizability file: ","(a,1l,1x,a)", .false., ok, .false.)
+         if (writepolar) then
+            call getReal("polarwav", polarWavelength, real(micronsToAngs), cLine, fLine, nLines, &
+           "Polarizability wavelength (microns): ","(a,f7.2,1x,a)", 0.0, ok, .true.)
+            write(*,*) "p ",polarwavelength
+             call getString("polarfile", polarFilename, cLine, fLine, nLines, &
+                  "Polarizability filename: ","(a,a,1x,a)","sil_dl", ok, .true.)
+         endif
   end subroutine readDustPhysicsParameters
 
   subroutine readAtomicPhysicsParameters(cLine, fLine, nLines)

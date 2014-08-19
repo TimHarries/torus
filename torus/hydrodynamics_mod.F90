@@ -5658,7 +5658,7 @@ end subroutine sumFluxes
        group, nGroup,doSelfGrav, perturbPressure)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
-         moveSources, hydroSpeedLimit
+         moveSources, hydroSpeedLimit, nbodyTest
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -5701,7 +5701,7 @@ end subroutine sumFluxes
     endif
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
-
+    if (.not.nBodyTest) then
     do iDir = 1, 4
        select case (iDir)
           case(1)
@@ -5810,6 +5810,7 @@ end subroutine sumFluxes
       end select
 
    enddo
+   endif
    if (severeDamping) call damp(grid%octreeRoot)
    if (hydroSpeedLimit /= 0.) call limitSpeed(grid%octreeRoot)
    if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
@@ -5834,7 +5835,7 @@ end subroutine sumFluxes
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
 
-   if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
+   if ((globalnSource > 0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
    else
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
@@ -7087,7 +7088,7 @@ end subroutine sumFluxes
   subroutine doHydrodynamics3d(grid)
     use vtk_mod, only : writeVtkFilenBody
     use inputs_mod, only : tdump, tend, doRefine, doUnrefine, amrTolerance, dumpRadial
-    use inputs_mod, only : addSinkParticles, vtutogrid
+    use inputs_mod, only : addSinkParticles, vtutogrid, doSelfGrav
     use mpi
     type(gridtype) :: grid
     real(double) :: dt, tc(512), temptc(512),  mu
@@ -7104,11 +7105,11 @@ end subroutine sumFluxes
     integer :: nGroup, group(5120)
 !    logical :: doRefine
     integer :: evenUpArray(nHydroThreadsGlobal)
-    logical :: doSelfGrav, refinedSomeCells
+    logical :: refinedSomeCells
     logical, save  :: firstStep = .true.
     integer :: ierr
 
-    doSelfGrav = .true.
+!    doSelfGrav = .true.
 
     if (writeoutput) then
        open(57, file="pos.dat", status="unknown", form="formatted")
@@ -7383,6 +7384,10 @@ end subroutine sumFluxes
           initialMass = initialMass + SUM(globalSourceArray(1:globalnSource)%mass)
        endif
 
+       if (writeoutput.and.(globalnSource > 0)) then
+          open(45, file="positions.dat", status="unknown",form="formatted")
+       endif
+
 !loop until end of simulation time
     do while(currentTime <= tend)
     tc = 0.d0
@@ -7403,6 +7408,9 @@ end subroutine sumFluxes
           call viscousTimeScale(grid%octreeRoot, grid, dt)
        endif
        tc(myRankGlobal) = min(tCourant, tSourceSource, tGasSource, tPressureGrad)
+
+       if (nbodyTest) tc(myrankGlobal) = min(tSourceSource, tPressureGrad)
+
        call MPI_ALLREDUCE(tCourant, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, AMRCommunicator, ierr)
        tCourant = tempDouble
        call MPI_ALLREDUCE(tSourceSource, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, AMRCommunicator, ierr)
@@ -7454,14 +7462,13 @@ end subroutine sumFluxes
           if (myrankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
 
 
-
+          
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 !perform a hydrodynamics step in the x, y and z directions
           call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=doSelfGrav)
 
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
 
 
 !add/merge sink particles where necessary
@@ -7602,11 +7609,17 @@ end subroutine sumFluxes
           write(plotfile,'(a,i4.4,a)') "nbody",it,".vtk"
           call writeVtkFilenBody(globalnSource, globalsourceArray, plotfile)
           if (myrankGlobal==1) write(*,*) trim(plotfile), " written at ",currentTime/tff, " free-fall times"
+
+          if (writeoutput.and.(globalnSource>0)) &
+               write(45,'(i6,1p,20e15.5,0p)') it, currentTime, globalSourceArray(1:globalnSource)%position
+
+
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
        if (currentTime  == tEnd) exit
     enddo
+    if (Writeoutput.and.(globalnSource >0)) close(45)
 666 continue
   end subroutine doHydrodynamics3d
 
@@ -11364,7 +11377,7 @@ real(double) :: rho
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
-    use inputs_mod, only : amrspeedtol, amrionfractol,  captureshocks
+    use inputs_mod, only : amrspeedtol, amrionfractol,  captureshocks, dorefine
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -11386,8 +11399,10 @@ real(double) :: rho
     integer :: index1, index2, step
     real(double) :: index
 
+
     converged = .true.
     converged_tmp=.true.
+    if (.not.doRefine) goto 666
     
     refineOnGradient = .not.photoionization      
 
@@ -11735,7 +11750,7 @@ real(double) :: rho
     if (.not.converged) exit
  endif
 end do
-
+666 continue
 end subroutine refineGridGeneric2
 
 

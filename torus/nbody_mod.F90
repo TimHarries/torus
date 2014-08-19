@@ -183,7 +183,9 @@ contains
           thisDt = dt - thisTime
        endif
        if (writeoutput) write(*,*) "Calling integrator with ",thisDt, thisTime, dt,eps
-       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
+!       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
+       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-1, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
+       if (writeoutput) write(*,*) "nok ",nok, " nbad ",nbad
        if (myrankWorldglobal == 1) write(*,*) "integrator done"
        
        thisTime = thisTime + thisDt
@@ -333,6 +335,7 @@ contains
 
 
   recursive subroutine recursiveForceFromGas(thisOctal, source, nSource, eps)
+    use inputs_mod,only : gridDistanceScale
     type(OCTAL), pointer :: thisOctal, child
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -342,7 +345,7 @@ contains
     real(double) :: massSub
     integer :: i1, j1, k1
     integer, parameter  :: nSub = 8
-    Type(VECTOR) :: rVec, cen, pos
+    Type(VECTOR) :: rVec, cen, pos, rHat
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -361,9 +364,11 @@ contains
              if (modulus(cen - source(iSource)%position) > 2.d0*thisOctal%subcellSize) then
                 rVec = source(isource)%position - cen
                 r = modulus(rVec)
+                rHat = rVec
+                call normalize(rHat)
                 source(iSource)%force = source(iSource)%force - &
-                     (bigG*source(isource)%mass*thisOctal%rho(subcell) * r * 1.d10 * dV / (1.d20*r**2 + eps**2)**1.5d0) * (rVec/r)
-                
+                     ((bigG*source(isource)%mass * dv * thisOctal%rho(subcell) * splineSoftening(r*gridDistanceScale,eps))*rHat)
+
              else
                 massSub  = (thisOctal%rho(subcell)*dv)/dble(nSub**3)
                 do i1 = 1, nSub
@@ -374,8 +379,10 @@ contains
                          pos%z = cen%z + (dble(k1-1)+0.5d0) * thisOctal%subcellSize / dble(nSub) - thisOctal%subcellSize/2.d0
                          rVec = source(isource)%position - pos
                          r = modulus(rVec)
-                         source(iSource)%force = source(iSource)%force - &
-                              (bigG*source(isource)%mass*massSub * r * 1.d10 / (1.d20*r**2 + eps**2)**1.5d0) * (rVec/r)
+                         rHat = rVec
+                         call normalize(rHat)
+                	 source(iSource)%force = source(iSource)%force - &
+                              ((bigG*source(isource)%mass * massSub * splineSoftening(r*gridDistanceScale,eps))*rHat)
                       enddo
                    enddo
                 enddo
@@ -733,7 +740,7 @@ contains
        else
           nbad=nbad+1
        endif
-!       if (Writeoutput) write(*,*) "x1, x2, x, h ",x1,x2,x,h
+       if (Writeoutput) write(*,*) "x1, x2, x, h ",x1,x2,x,h, " percent ",100.*x/x2
        if((x-x2)*(x2-x1).ge.zero)then
           do i=1,nvar
              ystart(i)=y(i)

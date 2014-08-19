@@ -30,7 +30,7 @@ contains
       integer :: i, j, k
 
       ! Dust distribution parameters
-      integer, parameter :: nDist = 50
+      integer, parameter :: nDist = 100
       real :: a(nDist-1), da(nDist-1), dist(nDist-1)
       real :: aFac
 
@@ -114,13 +114,14 @@ contains
             end do   ! n
 
             !$OMP PARALLEL DEFAULT(NONE) &
-            !$OMP SHARED (nMuMie,  beshTable, sphereTable, pnmllg, da, dist, afac, miePhase, j, i, max_nci) &
+            !$OMP SHARED (nMuMie,  beshTable, sphereTable, pnmllg, a, da, dist, afac, miePhase, j, i, max_nci, xArray, mreal, mimg) &
             !$OMP PRIVATE (k, cosTheta)
             !$OMP DO SCHEDULE(DYNAMIC)
             do k = 1, nMumie
                cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)
                call mieDistPhaseMatrix(cosTheta, nDist, beshTable(j,1:nDist-1), sphereTable, &
-                       pnmllg(k,1:max_nci), da, dist, aFac, miePhase(i,j,k))
+                       pnmllg(k,1:max_nci), a, da, dist, aFac, miePhase(i,j,k), mReal(i,j), mImg(i,j), &
+                       xArray(j))
 !               call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), xArray(j), &
 !                       cosTheta, miePhase(i,j,k), mReal(i,j), mImg(i,j))
             enddo
@@ -227,16 +228,18 @@ contains
    end subroutine mapDustDistribution
 
    subroutine mieDistPhaseMatrix(cosTheta, nDist, beshTable, sphereTable, pnmllg, &
-                 da, dist, aFac, miePhase)
+                 aArray, da, dist, aFac, miePhase, mReal, mImg, lambda)
       use phasematrix_mod
+      use bhmie_mod, only: MXNANG, bhmie
       implicit none
-
+      real, parameter :: micronsToCm=1.e-4
       real, intent(in) :: cosTheta
+      real :: mReal, mImg, lambda, qExt, qSca, qBack, gSca
       integer, intent(in) :: nDist
       type(beshEntry), intent(in) :: beshTable(:) !1:nDist-1)
       type(sphereEntry), intent(in) :: sphereTable(:)!nDist-1)
       real, intent(in) :: pnmllg(:)
-      real, intent(in) :: da(nDist-1), dist(nDist-1)
+      real, intent(in) :: aArray(nDist-1), da(nDist-1), dist(nDist-1)
       real, intent(in) :: aFac
       type(PHASEMATRIX), intent(out) :: miePhase
 
@@ -271,16 +274,38 @@ contains
       complex :: s1, s2
       real :: p11, pl, p33p11, p34p11
       real :: p11tot, pltot, p33p11tot, p34p11tot
-
+      real :: a, x, fac,totfac
+      complex :: refrel
       complex,save :: Ci = (0.0,1.0)
+      complex s12(2*MXNANG-1),s22(2*MXNANG-1)
+      integer :: nang=2
 !$OMP THREADPRIVATE (ci)
 
       p11tot = 0.
       pltot = 0.
       p33p11tot = 0.
       p34p11tot = 0.
+      totfac = 0.
+      miePhase%element = 0.
+     do i = 1, nDist-1
 
-      do i = 1, nDist-1
+
+
+
+          a = aArray(i) 
+          x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
+          x = max(x, 1.e-5)
+          refrel = cmplx(mReal, mimg)
+!          call BHMIE(X,REFREL,NANG ,S12,S22,QEXT,QSCA,QBACK, GSCA)
+
+!          qSca = qSca * pi * (a * micronsToCm)**2
+
+
+
+
+
+
+
 !        .............................................................
 !        .  calculate t = Qsca*x**2                                  .
 !        .              = (scattering cross section)*x**2/(pi*a**2)  .
@@ -321,22 +346,41 @@ contains
          p33p11 = 4.0*real(s1*conjg(s2))/(p11)
          p34p11 = 4.0*aimag(s2*conjg(s1))/(p11)
 
-         p11tot = p11tot + aFac*dist(i)*da(i)*p11
-         pltot = pltot-aFac*dist(i)*da(i)*pl
-         p33p11tot = p33p11tot + aFac*dist(i)*da(i)*p33p11
-         p34p11tot = p34p11tot + aFac*dist(i)*da(i)*p34p11
+         fac = afac * dist(i) * da(i) !* qsca/1.d-15
+!         write(*,*) "Fac ",fac,p11,pl,p33p11,p34p11
+         p11tot = p11tot + fac*p11
+         pltot = pltot + fac*pl
+         p33p11tot = p33p11tot + fac*p33p11
+         p34p11tot = p34p11tot + fac*p34p11
+         totfac = totfac + fac
+
+         miePhase%element(1,1) = miePhase%element(1,1) + p11 * fac
+         miePhase%element(1,2) = miePhase%element(1,2) - pl * p11 * fac 
+         miePhase%element(2,1) = miePhase%element(2,1) - pl * p11 *fac
+         miePhase%element(2,2) = miePhase%element(2,2) + p11 * fac
+         miePhase%element(3,3) = miePhase%element(3,3) + p33p11 * p11 * fac
+         miePhase%element(3,4) = miePhase%element(3,4) + p34p11 * p11 * fac 
+         miePhase%element(4,3) = miePhase%element(4,3) - p34p11 * p11 * fac
+         miePhase%element(4,4) = miePhase%element(4,4) + p33p11 * p11 * fac
+
+
       enddo
+      p11tot = p11tot / totfac
+      pltot = pltot / totfac
+      p33p11tot = p33p11tot / totfac
+      p34p11tot = p34p11tot / totfac
 
-      miePhase%element = 0.
-      miePhase%element(1,1) = p11tot
-      miePhase%element(1,2) = pltot*p11tot
-      miePhase%element(2,1) = pltot*p11tot
-      miePhase%element(2,2) = p11tot
+      miePhase%element = miePhase%element / totFac
 
-      miePhase%element(3,3) = p33p11tot*p11tot
-      miePhase%element(3,4) = p34p11tot*p11tot
-      miePhase%element(4,3) = -p34p11tot*p11tot
-      miePhase%element(4,4) = p33p11tot*p11tot
+!      miePhase%element(1,1) = p11tot
+!      miePhase%element(1,2) = -pltot*p11tot
+!      miePhase%element(2,1) = -pltot*p11tot
+!      miePhase%element(2,2) = p11tot
+
+!      miePhase%element(3,3) = p33p11tot*p11tot
+!      miePhase%element(3,4) = p34p11tot*p11tot
+!      miePhase%element(4,3) = -p34p11tot*p11tot
+!      miePhase%element(4,4) = p33p11tot*p11tot
    end subroutine mieDistPhaseMatrix
 
    subroutine sphere(x, nc, cm, hkl, f, g, cnrm)
@@ -640,7 +684,7 @@ contains
       p33p11tot = 0.
       p34p11tot = 0.
 
-      nDist = 50
+      nDist = 100
       tot = 0.
       logamin = log(aMin)
       logamax = log(aMax)

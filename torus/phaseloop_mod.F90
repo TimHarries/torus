@@ -1256,7 +1256,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      if (doTuning) call tune(6, "All Photon Loops")  ! Start a stopwatch
      
-     call randomNumberGenerator(randomSeed=.true.)
+     if (inputSeed == 0) then
+        call randomNumberGenerator(randomSeed=.true.)
+     else
+        call randomNumberGenerator(fixedSeed=.true., inputSeed=inputSeed)
+     endif
 
      weightSource = 1.d0
      if (nSource > 0) &
@@ -1621,11 +1625,13 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
               if (polarizationImages) then
                  header = specfile(1:index(specfile,".fits")-1)
                  write(specFile,'(a,a)') trim(header)//"_pol.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol")
+                 write(specFile,'(a,a)') trim(header)//"_pa.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pa")
                  write(specFile,'(a,a)') trim(header)//"_q.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq")
                  write(specFile,'(a,a)') trim(header)//"_u.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu")
               endif
            else
               returnImage%pixel(:,:)%i = obsImageSet(i1)%pixel(:,:)%i

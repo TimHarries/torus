@@ -3697,7 +3697,7 @@ CONTAINS
        end do
 
 
-       if (inputnSource>0) then
+       if ((inputnSource>0).and.(dorefine)) then
           centre = subcellCentre(thisOctal, subcell)
           do iSource = 1, inputNsource
              r = modulus(centre - sourcePos(iSource))/smallestCellSize
@@ -3712,7 +3712,7 @@ CONTAINS
           enddo
        endif
 
-       if (inputnSource > 0) then
+       if ((inputnSource > 0).and.dorefine) then
           do iSource = 1, inputnSource
              if (inSubcell(thisOctal,subcell, sourcePos(isource)) &
                   .and. (thisOctal%nDepth < maxDepthAMR)) then
@@ -4405,11 +4405,11 @@ CONTAINS
           bigJ = 0.25d0
           cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))
           rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * (thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
-          massTol  = 0.011d0*rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
+          massTol  = rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
           if (((thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30) > massTol) &
                .and.(thisOctal%nDepth < maxDepthAMR)) then
              split = .true.
-!             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
           endif
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
@@ -9204,6 +9204,7 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
     real(double) :: eThermal, rMod,  rhoSphere, rDash, fac
+    logical, save :: firsttime = .true.
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec-spherePosition)
@@ -9218,7 +9219,10 @@ endif
     
 
     rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
-
+    if (firstTime.and.writeoutput) then
+       write(*,*) "Rho sphere ",rhosphere
+       firsttime=.false.
+    endif
     if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
     if (rMod < sphereRadius) then
        thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)

@@ -31,6 +31,7 @@
   logical :: hydrodynamics
   logical :: timeDependentRT
   logical :: donBodyOnly
+  logical :: nBodyTest
 
 
 
@@ -362,6 +363,9 @@
   logical :: includeGasOpacity
   logical :: isotropicScattering
   logical :: henyeyGreensteinPhaseFunction
+  logical :: writePolar
+  character(len=80) :: polarFilename
+  real :: polarWavelength
   real :: dusttogas
   logical :: dustfile
   character(len=80) :: dustfilename(10) ! used in dust_mod, not set !!!
@@ -867,4 +871,4 @@
   logical :: doRaman ! raman scattering model 
   real    :: lamLine 
   real    :: massEnvelope
-
+  integer(bigInt) :: inputSeed

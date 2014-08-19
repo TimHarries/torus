@@ -20,34 +20,47 @@ contains
 
   subroutine effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, fillingFactor)
     real :: fillingFactor, epsReal, epsImag
-    complex :: epsilonEffective, epsilonMatrix, epsilonInclusion
+    complex :: epsilonEffective, epsilonMatrix, epsilonInclusion, epsilonEffectiveMG
 
 ! maxwell garnett formula (see Maron & Maron, 2005, MNRAS, 357, 873)
 
-    epsilonEffective = epsilonMatrix + 3.0 * fillingFactor * epsilonMatrix * &
+    epsilonEffectiveMG = epsilonMatrix + 3.0 * fillingFactor * epsilonMatrix * &
          (epsilonInclusion - epsilonMatrix)/(epsilonInclusion + 2.0*epsilonMatrix - &
          fillingFactor * (epsilonInclusion - epsilonMatrix))
 
 !    write(*,*) "eps maxwell ",epsilonEffective
 ! bruggeman formula (same paper)
 
-    call searchBisection(epsReal,real(epsilonMatrix), real(epsilonInclusion), fillingFactor)
-    call searchBisection(epsImag,aimag(epsilonMatrix), aimag(epsilonInclusion), fillingFactor)
-    epsilonEffective = cmplx(epsReal, epsImag)
+    call searchBisection(epsilonEffective,epsilonMatrix, epsilonInclusion, fillingFactor, &
+         0.5*epsilonEffectiveMG, 2.*epsilonEffectiveMG)
 !    write(*,*) "eps bruggeman ",epsilonEffective
 
   end subroutine effectiveMedium
 
-  subroutine searchBisection(eps, epsMatrix, epsInclusion, f)
-    real :: eps, epsMatrix, epsInclusion,f 
-    real :: a, b, c, fa, fb, fc
+  subroutine searchBisection(eps, epsMatrix, epsInclusion, f, eps1, eps2)
+    complex :: eps, epsMatrix, epsInclusion,eps1,eps2
+    real :: f
+    complex :: a, b, c
+    real :: fa, fb, fc
     logical :: converged
-    a = 1.e-10
-    b = 100.
+    integer :: i
+    a = eps1
+    b = eps2
+    fa = bruggeman(a, epsMatrix, epsInclusion, f)
+    fb = bruggeman(b, epsMatrix, epsInclusion, f)
+    if (fa*fb > 0.d0) then
+       if (writeoutput) then
+          write(*,*) i,a,b,fa,fb," bisection failed"
+          stop
+       endif
+    endif
+    i = 0
     converged = .false.
     do while (.not.converged)
+       i = i + 1
        fa = bruggeman(a, epsMatrix, epsInclusion, f)
        fb = bruggeman(b, epsMatrix, epsInclusion, f)
+!       if (writeoutput) write(*,*) i,a,b,fa,fb
        c = 0.5 * (a + b)
        fc = bruggeman(c, epsMatrix, epsInclusion, f)
        if (fa*fc < 0.d0) then
@@ -58,14 +71,14 @@ contains
        if (abs(a-b)/abs(a+b) < 1.d-6) then
           converged = .true.
        endif
-
     end do
     eps = 0.5*(a+b)
   end subroutine searchBisection
 
 
     real function bruggeman(eps, epsMatrix, epsInclusion, f)
-      real :: eps, epsMatrix, epsInclusion, f
+      complex :: eps, epsMatrix, epsInclusion
+      real :: f
 
       bruggeman = f * (epsInclusion - eps)/(epsInclusion+2.*eps) + &
            (1.-f)*(epsMatrix - eps)/(epsMatrix + 2.*eps)
@@ -80,39 +93,36 @@ contains
   subroutine permittivityToRefractiveIndex(epsilonReal, epsilonImg, n, k)
     real :: n, k, epsilonReal, epsilonImg
 
-    n = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) + epsilonImg)/2.0 )
-    k = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) - epsilonImg)/2.0 )
+    n = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) + epsilonReal)/2.0 )
+    k = sqrt( (sqrt(epsilonreal**2 + epsilonImg**2) - epsilonReal)/2.0 )
   end subroutine permittivityToRefractiveIndex
 
   subroutine dumpPolarizability(miePhase, nMuMie, lambda, nLambda)
+    use inputs_mod, only : polarWavelength, polarFilename
     use phasematrix_mod, only : phasematrix
     type(PHASEMATRIX) :: miePhase(:,:,:)
     integer :: nMuMie
     real :: lambda(:), thisLambda
     integer :: nLambda
-    real :: lamArray(3), ang, mu
+    real :: ang, mu
     integer :: i, j, k
     character(len=80) :: thisFile
     character(len=4) :: lamLabel
 
-    lamArray(1) = 1.22
-    lamArray(2) = 1.63
-    lamArray(3) = 2.19 
 
-    do i = 1, 3
-       thisLambda = lamArray(1) * real(micronsToAngs)
-       call locate(lambda, nlambda, thisLambda, k)
-       write(lamLabel,'(f4.2)') lamArray(i)
-       lamLabel(2:2) = "p"
-       write(thisFile, '(a,a,a)') "polarizability_",lamLabel,"_microns.dat"
-       open(23, file=thisFile, status="unknown", form="formatted")
-       do j = 1, nMuMie
+    if (writeoutput) then
+    do i = 1, 1
+       call locate(lambda, nlambda, real(polarWavelength), k)
+       open(23, file=polarFileName, status="unknown", form="formatted")
+       write(23,'(a9,a9)') "# angle","-S21/S11"
+       do j = nMuMie, 1, -1
           mu = 2.*real(j-1)/real(nMumie-1)-1.
           ang = acos(mu) * real(radtoDeg)
-          write(23,'(f8.2,f8.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
+          write(23,'(f9.2,f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
        enddo
        close(23)
     enddo
+    endif
   end subroutine dumpPolarizability
 
        
@@ -380,6 +390,7 @@ contains
 
 
        if (porousFillingFactor > 0.d0) then
+!          if (writeoutput) write(*,*) "before ",mreal(i),mimg(i)
           call refractiveIndexToPermittivity(mReal(i), mImg(i), epsilonReal, epsilonImg)
           epsilonMatrix = cmplx(epsilonReal, epsilonImg)
           epsilonInclusion = cmplx(1.d0, 0.d0)
@@ -387,6 +398,7 @@ contains
           epsilonReal = real(epsilonEffective)
           epsilonImg = aimag(epsilonEffective)
           call permittivityToRefractiveIndex(epsilonReal, epsilonImg, mreal(i), mImg(i))
+!          if (writeoutput) write(*,*) "after ",mreal(i),mimg(i)
        endif
 
     enddo
@@ -446,7 +458,7 @@ contains
     call writeFormatted("(a,e12.3)","    a0    = ",  a0, TRIVIAL)
     call writeFormatted("(a,e12.3)","    qDist = ",  qDist, TRIVIAL)
     call writeFormatted("(a,e12.3)","    pDist = ",  pDist, TRIVIAL)
-    call writeFormatted("(a,f10.3)","Porousity = ",  fillingFactor, TRIVIAL)
+    call writeFormatted("(a,f10.3)", "Porosity = ",  fillingFactor, TRIVIAL)
 
 
     allocate(mReal(1:grid%nLambda))

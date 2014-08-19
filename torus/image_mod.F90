@@ -563,15 +563,20 @@ module image_mod
 !             print *, "image%pixel%i", image%pixel%i
           case("stokesq")
              where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%q * scale)
+                array = real(image%pixel%q/image%pixel%i)
              end where
           case("stokesu")
              where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%u * scale )
+                array = real(image%pixel%u/image%pixel%i)
              end where
           case("pol")
              where (image%pixel%i /= 0.d0) 
-                array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+                array = real(100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i)
+             endwhere
+          case("pa")
+             array = -0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg
+             where (array < 0.d0) 
+                array = array + 180.d0
              end where
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type

@@ -16,6 +16,7 @@ contains
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
+    use inputs_mod, only : writePolar
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, ncubes
@@ -48,7 +49,7 @@ contains
     use surface_mod, only : surfacetype
     use disc_class, only : alpha_disc
     use blob_mod, only : blobtype
-    use dust_mod, only : readLambdaFile
+    use dust_mod, only : readLambdaFile, dumpPolarizability
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
@@ -110,6 +111,12 @@ contains
        goto 666
     endif
 
+  if (dustPhysics.and.writepolar) then
+     call setupXarray(grid, xarray, nLambda, numLam = 1)
+     call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+     call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
+  endif
+
 
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
@@ -138,6 +145,8 @@ contains
              write(message,'(a)') "No benchmark calculation for: "//trim(grid%geometry)
        end select
     endif
+
+
           
 #ifdef CMFATOM
     if (atomicPhysics.and.calcDataCube) then
