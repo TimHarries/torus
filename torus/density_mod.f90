@@ -80,6 +80,9 @@ contains
     case("shakara","aksco","circumbin")
        out = shakaraSunyaevDisc(r_vec, grid)
 
+    case("HD169142")
+       out = HD169142Disc(r_vec, grid)
+
     case("warpeddisc")
        out = warpedDisc(r_vec, grid)
 
@@ -1082,6 +1085,165 @@ contains
 
 
   end function shakaraSunyaevDisc
+
+  function HD169142Disc(point, grid) result (rhoOut)
+    use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
+         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
+         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
+    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
+         rGapInner2, rGapOuter2
+    use utils_mod, only: solveQuad
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(VECTOR), INTENT(IN) :: point
+    real(double) :: r, h, rhoOut, warpHeight, fac
+    integer :: i
+    real(double) :: phi, dist
+    logical, save :: firstTime = .true.
+    integer, parameter :: nStream = 1000
+    real ::  phi1, phi2, dphi, r1, turns, d
+    type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
+    real(double) :: rSpiralInner, rSpiralOuter,  mu, r_c, rhoEnv, mu_0, theta
+    real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
+    real(double) :: mPlanetDisc, hillRadius
+    integer, parameter  :: nSpiral =10000
+    logical :: ok
+    real :: x1, x2
+
+
+    if (firstTime) then
+
+
+
+
+       phi1 = real(pi)
+       phi2 = real(pi+pi/2.)
+       turns = 0.
+       dphi = real((phi2 - phi1) + twoPi * turns)
+       d = real(binarySep/(1.+massRatio))
+       call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
+       r1 = min(x1, x2)
+       do i = 1, nStream
+          phi = phi1 + dphi * real(i-1)/real(nStream-1)
+          r = (phi-phi1)/dphi * r1
+          stream1(i) = VECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
+       enddo
+
+       phi1 = 0.
+       phi2 = real(pi/2.)
+       turns = 0.
+       dphi = real((phi2 - phi1) + twoPi * turns)
+       d = -binarySep*(1.-1./(1.+massRatio))
+       call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
+       r1 = min(x1, x2)
+       do i = 1, nStream
+          phi = phi1 + dphi * real(i-1)/real(nStream-1)
+          r = (phi-phi1)/dphi * r1
+          stream2(i) = VECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
+       enddo
+
+
+       firstTime = .false.
+    endif
+
+
+    rhoOut = tiny(rhoOut)
+    r = sqrt(point%x**2 + point%y**2)
+    phi = atan2(point%y,point%x)
+    if (phi < 0.0d0) phi = phi + twopi
+    warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
+    if ((r < rOuter).and.(r>rinner)) then
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+
+
+       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+       fac = max(-50.d0,fac)
+       rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+
+
+
+
+       if (smoothInnerEdge) then
+          fac = 1.d0
+          if (r < 1.02d0*rinner) then
+             fac = (1.02d0*rinner - r)/(0.02d0*rinner)
+             fac = 10.d0*fac
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+       endif
+
+       if (hydrodynamics) then
+          fac = 1.d0
+          if (r < 1.5d0*rinner) then
+             fac = (1.5d0*rinner - r)/(0.05d0*rinner)
+             fac = exp(-fac)
+             rhoOut = rhoOut * fac
+          endif
+       endif
+
+    endif
+    
+
+    if (grid%geometry == "circumbin") then
+       if (r < rInner) then
+          h = height * (rInner / (100.d0*autocm/1.d10))**betaDisc
+          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+          fac = max(-50.d0,fac)
+          rhoOut = dble(rho0) * exp(fac)
+          fac = ((rInner - r)/(0.01*rInner))**2
+          rhoOut = rhoOut *exp(-fac)
+       endif
+    endif
+
+    if ((r < rInner).and.(grid%geometry == "circumbin")) then
+       dist = 1.e30
+       do i = 1, nStream
+          fac = modulus(point - stream1(i))
+          dist = min(dist,fac)
+       enddo
+       dist = dist / (0.01d0*rInner)
+       rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
+
+       dist = 1.e30
+       do i = 1, nStream
+          fac = modulus(point - stream2(i))
+          dist = min(dist,fac)
+       enddo
+       dist = dist / (0.01d0*rInner)
+       rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
+    endif
+
+
+
+!    basic gap
+
+    if ((r < rGapOuter1).and.(r > rGapInner1)) then
+
+
+
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+       fac = max(-50.d0,fac)
+       rhoOut =  rhoGap * exp(fac)
+
+
+    endif
+
+    if ((r < rGapOuter2).and.(r > rGapInner2)) then
+
+
+
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+       fac = max(-50.d0,fac)
+       rhoOut =  rhoGap * exp(fac)
+
+
+    endif
+
+    rhoOut = max(rhoOut, rhoAmbient)
+
+  end function hd169142Disc
 
   function iras04158Disc(point) result (rhoOut)
     use inputs_mod, only : betadisc, rinner, router, alphadisc, height, rho0

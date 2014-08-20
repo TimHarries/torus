@@ -499,6 +499,8 @@
   real :: flaringPower, gapViscAlpha
   real :: rGap, mPlanet, gapWidth
   real :: rGapInner, rGapOuter, rhoGap, deltaCav
+  real :: rGapInner1, rGapOuter1
+  real :: rGapInner2, rGapOuter2
   logical :: planetGap
   logical :: planetDisc
 

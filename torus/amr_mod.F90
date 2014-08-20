@@ -1092,6 +1092,9 @@ CONTAINS
     CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
+    CASE ("HD169142")
+       CALL hd169142Disk(thisOctal, subcell ,grid)
+
     CASE ("adddisc")
        CALL addDiscDensity(thisOctal, subcell)
 
@@ -5038,7 +5041,7 @@ CONTAINS
 1001      if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
           if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
           
-       case("shakara","aksco")
+       case("shakara","aksco","HD169142")
           ! used to be 5
           if (thisOctal%ndepth  < mindepthamr) split = .true.
           cellSize = thisOctal%subcellSize 
@@ -11569,6 +11572,136 @@ end function readparameterfrom2dmap
 
 
   end subroutine shakaraDisk
+
+  subroutine HD169142Disk(thisOctal,subcell,grid)
+    use density_mod, only: density, shakaraSunyaevDisc
+    use inputs_mod, only : rOuter, betaDisc, rGapOuter2 !, rInner, erInner, erOuter, alphaDisc
+    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
+    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
+    use inputs_mod, only : rSublimation
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v
+    TYPE(vector) :: rVec
+    
+    type(VECTOR),save :: velocitysum
+    logical,save :: firsttime = .true.
+
+    if(firsttime) then
+       velocitysum = VECTOR(1d-20,1d-20,1d-20)
+       firsttime = .false.
+    endif
+
+    rVec = subcellCentre(thisOctal,subcell)
+    r = real(modulus(rVec))
+
+
+
+    thisOctal%inflow(subcell) = .true.
+    thisOctal%temperature(subcell) = 100. 
+    rd = rOuter / 2.
+
+    if (associated(thisOctal%dustTypeFraction)) thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+
+    thisOctal%rho(subcell) = 1.d-30
+    if (associated(thisOctal%nh)) &
+         thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
+    if (associated(thisOctal%ne)) &
+         thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
+    if (photoionization) then
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    endif
+    if (associated(thisOctal%ionFrac)) then
+       thisOctal%ionFrac(subcell,1) = 1.
+       thisOctal%ionFrac(subcell,2) = 1.e-5
+       thisOctal%ionFrac(subcell,3) = 1.
+       thisOctal%ionFrac(subcell,4) = 1.e-5
+       thisOctal%etaCont(subcell) = 0.
+    endif
+
+    if (photoionization) then
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = 1.d-5!thisOctal%nh(subcell)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    endif
+
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
+
+!    if (r < rOuter) then
+       thisOctal%rho(subcell) = density(rVec, grid)
+! tinkered from 10K - I figured the cooler bits will gently drop but a 
+! large no. of cells are close to this temp.
+       thisOctal%temperature(subcell) = 10.
+       thisOctal%inflow(subcell) = .true.
+
+       if (photoionization) then
+          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%ne(subcell) = 1.e-5!thisOctal%nh(subcell)
+          thisOctal%nhi(subcell) = 1.e-5
+          thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+          thisOctal%biasCont3D = 1.
+          thisOctal%etaLine = 1.e-30
+       endif
+
+       h = real(height * (r / (100.d0*autocm/1.d10))**betaDisc)
+    
+!    endif
+
+    if(molecular) then
+ !      if(modulus(rvec) .lt. 1000.) then
+          thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+          CALL fillVelocityCorners(thisOctal, keplerianVelocity)
+ !      else
+ !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
+ !      endif
+    else
+       thisOctal%velocity(Subcell) = VECTOR(0.,0.,0.)
+    endif
+
+    if (molecular) then
+       thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
+       thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+    endif
+
+    if (hydrodynamics) then
+       r = sqrt(rVec%x**2 + rVec%y**2)
+!       if (r > rOuter*0.99d0) then
+!          thisOctal%rho(subcell) = thisOctal%rho(subcell) * exp(-(r-rOuter*0.99d0)/(0.01d0*rOuter))
+!       endif
+       sinTheta = sqrt(1.d0-(abs(rVec%z)/modulus(rVec))**2)
+       v = sqrt(bigG * mSol /(r*1.d10))
+
+
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
+       thisOctal%temperature(subcell) = min(100.,100. * real((r/Rinner)**(-4.d0/3.d0)))
+       thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+       thisOctal%iEquationOfState(subcell) = 1
+       thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
+       thisOctal%gamma(subcell) = 7.d0/5.d0
+       ethermal = real(1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell))
+       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+       thisOctal%rhov(subcell) = modulus(keplerianVelocity(rVec))*thisOctal%rho(subcell) * (r *gridDistanceScale)*cSpeed * sinTheta
+    endif
+
+    if (dustPhysics) then
+       thisOctal%DustTypeFraction(subcell,:) = 1.d-10
+       rVec = subcellCentre(thisOctal, subcell)
+       r = sqrt(rVec%x**2+rVec%y**2)
+       if (r < rGapOuter2) then
+          thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)
+       else
+          thisOctal%dustTypeFraction(subcell,2) = grainFrac(2)
+       endif
+    endif
+
+
+  end subroutine HD169142Disk
 
 
   subroutine fillgridSafier(grid)
