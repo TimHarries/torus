@@ -4193,18 +4193,18 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
   
-         speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
-               thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          speed = sqrt(speed)
-          if (speed > 0.d0) then
-             fac = min(speed, 10d5)/speed
-          else
-             fac = 1.d0
-          endif
+!         speed = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+!               thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+!          speed = sqrt(speed)
+!          if (speed > 0.d0) then
+!             fac = min(speed, 10d6)/speed
+!          else
+!             fac = 1.d0
+!          endif
 
-          thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
-          thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
-          thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
+!          thisOctal%rhou(subcell) = thisOctal%rhou(subcell) * fac
+!          thisOctal%rhov(subcell) = thisOctal%rhov(subcell) * fac
+!          thisOctal%rhow(subcell) = thisOctal%rhow(subcell) * fac
           if (thisOctal%rho(subcell) < 1.d-25) then
              thisoctal%rhou(subcell) = 1.d-26
              thisoctal%rhov(subcell) = 1.d-26
@@ -8267,15 +8267,15 @@ end subroutine sumFluxes
 !perform a hydrodynamics step in the x and z directions
 !          call hydroStep2dCylindrical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call writeVtkFile(grid, "beforestep.vtk", &
-            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-            ,"mpithread    ", "pressure     ","ghosts       ","edges        " /))
+!       call writeVtkFile(grid, "beforestep.vtk", &
+!            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+!            ,"mpithread    ", "pressure     ","ghosts       ","edges        " /))
 
           call hydroStep2dCylindrical_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call writeVtkFile(grid, "afterstep.vtk", &
-            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
-            ,"mpithread    ", "pressure     ","ghosts       ","edges        " /))
+!       call writeVtkFile(grid, "afterstep.vtk", &
+!            valueTypeString=(/"rho          ","hydrovelocity","rhoe         " ,"u_i          ", "phigas       " &
+!            ,"mpithread    ", "pressure     ","ghosts       ","edges        " /))
 
 !          call calculateTemperatureFromEnergy(grid%octreeRoot)
        end if
@@ -14385,7 +14385,7 @@ end subroutine refineGridGeneric2
 
   real(double) function getPressure(thisOctal, subcell)
 #ifdef PHOTOION
-    use inputs_mod, only : photoionPhysics, honly, simpleMu, radpressureTest, mu
+    use inputs_mod, only : photoionPhysics, honly, simpleMu, radpressureTest, mu, ndensity
     use ion_mod, only : nGlobalIon, globalIonArray, returnMu, returnmusimple
 #endif
     type(OCTAL), pointer :: thisOctal
@@ -14431,7 +14431,6 @@ end subroutine refineGridGeneric2
           
 !          if (writeoutput) write(*,*) "mu ",mu
 !          mu = 1.d0
-          if (radPressureTest) mu = 1.d0
 
           getPressure =  thisOctal%rho(subcell)
           getPressure =  getpressure/((mu*mHydrogen))
@@ -14442,9 +14441,9 @@ end subroutine refineGridGeneric2
 !             write(*,*) "P ",getpressure*kerg*thisOctal%temperature(subcell)
 !          endif
           getPressure =  getpressure*kerg*thisOctal%temperature(subcell)
-!          getPressure =  getpressure*kerg
 
-!          getPressure =  (thisOctal%rho(subcell)/(mu*mHydrogen))*kerg*thisOctal%temperature(subcell)
+          if (radPressureTest) getPressure =  min(getPressure,nDensity * kerg * thisOctal%temperature(subcell))
+
 
           !if(getPressure < 1.d-60) then
           !   print *, "LOW PRESSURE - halting"

@@ -101,7 +101,7 @@ contains
     end if
 #endif
 
-         do j = ilam_beg, ilam_end
+    do j = ilam_beg, ilam_end
             ! Now set up a precomputed table for sphere for fixed values of
             ! dustType and lambda and varying values of a
             do n = 1, nDist-1
@@ -177,6 +177,7 @@ contains
                deallocate(beshTable(j,n)%hankel)
             end do
          end do
+         if (writeoutput) write(*,*) "Dust type ",i," done."
       end do   ! i
 
    end subroutine mieDistPhaseMatrixWrapper

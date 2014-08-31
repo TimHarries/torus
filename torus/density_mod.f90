@@ -1091,7 +1091,7 @@ contains
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
          deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
     use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
-         rGapInner2, rGapOuter2
+         rGapInner2, rGapOuter2, heightInner, ringHeight
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -1154,6 +1154,15 @@ contains
     if ((r < rOuter).and.(r>rinner)) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
 
+       if (r < rGapInner1) then
+          h = heightInner * (r / (100.d0*autocm/1.d10))**betaDisc
+       endif
+
+       if ((r > rGapOuter1).and.(r < rGapInner2)) then
+          h = ringHeight * (r / (100.d0*autocm/1.d10))**betaDisc
+       endif
+          
+
 
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
@@ -1172,48 +1181,9 @@ contains
           endif
        endif
 
-       if (hydrodynamics) then
-          fac = 1.d0
-          if (r < 1.5d0*rinner) then
-             fac = (1.5d0*rinner - r)/(0.05d0*rinner)
-             fac = exp(-fac)
-             rhoOut = rhoOut * fac
-          endif
-       endif
 
     endif
     
-
-    if (grid%geometry == "circumbin") then
-       if (r < rInner) then
-          h = height * (rInner / (100.d0*autocm/1.d10))**betaDisc
-          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
-          fac = max(-50.d0,fac)
-          rhoOut = dble(rho0) * exp(fac)
-          fac = ((rInner - r)/(0.01*rInner))**2
-          rhoOut = rhoOut *exp(-fac)
-       endif
-    endif
-
-    if ((r < rInner).and.(grid%geometry == "circumbin")) then
-       dist = 1.e30
-       do i = 1, nStream
-          fac = modulus(point - stream1(i))
-          dist = min(dist,fac)
-       enddo
-       dist = dist / (0.01d0*rInner)
-       rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
-
-       dist = 1.e30
-       do i = 1, nStream
-          fac = modulus(point - stream2(i))
-          dist = min(dist,fac)
-       enddo
-       dist = dist / (0.01d0*rInner)
-       rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
-    endif
-
-
 
 !    basic gap
 

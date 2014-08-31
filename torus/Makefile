@@ -211,6 +211,35 @@ ifeq ($(SYSTEM), complexity)
     KNOWN_SYSTEM=yes
 endif
 
+# The Dirac system at Leicester AKA complexity cluster
+# Default is an MPI build, use mpi=no for openmp/serial
+# Use 'module load cfitsio' to make FITS library available
+ifeq ($(SYSTEM), complexity)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpif90
+       MPIFLAG= -DMPI
+    endif
+    FASTFLAG= -O3 
+# For debugging with optimisations enabled use
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.complexity
+    STATICLIBS= -Bstatic
+    CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
+#    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
+    ifeq ($(hdf), yes)
+       F95COMP+=-I/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+       STARLIBS=-L/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+    endif
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
+
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
 #    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112

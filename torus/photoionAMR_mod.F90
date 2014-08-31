@@ -63,7 +63,7 @@ end type PHOTONPACKET
 contains
 
 #ifdef HYDRO
-  subroutine radiationHydro(grid, source, nSource, nLambda, lamArray)
+  subroutine radiationHydro(grid, source, nSource, nLambda, lamArray, miePhase, nMuMie)
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, vtuToGrid, timedependentRT,dorefine, alphaViscosity
@@ -88,6 +88,8 @@ contains
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal
     use parallel_mod, only: torus_abort
     use mpi
+    integer :: nMuMie
+    type(PHASEMATRIX) :: miePhase(:,:,:)
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -119,7 +121,7 @@ contains
     integer :: optID
     logical, save :: firstWN=.true.
     integer :: niter
-    real(double) :: epsoverdeltat, totalMass
+    real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs
 
 
     nPhotoIter = 1
@@ -139,6 +141,7 @@ contains
           close(57)
        endif
     endif
+
 
 
     direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -399,6 +402,14 @@ contains
        endif
     end if
 
+    call tauAlongPathMPI(grid, VECTOR(0.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), tauAbs, tauSca)
+    if (writeoutput) then
+       write(*,*) "Tau abs across grid ",tauAbs
+       write(*,*) "Tau sca across grid ",tauSca
+    endif
+
+
+
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto .or. UV_vector) then
 !       if (startFromNeutral) then
 !          call neutralGrid(grid%octreeRoot) 
@@ -453,7 +464,7 @@ contains
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, &
                      loopLimitTime, &
-                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack)
+                     looplimittime, .false.,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie)
 
                 if (isoThermal) then
                    call neutralGrid(grid%octreeRoot)
@@ -479,10 +490,10 @@ contains
                 endif
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
-                if (.not.timeDependentRT .and. .not. xrayonly .and. (.not.isothermal)) &
+                if (.not.timeDependentRT .and. .not. xrayonly .and. (.not. isothermal)) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
-                     looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack)
+                     looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack, miePhase, nMuMie)
 
                 if (isoThermal) then
                    call neutralGrid(grid%octreeRoot)
@@ -712,6 +723,8 @@ contains
        dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt, viscDt, &
             thermalDt)
 
+!       dt = MIN(gasDt, sourceSourceDt, gasSourcedt)
+
        if (writeoutput) then
           write(*,"(a30,1p,e12.3)") "Courant Time: ", dt* dble(cfl)
           write(*,"(a30,1p,e12.3)") "Gas courant Time: ", gasdt
@@ -826,10 +839,10 @@ contains
 !                nPhotoIter = 10
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
-                if(.not. xrayonly .and. (.not.isothermal)) then
+                if(.not. xrayonly) then
                    call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
                         lamArray, nPhotoIter, loopLimitTime, &
-                        looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack) 
+                        looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie) 
                 endif
 
                 if (isoThermal) then
@@ -1207,20 +1220,22 @@ end subroutine radiationHydro
 #endif
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, maxIter, tLimit, deltaTime, timeDep, iterTime, &
-       monteCheck, evenuparray, optID, iterStack, sublimate)
+       monteCheck, evenuparray, optID, iterStack,  miePhase, nMuMie, sublimate)
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUS !, minCrossings
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, nDensity
 
 
-    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho
+    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho, nDustType
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
     use mpi
     implicit none
+    integer :: nMuMie
+    type(PHASEMATRIX) :: miePhase(:,:,:)
     integer(bigint) :: nMonte, nThreadMonte, nTotalMonte
     logical, optional :: sublimate
     logical :: doSublimate, timeDep, monteCheck
@@ -1358,7 +1373,8 @@ end subroutine radiationHydro
     logical :: bigPhotonPacket, smallPhotonPacket, lastPhoton
     integer :: iSmallPhotonPacket
     real(double) :: smallPhotonPacketWeight, smallPacketFreq, bigPhotonPacketWeight
-    type(VECTOR) :: smallPacketOrigin
+    type(VECTOR) :: smallPacketOrigin, uHatDash, zHat
+    type(VECTOR) :: uHatBefore, uHatAfter
     
 
     logical :: gotmassive
@@ -1387,7 +1403,8 @@ end subroutine radiationHydro
     logical, save :: firstWarning = .true.
     real(double) :: maxDiffRadius(1:100)
     real(double) :: maxDiffRadius1(1:100), maxDiffRadius2(1:100)
-    real(double) :: maxDiffRadius3(1:100), tauWanted
+    real(double) :: maxDiffRadius3(1:100), tauWanted, photonMomentum, dummy
+    type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
 
 
@@ -1437,6 +1454,7 @@ end subroutine radiationHydro
     nPeriodic = 0
     bufferSize = 0 
     dStackNaught = dstack
+
 
 !    stackLimit = 0
 !    iUnrefine = 0
@@ -1802,7 +1820,7 @@ end subroutine radiationHydro
 
        if (.not. cart2d) then
           maxDiffRadius3  = 1.d30
-          tauWanted = 1.d0
+          tauWanted = 5.d0
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, &
                   maxDiffRadius1(iSource))
@@ -1915,6 +1933,7 @@ end subroutine radiationHydro
        iMonte_beg = 1
        iMonte_end = nThreadMonte
 
+       Photonmomentum = epsOverDeltaT / cSpeed
 
        totalPower = 0.d0
        nScatBigPacket = 0
@@ -2400,9 +2419,7 @@ end subroutine radiationHydro
                 ! here a new photon has been received, and we add its momentum
 
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
-                thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + &
-                     uHat * (epsOverDeltaT*photonPacketWeight/cSpeed)
-!                if (myrankWorldGlobal == 1) write(*,*) "mom add new ",thisOctal%radiationMomentum(subcell)
+
                 doingSmallPackets = .false.
                 startNewSmallPacket = .false.
                 nToNextEventPhoto = 0
@@ -2456,7 +2473,7 @@ end subroutine radiationHydro
                       endif
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
-                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, miePhase, nMuMie)
 !                      if (escaped.and.bigPHotonPacket) then
 !                         write(*,*) myrankGlobal, " big photon packet escaped ",rVec
 !                      endif
@@ -2548,9 +2565,12 @@ end subroutine radiationHydro
                       if ((.not.crossedMPIboundary).and.finished.and.doingSmallPackets &
                            .and.escaped) write(*,*) "ismall ",ismallphotonpacket
 
+                      
+
                       if(.not. finished) then
                          if (noDiffuseField) escaped = .true.
                          
+                         UhatBefore = uHat
 
                          if (escaped) then
                             !$OMP CRITICAL (update_escaped)
@@ -2570,6 +2590,8 @@ end subroutine radiationHydro
                          end if
 
                          if (.not. escaped) then
+
+
                             thisLam = real(cSpeed / thisFreq) * 1.e8
                             call locate(lamArray, nLambda, real(thisLam), iLam)
                             octVec = rVec 
@@ -2577,18 +2599,26 @@ end subroutine radiationHydro
                                  lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                             
                             albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
-                            
-                            
                             call randomNumberGenerator(getDouble=r)
+
+
                             if (r < albedo) then
-                               uHat = randomUnitVector() ! isotropic scattering
+
+!                               uHat = randomUnitVector() ! isotropic scattering
+
+                               vec_tmp = uHat
+                               uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:))
+!                               write(*,*) "scattering angle ",radtodeg*acos(uNew.dot.uHat)
+                               uHat = uNew
+
+
 !                               if(cart2d) then
                                if(cart2d) then !.and. .not. source(1)%outsidegrid) then
                                   photonpacketweight = 1.d0
                                   call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
-                               !                            if (myrank == 1) write(*,*) "new uhat scattering ",uhat
+!                               if (myrankglobal == 1) write(*,*) "new uhat scattering ",uhat, ntotscat
                             else
                                
                                
@@ -2652,7 +2682,30 @@ end subroutine radiationHydro
                                if (radpressuretest) thisFreq = freq(1)
 
                             endif
+
+                            UhatAfter = uHat
+                            if (escaped) UhatAfter = VECTOR(0.d0, 0.d0, 0.d0)
                                                        
+
+                            uHatDash = uHatBefore-uHatAfter
+                            if (thisOctal%twoD .and. .not. cart2d) then
+                               rHat = VECTOR(rVec%x, rVec%y, 0.d0)
+                               call normalize(rHat)
+                               zHat = VECTOR(0.d0, 0.d0, 1.d0)
+                               uHatDash = VECTOR(rHat.dot.(uHatBefore-uHatAfter), 0.d0, zHat.dot.(uHatBefore-uHatAfter))
+                            endif
+
+
+                            if (thisOctal%oneD) then
+                               rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+                               call normalize(rHat)
+                               uHatDash = VECTOR(rHat.dot.(uHatBefore - uHatAfter), 0.d0, 0.d0)
+                            endif
+
+
+
+                            thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHatDash * photonMomentum * photonPacketWeight
+
                                nScat = nScat + 1
 
                                if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
@@ -3420,7 +3473,9 @@ end subroutine radiationHydro
         end if
      end if
 !     
-    
+     call  dumpValuesAlongLine(grid, "radial_converged.dat", VECTOR(1.d0,0.d0,0.0d0), &
+          VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+  
 
      call torus_mpi_barrier
      call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)
@@ -3538,21 +3593,23 @@ recursive subroutine  setPhotoionIsothermal(thisOctal)
         if (.not.associated(thisOctal%kappaTimesFlux)) then
            allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
         endif
-        thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0,0.d0,0.d0)
+!        thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0,0.d0,0.d0)
      end if
   end do
 end subroutine setPhotoionIsothermal
 
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic)
+     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, MiePhase, nMuMie)
 
   use inputs_mod, only : periodicX, periodicY, periodicZ, amrgridcentrey
-  use inputs_mod, only : amrgridcentrez, radpressuretest
+  use inputs_mod, only : amrgridcentrez, radpressuretest, nDensity, timeDependentRT
   use mpi
 
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec, uHatDash, rHat, zHat
+   type(PHASEMATRIX) :: miePhase(:,:,:)
+   integer :: nMuMie
    type(OCTAL), pointer :: thisOctal
    type(OCTAL),pointer :: oldOctal
    real(double) :: tPhoton, tLimit, epsOverDeltaT
@@ -3584,6 +3641,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical :: sourcePhoton, crossedPeriodic
    logical :: usedMRW
 
+    Photonmomentum = epsOverDeltaT / cSpeed
 
     stillinGrid = .true.
     escaped = .false.
@@ -3593,7 +3651,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     neverInteracted = .true.
 
-    Photonmomentum = epsOverDeltaT / cSpeed
     thisLam = (cSpeed / thisFreq) * 1.e8
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -3633,22 +3690,22 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     tempDouble = dfreq(1)
     usedMRW = .false.
     i = 0
-    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-    if (.not.radpressuretest) then
-       if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
-          call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-               freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-          usedMRW = .true.
-          thisLam = (cspeed/thisFreq)*1.d8
-          call locate(lamArray, nLambda, real(thisLam), iLam)
-          call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-               actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-               grid=grid, inFlow=inFlow)
-          call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
-       endif
-    endif
+   call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
+!   if (.not.radpressuretest) then
+!       if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
+!          call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+!               freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+!          usedMRW = .true.
+!          thisLam = (cspeed/thisFreq)*1.d8
+!          call locate(lamArray, nLambda, real(thisLam), iLam)
+!          call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+!               actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+!               grid=grid, inFlow=inFlow)
+!          call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+!       endif
+!    endif
     if (radpressureTest) then
-       if (thisOctal%rho(subcell)<1.d-24) then
+       if (thisOctal%rho(subcell)<(1d-3*nDensity*mHydrogen)) then
           kappaAbsDb = 0.d0
           kappaScaDb = 0.d0
        else
@@ -3664,11 +3721,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        thisTau = 1.0e-28
     end if
 
-
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 
     nStillInGrid = 0
-    do while(stillinGrid .and. (tau > thisTau) .and. .not. outOfTime) 
+   do while(stillinGrid .and. (tau > thisTau) .and. .not. outOfTime) 
        nStillInGrid = nStillInGrid + 1
 !       if (nStillInGrid > 10000) then
 !          write(*,*) myRankWorldGlobal," nStillInGrid ",nStillInGrid
@@ -3682,17 +3738,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! add on the distance to the next cell
 
        oldrVec = rVec
-       rVec = rVec + (tVal+1.d-2*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
+       rVec = rVec + (tVal+1.d-5*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
 
-! at this point the photon packet takes momentum from the cell
 
-       thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) - uHat * photonMomentum * photonPacketWeight
-!       if (myrankGlobal == 1) write(*,*) "mom sub ",thisOctal%radiationMomentum(subcell)
        tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
-       if (tphoton > 1.d30) then
-!       if (tPhoton > tLimit) then
+       if ((tPhoton > tLimit).and.timeDependentRT) then
           escaped = .true.
-!          if (bigPhotonPacket) write(*,*) myrankGlobal, " big photon packet escaped due to tlimit. bug"
+!          write(*,*) myrankGlobal, &
+!               " big photon packet escaped due to tlimit. bug"
           outOfTime = .true.
        endif
 
@@ -3806,8 +3859,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 ! update the distance grid
 
        if (.not.outOfTime)  then
+          tVec = octVec - tval*uHat
           call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, &
-               sourcePhoton, uHat, octVec)
+               sourcePhoton, uHat, tVec,"first", miePhase, nMuMie)!octVec)
        endif
          
        if (stillinGrid) then
@@ -3815,10 +3869,6 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           thisOctal => nextOctal
           subcell = nextSubcell
 
-! here the photon has entered a new cell on the current thread and we can add the momentum
-
-          thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHat * photonMomentum * photonPacketWeight
-!          if (myrankGlobal == 1) write(*,*) "mom add ",thisOctal%radiationMomentum(subcell)
 
        endif
 
@@ -3847,7 +3897,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 
           if (radpressureTest) then
-             if (thisOctal%rho(subcell)<1.d-24) then
+             if (thisOctal%rho(subcell)<(1d-3*nDensity*mHydrogen)) then
                 kappaAbsDb = 0.d0
                 kappaScaDb = 0.d0
              else
@@ -3923,7 +3973,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then 
              call updateGrid(grid, thisOctal, subcell, thisFreq, &
-                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, octVec)
+                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, rVec, "sec", miePhase, nMuMie)
           endif
 
           oldOctal => thisOctal
@@ -3940,10 +3990,9 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        tVec = rVec
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
        tPhoton = tPhoton +  (dble(tVal*1.d10)*dble(tau)/thisTau) / cSpeed
-       if (tPhoton > tLimit) then
+       if ((tPhoton > tLimit).and.(timeDependentRT)) then
           escaped = .true.
-          outOfTime = .true.
-        
+          outOfTime = .true.        
        endif
 
        if (.not.inOctal(grid%octreeRoot, rVec)) then  ! this is only needed due to floating point boundary issues
@@ -5358,11 +5407,13 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, &
-       photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec)
-    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low
+       photonPacketWeight, ilambda, nfreq, freq, sourcePhoton, uHat, rVec, flag, miePhase, nMumie)
+    use inputs_mod,only : dustOnly, radPressureTest, UV_vector, UV_high, UV_low, nDensity
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
-    type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat
+    type(VECTOR) :: uHat, rVec, uHatDash, rHat, zHat, rVecTemp
+    integer :: nDist
+    real(double) :: dS
     integer :: nFreq, iFreq
     real(double) :: freq(:)
     integer :: subcell
@@ -5370,8 +5421,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
-    real(double) :: fac, xSec
+    real(double) :: fac, xSec,gfac
     logical :: sourcePhoton
+    character(len=*) :: flag
+    integer :: nMuMie
+    type(PHASEMATRIX) :: miePhase(:,:,:)
 
     
     kappaAbs = 0.d0; kappaAbsDust = 0.d0
@@ -5434,6 +5488,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca)
     kappaExt = kappaAbs + kappaSca
 
+
     thisoctal%distancegrid(subcell) = thisoctal%distancegrid(subcell) &
          + dble(distance) * dble(kappaabsdust) * photonPacketWeight
 
@@ -5452,7 +5507,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     endif
 
     if (radpressureTest) then
-       if (thisOctal%rho(subcell)<1.d-24) then
+       if (thisOctal%rho(subcell)<(1d-3*nDensity*mHydrogen)) then
           kappaext = 0.d0
        else
           if (grid%lamArray(ilambda) < 2.d5) then
@@ -5462,12 +5517,27 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     endif
 
 
+!    write(*,*) "insubcell ",inSubcell(thisOctal, subcell, rvec), flag
+
+    rVecTemp = rVec
+    nDist = 50
+    dS = distance / dble(nDist)
+    gFac = miePhase(1,iLambda, 1)%gfac
+    do i = 1, nDist
+       rVecTemp = rVec + (dble(i-1)* ds) * uHat
+       rHat = VECTOR(rVecTemp%x, rVecTemp%y, rVecTemp%z)
+       call normalize(rHat)
+       uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
+       thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
+            + (dS * dble(kappaAbs + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
+    enddo
+
+       
 
 
-    thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
-         + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
+!     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
+!         + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
 
-!    if ((thisOctal%rho(subcell) < 1.d-24) .and. radpressuretest) thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     if(uv_vector) then
 !       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
@@ -7231,6 +7301,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        else
           V = cellVolume(thisOctal, subcell)*1.d30
           thisOctal%kappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%kappaTimesFlux(subcell) / V
+
+          thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) / V
+
+
 !          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
        endif
     enddo

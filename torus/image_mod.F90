@@ -362,6 +362,30 @@ module image_mod
        end if
      end subroutine ConvertArrayToMJanskiesPerStr
 
+! Convert from ergs/s/A to magnitudes per square arcsec
+     subroutine ConvertArrayToMagPerSqArcsec(mag,array, lambda, dx, distance)
+       use utils_mod, only : returnMagnitude
+       real, intent(inout)      :: array(:,:)
+       real         :: lambda
+       character(len=1) :: mag
+       real(double), intent(in) :: distance, dx
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
+       real(double), parameter :: PerAngstromToPerCm = 1.e8_db
+       real(double) :: nu, PerAngstromToPerHz, strad, scale
+       integer :: i, j
+
+       strad = (dx*1.d10/distance)**2
+       scale = 1.d20/distance**2
+       array = array * scale / strad
+       array = array / 4.254517d10   ! from per str to per arcsec^2
+       do i = 1, SIZE(array,1)
+          do j = 1, SIZE(array,2)
+             array(i,j) = returnMagnitude(dble(max(1.d-30,array(i,j))), mag)
+          enddo
+       enddo
+
+     end subroutine ConvertArrayToMagPerSqArcsec
+
 ! Convert from ergs/s/A to Jy/Pix
      subroutine ConvertArrayToJanskysPerPix(array, lambda, distance)
        real, intent(inout)      :: array(:,:)
@@ -492,6 +516,7 @@ module image_mod
 ! Arguments
        type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type
+       character(len=80) :: rFile
        real(double) :: objectDistance
        real, intent(in), optional :: lambdaImage
        logical, optional :: pointTest, cylinderTest
@@ -500,6 +525,9 @@ module image_mod
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
        integer, allocatable :: samplings(:,:)
+       integer :: i, j,k, n
+       real(double) :: rMin, rMax, r, tot
+
        real(double) :: scale,  dx, dy
        logical :: simple,extend
        logical :: oldFilePresent
@@ -570,9 +598,7 @@ module image_mod
                 array = real(image%pixel%u/image%pixel%i)
              end where
           case("pol")
-             where (image%pixel%i /= 0.d0) 
-                array = real(100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i)
-             endwhere
+             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
           case("pa")
              array = -0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg
              where (array < 0.d0) 
@@ -588,7 +614,7 @@ module image_mod
 
 ! Convert pixel units if a wavelength has been provided
        if (present(lambdaImage)) then 
-          write(message,"(a,f14.2,a)") "Converting axis units to MJy/sr using lambda= ", &
+          write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
                lambdaImage, " Angstrom"
           call writeInfo(message,FORINFO)
           if(present(pointTest)) then
@@ -599,14 +625,16 @@ module image_mod
              call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
                   samplings, cylinderTest=.true.)
           else
-       select case (getFluxUnits())
-          case("MJy/str")
-             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
-          case("Jy/pix")
-             call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
-          case DEFAULT
-             call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
-       end select
+             select case (getFluxUnits())
+             case("MJy/str")
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+             case("Jy/pix")
+                call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
+             case("mag/arcsec2")
+                call ConvertArrayToMagPerSqArcsec("K",array, lambdaImage, dx, objectDistance)
+             case DEFAULT
+                call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
+             end select
           end if
        else
           call writeInfo("No wavelength provided, not converting axis units")
@@ -627,6 +655,8 @@ module image_mod
              call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
           case("Jy/pix")
              call ftpkys(unit,'BUNIT', "JY/PIXEL", "units of image values", status)
+          case("mag/arcsec2")
+             call ftpkys(unit,'BUNIT', "MAG/ARCSEC2", "units of image values", status)
           case DEFAULT
              call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
        end select
@@ -641,8 +671,8 @@ module image_mod
           dy = ((dy * 1.d10)/objectDistance)*radtodeg
           refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
           refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
-          refValX = 270.
-          refValY = -23.
+          refValX = 0.
+          refValY = 0.
           call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
           call ftpkys(unit,'CUNIT2', "deg", "y axis unit", status)
        case ("au", "AU")
@@ -710,6 +740,28 @@ module image_mod
        !
        call ftclos(unit, status)
        call ftfiou(unit, status)
+
+       rfile = filename(1:(len(trim(filename))-5))//".dat"
+       open(22,file=rfile,status="unknown",form="formatted")
+       do k = 1,50
+          rMin = dble(k-1)/100.d0 * image%xAxisCentre(image%nx)
+          rMax = dble(k)/100.d0 *  image%xAxisCentre(image%nx)
+          tot = 0.d0
+          n = 0
+          do  i = 1, image%nx
+             do j = 1, image%ny
+                r = sqrt(image%xAxisCentre(i)**2 + image%yAxisCentre(j)**2)
+                if ((r >= rMin).and.(r < rMax)) then
+                   n  = n + 1
+                   tot = tot + array(i,j)
+                endif
+             enddo
+          enddo
+          write(22,*) 0.5d0*(rMin+rMax)*1.d10/objectDistance*radianstoarcsec,tot/dble(n)
+       enddo
+       close(22)
+                
+          
        !
        !  Check for any error, and if so print out error messages
        !

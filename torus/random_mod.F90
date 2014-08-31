@@ -549,4 +549,55 @@ contains
     GO TO 10
   END subroutine localsort
 
+  integer function randomIndex(array, n)
+    integer :: n, i
+    real(double) :: array(:), r
+    real(double), allocatable :: prob(:)
+    if (n == 1) then
+       randomIndex = 1
+    else
+       allocate(prob(1:(n+1)))
+       prob = 0.
+       do i = 2, n+1
+          prob(i) = prob(i-1) + array(n)
+       enddo
+       prob = prob / prob(n+1)
+       call randomNumberGenerator(getDouble=r)
+       call locatelocal(prob, n+1, r, randomIndex)
+       deallocate(prob)
+    endif
+    
+  end function randomIndex
+
+    PURE SUBROUTINE LOCATElocal(XX,N,X,J)
+    real(double), intent(in) :: XX(:)
+    integer, intent(in)              :: n
+    real(double), intent(in) :: x
+    integer,intent(out)              :: j
+    integer :: jl, ju,jm
+      JL=0
+      JU=N+1
+10    IF(JU-JL.GT.1)THEN
+        JM=(JU+JL)/2
+        IF((XX(N).GT.XX(1)).EQV.(X.GE.XX(JM)))THEN
+          JL=JM
+        ELSE
+          JU=JM
+        ENDIF
+      GO TO 10
+      ENDIF
+
+      ! Will force to be between 1 and the array size -1.
+      if(x <= xx(1))then
+        j=1
+      else if(x>=xx(n))then
+        j=n-1
+      else
+        j=jl
+      end if
+
+      return
+
+    END SUBROUTINE LOCATElocal
+
 end module random_mod

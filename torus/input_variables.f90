@@ -287,9 +287,11 @@
 
   logical :: lucyRadiativeEq
   logical :: solveVerticalHydro
+  logical :: solveDiffusionZone
   integer :: nHydro
   integer :: nLucy
   integer :: iterLucy
+  integer :: maxIterLucy
   logical :: narrowBandImage
   real    :: lucy_undersampled  
   logical :: convergeOnUndersampled
@@ -363,6 +365,7 @@
   logical :: includeGasOpacity
   logical :: isotropicScattering
   logical :: henyeyGreensteinPhaseFunction
+  real(double) :: inputgFac
   logical :: writePolar
   character(len=80) :: polarFilename
   real :: polarWavelength
@@ -447,7 +450,7 @@
   ! whitney stuff
   real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens, rhoAmbient
   real :: drInner, drOuter
-  real(double) :: rCavity
+  real(double) :: rCavity, nDensity
   real :: rStellar, mEnv
 
   ! variables for clumped wind models
@@ -462,6 +465,8 @@
   ! model parameters
   !
   real :: height
+  real :: heightinner
+  real :: ringHeight
   real :: heightSplitFac
   real :: sigma0
   real :: rMin, rMaj

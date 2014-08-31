@@ -21,7 +21,8 @@ module phasematrix_mod
   ! the phase matrix is 4x4
 
   type PHASEMATRIX
-     real :: element(4,4)
+     real(double) :: element(4,4)
+     real(double) :: gfac
   end type PHASEMATRIX
 
 
@@ -67,11 +68,7 @@ module phasematrix_mod
   end interface
 
 
-! Private variables
-  real, allocatable, private, save :: prob(:,:), probtemp(:), cosArray(:)
-  logical, save, private :: setupMieDir = .true.
 
-!$OMP THREADPRIVATE (prob, probtemp, cosArray, setupMieDir)
 
 contains
 
@@ -187,10 +184,11 @@ contains
   pure function fillHenyey(costheta, g) result(b)
 
     type(PHASEMATRIX) :: b
-    real,intent(in) :: costheta, g
+    real(double),intent(in) :: costheta, g
 
     b%element = 0.
-    b%element(1,1) = real(oneOnFourPi) * (1.-g**2) / (1. + g**2 - 2.*g*costheta)**1.5
+    b%element(1,1) = oneOnFourPi * (1.d0-g**2) / (1.d0 + g**2 - 2.d0*g*costheta)**1.5
+    b%gFac = g
 
   end function fillHenyey
 
@@ -308,8 +306,8 @@ contains
     meanscat = 0
     do i = 1, nTest
        oldDirection = VECTOR(1., 0., 0.)
-       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, &
-            nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+!       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, &
+!            nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
 !       write(*,*) "Scattering angle: ",acos(oldDirection.dot.newDirection)*180./pi
        meanscat=meanscat+acos(oldDirection.dot.newDirection)*180./pi
        tot=tot+newDirection
@@ -320,18 +318,17 @@ contains
     write(*,*) "mean scattering angle ",meanscat
   end subroutine testMiePhase
 
-  subroutine resetNewDirectionMie
 
-    if ( allocated(cosArray) ) deallocate ( cosArray )
-    if ( allocated(prob)     ) deallocate ( prob     )
-    if ( allocated(probtemp) ) deallocate ( probtemp )
-    setupMieDir = .true.
-
-  end subroutine resetNewDirectionMie
-
-  type(VECTOR) function newDirectionMie(oldDirection, wavelength, &
+  type(VECTOR) function newDirectionMie(grid, currentOctal, currentSubcell, &
+       oldDirection, wavelength, &
        lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
+    use amr_mod, only : returnKappa
+    use gridtype_mod
+    use inputs_mod, only : inputGfac, henyeyGreensteinPhaseFunction
     use utils_mod, only: locate
+    type(GRIDTYPE) ::  grid
+    type(OCTAL), pointer :: currentOctal
+    integer :: currentSubcell
     type(VECTOR), intent(in) :: oldDirection
     real, intent(in) :: wavelength
     real(double) :: dustTypeFraction(:)
@@ -340,63 +337,59 @@ contains
     integer, intent(in) :: nMuMie, nLambda
     integer :: i, j, k, m, ilam
     real(double) :: theta, phi
-    real :: r
+    real(double) :: r
     real, intent(in) :: lamArray(:)
     real(double) :: normfac(100)
+    real(double) :: allSca(10)
     type(VECTOR) :: tVec, perpVec, newVec
     type(PHASEMATRIX) :: miePhase(:,:,:)
-    
-    normFac(1:nDusttype) = dustTypeFraction(1:nDustType)
-    if (SUM(dustTypeFraction(1:nDustType)) /= 0.d0) &
-    normfac(1:nDustType) = dustTypeFraction(1:nDustType)/SUM(dustTypeFraction(1:nDusttype))
+    integer :: nMuTemp, refineAT
+    logical :: refine
+    real(double), allocatable :: prob(:)
+    real(double), allocatable :: cosArray(:)
 
     call locate(lamArray, nLambda, wavelength, ilam)
     if (ilam < 1) ilam = 1
     if (ilam > nLambda) ilam = nLambda
 
-    if (setupMieDir) then
-       allocate(cosArray(1:nMuMie))
-       allocate(prob(1:nMuMie,1:nlambda))
-       allocate(probtemp(1:nMuMie))
-       do i = 1, nMuMie
-          cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
-       enddo
-       prob = 0.
-       do m = 1, nLambda
-          do i = 2, nMuMie
-             do k = 1, nDustType
-                prob(i,m) = prob(i,m) + real(max(1.d-20,normfac(k))*miePhase(k,m,i)%element(1,1))
-             enddo
-          enddo
-          do i = 2, nMuMie
-             prob(i,m) = prob(i,m) + prob(i-1,m)
-          enddo
-          prob(1:nMuMie,m) = prob(1:nMuMie,m)/prob(nMuMie,m)
-       enddo
-       setupMieDir = .false.
-    endif
+    allocate(prob(1:nMuMie))
+    allocate(cosArray(1:nMuMie))
+    do i = 1, nMuMie
+       cosArray(i) = -1.d0 + 2.d0*dble(i-1)/dble(nMuMie-1)
+    enddo
+       
+    call returnKappa(grid, currentOctal, currentSubcell, ilambda=ilam, allSca=allSca)
+       
+    k = randomIndex(allSca(1:nDustType), nDustType)
+    
+    prob = 0.d0
+    do i = 2, nMuMie
+       prob(i) = prob(i) + miePhase(k,ilam,i)%element(1,1)*(cosArray(i)-cosArray(i-1))
+    enddo
+    do i = 2, nMuMie
+       prob(i) = prob(i) + prob(i-1)
+    enddo
+    prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
+ 
 
-    call randomNumberGenerator(getReal=r)
-
-    probtemp(:) = prob(1:nMuMie,ilam)
-!    call locate(prob(ilam,1:nMuMie), nMuMie, r, j)
-    call locate(probtemp(:), nMuMie, r, j)
+    call randomNumberGenerator(getDouble=r)
+    call locate(prob(1:nMuMie), nMuMie, r, j)
     theta = cosArray(j) + &
-         (cosArray(j+1)-cosArray(j))*(r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam))
+         (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
 
     if (present(weight)) then
-       weight = real(SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*normfac(1:nDustType)) + & 
-            (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*normfac(1:nDustType)) - &
-             SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*normfac(1:nDustType)) ) * &
-            (r - prob(j,ilam))/(prob(j+1,ilam)-prob(j,ilam)))
-       if (weight < 0.d0) then
+       weight = real(miePhase(k, iLam, j)%element(1,1) + & 
+            (miePhase(k, iLam, j+1)%element(1,1) - &
+             miePhase(k, iLam, j)%element(1,1) ) * &
+            (r - prob(j))/(prob(j+1)-prob(j)))
+       if (weight <= 0.d0) then
           write(*,*) "weight ", weight, " ilam ", ilam, " j ",j
        endif
     endif
 
 
     theta = acos(max(-1.0_db,min(1.0_db,theta)))
-    call randomNumberGenerator(getReal=r)
+    call randomNumberGenerator(getDouble=r)
     phi = twoPi * r
 
     tVec = oldDirection
@@ -412,7 +405,7 @@ contains
     call normalize(newvec)
 
     newDirectionMie = newVec
-
+666 continue
   end function newDirectionMie
 
 

@@ -15,7 +15,7 @@ module photon_mod
   use constants_mod         ! physical constants
   use gridtype_mod, only: GRIDTYPE  ! type definition for the 3-d grid
   use math_mod, only: thermalElectronVelocity, interpGridVelocity, interpGridScalar2, thermalHydrogenVelocity
-  use amr_mod, only: amrGridValues, amrGridVelocity, findsubcelllocal, findsubcelltd
+  use amr_mod, only: amrGridValues, amrGridVelocity, findsubcelllocal, findsubcelltd, returnKappa
   use disc_class, only: alpha_disc, in_alpha_disc, new
   use surface_mod, only: SURFACETYPE
   use phasematrix_mod, only: STOKESVECTOR
@@ -232,6 +232,7 @@ contains
 
     type(OCTAL), pointer, optional :: currentOctal
     integer, optional :: currentSubcell
+    real(double) :: allSca(10)
     type(GRIDTYPE) :: grid                       ! the opacity grid
     type(PHOTON) :: thisPhoton, outPhoton        ! current/output photon
     type(VECTOR) :: incoming, outgoing           ! directions
@@ -246,8 +247,7 @@ contains
     real :: lamArray(:)
     integer :: nMumie                            ! number of mu angles for mie
     type(PHASEMATRIX), intent(in) :: miePhase(:,:,:)
-    type(PHASEMATRIX),save,allocatable :: miePhaseTemp(:)
-!$OMP THREADPRIVATE (miePhaseTemp)
+    type(PHASEMATRIX) :: miePhaseTemp
     ! if the system has accretion disc around the obeject
     logical, intent(in) :: ttau_disc_on          
     ! to find if scattering occurs in the accretion disc
@@ -274,13 +274,14 @@ contains
 !$OMP THREADPRIVATE (firstTime)
     real, allocatable, save :: cosArray(:)
 !$OMP THREADPRIVATE (cosArray)
+
+
     weight = 1.
     if (firstTime)  then
        allocate(cosArray(1:nMuMie))
        do i = 1, nMumie
           cosArray(i) = real(-1.d0 + 2.d0*dble(i-1)/dble(nMuMie-1))
        enddo
-       allocate(miePhaseTemp(1:nDustType))
        firstTime = .false.
     endif
 !    real :: dx
@@ -350,7 +351,7 @@ contains
           outgoing%z = w
        else
 
-          outgoing = newDirectionMie(incoming, thisPhoton%lambda, lamArray, nLambda, &
+          outgoing = newDirectionMie(grid, thisOctal, subcell, incoming, thisPhoton%lambda, lamArray, nLambda, &
                miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
           outPhoton%stokes = outPhoton%stokes * (1./weight)
 
@@ -401,15 +402,14 @@ contains
           endif
           
 
-          do k = 1, nDustType
-             miePhaseTemp(k) = miePhase(k, i, j) + fac * &
-                  (miePhase(k, i, j+1) - miePhase(k, i, j))
-          enddo
+          call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca)
 
-          outPhoton%stokes = applyMean(miePhaseTemp(1:nDustType), &
-               thisOctal%dustTypeFraction(subcell,1:nDustType), &
-               nDustType, outPhoton%stokes)
-          
+          k = randomIndex(allSca(1:nDustType), nDustType)
+
+          miePhaseTemp = miePhase(k, i, j) + fac * &
+                  (miePhase(k, i, j+1) - miePhase(k, i, j))
+
+          outPhoton%stokes = apply(miePhaseTemp, outPhoton%stokes)
        endif
     else
        outPhoton%stokes%q = 0.

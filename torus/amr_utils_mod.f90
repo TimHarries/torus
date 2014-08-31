@@ -1771,7 +1771,7 @@ module amr_utils_mod
        !   inner radius
 
        r1 = subcen%x - thisOctal%subcellSize/2.d0
-       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+       theta = asin(max(-1.d0,min(1.d0,r1 / max(d,1.d-30))))
        cosmu =((-1.d0)*rVec).dot.direction
        mu = acos(max(-1.d0,min(1.d0,cosmu)))
        distTor1 = 1.e30

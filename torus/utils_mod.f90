@@ -214,6 +214,12 @@ contains
           offset = 3.75d-9
        case("R")
           offset = 1.8e-9
+       case("J")
+          offset = 3.133e-10 ! 2mass from gemini website
+       case("H")
+          offset = 1.111e-10 
+       case("K")
+          offset = 4.288e-11 
        case DEFAULT
           call writeWarning("Band "//trim(band)//" not recognised in returnMagntiude")
           offset = 0.d0

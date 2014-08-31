@@ -437,7 +437,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
         firstTime = .false.
      endif
      kappaScaArray = rayScatter / (2.33d0 * mHydrogen)
-
+!     kappaScaArray = 1.d-30
   endif
 
   deallocate(tArray)

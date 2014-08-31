@@ -3321,7 +3321,7 @@ subroutine write1dlist(grid, thisFile)
            else
               open(55, file=thisfile, form="formatted", status="old",position="append")
            endif
-           call write1dListToFile(grid%octreeRoot, ithread)
+           call write1dListToFile(grid, grid%octreeRoot, ithread)
            close(55)
         endif
 
@@ -3332,7 +3332,12 @@ subroutine write1dlist(grid, thisFile)
   endif
 end subroutine write1dlist
 
-recursive subroutine write1dlisttoFile(thisOctal, ithread)
+recursive subroutine write1dlisttoFile(grid, thisOctal, ithread)
+  use inputs_mod, only : sphereRadius
+  use source_mod, only : globalSourceArray
+  type(GRIDTYPE) :: grid
+  real(double) :: radPress,v, kappaAbs, kappaSca, kappaExt,tau,fac,area,dtau
+  real(double) :: kappaAbsDust, kappaScaDust
   type(OCTAL), pointer :: thisOctal, child
   type(VECTOR) :: rVec
   integer :: ithread, i, subcell
@@ -3340,7 +3345,7 @@ recursive subroutine write1dlisttoFile(thisOctal, ithread)
   if (thisOctal%nChildren > 0) then
      do i = 1, thisOctal%nChildren, 1
         child => thisOctal%child(i)
-        call write1dlisttofile(child, ithread)
+        call write1dlisttofile(grid, child, ithread)
      end do
   else
      
@@ -3348,7 +3353,20 @@ recursive subroutine write1dlisttoFile(thisOctal, ithread)
         
         if (octalOnThread(thisOctal, subcell,ithread)) then
            rVec = subcellCentre(thisOctal, subcell)
-           write(55,*) rVec%x, thisOctal%rho(subcell), thisOctal%ghostcell(subcell)
+           v = cellVolume(thisOctal,subcell) * 1.d30
+           call returnKappa(grid, thisOctal, subcell, ilambda=1,&
+                kappaScaDust=kappaScaDust, kappaAbsDust=kappaAbsDust, &
+                kappaSca=kappaSca, kappaAbs=kappaAbs)
+           kappaExt = (kappaScaDust + kappaAbsDust)
+           tau = 0.d0 !1000d0*(rVec%x/sphereRadius)
+           fac = exp(-tau) 
+           dtau = kappaExt * thisOctal%subcellSize
+           area = fourPi * rVec%x**2 * 1.d20
+           radpress = fac*globalSourceArray(1)%luminosity * (kappaExt/1.d10) / (cSpeed * fourPi * rVec%x**2 * 1.d20)
+           if (rVec%x >= 0.d0) write(55,'(1p,7e12.3)') rVec%x, &
+                thisOctal%kappaTimesFlux(subcell)%x/cSpeed, &
+                thisOctal%radiationMomentum(subcell)%x, radpress, thisOctal%rho(subcell), &
+                tau,kappaExt
         endif
      enddo
   endif
@@ -3545,18 +3563,20 @@ end subroutine writeRadialFile
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     use mpi
+    use inputs_mod, only : inputgfac
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen, rVec
-    real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas
+    real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas,kappaExt
     real(double) :: temperature, r
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 12
-    real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux, rpress
+    integer, parameter :: nStorage = 15
+    real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux, rpress, radmom
+    real(double) :: kappaSca, kappaAbs, kappaAbsDust, kappaScaDust
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE)
     logical :: stillLooping
@@ -3595,6 +3615,9 @@ end subroutine writeRadialFile
           phi_gas = tempStorage(10)
           temperature = tempStorage(11)
           kappaTimesflux = tempStorage(12)
+          radmom = tempStorage(13)
+          kappaAbs = tempStorage(14)
+          kappaSca = tempStorage(15)
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
 
              if(cen%x > 0.0078125d0 .and. cen%x < (1.d0+0.0078125d0)) then                
@@ -3603,8 +3626,8 @@ end subroutine writeRadialFile
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
-             rpress = globalSourceArray(1)%luminosity/ (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
-             write(20,'(1p,10e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux/cspeed, rpress, &
+             rpress = globalSourceArray(1)%luminosity * ((kappaAbs+(1.d0-inputgFac)*kappaSca)/1.d10)/ (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
+             write(20,'(1p,11e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, radmom, rpress, &
                   temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
@@ -3649,8 +3672,16 @@ end subroutine writeRadialFile
              tempStorage(10) = thisOctal%phi_gas(subcell)             
              tempStorage(11) = thisOctal%temperature(subcell)
              rVec = subcellCentre(thisOctal,subcell)
-             r = rVec%x * 1.d10
-             tempStorage(12) = modulus(thisOctal%kappaTimesFlux(subcell))*cellVolume(thisOctal,subcell)*1.d30/(fourPi*r**2)
+             r = modulus(rVec) * 1.d10
+             tempStorage(12) = modulus(thisOctal%kappaTimesFlux(subcell))/cSpeed
+             tempStorage(13) = modulus(thisOctal%radiationMomentum(subcell))
+
+           call returnKappa(grid, thisOctal, subcell, ilambda=1,&
+                kappaScaDust=kappaScaDust, kappaAbsDust=kappaAbsDust, &
+                kappaSca=kappaSca, kappaAbs=kappaAbs)
+
+             tempStorage(14) = kappaAbsDust
+             tempStorage(15) = kappaScaDust
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
        enddo
@@ -4246,6 +4277,7 @@ end subroutine writeRadialFile
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE), ierr
     real :: kappap
+    real(double) :: kappasca
     logical :: stillLooping
     integer :: sendThread
     logical :: hitGrid
@@ -4322,7 +4354,7 @@ end subroutine writeRadialFile
                 sOctal => thisOctal
                 call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
                 call returnKappa(grid, thisOctal, subcell, kappap = kappap)
-                tau = tau + dble(kappap) * tval * 1.d10
+                tau = tau + dble(kappap) * tval * 1.d10 
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
                 if (tau > tauWanted) then
                    tauRad = modulus(position)
@@ -4343,6 +4375,116 @@ end subroutine writeRadialFile
 
 666 continue
   end subroutine tauRadius
+
+  subroutine tauAlongPathMPI(grid, rVec, uHat, tauAbs, tauSca)
+    use mpi
+    use inputs_mod, only : smallestCellsize
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, soctal
+    integer :: subcell
+    type(VECTOR) :: uHat, position, rVec
+    real(double) :: loc(5), tauAbs, tauSca, tau, flag
+    integer, parameter :: nStorage = 6
+    real(double) :: tempSTorage(nStorage), tval
+    integer, parameter :: tag = 30
+    integer :: status(MPI_STATUS_SIZE), ierr
+    real(double) :: kappaAbs, kappaSca
+    logical :: stillLooping
+    integer :: sendThread
+    logical :: hitGrid
+
+    thisOctal => grid%octreeRoot
+    position = rVec
+    tauAbs = 0.d0; tauSca = 0.d0;
+    if (myrankGlobal == 0) then
+
+       do while(inOctal(grid%octreeRoot, position))
+          call findSubcellLocal(position, thisOctal, subcell)
+          sendThread = thisOctal%mpiThread(subcell)
+          loc(1) = position%x
+          loc(2) = position%y
+          loc(3) = position%z
+          loc(4) = tauAbs
+          loc(5) = tauSca
+          call MPI_SEND(loc, 5, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+          call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+          flag = tempStorage(1)
+          if (tempStorage(1) > 1.d29) then
+             tauAbs = tempStorage(2)
+             tauSca = tempStorage(3)
+             exit
+          else if (tempStorage(1) < -1.d29) then
+             tauAbs = tempStorage(2)
+             tauSca = tempStorage(3)
+             exit
+          else
+             tauAbs = tauAbs + tempStorage(2)
+             tauSca = tauSca + tempStorage(3)
+             position = VECTOR(tempStorage(4), tempStorage(5), tempStorage(6))
+          endif
+         
+       enddo
+       !Send escape trigger to other threads
+       do sendThread = 1, nHydroThreadsGlobal
+          loc(1) = 1.d30
+          loc(2) = 1.d30
+          loc(3) = 1.d30
+          call MPI_SEND(loc, 5, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+       enddo
+       goto 666
+
+
+    else
+       stillLooping = .true.
+       do while(stillLooping)
+          call MPI_RECV(loc, 5, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+          position%x = loc(1)
+          position%y = loc(2)
+          position%z = loc(3)
+          if (position%x > 1.d29) then
+             stillLooping = .false.
+          else
+
+             tauAbs = loc(4)
+             tauSca = loc(5)
+
+             do
+                call findSubcellLocal(position, thisOctal, subcell)
+                if (.not.OctalOnThread(thisOctal, subcell, myRankGlobal)) then
+                   tempStorage(1) = 0.d0
+                   tempStorage(2) = tauAbs
+                   tempStorage(3) = tauSca
+                   tempStorage(4) = position%x
+                   tempStorage(5) = position%y
+                   tempStorage(6) = position%z
+                   exit
+                endif
+
+                sOctal => thisOctal
+                call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
+                call returnKappa(grid, thisOctal, subcell, ilambda=1,&
+                     kappaSca=kappaSca, kappaAbs=kappaAbs)
+                tauAbs = tauAbs + dble(kappaAbs) * tval
+                tauSca = tauSca + dble(kappaSca) * tval
+                position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
+
+                if (.not.inOctal(grid%octreeRoot, position)) then
+                   tempStorage(1) = -1.d30
+                   tempStorage(2) = tauAbs
+                   tempStorage(3) = tauSca
+                   tempStorage(4) = position%x
+                   tempStorage(5) = position%y
+                   tempStorage(6) = position%z
+                   exit
+                endif
+             enddo
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          endif
+       enddo
+    endif
+
+666 continue
+  end subroutine tauAlongPathMPI
     
   subroutine grid_info_mpi(thisGrid, filename)
     use amr_mod, only:  countVoxels

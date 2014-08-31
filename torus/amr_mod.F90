@@ -9201,7 +9201,7 @@ endif
   subroutine calcSphere(thisOctal,subcell)
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition
-    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro
+    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro, nbodytest
 !    use inputs_mod, only : smallestCellSize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -9237,6 +9237,7 @@ endif
     else
        fac = 1.d-2
        if (rhosphere > 1.d-8) fac = 1.d-20
+       if (nbodytest) fac = 1.d-20
        thisOctal%rho(subcell) = fac * rhoSphere
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
@@ -9730,7 +9731,7 @@ endif
   subroutine calcBondiHoyleDensity(thisOctal,subcell)
 
     use inputs_mod, only : inflowPressure, inflowRho, inflowMomentum, inflowEnergy, inflowSpeed, inflowRhoe, &
-         inflowTemp, amr3d
+         inflowTemp, amr3d, smallestCellsize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -9773,7 +9774,8 @@ endif
           mdot = mdot * ((lambda**2 * soundSpeed**2 + inflowSpeed**2)/(soundspeed**2 + inflowSpeed**2)**4)**0.5d0
           write(*,*) "Expected mass accretion rate is ",(mDot/msol)*365.25d0*24.d0*3600.d0, " solar masses/year"
           r = bigG * msol / (soundSpeed**2)
-          write(*,*) "Bondi radius is ",r
+          write(*,*) "Bondi-Hoyle radius is ",r
+          write(*,*) "Bondi-Hoyle radius is ",(r/1.d10)/smallestCellSize," cells"
        endif
        firstTime = .false.
     endif
@@ -11296,14 +11298,14 @@ end function readparameterfrom2dmap
   end subroutine assign_hii_test
 
   subroutine assign_radpresstest(thisOctal,subcell)
-    use inputs_mod, only : rCavity
+    use inputs_mod, only : rCavity, nDensity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(vector) :: rVec
     real(double) :: eThermal!, numDensity
    
     rVec = subcellCentre(thisOctal,subcell)
-    thisOctal%rho(subcell) = (1.d2)*mHydrogen
+    thisOctal%rho(subcell) = nDensity*mHydrogen
     if (modulus(rVec) < rCavity) thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10.d0
     thisOctal%etaCont(subcell) = 0.
@@ -11574,16 +11576,16 @@ end function readparameterfrom2dmap
   end subroutine shakaraDisk
 
   subroutine HD169142Disk(thisOctal,subcell,grid)
-    use density_mod, only: density, shakaraSunyaevDisc
+    use density_mod, only: density, HD169142Disc
     use inputs_mod, only : rOuter, betaDisc, rGapOuter2 !, rInner, erInner, erOuter, alphaDisc
-    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
+    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner, rGapInner1, rGapInner2
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
-    use inputs_mod, only : rSublimation
+    use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v, dustSettling
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -11639,66 +11641,52 @@ end function readparameterfrom2dmap
        thisOctal%temperature(subcell) = 10.
        thisOctal%inflow(subcell) = .true.
 
-       if (photoionization) then
-          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-          thisOctal%ne(subcell) = 1.e-5!thisOctal%nh(subcell)
-          thisOctal%nhi(subcell) = 1.e-5
-          thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-          thisOctal%biasCont3D = 1.
-          thisOctal%etaLine = 1.e-30
-       endif
 
-       h = real(height * (r / (100.d0*autocm/1.d10))**betaDisc)
-    
-!    endif
-
-    if(molecular) then
- !      if(modulus(rvec) .lt. 1000.) then
-          thisOctal%velocity(subcell) = keplerianVelocity(rvec)
-          CALL fillVelocityCorners(thisOctal, keplerianVelocity)
- !      else
- !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
- !      endif
-    else
-       thisOctal%velocity(Subcell) = VECTOR(0.,0.,0.)
-    endif
-
-    if (molecular) then
-       thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
-       thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
-    endif
-
-    if (hydrodynamics) then
-       r = sqrt(rVec%x**2 + rVec%y**2)
-!       if (r > rOuter*0.99d0) then
-!          thisOctal%rho(subcell) = thisOctal%rho(subcell) * exp(-(r-rOuter*0.99d0)/(0.01d0*rOuter))
-!       endif
-       sinTheta = sqrt(1.d0-(abs(rVec%z)/modulus(rVec))**2)
-       v = sqrt(bigG * mSol /(r*1.d10))
-
-
-       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-20_db)
-       thisOctal%temperature(subcell) = min(100.,100. * real((r/Rinner)**(-4.d0/3.d0)))
-       thisOctal%velocity(subcell) = keplerianVelocity(rvec)
-       thisOctal%iEquationOfState(subcell) = 1
-       thisOctal%phi_i(subcell) = -bigG * mCore / (modulus(rVec)*1.d10)
-       thisOctal%gamma(subcell) = 7.d0/5.d0
-       ethermal = real(1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * thisOCtal%temperature(subcell))
-       thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-       thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
-       thisOctal%rhov(subcell) = modulus(keplerianVelocity(rVec))*thisOctal%rho(subcell) * (r *gridDistanceScale)*cSpeed * sinTheta
-    endif
 
     if (dustPhysics) then
        thisOctal%DustTypeFraction(subcell,:) = 1.d-10
        rVec = subcellCentre(thisOctal, subcell)
        r = sqrt(rVec%x**2+rVec%y**2)
-       if (r < rGapOuter2) then
-          thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)
-       else
-          thisOctal%dustTypeFraction(subcell,2) = grainFrac(2)
+       z = rVec%z
+       dustSettling = 0.5d0
+       h = dustSettling * height * (r / (100.d0*autocm/1.d10))**betaDisc
+       if (r < rGapInner1) then
+          h = dustSettling * heightInner * (r / (100.d0*autocm/1.d10))**betaDisc
        endif
+       if ((r > rGapOuter1).and.(r < rGapInner2)) then
+          h = dustSettling * ringHeight * (r / (100.d0*autocm/1.d10))**betaDisc
+       endif
+       fac = exp(-0.5d0 * (z/h)**2)
+       if (r < rGapInner2) then
+          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+       else
+          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
+       endif
+
+       rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
+       rhoFid = HD169142Disc(rVec, grid)
+       
+       rVec = subcellCentre(thisOctal, subcell)
+       rho =  HD169142Disc(rVec, grid)
+       thisRsub = 1.01d0 * rSublimation * max(1.d0,(1.d0/(rho/rhoFid)**0.0195)**2)
+       r = sqrt(rVec%x**2+rVec%y**2)
+       z = rVec%z
+       if (modulus(rVec) < rSublimation) then
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
+       endif
+       
+       if (curvedInnerEdge.and.(r < thisRsub).and.(modulus(rVec) < 2.d0*rsublimation)) then
+          fac = (thisRsub-r)/(0.002d0*rSublimation)
+          thisOctal%dustTypeFraction(subcell,1) = max(1.d-20,grainFrac(1)*exp(-fac))
+       endif
+
+
+
     endif
+
+
+
 
 
   end subroutine HD169142Disk
@@ -13929,9 +13917,9 @@ end function readparameterfrom2dmap
 
   END SUBROUTINE amrUpdateGrid
 
-  subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
+  subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
-    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics
+    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
@@ -13944,6 +13932,7 @@ end function readparameterfrom2dmap
     integer :: subcell
     integer, optional :: ilambda
     real, optional :: lambda
+    real(double), optional :: allSca(:)
     real(double), intent(out), optional :: kappaSca, kappaAbs
     real(double), optional, intent(out) :: kappaAbsArray(:), kappaScaArray(:)
     real(double), optional, intent(out) :: rosselandKappa
@@ -14034,6 +14023,11 @@ end function readparameterfrom2dmap
 
        nlambda = grid%nlambda
        firsttime = .false.
+    endif
+
+    if (PRESENT(allSca)) then
+       allSca(1:nDustType) = thisOctal%rho(subcell) * oneKappaAbsT(ilambda,1:nDustType) &
+                 * thisOctal%dustTypeFraction(subcell,1:nDustType)
     endif
 
     if (PRESENT(kappaAbsArray)) then
@@ -14300,7 +14294,7 @@ end function readparameterfrom2dmap
    endif
    
 #ifdef PHOTOION
-   if (photoionization) then
+   if (photoionization.and.(.not.dustonly)) then
 
       if (PRESENT(kappaAbs)) then
          if (present(lambda)) then

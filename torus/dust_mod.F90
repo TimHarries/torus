@@ -687,7 +687,8 @@ contains
     real :: lambda(:)
     real :: kappaAbs(:), kappaSca(:)
     real :: sigmaExt(2000),sigmaSca(2000), kappa(2000), albedo(2000), tlam(2000)
-    real :: tSca(2000), tAbs(2000), sigmaAbs(2000), junk, gfac(2000), tgfac(2000)
+    real :: tSca(2000), tAbs(2000), sigmaAbs(2000), junk
+    real(double) :: gfac(2000), tgfac(2000)
     character(len=40) :: filetype
     character(len=80) :: message, junkchar
     integer :: npts, i, j
@@ -1038,13 +1039,15 @@ contains
     integer :: nFrac
     real(double) :: frac, newFrac, deltaFrac, thistau
     real ::  temperature, sublimationTemp, subrange
-    real :: underCorrect = 1.
+    real :: underCorrect 
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
     integer :: subcell, i
 
+    underCorrect = 0.9
+
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 5.d0
+    subrange = 2.d0
 
     if (present(minLevel)) then
        smallVal = minLevel
@@ -1421,22 +1424,27 @@ contains
     use mpi
 #endif
     use mieDistPhaseMatrix_mod
-    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, resetNewDirectionMie, fillHenyey
+    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, fillHenyey, &
+         newDirectionMie
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
          dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
-         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor
+         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
+    type(VECTOR) :: uHat, uNew, vec_tmp
+    real(double) :: cosang
     integer :: nMuMie
-    real :: mu, total_dust_abundance
+    real(double) :: mu
+    real :: total_dust_abundance
     real :: kAbs, kSca
     integer :: i, j, k
 
 
     type(GRIDTYPE) :: grid
-    real :: xArray(:), gfac(2000)
+    real :: xArray(:)
+    real(double) :: gfac(2000)
     integer :: nLambda
     integer :: ilam_beg, ilam_end
 
@@ -1499,6 +1507,8 @@ contains
     if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then
        ! construct the mie phase matrix
        call writeInfo("Computing Mie phase grid...",TRIVIAL)
+       
+       miePhase(:,:,:)%gfac = 0.d0
 
        if (isotropicScattering) then
           call writeInfo("Using isotropic scattering",FORINFO)
@@ -1507,13 +1517,25 @@ contains
           goto 666
        else if (henyeyGreensteinPhaseFunction) then
           call writeInfo("Using Henyey-Greenstein scattering",FORINFO)
+          if (inputgFac /= 0.d0) gfac = inputgFac
           i = 1
           do j = 1, grid%nLambda
              do k = 1, nMumie
-                mu = 2.*real(k-1)/real(nMumie-1)-1.
+                mu = 2.d0*dble(k-1)/dble(nMumie-1)-1.d0
                 miePhase(i,j,k) = fillHenyey(mu, gfac(j))
              enddo
           end do
+
+!          cosang = 0.d0
+!          do i = 1, 100000
+!             uHat = randomUnitVector()
+!             vec_tmp = uHat
+!             uNew = newDirectionMie(vec_tmp, real(xArray(1)), xArray, nLambda, miePhase, nD!ustType, nMuMie, dble(grainFrac))
+!             cosang = cosang + (uHat.dot.uNew)
+!          enddo
+!          write(*,*) "Average cos angle test ",cosang/100000.d0
+
+
           call writeInfo("Completed.",TRIVIAL)
           
        else
@@ -1605,7 +1627,7 @@ contains
                    do k = 1, nMumie
                       mu = 2.*real(k-1)/real(nMumie-1)-1.
                       call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-                           xArray(j), mu, miePhase(i,j,k), mReal(i,j), mImg(i,j))
+                           xArray(j), real(mu), miePhase(i,j,k), mReal(i,j), mImg(i,j))
                    enddo
                    call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
                 end do
@@ -1662,7 +1684,6 @@ contains
           enddo
        enddo
 
-       call resetNewDirectionMie
 
     666 continue
 

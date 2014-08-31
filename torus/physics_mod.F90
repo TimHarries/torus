@@ -393,7 +393,7 @@ contains
     real :: temp2
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-    integer, parameter :: nMuMie = 180
+    integer, parameter :: nMuMie = 200
     integer :: nlower, nupper, sign
     type(GRIDTYPE) :: grid
 #ifdef MPI
@@ -537,7 +537,7 @@ contains
            call setupPhotoGrid(grid%octreeRoot)
  !          endif
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
-                1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, sublimate=.false.)
+                1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie, sublimate=.false.)
 
 #else
            call writeFatal("Domain decomposed grid requires MPI")
@@ -566,7 +566,7 @@ contains
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 #ifdef PHOTOION
 #ifdef MPI 
-        call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray)
+        call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray, miePhase, nMuMie)
 #else
         call writeFatal("hydrodynamics not available in single processor version")
         stop
@@ -957,7 +957,6 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
      call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
      call createRossArray(grid)
      call writeInfo("Done.",TRIVIAL)
-     call resetNewDirectionMie
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
   end if
 

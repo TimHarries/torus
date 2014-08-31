@@ -647,7 +647,7 @@ contains
                   photosphereSplit = doPhotoSphereSplit )
              write(thisFile,'(a,i5.5,a)') "smooth",iter,".vtk"
              iter = iter + 1
-             call writeVtkFile(grid, thisFile)
+!             call writeVtkFile(grid, thisFile)
              convergedFirstTime = .true.
              do
                 smoothConverged = .true.

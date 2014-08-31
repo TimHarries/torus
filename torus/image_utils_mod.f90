@@ -38,7 +38,7 @@ module image_utils_mod
 
 ! Parameters shared by all images
   character(len=10), save :: myAxisUnits
-  character(len=10), save :: myFluxUnits
+  character(len=12), save :: myFluxUnits
 
 contains 
 
@@ -72,7 +72,7 @@ contains
     character(len=80), intent(in) :: filename
     integer, intent(in) :: nPixels
     character(len=10), intent(in) :: axisUnits
-    character(len=10), intent(in) :: fluxUnits
+    character(len=12), intent(in) :: fluxUnits
     real, intent(in) :: imageSize
     real, intent(in) :: aspectRatio
     real, intent(in) :: inclination, positionAngle
@@ -240,7 +240,7 @@ contains
 
   function getFluxUnits()
 
-    character(len=10) :: getFluxUnits
+    character(len=12) :: getFluxUnits
     getFluxUnits=MyFluxUnits
 
   end function getFluxUnits

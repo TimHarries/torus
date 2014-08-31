@@ -1063,6 +1063,9 @@ contains
           call getDouble("rcavity", rCavity, 1.d0, cLine, fLine, nLines, &
                "Cavity radius (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .true.)
 
+          call getDouble("ndensity", ndensity, 1.d0, cLine, fLine, nLines, &
+               "Number density (per cm^3): ","(a,1pe8.1,1x,a)", 100.d0, ok, .true.)
+
        case("benchmark", "RHDDisc", "simpledisc")
           call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
                "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
@@ -1437,6 +1440,12 @@ contains
 
        call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("heightinner", heightinner, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("ringheight", ringHeight, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
        call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
             "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
@@ -1880,6 +1889,11 @@ contains
 
          call getLogical("henyey", henyeyGreensteinPhaseFunction, cLine, fLine, nLines, &
               "Use Henyey-Greenstein phase function: ","(a,1l,1x,a)", .false., ok, .false.)
+
+         if (henyeyGreensteinPhaseFunction) &
+         call getDouble("gfac", inputgFac, 1.d0, cLine, fLine, nLines, &
+            "Henyey-Greenstein g-factor: ","(a,f7.3,a)",0.d0, ok, .true.)
+
 
          call getLogical("writepolar", writePolar, cLine, fLine, nLines, &
               "Write polarizability file: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2423,8 +2437,13 @@ contains
 
     call getInteger("iterLucy", iterLucy, cline, fLine, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",3,ok,.false.)
 
+    call getInteger("maxiter", maxIterLucy, cline, fLine, nlines, "Maximum number of Lucy iterations: ", "(a,i3,a)",20,ok,.false.)
+
     call getLogical("forceLucyConv", forceLucyConv, cLine, fLine, nLines, &
          "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("solvediffusion", solveDiffusionZone, cLine, fLine, nLines, &
+         "Solve diffusion region using Gauss-Seidel: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getReal("lucy_undersampled", lucy_undersampled, 1., cLine, fLine, nLines, &
          "Minimum percentage of undersampled cell in lucy iteration: ", &
@@ -2957,7 +2976,7 @@ contains
     integer :: i
     character(len=20) :: keyword
     character(len=10) :: axisUnits
-    character(len=10) :: fluxUnits
+    character(len=12) :: fluxUnits
     character(len=80) :: outputImageType, imageFilename
     character(len=4)  :: iChar
     integer :: thisnpixels, npixels, nimage
@@ -3181,7 +3200,7 @@ contains
     integer :: i
     character(len=20) :: keyword
     character(len=10) :: axisUnits
-    character(len=10) :: fluxUnits
+    character(len=12) :: fluxUnits
     character(len=80) :: outputImageType, imageFilename
 
     integer :: thisnpixels, npixels, nimage
