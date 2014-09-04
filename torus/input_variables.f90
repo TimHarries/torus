@@ -825,6 +825,7 @@
   logical :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   logical, protected :: convertRhoToHI ! Convert density to HI
   integer, protected :: ih2frac        ! column of SPH file which contains H2 fraction
+  integer, protected :: iCO            ! column of SPH file which contains CO fraction
   logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature

@@ -3512,7 +3512,7 @@ CONTAINS
 
     use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use inputs_mod, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
-         ttauriRouter, sphereRadius, amr1d, amr2d, amr3d
+         ttauriRouter, sphereRadius, amr2d
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
     use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &

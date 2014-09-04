@@ -1136,6 +1136,8 @@ contains
                "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
           call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
                "Column containing H2 fraction ","(a,i2,a)", 11, ok, .false.)
+          call getInteger("iCOfrac", iCO, cLine, fLine, nLines, &
+               "Column containing CO fraction ","(a,i2,a)", 15, ok, .false.)
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 

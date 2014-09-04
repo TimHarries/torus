@@ -358,7 +358,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
-    use inputs_mod, only: convertRhoToHI, ih2frac, sphwithchem, iModel, discardSinks
+    use inputs_mod, only: convertRhoToHI, ih2frac, iCO, sphwithchem, iModel, discardSinks
     use inputs_mod, only: dragon
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
@@ -386,9 +386,7 @@ contains
 !
 ! For SPH simulations with chemistry
 !
-! CO fraction. The column will not be labelled by splash
-! so need to specify which column to use.
-    integer, parameter :: iCO = 15
+! CO fraction. 
     real(double)       :: COfrac
 
 ! Account for time in Galactic plane surveys
