@@ -670,7 +670,18 @@ part_loop: do ipart=1, nlines
 
  write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass * umass/mSol, " Msol"
  call writeinfo(message, TRIVIAL)
-    
+ 
+! Warn if we didn't find the expected number of gas particles or point masses
+ if (igas /= npart ) then
+    write(message,*) "Expected ", npart, " gas particles but found ", igas
+    call writeWarning(message)
+ endif
+ 
+ if (iptmass /= nptmass+nstar) then
+    write(message,*) "Expected ", nptmass+nstar, " sinks+stars but found ", iptmass
+    call writeWarning(message)
+ endif
+
  close(LUIN)
    
  contains
