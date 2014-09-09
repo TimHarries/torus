@@ -368,7 +368,7 @@ contains
     character(LEN=*), intent(in)  :: rootfilename
     character(LEN=80) :: filename
     character(len=20) :: word(40), unit(40)
-    integer :: nword, nunit
+    integer :: nword, nunit, status
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
     real(double) :: udist, umass, utime,  time, uvel, utemp
@@ -536,10 +536,16 @@ contains
     icount = 12 ! header lines
     igas = 0
     idead = 0
+    status=0
 
 part_loop: do ipart=1, nlines
 
-       read(LUIN,*) junkArray(1:nWord)
+       read(LUIN,*,iostat=status) junkArray(1:nWord)
+       if (status /= 0) then
+          write(message,*) "Error reading from line ", icount+1
+          call writeFatal(message)
+          STOP
+       endif
 
        xn = junkArray(ix)
        yn = junkArray(iy)
