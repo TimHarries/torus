@@ -11585,7 +11585,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v, dustSettling
+    real(double) :: r, h, rd, rhoFid, thisRSub,z,fac, rho, dustSettling
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -11665,10 +11665,10 @@ end function readparameterfrom2dmap
        endif
 
        rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
-       rhoFid = HD169142Disc(rVec, grid)
+       rhoFid = HD169142Disc(rVec)
        
        rVec = subcellCentre(thisOctal, subcell)
-       rho =  HD169142Disc(rVec, grid)
+       rho =  HD169142Disc(rVec)
        thisRsub = 1.01d0 * rSublimation * max(1.d0,(1.d0/(rho/rhoFid)**0.0195)**2)
        r = sqrt(rVec%x**2+rVec%y**2)
        z = rVec%z

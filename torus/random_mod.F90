@@ -440,7 +440,6 @@ contains
   SUBROUTINE seedFromInputSeed(inputSeed, iSeed)
     use mpi_global_mod, only: myRankWorldGlobal
     integer(bigint) :: iSeed, inputSeed
-    integer(bigint) :: threadSeed
     integer :: j, nt
 #ifdef _OPENMP
      integer ::  omp_get_thread_num
