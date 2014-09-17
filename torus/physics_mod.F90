@@ -597,7 +597,8 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
-     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, polarWavelength
+     use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, &
+          polarWavelength
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
