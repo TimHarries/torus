@@ -324,6 +324,9 @@ contains
     case("ascii")
        call new_read_sph_data(sphdatafilename)
 
+    case("gadget2")
+       call read_gadget2_data(sphdatafilename)
+
     case default
        call writeFatal("Unrecognised file format "//inputFileFormat)
 
@@ -725,6 +728,147 @@ part_loop: do ipart=1, nlines
    end subroutine rotateForTime
 
   end subroutine new_read_sph_data
+
+! Read data from Gadget snapshot file. Works for a single file only i.e not parallel i/o.
+! D. Acreman September 2014
+!
+! To do: 1. code units are hardwired
+!        2. need to read in chemistry data
+!        3. Need to exlude dead particles
+!        4. Need to handle conversion of total density to HI density
+!        3. Add to documentation
+!
+  subroutine read_gadget2_data(filename)
+    use inputs_mod, only: convertRhoToHI, sphwithChem
+
+    character(len=*), intent(in) :: filename
+    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+    integer :: i, igas
+    integer :: gadget_npart(6), nptmass, nTotal, nDead
+    character(len=80) :: message
+    real(double) :: gadget_massTable(6), time
+    real(double) :: udist, umass, utime, uvel, utemp 
+! Gadget data
+    real(single), allocatable :: g_pos(:,:), g_vel(:,:), g_m(:), g_u(:), g_rho(:), g_h(:)
+    real(single), allocatable :: aH(:), aH2(:), aCO(:), dead(:)
+
+    open(unit=LUIN,status="old",file=filename,form="unformatted")
+
+! Read the header
+    read (LUIN) gadget_npart, gadget_massTable, time ! redshift, flagsfr, flagfeedb, nall
+
+    npart   = gadget_npart(1)
+    nptmass = gadget_npart(5)
+    ntotal = sum(gadget_npart)
+
+    write(message,*) "There are ", npart, " gas particles and ", nptmass, " sink particles"
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Total number of particles= ", ntotal
+    call writeinfo(message, TRIVIAL)
+
+! Convertion from Gadget code units. Hardwire for now ...
+    udist = pctocm
+    umass = msol
+    uvel  = 1.0e5_db
+    utemp = 1.0e10_db
+    utime = udist/uvel
+    sphdata%codeEnergytoTemperature = 1.0
+    sphdata%codeVelocitytoTORUS = uvel / cspeed
+
+! Initialiase SPH data structure 
+    call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
+
+! Particle positions: total number of particles in file
+    allocate(g_pos(3,1:nTotal))
+    read(LUIN) g_pos(:,1:nTotal)
+
+! Particle velocities: total number of particles in file
+    allocate(g_vel(3,1:nTotal))
+    read(LUIN) g_vel(:,1:nTotal)
+
+! ID numbers: total number of particles in file
+    read(LUIN)
+
+! Particle masses: number of particles with variable mass
+    allocate(g_m(nTotal))
+    read(LUIN) g_m
+
+! Internal energy: number of gas particles
+    allocate(g_u(npart))
+    read(LUIN) g_u
+
+! Density: number of gas particles
+    allocate(g_rho(npart))
+    read(LUIN) g_rho
+
+! Smoothing length: number of gas particles
+    allocate(g_h(npart))
+    read(LUIN) g_h
+
+    if (convertRhoToHI.or.sphwithChem ) then
+       write (message,'(a,i2)') "Will store particle H2 density."
+       call writeInfo(message,FORINFO)
+       allocate(sphdata%rhoH2(npart))
+
+       allocate(aH(npart))
+       read(LUIN) aH
+       allocate(aH2(npart))
+       read(LUIN) aH2
+    end if
+
+    if (sphWithChem) then
+       write (message,'(a,i2)') "Will store CO fraction"
+       call writeInfo(message,FORINFO)
+       allocate(sphData%rhoCO(npart))
+       allocate(aCO(npart))
+       read(LUIN) aCO
+    end if
+
+    allocate(dead(npart))
+    read(LUIN) dead
+
+    igas = 0 
+    nDead = 0
+    do i=1, npart !nTotal
+! Exclude dead particles 
+!       if ( dead(i) > 0.0 ) then 
+
+          igas = igas + 1
+
+          sphdata%xn(igas) = g_pos(1,i)
+          sphdata%yn(igas) = g_pos(2,i)
+          sphdata%zn(igas) = g_pos(3,i)
+
+          sphdata%vxn(igas) = g_vel(1,i)
+          sphdata%vyn(igas) = g_vel(2,i)
+          sphdata%vzn(igas) = g_vel(3,i)
+
+          sphdata%gasmass(igas)     = g_m(i)
+          sphdata%temperature(igas) = g_u(i)
+          sphdata%rhon(igas)        = g_rho(i)
+! Halve the smoothing lengths as the gadget definition is different to other SPH codes
+          sphdata%hn(igas)          = 0.5 * g_h(i)
+          
+          if (convertRhoToHI.or.sphwithChem ) sphdata%rhoH2(igas) = aH2(i)
+          if (sphwithChem)                    sphdata%rhoCO(igas) = aCO(i)
+
+!       else
+  
+!          nDead = nDead + 1
+
+!       endif
+
+    end do
+    
+    write(message,*) "Found ", igas, " gas particles and ", nDead, " dead particles"
+    call writeinfo(message, TRIVIAL)
+
+    deallocate(g_pos, g_vel, g_m, g_u, g_rho, g_h)
+    if (convertRhoToHI.or.sphwithChem ) deallocate(aH, aH2, aCO)
+
+    close(LUIN)
+
+  end subroutine read_gadget2_data
 
 ! Read in SPH data from an MPI dump file
 ! D. Acreman, June 2012
