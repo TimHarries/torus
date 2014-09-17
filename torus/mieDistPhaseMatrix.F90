@@ -114,8 +114,8 @@ contains
             end do   ! n
 
             !$OMP PARALLEL DEFAULT(NONE) &
-            !$OMP SHARED (nMuMie,  beshTable, sphereTable, pnmllg, a, da, dist, afac, miePhase, j, i, max_nci, xArray, mreal, mimg) &
-            !$OMP PRIVATE (k, cosTheta)
+            !$OMP PRIVATE (k, cosTheta) &
+            !$OMP SHARED (nMuMie,  beshTable, sphereTable, pnmllg, a, da, dist, afac, miePhase, j, i, max_nci, xArray, mreal, mimg)
             !$OMP DO SCHEDULE(DYNAMIC)
             do k = 1, nMumie
                cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)

@@ -571,8 +571,8 @@ contains
                             thermalPhoton = .false.
                             scatteredPhoton = .true.
                             vec_tmp = uhat
-                            uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
-                                 thisOctal%dustTypeFraction(subcell, 1:nDusttype))
+                            uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, miePhase, &
+                                 nDustType, nMuMie, thisOctal%dustTypeFraction(subcell, 1:nDusttype))
 
                             nScat = nScat + 1
                             thisPhotonSca = thisPhotonSca + 1
