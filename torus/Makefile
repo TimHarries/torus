@@ -119,12 +119,12 @@ ifeq ($(SYSTEM), gfortran)
     endif
      ZLIBLIBS = -lz
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb #-fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
-    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
+    CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
 endif
 
 ifeq ($(SYSTEM), thaw)
