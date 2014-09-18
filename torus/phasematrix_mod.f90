@@ -291,37 +291,37 @@ contains
 
   end function multStokes_dble
 
-  subroutine testMiePhase(wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
-    real :: wavelength
-    real :: lamArray(:)
-    integer :: nLambda, nDustType, nMuMie
-    real(double) :: dustTypeFraction(:), meanscat
-    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
-    type(VECTOR) :: oldDirection, newDirection, tot
-    integer :: i, ntest
-
-!    miePhase(:,:,:)%element(1,1) = 1.
-    ntest = 100000
-    tot=vector(0. ,0., 0)
-    meanscat = 0
-    do i = 1, nTest
-       oldDirection = VECTOR(1., 0., 0.)
-!       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, &
-!            nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
-!       write(*,*) "Scattering angle: ",acos(oldDirection.dot.newDirection)*180./pi
-       meanscat=meanscat+acos(oldDirection.dot.newDirection)*180./pi
-       tot=tot+newDirection
-    enddo
-    tot = tot / dble(nTest)
-    meanscat = meanscat / real(ntest)
-    write(*,*) "Final vector: ",tot
-    write(*,*) "mean scattering angle ",meanscat
-  end subroutine testMiePhase
+!!$  subroutine testMiePhase(wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+!!$    real :: wavelength
+!!$    real :: lamArray(:)
+!!$    integer :: nLambda, nDustType, nMuMie
+!!$    real(double) :: dustTypeFraction(:), meanscat
+!!$    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
+!!$    type(VECTOR) :: oldDirection, newDirection, tot
+!!$    integer :: i, ntest
+!!$
+!!$!    miePhase(:,:,:)%element(1,1) = 1.
+!!$    ntest = 100000
+!!$    tot=vector(0. ,0., 0)
+!!$    meanscat = 0
+!!$    do i = 1, nTest
+!!$       oldDirection = VECTOR(1., 0., 0.)
+!!$!       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, &
+!!$!            nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+!!$!       write(*,*) "Scattering angle: ",acos(oldDirection.dot.newDirection)*180./pi
+!!$       meanscat=meanscat+acos(oldDirection.dot.newDirection)*180./pi
+!!$       tot=tot+newDirection
+!!$    enddo
+!!$    tot = tot / dble(nTest)
+!!$    meanscat = meanscat / real(ntest)
+!!$    write(*,*) "Final vector: ",tot
+!!$    write(*,*) "mean scattering angle ",meanscat
+!!$  end subroutine testMiePhase
 
 
   type(VECTOR) function newDirectionMie(grid, currentOctal, currentSubcell, &
        oldDirection, wavelength, &
-       lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
+       lamArray, nLambda, miePhase, nDustType, nMuMie, weight)
     use amr_mod, only : returnKappa
     use gridtype_mod
     use inputs_mod, only : inputGfac, henyeyGreensteinPhaseFunction
@@ -331,20 +331,16 @@ contains
     integer :: currentSubcell
     type(VECTOR), intent(in) :: oldDirection
     real, intent(in) :: wavelength
-    real(double) :: dustTypeFraction(:)
     integer :: nDustType
     real, optional :: weight
     integer, intent(in) :: nMuMie, nLambda
-    integer :: i, j, k, m, ilam
+    integer :: i, j, k, ilam
     real(double) :: theta, phi
     real(double) :: r
     real, intent(in) :: lamArray(:)
-    real(double) :: normfac(100)
     real(double) :: allSca(10)
     type(VECTOR) :: tVec, perpVec, newVec
     type(PHASEMATRIX) :: miePhase(:,:,:)
-    integer :: nMuTemp, refineAT
-    logical :: refine
     real(double), allocatable :: prob(:)
     real(double), allocatable :: cosArray(:)
 

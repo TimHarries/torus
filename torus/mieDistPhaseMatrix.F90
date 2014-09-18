@@ -235,7 +235,7 @@ contains
       implicit none
       real, parameter :: micronsToCm=1.e-4
       real, intent(in) :: cosTheta
-      real :: mReal, mImg, lambda, qExt, qSca, qBack, gSca
+      real :: mReal, mImg, lambda !, qExt, qSca, qBack , gSca
       integer, intent(in) :: nDist
       type(beshEntry), intent(in) :: beshTable(:) !1:nDist-1)
       type(sphereEntry), intent(in) :: sphereTable(:)!nDist-1)
@@ -278,8 +278,8 @@ contains
       real :: a, x, fac,totfac
       complex :: refrel
       complex,save :: Ci = (0.0,1.0)
-      complex s12(2*MXNANG-1),s22(2*MXNANG-1)
-      integer :: nang=2
+!      complex s12(2*MXNANG-1),s22(2*MXNANG-1)
+!      integer :: nang=2
 !$OMP THREADPRIVATE (ci)
 
       p11tot = 0.
@@ -294,7 +294,7 @@ contains
 
 
           a = aArray(i) 
-          x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
+          x = real(2.*pi*(a * micronsTocm)/(lambda*1.e-8))
           x = max(x, 1.e-5)
           refrel = cmplx(mReal, mimg)
 !          call BHMIE(X,REFREL,NANG ,S12,S22,QEXT,QSCA,QBACK, GSCA)

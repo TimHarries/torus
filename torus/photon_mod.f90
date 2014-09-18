@@ -352,7 +352,7 @@ contains
        else
 
           outgoing = newDirectionMie(grid, thisOctal, subcell, incoming, thisPhoton%lambda, lamArray, nLambda, &
-               miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
+               miePhase, nDustType, nMuMie, weight)
           outPhoton%stokes = outPhoton%stokes * (1./weight)
 
 

@@ -363,24 +363,23 @@ module image_mod
      end subroutine ConvertArrayToMJanskiesPerStr
 
 ! Convert from ergs/s/A to magnitudes per square arcsec
-     subroutine ConvertArrayToMagPerSqArcsec(mag,array, lambda, dx, distance)
+     subroutine ConvertArrayToMagPerSqArcsec(mag,array, dx, distance)
        use utils_mod, only : returnMagnitude
        real, intent(inout)      :: array(:,:)
-       real         :: lambda
        character(len=1) :: mag
        real(double), intent(in) :: distance, dx
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
-       real(double) :: nu, PerAngstromToPerHz, strad, scale
+       real(double) :: strad, scale
        integer :: i, j
 
        strad = (dx*1.d10/distance)**2
        scale = 1.d20/distance**2
-       array = array * scale / strad
-       array = array / 4.254517d10   ! from per str to per arcsec^2
+       array = array * real(scale / strad)
+       array = array / 4.254517e10   ! from per str to per arcsec^2
        do i = 1, SIZE(array,1)
           do j = 1, SIZE(array,2)
-             array(i,j) = returnMagnitude(dble(max(1.d-30,array(i,j))), mag)
+             array(i,j) = real(returnMagnitude(dble(max(1.e-30,array(i,j))), mag))
           enddo
        enddo
 
@@ -600,9 +599,9 @@ module image_mod
           case("pol")
              array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
           case("pa")
-             array = -0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg
+             array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
              where (array < 0.d0) 
-                array = array + 180.d0
+                array = array + 180.e0
              end where
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type
@@ -631,7 +630,7 @@ module image_mod
              case("Jy/pix")
                 call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
              case("mag/arcsec2")
-                call ConvertArrayToMagPerSqArcsec("K",array, lambdaImage, dx, objectDistance)
+                call ConvertArrayToMagPerSqArcsec("K",array, dx, objectDistance)
              case DEFAULT
                 call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
              end select
