@@ -1636,7 +1636,8 @@ contains
                    do k = 1, nMuMie
                       do i1 = 1, 4
                          do i2 = 1, 4
-                            temp(j,k,i1,i2)= miePhase(i,j,k)%element(i1,i2)
+! temp is real so need to explicitly convert from double precision to avoid compiler warning
+                            temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
                          enddo
                       enddo
                    enddo

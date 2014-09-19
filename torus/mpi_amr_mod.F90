@@ -3570,7 +3570,7 @@ end subroutine writeRadialFile
     integer :: subcell
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen, rVec
-    real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas,kappaExt
+    real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas
     real(double) :: temperature, r
     character(len=*) :: thisFile
     integer :: ierr
@@ -3626,7 +3626,8 @@ end subroutine writeRadialFile
           else if (grid%geometry == "SB_coolshk") then
              write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, p, temperature/(2.33d0*mHydrogen/kerg)
           else
-             rpress = globalSourceArray(1)%luminosity * ((kappaAbs+(1.d0-inputgFac)*kappaSca)/1.d10)/ (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
+             rpress = globalSourceArray(1)%luminosity * ((kappaAbs+(1.d0-inputgFac)*kappaSca)/1.d10)/ &
+                  (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
              write(20,'(1p,11e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, radmom, rpress, &
                   temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
@@ -4277,7 +4278,6 @@ end subroutine writeRadialFile
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE), ierr
     real :: kappap
-    real(double) :: kappasca
     logical :: stillLooping
     integer :: sendThread
     logical :: hitGrid
@@ -4383,7 +4383,7 @@ end subroutine writeRadialFile
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
     type(VECTOR) :: uHat, position, rVec
-    real(double) :: loc(5), tauAbs, tauSca, tau, flag
+    real(double) :: loc(5), tauAbs, tauSca, flag
     integer, parameter :: nStorage = 6
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 30
@@ -4391,7 +4391,6 @@ end subroutine writeRadialFile
     real(double) :: kappaAbs, kappaSca
     logical :: stillLooping
     integer :: sendThread
-    logical :: hitGrid
 
     thisOctal => grid%octreeRoot
     position = rVec

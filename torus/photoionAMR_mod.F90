@@ -1403,7 +1403,7 @@ end subroutine radiationHydro
     logical, save :: firstWarning = .true.
     real(double) :: maxDiffRadius(1:100)
     real(double) :: maxDiffRadius1(1:100), maxDiffRadius2(1:100)
-    real(double) :: maxDiffRadius3(1:100), tauWanted, photonMomentum, dummy
+    real(double) :: maxDiffRadius3(1:100), tauWanted, photonMomentum
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
 
@@ -2607,7 +2607,8 @@ end subroutine radiationHydro
 !                               uHat = randomUnitVector() ! isotropic scattering
 
                                vec_tmp = uHat
-                               uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:))
+                               uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, &
+                                    miePhase, nDustType, nMuMie)
 !                               write(*,*) "scattering angle ",radtodeg*acos(uNew.dot.uHat)
                                uHat = uNew
 
@@ -2704,7 +2705,8 @@ end subroutine radiationHydro
 
 
 
-                            thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHatDash * photonMomentum * photonPacketWeight
+                            thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHatDash * &
+                                 photonMomentum * photonPacketWeight
 
                                nScat = nScat + 1
 
@@ -3607,7 +3609,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   use mpi
 
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec, uHatDash, rHat, zHat
+   type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
    type(PHASEMATRIX) :: miePhase(:,:,:)
    integer :: nMuMie
    type(OCTAL), pointer :: thisOctal
@@ -3973,7 +3975,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 !          call locate(lamArray, nLambda, lambda, ilambda)
           if (.not.outOfTime) then 
              call updateGrid(grid, thisOctal, subcell, thisFreq, &
-                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, rVec, "sec", miePhase, nMuMie)
+                  dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam, nfreq, freq, sourcePhoton, uHat, rVec, &
+                  "sec", miePhase, nMuMie)
           endif
 
           oldOctal => thisOctal
@@ -5516,8 +5519,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     endif
 
-
-!    write(*,*) "insubcell ",inSubcell(thisOctal, subcell, rvec), flag
+! Kludge to avoid compiler warning
+    if (.false.) write(*,*) "insubcell ",inSubcell(thisOctal, subcell, rvec), flag, nmumie
 
     rVecTemp = rVec
     nDist = 50

@@ -4177,7 +4177,7 @@ contains
   recursive subroutine damp(thisoctal)
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    real(double) :: speed, fac
+!    real(double) :: speed, fac
     integer :: subcell, i
   
     do subcell = 1, thisoctal%maxchildren
