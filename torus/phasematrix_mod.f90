@@ -324,7 +324,7 @@ contains
        lamArray, nLambda, miePhase, nDustType, nMuMie, weight)
     use amr_mod, only : returnKappa
     use gridtype_mod
-    use inputs_mod, only : inputGfac, henyeyGreensteinPhaseFunction
+!    use inputs_mod, only : inputGfac, henyeyGreensteinPhaseFunction
     use utils_mod, only: locate
     type(GRIDTYPE) ::  grid
     type(OCTAL), pointer :: currentOctal

@@ -1087,10 +1087,8 @@ contains
 
   function HD169142Disc(point) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
-         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
-    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
-         rGapInner2, rGapOuter2, heightInner, ringHeight
+         alphaDisc, rho0, smoothInnerEdge, rGapInner1, rGapOuter1, rhoGap, rhoAmbient
+    use inputs_mod, only :   rGapInner2, rGapOuter2, heightInner, ringHeight
     use utils_mod, only: solveQuad
 
     TYPE(VECTOR), INTENT(IN) :: point

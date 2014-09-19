@@ -12,14 +12,14 @@ module dust_mod
 
   implicit none
   public
-  private :: fillGridMie, fillAMRgridMie, dustPropertiesfromFile, returnScaleHeight, &
-       getTemperatureDensityRundust,  rtnewtdust, Equation2dust, parseGrainType, &
-       getMeanMass2
+  private :: fillGridMie, fillAMRgridMie, dustPropertiesfromFile, &
+       parseGrainType, &
+       getMeanMass2 !, getTemperatureDensityRundust, returnScaleHeight,  rtnewtdust, Equation2dust
 
 contains
 
   subroutine effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, fillingFactor)
-    real :: fillingFactor, epsReal, epsImag
+    real :: fillingFactor
     complex :: epsilonEffective, epsilonMatrix, epsilonInclusion, epsilonEffectiveMG
 
 ! maxwell garnett formula (see Maron & Maron, 2005, MNRAS, 357, 873)
@@ -80,8 +80,8 @@ contains
       complex :: eps, epsMatrix, epsInclusion
       real :: f
 
-      bruggeman = f * (epsInclusion - eps)/(epsInclusion+2.*eps) + &
-           (1.-f)*(epsMatrix - eps)/(epsMatrix + 2.*eps)
+      bruggeman = real(f * (epsInclusion - eps)/(epsInclusion+2.*eps) + &
+           (1.-f)*(epsMatrix - eps)/(epsMatrix + 2.*eps))
     end function bruggeman
 
   subroutine refractiveIndexToPermittivity(n, k, epsilonReal, epsilonImg)
@@ -102,12 +102,10 @@ contains
     use phasematrix_mod, only : phasematrix
     type(PHASEMATRIX) :: miePhase(:,:,:)
     integer :: nMuMie
-    real :: lambda(:), thisLambda
+    real :: lambda(:)
     integer :: nLambda
     real :: ang, mu
     integer :: i, j, k
-    character(len=80) :: thisFile
-    character(len=4) :: lamLabel
 
 
     if (writeoutput) then
@@ -393,7 +391,7 @@ contains
 !          if (writeoutput) write(*,*) "before ",mreal(i),mimg(i)
           call refractiveIndexToPermittivity(mReal(i), mImg(i), epsilonReal, epsilonImg)
           epsilonMatrix = cmplx(epsilonReal, epsilonImg)
-          epsilonInclusion = cmplx(1.d0, 0.d0)
+          epsilonInclusion = cmplx(1.e0, 0.e0)
           call effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, porousFillingFactor)
           epsilonReal = real(epsilonEffective)
           epsilonImg = aimag(epsilonEffective)
@@ -1128,80 +1126,80 @@ contains
 
   end subroutine sublimateDust
 
-  subroutine returnScaleHeight(grid, x,  height)
-    type(gridtype) :: grid
-    integer :: nz
-    real :: x, z(10000), height
-    real :: subcellsize(10000), temperature(10000)
-    real(double) :: rho(10000)
-    real(double) :: rho_over_e
-    integer :: i, j
-    nz  = 0
-    temperature = 0.; subcellSize = 0.; rho = 0.0; z=0.d0
-    call getTemperatureDensityRundust(grid, z, subcellsize, rho, temperature, x, 0., nz, 1.)
-
-
-    if (rho(2) >= rho(1)) then
-       height = 1.e20
-       goto 666
-    endif
-
-    rho_over_e = rho(1) / exp(1.d0)
-
-    if (rho_over_e < rho(nz)) then
-       height = z(nz) /1.e10
-    else
-       j = 1
-       do i = 1, nz
-          if ((rho_over_e < rho(i)).and.(rho_over_e > rho(i+1))) then
-             j = i
-             exit
-          endif
-       enddo
-       height = real(z(j) + (z(j+1)-z(j))*(rho_over_e - rho(j))/(rho(j+1)-rho(i)))
-       height = height / 1.e10
-    endif
-666 continue
-  end subroutine returnScaleHeight
-
-  subroutine getTemperatureDensityRundust(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    integer :: nz
-    real(double) :: rho(:)
-    real ::temperature(:), zAxis(:), subcellsize(:)
-    real :: xPos, yPos
-    integer :: subcell
-    real(double) :: rhotemp
-    real :: temptemp
-    real :: direction
-    type(VECTOR) :: currentPos, temp
-    real :: halfSmallestSubcell
-
-    nz = 0
-    halfSmallestSubcell = real(grid%halfSmallestSubcell)
-
-    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
-
-    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
-       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
-            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
-       thisOctal%chiLine(subcell) = 1.e-30
-       !       if (thisOctal%inFlow(subcell)) then
-       nz = nz + 1
-       temperature(nz) = temptemp
-       rho(nz) = rhotemp
-       temp = subCellCentre(thisOctal, subcell)
-       zAxis(nz) = real(temp%z)
-       subcellsize(nz) = real(thisOctal%subcellsize)
-       !       endif
-       currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
-       !       else
-       !          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
-       !       endif
-    end do
-    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
-  end subroutine getTemperatureDensityRundust
+!!$  subroutine returnScaleHeight(grid, x,  height)
+!!$    type(gridtype) :: grid
+!!$    integer :: nz
+!!$    real :: x, z(10000), height
+!!$    real :: subcellsize(10000), temperature(10000)
+!!$    real(double) :: rho(10000)
+!!$    real(double) :: rho_over_e
+!!$    integer :: i, j
+!!$    nz  = 0
+!!$    temperature = 0.; subcellSize = 0.; rho = 0.0; z=0.d0
+!!$    call getTemperatureDensityRundust(grid, z, subcellsize, rho, temperature, x, 0., nz, 1.)
+!!$
+!!$
+!!$    if (rho(2) >= rho(1)) then
+!!$       height = 1.e20
+!!$       goto 666
+!!$    endif
+!!$
+!!$    rho_over_e = rho(1) / exp(1.d0)
+!!$
+!!$    if (rho_over_e < rho(nz)) then
+!!$       height = z(nz) /1.e10
+!!$    else
+!!$       j = 1
+!!$       do i = 1, nz
+!!$          if ((rho_over_e < rho(i)).and.(rho_over_e > rho(i+1))) then
+!!$             j = i
+!!$             exit
+!!$          endif
+!!$       enddo
+!!$       height = real(z(j) + (z(j+1)-z(j))*(rho_over_e - rho(j))/(rho(j+1)-rho(i)))
+!!$       height = height / 1.e10
+!!$    endif
+!!$666 continue
+!!$  end subroutine returnScaleHeight
+!!$
+!!$  subroutine getTemperatureDensityRundust(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
+!!$    type(GRIDTYPE) :: grid
+!!$    type(octal), pointer   :: thisOctal
+!!$    integer :: nz
+!!$    real(double) :: rho(:)
+!!$    real ::temperature(:), zAxis(:), subcellsize(:)
+!!$    real :: xPos, yPos
+!!$    integer :: subcell
+!!$    real(double) :: rhotemp
+!!$    real :: temptemp
+!!$    real :: direction
+!!$    type(VECTOR) :: currentPos, temp
+!!$    real :: halfSmallestSubcell
+!!$
+!!$    nz = 0
+!!$    halfSmallestSubcell = real(grid%halfSmallestSubcell)
+!!$
+!!$    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
+!!$
+!!$    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+!!$       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+!!$            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
+!!$       thisOctal%chiLine(subcell) = 1.e-30
+!!$       !       if (thisOctal%inFlow(subcell)) then
+!!$       nz = nz + 1
+!!$       temperature(nz) = temptemp
+!!$       rho(nz) = rhotemp
+!!$       temp = subCellCentre(thisOctal, subcell)
+!!$       zAxis(nz) = real(temp%z)
+!!$       subcellsize(nz) = real(thisOctal%subcellsize)
+!!$       !       endif
+!!$       currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+!!$       !       else
+!!$       !          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+!!$       !       endif
+!!$    end do
+!!$    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
+!!$  end subroutine getTemperatureDensityRundust
 
   recursive subroutine stripDustAway(thisOctal, fac, radius, sourcePos)
 
@@ -1297,36 +1295,36 @@ contains
     enddo
   end subroutine createRossArray
 
-  real function rtnewtdust(x1,x2,xacc, p1, p2) result(junk)
+!!$  real function rtnewtdust(x1,x2,xacc, p1, p2) result(junk)
+!!$
+!!$    real :: x1, x2, xacc, p1, p2
+!!$    integer :: jmax, j
+!!$    real ::  dx, f, df
+!!$    parameter (jmax=20)
+!!$    df =0.; f = 0.; dx = 0.
+!!$    junk = 0.5 * (x1+x2)
+!!$    do j=1,jmax
+!!$       call equation2dust(junk,f,df,p1,p2)
+!!$       dx=f/df
+!!$       junk=junk-dx
+!!$       if((x1-junk)*(junk-x2).lt.0.) then
+!!$          write(*,*) 'RTNEWT: jumped out of brackets',p1,p2,junk
+!!$          stop
+!!$       endif
+!!$       if(abs(dx).lt.xacc) return
+!!$    enddo
+!!$    write(*,*) 'rtnewt exceeding maximum iterations'
+!!$  end function rtnewtdust
 
-    real :: x1, x2, xacc, p1, p2
-    integer :: jmax, j
-    real ::  dx, f, df
-    parameter (jmax=20)
-    df =0.; f = 0.; dx = 0.
-    junk = 0.5 * (x1+x2)
-    do j=1,jmax
-       call equation2dust(junk,f,df,p1,p2)
-       dx=f/df
-       junk=junk-dx
-       if((x1-junk)*(junk-x2).lt.0.) then
-          write(*,*) 'RTNEWT: jumped out of brackets',p1,p2,junk
-          stop
-       endif
-       if(abs(dx).lt.xacc) return
-    enddo
-    write(*,*) 'rtnewt exceeding maximum iterations'
-  end function rtnewtdust
 
-
-  subroutine Equation2dust(mu0, eq2, deq2, r, mu)
-    real :: r, mu, mu0
-    real :: eq2, deq2
-
-    eq2 = mu0**3 + (r-1.)*mu0 -r*mu
-    deq2 = 3.*mu0**2 + r - 1.
-
-  end subroutine Equation2dust
+!!$  subroutine Equation2dust(mu0, eq2, deq2, r, mu)
+!!$    real :: r, mu, mu0
+!!$    real :: eq2, deq2
+!!$
+!!$    eq2 = mu0**3 + (r-1.)*mu0 -r*mu
+!!$    deq2 = 3.*mu0**2 + r - 1.
+!!$
+!!$  end subroutine Equation2dust
 
 
   subroutine parseGrainType(grainString, nTypes, name, abundance)
@@ -1433,8 +1431,8 @@ contains
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
-    type(VECTOR) :: uHat, uNew, vec_tmp
-    real(double) :: cosang
+!    type(VECTOR) :: uHat, uNew, vec_tmp
+!    real(double) :: cosang
     integer :: nMuMie
     real(double) :: mu
     real :: total_dust_abundance

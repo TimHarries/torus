@@ -322,7 +322,7 @@ contains
   subroutine doPhysics(grid)
     use phasematrix_mod
     use dust_mod
-    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics, writepolar, polarwavelength
+    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics!, UV_vector
@@ -912,7 +912,7 @@ contains
 end subroutine setupGlobalSources
 
 subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
-  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile, includeGasOpacity, writepolar
+  use inputs_mod, only : mie, nDustType, readDustFromFile, writeDustToFile
   use phasematrix_mod
   use dust_mod
   use gas_opacity_mod

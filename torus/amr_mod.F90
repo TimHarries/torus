@@ -11577,9 +11577,9 @@ end function readparameterfrom2dmap
 
   subroutine HD169142Disk(thisOctal,subcell,grid)
     use density_mod, only: density, HD169142Disc
-    use inputs_mod, only : rOuter, betaDisc, rGapOuter2 !, rInner, erInner, erOuter, alphaDisc
-    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner, rGapInner1, rGapInner2
-    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
+    use inputs_mod, only : rOuter, betaDisc !, rGapOuter2, rInner, erInner, erOuter, alphaDisc
+    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, rGapInner1, rGapInner2
+    use inputs_mod, only : height, dustPhysics, photoionization
     use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
