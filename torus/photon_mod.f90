@@ -1223,6 +1223,7 @@ contains
                    call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
                    write(*,*) "deprecated"
                    stop
+! This subroutine is in photoion_mod and has been commented out to avoid compiler warnings (DMA)
 !                   call  getWavelengthBiasPhotoion(grid, thisOctal, subcell, lambda, dlam, nLambda, ilambda, fac, .true.)
                    thisPhoton%lambda = lambda(ilambda)
                    thisPhoton%stokes = thisPhoton%stokes * fac

@@ -1224,7 +1224,7 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, nDensity
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs
 
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho, nDustType
@@ -3506,24 +3506,24 @@ end subroutine radiationHydro
 end subroutine photoIonizationloopAMR
 
 
-recursive subroutine defineDiffusionZone(grid, maxRadius)
-  use mpi
-  use inputs_mod,only : resetDiffusion
-  type(GRIDTYPE) :: grid
-  integer :: nDiff
-  real(double) :: maxRadius, temp
-  integer :: ierr
-  resetDiffusion = .true.
-  ndiff = 0
-  call defineDiffusionOnKappap(grid, grid%octreeRoot, 1., nDiff)
-  maxRadius = 0.d0
-  call findMaxRadiusToDiffusionCell(grid%octreeRoot, maxRadius)
-  call MPI_ALLREDUCE(maxRadius, temp, 1, MPI_DOUBLE_PRECISION, MPI_MAX, &
-       amrCommunicator, ierr)
-  maxRadius = temp
-  if (myrankWorldGlobal == 1) write(*,*) "Maximum diffusion radius ",maxRadius
-  call setDiffusionZoneOnRadius(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), maxRadius)
-end subroutine defineDiffusionZone
+!!$recursive subroutine defineDiffusionZone(grid, maxRadius)
+!!$  use mpi
+!!$  use inputs_mod,only : resetDiffusion
+!!$  type(GRIDTYPE) :: grid
+!!$  integer :: nDiff
+!!$  real(double) :: maxRadius, temp
+!!$  integer :: ierr
+!!$  resetDiffusion = .true.
+!!$  ndiff = 0
+!!$  call defineDiffusionOnKappap(grid, grid%octreeRoot, 1., nDiff)
+!!$  maxRadius = 0.d0
+!!$  call findMaxRadiusToDiffusionCell(grid%octreeRoot, maxRadius)
+!!$  call MPI_ALLREDUCE(maxRadius, temp, 1, MPI_DOUBLE_PRECISION, MPI_MAX, &
+!!$       amrCommunicator, ierr)
+!!$  maxRadius = temp
+!!$  if (myrankWorldGlobal == 1) write(*,*) "Maximum diffusion radius ",maxRadius
+!!$  call setDiffusionZoneOnRadius(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), maxRadius)
+!!$end subroutine defineDiffusionZone
 
 recursive subroutine findMaxRadiusToDiffusionCell(thisOctal, maxRadius)
   TYPE(OCTAL),pointer :: thisOctal
@@ -4865,122 +4865,122 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     enddo
   end subroutine quickThermalCalc
 
-  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
-    use mpi
-    use inputs_mod, only : tMinGlobal, hydrodynamics
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisOctal
-    real(double) :: epsOverDeltaT
-    real(double) :: totalHeating
-    integer :: subcell
-    logical :: converged, found
-    real :: t1, t2, tm
-    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
-    real :: deltaT
-    real :: underCorrection = 1.
-    integer :: nIter
-    
-
-    do subcell = 1, thisOctal%maxChildren
-
-       if (.not.thisOctal%hasChild(subcell)) then
-
- !THAW - trying to root out mpi things
-          if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
-          
-             if (hydrodynamics) then
-                if (thisOctal%ghostCell(subcell)) cycle
-             endif
-
-
-
-             if (thisOctal%inflow(subcell)) then
-                
-!             write(*,*) thisOctal%nCrossings(subcell),thisOctal%undersampled(subcell)
-                
-                if (.not.thisOctal%undersampled(subcell)) then
-                   
-                   
-                   call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
-!                if (thisOctal%ionFrac(subcell,1) > 0.9d0) write(*,*) "total heating ",totalheating
-                   if (totalHeating < 1.d-30) then
-                      thisOctal%temperature(subcell) = tminGlobal
-                   else
-                      nIter = 0
-                      converged = .false.
-                      
-                      t1 = tMinGlobal
-                      t2 = 30000.
-!
-                      
-                      found = .true.
-                      
-                      if (found) then
-                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
-                         - totalHeating)
-                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
-                         - totalHeating)
-                         if (y1*y2 > 0.d0) then
-                            if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
-                               tm = t1
-!                               write(*,*) "Cell set to cold. Cooling is ", &
-!                                 HHecooling(grid, thisOctal, subcell, t1), " heating is ", totalHeating
-                            else
-                               tm  = t2
-                            write(*,*) "Cell set to hot. Cooling is ", &
-                                 HHecooling(grid, thisOctal, subcell, t1), " heating is ", totalHeating
-                            endif
-                            converged = .true.
-                         endif
-                         if (totalHeating < 1.d-30) then
-                            write(*,*) "no heating, set to cold ",totalheating
-                            tm = t1
-                            converged = .true.
-                         endif
-                         
-! Find root of heating and cooling by bisection
-                         
-                         do while(.not.converged)
-                            tm = 0.5*(t1+t2)
-                            y1 = (HHecooling(grid, thisOctal, subcell, t1) &
-                            - totalheating)
-                            y2 = (HHecooling(grid, thisOctal, subcell, t2) &
-                            - totalheating)
-                            ym = (HHecooling(grid, thisOctal, subcell, tm) &
-                            - totalheating)
-                            
-                            if (y1*ym < 0.d0) then
-                               t1 = t1
-                               t2 = tm
-                            else if (y2*ym < 0.d0) then
-                               t1 = tm
-                               t2 = t2
-                            else
-                               converged = .true.
-                               tm = 0.5*(t1+t2)
-                               write(*,*) t1, t2, y1,y2,ym
-                            endif
-                            
-                            if (abs((t1-t2)/t1) .le. 1.e-2) then
-                               converged = .true.
-                            endif
-                            niter = niter + 1
-!                         if (myrankGlobal == 1) write(*,*) niter,tm, abs(t1-t2)/t1
-                         enddo
-                      endif
-                      deltaT = tm - thisOctal%temperature(subcell)
-                      thisOctal%temperature(subcell) = &
-                      max(thisOctal%temperature(subcell) + underCorrection * deltaT,tMinGlobal)
-!                                write(*,*) thisOctal%temperature(subcell), niter
-                   endif
-                else
-                !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
-                endif
-             endif
-          end if
-       endif
-      enddo
-  end subroutine calculateThermalBalance
+!!$  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+!!$    use mpi
+!!$    use inputs_mod, only : tMinGlobal, hydrodynamics
+!!$    type(gridtype) :: grid
+!!$    type(octal), pointer   :: thisOctal
+!!$    real(double) :: epsOverDeltaT
+!!$    real(double) :: totalHeating
+!!$    integer :: subcell
+!!$    logical :: converged, found
+!!$    real :: t1, t2, tm
+!!$    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
+!!$    real :: deltaT
+!!$    real :: underCorrection = 1.
+!!$    integer :: nIter
+!!$    
+!!$
+!!$    do subcell = 1, thisOctal%maxChildren
+!!$
+!!$       if (.not.thisOctal%hasChild(subcell)) then
+!!$
+!!$ !THAW - trying to root out mpi things
+!!$          if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
+!!$          
+!!$             if (hydrodynamics) then
+!!$                if (thisOctal%ghostCell(subcell)) cycle
+!!$             endif
+!!$
+!!$
+!!$
+!!$             if (thisOctal%inflow(subcell)) then
+!!$                
+!!$!             write(*,*) thisOctal%nCrossings(subcell),thisOctal%undersampled(subcell)
+!!$                
+!!$                if (.not.thisOctal%undersampled(subcell)) then
+!!$                   
+!!$                   
+!!$                   call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+!!$!                if (thisOctal%ionFrac(subcell,1) > 0.9d0) write(*,*) "total heating ",totalheating
+!!$                   if (totalHeating < 1.d-30) then
+!!$                      thisOctal%temperature(subcell) = tminGlobal
+!!$                   else
+!!$                      nIter = 0
+!!$                      converged = .false.
+!!$                      
+!!$                      t1 = tMinGlobal
+!!$                      t2 = 30000.
+!!$!
+!!$                      
+!!$                      found = .true.
+!!$                      
+!!$                      if (found) then
+!!$                         y1 = (HHecooling(grid, thisOctal, subcell, t1) &
+!!$                         - totalHeating)
+!!$                         y2 = (HHecooling(grid, thisOctal, subcell, t2) &
+!!$                         - totalHeating)
+!!$                         if (y1*y2 > 0.d0) then
+!!$                            if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
+!!$                               tm = t1
+!!$!                               write(*,*) "Cell set to cold. Cooling is ", &
+!!$!                                 HHecooling(grid, thisOctal, subcell, t1), " heating is ", totalHeating
+!!$                            else
+!!$                               tm  = t2
+!!$                            write(*,*) "Cell set to hot. Cooling is ", &
+!!$                                 HHecooling(grid, thisOctal, subcell, t1), " heating is ", totalHeating
+!!$                            endif
+!!$                            converged = .true.
+!!$                         endif
+!!$                         if (totalHeating < 1.d-30) then
+!!$                            write(*,*) "no heating, set to cold ",totalheating
+!!$                            tm = t1
+!!$                            converged = .true.
+!!$                         endif
+!!$                         
+!!$! Find root of heating and cooling by bisection
+!!$                         
+!!$                         do while(.not.converged)
+!!$                            tm = 0.5*(t1+t2)
+!!$                            y1 = (HHecooling(grid, thisOctal, subcell, t1) &
+!!$                            - totalheating)
+!!$                            y2 = (HHecooling(grid, thisOctal, subcell, t2) &
+!!$                            - totalheating)
+!!$                            ym = (HHecooling(grid, thisOctal, subcell, tm) &
+!!$                            - totalheating)
+!!$                            
+!!$                            if (y1*ym < 0.d0) then
+!!$                               t1 = t1
+!!$                               t2 = tm
+!!$                            else if (y2*ym < 0.d0) then
+!!$                               t1 = tm
+!!$                               t2 = t2
+!!$                            else
+!!$                               converged = .true.
+!!$                               tm = 0.5*(t1+t2)
+!!$                               write(*,*) t1, t2, y1,y2,ym
+!!$                            endif
+!!$                            
+!!$                            if (abs((t1-t2)/t1) .le. 1.e-2) then
+!!$                               converged = .true.
+!!$                            endif
+!!$                            niter = niter + 1
+!!$!                         if (myrankGlobal == 1) write(*,*) niter,tm, abs(t1-t2)/t1
+!!$                         enddo
+!!$                      endif
+!!$                      deltaT = tm - thisOctal%temperature(subcell)
+!!$                      thisOctal%temperature(subcell) = &
+!!$                      max(thisOctal%temperature(subcell) + underCorrection * deltaT,tMinGlobal)
+!!$!                                write(*,*) thisOctal%temperature(subcell), niter
+!!$                   endif
+!!$                else
+!!$                !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!!$                endif
+!!$             endif
+!!$          end if
+!!$       endif
+!!$      enddo
+!!$  end subroutine calculateThermalBalance
 
   subroutine calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
     use mpi
@@ -6464,44 +6464,44 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   enddo
 end subroutine metalcoolingRate
   
-subroutine getSahaMilneFreq(table,temperature, thisFreq)
-  type(SAHAMILNETABLE) :: table
-  real(double) :: temperature, thisfreq, r, t, fac
-  integer :: i, j
+!!$subroutine getSahaMilneFreq(table,temperature, thisFreq)
+!!$  type(SAHAMILNETABLE) :: table
+!!$  real(double) :: temperature, thisfreq, r, t, fac
+!!$  integer :: i, j
+!!$
+!!$  t = max(5000.d0, min(20000.d0, temperature))
+!!$  call locate(table%temp, table%nTemp, t, i)
+!!$  call randomNumberGenerator(getDouble=r)
+!!$  call locate(table%Clyc(i,1:table%nfreq), table%nFreq, r, j)
+!!$  fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
+!!$  thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
+!!$end subroutine getSahaMilneFreq
 
-  t = max(5000.d0, min(20000.d0, temperature))
-  call locate(table%temp, table%nTemp, t, i)
-  call randomNumberGenerator(getDouble=r)
-  call locate(table%Clyc(i,1:table%nfreq), table%nFreq, r, j)
-  fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
-  thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
-end subroutine getSahaMilneFreq
-
-subroutine twoPhotonContinuum(thisFreq)
-
-! based on table ii of drake, victor, dalgarno, 1969, PhyRev Vol 180, pg 25
-
-  real(double) :: thisFreq
-  real :: y(21) = (/ 0., 0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, &
-       0.325, 0.350, 0.375, 0.400, 0.425, 0.450, 0.475, 0.500 /)
-  real :: hei(21) = (/ 0., 7.77e0, 2.52e1, 4.35e1, 5.99e1, 7.42e1, 8.64e1, 9.69e1, 1.06e2, 1.13e2, 1.20e2, 1.25e2, &
-       1.30e2, 1.34e2, 1.37e2, 1.40e2, 1.42e2, 1.43e2, 1.45e2, 1.45e2, 1.45e2 /)
-  real :: freq = 3.86e15, fac, r
-  real :: prob(21)
-  integer :: i
-  prob(1) = 0.
-  do i = 2, 21
-     prob(i) = prob(i-1) + (y(i)-y(i-1)) * hei(i)
-  enddo
-  prob(1:21) = prob(1:21)/prob(21)
-  thisFreq = 0.
-  do while((thisFreq*hcgs*ergtoev) < 13.6)
-     call randomNumberGenerator(getReal=r)
-     call locate(prob, 21, r, i)
-     fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
-     thisFreq = (1.-fac)*freq
-  enddo
-end subroutine twoPhotonContinuum
+!!$subroutine twoPhotonContinuum(thisFreq)
+!!$
+!!$! based on table ii of drake, victor, dalgarno, 1969, PhyRev Vol 180, pg 25
+!!$
+!!$  real(double) :: thisFreq
+!!$  real :: y(21) = (/ 0., 0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, &
+!!$       0.325, 0.350, 0.375, 0.400, 0.425, 0.450, 0.475, 0.500 /)
+!!$  real :: hei(21) = (/ 0., 7.77e0, 2.52e1, 4.35e1, 5.99e1, 7.42e1, 8.64e1, 9.69e1, 1.06e2, 1.13e2, 1.20e2, 1.25e2, &
+!!$       1.30e2, 1.34e2, 1.37e2, 1.40e2, 1.42e2, 1.43e2, 1.45e2, 1.45e2, 1.45e2 /)
+!!$  real :: freq = 3.86e15, fac, r
+!!$  real :: prob(21)
+!!$  integer :: i
+!!$  prob(1) = 0.
+!!$  do i = 2, 21
+!!$     prob(i) = prob(i-1) + (y(i)-y(i-1)) * hei(i)
+!!$  enddo
+!!$  prob(1:21) = prob(1:21)/prob(21)
+!!$  thisFreq = 0.
+!!$  do while((thisFreq*hcgs*ergtoev) < 13.6)
+!!$     call randomNumberGenerator(getReal=r)
+!!$     call locate(prob, 21, r, i)
+!!$     fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
+!!$     thisFreq = (1.-fac)*freq
+!!$  enddo
+!!$end subroutine twoPhotonContinuum
 
 subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
   type(GRIDTYPE) :: grid
@@ -6798,70 +6798,70 @@ subroutine addForbiddenLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
 end subroutine addForbiddenLines
 
 
-subroutine findForbiddenLine(lambda, grid, iIon, iTrans)
-  integer :: iIon, iTrans
-  type(GRIDTYPE) :: grid
-  real(double) :: lambda, lineLambda
-  logical :: foundLine
-  integer :: i, j
-
-  foundLine = .false.
-  do i = 3, grid%nIon
-     do j = 1, grid%ion(iIon)%nTransitions
-        lineLambda  =  cspeed * hcgs / (grid%ion(i)%transition(j)%energy / ergtoEV) / (angstromToCm)
-        if (abs((lineLambda -lambda)/lambda) < 0.01d0) then
-           foundLine = .true.
-           iIon = i
-           iTrans = j
-         endif
-     enddo
-  enddo
-  if (.not.foundLine) then
-     write(*,*) "Error finding forbidden line at: ",lambda
-     stop
-  endif
-end subroutine findForbiddenLine
-
-       
-subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-
-  integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
-  type(OCTAL) :: thisOctal
-  integer :: subcell
-  type(GRIDTYPE) :: grid
-  integer :: i, j, k
-  real :: fac, t, aj ,bj, cj
-  real(double) :: lineFreq !, lambda
-  real(double) :: emissivity
-!  real :: heII4686
-!  integer :: ilow, iup
-  integer,parameter :: nHeIILyman = 4
-!  real(double) :: heIILyman(4)
-!  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
-
-  ! HeI lines 
-
-  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
-  fac = real ( &
-       (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i)) )
-
-  do j = 1, 32
-     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
-     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
-     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
-     t = thisOctal%temperature(subcell)/1.e4
-     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
-     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
-          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
-
-     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
-     call locate(freq, nFreq, lineFreq, k)
-     k = k + 1
-     spectrum(k) = spectrum(k) + emissivity
-  enddo
-
-end subroutine addHeRecombinationLines
+!!$subroutine findForbiddenLine(lambda, grid, iIon, iTrans)
+!!$  integer :: iIon, iTrans
+!!$  type(GRIDTYPE) :: grid
+!!$  real(double) :: lambda, lineLambda
+!!$  logical :: foundLine
+!!$  integer :: i, j
+!!$
+!!$  foundLine = .false.
+!!$  do i = 3, grid%nIon
+!!$     do j = 1, grid%ion(iIon)%nTransitions
+!!$        lineLambda  =  cspeed * hcgs / (grid%ion(i)%transition(j)%energy / ergtoEV) / (angstromToCm)
+!!$        if (abs((lineLambda -lambda)/lambda) < 0.01d0) then
+!!$           foundLine = .true.
+!!$           iIon = i
+!!$           iTrans = j
+!!$         endif
+!!$     enddo
+!!$  enddo
+!!$  if (.not.foundLine) then
+!!$     write(*,*) "Error finding forbidden line at: ",lambda
+!!$     stop
+!!$  endif
+!!$end subroutine findForbiddenLine
+!!$
+!!$       
+!!$subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$
+!!$  integer :: nFreq
+!!$  real(double) :: spectrum(:), freq(:)
+!!$  type(OCTAL) :: thisOctal
+!!$  integer :: subcell
+!!$  type(GRIDTYPE) :: grid
+!!$  integer :: i, j, k
+!!$  real :: fac, t, aj ,bj, cj
+!!$  real(double) :: lineFreq !, lambda
+!!$  real(double) :: emissivity
+!!$!  real :: heII4686
+!!$!  integer :: ilow, iup
+!!$  integer,parameter :: nHeIILyman = 4
+!!$!  real(double) :: heIILyman(4)
+!!$!  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
+!!$
+!!$  ! HeI lines 
+!!$
+!!$  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
+!!$  fac = real ( &
+!!$       (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i)) )
+!!$
+!!$  do j = 1, 32
+!!$     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
+!!$     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
+!!$     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
+!!$     t = thisOctal%temperature(subcell)/1.e4
+!!$     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
+!!$     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
+!!$          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
+!!$
+!!$     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
+!!$     call locate(freq, nFreq, lineFreq, k)
+!!$     k = k + 1
+!!$     spectrum(k) = spectrum(k) + emissivity
+!!$  enddo
+!!$
+!!$end subroutine addHeRecombinationLines
 
 subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
   use utils_mod, only: hunt
@@ -7180,73 +7180,73 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
   end subroutine zeroCornerEmissivity
 
 
-  function getRandomWavelengthPhotoion(grid, thisOctal, subcell, lamArray, nLambda) result(thisLambda)
-
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    real :: thisLambda
-    integer :: nFreq
-    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
-    real(double) :: nuStart, nuEnd, r, fac
-    integer :: nLambda
-    real :: lamArray(:)
-    integer :: i
-
-    nFreq = 1000
-
-    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), dFreq(1:nFreq))
-    nuStart = cSpeed / (1000.d4 * 1.d-8)
-    nuEnd = cSpeed / (10.d0 * 1.d-8)
-
-    do i = 1, nFreq
-       freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
-       freq(i) = 10.d0**freq(i)
-    enddo
-    do i = 2, nFreq-1
-       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
-    enddo
-    dfreq(1) = (freq(2)-freq(1))
-    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
-
-
-    spectrum = 1.d-30
-
-    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-    
-
-    do i = 1, nFreq
-       lamSpec(i) = cspeed/freq(i)
-       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
-    enddo
-    lamSpec = lamSpec * 1.d8
-
-    allocate(tSpec(1:nFreq))
-  
-    tSpec(1:nFreq) = spectrum(1:nFreq)
-
-    do i = 2, nFreq
-       tSpec(i) = tSpec(i) + tSpec(i-1)
-    enddo
-    tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
-    if (tSpec(nFreq) > 0.d0) then
-       tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
-       call randomNumberGenerator(getDouble=r)
-       call locate(tSpec, nFreq, r, i)
-       fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
-       thisLambda = real(lamspec(i) + fac * (lamspec(i+1)-lamspec(i)))
-    else
-       thisLambda = 1000.e4
-  endif
-    
-  deallocate(freq, spectrum, lamSpec, dfreq)
-
-  end function getRandomWavelengthPhotoion
+!!$  function getRandomWavelengthPhotoion(grid, thisOctal, subcell, lamArray, nLambda) result(thisLambda)
+!!$
+!!$    type(GRIDTYPE) :: grid
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    integer :: subcell
+!!$    real :: thisLambda
+!!$    integer :: nFreq
+!!$    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
+!!$    real(double) :: nuStart, nuEnd, r, fac
+!!$    integer :: nLambda
+!!$    real :: lamArray(:)
+!!$    integer :: i
+!!$
+!!$    nFreq = 1000
+!!$
+!!$    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), dFreq(1:nFreq))
+!!$    nuStart = cSpeed / (1000.d4 * 1.d-8)
+!!$    nuEnd = cSpeed / (10.d0 * 1.d-8)
+!!$
+!!$    do i = 1, nFreq
+!!$       freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
+!!$       freq(i) = 10.d0**freq(i)
+!!$    enddo
+!!$    do i = 2, nFreq-1
+!!$       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+!!$    enddo
+!!$    dfreq(1) = (freq(2)-freq(1))
+!!$    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
+!!$
+!!$
+!!$    spectrum = 1.d-30
+!!$
+!!$    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+!!$    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+!!$    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!!$    
+!!$
+!!$    do i = 1, nFreq
+!!$       lamSpec(i) = cspeed/freq(i)
+!!$       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
+!!$    enddo
+!!$    lamSpec = lamSpec * 1.d8
+!!$
+!!$    allocate(tSpec(1:nFreq))
+!!$  
+!!$    tSpec(1:nFreq) = spectrum(1:nFreq)
+!!$
+!!$    do i = 2, nFreq
+!!$       tSpec(i) = tSpec(i) + tSpec(i-1)
+!!$    enddo
+!!$    tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
+!!$    if (tSpec(nFreq) > 0.d0) then
+!!$       tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
+!!$       call randomNumberGenerator(getDouble=r)
+!!$       call locate(tSpec, nFreq, r, i)
+!!$       fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
+!!$       thisLambda = real(lamspec(i) + fac * (lamspec(i+1)-lamspec(i)))
+!!$    else
+!!$       thisLambda = 1000.e4
+!!$  endif
+!!$    
+!!$  deallocate(freq, spectrum, lamSpec, dfreq)
+!!$
+!!$  end function getRandomWavelengthPhotoion
 
 
   recursive subroutine calculateEnergyFromTemperature(thisOctal)
@@ -8050,30 +8050,30 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
 #ifdef MPI
 
-  subroutine  checkSetsHaveSameNumberOfOctals(grid, iThread)
-    use mpi
-    type(GRIDTYPE) :: grid
-    integer :: iThread
-    integer, allocatable :: nVoxels(:), temp(:)
-    integer :: ierr, i
-    logical :: same
-    allocate(nVoxels(1:NHydroSetsGlobal), temp(1:NHydroSetsGlobal))
-    nVoxels = 0
-    temp = 0
-    call countVoxelsOnThread(grid%octreeRoot, nVoxels(myHydroSetGlobal+1))
-    call mpi_allreduce(nVoxels, temp, nHydroSetsGlobal, &
-         MPI_INTEGER, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
-         ierr)
-    nVoxels = temp
-    same = .true.
-    do i = 1, size(nVoxels)
-       if (any(nVoxels(i) /= nVoxels)) same = .false.
-    enddo
-    if (.not.same) then
-       write(*,*) "ERROR!! Octal numbers differ for thread ",ithread, " sets ",nVoxels
-    endif
-    deallocate(nVoxels)
-  end subroutine checkSetsHaveSameNumberOfOctals
+!!$  subroutine  checkSetsHaveSameNumberOfOctals(grid, iThread)
+!!$    use mpi
+!!$    type(GRIDTYPE) :: grid
+!!$    integer :: iThread
+!!$    integer, allocatable :: nVoxels(:), temp(:)
+!!$    integer :: ierr, i
+!!$    logical :: same
+!!$    allocate(nVoxels(1:NHydroSetsGlobal), temp(1:NHydroSetsGlobal))
+!!$    nVoxels = 0
+!!$    temp = 0
+!!$    call countVoxelsOnThread(grid%octreeRoot, nVoxels(myHydroSetGlobal+1))
+!!$    call mpi_allreduce(nVoxels, temp, nHydroSetsGlobal, &
+!!$         MPI_INTEGER, MPI_SUM, amrParallelCommunicator(myrankGlobal), &
+!!$         ierr)
+!!$    nVoxels = temp
+!!$    same = .true.
+!!$    do i = 1, size(nVoxels)
+!!$       if (any(nVoxels(i) /= nVoxels)) same = .false.
+!!$    enddo
+!!$    if (.not.same) then
+!!$       write(*,*) "ERROR!! Octal numbers differ for thread ",ithread, " sets ",nVoxels
+!!$    endif
+!!$    deallocate(nVoxels)
+!!$  end subroutine checkSetsHaveSameNumberOfOctals
     
   subroutine updateGridMPIphoto(grid, amrParComm)
     use gridtype_mod, only : gridtype
@@ -8199,83 +8199,83 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   end subroutine updateGridMPIphoto
 
-  subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-       freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-!    use inputs_mod, only : smallestCellSize
-    type(GRIDTYPE) :: grid
-    real(double) :: spectrum(2000)
-    real(double) :: freq(:), dfreq(:), thisFreq
-    real :: lamArray(:)
-    integer :: nFreq, nlambda
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    type(VECTOR) :: rVec, uHat, uHatDash, rHat, zHat
-    real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist
-    real :: kappaP
-    logical, save :: firstTime = .true.
-    integer, parameter :: ny = 100
-    real(double) :: y(ny), prob(ny), thisY
-    integer :: i, n, iLoop
-    real(double), parameter :: gamma = 3.d0
-
-    if (firstTime) then
-       do i = 1, ny
-          y(i) = dble(i-1)/dble(ny-1)
-          prob(i) = 0.d0
-          do n = 1, 1000
-             prob(i) = prob(i) + 2.d0 * (-1.d0)**(n+1) * y(i)**(n**2)
-          enddo
-       enddo
-       prob(ny) = 1.d0
-       firstTime = .false.
-!       do i = 1, ny
-!          write(*,*) i, y(i), prob(i)
-!       enddo
-    endif
-       
-       
-
-    call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
-    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
-    iLoop = 0
-    call distanceToNearestWall(rVec, r0, thisOctal, subcell)
-    do
-       iLoop = iLoop + 1
-       if (iLoop > 100000) then
-          write(*,*) "modified random walk loop exitted early"
-          exit
-       endif
-       call randomNumberGenerator(getDouble=zeta)
-       call locate(prob, ny, zeta, i)
-       thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
-       mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
-       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
-       uHatDash = uHat
-       if (thisOctal%twoD .and. .not. cart2d) then
-          rHat = VECTOR(rVec%x, rVec%y, 0.d0)
-          call normalize(rHat)
-          zHat = VECTOR(0.d0, 0.d0, 1.d0)
-          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
-       endif
-       if (thisOctal%oneD) then
-          rHat = VECTOR(rVec%x, rVec%y, rVec%z)
-          call normalize(rHat)
-          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
-       endif
-
-       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
-       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
-       rVec = rVec + uHat * r0
-       uHat = randomUnitVector()
-       call distanceToNearestWall(rVec, r0, thisOctal, subcell)
-       if (r0 < gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
-    enddo
-    spectrum = 1.d-50
-    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
-!    write(*,*) "exited modified random walk after ",i
-  end subroutine modifiedRandomWalk
-       
+!!$  subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+!!$       freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+!!$!    use inputs_mod, only : smallestCellSize
+!!$    type(GRIDTYPE) :: grid
+!!$    real(double) :: spectrum(2000)
+!!$    real(double) :: freq(:), dfreq(:), thisFreq
+!!$    real :: lamArray(:)
+!!$    integer :: nFreq, nlambda
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    integer :: subcell
+!!$    type(VECTOR) :: rVec, uHat, uHatDash, rHat, zHat
+!!$    real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist
+!!$    real :: kappaP
+!!$    logical, save :: firstTime = .true.
+!!$    integer, parameter :: ny = 100
+!!$    real(double) :: y(ny), prob(ny), thisY
+!!$    integer :: i, n, iLoop
+!!$    real(double), parameter :: gamma = 3.d0
+!!$
+!!$    if (firstTime) then
+!!$       do i = 1, ny
+!!$          y(i) = dble(i-1)/dble(ny-1)
+!!$          prob(i) = 0.d0
+!!$          do n = 1, 1000
+!!$             prob(i) = prob(i) + 2.d0 * (-1.d0)**(n+1) * y(i)**(n**2)
+!!$          enddo
+!!$       enddo
+!!$       prob(ny) = 1.d0
+!!$       firstTime = .false.
+!!$!       do i = 1, ny
+!!$!          write(*,*) i, y(i), prob(i)
+!!$!       enddo
+!!$    endif
+!!$       
+!!$       
+!!$
+!!$    call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
+!!$    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
+!!$    iLoop = 0
+!!$    call distanceToNearestWall(rVec, r0, thisOctal, subcell)
+!!$    do
+!!$       iLoop = iLoop + 1
+!!$       if (iLoop > 100000) then
+!!$          write(*,*) "modified random walk loop exitted early"
+!!$          exit
+!!$       endif
+!!$       call randomNumberGenerator(getDouble=zeta)
+!!$       call locate(prob, ny, zeta, i)
+!!$       thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
+!!$       mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
+!!$       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
+!!$       uHatDash = uHat
+!!$       if (thisOctal%twoD .and. .not. cart2d) then
+!!$          rHat = VECTOR(rVec%x, rVec%y, 0.d0)
+!!$          call normalize(rHat)
+!!$          zHat = VECTOR(0.d0, 0.d0, 1.d0)
+!!$          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+!!$       endif
+!!$       if (thisOctal%oneD) then
+!!$          rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+!!$          call normalize(rHat)
+!!$          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
+!!$       endif
+!!$
+!!$       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
+!!$       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
+!!$       rVec = rVec + uHat * r0
+!!$       uHat = randomUnitVector()
+!!$       call distanceToNearestWall(rVec, r0, thisOctal, subcell)
+!!$       if (r0 < gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
+!!$    enddo
+!!$    spectrum = 1.d-50
+!!$    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!!$    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+!!$!    write(*,*) "exited modified random walk after ",i
+!!$  end subroutine modifiedRandomWalk
+!!$       
 
 
 

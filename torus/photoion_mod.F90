@@ -1763,44 +1763,44 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   enddo
 end subroutine metalcoolingRate
 
-subroutine getSahaMilneFreq(table,temperature, thisFreq)
-  type(SAHAMILNETABLE) :: table
-  real(double) :: temperature, thisfreq, r, t, fac
-  integer :: i, j
+!!$subroutine getSahaMilneFreq(table,temperature, thisFreq)
+!!$  type(SAHAMILNETABLE) :: table
+!!$  real(double) :: temperature, thisfreq, r, t, fac
+!!$  integer :: i, j
+!!$
+!!$  t = max(5000.d0, min(20000.d0, temperature))
+!!$  call locate(table%temp, table%nTemp, t, i)
+!!$  call randomNumberGenerator(getDouble=r)
+!!$  call locate(table%Clyc(i,1:table%nfreq), table%nFreq, r, j)
+!!$  fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
+!!$  thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
+!!$end subroutine getSahaMilneFreq
 
-  t = max(5000.d0, min(20000.d0, temperature))
-  call locate(table%temp, table%nTemp, t, i)
-  call randomNumberGenerator(getDouble=r)
-  call locate(table%Clyc(i,1:table%nfreq), table%nFreq, r, j)
-  fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
-  thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
-end subroutine getSahaMilneFreq
-
-subroutine twoPhotonContinuum(thisFreq)
-
-! based on table ii of drake, victor, dalgarno, 1969, PhyRev Vol 180, pg 25
-
-  real(double) :: thisFreq
-  real :: y(21) = (/ 0., 0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, &
-       0.325, 0.350, 0.375, 0.400, 0.425, 0.450, 0.475, 0.500 /)
-  real :: hei(21) = (/ 0., 7.77e0, 2.52e1, 4.35e1, 5.99e1, 7.42e1, 8.64e1, 9.69e1, 1.06e2, 1.13e2, 1.20e2, 1.25e2, &
-       1.30e2, 1.34e2, 1.37e2, 1.40e2, 1.42e2, 1.43e2, 1.45e2, 1.45e2, 1.45e2 /)
-  real :: freq = 3.86e15, fac, r
-  real :: prob(21)
-  integer :: i
-  prob(1) = 0.
-  do i = 2, 21
-     prob(i) = prob(i-1) + (y(i)-y(i-1)) * hei(i)
-  enddo
-  prob(1:21) = prob(1:21)/prob(21)
-  thisFreq = 0.
-  do while((thisFreq*hcgs*ergtoev) < 13.6)
-     call randomNumberGenerator(getReal=r)
-     call locate(prob, 21, r, i)
-     fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
-     thisFreq = (1.-fac)*freq
-  enddo
-end subroutine twoPhotonContinuum
+!!$subroutine twoPhotonContinuum(thisFreq)
+!!$
+!!$! based on table ii of drake, victor, dalgarno, 1969, PhyRev Vol 180, pg 25
+!!$
+!!$  real(double) :: thisFreq
+!!$  real :: y(21) = (/ 0., 0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, &
+!!$       0.325, 0.350, 0.375, 0.400, 0.425, 0.450, 0.475, 0.500 /)
+!!$  real :: hei(21) = (/ 0., 7.77e0, 2.52e1, 4.35e1, 5.99e1, 7.42e1, 8.64e1, 9.69e1, 1.06e2, 1.13e2, 1.20e2, 1.25e2, &
+!!$       1.30e2, 1.34e2, 1.37e2, 1.40e2, 1.42e2, 1.43e2, 1.45e2, 1.45e2, 1.45e2 /)
+!!$  real :: freq = 3.86e15, fac, r
+!!$  real :: prob(21)
+!!$  integer :: i
+!!$  prob(1) = 0.
+!!$  do i = 2, 21
+!!$     prob(i) = prob(i-1) + (y(i)-y(i-1)) * hei(i)
+!!$  enddo
+!!$  prob(1:21) = prob(1:21)/prob(21)
+!!$  thisFreq = 0.
+!!$  do while((thisFreq*hcgs*ergtoev) < 13.6)
+!!$     call randomNumberGenerator(getReal=r)
+!!$     call locate(prob, 21, r, i)
+!!$     fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
+!!$     thisFreq = (1.-fac)*freq
+!!$  enddo
+!!$end subroutine twoPhotonContinuum
 
 subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalGasHeating, epsOverDeltaT)
   type(GRIDTYPE) :: grid
@@ -2281,85 +2281,85 @@ subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 end subroutine addForbiddenLines
   
 
-subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-
-  integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
-  type(OCTAL) :: thisOctal
-  integer :: subcell
-  type(GRIDTYPE) :: grid
-  integer :: i, j, k
-  real :: fac, t, aj ,bj, cj
-  real(double) :: lineFreq !, lambda
-  real :: emissivity
-!  real :: heII4686
-!  integer :: ilow , iup
-!  integer,parameter :: nHeIILyman = 4
-!  real(double) :: heIILyman(4)
-!  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
-
-
-
-  ! HeI lines 
-
-  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
-  fac = real((log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i)))
-
-  do j = 1, 32
-     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
-     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
-     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
-     t = thisOctal%temperature(subcell)/1.e4
-     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
-     emissivity = emissivity * real(thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
-          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance)
-
-     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
-     call locate(freq, nFreq, lineFreq, k)
-     k = k + 1
-     spectrum(k) = spectrum(k) + emissivity
-  enddo
-!
-
-!  HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
-!  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,5)*grid%ion(4)%abundance
-!  
-!  ! calculate emission due to HeII recombination lines [e-25 ergs/s/cm^3]                                                     
-!  do iup = 30, 3, -1
-!     do ilow = 2, min0(16, iup-1)
-!        emissivity= HeIIrecombinationLines(iup, ilow)*HeII4686*1.d-25
-!
-!
-!        lambda = 227.838 / (1./real(ilow**2)  - 1./real(iup**2))!!!!!!!!!!!!!!!!!!!
-!        lineFreq = cSpeed/(lambda * 1.d-8)
-!
-!     call locate(freq, nFreq, lineFreq, k)
-!     spectrum(k) = spectrum(k) + emissivity
-!     end do
-!  end do
-!
-
-  ! He II Lyman series
-
-!  heIILyman(1:4) = (/ 0.0334, 0.0682, 0.1849, 1. /)
-
-!  ! calculate Lyman alpha first
-!  HeIILyman(4) = 10.d0**(-0.792d0*log10(thisOctal%temperature(subcell))+6.01d0)
-!  HeIILyman(4) = HeIILyman(4)*thisOctal%ne(subcell)*thisOctal%nh(subcell) * &
-!       grid%ion(3)%abundance * thisOctal%ionFrac(subcell, 5) * 1.d-25
-!
-!  do i = 1, NHeIILyman-1
-!     HeIILyman(i) = HeIILyman(i)*HeIILyman(4)
-!  end do
-!  do i = 1, nHeIILyman
-!     lineFreq = freqHeIILyman(i) * nuHydrogen
-!     call locate(freq, nFreq, lineFreq, k)
-!     spectrum(k) = spectrum(k) + HeIILyman(i)
-!  enddo
-
-
-
-end subroutine addHeRecombinationLines
+!!$subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$
+!!$  integer :: nFreq
+!!$  real(double) :: spectrum(:), freq(:)
+!!$  type(OCTAL) :: thisOctal
+!!$  integer :: subcell
+!!$  type(GRIDTYPE) :: grid
+!!$  integer :: i, j, k
+!!$  real :: fac, t, aj ,bj, cj
+!!$  real(double) :: lineFreq !, lambda
+!!$  real :: emissivity
+!!$!  real :: heII4686
+!!$!  integer :: ilow , iup
+!!$!  integer,parameter :: nHeIILyman = 4
+!!$!  real(double) :: heIILyman(4)
+!!$!  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
+!!$
+!!$
+!!$
+!!$  ! HeI lines 
+!!$
+!!$  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
+!!$  fac = real((log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i)))
+!!$
+!!$  do j = 1, 32
+!!$     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
+!!$     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
+!!$     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
+!!$     t = thisOctal%temperature(subcell)/1.e4
+!!$     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
+!!$     emissivity = emissivity * real(thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
+!!$          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance)
+!!$
+!!$     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
+!!$     call locate(freq, nFreq, lineFreq, k)
+!!$     k = k + 1
+!!$     spectrum(k) = spectrum(k) + emissivity
+!!$  enddo
+!!$!
+!!$
+!!$!  HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
+!!$!  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,5)*grid%ion(4)%abundance
+!!$!  
+!!$!  ! calculate emission due to HeII recombination lines [e-25 ergs/s/cm^3]                                                     
+!!$!  do iup = 30, 3, -1
+!!$!     do ilow = 2, min0(16, iup-1)
+!!$!        emissivity= HeIIrecombinationLines(iup, ilow)*HeII4686*1.d-25
+!!$!
+!!$!
+!!$!        lambda = 227.838 / (1./real(ilow**2)  - 1./real(iup**2))!!!!!!!!!!!!!!!!!!!
+!!$!        lineFreq = cSpeed/(lambda * 1.d-8)
+!!$!
+!!$!     call locate(freq, nFreq, lineFreq, k)
+!!$!     spectrum(k) = spectrum(k) + emissivity
+!!$!     end do
+!!$!  end do
+!!$!
+!!$
+!!$  ! He II Lyman series
+!!$
+!!$!  heIILyman(1:4) = (/ 0.0334, 0.0682, 0.1849, 1. /)
+!!$
+!!$!  ! calculate Lyman alpha first
+!!$!  HeIILyman(4) = 10.d0**(-0.792d0*log10(thisOctal%temperature(subcell))+6.01d0)
+!!$!  HeIILyman(4) = HeIILyman(4)*thisOctal%ne(subcell)*thisOctal%nh(subcell) * &
+!!$!       grid%ion(3)%abundance * thisOctal%ionFrac(subcell, 5) * 1.d-25
+!!$!
+!!$!  do i = 1, NHeIILyman-1
+!!$!     HeIILyman(i) = HeIILyman(i)*HeIILyman(4)
+!!$!  end do
+!!$!  do i = 1, nHeIILyman
+!!$!     lineFreq = freqHeIILyman(i) * nuHydrogen
+!!$!     call locate(freq, nFreq, lineFreq, k)
+!!$!     spectrum(k) = spectrum(k) + HeIILyman(i)
+!!$!  enddo
+!!$
+!!$
+!!$
+!!$end subroutine addHeRecombinationLines
 
 subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
   use atom_mod, only: bnu
@@ -2661,174 +2661,174 @@ end subroutine readHeIIrecombination
   end subroutine calcContinuumEmissivity
 
 
-  function getRandomWavelengthPhotoion(grid, thisOctal, subcell, lamArray, nLambda) result(thisLambda)
+!!$  function getRandomWavelengthPhotoion(grid, thisOctal, subcell, lamArray, nLambda) result(thisLambda)
+!!$
+!!$    type(GRIDTYPE) :: grid
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    integer :: subcell
+!!$    real :: thisLambda
+!!$    integer :: nFreq
+!!$    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
+!!$    real(double) :: nuStart, nuEnd, r, fac
+!!$    integer :: nLambda
+!!$    real :: lamArray(:)
+!!$    integer :: i
+!!$
+!!$    nFreq = 1000
+!!$
+!!$    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), dFreq(1:nFreq))
+!!$    nuStart = cSpeed / (1000.d4 * 1.d-8)
+!!$    nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
+!!$
+!!$    do i = 1, nFreq
+!!$       freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
+!!$       freq(i) = 10.d0**freq(i)
+!!$    enddo
+!!$    do i = 2, nFreq-1
+!!$       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+!!$    enddo
+!!$    dfreq(1) = (freq(2)-freq(1))
+!!$    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
+!!$
+!!$
+!!$    spectrum = 1.d-30
+!!$
+!!$    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+!!$    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+!!$    call addHydrogenRecombinationLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
+!!$    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!!$    
+!!$
+!!$    do i = 1, nFreq
+!!$       lamSpec(i) = cspeed/freq(i)
+!!$       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
+!!$    enddo
+!!$    lamSpec = lamSpec * 1.d8
+!!$
+!!$    allocate(tSpec(1:nFreq))
+!!$  
+!!$    tSpec(1:nFreq) = spectrum(1:nFreq)
+!!$
+!!$    do i = 2, nFreq
+!!$       tSpec(i) = tSpec(i) + tSpec(i-1)
+!!$    enddo
+!!$    tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
+!!$    if (tSpec(nFreq) > 0.d0) then
+!!$       tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
+!!$       call randomNumberGenerator(getDouble=r)
+!!$       call locate(tSpec, nFreq, r, i)
+!!$       fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
+!!$       thisLambda = real(lamspec(i) + fac * (lamspec(i+1)-lamspec(i)))
+!!$    else
+!!$       thisLambda = 1000.e4
+!!$  endif
+!!$    
+!!$  deallocate(freq, spectrum, lamSpec)
+!!$
+!!$  end function getRandomWavelengthPhotoion
 
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    real :: thisLambda
-    integer :: nFreq
-    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
-    real(double) :: nuStart, nuEnd, r, fac
-    integer :: nLambda
-    real :: lamArray(:)
-    integer :: i
-
-    nFreq = 1000
-
-    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), dFreq(1:nFreq))
-    nuStart = cSpeed / (1000.d4 * 1.d-8)
-    nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
-
-    do i = 1, nFreq
-       freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
-       freq(i) = 10.d0**freq(i)
-    enddo
-    do i = 2, nFreq-1
-       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
-    enddo
-    dfreq(1) = (freq(2)-freq(1))
-    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
-
-
-    spectrum = 1.d-30
-
-    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
-    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-    
-
-    do i = 1, nFreq
-       lamSpec(i) = cspeed/freq(i)
-       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
-    enddo
-    lamSpec = lamSpec * 1.d8
-
-    allocate(tSpec(1:nFreq))
-  
-    tSpec(1:nFreq) = spectrum(1:nFreq)
-
-    do i = 2, nFreq
-       tSpec(i) = tSpec(i) + tSpec(i-1)
-    enddo
-    tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
-    if (tSpec(nFreq) > 0.d0) then
-       tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
-       call randomNumberGenerator(getDouble=r)
-       call locate(tSpec, nFreq, r, i)
-       fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
-       thisLambda = real(lamspec(i) + fac * (lamspec(i+1)-lamspec(i)))
-    else
-       thisLambda = 1000.e4
-  endif
-    
-  deallocate(freq, spectrum, lamSpec)
-
-  end function getRandomWavelengthPhotoion
-
-  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, nLambda, ilambda, bias, useBias)
-
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    integer :: nFreq
-    real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
-    real ::  dlam2
-    real(double), allocatable :: prob(:)
-    real(double) :: t
-    real :: thisLam
-    real(double) :: thisFreq, r, fac
-    integer :: nLambda
-    real :: lamArray(:)
-    real :: bias
-    integer :: ilambda
-    integer :: i
-    logical :: useBias
-
-    nFreq = nlambda
-
-    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), tSpec(1:nFreq), dfreq(1:nFreq))
-
-    do i = 1, nFreq
-       freq(i) = cSpeed/(lamArray(nFreq-i+1)*1.e-8)
-    enddo
-    do i = 2, nFreq-1
-       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
-    enddo
-    dfreq(1) = 2.d0*(freq(2)-freq(1))
-    dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
-
-
-    spectrum = 1.d-50
-
-    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-!       if (iLambda == 1) then
-!          open(31,file="crap.dat",status="unknown",form="formatted")
-!          do i = 1, nLambda
-!             write(31,*) lamArray(i), spectrum(i),dFreq(nfreq-i+1)
-!          enddo
-!          close(31)
-!          stop
-!       endif
-    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-!    !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
-
-    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-    
-
-
-    if (useBias) then
-       fac = 0.d0
-       do i = 1, nFreq
-          fac = fac + spectrum(i)
-       enddo
-
-
-       do i = 1, nFreq
-          lamSpec(i) = cspeed/freq(i)
-       enddo
-       lamSpec = lamSpec * 1.d8
-       
-       do i = 1, nFreq
-          tSpec(i) = spectrum(nFreq-i+1)
-       enddo
-       spectrum(1:nFreq) = tspec
-       
-       do i = 1, nFreq
-          tSpec(i) = lamSpec(nFreq-i+1)
-       enddo
-       lamSpec(1:nFreq)= tspec
-       do i = 1, nFreq
-          dlam2 = real(1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1))
-          spectrum(i) = spectrum(i) / dlam2
-       enddo
-       bias = real(spectrum(iLambda)/fac)
-    else
-       allocate(prob(1:nFreq))
-       prob(1:nFreq) = spectrum(1:nFreq)
-       do i = 2, nFreq
-          prob(i) = prob(i-1) + prob(i)
-       enddo
-       prob(1:nFreq) = prob(1:nFreq)-prob(1)
-       prob(1:nFreq) = prob(1:nFreq)/prob(nFreq)
-       call randomNumberGenerator(getDouble=r)
-       call locate(prob, nFreq, r, i)
-       t = (r - prob(i))/(prob(i+1)-prob(i))
-       thisFreq = freq(i) + t * (freq(i+1)-freq(i))
-       thisLam = real(1.d8 * cspeed/thisFreq)
-       call locate(lamArray, nLambda, thisLam, iLambda)
-       bias = 1.d0
-    endif
-
-
-    deallocate(freq, spectrum, lamSpec, tSpec)
-
-  end subroutine getWavelengthBiasPhotoion
+!!$  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, nLambda, ilambda, bias, useBias)
+!!$
+!!$    type(GRIDTYPE) :: grid
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    integer :: subcell
+!!$    integer :: nFreq
+!!$    real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
+!!$    real ::  dlam2
+!!$    real(double), allocatable :: prob(:)
+!!$    real(double) :: t
+!!$    real :: thisLam
+!!$    real(double) :: thisFreq, r, fac
+!!$    integer :: nLambda
+!!$    real :: lamArray(:)
+!!$    real :: bias
+!!$    integer :: ilambda
+!!$    integer :: i
+!!$    logical :: useBias
+!!$
+!!$    nFreq = nlambda
+!!$
+!!$    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), tSpec(1:nFreq), dfreq(1:nFreq))
+!!$
+!!$    do i = 1, nFreq
+!!$       freq(i) = cSpeed/(lamArray(nFreq-i+1)*1.e-8)
+!!$    enddo
+!!$    do i = 2, nFreq-1
+!!$       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+!!$    enddo
+!!$    dfreq(1) = 2.d0*(freq(2)-freq(1))
+!!$    dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
+!!$
+!!$
+!!$    spectrum = 1.d-50
+!!$
+!!$    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+!!$!       if (iLambda == 1) then
+!!$!          open(31,file="crap.dat",status="unknown",form="formatted")
+!!$!          do i = 1, nLambda
+!!$!             write(31,*) lamArray(i), spectrum(i),dFreq(nfreq-i+1)
+!!$!          enddo
+!!$!          close(31)
+!!$!          stop
+!!$!       endif
+!!$    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+!!$    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!!$!    !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+!!$    call addForbiddenLines(nfreq, freq,  spectrum, thisOctal, subcell, grid)
+!!$
+!!$    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!!$    
+!!$
+!!$
+!!$    if (useBias) then
+!!$       fac = 0.d0
+!!$       do i = 1, nFreq
+!!$          fac = fac + spectrum(i)
+!!$       enddo
+!!$
+!!$
+!!$       do i = 1, nFreq
+!!$          lamSpec(i) = cspeed/freq(i)
+!!$       enddo
+!!$       lamSpec = lamSpec * 1.d8
+!!$       
+!!$       do i = 1, nFreq
+!!$          tSpec(i) = spectrum(nFreq-i+1)
+!!$       enddo
+!!$       spectrum(1:nFreq) = tspec
+!!$       
+!!$       do i = 1, nFreq
+!!$          tSpec(i) = lamSpec(nFreq-i+1)
+!!$       enddo
+!!$       lamSpec(1:nFreq)= tspec
+!!$       do i = 1, nFreq
+!!$          dlam2 = real(1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1))
+!!$          spectrum(i) = spectrum(i) / dlam2
+!!$       enddo
+!!$       bias = real(spectrum(iLambda)/fac)
+!!$    else
+!!$       allocate(prob(1:nFreq))
+!!$       prob(1:nFreq) = spectrum(1:nFreq)
+!!$       do i = 2, nFreq
+!!$          prob(i) = prob(i-1) + prob(i)
+!!$       enddo
+!!$       prob(1:nFreq) = prob(1:nFreq)-prob(1)
+!!$       prob(1:nFreq) = prob(1:nFreq)/prob(nFreq)
+!!$       call randomNumberGenerator(getDouble=r)
+!!$       call locate(prob, nFreq, r, i)
+!!$       t = (r - prob(i))/(prob(i+1)-prob(i))
+!!$       thisFreq = freq(i) + t * (freq(i+1)-freq(i))
+!!$       thisLam = real(1.d8 * cspeed/thisFreq)
+!!$       call locate(lamArray, nLambda, thisLam, iLambda)
+!!$       bias = 1.d0
+!!$    endif
+!!$
+!!$
+!!$    deallocate(freq, spectrum, lamSpec, tSpec)
+!!$
+!!$  end subroutine getWavelengthBiasPhotoion
 
 
 #ifdef MPI

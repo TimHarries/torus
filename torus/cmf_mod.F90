@@ -2638,379 +2638,379 @@ contains
 
 
 
-  function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
-       nFreq, freqArray,forceFreq, occultingDisc) result (i0)
-    use inputs_mod, only : lineOff,  mie, holeRadius
-    use amr_mod, only: distanceToGridFromOutside, returnKappa
-    use utils_mod, only : findIlambda
-    use atom_mod, only : bnu
-    logical ::     justPhotosphere
-    type(VECTOR) :: position, direction, pvec, photoDirection
-    type(GRIDTYPE) :: grid
-    logical, optional :: occultingDisc
-    integer :: nSource
-    real(double) :: freqArray(:)
-    real(double), optional :: forceFreq
-    integer :: nFreq
-    type(SOURCETYPE) :: source(:)
-    real(double) :: transitionFreq
-    integer :: iAtom, nAtom
-    type(MODELATOM) :: thisAtom(:)
-    real(double) :: disttoGrid
-    integer :: itrans, iFreq
-    real(double) :: totDist
-    logical :: hitSource
-    real(double) :: i0
-    type(OCTAL), pointer :: thisOctal, startOctal !, endOctal
-    !    integer :: endSubcell
-    integer :: subcell
-    real(double) :: costheta
-    type(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
-    type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
-    real(double) :: alphanu, snu, jnu
-    integer :: iLower , iUpper
-    real(double) :: gUpper, gLower
-    real(double) :: dv, deltaV
-    integer :: i, icount
-    real(double) :: tval
-    real(double), allocatable :: distArray(:)
-    integer :: nTau
-    real(double) :: nLower, nUpper
-    real(double) :: dTau, etaline, tau
-    real(double) :: intensityIntegral
-    real(double) :: dvAcrossCell
-    real(double) :: dv1, dv2
-    real(double) :: a, bul, blu
-    integer :: nHatom,nHeIAtom, nHeIIAtom
-    real(double) :: distToSource,disttoDisc
-    integer :: sourcenumber
-    integer :: iElement
-    logical :: endLoopAtPhotosphere
-    real(double) :: nstar(10,50), rhoCol
-    real(double) :: bfOpac, bfEmiss
-    real(double) :: dustOpac, dustEmiss
-    integer :: ilambda
-    real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
-    real(double) :: tauStep, tauTmp, iStep, fac
-    integer :: j, k
-    logical :: ok, closeToResonance, passThroughResonance
-
-    i0 = tiny(i0)
-    justPhotosphere = .false.
-
-    hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
-    a = 0.d0; blu = 0.d0; bul = 0.d0
-    nHAtom = 0
-    nHeIAtom = 0
-    nHeIIAtom = 0
-    do i = 1, nAtom
-       if (thisAtom(i)%name == "HI") nHatom = i
-       if (thisAtom(i)%name == "HeI") nHeIatom = i
-       if (thisAtom(i)%name == "HeII") nHeIIatom = i
-    enddo
-
-    transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
-
-    if (PRESENT(forceFreq)) then
-       transitionFreq = forceFreq
-    endif
-
-    call locate(freqArray, nFreq, transitionFreq, iFreq)
-
-    transitionLambda = (cSpeed/transitionFreq) /angstromTocm
-    ilambda = 1
-    if (mie) iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
-
-
-    distToGrid = distanceToGridFromOutside(grid, position, direction)
-
-    currentposition = position
-    distToDisc = 1.d30
-    if ((currentposition.dot.direction) < 0.d0) then
-       if (direction%z /= 0.d0) then
-          distToDisc = abs(currentPosition%z/direction%z)
-          oldPosition = currentPosition + distToDisc * direction
-          if (sqrt(oldPosition%x**2 + oldPosition%y**2) < (2.d0*grid%octreeRoot%subcellSize)) then
-             distToDisc = 1.d30
-          endif
-       else
-          distToDisc = 1.d30
-       endif
-    endif
-    if (present(OccultingDisc)) then
-       if (occultingDisc) then
-          if (distToDisc < distToGrid) then
-             i0 = tiny(i0)
-             goto 666
-          endif
-       endif
-    endif
-
-    if (distToGrid > 1.e29) then
-!              write(*,*) "ray does not intersect grid",position,direction
-       i0 = tiny(i0)
-       goto 666
-    endif
-
-    iUpper = thisAtom(iAtom)%iUpper(iTrans)
-    iLower = thisAtom(iAtom)%iLower(iTrans)
-
-    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
- 
- 
-
-    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
-       write(*,*) "initial position not in grid"
-       write(*,*) "curre pos",currentPosition
-       write(*,*) "dir",direction
-       write(*,*) "pos",position
-       write(*,*) "modulsu",modulus(currentPosition - position)
-       stop
-    endif
-
-    totDist = 0.d0
-    call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
-
-    if ((.not.hitsource).and.justPhotosphere) goto 666
-    if (hitSource) then
-       pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
-       call normalize(pVec)
-       cosTheta = -1.d0*(pVec.dot.direction)
-       photoDirection = pVec
-       call normalize(photoDirection)
-    endif
-
-
-    !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
-    !         inOctal(grid%octreeRoot, currentPosition),distTogrid
-    i0 = tiny(i0)!0.d0
-    intensityIntegral = 0.0
-    tau = 0.d0
-    rayVel = VECTOR(0.d0, 0.d0, 0.d0)
-
-    thisOctal => grid%octreeRoot
-    icount = 0
-    rhoCol = 0.d0
-    endLoopAtPhotosphere = .false.
-
-    !    if (hitSource) endLoopAtphotosphere = .true.
-
-    !    write(*,*) lineoff,hitsource,endloopatphotosphere
-
-
-
-       do while(inOctal(grid%octreeRoot, currentPosition).and. &
-            (.not.endloopAtPhotosphere).and.(tau < 20.d0))
-          icount = icount + 1 
-          call findSubcellLocal(currentPosition, thisOctal, subcell)
-
-!          fac = 0.d0
-!          do i = 1,1000
-!             dv = (2.d0*dble(i-1)/999.d0-1.d0)* 0.01d0
-!             ddv = 0.02d0/1000.d0
-!             fac = fac + &
-!             phiProf2(dv, thisOctal, subcell, &
-!                  thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))  * ddv
-!          enddo
-!          write(*,*) "prof test ",fac
-
-          !       rVec = subcellCentre(thisOctal,subcell)
-
-          call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-
-          if ((totDist + tval) > distTosource) then
-             tVal = distToSource - totDist
-             endLoopAtPhotosphere = .true.
-          endif
-
-          ntau = 4
-
-          if (.not.lineOff) then
-             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
-
-             endPosition = currentPosition + tval * direction
-             endVel = amrGridVelocity(grid%octreeRoot, endPosition)
-
-             dv1 = deltaV + (startVel .dot. direction)
-             dv2 = deltaV + (endVel .dot. direction)
-
-             dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
-
-
-             passThroughResonance =.false.
-             closeToResonance = .false.
-
-             if (dv1*dv2 <= 0.d0) passThroughResonance = .true.
-
-             closeToResonance = (min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))
-!             if (modulus(endVel)==0.d0) passThroughResonance = .false.
-
-             if (passthroughresonance.or.closeToResonance) then
-                ntau = 20
-             endif
-          endif
-          bfOpac = 0.d0
-          bfEmiss = 0.d0
-
-          if (.not.thisOctal%inflow(subcell)) ntau = 2
-
-          ok = .false.
-          do while (.not.ok)
-             ok = .true.
-             tauStep = 0.d0
-             tautmp = tau
-             iStep = 0.d0
-             allocate(distArray(1:nTau))
-             do i = 1, ntau
-                distArray(i) = tval * dble(i-1)/dble(nTau-1)
-             enddo
-             do i = 2, nTau
-
-                startOctal => thisOctal
-                thisPosition = currentPosition + distArray(i)*direction
-                
-                if (.not.lineoff) then
-                   thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-                   thisVel= thisVel - rayVel
-                   dv = (thisVel .dot. direction) + deltaV
-
-                   call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
-                   
-                   iUpper = thisAtom(iAtom)%iUpper(iTrans)
-                   iLower = thisAtom(iAtom)%iLower(iTrans)
-                   nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
-                   nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-                   gLower = thisAtom(iatom)%g(iLower)
-                   gUpper = thisAtom(iatom)%g(iUpper)
-                   
-                   alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
-                   alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
-                        phiProf(dv, thisOctal, subcell, &
-                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
-                   
-                   if (nLower > 0.d0) then
-                      fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
-                   else
-                      fac = 1.d30
-                   endif
-                   jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
-                   
-                else
-                   alphanu = 0.d0
-                endif
-                
-                
-                if (i == 2) then
-                   do k = 1, nAtom
-                      do j = 1, thisAtom(k)%nLevels - 1
-                         nStar(k,j) = BoltzSahaGeneral(thisAtom(k), j, thisOctal%ne(subcell), &
-                              dble(thisOctal%temperature(subcell))) * &
-                              Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
-                      enddo
-                   enddo
-                   bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                        nstar, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
-                   bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
-                        dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell))
-                   dustOpac = 0.d0
-                   dustEmiss = 0.d0
-                   if (mie) then
-                      call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-                      kappaExt = kappaAbs + kappaSca
-                      dustOpac = kappaExt/1.d10
-                      dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
-                      dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
-                   endif
-                endif
-                
-                
-                if (associated(thisOctal%fixedTemperature)) then
-                   if (.not.thisOctal%fixedTemperature(subcell)) then
-                      jnu = 0.d0
-                      etaline = 0.d0
-                   endif
-                endif
-                
-                if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
-                   bfOpac = 1.d30
-                   bfEmiss = 0.d0
-                   alphanu = 1.d30
-                   etaLine = 0.d0
-                   jnu = 0.d0
-                   snu = 0.d0
-                   deallocate(distArray)
-                   goto 666
-                endif
-                
-                alphanu = alphanu + bfOpac + dustOpac
-                
-                ! add continuous bf and ff emissivity of hydrogen
-                
-                jnu = jnu !+ bfEmiss + dustEmiss
-                
-                if (alphanu /= 0.d0) then
-                   snu = jnu/alphanu                
-                else
-                   snu = tiny(snu)
-                endif
-                
-                
-                dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-                
-                if ((dtau > 0.2d0).and.(tau < 20.d0)) then
-                   ntau = ntau * 2
-                   ok = .false.
-                   exit
-                endif
-                
-                
-                if (thisOctal%inflow(subcell)) then
-                   if (dtau > 0.1d0) then
-                      fac = (1.d0-exp(-dtau))
-                   else
-                      fac = (dtau - dtau**2/2.d0)
-                   endif
-                   
-                   
-                   
-                   istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1)) * 1.d10
-                   tauStep = tauStep + dtau
-                   tautmp = tautmp + dtau
-                endif
-             enddo
-             deallocate(distArray)
-             if (ok) then
-                i0 = i0 + iStep
-                tau = tau + tauStep
-             endif
-
-          enddo
-
-          rhoCol = rhoCol + tval*thisOctal%rho(subcell)*1.d10
-          oldPosition = currentPosition
-          currentPosition = currentPosition + (tval+1.d-3*grid%halfSmallestSubcell) * direction
-          totdist = totdist + (tval+1.d-3*grid%halfSmallestSubcell)
-
-          if (PRESENT(occultingDisc)) then
-             if (occultingDisc) then
-                if  (oldPosition%z*currentPosition%z < 0.d0) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) then
-                      goto 666
-                   endif
-                endif
-             endif
-          endif
-       enddo
-
-    if (endLoopAtPhotosphere) then
-
-       iElement = getElement(source(sourcenumber)%surface, photoDirection)
-       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
-    endif
-666 continue 
-
-  end function intensityAlongRay
+!!$  function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
+!!$       nFreq, freqArray,forceFreq, occultingDisc) result (i0)
+!!$    use inputs_mod, only : lineOff,  mie, holeRadius
+!!$    use amr_mod, only: distanceToGridFromOutside, returnKappa
+!!$    use utils_mod, only : findIlambda
+!!$    use atom_mod, only : bnu
+!!$    logical ::     justPhotosphere
+!!$    type(VECTOR) :: position, direction, pvec, photoDirection
+!!$    type(GRIDTYPE) :: grid
+!!$    logical, optional :: occultingDisc
+!!$    integer :: nSource
+!!$    real(double) :: freqArray(:)
+!!$    real(double), optional :: forceFreq
+!!$    integer :: nFreq
+!!$    type(SOURCETYPE) :: source(:)
+!!$    real(double) :: transitionFreq
+!!$    integer :: iAtom, nAtom
+!!$    type(MODELATOM) :: thisAtom(:)
+!!$    real(double) :: disttoGrid
+!!$    integer :: itrans, iFreq
+!!$    real(double) :: totDist
+!!$    logical :: hitSource
+!!$    real(double) :: i0
+!!$    type(OCTAL), pointer :: thisOctal, startOctal !, endOctal
+!!$    !    integer :: endSubcell
+!!$    integer :: subcell
+!!$    real(double) :: costheta
+!!$    type(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
+!!$    type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
+!!$    real(double) :: alphanu, snu, jnu
+!!$    integer :: iLower , iUpper
+!!$    real(double) :: gUpper, gLower
+!!$    real(double) :: dv, deltaV
+!!$    integer :: i, icount
+!!$    real(double) :: tval
+!!$    real(double), allocatable :: distArray(:)
+!!$    integer :: nTau
+!!$    real(double) :: nLower, nUpper
+!!$    real(double) :: dTau, etaline, tau
+!!$    real(double) :: intensityIntegral
+!!$    real(double) :: dvAcrossCell
+!!$    real(double) :: dv1, dv2
+!!$    real(double) :: a, bul, blu
+!!$    integer :: nHatom,nHeIAtom, nHeIIAtom
+!!$    real(double) :: distToSource,disttoDisc
+!!$    integer :: sourcenumber
+!!$    integer :: iElement
+!!$    logical :: endLoopAtPhotosphere
+!!$    real(double) :: nstar(10,50), rhoCol
+!!$    real(double) :: bfOpac, bfEmiss
+!!$    real(double) :: dustOpac, dustEmiss
+!!$    integer :: ilambda
+!!$    real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
+!!$    real(double) :: tauStep, tauTmp, iStep, fac
+!!$    integer :: j, k
+!!$    logical :: ok, closeToResonance, passThroughResonance
+!!$
+!!$    i0 = tiny(i0)
+!!$    justPhotosphere = .false.
+!!$
+!!$    hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
+!!$    a = 0.d0; blu = 0.d0; bul = 0.d0
+!!$    nHAtom = 0
+!!$    nHeIAtom = 0
+!!$    nHeIIAtom = 0
+!!$    do i = 1, nAtom
+!!$       if (thisAtom(i)%name == "HI") nHatom = i
+!!$       if (thisAtom(i)%name == "HeI") nHeIatom = i
+!!$       if (thisAtom(i)%name == "HeII") nHeIIatom = i
+!!$    enddo
+!!$
+!!$    transitionFreq = thisAtom(iAtom)%transFreq(iTrans)
+!!$
+!!$    if (PRESENT(forceFreq)) then
+!!$       transitionFreq = forceFreq
+!!$    endif
+!!$
+!!$    call locate(freqArray, nFreq, transitionFreq, iFreq)
+!!$
+!!$    transitionLambda = (cSpeed/transitionFreq) /angstromTocm
+!!$    ilambda = 1
+!!$    if (mie) iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
+!!$
+!!$
+!!$    distToGrid = distanceToGridFromOutside(grid, position, direction)
+!!$
+!!$    currentposition = position
+!!$    distToDisc = 1.d30
+!!$    if ((currentposition.dot.direction) < 0.d0) then
+!!$       if (direction%z /= 0.d0) then
+!!$          distToDisc = abs(currentPosition%z/direction%z)
+!!$          oldPosition = currentPosition + distToDisc * direction
+!!$          if (sqrt(oldPosition%x**2 + oldPosition%y**2) < (2.d0*grid%octreeRoot%subcellSize)) then
+!!$             distToDisc = 1.d30
+!!$          endif
+!!$       else
+!!$          distToDisc = 1.d30
+!!$       endif
+!!$    endif
+!!$    if (present(OccultingDisc)) then
+!!$       if (occultingDisc) then
+!!$          if (distToDisc < distToGrid) then
+!!$             i0 = tiny(i0)
+!!$             goto 666
+!!$          endif
+!!$       endif
+!!$    endif
+!!$
+!!$    if (distToGrid > 1.e29) then
+!!$!              write(*,*) "ray does not intersect grid",position,direction
+!!$       i0 = tiny(i0)
+!!$       goto 666
+!!$    endif
+!!$
+!!$    iUpper = thisAtom(iAtom)%iUpper(iTrans)
+!!$    iLower = thisAtom(iAtom)%iLower(iTrans)
+!!$
+!!$    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
+!!$ 
+!!$ 
+!!$
+!!$    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
+!!$       write(*,*) "initial position not in grid"
+!!$       write(*,*) "curre pos",currentPosition
+!!$       write(*,*) "dir",direction
+!!$       write(*,*) "pos",position
+!!$       write(*,*) "modulsu",modulus(currentPosition - position)
+!!$       stop
+!!$    endif
+!!$
+!!$    totDist = 0.d0
+!!$    call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
+!!$
+!!$    if ((.not.hitsource).and.justPhotosphere) goto 666
+!!$    if (hitSource) then
+!!$       pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
+!!$       call normalize(pVec)
+!!$       cosTheta = -1.d0*(pVec.dot.direction)
+!!$       photoDirection = pVec
+!!$       call normalize(photoDirection)
+!!$    endif
+!!$
+!!$
+!!$    !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
+!!$    !         inOctal(grid%octreeRoot, currentPosition),distTogrid
+!!$    i0 = tiny(i0)!0.d0
+!!$    intensityIntegral = 0.0
+!!$    tau = 0.d0
+!!$    rayVel = VECTOR(0.d0, 0.d0, 0.d0)
+!!$
+!!$    thisOctal => grid%octreeRoot
+!!$    icount = 0
+!!$    rhoCol = 0.d0
+!!$    endLoopAtPhotosphere = .false.
+!!$
+!!$    !    if (hitSource) endLoopAtphotosphere = .true.
+!!$
+!!$    !    write(*,*) lineoff,hitsource,endloopatphotosphere
+!!$
+!!$
+!!$
+!!$       do while(inOctal(grid%octreeRoot, currentPosition).and. &
+!!$            (.not.endloopAtPhotosphere).and.(tau < 20.d0))
+!!$          icount = icount + 1 
+!!$          call findSubcellLocal(currentPosition, thisOctal, subcell)
+!!$
+!!$!          fac = 0.d0
+!!$!          do i = 1,1000
+!!$!             dv = (2.d0*dble(i-1)/999.d0-1.d0)* 0.01d0
+!!$!             ddv = 0.02d0/1000.d0
+!!$!             fac = fac + &
+!!$!             phiProf2(dv, thisOctal, subcell, &
+!!$!                  thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))  * ddv
+!!$!          enddo
+!!$!          write(*,*) "prof test ",fac
+!!$
+!!$          !       rVec = subcellCentre(thisOctal,subcell)
+!!$
+!!$          call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+!!$
+!!$
+!!$          if ((totDist + tval) > distTosource) then
+!!$             tVal = distToSource - totDist
+!!$             endLoopAtPhotosphere = .true.
+!!$          endif
+!!$
+!!$          ntau = 4
+!!$
+!!$          if (.not.lineOff) then
+!!$             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!!$
+!!$             endPosition = currentPosition + tval * direction
+!!$             endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+!!$
+!!$             dv1 = deltaV + (startVel .dot. direction)
+!!$             dv2 = deltaV + (endVel .dot. direction)
+!!$
+!!$             dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
+!!$
+!!$
+!!$             passThroughResonance =.false.
+!!$             closeToResonance = .false.
+!!$
+!!$             if (dv1*dv2 <= 0.d0) passThroughResonance = .true.
+!!$
+!!$             closeToResonance = (min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))
+!!$!             if (modulus(endVel)==0.d0) passThroughResonance = .false.
+!!$
+!!$             if (passthroughresonance.or.closeToResonance) then
+!!$                ntau = 20
+!!$             endif
+!!$          endif
+!!$          bfOpac = 0.d0
+!!$          bfEmiss = 0.d0
+!!$
+!!$          if (.not.thisOctal%inflow(subcell)) ntau = 2
+!!$
+!!$          ok = .false.
+!!$          do while (.not.ok)
+!!$             ok = .true.
+!!$             tauStep = 0.d0
+!!$             tautmp = tau
+!!$             iStep = 0.d0
+!!$             allocate(distArray(1:nTau))
+!!$             do i = 1, ntau
+!!$                distArray(i) = tval * dble(i-1)/dble(nTau-1)
+!!$             enddo
+!!$             do i = 2, nTau
+!!$
+!!$                startOctal => thisOctal
+!!$                thisPosition = currentPosition + distArray(i)*direction
+!!$                
+!!$                if (.not.lineoff) then
+!!$                   thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+!!$                   thisVel= thisVel - rayVel
+!!$                   dv = (thisVel .dot. direction) + deltaV
+!!$
+!!$                   call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
+!!$                   
+!!$                   iUpper = thisAtom(iAtom)%iUpper(iTrans)
+!!$                   iLower = thisAtom(iAtom)%iLower(iTrans)
+!!$                   nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+!!$                   nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+!!$                   gLower = thisAtom(iatom)%g(iLower)
+!!$                   gUpper = thisAtom(iatom)%g(iUpper)
+!!$                   
+!!$                   alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
+!!$                   alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
+!!$                        phiProf(dv, thisOctal, subcell, &
+!!$                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
+!!$                   
+!!$                   if (nLower > 0.d0) then
+!!$                      fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
+!!$                   else
+!!$                      fac = 1.d30
+!!$                   endif
+!!$                   jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
+!!$                   
+!!$                else
+!!$                   alphanu = 0.d0
+!!$                endif
+!!$                
+!!$                
+!!$                if (i == 2) then
+!!$                   do k = 1, nAtom
+!!$                      do j = 1, thisAtom(k)%nLevels - 1
+!!$                         nStar(k,j) = BoltzSahaGeneral(thisAtom(k), j, thisOctal%ne(subcell), &
+!!$                              dble(thisOctal%temperature(subcell))) * &
+!!$                              Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
+!!$                      enddo
+!!$                   enddo
+!!$                   bfOpac = bfOpacity(transitionFreq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+!!$                        nstar, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
+!!$                   bfEmiss = bfEmissivity(transitionFreq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
+!!$                        dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell))
+!!$                   dustOpac = 0.d0
+!!$                   dustEmiss = 0.d0
+!!$                   if (mie) then
+!!$                      call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+!!$                      kappaExt = kappaAbs + kappaSca
+!!$                      dustOpac = kappaExt/1.d10
+!!$                      dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))/1.d10
+!!$                      dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
+!!$                   endif
+!!$                endif
+!!$                
+!!$                
+!!$                if (associated(thisOctal%fixedTemperature)) then
+!!$                   if (.not.thisOctal%fixedTemperature(subcell)) then
+!!$                      jnu = 0.d0
+!!$                      etaline = 0.d0
+!!$                   endif
+!!$                endif
+!!$                
+!!$                if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
+!!$                   bfOpac = 1.d30
+!!$                   bfEmiss = 0.d0
+!!$                   alphanu = 1.d30
+!!$                   etaLine = 0.d0
+!!$                   jnu = 0.d0
+!!$                   snu = 0.d0
+!!$                   deallocate(distArray)
+!!$                   goto 666
+!!$                endif
+!!$                
+!!$                alphanu = alphanu + bfOpac + dustOpac
+!!$                
+!!$                ! add continuous bf and ff emissivity of hydrogen
+!!$                
+!!$                jnu = jnu !+ bfEmiss + dustEmiss
+!!$                
+!!$                if (alphanu /= 0.d0) then
+!!$                   snu = jnu/alphanu                
+!!$                else
+!!$                   snu = tiny(snu)
+!!$                endif
+!!$                
+!!$                
+!!$                dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+!!$                
+!!$                if ((dtau > 0.2d0).and.(tau < 20.d0)) then
+!!$                   ntau = ntau * 2
+!!$                   ok = .false.
+!!$                   exit
+!!$                endif
+!!$                
+!!$                
+!!$                if (thisOctal%inflow(subcell)) then
+!!$                   if (dtau > 0.1d0) then
+!!$                      fac = (1.d0-exp(-dtau))
+!!$                   else
+!!$                      fac = (dtau - dtau**2/2.d0)
+!!$                   endif
+!!$                   
+!!$                   
+!!$                   
+!!$                   istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1)) * 1.d10
+!!$                   tauStep = tauStep + dtau
+!!$                   tautmp = tautmp + dtau
+!!$                endif
+!!$             enddo
+!!$             deallocate(distArray)
+!!$             if (ok) then
+!!$                i0 = i0 + iStep
+!!$                tau = tau + tauStep
+!!$             endif
+!!$
+!!$          enddo
+!!$
+!!$          rhoCol = rhoCol + tval*thisOctal%rho(subcell)*1.d10
+!!$          oldPosition = currentPosition
+!!$          currentPosition = currentPosition + (tval+1.d-3*grid%halfSmallestSubcell) * direction
+!!$          totdist = totdist + (tval+1.d-3*grid%halfSmallestSubcell)
+!!$
+!!$          if (PRESENT(occultingDisc)) then
+!!$             if (occultingDisc) then
+!!$                if  (oldPosition%z*currentPosition%z < 0.d0) then
+!!$                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) then
+!!$                      goto 666
+!!$                   endif
+!!$                endif
+!!$             endif
+!!$          endif
+!!$       enddo
+!!$
+!!$    if (endLoopAtPhotosphere) then
+!!$
+!!$       iElement = getElement(source(sourcenumber)%surface, photoDirection)
+!!$       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
+!!$    endif
+!!$666 continue 
+!!$
+!!$  end function intensityAlongRay
 
 
   function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
@@ -4209,44 +4209,44 @@ contains
   end subroutine setMicroturb
 
 
-  subroutine testRays(grid, nSource, source)
-    type(GRIDTYPE) :: grid
-    integer :: nSource
-    type(SOURCETYPE) :: source(:)
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    real(double) :: weight
-    type(VECTOR) :: position, direction, pvec, photoDirection
-    integer :: sourceNumber, i, j, nray, iElement
-    real(double) :: i0, distTosource, cosTheta, freq
-    logical :: hitSource
-    
-    freq  = cSpeed / (6562.8d0 * 1.d-8)
-    position = VECTOR(0.d0 , 0.d0 , source(1)%radius*5.d0)
-
-    thisOctal => grid%octreeRoot
-    call findSubcellLocal(position, thisOctal, subcell)
-
-    do i = 1, 10
-       nray = 100 * 2**(i-1)
-       i0 = 0.d0
-       do j = 1, nray
-          call randomRayDirection(0.8d0, position, source, nSource, direction, weight)
-          
-          call distanceToSource(source, nSource, position, direction, hitSource, disttoSource, sourcenumber)
-          if (hitSource) then
-             pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
-             call normalize(pVec)
-             cosTheta = -1.d0*(pVec.dot.direction)
-             photoDirection = pVec
-             call normalize(photoDirection)
-             iElement = getElement(source(sourcenumber)%surface, photoDirection)
-             i0 = i0 + i_nu(source(sourceNumber), freq, iElement,costheta)*weight
-          endif
-       enddo
-       write(*,*) "nray ",nray, "j_nu ",i0/dble(nray)
-    enddo
-  end subroutine testRays
+!!$  subroutine testRays(grid, nSource, source)
+!!$    type(GRIDTYPE) :: grid
+!!$    integer :: nSource
+!!$    type(SOURCETYPE) :: source(:)
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    integer :: subcell
+!!$    real(double) :: weight
+!!$    type(VECTOR) :: position, direction, pvec, photoDirection
+!!$    integer :: sourceNumber, i, j, nray, iElement
+!!$    real(double) :: i0, distTosource, cosTheta, freq
+!!$    logical :: hitSource
+!!$    
+!!$    freq  = cSpeed / (6562.8d0 * 1.d-8)
+!!$    position = VECTOR(0.d0 , 0.d0 , source(1)%radius*5.d0)
+!!$
+!!$    thisOctal => grid%octreeRoot
+!!$    call findSubcellLocal(position, thisOctal, subcell)
+!!$
+!!$    do i = 1, 10
+!!$       nray = 100 * 2**(i-1)
+!!$       i0 = 0.d0
+!!$       do j = 1, nray
+!!$          call randomRayDirection(0.8d0, position, source, nSource, direction, weight)
+!!$          
+!!$          call distanceToSource(source, nSource, position, direction, hitSource, disttoSource, sourcenumber)
+!!$          if (hitSource) then
+!!$             pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
+!!$             call normalize(pVec)
+!!$             cosTheta = -1.d0*(pVec.dot.direction)
+!!$             photoDirection = pVec
+!!$             call normalize(photoDirection)
+!!$             iElement = getElement(source(sourcenumber)%surface, photoDirection)
+!!$             i0 = i0 + i_nu(source(sourceNumber), freq, iElement,costheta)*weight
+!!$          endif
+!!$       enddo
+!!$       write(*,*) "nray ",nray, "j_nu ",i0/dble(nray)
+!!$    enddo
+!!$  end subroutine testRays
 
 
   subroutine createRayGridGeneric(cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
@@ -4421,100 +4421,100 @@ contains
     n = nt
   end subroutine removeIdenticalPoints
 
-  subroutine getProjectedPoints(grid, xProj, yProj, xPoints, yPoints, nPoints, count)
-    type(GRIDTYPE) :: grid
-    integer :: nPoints
-    type(VECTOR) :: xProj, yProj
-    real(double), pointer :: xPoints(:), yPoints(:)
-    logical, optional :: count
-
-
-    call getProjectedPointsRecursive(grid, grid%octreeRoot,  xProj, yProj, xPoints, yPoints, nPoints, count)
-
-  end subroutine getProjectedPoints
-
-  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal,  xProj, yProj, xPoints, yPoints, nPoints, count)
-    use inputs_mod, only : smallestCellSize
-    type(octal), pointer   :: thisOctal
-    type(GRIDTYPE) :: grid
-    type(octal), pointer  :: child 
-    logical, optional :: count
-    integer :: subcell, i,j
-    integer :: nPoints
-    type(VECTOR) :: xProj, yProj, rVec
-    real(double) :: xPoints(:), yPoints(:), phi, dphi
-    logical :: addPoint
-    logical :: converged
-  
-    addPoint = .true.
-    if (PRESENT(count)) then
-       addPoint = .not.count
-    endif
-
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call getProjectedPointsRecursive(grid, child,  xProj, yProj, xPoints, yPoints, nPoints, count)
-                exit
-             end if
-          end do
-       else
-          if (thisOctal%inflow(subcell)) then
-             call randomNumberGenerator(getDouble=dphi)
-             dphi = dphi * twoPi
-             if (thisOctal%threeD) then
-                nPoints = nPoints + 1
-                if (addPoint) then
-                   rVec = subcellCentre(thisOctal, subcell)
-                   xPoints(nPoints) = xProj.dot.rVec
-                   yPoints(nPoints) = yProj.dot.rVec
-                endif
-             else if (thisOctal%twoD) then
-                do j = 1, 50
-                   phi = dble(j-1)/49.d0 * twoPi + dphi
-                   rVec =  subcellCentre(thisOctal, subcell)
-                   rVec = rotateZ(rVec, phi)
-                   nPoints = nPoints + 1
-                   if (addPoint) then
-                      xPoints(nPoints) = xProj.dot.rVec
-                      yPoints(nPoints) = yProj.dot.rVec
-                   endif
-                enddo
-             else if (thisOctal%oneD) then
-                do j = 1, 50
-                   phi = dble(j)/50.d0 * twoPi + dphi
-                   rVec =  subcellCentre(thisOctal, subcell)
-                   rVec = rotateZ(rVec, phi)
-                   nPoints = nPoints + 1
-                   if (addPoint) then
-                      xPoints(nPoints) = rVec%x
-                      yPoints(nPoints) = rVec%y
-                   endif
-                enddo
-             endif
-             if (addpoint) then
-                converged = .false.
-                do while(.not.converged)
-                   converged = .true.
-                   do i = 1, nPoints-1
-                      if (sqrt( (xpoints(nPoints)-xPoints(i))**2 +&
-                           (ypoints(nPoints)-yPoints(i))**2) < smallestCellSize) then
-                         nPoints = nPoints - 1
-                         converged = .false.
-                         exit
-                      endif
-                   enddo
-                enddo
-             endif
-
-          endif
-       endif
-    enddo
-  end subroutine getProjectedPointsRecursive
+!!$  subroutine getProjectedPoints(grid, xProj, yProj, xPoints, yPoints, nPoints, count)
+!!$    type(GRIDTYPE) :: grid
+!!$    integer :: nPoints
+!!$    type(VECTOR) :: xProj, yProj
+!!$    real(double), pointer :: xPoints(:), yPoints(:)
+!!$    logical, optional :: count
+!!$
+!!$
+!!$    call getProjectedPointsRecursive(grid, grid%octreeRoot,  xProj, yProj, xPoints, yPoints, nPoints, count)
+!!$
+!!$  end subroutine getProjectedPoints
+!!$
+!!$  recursive  subroutine  getProjectedPointsRecursive(grid, thisOctal,  xProj, yProj, xPoints, yPoints, nPoints, count)
+!!$    use inputs_mod, only : smallestCellSize
+!!$    type(octal), pointer   :: thisOctal
+!!$    type(GRIDTYPE) :: grid
+!!$    type(octal), pointer  :: child 
+!!$    logical, optional :: count
+!!$    integer :: subcell, i,j
+!!$    integer :: nPoints
+!!$    type(VECTOR) :: xProj, yProj, rVec
+!!$    real(double) :: xPoints(:), yPoints(:), phi, dphi
+!!$    logical :: addPoint
+!!$    logical :: converged
+!!$  
+!!$    addPoint = .true.
+!!$    if (PRESENT(count)) then
+!!$       addPoint = .not.count
+!!$    endif
+!!$
+!!$
+!!$    do subcell = 1, thisOctal%maxChildren
+!!$       if (thisOctal%hasChild(subcell)) then
+!!$          ! find the child
+!!$          do i = 1, thisOctal%nChildren, 1
+!!$             if (thisOctal%indexChild(i) == subcell) then
+!!$                child => thisOctal%child(i)
+!!$                call getProjectedPointsRecursive(grid, child,  xProj, yProj, xPoints, yPoints, nPoints, count)
+!!$                exit
+!!$             end if
+!!$          end do
+!!$       else
+!!$          if (thisOctal%inflow(subcell)) then
+!!$             call randomNumberGenerator(getDouble=dphi)
+!!$             dphi = dphi * twoPi
+!!$             if (thisOctal%threeD) then
+!!$                nPoints = nPoints + 1
+!!$                if (addPoint) then
+!!$                   rVec = subcellCentre(thisOctal, subcell)
+!!$                   xPoints(nPoints) = xProj.dot.rVec
+!!$                   yPoints(nPoints) = yProj.dot.rVec
+!!$                endif
+!!$             else if (thisOctal%twoD) then
+!!$                do j = 1, 50
+!!$                   phi = dble(j-1)/49.d0 * twoPi + dphi
+!!$                   rVec =  subcellCentre(thisOctal, subcell)
+!!$                   rVec = rotateZ(rVec, phi)
+!!$                   nPoints = nPoints + 1
+!!$                   if (addPoint) then
+!!$                      xPoints(nPoints) = xProj.dot.rVec
+!!$                      yPoints(nPoints) = yProj.dot.rVec
+!!$                   endif
+!!$                enddo
+!!$             else if (thisOctal%oneD) then
+!!$                do j = 1, 50
+!!$                   phi = dble(j)/50.d0 * twoPi + dphi
+!!$                   rVec =  subcellCentre(thisOctal, subcell)
+!!$                   rVec = rotateZ(rVec, phi)
+!!$                   nPoints = nPoints + 1
+!!$                   if (addPoint) then
+!!$                      xPoints(nPoints) = rVec%x
+!!$                      yPoints(nPoints) = rVec%y
+!!$                   endif
+!!$                enddo
+!!$             endif
+!!$             if (addpoint) then
+!!$                converged = .false.
+!!$                do while(.not.converged)
+!!$                   converged = .true.
+!!$                   do i = 1, nPoints-1
+!!$                      if (sqrt( (xpoints(nPoints)-xPoints(i))**2 +&
+!!$                           (ypoints(nPoints)-yPoints(i))**2) < smallestCellSize) then
+!!$                         nPoints = nPoints - 1
+!!$                         converged = .false.
+!!$                         exit
+!!$                      endif
+!!$                   enddo
+!!$                enddo
+!!$             endif
+!!$
+!!$          endif
+!!$       endif
+!!$    enddo
+!!$  end subroutine getProjectedPointsRecursive
 
 
   subroutine getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, source, &

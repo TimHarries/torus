@@ -1076,7 +1076,7 @@ stop
                 dV = abs(sinTheta * dr * dTheta * dPhi)*r**2
                 rVec = VECTOR(r*sinTheta*cos(phi),r*sinTheta*sin(phi),r*mu)
 
-                call getIndices(grid, rVec, i1, i2, i3, t1, t1, t3)
+                call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
 
 
                 tot = tot + real(interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV)
@@ -1125,7 +1125,7 @@ stop
                 dV = abs( sinTheta * dr * dTheta * dPhi)*r**2
                 rVec = VECTOR(r*sinTheta*cos(phi),r*sinTheta*sin(phi),r*mu)
 
-                call getIndices(grid, rVec, i1, i2, i3, t1, t1, t3)
+                call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
 
                 phiProbDist(i,j,k) = phiProbDist(i,j,k-1)  &
                      + real(interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV)

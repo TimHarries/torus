@@ -2459,200 +2459,200 @@ contains
     end subroutine TRIDIAG
     
 
-    subroutine quarticSub(udens_n_plus_1,  udens_n, kappa, rho,  adot, &
-         mu, gamma, deltaT, ok)
-      real(double) :: udens_n_plus_1,  udens_n, kappa, rho, mu, gamma, DeltaT
-      real(double) :: a1, a2
-      real(double) :: adot
-      integer :: nIter
-      logical :: converged, ok
-      real(double) :: x1, x2, xm, y1, y2, ym
+!!$    subroutine quarticSub(udens_n_plus_1,  udens_n, kappa, rho,  adot, &
+!!$         mu, gamma, deltaT, ok)
+!!$      real(double) :: udens_n_plus_1,  udens_n, kappa, rho, mu, gamma, DeltaT
+!!$      real(double) :: a1, a2
+!!$      real(double) :: adot
+!!$      integer :: nIter
+!!$      logical :: converged, ok
+!!$      real(double) :: x1, x2, xm, y1, y2, ym
+!!$
+!!$      ok = .true.
+!!$      a1 = 4.d0 * kappa  * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+!!$
+!!$!      a2 = cSpeed * kappa * deltaT
+!!$!      a2  = (aDot/E_n) * deltaT
+!!$      a2 = -deltaT * aDot - udens_n
+!!$      nIter = 0
+!!$      converged = .false.
+!!$      
+!!$      x1 = 0.d0
+!!$      x2 = uDensFunc(4000.d0, rho, gamma, mu) 
+!!$      
+!!$      do while(.not.converged)
+!!$         xm = 0.5d0*(x1+x2)
+!!$         y1 = quarticFunc(x1, a1, a2)
+!!$         y2 = quarticFunc(x2, a1, a2)
+!!$         ym = quarticFunc(xm, a1, a2)
+!!$         if (y1*ym < 0.d0) then
+!!$            x1 = x1
+!!$            x2 = xm
+!!$         else if (y2*ym < 0.d0) then
+!!$            x1 = xm
+!!$            x2 = x2
+!!$         else
+!!$            converged = .true.
+!!$            xm = 0.d0
+!!$            x1 = 0.d0
+!!$            x2 = 0.d0
+!!$            if (myrankGlobal==0) then
+!!$               write(*,*) "bisection failed!", y1,y2,ym
+!!$               write(*,*) "rho ",rho
+!!$               write(*,*) "adot ",adot
+!!$               write(*,*) "udens_n ",udens_n
+!!$               write(*,*) "temp ", temperatureFunc(udens_n, rho, gamma, mu)
+!!$            endif
+!!$            ok = .false.
+!!$         endif
+!!$                         
+!!$         if (abs((x1-x2)/x1) .le. 1.d-5) then
+!!$            converged = .true.
+!!$         endif
+!!$         niter = niter + 1
+!!$      enddo
+!!$      udens_n_plus_1 = 0.5d0*(x1+x2)
+!!$      if (temperatureFunc(udens_n_plus_1, rho, gamma, mu) > 4000.d0) then
+!!$         write(*,*) "bisection failed 2 !", y1,y2,ym
+!!$         write(*,*) "rho ",rho
+!!$         write(*,*) "adot ",adot
+!!$         write(*,*) "udens_n ",udens_n
+!!$         write(*,*) "temp ", temperatureFunc(udens_n, rho, gamma, mu)
+!!$         ok = .false.
+!!$      endif
+!!$
+!!$
+!!$    end subroutine quarticSub
 
-      ok = .true.
-      a1 = 4.d0 * kappa  * stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
-
-!      a2 = cSpeed * kappa * deltaT
-!      a2  = (aDot/E_n) * deltaT
-      a2 = -deltaT * aDot - udens_n
-      nIter = 0
-      converged = .false.
-      
-      x1 = 0.d0
-      x2 = uDensFunc(4000.d0, rho, gamma, mu) 
-      
-      do while(.not.converged)
-         xm = 0.5d0*(x1+x2)
-         y1 = quarticFunc(x1, a1, a2)
-         y2 = quarticFunc(x2, a1, a2)
-         ym = quarticFunc(xm, a1, a2)
-         if (y1*ym < 0.d0) then
-            x1 = x1
-            x2 = xm
-         else if (y2*ym < 0.d0) then
-            x1 = xm
-            x2 = x2
-         else
-            converged = .true.
-            xm = 0.d0
-            x1 = 0.d0
-            x2 = 0.d0
-            if (myrankGlobal==0) then
-               write(*,*) "bisection failed!", y1,y2,ym
-               write(*,*) "rho ",rho
-               write(*,*) "adot ",adot
-               write(*,*) "udens_n ",udens_n
-               write(*,*) "temp ", temperatureFunc(udens_n, rho, gamma, mu)
-            endif
-            ok = .false.
-         endif
-                         
-         if (abs((x1-x2)/x1) .le. 1.d-5) then
-            converged = .true.
-         endif
-         niter = niter + 1
-      enddo
-      udens_n_plus_1 = 0.5d0*(x1+x2)
-      if (temperatureFunc(udens_n_plus_1, rho, gamma, mu) > 4000.d0) then
-         write(*,*) "bisection failed 2 !", y1,y2,ym
-         write(*,*) "rho ",rho
-         write(*,*) "adot ",adot
-         write(*,*) "udens_n ",udens_n
-         write(*,*) "temp ", temperatureFunc(udens_n, rho, gamma, mu)
-         ok = .false.
-      endif
-
-
-    end subroutine quarticSub
-
-    subroutine quarticSubTest(udens_n_plus_1,  udens_n, kappa, rho,  adot, &
-         mu, gamma, deltaT, ok)
-      real(double) :: udens_n_plus_1,  udens_n, kappa, rho, mu, gamma, DeltaT
-      real(double) :: a1, a2
-      real(double) :: adot
-      integer :: nIter
-      logical :: converged, ok
-      real(double) :: x1, x2, xm, y1, y2, ym
-
-      ok = .true.
-      a1 = 4.d0 * kappa  * rho*stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
-      a2 = -deltaT * aDot - udens_n
-      nIter = 0
-      converged = .false.
-      
-      x1 = 0.d0
-      x2 = 1.d15
-      
-      do while(.not.converged)
-         xm = 0.5d0*(x1+x2)
-         y1 = quarticFunc(x1, a1, a2)
-         y2 = quarticFunc(x2, a1, a2)
-         ym = quarticFunc(xm, a1, a2)
-         if (y1*ym < 0.d0) then
-            x1 = x1
-            x2 = xm
-         else if (y2*ym < 0.d0) then
-            x1 = xm
-            x2 = x2
-         else
-            converged = .true.
-            xm = 0.d0
-            x1 = 0.d0
-            x2 = 0.d0
-            if (myrankGlobal==0) then
-               write(*,*) "bisection failed!", y1,y2,ym
-               write(*,*) "rho ",rho
-               write(*,*) "adot ",adot
-               write(*,*) "udens_n ",udens_n
-               write(*,*) "temp ", temperatureFunc(udens_n, rho, gamma, mu)
-            endif
-            ok = .false.
-         endif
-                         
-         if (abs((x1-x2)/x1) .le. 1.d-12) then
-            converged = .true.
-         endif
-         niter = niter + 1
-      enddo
-      udens_n_plus_1 = 0.5d0*(x1+x2)
-
-
-    end subroutine quarticSubTest
-
-    function quarticFunc(x, a1, a2) result (y)
-      real(double) :: x, a1, a2, y
-      y = a1 * x**4 + x + a2
-
-    end function quarticFunc
-    
-    subroutine calculateLag(grid, source, lamArray, nLambda)
-      integer :: nPhotons
-      type(GRIDTYPE) :: grid
-      type(SOURCETYPE) :: source(:)
-      integer :: i
-      real(double) :: photonTime, dist, tau, inc, observerDistance
-      real :: lamArray(:)
-      real(double), allocatable :: timeArray(:), yArray(:)
-      integer :: nTime
-      real(double) :: timeStart,timeEnd
-      integer :: nLambda 
-      integer :: iTau, nTau
-      real(double),allocatable :: tauArray(:), xArray(:)
-      type(VECTOR) :: rVec, uHat, rHat, observerDirection, observerPosition
-      integer :: iLambda, j
-      logical :: ok
-
-      timeStart = 0.d0
-      timeEnd = 100.d0
-      nTime = 100
-      allocate(timeArray(ntime), yArray(nTime))
-      do i = 1, nTime
-         timeArray(i) = timeStart + (timeEnd-timeStart)*dble(i-1)/dble(nTime-1)
-      enddo
-      yarray = 0.d0
-
-      inc = 60.d0 * degToRad
-      observerDistance = 1.d5*autocm
-      observerDirection = VECTOR(sin(inc), 0.d0, cos(inc))
-      observerPosition = observerDistance * observerDirection
-      nPhotons = 100000
-      ilambda = findIlambda(3000., lamArray, nLambda, ok)
-
-      allocate(tauArray(10000),xArray(10000))
-      do i = 1, nPhotons
-
-         photonTime = 0.d0
-
-         call getPhotonPositionDirection(source(1), rVec, uHat, rHat,grid)
-
-         call tauAlongPath(ilambda, grid, rVec, uhat, tau, ntau=ntau, tauarray=tauarray,xarray=xarray)
-
-         if (tauArray(nTau) > 0.6667d0) then
-            call locate(tauArray, nTau, 0.6667d0, itau)
-            dist = xArray(itau) + &
-                 (xArray(itau+1)-xarray(itau))*(0.6667d0-tauArray(itau))/(tauArray(itau+1)-tauArray(itau))
-         else
-            cycle
-         endif
-         photonTime = photonTime + dist*1.d10/cspeed
-         rVec = rVec + dist * uHat
-         call tauAlongPath(ilambda, grid, rVec, observerDirection, tau, taumax=10.d0)
-
-         photonTime = photonTime + distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
-         photonTime = photonTime - observerDistance/cspeed
-         
-         if (photonTime < timeArray(nTime)) then
-            call locate(timeArray, nTime, photonTime, j)
-            yArray(j) = yArray(j) + exp(-tau)
-         endif
-      enddo
-      yArray = yArray / SUM(yArray)
-
-      open(20,file="lag.dat",status="unknown",form="formatted")
-      do i = 1, nTime
-         write(20,*) timeArray(i), yArray(i)
-      enddo
-      close(20)
-    end subroutine calculateLag
+!!$    subroutine quarticSubTest(udens_n_plus_1,  udens_n, kappa, rho,  adot, &
+!!$         mu, gamma, deltaT, ok)
+!!$      real(double) :: udens_n_plus_1,  udens_n, kappa, rho, mu, gamma, DeltaT
+!!$      real(double) :: a1, a2
+!!$      real(double) :: adot
+!!$      integer :: nIter
+!!$      logical :: converged, ok
+!!$      real(double) :: x1, x2, xm, y1, y2, ym
+!!$
+!!$      ok = .true.
+!!$      a1 = 4.d0 * kappa  * rho*stefanBoltz * ( (mu*(gamma-1.d0))/(rGas * rho) )**4 * deltaT
+!!$      a2 = -deltaT * aDot - udens_n
+!!$      nIter = 0
+!!$      converged = .false.
+!!$      
+!!$      x1 = 0.d0
+!!$      x2 = 1.d15
+!!$      
+!!$      do while(.not.converged)
+!!$         xm = 0.5d0*(x1+x2)
+!!$         y1 = quarticFunc(x1, a1, a2)
+!!$         y2 = quarticFunc(x2, a1, a2)
+!!$         ym = quarticFunc(xm, a1, a2)
+!!$         if (y1*ym < 0.d0) then
+!!$            x1 = x1
+!!$            x2 = xm
+!!$         else if (y2*ym < 0.d0) then
+!!$            x1 = xm
+!!$            x2 = x2
+!!$         else
+!!$            converged = .true.
+!!$            xm = 0.d0
+!!$            x1 = 0.d0
+!!$            x2 = 0.d0
+!!$            if (myrankGlobal==0) then
+!!$               write(*,*) "bisection failed!", y1,y2,ym
+!!$               write(*,*) "rho ",rho
+!!$               write(*,*) "adot ",adot
+!!$               write(*,*) "udens_n ",udens_n
+!!$               write(*,*) "temp ", temperatureFunc(udens_n, rho, gamma, mu)
+!!$            endif
+!!$            ok = .false.
+!!$         endif
+!!$                         
+!!$         if (abs((x1-x2)/x1) .le. 1.d-12) then
+!!$            converged = .true.
+!!$         endif
+!!$         niter = niter + 1
+!!$      enddo
+!!$      udens_n_plus_1 = 0.5d0*(x1+x2)
+!!$
+!!$
+!!$    end subroutine quarticSubTest
+!!$
+!!$    function quarticFunc(x, a1, a2) result (y)
+!!$      real(double) :: x, a1, a2, y
+!!$      y = a1 * x**4 + x + a2
+!!$
+!!$    end function quarticFunc
+!!$    
+!!$    subroutine calculateLag(grid, source, lamArray, nLambda)
+!!$      integer :: nPhotons
+!!$      type(GRIDTYPE) :: grid
+!!$      type(SOURCETYPE) :: source(:)
+!!$      integer :: i
+!!$      real(double) :: photonTime, dist, tau, inc, observerDistance
+!!$      real :: lamArray(:)
+!!$      real(double), allocatable :: timeArray(:), yArray(:)
+!!$      integer :: nTime
+!!$      real(double) :: timeStart,timeEnd
+!!$      integer :: nLambda 
+!!$      integer :: iTau, nTau
+!!$      real(double),allocatable :: tauArray(:), xArray(:)
+!!$      type(VECTOR) :: rVec, uHat, rHat, observerDirection, observerPosition
+!!$      integer :: iLambda, j
+!!$      logical :: ok
+!!$
+!!$      timeStart = 0.d0
+!!$      timeEnd = 100.d0
+!!$      nTime = 100
+!!$      allocate(timeArray(ntime), yArray(nTime))
+!!$      do i = 1, nTime
+!!$         timeArray(i) = timeStart + (timeEnd-timeStart)*dble(i-1)/dble(nTime-1)
+!!$      enddo
+!!$      yarray = 0.d0
+!!$
+!!$      inc = 60.d0 * degToRad
+!!$      observerDistance = 1.d5*autocm
+!!$      observerDirection = VECTOR(sin(inc), 0.d0, cos(inc))
+!!$      observerPosition = observerDistance * observerDirection
+!!$      nPhotons = 100000
+!!$      ilambda = findIlambda(3000., lamArray, nLambda, ok)
+!!$
+!!$      allocate(tauArray(10000),xArray(10000))
+!!$      do i = 1, nPhotons
+!!$
+!!$         photonTime = 0.d0
+!!$
+!!$         call getPhotonPositionDirection(source(1), rVec, uHat, rHat,grid)
+!!$
+!!$         call tauAlongPath(ilambda, grid, rVec, uhat, tau, ntau=ntau, tauarray=tauarray,xarray=xarray)
+!!$
+!!$         if (tauArray(nTau) > 0.6667d0) then
+!!$            call locate(tauArray, nTau, 0.6667d0, itau)
+!!$            dist = xArray(itau) + &
+!!$                 (xArray(itau+1)-xarray(itau))*(0.6667d0-tauArray(itau))/(tauArray(itau+1)-tauArray(itau))
+!!$         else
+!!$            cycle
+!!$         endif
+!!$         photonTime = photonTime + dist*1.d10/cspeed
+!!$         rVec = rVec + dist * uHat
+!!$         call tauAlongPath(ilambda, grid, rVec, observerDirection, tau, taumax=10.d0)
+!!$
+!!$         photonTime = photonTime + distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
+!!$         photonTime = photonTime - observerDistance/cspeed
+!!$         
+!!$         if (photonTime < timeArray(nTime)) then
+!!$            call locate(timeArray, nTime, photonTime, j)
+!!$            yArray(j) = yArray(j) + exp(-tau)
+!!$         endif
+!!$      enddo
+!!$      yArray = yArray / SUM(yArray)
+!!$
+!!$      open(20,file="lag.dat",status="unknown",form="formatted")
+!!$      do i = 1, nTime
+!!$         write(20,*) timeArray(i), yArray(i)
+!!$      enddo
+!!$      close(20)
+!!$    end subroutine calculateLag
 
     subroutine calculateTranportTerms(deltaUTransport, energyFromCell, energyIntoCell, dx, nx)
       integer :: nx
