@@ -3333,7 +3333,7 @@ subroutine write1dlist(grid, thisFile)
 end subroutine write1dlist
 
 recursive subroutine write1dlisttoFile(grid, thisOctal, ithread)
-  use inputs_mod, only : sphereRadius
+!  use inputs_mod, only : sphereRadius
   use source_mod, only : globalSourceArray
   type(GRIDTYPE) :: grid
   real(double) :: radPress,v, kappaAbs, kappaSca, kappaExt,tau,fac,area,dtau
@@ -4378,7 +4378,6 @@ end subroutine writeRadialFile
 
   subroutine tauAlongPathMPI(grid, rVec, uHat, tauAbs, tauSca)
     use mpi
-    use inputs_mod, only : smallestCellsize
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
     integer :: subcell
