@@ -93,6 +93,10 @@ module sph_data_class
           
   end type sph_data
 
+! Mean molecular weight, used for calculating temperature from internal energy.
+! This assumes a 10:1 H:He ratio by number
+    real(double), parameter, private :: gmw = 14.0/11.0 
+
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:), RhoH2Array(:)
   real(double), pointer :: rhoCOarray(:) => null()
@@ -170,7 +174,7 @@ contains
        call writeInfo("Sink particles will be discarded", FORINFO)
        sphdata%nptmass = 0
     else
-       call writeInfo("Sink particles will be stored", FORINFO)
+       if (nptmass > 0) call writeInfo("Sink particles will be stored", FORINFO)
        sphdata%nptmass = nptmass
     endif
 
@@ -338,12 +342,12 @@ contains
     maxMass = maxVal(sphdata%gasmass) * sphdata%umass
     call writeInfo("",forInfo)
     if (minMass == maxMass) then
-       write(message,'(a,es10.4,a,es10.4,a)') "Equal mass particles of ", minMass, "g = ", minMass/mSol, " solar masses" 
+       write(message,'(a,es11.4,a,es10.4,a)') "Equal mass particles of ", minMass, "g = ", minMass/mSol, " solar masses" 
        call writeInfo(message,forInfo)
     else
-       write(message,'(a,es10.4,a,es10.4,a)') "Minimum particle mass  ", minMass, "g = ", minMass/mSol, " solar masses"
+       write(message,'(a,es11.4,a,es10.4,a)') "Minimum particle mass  ", minMass, "g = ", minMass/mSol, " solar masses"
        call writeInfo(message,forInfo)
-       write(message,'(a,es10.4,a,es10.4,a)') "Maximum particle mass  ", maxMass, "g = ", maxMass/mSol, " solar masses"
+       write(message,'(a,es11.4,a,es10.4,a)') "Maximum particle mass  ", maxMass, "g = ", maxMass/mSol, " solar masses"
        call writeInfo(message,forInfo)
     endif
 
@@ -729,111 +733,209 @@ part_loop: do ipart=1, nlines
 
   end subroutine new_read_sph_data
 
-! Read data from Gadget snapshot file. Works for a single file only i.e not parallel i/o.
+! Read data from a Gadget2 snapshot file.
 ! D. Acreman September 2014
 !
-! To do: 1. code units are hardwired
-!        2. need to read in chemistry data
-!        3. Need to exlude dead particles
-!        4. Need to handle conversion of total density to HI density
-!        3. Add to documentation
-!
+! To do: 1. Get correct total mass
+!        2. Check molecular data are applied correctly
+!        2. Need to handle conversion of total density to HI density
+!        3. Check calculation of temperature
+!        5. Read sinks 
+!        4. Add to documentation
+
   subroutine read_gadget2_data(filename)
     use inputs_mod, only: convertRhoToHI, sphwithChem
 
     character(len=*), intent(in) :: filename
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
     integer :: i, igas
-    integer :: gadget_npart(6), nptmass, nTotal, nDead
+    integer :: nptmass, nTotal, nDead, nGasTotal
+    integer :: foundnSink, foundnDead
     character(len=80) :: message
-    real(double) :: gadget_massTable(6), time
     real(double) :: udist, umass, utime, uvel, utemp 
+    real(double) :: totalGasMass, numDen
 ! Gadget data
+    integer, parameter :: nPartType=6  ! Number of particle types in Gadget
+    integer :: g_npart(nPartType) ! Number of particles of each type in this file
+    integer :: g_nall(nPartType)  ! Total number of particles of each type in the simulation
+    integer :: g_nFiles           ! Number of files in each snapshot
+    integer :: g_nVarMass         ! Number of particles with variable mass 
+    real(double) :: g_massTable(nPartType), time
     real(single), allocatable :: g_pos(:,:), g_vel(:,:), g_m(:), g_u(:), g_rho(:), g_h(:)
-    real(single), allocatable :: aH(:), aH2(:), aCO(:), dead(:)
+    real(single), allocatable :: aH(:), aH2(:), aCO(:)
+    integer, allocatable      :: g_idNum(:)
+! Dummy variables for reading the header
+    real(double) :: dummyDouble
+    integer      :: dummyInt, dummyInt6(6)
 
+!
+! 1. Read the file header and perform some checks
+!
+    call writeInfo("",FORINFO)
+    write(message,*) "Reading Gadget dump from "//trim(filename)
+    call writeInfo(message,FORINFO)
     open(unit=LUIN,status="old",file=filename,form="unformatted")
 
 ! Read the header
-    read (LUIN) gadget_npart, gadget_massTable, time ! redshift, flagsfr, flagfeedb, nall
+    read (LUIN) g_npart, g_massTable, time, dummyDouble, dummyInt, dummyInt, g_nall, &
+         dummyInt, g_nFiles, dummyDouble, dummyDouble, dummyDouble, dummyDouble, &
+         dummyInt, dummyInt, dummyInt6, utime, umass, udist
 
-    npart   = gadget_npart(1)
-    nptmass = gadget_npart(5)
-    ntotal = sum(gadget_npart)
+    call writeInfo("",TRIVIAL)
+    write(message,*) "Gadget particle list: "
+    call writeInfo(message,TRIVIAL)
+    write(message,*) "      Gas      Halo      Disk     Bulge     Stars  Boundary"
+    call writeInfo(message,TRIVIAL)
+    write(message,"(6(1x,i9))") g_npart(:)
+    call writeInfo(message,TRIVIAL)
+    call writeInfo("",TRIVIAL)
 
-    write(message,*) "There are ", npart, " gas particles and ", nptmass, " sink particles"
-    call writeinfo(message, TRIVIAL)
-    write(message,*) "Total number of particles= ", ntotal
-    call writeinfo(message, TRIVIAL)
+! Check that there is only one file in this snapshot ...
+    if ( g_nFiles /= 1 ) then
+       write(message,*) "Multiple files per snapshot is not supported ", g_nFiles
+       call writeFatal(message)
+    endif
 
-! Convertion from Gadget code units. Hardwire for now ...
-    udist = pctocm
-    umass = msol
-    uvel  = 1.0e5_db
-    utemp = 1.0e10_db
-    utime = udist/uvel
+! ... which means that the number of particles in this file is the same as the total number of particles in the simulation.
+    do i=1, nPartType
+       if (g_npart(i) /= g_nall(i)) then
+          write(message,*) "This file does not contain all the particles ", i, g_npart(i), g_nall(i)
+          call writeWarning(message)
+          exit
+       end if
+    end do
+
+!
+! 2. Set up units and report the values used
+!    Storing units in the header is not in the public Gadget2 but any problems will shown up here
+!
+    uvel  = udist/utime
+    utemp = (udist/utime)**2 ! Units of internal energy
     sphdata%codeEnergytoTemperature = 1.0
     sphdata%codeVelocitytoTORUS = uvel / cspeed
 
-! Initialiase SPH data structure 
-    call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
+    call writeInfo("Units: ",TRIVIAL)
+    write(message,'(a,es11.4,a,es11.4,a)') "Time units (from header):     ", utime, " s  = ", utime*secsToYears, " years"
+    call writeInfo(message,TRIVIAL)
+    write(message,'(a,es11.4,a,es11.4,a)') "Mass units (from header):     ", umass, " g  = ", umass/mSol, " mSol"
+    call writeInfo(message,TRIVIAL)
+    write(message,'(a,es11.4,a,es11.4,a)') "Distance units (from header): ", udist, " cm = ", udist/pctocm, " pc"
+    call writeInfo(message,TRIVIAL)
+    call writeInfo("",TRIVIAL)
+
+    if (utime==0.0 .or. umass==0.0 .or. udist==0.0 ) then
+       call writeFatal("Found zero in code units")
+    endif
+!
+! 3. Read in particle information from the dump file
+!
+    ntotal     = sum(g_npart) ! Total number of particles 
+    nGasTotal  = g_npart(1)   ! Total number of gas particles dead or alive
+
+! Count the number of particles with variable masses
+    g_nVarMass = 0
+    do i=1, nPartType
+       if (g_massTable(i) == 0.0 ) g_nVarMass = g_nVarMass + g_npart(i)
+    end do
+    write(message,'(a,i9)') "Number of particles with variable masses: ", g_nVarMass
+    call writeInfo(message,TRIVIAL)
 
 ! Particle positions: total number of particles in file
-    allocate(g_pos(3,1:nTotal))
-    read(LUIN) g_pos(:,1:nTotal)
+    allocate(g_pos(3,nTotal))
+    read(LUIN) g_pos
 
 ! Particle velocities: total number of particles in file
-    allocate(g_vel(3,1:nTotal))
-    read(LUIN) g_vel(:,1:nTotal)
+    allocate(g_vel(3,nTotal))
+    read(LUIN) g_vel
 
 ! ID numbers: total number of particles in file
-    read(LUIN)
+    allocate(g_idNum(nTotal))
+    read(LUIN) g_idNum
 
 ! Particle masses: number of particles with variable mass
-    allocate(g_m(nTotal))
+    allocate(g_m(g_nVarMass))
     read(LUIN) g_m
 
 ! Internal energy: number of gas particles
-    allocate(g_u(npart))
+    allocate(g_u(nGasTotal))
     read(LUIN) g_u
 
 ! Density: number of gas particles
-    allocate(g_rho(npart))
+    allocate(g_rho(nGasTotal))
     read(LUIN) g_rho
 
 ! Smoothing length: number of gas particles
-    allocate(g_h(npart))
+    allocate(g_h(nGasTotal))
     read(LUIN) g_h
 
+! Optionally read the chemistry components
     if (convertRhoToHI.or.sphwithChem ) then
-       write (message,'(a,i2)') "Will store particle H2 density."
+       write (message,'(a,i2)') "Will store particle H2 density"
        call writeInfo(message,FORINFO)
-       allocate(sphdata%rhoH2(npart))
+       allocate(sphdata%rhoH2(nGasTotal))
 
-       allocate(aH(npart))
+       allocate(aH(nGasTotal))
        read(LUIN) aH
-       allocate(aH2(npart))
+       allocate(aH2(nGasTotal))
        read(LUIN) aH2
     end if
 
     if (sphWithChem) then
        write (message,'(a,i2)') "Will store CO fraction"
        call writeInfo(message,FORINFO)
-       allocate(sphData%rhoCO(npart))
-       allocate(aCO(npart))
+       allocate(sphData%rhoCO(nGasTotal))
+       allocate(aCO(nGasTotal))
        read(LUIN) aCO
     end if
 
-    allocate(dead(npart))
-    read(LUIN) dead
+!
+! 4. Determine some more information about particle numbers
+!
 
-    igas = 0 
+! Count the number of dead gas particles ...
     nDead = 0
-    do i=1, npart !nTotal
-! Exclude dead particles 
-!       if ( dead(i) > 0.0 ) then 
+    do i=1,nGasTotal
+       if ( g_idNum(i) < 0 ) nDead=nDead+1
+    end do
+
+! ... and set npart to the number of live gas particles
+    npart = g_npart(1) - nDead
+
+! These are the particles which will be treated as point masses
+! Component 5 is the star particles
+    nptmass = g_npart(5)
+
+    write(message,'(a,i9,a,i9,a,i9,a)') "Expecting ", npart, " active gas particles and ", nDead, " dead particles"
+    call writeInfo(message,TRIVIAL)
+
+!
+! 5. Set up the SPH data strucutre and populate it
+!
+
+! Initialiase SPH data structure 
+    call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
+
+! Zero the particle type counters
+    igas = 0; foundnSink=0; foundnDead=0; totalGasMass=0
+
+! Gas particles are stored first
+gaspart: do i=1, nGasTotal
+
+! Dead particles have negative id numbers 
+       if ( g_idNum(i) < 0 ) then 
+
+          foundnDead = foundnDead + 1
+
+       else
 
           igas = igas + 1
+
+          if (igas > npart ) then
+             write(message,*) "Error igas > npart"
+             call writeFatal(message)
+             write(message,*) "foundnDead, igas, nGasTotal=", foundnDead, igas, nGasTotal
+             call writeFatal(message)
+          end if
 
           sphdata%xn(igas) = g_pos(1,i)
           sphdata%yn(igas) = g_pos(2,i)
@@ -843,34 +945,73 @@ part_loop: do ipart=1, nlines
           sphdata%vyn(igas) = g_vel(2,i)
           sphdata%vzn(igas) = g_vel(3,i)
 
-          sphdata%gasmass(igas)     = g_m(i)
+! Particle masses are either from a data block (variable masses) or read from the header (fixed value for all particles)
+          if (g_massTable(1) == 0.0 ) then
+             sphdata%gasmass(igas) = g_m(i)
+          else
+             sphdata%gasmass(igas) = g_massTable(1)
+          end if
+          totalGasMass=totalGasMass+sphdata%gasmass(igas)
+
           sphdata%temperature(igas) = g_u(i)
           sphdata%rhon(igas)        = g_rho(i)
 ! Halve the smoothing lengths as the gadget definition is different to other SPH codes
           sphdata%hn(igas)          = 0.5 * g_h(i)
           
-          if (convertRhoToHI.or.sphwithChem ) sphdata%rhoH2(igas) = aH2(i)
-          if (sphwithChem)                    sphdata%rhoCO(igas) = aCO(i)
+! Calculate H2 fraction. aH2 is fraction by number
+          if (convertRhoToHI.or.sphwithChem ) then
+             numDen = sphdata%rhon(igas) / gmw
+             sphdata%rhoH2(igas) = aH2(i)*numDen * 2.0*amu
+             if (sphwithChem) then
+                sphdata%rhoCO(igas) = aCO(i)*numDen * 28.0*amu
+             endif
+          endif
 
-!       else
-  
-!          nDead = nDead + 1
 
-!       endif
+       endif
 
-    end do
-    
-    write(message,*) "Found ", igas, " gas particles and ", nDead, " dead particles"
-    call writeinfo(message, TRIVIAL)
+    end do gaspart
+
+    if (igas == npart .and. foundnDead == nDead ) then
+       write(message,'(a,i9,a,i9,a)') "Found     ", igas, " active gas particles and ", foundnDead, " dead particles"
+       call writeinfo(message, TRIVIAL)
+    else
+       call writeFatal("Did not find the expected number of live and dead gas particles")
+       write(message,'(a,i9,a,i9,a)') "Found     ", igas, " active gas particles and ", foundnDead, " dead particles"
+       call writeFatal(message)
+    endif
+    write(message,*) "Total gas mass in active particles: ", totalGasMass*umass/mSol, " solar masses"
+    call writeInfo(message,TRIVIAL)
+    call writeInfo("",TRIVIAL)
+
+! Sink particles
+
+    write(message,'(a,i9,a)') "Expecting ", nptmass, " point masses"
+
+!!$! Read sinks here 
+!!$    if (.not.discardSinks) then
+!!$       do i=1, nptmass
+!!$          
+!!$       end do
+!!$    endif
+
+    call writeInfo(message,TRIVIAL)
+    call writeInfo("Point masses not read", FORINFO)
+
+! 6. Wrap up and exit
 
     deallocate(g_pos, g_vel, g_m, g_u, g_rho, g_h)
-    if (convertRhoToHI.or.sphwithChem ) deallocate(aH, aH2, aCO)
+    if (allocated(aH))  deallocate (aH)
+    if (allocated(aH2)) deallocate (aH2)
+    if (allocated(aCO)) deallocate (aCO)
 
     close(LUIN)
 
   end subroutine read_gadget2_data
 
-! Read in SPH data from an MPI dump file
+!---------------------------------------------------------------------------------------------------------------------------------
+
+! Read in SPH data from an SPH-NG MPI dump file
 ! D. Acreman, June 2012
   subroutine read_sph_data_mpi(filename)
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
@@ -931,9 +1072,6 @@ part_loop: do ipart=1, nlines
     integer :: status(MPI_STATUS_SIZE)
 #endif
 #endif
-! Mean molecular weight, used for calculating temperature from internal energy.
-! This assumes a 10:1 H:He ratio by number
-    real(double), parameter :: gmw = 14.0/11.0 
     real(double) :: gmwWithH2
 
 #ifdef MPI
@@ -2863,6 +3001,7 @@ contains
    sph_mass_within_grid = sph_mass_within_grid * sphData%umass / mSol 
 
  end function sph_mass_within_grid
+
    subroutine domainCentreAndSize(iThread, domainCentre, halfdomainSize)
      use gridtype_mod, only : gridtype
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize
