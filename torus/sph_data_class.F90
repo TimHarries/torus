@@ -342,16 +342,16 @@ contains
     maxMass = maxVal(sphdata%gasmass) * sphdata%umass
     call writeInfo("",forInfo)
     if (minMass == maxMass) then
-       write(message,'(a,es11.4,a,es10.4,a)') "Equal mass particles of ", minMass, "g = ", minMass/mSol, " solar masses" 
+       write(message,'(a,es11.4,a,es11.4,a)') "Equal mass particles of ", minMass, "g = ", minMass/mSol, " solar masses" 
        call writeInfo(message,forInfo)
     else
-       write(message,'(a,es11.4,a,es10.4,a)') "Minimum particle mass  ", minMass, "g = ", minMass/mSol, " solar masses"
+       write(message,'(a,es11.4,a,es11.4,a)') "Minimum particle mass  ", minMass, "g = ", minMass/mSol, " solar masses"
        call writeInfo(message,forInfo)
-       write(message,'(a,es11.4,a,es10.4,a)') "Maximum particle mass  ", maxMass, "g = ", maxMass/mSol, " solar masses"
+       write(message,'(a,es11.4,a,es11.4,a)') "Maximum particle mass  ", maxMass, "g = ", maxMass/mSol, " solar masses"
        call writeInfo(message,forInfo)
     endif
 
-    write(message,'(a,es10.4,a,es10.4,a)') "Mass splitting condition  ", limitScalar, "g = ", limitScalar/mSol, " solar masses"
+    write(message,'(a,es11.4,a,es11.4,a)') "Mass splitting condition  ", limitScalar, "g = ", limitScalar/mSol, " solar masses"
     call writeInfo(message,forInfo)
     if (limitscalar >= minMass) then
        write(message,'(a,f15.2,a)') "Mass splitting condition is ", limitscalar/minMass, " particle masses"
@@ -736,12 +736,9 @@ part_loop: do ipart=1, nlines
 ! Read data from a Gadget2 snapshot file.
 ! D. Acreman September 2014
 !
-! To do: 1. Get correct total mass
-!        2. Check molecular data are applied correctly
-!        2. Need to handle conversion of total density to HI density
-!        3. Check calculation of temperature
-!        5. Read sinks 
-!        4. Add to documentation
+! To do: 1. Check calculation of molecular densities and temperature
+!        2. Read sinks 
+!        3. Add to documentation
 
   subroutine read_gadget2_data(filename)
     use inputs_mod, only: convertRhoToHI, sphwithChem
@@ -753,7 +750,7 @@ part_loop: do ipart=1, nlines
     integer :: foundnSink, foundnDead
     character(len=80) :: message
     real(double) :: udist, umass, utime, uvel, utemp 
-    real(double) :: totalGasMass, numDen
+    real(double) :: numDen, rhoHI, h2ratio
 ! Gadget data
     integer, parameter :: nPartType=6  ! Number of particle types in Gadget
     integer :: g_npart(nPartType) ! Number of particles of each type in this file
@@ -916,7 +913,8 @@ part_loop: do ipart=1, nlines
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
 
 ! Zero the particle type counters
-    igas = 0; foundnSink=0; foundnDead=0; totalGasMass=0
+    igas = 0; foundnSink=0; foundnDead=0
+    sphData%totalGasMass=0.0; sphData%totalGasMass=0.0; sphData%totalMolMass=0.0
 
 ! Gas particles are stored first
 gaspart: do i=1, nGasTotal
@@ -951,19 +949,31 @@ gaspart: do i=1, nGasTotal
           else
              sphdata%gasmass(igas) = g_massTable(1)
           end if
-          totalGasMass=totalGasMass+sphdata%gasmass(igas)
+          sphData%totalGasMass = sphData%totalGasMass + sphdata%gasmass(igas)
 
           sphdata%temperature(igas) = g_u(i)
           sphdata%rhon(igas)        = g_rho(i)
 ! Halve the smoothing lengths as the gadget definition is different to other SPH codes
           sphdata%hn(igas)          = 0.5 * g_h(i)
           
-! Calculate H2 fraction. aH2 is fraction by number
+! Calculate molecular densities. aH2/aCO are fractions by number
           if (convertRhoToHI.or.sphwithChem ) then
-             numDen = sphdata%rhon(igas) / gmw
+             numDen = sphdata%rhon(igas) / (gmw*amu) ! number density of H,H2+He
+! aH2 is the H2 fraction by number relative to total gas number density
              sphdata%rhoH2(igas) = aH2(i)*numDen * 2.0*amu
+! Next two lines follow the calculation of HI density in clusterParameter
+             h2ratio       = 0.5 * (7.0/5.0) *  sphdata%rhoH2(igas) / sphdata%rhon(igas)
+             rhoHI         = (1.0-2.0*h2ratio)*sphdata%rhon(igas)*5.0/7.0
+! Accumulate total HI mass
+             sphdata%totalHImass = sphdata%totalHImass + &
+!                 Total gas mass        * (fraction of the mass which is HI)
+                  sphdata%gasmass(igas) * (rhoHI / sphdata%rhon(igas))
+! CO
              if (sphwithChem) then
                 sphdata%rhoCO(igas) = aCO(i)*numDen * 28.0*amu
+                sphData%totalMolMass = sphData%totalMolMass + &
+!                    Total gas mass        * (fraction of the mass which is CO)
+                     sphdata%gasmass(igas) * (sphdata%rhoCO(igas)/sphdata%rhon(igas))
              endif
           endif
 
@@ -980,7 +990,7 @@ gaspart: do i=1, nGasTotal
        write(message,'(a,i9,a,i9,a)') "Found     ", igas, " active gas particles and ", foundnDead, " dead particles"
        call writeFatal(message)
     endif
-    write(message,*) "Total gas mass in active particles: ", totalGasMass*umass/mSol, " solar masses"
+    write(message,*) "Total gas mass in active particles: ", sphData%totalGasMass*umass/mSol, " solar masses"
     call writeInfo(message,TRIVIAL)
     call writeInfo("",TRIVIAL)
 
