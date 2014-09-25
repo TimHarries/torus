@@ -733,15 +733,13 @@ part_loop: do ipart=1, nlines
 
   end subroutine new_read_sph_data
 
+!---------------------------------------------------------------------------------------------------------------------------------
+
 ! Read data from a Gadget2 snapshot file.
 ! D. Acreman September 2014
-!
-! To do: 1. Check calculation of molecular densities and temperature
-!        2. Read sinks 
-!        3. Add to documentation
 
   subroutine read_gadget2_data(filename)
-    use inputs_mod, only: convertRhoToHI, sphwithChem
+    use inputs_mod, only: convertRhoToHI, sphwithChem, discardSinks
 
     character(len=*), intent(in) :: filename
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -808,7 +806,7 @@ part_loop: do ipart=1, nlines
 !
     uvel  = udist/utime
     utemp = (udist/utime)**2 ! Units of internal energy
-    sphdata%codeEnergytoTemperature = 1.0
+    sphdata%codeEnergytoTemperature = 1.0 ! Do the conversion in this routine
     sphdata%codeVelocitytoTORUS = uvel / cspeed
 
     call writeInfo("Units: ",TRIVIAL)
@@ -885,6 +883,9 @@ part_loop: do ipart=1, nlines
        read(LUIN) aCO
     end if
 
+! At this point we're done reading the Gadget file
+    close(LUIN)
+
 !
 ! 4. Determine some more information about particle numbers
 !
@@ -951,7 +952,7 @@ gaspart: do i=1, nGasTotal
           end if
           sphData%totalGasMass = sphData%totalGasMass + sphdata%gasmass(igas)
 
-          sphdata%temperature(igas) = g_u(i)
+          sphdata%temperature(igas) = g_u(i) * utemp * (2.0/3.0) * ( gmw / Rgas)
           sphdata%rhon(igas)        = g_rho(i)
 ! Halve the smoothing lengths as the gadget definition is different to other SPH codes
           sphdata%hn(igas)          = 0.5 * g_h(i)
@@ -996,26 +997,31 @@ gaspart: do i=1, nGasTotal
 
 ! Sink particles
 
-    write(message,'(a,i9,a)') "Expecting ", nptmass, " point masses"
+! Read sinks from particle type 5
+    if (.not.discardSinks) then
+       if (g_npart(5) /= 0) call writeInfo("Reading particle type 5 as point masses", FORINFO)
+       do i=1, g_npart(5)
+          sphdata%x(i) = g_pos(1,i)
+          sphdata%y(i) = g_pos(2,i)
+          sphdata%z(i) = g_pos(3,i)
+          
+          sphdata%vx(i) = g_pos(1,i)
+          sphdata%vy(i) = g_pos(2,i)
+          sphdata%vz(i) = g_pos(3,i)
 
-!!$! Read sinks here 
-!!$    if (.not.discardSinks) then
-!!$       do i=1, nptmass
-!!$          
-!!$       end do
-!!$    endif
-
-    call writeInfo(message,TRIVIAL)
-    call writeInfo("Point masses not read", FORINFO)
+          if (g_massTable(5) == 0.0 ) then
+             sphdata%ptmass(i) = g_m(i)
+          else
+             sphdata%ptmass(i) = g_massTable(5)
+          end if
+       end do
+    endif
 
 ! 6. Wrap up and exit
-
     deallocate(g_pos, g_vel, g_m, g_u, g_rho, g_h)
     if (allocated(aH))  deallocate (aH)
     if (allocated(aH2)) deallocate (aH2)
     if (allocated(aCO)) deallocate (aCO)
-
-    close(LUIN)
 
   end subroutine read_gadget2_data
 
