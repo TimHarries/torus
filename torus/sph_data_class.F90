@@ -743,12 +743,13 @@ part_loop: do ipart=1, nlines
 
     character(len=*), intent(in) :: filename
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-    integer :: i, igas
+    integer :: i, igas, iSink
     integer :: nptmass, nTotal, nDead, nGasTotal
-    integer :: foundnSink, foundnDead
+    integer :: foundnDead, iStart, iEnd
     character(len=80) :: message
     real(double) :: udist, umass, utime, uvel, utemp 
     real(double) :: numDen, rhoHI, h2ratio
+    integer, parameter :: sinkType=6 ! Which particle type to treat as sinks?
 ! Gadget data
     integer, parameter :: nPartType=6  ! Number of particle types in Gadget
     integer :: g_npart(nPartType) ! Number of particles of each type in this file
@@ -899,9 +900,8 @@ part_loop: do ipart=1, nlines
 ! ... and set npart to the number of live gas particles
     npart = g_npart(1) - nDead
 
-! These are the particles which will be treated as point masses
-! Component 5 is the star particles
-    nptmass = g_npart(5)
+! Component number 'sinkType' will be treated as point masses
+    nptmass = g_npart(sinkType)
 
     write(message,'(a,i9,a,i9,a,i9,a)') "Expecting ", npart, " active gas particles and ", nDead, " dead particles"
     call writeInfo(message,TRIVIAL)
@@ -914,7 +914,7 @@ part_loop: do ipart=1, nlines
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
 
 ! Zero the particle type counters
-    igas = 0; foundnSink=0; foundnDead=0
+    igas = 0; foundnDead=0
     sphData%totalGasMass=0.0; sphData%totalGasMass=0.0; sphData%totalMolMass=0.0
 
 ! Gas particles are stored first
@@ -995,26 +995,40 @@ gaspart: do i=1, nGasTotal
     call writeInfo(message,TRIVIAL)
     call writeInfo("",TRIVIAL)
 
+!
 ! Sink particles
+!
+    if (.not.discardSinks.and.nptmass /= 0) then
 
-! Read sinks from particle type 5
-    if (.not.discardSinks) then
-       if (g_npart(5) /= 0) call writeInfo("Reading particle type 5 as point masses", FORINFO)
-       do i=1, g_npart(5)
-          sphdata%x(i) = g_pos(1,i)
-          sphdata%y(i) = g_pos(2,i)
-          sphdata%z(i) = g_pos(3,i)
+       write(message,*) "Reading ", nptmass, " point masses from particle type ", sinkType 
+       call writeInfo(message, FORINFO)
+       iStart = sum(g_npart(1:sinkType-1))+1
+       iEnd   = sum(g_npart(1:sinkType))
+
+       iSink=0
+       sinks: do i=iStart, iEnd
+          iSink=iSink+1
+
+          sphdata%x(iSink) = g_pos(1,i)
+          sphdata%y(iSink) = g_pos(2,i)
+          sphdata%z(iSink) = g_pos(3,i)
           
-          sphdata%vx(i) = g_pos(1,i)
-          sphdata%vy(i) = g_pos(2,i)
-          sphdata%vz(i) = g_pos(3,i)
+          sphdata%vx(iSink) = g_pos(1,i)
+          sphdata%vy(iSink) = g_pos(2,i)
+          sphdata%vz(iSink) = g_pos(3,i)
 
-          if (g_massTable(5) == 0.0 ) then
-             sphdata%ptmass(i) = g_m(i)
+          if (g_massTable(sinkType) == 0.0 ) then
+             sphdata%ptmass(iSink) = g_m(i)
           else
-             sphdata%ptmass(i) = g_massTable(5)
+             sphdata%ptmass(iSink) = g_massTable(sinkType)
           end if
-       end do
+       end do sinks
+
+       if ( iSink /= nptmass ) then 
+          write(message,*) "Expected ", nptmass, "point masses but found ", iSink
+          call writeWarning(message)
+       endif
+
     endif
 
 ! 6. Wrap up and exit
@@ -2263,7 +2277,7 @@ contains
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, theparam, isdone)
     USE inputs_mod, only: hcritPercentile, hmaxPercentile, sph_norm_limit, useHull, &
-         convertRhoToHI
+         convertRhoToHI, kerneltype
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
 
@@ -2330,7 +2344,6 @@ contains
           allocate(PositionArray(3,npart)) ! allocate memory
           allocate(xArray(npart))
           allocate(q2Array(npart))
-          allocate(etaArray(npart)) ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
           allocate(RhoArray(npart))
           allocate(TemArray(npart))
           allocate(RhoH2Array(npart))
@@ -2342,7 +2355,7 @@ contains
           allocate(HullArray(npart))
           
           
-          PositionArray = 0.d0; hArray = 0.d0; ind = 0; q2array = 0.d0; etaarray = 0.d0
+          PositionArray = 0.d0; hArray = 0.d0; ind = 0; q2array = 0.d0
           if (.not.associated(sphdata%xn)) then
              write(*,*) "sphdata not associated"
              write(*,*) "rank ",myrankGlobal
@@ -2407,10 +2420,16 @@ contains
           call FindCriticalValue(harray, hmax,  real(hmaxPercentile, kind=db), output = .false.) ! find hmax as percentile of total h
           Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
           RhoArray(:) = sphdata%rhon(ind(:))
-          etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
+
+          if (kerneltype == 1) then
+             call writeWarning("Using spline kernel. Check the mass on the grid")
+             ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
+             allocate(etaArray(npart)) 
+             etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
           !       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
           !            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
-          
+          endif
+
           write(message, *) "Critical smoothing Length in code units", hcrit
           call writeinfo(message, TRIVIAL)
           write(message, *) "Maximum smoothing Length in code units", hmax
@@ -2496,12 +2515,13 @@ contains
     if(done) then
        if (allocated(PositionArray)) then
           deallocate(xArray, PositionArray, harray, RhoArray, Temarray, ind, &
-               q2Array, HullArray, etaarray, RhoH2Array)
+               q2Array, HullArray, RhoH2Array)
           
           deallocate(OneOverHsquared)
           deallocate(partarray, indexarray)
 
-          if (associated(rhoCOarray)) deallocate(rhoCOarray)
+          if (allocated(etaarray))      deallocate(etaarray)
+          if (associated(rhoCOarray))   deallocate(rhoCOarray)
           if (allocated(VelocityArray)) deallocate (VelocityArray)
        endif
        nullify(previousOctal)
@@ -2563,7 +2583,7 @@ contains
 
     if(reuse) then
        notfound = .false.
-       call findNearestParticles(posvec, nparticles, r, shouldreuse = reuse) ! redo but with exponential kernel
+       call findNearestParticles(posvec, nparticles, r, reuse) ! redo but with exponential kernel
        if(nparticles .gt. 0) call doweights(sumweight)
     else
        ! tradeoff time for accuracy in low density regions
@@ -2572,7 +2592,7 @@ contains
        ! 2 rcrit is essential for the mass to be correctly done... (in my case it had to be hcrit = 99%)
  
        do while (sumweight .le. 1d-3)
-          call findNearestParticles(posvec, nparticles, r) ! redo but with exponential kernel
+          call findNearestParticles(posvec, nparticles, r, reuse) ! redo but with exponential kernel
           if(nparticles .gt. 0) call doweights(sumweight)
           if(r .ge. rmax * 0.5d0) exit
           rcounter = rcounter + 1
@@ -2685,24 +2705,25 @@ contains
 666 continue
   End function Clusterparameter
 
-  subroutine findnearestparticles(pos, partcount, r, shouldreuse)
+  subroutine findnearestparticles(pos, partcount, r, reuse)
 
     use inputs_mod, only : kerneltype
     use utils_mod, only: locate_double_f90
 
-    type(VECTOR) :: pos
+    type(VECTOR), intent(in) :: pos
+    integer, intent(out) :: partcount
+    real(double), intent(in) :: r
+    logical, intent(in)      :: reuse
+
     real(double) :: x,y,z
     integer :: i
     integer, save :: nupper, nlower
     integer, save :: closestXindex, testIndex
-    integer, intent(out) :: partcount
-    real(double) :: r2test, q2test, r
+    real(double) :: r2test, q2test
     real(double), save :: rtest
     real(double) :: ydiff, zdiff
     integer :: stepsize, sense
     logical :: test, prevtest, up
-    logical, optional :: shouldreuse
-    logical :: reuse
     real(double) :: fac, fac2
 
     if(kerneltype .eq. 1) then
@@ -2711,12 +2732,6 @@ contains
     else
        fac = 5.d0
        fac2 = 25.d0
-    endif
-    
-    if(present(shouldreuse)) then
-       reuse = shouldreuse
-    else
-       reuse = .false.
     endif
 
     x = pos%x
@@ -2870,7 +2885,7 @@ contains
           endif
        endif
     enddo
-!666 continue
+
   end subroutine findnearestparticles
 
   Subroutine doWeights(sumweight)
