@@ -2880,6 +2880,9 @@ contains
     else
        ! Cubes other than angularimage_mod probably need to be square
        cubeAspectRatio = 1.0
+       ! Switchable units are only in molecular mod 
+       call getString("datacubeunits", datacubeunits, cLine, fLine, nLines, &
+            "Output datacube units: ","(a,a,1x,a)","intensity", ok, .true.)
 
     end if
 

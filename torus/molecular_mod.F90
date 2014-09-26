@@ -2519,7 +2519,8 @@ doNg:       if(ng) then
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
-        gridDistance, imageside, wantTau
+        gridDistance, imageside, wantTau, dataCubeUnits
+   use datacube_mod, only: convertIntensityToBrightnessTemperature
 #ifdef USECFITSIO
    use fits_utils_mod
 #endif
@@ -2535,6 +2536,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    character(len=*), optional :: dataCubeFilename
    character (len=80) :: filename, message
    real(double) :: pixelWidth
+   real(double) :: thisWavelength
 
    type(OCTAL), pointer :: thisoctal
    integer :: subcell
@@ -2638,9 +2640,16 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis,revVel=.true.) 
      endif
 
+     select case (dataCubeUnits)
+     case("flux","Flux")
 ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)     
-!    call writeinfo('Converting Intensity to Flux', TRIVIAL)
-!     call cubeIntensityToFlux(cube, thismolecule, itrans)
+        call writeinfo('Converting Intensity to Flux', TRIVIAL)
+        call cubeIntensityToFlux(cube, thismolecule, itrans)
+     case("tb","TB","Tb")
+        call writeinfo('Converting Intensity to brightness temperature', TRIVIAL)
+        thisWavelength = cspeed / thisMolecule%transfreq(itrans)
+        call convertIntensityToBrightnessTemperature(cube, thisWavelength)
+     end select
 
 ! Commented out lines are for removing background intensity - will want to do this one day
 

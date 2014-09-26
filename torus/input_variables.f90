@@ -427,6 +427,7 @@
   real :: gridDistance ! distance of observer for images, SEDs etc. 
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
   character(len=80) :: lambdaFilename ! wavelength file for dust cube
+  character(len=10) :: dataCubeUnits 
 
 !----------------------------------------------------------
 ! Geometry specific parameters (this is a large section !)
