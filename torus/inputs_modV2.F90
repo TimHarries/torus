@@ -2882,7 +2882,7 @@ contains
        cubeAspectRatio = 1.0
        ! Switchable units are only in molecular mod 
        call getString("datacubeunits", datacubeunits, cLine, fLine, nLines, &
-            "Output datacube units: ","(a,a,1x,a)","intensity", ok, .true.)
+            "Output datacube units: ","(a,a,1x,a)","intensity", ok, .false.)
 
     end if
 
