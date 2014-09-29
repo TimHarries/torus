@@ -382,7 +382,7 @@ contains
                          rHat = rVec
                          call normalize(rHat)
                          source(iSource)%force = source(iSource)%force - &
-                              ((bigG*source(isource)%mass * massSub * splineSoftening(r*gridDistanceScale,eps))*rHat)
+                              ((bigG*source(isource)%mass * massSub * splineSoftening(r*gridDistanceScale,eps/dble(nsub)))*rHat)
                       enddo
                    enddo
                 enddo

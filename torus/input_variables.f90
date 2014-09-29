@@ -405,6 +405,7 @@
   real :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
   real :: thisPA           ! position angle
   real(double) :: thisimagePA
+  real(double) :: fwhmPixels ! FWHM in pixels of image resolution (for smoothing)
   logical :: freefreeSed   !include free-free emission in SED
   logical :: recombinationSed   !include recombination line emission in SED
   logical :: forbiddenSed   !include forbidden line emission in SED
@@ -859,6 +860,7 @@
   logical           :: blockHandout ! Enable MPI block handout
   character(len=10), protected :: geometry
   integer(kind=bigInt) :: nPhotons ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
+  integer :: maxScat ! maximum number of scatterings a photon undergoes in phaseloop
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector
 

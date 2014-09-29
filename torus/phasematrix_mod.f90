@@ -362,9 +362,6 @@ contains
     do i = 2, nMuMie
        prob(i) = prob(i) + miePhase(k,ilam,i)%element(1,1)*(cosArray(i)-cosArray(i-1))
     enddo
-    do i = 2, nMuMie
-       prob(i) = prob(i) + prob(i-1)
-    enddo
     prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
  
 

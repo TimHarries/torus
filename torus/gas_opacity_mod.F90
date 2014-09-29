@@ -282,6 +282,9 @@ subroutine readKappaGrid(lookuptable,  wantednlam, wantedlamArray, gridreadfromd
   close(21)
   gridReadFromDisc = .true.
 
+  lookupTable%kapArray = lookuptable%kapArray * 1000.d0
+  write(*,*)  "gas kappa  times 1000"
+
   if (resizeLookup) call resizeLookuptable(lookupTable, wantednLam, wantedLamArray)
 
 666 continue
@@ -437,7 +440,7 @@ subroutine returnGasKappaValue(grid, temperature, rho, lambda, kappaAbs, kappaSc
         firstTime = .false.
      endif
      kappaScaArray = rayScatter / (2.33d0 * mHydrogen)
-!     kappaScaArray = 1.d-30
+!     Kappascaarray = 1.d-30
   endif
 
   deallocate(tArray)
@@ -825,6 +828,7 @@ subroutine createAllMolecularTables(nLam, lamArray, reset)
   LookupTable(8)%filename = "volookuptable.dat"
   LookupTable(8)%abundance = 1.e-8
   lookupTable(8)%mu = 67.
+
 
   call createKappaGrid(lookuptable, nLam, lamArray, doReset)
   

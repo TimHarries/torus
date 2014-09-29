@@ -1095,6 +1095,9 @@ CONTAINS
     CASE ("HD169142")
        CALL hd169142Disk(thisOctal, subcell ,grid)
 
+    CASE ("MWC275")
+       CALL MWC275Disk(thisOctal, subcell ,grid)
+
     CASE ("adddisc")
        CALL addDiscDensity(thisOctal, subcell)
 
@@ -3608,7 +3611,7 @@ CONTAINS
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
-    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight
 
     splitInAzimuth = .false.
     split = .false.
@@ -5041,7 +5044,7 @@ CONTAINS
 1001      if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
           if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
           
-       case("shakara","aksco","HD169142")
+       case("shakara","aksco","HD169142","MWC275")
           ! used to be 5
           if (thisOctal%ndepth  < mindepthamr) split = .true.
           cellSize = thisOctal%subcellSize 
@@ -5051,6 +5054,12 @@ CONTAINS
           if (r < rSublimation) thisheightSplitFac = 1.
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
           
+          if ((r > rSublimation).and.(grid%geometry=="MWC275")) then
+             fac = exp(-abs(r - rSublimation)/(rSublimation))
+             enhancedHeight = hOverR * rSublimation * fac
+             hr = max(enhancedHeight, hr)
+          endif
+
           !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
 !          write(*,*) hr, height, r, betadisc
@@ -11690,6 +11699,92 @@ end function readparameterfrom2dmap
 
 
   end subroutine HD169142Disk
+
+  subroutine MWC275disk(thisOctal,subcell,grid)
+    use density_mod, only: density, MWC275Disc
+    use inputs_mod, only : rOuter, betaDisc, rGapOuter2 !, rInner, erInner, erOuter, alphaDisc
+    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner, rGapInner1, rGapInner2
+    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
+    use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v, dustSettling
+    TYPE(vector) :: rVec
+    
+    type(VECTOR),save :: velocitysum
+    logical,save :: firsttime = .true.
+
+    if(firsttime) then
+       velocitysum = VECTOR(1d-20,1d-20,1d-20)
+       firsttime = .false.
+    endif
+
+    rVec = subcellCentre(thisOctal,subcell)
+    r = real(modulus(rVec))
+
+
+
+    thisOctal%inflow(subcell) = .true.
+    thisOctal%temperature(subcell) = 100. 
+    rd = rOuter / 2.
+
+    if (associated(thisOctal%dustTypeFraction)) thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+
+    thisOctal%rho(subcell) = 1.d-30
+    if (associated(thisOctal%nh)) &
+         thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
+    if (associated(thisOctal%ne)) &
+         thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
+    if (photoionization) then
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    endif
+    if (associated(thisOctal%ionFrac)) then
+       thisOctal%ionFrac(subcell,1) = 1.
+       thisOctal%ionFrac(subcell,2) = 1.e-5
+       thisOctal%ionFrac(subcell,3) = 1.
+       thisOctal%ionFrac(subcell,4) = 1.e-5
+       thisOctal%etaCont(subcell) = 0.
+    endif
+
+    if (photoionization) then
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = 1.d-5!thisOctal%nh(subcell)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    endif
+
+    r = real(sqrt(rVec%x**2 + rVec%y**2))
+
+!    if (r < rOuter) then
+       thisOctal%rho(subcell) = density(rVec, grid)
+! tinkered from 10K - I figured the cooler bits will gently drop but a 
+! large no. of cells are close to this temp.
+       thisOctal%temperature(subcell) = 10.
+       thisOctal%inflow(subcell) = .true.
+
+
+
+    if (dustPhysics) then
+       thisOctal%DustTypeFraction(subcell,1) = 1.d-20
+       rVec = subcellCentre(thisOctal, subcell)
+       r = sqrt(rVec%x**2+rVec%y**2)
+
+       if (r > rSublimation) then
+          thisOctal%DustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+       endif
+
+
+    endif
+
+
+
+
+
+  end subroutine MWC275Disk
 
 
   subroutine fillgridSafier(grid)

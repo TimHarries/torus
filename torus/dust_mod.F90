@@ -1042,10 +1042,10 @@ contains
     real(double) :: kappaSca, kappaAbs
     integer :: subcell, i
 
-    underCorrect = 0.9
+    underCorrect = 1.
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 2.d0
+    subrange = 10.d0
 
     if (present(minLevel)) then
        smallVal = minLevel

@@ -97,7 +97,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: finalTau
 
 ! local parameters
-  integer, parameter :: maxscat = 1000000  ! Maximum number of scatterings for individual photon
+!  integer, parameter :: maxscat = 1  ! Maximum number of scatterings for individual photon
 
 ! local variables 
   real(double) :: objectDistance
@@ -1626,6 +1626,16 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                  header = specfile(1:index(specfile,".fits")-1)
                  write(specFile,'(a,a)') trim(header)//"_pol.fits"
                  call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol", real(lambda_eff))
+                 write(specFile,'(a,a)') trim(header)//"_polr2.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", real(lambda_eff))
+
+                 write(specFile,'(a,a)') trim(header)//"_qr.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "qr", real(lambda_eff))
+                 write(specFile,'(a,a)') trim(header)//"_ur.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "ur", real(lambda_eff))
+
+                 write(specFile,'(a,a)') trim(header)//"_polr2.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", real(lambda_eff))
                  write(specFile,'(a,a)') trim(header)//"_pa.fits"
                  call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pa")
                  write(specFile,'(a,a)') trim(header)//"_q.fits"
@@ -1685,7 +1695,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   subroutine do_one_outer_photon_loop
-    use inputs_mod, only: screened
+    use inputs_mod, only: screened, maxScat
     implicit none
 
     logical :: hitcore

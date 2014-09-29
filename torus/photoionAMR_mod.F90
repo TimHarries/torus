@@ -3477,9 +3477,12 @@ end subroutine radiationHydro
         end if
      end if
 !     
-     call  dumpValuesAlongLine(grid, "radial_converged.dat", VECTOR(1.d0,0.d0,0.0d0), &
-          VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+!     call  dumpValuesAlongLine(grid, "radial_converged.dat", VECTOR(1.d0,0.d0,0.0d0), &
+!          VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
   
+        call writeVtkFile(grid, "temp.vtk", &
+             valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+
 
      call torus_mpi_barrier
      call MPI_BUFFER_DETACH(buffer,bufferSize, ierr)

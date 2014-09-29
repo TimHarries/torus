@@ -53,7 +53,7 @@ contains
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
-    use inputs_mod, only : lambdaFilename
+    use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -350,7 +350,9 @@ if (.false.) then
                   wavLin=.true., numLam=1, dustRadEq=.true.)
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-
+             polarWavelength = lambdaimage
+             write(polarFilename,'(a,f4.2,a)') "polar",polarwavelength/1d4,".dat"
+             call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
              if (gasOpacityPhysics) then
                 allocate(xArrayDouble(1:nLambda))
                 xArrayDouble = dble(xArray)

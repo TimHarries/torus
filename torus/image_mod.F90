@@ -37,6 +37,62 @@ module image_mod
 
   contains
 
+    subroutine smoothImage(image, fwhmPixels)
+      type(IMAGETYPE) :: image
+      real(double) :: fwhmPixels
+      real(double), allocatable :: unsmoothedImage(:,:), smoothedImage(:,:)
+      allocate(unsmoothedImage(1:image%nx, 1:image%ny))
+      allocate(smoothedImage(1:image%nx, 1:image%ny))      
+
+      unsmoothedImage(1:image%nx,1:image%ny) = image%pixel(1:image%nx,1:image%ny)%i
+      call applySmooth(unSmoothedImage, smoothedImage, fwhmPixels)
+      image%pixel(1:image%nx,1:image%ny)%i = smoothedImage(1:image%nx,1:image%ny)
+
+      unsmoothedImage(1:image%nx,1:image%ny) = image%pixel(1:image%nx,1:image%ny)%q
+      call applySmooth(unSmoothedImage, smoothedImage, fwhmPixels)
+      image%pixel(1:image%nx,1:image%ny)%q = smoothedImage(1:image%nx,1:image%ny)
+
+      unsmoothedImage(1:image%nx,1:image%ny) = image%pixel(1:image%nx,1:image%ny)%u
+      call applySmooth(unSmoothedImage, smoothedImage, fwhmPixels)
+      image%pixel(1:image%nx,1:image%ny)%u = smoothedImage(1:image%nx,1:image%ny)
+
+      unsmoothedImage(1:image%nx,1:image%ny) = image%pixel(1:image%nx,1:image%ny)%v
+      call applySmooth(unSmoothedImage, smoothedImage, fwhmPixels)
+      image%pixel(1:image%nx,1:image%ny)%v = smoothedImage(1:image%nx,1:image%ny)
+     
+      deallocate(unsmoothedImage, smoothedImage)
+
+    end subroutine smoothImage
+
+    subroutine applySmooth(inputImage, outputImage, fwhmPixels)
+
+      real(double) :: inputImage(:,:), outputImage(:,:), fwhmPixels, sigma, tot, f
+      integer :: nx, ny, i , j, m, i1, j1
+
+      sigma = fwhmPixels/2.355d0
+      m  = nint(6.d0 * sigma)
+      nx = size(inputimage,1)
+      ny = size(inputimage,2)
+      outputImage = 0.d0
+      do i = 1, nx
+         do j = 1, ny
+            tot = 0.d0
+            do  i1= i - m, i + m
+               do j1 = j- m, j + m
+                  f = exp(- ( ((i1-i)**2 / (2.d0*sigma**2)) + ((j1-j)**2 / (2.d0*sigma**2))) )
+
+                  outputImage(i,j) = outputImage(i,j) + f * inputImage(min(max(i1,1),nx),min(max(j1,1),ny))
+                  tot = tot + f
+               enddo
+            enddo
+            outputImage(i,j) = outputImage(i,j) / tot
+         enddo
+      enddo
+    
+    end subroutine applySmooth
+      
+
+
    function initImage(imNum)
      use image_utils_mod
 
@@ -363,7 +419,7 @@ module image_mod
      end subroutine ConvertArrayToMJanskiesPerStr
 
 ! Convert from ergs/s/A to magnitudes per square arcsec
-     subroutine ConvertArrayToMagPerSqArcsec(mag,array, dx, distance)
+     subroutine ConvertArrayToMagPerSqArcsec(array, lambda, dx, distance)
        use utils_mod, only : returnMagnitude
        real, intent(inout)      :: array(:,:)
        character(len=1) :: mag
@@ -372,7 +428,18 @@ module image_mod
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
        real(double) :: strad, scale
        integer :: i, j
+       logical, save :: firstTime = .true.
 
+       if (abs(lambda-1.22e4)/1.22e4 < 1.d-4) then
+          mag = "J"
+       else if (abs(lambda-1.63e4)/1.63e4 < 1.d-4) then
+          mag = "H"
+       else if (abs(lambda-2.19e4)/2.19e4 < 1.d-4) then
+          mag = "K"
+       else
+          write(*,*) "unknown magnitude for lambda ",lambda
+          stop
+       endif
        strad = (dx*1.d10/distance)**2
        scale = 1.d20/distance**2
        array = array * real(scale / strad)
@@ -509,6 +576,7 @@ module image_mod
      subroutine writeFitsImage(image, filename, objectDistance, type, lambdaImage, &
           pointTest, cylinderTest)
 
+       use inputs_mod, only : fwhmPixels
        use fits_utils_mod
        use image_utils_mod
 
@@ -527,7 +595,7 @@ module image_mod
        integer :: i, j,k, n
        real(double) :: rMin, rMax, r, tot
 
-       real(double) :: scale,  dx, dy
+       real(double) :: scale,  dx, dy, phi
        logical :: simple,extend
        logical :: oldFilePresent
        character(len=80) :: message
@@ -582,6 +650,8 @@ module image_mod
        fpixel=1
        nelements=naxes(1)*naxes(2)
 
+       if (fwhmPixels > 0.d0) call smoothImage(image, fwhmpixels)
+
        scale = 1.
        array = 1.e-30
        select case(type)
@@ -598,10 +668,38 @@ module image_mod
              end where
           case("pol")
              array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+
+          case("polr2")
+             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   array(i,j) = array(i,j) * (image%xAxisCentre(i)**2 + image%yAxisCentre(j)**2)
+                enddo
+             enddo
+
+          case("qr")
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j))
+                   array(i,j) = cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u
+                enddo
+             enddo
+
+          case("ur")
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j))
+                   array(i,j) = -sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u
+                enddo
+             enddo
+
           case("pa")
              array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
              where (array < 0.d0) 
                 array = array + 180.e0
+             end where
+             where (array > 180.d0) 
+                array = array - 180.d0
              end where
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type
@@ -630,7 +728,11 @@ module image_mod
              case("Jy/pix")
                 call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
              case("mag/arcsec2")
+<<<<<<< .mine
+                call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
+=======
                 call ConvertArrayToMagPerSqArcsec("K",array, dx, objectDistance)
+>>>>>>> .r4417
              case DEFAULT
                 call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
              end select

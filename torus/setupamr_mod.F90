@@ -437,8 +437,12 @@ contains
              endif
 
           case("shakara")
-             if (discWind) call fillgridSafier(grid)
+!             if (discWind) call fillgridSafier(grid)
+             if (discwind)  call addDiscWind(grid)
              if (doSpiral) call addSpiralWake(grid)
+             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+             grid%nOctals = nOctals
+
           case("ttauri")
              if (ttauriMagnetosphere) then
                 call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
