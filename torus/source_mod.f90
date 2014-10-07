@@ -653,7 +653,7 @@
 
 
     subroutine getIsotropicPositionDirection(position, direction, grid)
-      use amr_utils_mod, only : distanceToGridFromOutside, inOctal
+      use amr_utils_mod, only : distanceToGridFromOutside
       type(GRIDTYPE) :: grid
       real(double) :: z, ang, distToGrid
       type(VECTOR) :: entryPoint, norm, v, n, zAxis, thisPoint
@@ -688,7 +688,7 @@
     end subroutine getIsotropicPositionDirection
 
     subroutine getViscosityPositionDirection(position, direction, grid)
-      use amr_utils_mod, only : distanceToGridFromOutside, inOctal
+      use amr_utils_mod, only : distanceToGridFromOutside
       type(GRIDTYPE) :: grid
       real(double) :: z, ang, distToGrid
       type(VECTOR) :: entryPoint, norm, v, n, zAxis, thisPoint

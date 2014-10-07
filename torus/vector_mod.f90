@@ -357,7 +357,7 @@ contains
 
 !thaw
   subroutine Pseudo3DUnitVector(rVec, photonAngleWeight,dx, L)
-    use constants_mod, only: pi, degToRad, twopi
+    use constants_mod, only: pi !, degToRad, twopi
     real(double) :: r2, u, v, w, percentInGrid, openingAngle, biasPhiDir, ang, t
     real(double) :: r, ang2
     real(double), intent(inout) :: photonAngleWeight

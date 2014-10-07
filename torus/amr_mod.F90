@@ -6929,9 +6929,6 @@ endif
 
   end subroutine calcToyDiscDensity
 
-!·         I also downloaded the zip file and got an error message that read “The Compressed (zipped) Folder is invalid or corrupted.” I’m not sure if this is because of the file itself or something to do with the way I downloaded it.
-!o   Pete, is this something you guys can check?
-
   subroutine calcLexington(thisOctal,subcell,grid)
 
     use inputs_mod, only : hydrodynamics

@@ -534,7 +534,6 @@ npd_loop:            do n=1,npd
 !-------------------------------------------------------------------------------
     logical function checkFitsSplit(thisOctal, subcell)
       use octal_mod
-      use utils_mod, only : locate
 
       TYPE(OCTAL), intent(inout) :: thisOctal
       integer, intent(in) :: subcell

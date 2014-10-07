@@ -3034,7 +3034,6 @@ contains
  end function sph_mass_within_grid
 
    subroutine domainCentreAndSize(iThread, domainCentre, halfdomainSize)
-     use gridtype_mod, only : gridtype
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize
      type(VECTOR) :: centre, domainCentre
      real(double) :: halfdomainSize, d
