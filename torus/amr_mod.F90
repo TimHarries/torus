@@ -11704,15 +11704,12 @@ end function readparameterfrom2dmap
 
   subroutine MWC275disk(thisOctal,subcell,grid)
     use density_mod, only: density, MWC275Disc
-    use inputs_mod, only : rOuter, betaDisc, rGapOuter2 !, rInner, erInner, erOuter, alphaDisc
-    use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner, rGapInner1, rGapInner2
-    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
-    use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1
+    use inputs_mod, only : rOuter, nDustType, grainFrac, dustPhysics, photoionization, rSublimation
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v, dustSettling
+    real(double) :: r, rd
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum

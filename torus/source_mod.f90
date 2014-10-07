@@ -349,7 +349,7 @@
       real, optional :: lamArray(:)
       real(double) :: weight
       integer,optional :: nlambda
-      real(double) :: r, t
+      real(double) :: r
       integer :: i
       logical, optional :: initialize
 ! Wavelength used when initialize is present and nLambda=1

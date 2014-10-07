@@ -84,7 +84,7 @@ contains
        out = HD169142Disc(r_vec)
 
     case("MWC275")
-       out = MWC275Disc(r_vec, grid)
+       out = MWC275Disc(r_vec)
 
     case("warpeddisc")
        out = warpedDisc(r_vec, grid)
@@ -1211,25 +1211,22 @@ contains
 
   end function hd169142Disc
 
-  function MWC275Disc(point, grid) result (rhoOut)
-    use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
-         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
-    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
-         rGapInner2, rGapOuter2, heightInner, ringHeight, hOverR, rSublimation
+  function MWC275Disc(point) result (rhoOut)
+    use inputs_mod!, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
+!         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
+!         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
+!    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
+!         rGapInner2, rGapOuter2, heightInner, ringHeight, hOverR, rSublimation
     use utils_mod, only: solveQuad
-    TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
     integer :: i
-    real(double) :: phi, dist
+    real(double) :: phi!, dist
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
-    type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
-    real(double) :: rSpiralInner, rSpiralOuter,  mu, r_c, rhoEnv, mu_0, theta
-    real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
-    real(double) :: mPlanetDisc, hillRadius, enhancedHeight
+    type(VECTOR),save :: stream1(nStream), stream2(nStream)
+    real(double) :: enhancedHeight
     integer, parameter  :: nSpiral =10000
     logical :: ok
     real :: x1, x2
