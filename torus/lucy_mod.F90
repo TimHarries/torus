@@ -875,7 +875,7 @@ contains
              if (iIter_grand == 9) tauMax = 0.1e0
              if (iIter_grand == 12) tauMax = 1.d0
              if (iIter_grand == 15) tauMax = 1.e30
-             tauMax = 1.d30
+             tauMax = 1.e30
              ! Sublimate the dust and smooth at the photosphere on the last pass
              if (iIter_Grand <= 15) &
                   call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)

@@ -429,7 +429,6 @@ module image_mod
        real(double) :: strad, scale
        real :: lambda
        integer :: i, j
-       logical, save :: firstTime = .true.
 
        if (abs(lambda-1.22e4)/1.22e4 < 1.d-4) then
           mag = "J"
@@ -682,7 +681,7 @@ module image_mod
              do i = 1, image%nx
                 do j = 1, image%ny
                    phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j))
-                   array(i,j) = cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u
+                   array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
@@ -690,17 +689,17 @@ module image_mod
              do i = 1, image%nx
                 do j = 1, image%ny
                    phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j))
-                   array(i,j) = -sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u
+                   array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
           case("pa")
              array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
-             where (array < 0.d0) 
+             where (array < 0.e0) 
                 array = array + 180.e0
              end where
-             where (array > 180.d0) 
-                array = array - 180.d0
+             where (array > 180.e0) 
+                array = array - 180.e0
              end where
           case DEFAULT
              write(*,*) "Unknown type in writefitsimage ",type

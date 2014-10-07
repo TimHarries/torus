@@ -84,7 +84,7 @@ contains
 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral, supernovae
+    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral!, supernovae
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal
     use parallel_mod, only: torus_abort
     use mpi
@@ -1378,8 +1378,6 @@ end subroutine radiationHydro
     type(VECTOR) :: uHatBefore, uHatAfter
     
 
-    logical :: gotmassive
-    
     logical :: firstConverged=.true.
 
 

@@ -284,14 +284,12 @@ contains
     end subroutine setSourceProperties
 
     subroutine updateSourceProperties(source)
-      use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize
+      use inputs_mod, only : smallestCellSize
       type(SOURCETYPE) :: source
       type(TRACKTABLE),save :: thisTable
       logical,save :: firstTime = .true.
       integer :: i, j
-      real(double) :: r, t, u, mass1, logL1, logT1
-      type(VECTOR) :: vVec
-      real(double) :: sigmaVel
+      real(double) :: t, u, mass1, logL1, logT1
       real(double) :: mass2, logL2, logT2
 
 

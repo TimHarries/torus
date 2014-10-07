@@ -1786,7 +1786,7 @@ CONTAINS
 !$OMP SHARED(ramanSourceVelocity, doRaman) &
 !$OMP SHARED(weightContPhoton, outVec)&
 !$OMP SHARED(opaqueCore, thinLine, coolStarPosition) &
-!$OMP SHARED(viewVec, o6xArray, rotationAxis, o6image, screened) &
+!$OMP SHARED(viewVec, o6xArray, rotationAxis, o6image, screened, maxScat) &
 !$OMP SHARED(stokesImage, obsImageSet) &
 !$OMP SHARED(gridDistance, meanr0_line, wtot0_line) &
 !$OMP SHARED(sourceSpectrum, sourceSpectrum2, meanr0_cont,wtot0_cont, mie, noScattering) &

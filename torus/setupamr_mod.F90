@@ -80,7 +80,7 @@ contains
     integer :: counter, nTimes
 !    integer :: nUnrefine
     real :: scalefac
-    type(VECTOR), allocatable :: turbBox(:,:,:)
+    type(VECTOR), allocatable :: myTurbBox(:,:,:)
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
@@ -521,15 +521,15 @@ contains
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
           case("sphere")
-             allocate(turbBox(1:2**maxDepthAMR,1:2**maxDepthAMR,1:2**maxDepthAMR))
+             allocate(myTurbBox(1:2**maxDepthAMR,1:2**maxDepthAMR,1:2**maxDepthAMR))
 #ifdef MPI
         call randomNumberGenerator(randomSeed = .true.)
         call randomNumberGenerator(syncIseed=.true.)
 #endif
-        call createBox(turbBox, 2**maxDepthAMR)
-        call assignTurbVelocity(grid%octreeRoot, turbBox, 2**maxDepthAMR)
+        call createBox(myTurbBox, 2**maxDepthAMR)
+        call assignTurbVelocity(grid%octreeRoot, myTurbBox, 2**maxDepthAMR)
         call randomNumberGenerator(randomSeed = .true.)
-        deallocate(turbBox)
+        deallocate(myTurbBox)
 
 #ifdef MPI
           case("unisphere","gravtest")
@@ -2479,13 +2479,14 @@ end subroutine addSpiralWake
 
 
 recursive subroutine assignTurbVelocity(thisOctal, box, n)
-  use inputs_mod, only : amrGridSize, amrGridCentreX, amrGridCentreY, amrGridCentreZ
+  use inputs_mod, only : amrGridSize
   use inputs_mod, only : maxDepthAMR
+  integer, intent(in) :: n
   type(VECTOR) :: box(n,n,n)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec
-  integer :: subcell, i, n, i1, j1, k1
+  integer :: subcell, i, i1, j1, k1
   
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then

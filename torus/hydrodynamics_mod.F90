@@ -6559,7 +6559,7 @@ end subroutine sumFluxes
 
   recursive subroutine computeCourantTime(grid, thisOctal, tc)
     use mpi
-    use inputs_mod, only : hydroSpeedLimit
+!    use inputs_mod, only : hydroSpeedLimit
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -14194,7 +14194,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -16993,7 +16993,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm, fac, maxSpeed, mdot, dt, totalVolume
+    real(double) :: r, v, vterm, maxSpeed, mdot, dt, totalVolume
     real(double) :: totalMassThisInterval, thisRho, thisMom
     type(VECTOR) :: cellCentre, rVec
  
@@ -17048,7 +17048,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm, fac, maxSpeed, mdot, dt, totalVolume
+    real(double) :: r, v, vterm, maxSpeed, mdot, dt, totalVolume
     real(double) :: totalMassThisInterval, thisRho, thisMom, ke
     type(VECTOR) :: cellCentre, rVec
  
@@ -17106,7 +17106,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm, fac, maxSpeed, mdot, totalVolume
+    real(double) :: r, totalVolume
     type(VECTOR) :: cellCentre, rVec
  
 
