@@ -682,12 +682,6 @@ contains
        
 
 
-    case("starburst")
-       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
-            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
-
-       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
-            "Cluster radius (pc): ","(a,f5.1,a)", 1.d0, ok, .true.)
 
 
        case("wrshell")
@@ -2536,6 +2530,21 @@ contains
 
     call getLogical("stellarwinds", stellarWinds, cLine, fline, nLines, &
          "Include stellar wind outflow feedback: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("supernovae", supernovae, cLine, fline, nLines, &
+         "Include supernova feedback: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+
+    call getLogical("starburst", starburst, cLine, fline, nLines, &
+         "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    if (starburst) then
+       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
+            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
+
+       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
+            "Cluster radius (pc): ","(a,f5.1,a)", 1.d0, ok, .true.)
+    endif
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)

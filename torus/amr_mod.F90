@@ -9251,6 +9251,8 @@ endif
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
+
+
     if (hydrodynamics) then
        thisOctal%iequationOfState(subcell) = 1 ! isothermal
        ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)

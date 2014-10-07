@@ -427,6 +427,7 @@ module image_mod
        real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
        real(double), parameter :: PerAngstromToPerCm = 1.e8_db
        real(double) :: strad, scale
+       real :: lambda
        integer :: i, j
        logical, save :: firstTime = .true.
 
@@ -728,11 +729,7 @@ module image_mod
              case("Jy/pix")
                 call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
              case("mag/arcsec2")
-<<<<<<< .mine
                 call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
-=======
-                call ConvertArrayToMagPerSqArcsec("K",array, dx, objectDistance)
->>>>>>> .r4417
              case DEFAULT
                 call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
              end select

@@ -5659,6 +5659,7 @@ end subroutine sumFluxes
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
          moveSources, hydroSpeedLimit, nbodyTest
+    use starburst_mod, only : updateSourceProperties
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -5666,7 +5667,7 @@ end subroutine sumFluxes
     integer :: group(:), nGroup
     real(double) :: dt, timestep
     type(VECTOR) :: direction
-    integer :: iDir, thisBound
+    integer :: iDir, thisBound, i
     logical, optional :: perturbPressure
 
     selfGravity = .true.
@@ -5833,8 +5834,10 @@ end subroutine sumFluxes
 
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
 
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
-
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
+   do i = 1, globalnSource
+      call updateSourceProperties(globalsourcearray(i))
+   enddo
    if ((globalnSource > 0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
    else
@@ -6588,7 +6591,7 @@ end subroutine sumFluxes
              else
                 speed = thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2
              endif
-             if(speed > hydroSpeedLimit) speed = hydrospeedlimit
+!             if(speed > hydroSpeedLimit) speed = hydrospeedlimit
              
              if(spherical) then
                 speed = thisOctal%rhou(subcell)**2
@@ -9453,7 +9456,7 @@ real(double) :: rho
                    endif
 
                 case(7) !inflow that varies as a function of position along the axis
-                                      locator = thisOctal%boundaryPartner(subcell)
+                   locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
                    dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
@@ -13570,7 +13573,11 @@ end subroutine refineGridGeneric2
 
 
              tauMin  = 0.5d0*(1.d0/dble(2**maxDepthAMR))**2
-             deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
+             if (amr2d) then
+                deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
+             else
+                deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 4.d0
+             endif
 
              dx = thisOctal%subcellSize
              if (thisOctal%twoD) then
@@ -14187,7 +14194,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -14195,8 +14202,15 @@ end subroutine refineGridGeneric2
        goto 666
     endif
 ! endif
-    tol = 1.d-5
-    tol2 = 1.d-6
+    if (amr2d) then
+       tol = 1.d-5
+       tol2 = 1.d-6
+    endif
+
+    if (amr3d) then
+       tol = 1.d-5
+       tol2 = 1.d-5
+    endif
 
 
 
@@ -14362,7 +14376,7 @@ end subroutine refineGridGeneric2
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreads))
 
-!       if (mod(it,100) == 0) then
+!       if (mod(it,10) == 0) then
 !          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
 !          call writeVtkFile(grid, plotfile, &
 !               valueTypeString=(/"phigas ", "rho    ","chiline"/))
@@ -16935,26 +16949,52 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     enddo
   end subroutine calculateRhobar
 
-  subroutine addStellarWind(grid, nSource, sourceArray)
+  subroutine addStellarWind(grid, nSource, sourceArray, dt)
     type(GRIDTYPE) :: grid
     integer :: nSource, i
+    real(double) :: dt, totalVolume
     type(SOURCETYPE) :: sourceArray(:)
 
     do i = 1, nSource
        if (sourceArray(i)%mass > 15.d0*mSol) then
-          call addStellarWindRecur(grid%octreeRoot, sourceArray(i))
+          totalVolume = 0.d0
+          call findStellarWindVolume(grid%octreeRoot, sourceArray(i), totalVolume)
+          call addStellarWindRecur(grid%octreeRoot, sourceArray(i), dt, totalVolume)
        endif
     enddo
   end subroutine addStellarWind
 
-  recursive subroutine addStellarWindRecur(thisOctal, source)
+  subroutine addSupernovae(grid, nSource, sourceArray, dt)
+    type(GRIDTYPE) :: grid
+    integer :: nSource, i
+    real(double) :: dt, totalVolume
+    logical, save :: firstTime = .true.
+    type(SOURCETYPE) :: sourceArray(:)
+
+    if (firstTime) then
+       do i = 1, nSource
+          if (writeoutput) write(*,*) "Age (years): ",sourceArray(i)%age*secstoyears
+          if (sourceArray(i)%mass > 15.d0*mSol) then
+             totalVolume = 0.d0
+             call findStellarWindVolume(grid%octreeRoot, sourceArray(i), totalVolume)
+             call addSupernovaRecur(grid%octreeRoot, sourceArray(i), dt, totalVolume)
+          endif
+       enddo
+       firstTime = .false.
+    endif
+  end subroutine addSupernovae
+
+
+
+  recursive subroutine addStellarWindRecur(thisOctal, source, dt, totalVolume)
     use mpi
     use inputs_mod, only : smallestCellSize
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm, fac, maxSpeed, mdot
+    real(double) :: r, v, vterm, fac, maxSpeed, mdot, dt, totalVolume
+    real(double) :: totalMassThisInterval, thisRho, thisMom
     type(VECTOR) :: cellCentre, rVec
  
 
@@ -16964,7 +17004,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call addStellarWindRecur(child, source)
+                call addStellarWindRecur(child, source, dt, totalVolume)
                 exit
              end if
           end do
@@ -16979,27 +17019,123 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           rVec = cellCentre - source%position
           r = modulus(rVec)
           rVec = rVec / r
+
+          mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
+          vterm = 2.d3 * 1.d5
+
+          totalMassThisInterval = mDot * dt
+
           if (r < smallestCellSize*5.d0) then
-             mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
-             vterm = 0.2d0 * 1.d5
              thisOctal%boundaryCell(subcell) = .true.
-             rho = real(mdot / (fourPi * r**2 * gridDistanceScale**2 * vterm))
-             v = vterm
-             fac = 1.d0
-             thisOctal%rho(subcell) = rho * fac
-             thisOctal%velocity(subcell) = (v/cspeed)*rVec
-             thisOctal%rhou(subcell) = rVec%x * v * rho * fac
-             thisOctal%rhov(subcell) = rVec%y * v * rho * fac
-             thisOctal%rhow(subcell) = rVec%z * v * rho * fac
-             thisOctal%temperature(subcell) = 10000.d0
-             thisOctal%rhoe(subcell) = 0.5d0 * thisOCtal%rho(subcell)* v**2
-             thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) + &
-                  1.5d0 * kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/mHydrogen
+             v = cellVolume(thisOctal, subcell) * 1.d30
+             thisRho = totalMassThisInterval / totalVolume
+             thisMom = thisRho * vterm
+             thisOctal%rho(subcell) = thisOctal%rho(subcell) + thisRho
+
+             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + rVec%x * thisMom
+             thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + rVec%y * thisMom
+             thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + rVec%z * thisMom
           endif
 
        endif
     enddo
   end subroutine addStellarWindRecur
+
+  recursive subroutine addSuperNovaRecur(thisOctal, source, dt, totalVolume)
+    use mpi
+    use inputs_mod, only : smallestCellSize
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    type(SOURCETYPE) :: source
+    integer :: subcell, i
+    real(double) :: r, v, vterm, fac, maxSpeed, mdot, dt, totalVolume
+    real(double) :: totalMassThisInterval, thisRho, thisMom, ke
+    type(VECTOR) :: cellCentre, rVec
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call addSuperNovaRecur(child, source, dt, totalVolume)
+                exit
+             end if
+          end do
+       else
+
+          
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          maxspeed = 0.2d5
+          thisOctal%boundaryCell(subcell) = .false.
+          cellCentre = subcellCentre(thisOctal, subcell)
+          rVec = cellCentre - source%position
+          r = modulus(rVec)
+          rVec = rVec / r
+
+          mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
+          vterm = 0.2d0 * 1.d5
+
+          totalMassThisInterval = 10.d0 * mSol
+          ke = 1.d54
+
+          vterm = sqrt(2.d0 * ke / totalMassThisInterval)
+
+          if (r < smallestCellSize*5.d0) then
+             thisOctal%boundaryCell(subcell) = .true.
+             v = cellVolume(thisOctal, subcell) * 1.d30
+             thisRho = totalMassThisInterval / totalVolume
+             thisMom = thisRho * vterm
+             thisOctal%rho(subcell) = thisOctal%rho(subcell) + thisRho
+
+             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + rVec%x * thisMom
+             thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + rVec%y * thisMom
+             thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + rVec%z * thisMom
+          endif
+
+       endif
+    enddo
+  end subroutine addSuperNovaRecur
+
+  recursive subroutine findStellarWindVolume(thisOctal, source, totalVolume)
+    use mpi
+    use inputs_mod, only : smallestCellSize
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    type(SOURCETYPE) :: source
+    integer :: subcell, i
+    real(double) :: r, v, vterm, fac, maxSpeed, mdot, totalVolume
+    type(VECTOR) :: cellCentre, rVec
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call findStellarWindVolume(child, source, totalVolume)
+                exit
+             end if
+          end do
+       else
+
+          
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          cellCentre = subcellCentre(thisOctal, subcell)
+          rVec = cellCentre - source%position
+          r = modulus(rVec)
+          rVec = rVec / r
+          if (r < smallestCellSize*5.d0) then
+             totalVolume = totalVolume + cellVolume(thisOctal, subcell)*1.d30
+          endif
+
+       endif
+    enddo
+  end subroutine findStellarWindVolume
 
 
   subroutine getPointsInAccretionRadius(thisOctal, subcell, radius, grid, npoints, position, vel, mass, phi, cs)

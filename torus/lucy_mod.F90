@@ -29,7 +29,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, convergeOnUndersampled, mDisc, dusttogas, dustSettling !, maxMemoryAvailable
+    use inputs_mod, only : object, convergeOnUndersampled, mDisc, dusttogas, dustSettling, maxMemoryAvailable
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
@@ -131,7 +131,7 @@ contains
     real(double) :: subRadius, dustMass
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
-!    integer(bigInt) :: totMem
+    integer(bigInt) :: totMem
     character(len=10) :: stringArray(10)
 #ifdef USEMKL
     integer :: oldmode

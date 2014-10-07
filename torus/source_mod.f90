@@ -370,6 +370,7 @@
                deallocate(weightArray)
             endif
             ALLOCATE(prob(1:nSource))
+            prob = 0.d0
 	    ! Create the prob. dist. function.
             if (nLambda > 1) then
                do i = 1, nSource
@@ -401,7 +402,6 @@
                do i = 2, nSource
                   prob(i) = prob(i) + prob(i-1)
                enddo
-               prob(1:nSource) = prob(1:nSource) - prob(1)
                prob(1:nSource) = prob(1:nSource) / prob(nSource)
             endif
 !            if (writeoutput) write(*,*) "prob ",prob(1:nSource)
@@ -410,13 +410,18 @@
          end if
 	 
          if (nSource > 2) then
+!            do i = 1, nSource
+!               if (writeoutput) write(33,*) i,prob(i)
+!            enddo
+!            if (writeoutput) stop
             call randomNumberGenerator(getDouble=r)
-            call locate(prob, nSource, r, iSource)
-            if (iSource < nSource) then
-               t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
-               if (t > 0.5) iSource = iSource + 1
-               weight = weightArray(isource)
+            if (r < prob(1)) then
+               iSource = 1
+            else
+               call locate(prob, nSource, r, iSource)
+               iSource = iSource + 1
             endif
+            weight = weightArray(isource)
          else
             call randomNumberGenerator(getDouble=r)
             if (r < prob(1)) then

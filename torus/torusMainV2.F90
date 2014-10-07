@@ -40,6 +40,7 @@ program torus
   use source_mod
   use random_mod
   use memory_mod
+  use turbulence_mod
 !  use zlib_mod
   use sph_data_class, only: deallocate_sph
 #ifdef MPI
@@ -52,7 +53,7 @@ program torus
 
   character(len=80) :: message
   type(GRIDTYPE) :: grid
-
+  type(VECTOR) :: box(64,64,64)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
@@ -76,6 +77,7 @@ program torus
   outputinfo     = .true.
   myRankIsZero   = .true.
 
+  call createBox(box,64)
   
   if (TorusMpi) then 
      if (myRankGlobal/=1) writeoutput  = .false.

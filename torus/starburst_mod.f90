@@ -90,6 +90,7 @@ contains
     integer :: i
     integer :: nDead, nSupernova, nOB
     integer, parameter :: nKurucz = 410
+    logical :: thirtyFound
     type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
     character(len=80) :: klabel(nKurucz)
 
@@ -114,11 +115,16 @@ contains
           enddo
 
        case("instantaneous")
-          totMass = 0.d0
-          do while (totMass < burstMass)
-             nSource = nSource + 1
-             source(nSource)%initialMass = randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
-             totMass = totMass + source(nSource)%initialMass
+          thirtyFound = .false.
+          do while(.not.thirtyFound)
+             totMass = 0.d0
+             nSource = 0
+             do while (totMass < burstMass)
+                nSource = nSource + 1
+                source(nSource)%initialMass = randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
+                if (source(nSource)%initialMass > 20.d0) thirtyFound = .true.
+                totMass = totMass + source(nSource)%initialMass
+             enddo
           enddo
           source(1:nSource)%age = burstAge
 
@@ -182,6 +188,12 @@ contains
             source(i)%mdot = 0.d0
          endif
       enddo
+
+      source(:)%stellar = .true.
+      source(:)%viscosity = .false.
+      source(:)%diffuse = .false.
+      source(:)%outsideGrid = .false.
+
       call dumpSources(source, nSource)
     end subroutine createSources
 
@@ -270,6 +282,53 @@ contains
 
 
     end subroutine setSourceProperties
+
+    subroutine updateSourceProperties(source)
+      use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize
+      type(SOURCETYPE) :: source
+      type(TRACKTABLE),save :: thisTable
+      logical,save :: firstTime = .true.
+      integer :: i, j
+      real(double) :: r, t, u, mass1, logL1, logT1
+      type(VECTOR) :: vVec
+      real(double) :: sigmaVel
+      real(double) :: mass2, logL2, logT2
+
+
+      if (firstTime) then
+         call readinTracks("schaller", thisTable)
+         firstTime = .false.
+         call writeInfo("Schaller tracks successfully read", FORINFO)
+      endif
+
+      call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
+      
+      call locate(thisTable%age(i,1:thisTable%nAges(i)), thisTable%nAges(i), source%age, j)
+      t = (source%age - thisTable%age(i, j))/(thisTable%age(i,j+1)-thisTable%age(i,j))
+      mass1 = thisTable%massAtAge(i,j) + t * (thisTable%massAtAge(i,j+1)-thisTable%massAtAge(i,j))
+      logL1 = thisTable%logL(i,j) + t * (thisTable%logL(i,j+1)-thisTable%logL(i,j))
+      logT1 = thisTable%logTeff(i,j) + t * (thisTable%logTeff(i,j+1)-thisTable%logTeff(i,j))
+
+      call locate(thisTable%age(i+1,1:thisTable%nAges(i+1)), thisTable%nAges(i+1), source%age, j)
+      t = (source%age - thisTable%age(i+1, j))/(thisTable%age(i+1,j+1)-thisTable%age(i+1,j))
+      mass2 = thisTable%massAtAge(i+1,j) + t * (thisTable%massAtAge(i+1,j+1)-thisTable%massAtAge(i+1,j))
+      logL2 = thisTable%logL(i+1,j) + t * (thisTable%logL(i+1,j+1)-thisTable%logL(i+1,j))
+      logT2 = thisTable%logTeff(i+1,j) + t * (thisTable%logTeff(i+1,j+1)-thisTable%logTeff(i+1,j))
+
+      u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
+      
+      source%mass = (mass1 + (mass2 - mass1) * u) * mSol
+      source%luminosity = logL1 + (logL2 - logL1) * u
+      source%luminosity = (10.d0**source%luminosity) * lSol
+      source%teff = logT1 + (logT2  - logT1) * u
+      source%teff = 10.d0**source%teff
+      source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
+
+      
+      call emptySurface(source%surface)
+      call buildSphereNBody(source%position, 2.5d0*smallestCellSize, source%surface, 20)
+
+    end subroutine updateSourceProperties
 
     subroutine setSourceArrayProperties(source, nSource, fractionOfAccretionLum)
       type(SOURCETYPE) :: source(:)

@@ -112,6 +112,8 @@
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
   logical :: addSinkParticles  ! add new sink particles
   logical :: stellarWinds      ! include stellar winds in hydro calc
+  logical :: supernovae        ! include supernovae in hydro calc
+  logical :: starburst         ! set sources from starburst
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation 
 

@@ -75,7 +75,7 @@ contains
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
-         pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, &
+         pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, addSupernovae,&
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, hydroStep2dCylindrical_amr, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
@@ -84,7 +84,7 @@ contains
 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
+    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral, supernovae
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal
     use parallel_mod, only: torus_abort
     use mpi
@@ -525,7 +525,6 @@ contains
        write(mpiFilename,'(a, i4.4, a)') "start.grid"
        call writeAmrGrid(mpiFilename, .false., grid)
 
-       if ((myrankglobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
        
        call calculateEnergyFromTemperature(grid%octreeRoot)
        call calculateRhoE(grid%octreeRoot, direction)
@@ -554,7 +553,6 @@ contains
                 call writeInfo("Evening up grid", TRIVIAL)    
                 call evenUpGridMPI(grid, .false.,.true., evenuparray)
              endif
-             if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
              call resetnh(grid%octreeRoot)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 !                call writeVtkFile(grid, "stellarwind.vtk", &
@@ -994,7 +992,6 @@ contains
                 call evenUpGridMPI(grid, .false.,.true., evenuparray)
                 if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
              endif
-             if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray)
 !             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif
@@ -1002,13 +999,17 @@ contains
           if (severeDamping) call cutVacuum(grid%octreeRoot)
 
 
+          if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray, dt)
+
+!          if ((myrankGlobal /= 0).and.supernovae) call addSupernovae(grid, globalnSource, globalsourcearray, dt)
+
 
 !add/merge sink particles where necessary
        if (myrankGlobal /= 0) then
           if (nbodyPhysics.and.addSinkParticles) call addSinks(grid, globalsourceArray, globalnSource)       
-          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
-          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
-          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
+!          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
           do i = 1, globalnSource
              call emptySurface(globalsourceArray(i)%surface)
              call buildSphereNbody(globalsourceArray(i)%position, 2.5d0*smallestCellSize, &
@@ -1227,7 +1228,7 @@ end subroutine radiationHydro
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs
 
 
-    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, massiveStars, forceminrho, nDustType
+    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1729,20 +1730,11 @@ end subroutine radiationHydro
     converged = .false.
 
     if (nSource > 1) then
-       if(massiveStars) then
-          gotMassive = .false.
-          do while (.not. gotMassive) 
-
-             call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
-!             print *, "hunting ", source(isource)%mass/msol
-             if(source(iSource)%mass/msol >= 20.d0) gotMassive = .true.
-          enddo
-
-       else
-          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
-       endif
+       call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+    else
+       iSource = 1
     endif
-!    print *, "gota massive star..."
+
     if (maxiter > 1) then
        if (variableDustSublimation) then
           if (Writeoutput) write(*,*) "Stripping dust away."
@@ -1984,17 +1976,8 @@ end subroutine radiationHydro
                    else
                       lastPhoton = .false.
                    endif
-!                call randomSource(source, nSource, iSource, photonPacketWeight)
-                   if(massiveStars) then
-                      gotMassive = .false.
-                      do while (.not. gotMassive) 
-                         call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
-                         if(source(iSource)%mass/msol >= 20.d0) gotMassive = .true.
-                      enddo
-                   else
-                      call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
-                   endif
-!                   print *, "gota massive star B..."
+                   
+                   call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
                 if(cart2d .and. .not. source(1)%outsidegrid) then
@@ -3480,8 +3463,8 @@ end subroutine radiationHydro
 !     call  dumpValuesAlongLine(grid, "radial_converged.dat", VECTOR(1.d0,0.d0,0.0d0), &
 !          VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
   
-        call writeVtkFile(grid, "temp.vtk", &
-             valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
+!        call writeVtkFile(grid, "temp.vtk", &
+!             valueTypeString=(/"rho          ", "HI           " , "temperature  "/))
 
 
      call torus_mpi_barrier

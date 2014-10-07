@@ -786,7 +786,7 @@ contains
 #endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
-          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot
+          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst
 #ifdef MPI
      use mpi
 #endif
@@ -858,7 +858,7 @@ contains
         endif
      endif
 
-     if (grid%geometry == "starburst") then
+     if (starburst) then
 #ifdef MPI
         call randomNumberGenerator(randomSeed = .true.)
         call randomNumberGenerator(syncIseed=.true.)

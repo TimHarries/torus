@@ -25,6 +25,7 @@ contains
     use amr_mod
     use lucy_mod
     use grid_mod
+    use turbulence_mod
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
     use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics, variableDustSublimation
@@ -79,6 +80,7 @@ contains
     integer :: counter, nTimes
 !    integer :: nUnrefine
     real :: scalefac
+    type(VECTOR), allocatable :: turbBox(:,:,:)
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
@@ -518,6 +520,17 @@ contains
              if (writeoutput) write(*,*) "Total mass in spiral (solar masses): ",totalMass/msol
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
+          case("sphere")
+             allocate(turbBox(1:2**maxDepthAMR,1:2**maxDepthAMR,1:2**maxDepthAMR))
+#ifdef MPI
+        call randomNumberGenerator(randomSeed = .true.)
+        call randomNumberGenerator(syncIseed=.true.)
+#endif
+        call createBox(turbBox, 2**maxDepthAMR)
+        call assignTurbVelocity(grid%octreeRoot, turbBox, 2**maxDepthAMR)
+        call randomNumberGenerator(randomSeed = .true.)
+        deallocate(turbBox)
+
 #ifdef MPI
           case("unisphere","gravtest")
              if (hydrodynamics) then
@@ -2465,6 +2478,39 @@ subroutine addSpiralWake(grid)
 end subroutine addSpiralWake
 
 
+recursive subroutine assignTurbVelocity(thisOctal, box, n)
+  use inputs_mod, only : amrGridSize, amrGridCentreX, amrGridCentreY, amrGridCentreZ
+  use inputs_mod, only : maxDepthAMR
+  type(VECTOR) :: box(n,n,n)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  integer :: subcell, i, n, i1, j1, k1
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call assignTurbVelocity(child, box, n)
+              exit
+           end if
+        end do
+     else 
+        if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+        rVec  = subcellCentre(thisOctal, subcell)
+        
+        i1 = nint(dble(2**maxDepthAMR) *  (rVec%x + amrGridSize/2.d0) / amrGridSize)
+        j1 = nint(dble(2**maxDepthAMR) *  (rVec%y + amrGridSize/2.d0) / amrGridSize)
+        k1 = nint(dble(2**maxDepthAMR) *  (rVec%z + amrGridSize/2.d0) / amrGridSize)
+
+        write(*,*) i1,j1,k1,box(i1,j1,k1)
+        thisOctal%velocity(subcell) = box(i1,j1,k1)
+     endif
+  enddo
+end subroutine assignTurbVelocity
 
 
 end module setupamr_mod
