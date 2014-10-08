@@ -2595,30 +2595,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         imagebasis(1) = imagebasis(1) * pixelwidth ! rescale basis vectors so that natural stepsize is 1 pixelwidth 
         imagebasis(2) = imagebasis(2) * pixelwidth
      endif
-     write(message,'(a,3(2x,es10.3))') "Observer Position : ", observervec
-     call writeinfo(message, FORINFO)
 
-     write(message,'(a,3(2x,es10.3))') "View Vector       : ", viewvec
-     call writeinfo(message, FORINFO)
-
-     write(message,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
-     call writeinfo(message, FORINFO)
-
-     write(message,'(a,3(2x,f10.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
-     call writeinfo(message, FORINFO)
-
-     write(message,'(a,es10.3)')       "Pixel length      : ", modulus(imagebasis(1))
-     call writeinfo(message, FORINFO)
-
-     open(91, file="imageparams.dat",status="unknown",form="formatted")
-
-     write(91,'(a,3(2x,es10.3))') "Observer Position : ", observervec
-     write(91,'(a,3(2x,es10.3))') "View Vector       : ", viewvec
-     write(91,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
-     write(91,'(a,3(2x,f10.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
-     write(91,'(a,es10.3)')       "Pixel length      : ", modulus(imagebasis(1))
-
-     close(91)
+! Write out info about observer vectors. Moved to subroutine so it can be called for HI case.
+     call reportObserverVectors(viewVec,observerVec,imagebasis)
 
      call findSubcellTD(VECTOR(1.,1.,1.), grid%octreeroot, thisOctal, subcell)
      if(writeoutput) then
@@ -4413,6 +4392,37 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       end subroutine setObserverVectors
       
+      subroutine reportObserverVectors(viewVec,observerVec,imagebasis)
+        type(VECTOR), intent(in) :: observerVec, viewvec, imagebasis(2)
+        character (len=80) :: message
+
+        write(message,'(a,3(2x,es10.3))') "Observer Position : ", observervec
+        call writeinfo(message, FORINFO)
+        
+        write(message,'(a,3(2x,es10.3))') "View Vector       : ", viewvec
+        call writeinfo(message, FORINFO)
+        
+        write(message,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
+        call writeinfo(message, FORINFO)
+        
+        write(message,'(a,3(2x,f10.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
+        call writeinfo(message, FORINFO)
+        
+        write(message,'(a,es10.3)')       "Pixel length      : ", modulus(imagebasis(1))
+        call writeinfo(message, FORINFO)
+        
+        open(91, file="imageparams.dat",status="unknown",form="formatted")
+        
+        write(91,'(a,3(2x,es10.3))') "Observer Position : ", observervec
+        write(91,'(a,3(2x,es10.3))') "View Vector       : ", viewvec
+        write(91,'(a,3(2x,f10.6))')  "Image X axis      : ", imagebasis(1) / modulus(imagebasis(1))
+        write(91,'(a,3(2x,f10.6))')  "Image Y axis      : ", imagebasis(2) / modulus(imagebasis(2))
+        write(91,'(a,es10.3)')       "Pixel length      : ", modulus(imagebasis(1))
+        
+        close(91)
+
+      end subroutine reportObserverVectors
+
 
      type(VECTOR) function velocity(position, grid, startOctal, subcell) RESULT(out)
        use amr_utils_mod, only : returnVelocityVector2
@@ -4847,6 +4857,7 @@ END SUBROUTINE sobseq
 
    call writeinfo('Generating H 21cm image', TRIVIAL)
    call setObserverVectors(viewvec, observerVec, imagebasis)
+   call reportObserverVectors(viewVec,observerVec,imagebasis)
 
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
