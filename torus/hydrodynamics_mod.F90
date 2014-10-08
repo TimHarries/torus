@@ -16956,11 +16956,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(SOURCETYPE) :: sourceArray(:)
 
     do i = 1, nSource
-       if (sourceArray(i)%mass > 15.d0*mSol) then
           totalVolume = 0.d0
           call findStellarWindVolume(grid%octreeRoot, sourceArray(i), totalVolume)
           call addStellarWindRecur(grid%octreeRoot, sourceArray(i), dt, totalVolume)
-       endif
     enddo
   end subroutine addStellarWind
 
@@ -17020,7 +17018,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           r = modulus(rVec)
           rVec = rVec / r
 
-          mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
+          mdot = source%mDotWind
           vterm = 2.d3 * 1.d5
 
           totalMassThisInterval = mDot * dt

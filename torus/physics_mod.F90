@@ -858,7 +858,7 @@ contains
         endif
      endif
 
-     if (starburst) then
+     if (starburst.and.(.not.readSources)) then
 #ifdef MPI
         call randomNumberGenerator(randomSeed = .true.)
         call randomNumberGenerator(syncIseed=.true.)

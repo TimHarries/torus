@@ -23,6 +23,7 @@
      real(double) :: mass       ! [solar]
      real(double) :: age        ! [years]
      real(double) :: mdot        ! [mDot g/s]
+     real(double) :: mdotWind    ! [mDot g/s]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
      type(SURFACETYPE) :: surface
      real(double) :: limbDark(2)
@@ -232,6 +233,7 @@
       write(lunit) source%angMomentum
       write(lunit) source%accretionRadius
       write(lunit) source%time
+      write(lunit) source%mdotwind
       call writeSpectrumToDump(source%spectrum,lunit)
       call writeSurface(source%surface, lunit)
     end subroutine writeSource
@@ -259,6 +261,7 @@
       read(lunit) source%angMomentum
       read(lunit) source%accretionRadius
       read(lunit) source%time
+      read(lunit) source%mdotwind
       call freeSpectrum(source%spectrum)
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)

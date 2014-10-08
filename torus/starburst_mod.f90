@@ -25,6 +25,7 @@ module starburst_mod
      real(double), pointer :: massAtAge(:,:)
      real(double), pointer :: logL(:,:)
      real(double), pointer :: logTeff(:,:)
+     real(double), pointer :: mDot(:,:)
   end type TRACKTABLE
 
 contains
@@ -122,7 +123,7 @@ contains
              do while (totMass < burstMass)
                 nSource = nSource + 1
                 source(nSource)%initialMass = randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
-                if (source(nSource)%initialMass > 20.d0) thirtyFound = .true.
+                if (source(nSource)%initialMass > 30.d0) thirtyFound = .true.
                 totMass = totMass + source(nSource)%initialMass
              enddo
           enddo
@@ -239,7 +240,7 @@ contains
       type(SOURCETYPE) :: source
       type(TRACKTABLE) :: thisTable
       integer :: i, j
-      real(double) :: r, t, u, mass1, logL1, logT1
+      real(double) :: r, t, u, mass1, logL1, logT1, logmdot1, logmdot2
       type(VECTOR) :: vVec
       real(double) :: sigmaVel
       real(double) :: mass2, logL2, logT2
@@ -251,12 +252,13 @@ contains
       mass1 = thisTable%massAtAge(i,j) + t * (thisTable%massAtAge(i,j+1)-thisTable%massAtAge(i,j))
       logL1 = thisTable%logL(i,j) + t * (thisTable%logL(i,j+1)-thisTable%logL(i,j))
       logT1 = thisTable%logTeff(i,j) + t * (thisTable%logTeff(i,j+1)-thisTable%logTeff(i,j))
-
+      logMdot1 = thisTable%mdot(i,j) + t * (thisTable%mdot(i,j+1)-thisTable%mdot(i,j))
       call locate(thisTable%age(i+1,1:thisTable%nAges(i+1)), thisTable%nAges(i+1), source%age, j)
       t = (source%age - thisTable%age(i+1, j))/(thisTable%age(i+1,j+1)-thisTable%age(i+1,j))
       mass2 = thisTable%massAtAge(i+1,j) + t * (thisTable%massAtAge(i+1,j+1)-thisTable%massAtAge(i+1,j))
       logL2 = thisTable%logL(i+1,j) + t * (thisTable%logL(i+1,j+1)-thisTable%logL(i+1,j))
       logT2 = thisTable%logTeff(i+1,j) + t * (thisTable%logTeff(i+1,j+1)-thisTable%logTeff(i+1,j))
+      logMdot2 = thisTable%mdot(i+1,j) + t * (thisTable%mdot(i+1,j+1)-thisTable%mdot(i+1,j))
 
       u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
       
@@ -266,7 +268,11 @@ contains
       source%teff = logT1 + (logT2  - logT1) * u
       source%teff = 10.d0**source%teff
       source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
-      
+      source%mdotWind = 0.d0
+      if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+         source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
+         source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+      endif
       source%position = randomUnitVector()
       call randomNumberGenerator(getDouble=r)
       r = r**2
@@ -415,7 +421,8 @@ contains
             allocate(thisTable%massAtAge(21, 52))
             allocate(thisTable%logL(21, 52))
             allocate(thisTable%logteff(21, 52))
-            thisTable%label = "Scharer (1992) evolutionary tracks"
+            allocate(thisTable%mDot(21, 52))
+            thisTable%label = "Schaller (1992) evolutionary tracks"
             call readSchallerModel(thisTable, 21, 120.d0, "table1")
             call readSchallerModel(thisTable, 20, 85.d0, "table2")
             call readSchallerModel(thisTable, 19, 60.d0, "table3")
@@ -485,7 +492,7 @@ contains
      subroutine readSchallerModel(thisTable, nMass, initMass, thisfile)
        type(TRACKTABLE) :: thisTable
        integer :: nMass
-       real(double) :: initMass
+       real(double) :: initMass, junk(12)
        character(len=*) :: thisfile
        character(len=200) :: tFile, datadirectory
        integer :: nt, i
@@ -499,7 +506,7 @@ contains
        open(31, file=tfile, status="old", form="formatted")
 10 continue
        read(31, *, end=55) i, thisTable%age(nMass, nt),  thisTable%massAtAge(nMass, nt), &
-            thisTable%logL(nMass, nt), thisTable%logteff(nMass, nt)
+            thisTable%logL(nMass, nt), thisTable%logteff(nMass, nt),junk(1:12),thisTable%mdot(nMass,nt)
        nt = nt + 1
        goto 10
 55     continue

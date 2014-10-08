@@ -388,7 +388,7 @@ contains
 
 
        if (porousFillingFactor > 0.d0) then
-!          if (writeoutput) write(*,*) "before ",mreal(i),mimg(i)
+          if (writeoutput) write(*,*) "before ",mreal(i),mimg(i)
           call refractiveIndexToPermittivity(mReal(i), mImg(i), epsilonReal, epsilonImg)
           epsilonMatrix = cmplx(epsilonReal, epsilonImg)
           epsilonInclusion = cmplx(1.e0, 0.e0)
@@ -396,7 +396,7 @@ contains
           epsilonReal = real(epsilonEffective)
           epsilonImg = aimag(epsilonEffective)
           call permittivityToRefractiveIndex(epsilonReal, epsilonImg, mreal(i), mImg(i))
-!          if (writeoutput) write(*,*) "after ",mreal(i),mimg(i)
+          if (writeoutput) write(*,*) "after ",mreal(i),mimg(i)
        endif
 
     enddo
