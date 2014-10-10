@@ -4415,7 +4415,7 @@ CONTAINS
           if (((thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30) > massTol) &
                .and.(thisOctal%nDepth < maxDepthAMR)) then
              split = .true.
-             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+!             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
           endif
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)

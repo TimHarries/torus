@@ -1001,7 +1001,7 @@ contains
 
           if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray, dt)
 
-!          if ((myrankGlobal /= 0).and.supernovae) call addSupernovae(grid, globalnSource, globalsourcearray, dt)
+          if ((myrankGlobal /= 0).and.supernovae) call addSupernovae(grid, globalnSource, globalsourcearray, dt)
 
 
 !add/merge sink particles where necessary
@@ -1832,16 +1832,16 @@ end subroutine radiationHydro
           
           do isource = 1, globalnSource
              if (amr3d) then
-                if (writeoutput) write(*,*) "r1, r2, r3 ",maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource)
+!                if (writeoutput) write(*,*) "r1, r2, r3 ",maxDiffRadius1(isource), maxDiffRadius2(iSource), maxDiffRadius3(iSource)
                 maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource) + maxDiffRadius3(iSource))/3.d0
              else if (amr2d) then
-                if (writeoutput) write(*,*) "r1, r2 ",maxDiffRadius1(isource), maxDiffRadius2(iSource)
+!                if (writeoutput) write(*,*) "r1, r2 ",maxDiffRadius1(isource), maxDiffRadius2(iSource)
                 maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource))/2.d0
              else
-                if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
+!                if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
                 maxDiffRadius(isource) = maxDiffRadius1(isource)
              endif
-             if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
+!             if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
 
           

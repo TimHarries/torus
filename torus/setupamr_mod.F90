@@ -526,7 +526,7 @@ contains
         call randomNumberGenerator(randomSeed = .true.)
         call randomNumberGenerator(syncIseed=.true.)
 #endif
-        call createBox(turbBox, 2**maxDepthAMR)
+!        call createBox(turbBox, 2**maxDepthAMR)
 !        call assignTurbVelocity(grid%octreeRoot, turbBox, 2**maxDepthAMR)
         call randomNumberGenerator(randomSeed = .true.)
         deallocate(myTurbBox)

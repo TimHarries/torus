@@ -235,6 +235,46 @@ contains
       endif
     end function isSourceDead
 
+
+    subroutine checkSourceSupernova(nSource, source, thisTable, nSupernova, supernovaIndex)
+
+      ! checks if any sources have gone supernova, looping through all sources                                                            
+      ! requires sources to be dead and initially above 8 solar masses                                                                    
+      ! counts number gone supernova, tabulates each supernova source index                                                               
+
+      type(SOURCETYPE) :: source(:)
+      type(TRACKTABLE) :: thisTable
+      real(double) :: t, t1, t2, deadAge
+      integer :: i, j, k
+      integer :: nSource, nSupernova, supernovaIndex(:)
+
+      nSupernova = 0
+
+      do i=1, nSource
+
+         ! locates sources lower mass bound evolutionary track, reads
+         ! and assigns death ages of upper/lower tracks
+
+         call locate(thisTable%initialMass, thisTable%nMass, source(i)%initialMass, j)
+         t1 = thisTable%age(j,thisTable%nAges(j))
+         t2 = thisTable%age(j+1,thisTable%nAges(j+1))
+
+         ! interpolates death age for mass inbetween 2 consecutive evolutionary tracks                                                    
+
+         t = (source(i)%initialMass - thisTable%initialMass(j))/(thisTable%initialMass(j+1) - thisTable%initialMass(j))
+         deadAge = t1 + t * (t2 - t1)
+
+         ! checks if each source is dead and initially > 8 solar mass, adds to SN count, tabulates index                                  
+
+         if (source(i)%age > deadAge .and. source(i)%initialMass > 8.d0) then
+            nSupernova=nSupernova+1
+            supernovaIndex(nSupernova)=i
+         endif
+      end do
+    end subroutine checkSourceSupernova
+
+
+
     subroutine setSourceProperties(source, thisTable)
       use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize
       type(SOURCETYPE) :: source
@@ -271,6 +311,7 @@ contains
       source%mdotWind = 0.d0
       if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
          source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
+         write(*,*) "setting mdot to ",source%mDotwind
          source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
       endif
       source%position = randomUnitVector()
@@ -492,10 +533,12 @@ contains
      subroutine readSchallerModel(thisTable, nMass, initMass, thisfile)
        type(TRACKTABLE) :: thisTable
        integer :: nMass
-       real(double) :: initMass, junk(12)
+       real(double) :: initMass
        character(len=*) :: thisfile
        character(len=200) :: tFile, datadirectory
        integer :: nt, i
+       character(len=254) :: cLine
+
        thisTable%initialMass(nMass) = initMass
        
 
@@ -505,8 +548,10 @@ contains
        nt = 1
        open(31, file=tfile, status="old", form="formatted")
 10 continue
-       read(31, *, end=55) i, thisTable%age(nMass, nt),  thisTable%massAtAge(nMass, nt), &
-            thisTable%logL(nMass, nt), thisTable%logteff(nMass, nt),junk(1:12),thisTable%mdot(nMass,nt)
+       read(31,'(a)',end=55) cline
+       read(cline, *) i, thisTable%age(nMass, nt),  thisTable%massAtAge(nMass, nt), &
+            thisTable%logL(nMass, nt), thisTable%logteff(nMass, nt)
+       read(cline,'(145X,F7.3)') thisTable%mdot(nMass,nt)
        nt = nt + 1
        goto 10
 55     continue
@@ -517,6 +562,7 @@ contains
 
 
      subroutine removeSource(source, nSource, n)
+       use inputs_mod, only : smallestCellSize
        type(SOURCETYPE) :: source(:)
        integer :: nSource, n, i
 
@@ -525,7 +571,14 @@ contains
              source(i) = source(i+1)
           enddo
        endif
+       call freeSource(source(nSource))
        nSource = nSource - 1
+       do i = 1, nSource
+          call freeSpectrum(source(i)%spectrum)
+          call emptySurface(source(i)%surface)
+          call buildSphereNBody(source(i)%position, 2.5d0*smallestCellSize, source(i)%surface, 20)
+          call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+       enddo
      end subroutine removeSource
 
 

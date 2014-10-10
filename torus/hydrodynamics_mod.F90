@@ -5847,6 +5847,7 @@ end subroutine sumFluxes
    
 
    if (selfGravity) then
+      if (writeoutput) call writeInfo("Solving self gravity...")
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
       if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)!, multigrid=.true.)
       call zeroSourcepotential(grid%octreeRoot)
@@ -5855,6 +5856,7 @@ end subroutine sumFluxes
       endif
       call sumGasStarGravity(grid%octreeRoot)
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+      if (writeoutput) call writeInfo("Done.")
    endif
 
 
@@ -14382,7 +14384,11 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
-!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+       if (it > 200) then
+          if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
+          exit
+       endif
     enddo
     if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
@@ -16966,20 +16972,29 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(GRIDTYPE) :: grid
     integer :: nSource, i
     real(double) :: dt, totalVolume
-    logical, save :: firstTime = .true.
     type(SOURCETYPE) :: sourceArray(:)
+    integer :: nSupernova, supernovaIndex(10)
 
-    if (firstTime) then
-       do i = 1, nSource
-          if (writeoutput) write(*,*) "Age (years): ",sourceArray(i)%age*secstoyears
-          if (sourceArray(i)%mass > 15.d0*mSol) then
-             totalVolume = 0.d0
-             call findStellarWindVolume(grid%octreeRoot, sourceArray(i), totalVolume)
-             call addSupernovaRecur(grid%octreeRoot, sourceArray(i), dt, totalVolume)
-          endif
+    call checkSourceSupernova(nSource, source, thisTable, nSupernova, supernovaIndex)
+
+    if (nSupernova > 0) then
+
+       do i = 1, nSupernova
+          if (writeoutput) write(*,*) "Supernova explodes!"
+          totalVolume = 0.d0
+          call findStellarWindVolume(grid%octreeRoot, sourceArray(supernovaIndex(i)), totalVolume)
+          call addSupernovaRecur(grid%octreeRoot, sourceArray(supernovaIndex(i)), dt, totalVolume)
        enddo
-       firstTime = .false.
+
+!   need to sort supernovaindex into descending order at this point       
+
+       do i = 1, nSupernova
+          call removeSource(source, nSource, i)
+       enddo
+
+
     endif
+
   end subroutine addSupernovae
 
 
@@ -17019,7 +17034,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           rVec = rVec / r
 
           mdot = source%mDotWind
-          vterm = 2.d3 * 1.d5
+
+!           write(*,*) "adding stellar wind at rate ",(mdot/msol)*365.25d0*24.d0*3600.d0
+          vterm = 2000.d0 * 1.d5
 
           totalMassThisInterval = mDot * dt
 
