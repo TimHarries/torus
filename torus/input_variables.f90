@@ -114,6 +114,8 @@
   logical :: stellarWinds      ! include stellar winds in hydro calc
   logical :: supernovae        ! include supernovae in hydro calc
   logical :: starburst         ! set sources from starburst
+  real(double) :: burstAge
+  character(len=20) :: burstType
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation 
 

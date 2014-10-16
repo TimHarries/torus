@@ -25,12 +25,20 @@ module spectrum_mod
     subroutine freeSpectrum(spectrum)
       type(SPECTRUMTYPE) :: spectrum
       if (associated(spectrum%flux)) deallocate(spectrum%flux)
+      spectrum%flux => null()
       if (associated(spectrum%lambda)) deallocate(spectrum%lambda)
+      spectrum%lambda => null()
       if (associated(spectrum%dlambda)) deallocate(spectrum%dlambda)
+      spectrum%dlambda => null()
       if (associated(spectrum%prob)) deallocate(spectrum%prob)
+      spectrum%prob => null()
       if (associated(spectrum%normflux)) deallocate(spectrum%normflux)
+      spectrum%normflux => null()
       if (associated(spectrum%normflux2)) deallocate(spectrum%normflux2)
+      spectrum%normflux2 => null()
       if (associated(spectrum%ppw)) deallocate(spectrum%ppw)
+      spectrum%ppw => null()
+
       spectrum%nlambda = 0
     end subroutine freeSpectrum
 

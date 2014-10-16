@@ -14384,7 +14384,7 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
-       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
        if (it > 200) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit
@@ -16956,40 +16956,49 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
   end subroutine calculateRhobar
 
   subroutine addStellarWind(grid, nSource, sourceArray, dt)
+    use mpi
     type(GRIDTYPE) :: grid
-    integer :: nSource, i
-    real(double) :: dt, totalVolume
+    integer :: nSource, i, ierr
+    real(double) :: dt, totalVolume, temp
     type(SOURCETYPE) :: sourceArray(:)
 
     do i = 1, nSource
           totalVolume = 0.d0
           call findStellarWindVolume(grid%octreeRoot, sourceArray(i), totalVolume)
+          call MPI_ALLREDUCE(totalVolume, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+          totalVolume = temp
           call addStellarWindRecur(grid%octreeRoot, sourceArray(i), dt, totalVolume)
     enddo
   end subroutine addStellarWind
 
-  subroutine addSupernovae(grid, nSource, sourceArray, dt)
+  subroutine addSupernovae(grid, nSource, sourceArray, dt, sneAdded)
+    use mpi
+    use starburst_mod, only : checkSourceSupernova, removeSource
     type(GRIDTYPE) :: grid
-    integer :: nSource, i
-    real(double) :: dt, totalVolume
+    integer :: nSource, i, ierr
+    real(double) :: dt, totalVolume, temp
+    logical :: sneAdded
     type(SOURCETYPE) :: sourceArray(:)
     integer :: nSupernova, supernovaIndex(10)
+    real(double) :: ejectaMass(10), ke(10)
 
-    call checkSourceSupernova(nSource, source, thisTable, nSupernova, supernovaIndex)
+    sneAdded = .false.
+    call checkSourceSupernova(nSource, sourceArray, nSupernova, supernovaIndex, ejectaMass, ke)
 
     if (nSupernova > 0) then
-
+       sneAdded = .true.
        do i = 1, nSupernova
-          if (writeoutput) write(*,*) "Supernova explodes!"
           totalVolume = 0.d0
           call findStellarWindVolume(grid%octreeRoot, sourceArray(supernovaIndex(i)), totalVolume)
-          call addSupernovaRecur(grid%octreeRoot, sourceArray(supernovaIndex(i)), dt, totalVolume)
+          call MPI_ALLREDUCE(totalVolume, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+          totalVolume = temp
+          call addSupernovaRecur(grid%octreeRoot, sourceArray(supernovaIndex(i)), dt, totalVolume, ejectaMass(i),ke(i))
        enddo
 
 !   need to sort supernovaindex into descending order at this point       
 
        do i = 1, nSupernova
-          call removeSource(source, nSource, i)
+          call removeSource(sourceArray, nSource, supernovaIndex(i))
        enddo
 
 
@@ -17042,7 +17051,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
           if (r < smallestCellSize*5.d0) then
              thisOctal%boundaryCell(subcell) = .true.
-             v = cellVolume(thisOctal, subcell) * 1.d30
+             v = cellVolume(thisOctal, subcell) * 1.d30 
              thisRho = totalMassThisInterval / totalVolume
              thisMom = thisRho * vterm
              thisOctal%rho(subcell) = thisOctal%rho(subcell) + thisRho
@@ -17056,7 +17065,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     enddo
   end subroutine addStellarWindRecur
 
-  recursive subroutine addSuperNovaRecur(thisOctal, source, dt, totalVolume)
+  recursive subroutine addSuperNovaRecur(thisOctal, source, dt, totalVolume, ejectaMass, ke)
     use mpi
     use inputs_mod, only : smallestCellSize
     type(octal), pointer   :: thisoctal
@@ -17064,7 +17073,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(SOURCETYPE) :: source
     integer :: subcell, i
     real(double) :: r, v, vterm, maxSpeed, mdot, dt, totalVolume
-    real(double) :: totalMassThisInterval, thisRho, thisMom, ke
+    real(double) :: totalMassThisInterval, thisRho, thisMom, ke, ejectaMass
     type(VECTOR) :: cellCentre, rVec
  
 
@@ -17074,7 +17083,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           do i = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(i) == subcell) then
                 child => thisoctal%child(i)
-                call addSuperNovaRecur(child, source, dt, totalVolume)
+                call addSuperNovaRecur(child, source, dt, totalVolume, ejectaMass, ke)
                 exit
              end if
           end do
@@ -17093,8 +17102,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           mdot = 1.d-6 * mSol / (365.25d0 * 24.d0 * 3600.d0)
           vterm = 0.2d0 * 1.d5
 
-          totalMassThisInterval = 10.d0 * mSol
-          ke = 1.d54
+          totalMassThisInterval = ejectaMass
 
           vterm = sqrt(2.d0 * ke / totalMassThisInterval)
 

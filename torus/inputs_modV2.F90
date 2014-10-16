@@ -296,7 +296,7 @@ contains
             "Add sink particles: ", "(a,1l,1x,a)", .true., ok, .false.)
 
        call getLogical("hosokawa", hosokawaTracks, cLine, fLine, nLines, &
-            "Use Hosokawa evolutionary tracks: ", "(a,1l,1x,a)", .true., ok, .false.)
+            "Use Hosokawa evolutionary tracks: ", "(a,1l,1x,a)", .false., ok, .false.)
 
        call getLogical("mergesinks", mergeBoundSinks, cLine, fLine, nLines, &
             "Merge bound sinks: ", "(a,1l,1x,a)", .true., ok, .false.)
@@ -2542,8 +2542,14 @@ contains
        call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
             "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
 
+       call getDouble("burstage", burstAge, 1.d0, cLine, fLine, nLines, &
+            "Starburst age (years): ","(a,f10.1,a)", 1000.d0, ok, .true.)
+
        call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
-            "Cluster radius (pc): ","(a,f5.1,a)", 1.d0, ok, .true.)
+            "Burst cluster radius (pc): ","(a,f10.2,a)", 100.d0, ok, .true.)
+
+       call getString("bursttype", burstType, cLine, fLine, nLines, &
+            "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &

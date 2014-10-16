@@ -129,6 +129,13 @@ contains
           enddo
           source(1:nSource)%age = burstAge
 
+       case("supernovatest")
+             nSource = 2
+             source(1)%initialMass = 40.d0
+             source(2)%initialMass = 10.d0
+             totMass = 50.d0
+             source(1:nSource)%age = burstAge
+
        case DEFAULT
          write(message,'(a,a)') "Burst type not recognised: ", trim(burstType)
          call writefatal(message)
@@ -236,17 +243,26 @@ contains
     end function isSourceDead
 
 
-    subroutine checkSourceSupernova(nSource, source, thisTable, nSupernova, supernovaIndex)
+    subroutine checkSourceSupernova(nSource, source, nSupernova, supernovaIndex, ejectaMass, ke)
 
       ! checks if any sources have gone supernova, looping through all sources                                                            
       ! requires sources to be dead and initially above 8 solar masses                                                                    
       ! counts number gone supernova, tabulates each supernova source index                                                               
 
       type(SOURCETYPE) :: source(:)
-      type(TRACKTABLE) :: thisTable
+      type(TRACKTABLE),save :: thisTable
+      logical,save :: firstTime = .true.
       real(double) :: t, t1, t2, deadAge
-      integer :: i, j, k
+      integer :: i, j
       integer :: nSource, nSupernova, supernovaIndex(:)
+      real(double) :: ejectaMass(:), ke(:)
+
+
+      if (firstTime) then
+         call readinTracks("schaller", thisTable)
+         firstTime = .false.
+      endif
+
 
       nSupernova = 0
 
@@ -266,9 +282,13 @@ contains
 
          ! checks if each source is dead and initially > 8 solar mass, adds to SN count, tabulates index                                  
 
+
          if (source(i)%age > deadAge .and. source(i)%initialMass > 8.d0) then
+         if (writeoutput) write(*,*) "Source " ,i, " explodes as a supernova"
             nSupernova=nSupernova+1
             supernovaIndex(nSupernova)=i
+            ejectaMass(nSupernova) = (source(i)%mass - 3.d0) * msol
+            ke(nSupernova) = 1.d51
          endif
       end do
     end subroutine checkSourceSupernova
@@ -311,14 +331,13 @@ contains
       source%mdotWind = 0.d0
       if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
          source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
-         write(*,*) "setting mdot to ",source%mDotwind
          source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
       endif
       source%position = randomUnitVector()
       call randomNumberGenerator(getDouble=r)
       r = r**2
       source%position = source%position * (clusterRadius / 1.d10) * r
-      sigmaVel = sqrt(bigG * (Mstarburst*mSol)/(2.d0*clusterRadius))
+      sigmaVel = sqrt(bigG * ((Mstarburst+1000.d0)*mSol)/(2.d0*clusterRadius))
 !      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
       vVec = randomUnitVector()
       r = gasdev()
@@ -566,16 +585,19 @@ contains
        type(SOURCETYPE) :: source(:)
        integer :: nSource, n, i
 
+       do i = 1, nSource
+          call freeSpectrum(source(i)%spectrum)
+          call emptySurface(source(i)%surface)
+       enddo
+
        if ( n /= nSource) then
           do i = n, nSource - 1
              source(i) = source(i+1)
           enddo
        endif
-       call freeSource(source(nSource))
+
        nSource = nSource - 1
        do i = 1, nSource
-          call freeSpectrum(source(i)%spectrum)
-          call emptySurface(source(i)%surface)
           call buildSphereNBody(source(i)%position, 2.5d0*smallestCellSize, source(i)%surface, 20)
           call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
        enddo

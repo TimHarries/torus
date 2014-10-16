@@ -84,8 +84,8 @@ contains
 
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
-    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral!, supernovae
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal
+    use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -94,6 +94,7 @@ contains
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     integer :: nLambda
+    integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
     real(double) :: dt, cfl, gamma, mu
@@ -114,7 +115,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
-    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells
+    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells, sneAdded, lArray(1)
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3)
@@ -330,6 +331,7 @@ contains
 !          if (myrankWorldglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
 !       enddo
 
+
        if(grid%currentTime == 0.d0) then
           if(grid%geometry == "RHDDisc") then
              call imposeazimuthalvelocity(grid%octreeroot)
@@ -420,7 +422,6 @@ contains
           if (startFromNeutral) then
              call neutralGrid(grid%octreeRoot)
           else
-             print *, "ionizing grid"
              call ionizeGrid(grid%octreeRoot)
           endif
        endif
@@ -504,15 +505,15 @@ contains
                 call writeInfo("Done",TRIVIAL)
              endif
              
-             call writeInfo("Dumping post-photoionization data", TRIVIAL)
-             call writeVtkFile(grid, "start.vtk", &
-             valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     " /))
-             if(grid%octreeroot%oned) then
-                write(datFilename, '(a, i4.4, a)') "start.dat"
-                call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-                     VECTOR(3.86d8, 0.d0, 0.d0), 1000)
-                
-             end if
+!             call writeInfo("Dumping post-photoionization data", TRIVIAL)
+!             call writeVtkFile(grid, "start.vtk", &
+!             valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     " /))
+!             if(grid%octreeroot%oned) then
+!                write(datFilename, '(a, i4.4, a)') "start.dat"
+!                call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+!                     VECTOR(3.86d8, 0.d0, 0.d0), 1000)
+!                
+!             end if
           end do
        end if
 
@@ -522,8 +523,8 @@ contains
           call torus_abort("Finished single photo calculation, ending...")
        end if
 
-       write(mpiFilename,'(a, i4.4, a)') "start.grid"
-       call writeAmrGrid(mpiFilename, .false., grid)
+!       write(mpiFilename,'(a, i4.4, a)') "start.grid"
+!       call writeAmrGrid(mpiFilename, .false., grid)
 
        
        call calculateEnergyFromTemperature(grid%octreeRoot)
@@ -890,6 +891,7 @@ contains
 
        currentlyDoingHydroStep = .true.
 
+
        call writeInfo("calling hydro step",TRIVIAL)
        
 !       if (myrankGlobal /= 0) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1001,7 +1003,27 @@ contains
 
           if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray, dt)
 
-          if ((myrankGlobal /= 0).and.supernovae) call addSupernovae(grid, globalnSource, globalsourcearray, dt)
+          sneAdded = .false.
+          if ((myrankGlobal /= 0).and.supernovae) then
+             call addSupernovae(grid, globalnSource, globalsourcearray, dt, sneAdded)
+             if (doselfgrav.and.sneAdded) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+             lArray(1) = sneAdded
+             if (myrankGlobal==1) call MPI_SEND(lArray, 1, MPI_LOGICAL, 0, tagsne, localWorldCommunicator,  ierr)
+          endif
+          if ((myrankGlobal == 0).and.(supernovae)) then
+             call MPI_RECV(lArray, 1, MPI_LOGICAL, 1, &
+               tagsne, localWorldCommunicator, status, ierr)
+             sneAdded = lArray(1)
+          endif
+
+
+          if (supernovae) then
+             if (sneAdded) then
+                dumpThisTime = .true.
+                timeOfNextDump = grid%currentTime + dt
+                deltaTfordump = 1.d9
+             endif
+          endif
 
 
 !add/merge sink particles where necessary

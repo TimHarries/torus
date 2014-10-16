@@ -122,6 +122,7 @@ contains
                 source(iSource)%teff = sourceTeff(iSource)
                 source(iSource)%mass = sourceMass(iSource)
                 source(iSource)%mdot = sourceMdot(iSource)
+                source(iSource)%mdotWind = sourceMdot(iSource)
                 source(iSource)%radius = sourceRadius(iSource)
                 source(iSource)%position = sourcePos(iSource)
                 source(iSource)%velocity = sourceVel(iSource)
@@ -786,7 +787,8 @@ contains
 #endif
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
-          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst
+          hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
+          burstType, burstAge
 #ifdef MPI
      use mpi
 #endif
@@ -867,7 +869,7 @@ contains
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0
-        call createSources(globalnSource,globalsourcearray, "instantaneous", 1.d6, mStarburst, 1.d0)
+        call createSources(globalnSource,globalsourcearray, burstType, burstAge, mStarburst, 1.d0)
         call randomNumberGenerator(randomSeed = .true.)
     endif
     
