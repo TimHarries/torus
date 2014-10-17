@@ -1,6 +1,7 @@
 ! torus parameters file for testing multigrid gravity solver
 ! plus nbody gravity field
 
+doselfgrav T
 splitovermpi T
 dumpradial T
 geometry gravtest
