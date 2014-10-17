@@ -14385,7 +14385,7 @@ end subroutine refineGridGeneric2
 !       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
-       if (it > 200) then
+       if (it > 10000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit
        endif
@@ -15211,7 +15211,7 @@ end subroutine minMaxDepth
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB
      integer :: subcell, i
-     integer, parameter :: npole = 6
+     integer, parameter :: npole = 2
      integer :: ithread
      integer :: tag, ierr, ipole
      integer :: status(MPI_STATUS_SIZE)
@@ -15295,7 +15295,7 @@ end subroutine minMaxDepth
      logical, optional :: reset
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, uHat
-     integer, parameter :: npole = 6
+     integer, parameter :: npole = 2
      integer :: level
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB

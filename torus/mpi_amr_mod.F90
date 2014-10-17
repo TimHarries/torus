@@ -3563,7 +3563,7 @@ end subroutine writeRadialFile
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     use mpi
-    use inputs_mod, only : inputgfac
+    use inputs_mod, only : inputgfac, dustPhysics
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
@@ -3628,7 +3628,7 @@ end subroutine writeRadialFile
           else
              rpress = globalSourceArray(1)%luminosity * ((kappaAbs+(1.d0-inputgFac)*kappaSca)/1.d10)/ &
                   (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
-             write(20,'(1p,11e11.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, radmom, rpress, &
+             write(20,'(1p,11e12.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, radmom, rpress, &
                   temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
@@ -3661,6 +3661,7 @@ end subroutine writeRadialFile
              sOctal => thisOctal
              cen = subcellCentre(thisOctal, subcell)
              call distanceToCellBoundary(grid, cen, direction, tVal, sOctal)
+             tempStorage = 0.d0
              tempStorage(1) = cen%x
              tempStorage(2) = cen%y
              tempStorage(3) = cen%z
@@ -3677,12 +3678,14 @@ end subroutine writeRadialFile
              tempStorage(12) = modulus(thisOctal%kappaTimesFlux(subcell))/cSpeed
              tempStorage(13) = modulus(thisOctal%radiationMomentum(subcell))
 
-           call returnKappa(grid, thisOctal, subcell, ilambda=1,&
-                kappaScaDust=kappaScaDust, kappaAbsDust=kappaAbsDust, &
-                kappaSca=kappaSca, kappaAbs=kappaAbs)
-
-             tempStorage(14) = kappaAbsDust
-             tempStorage(15) = kappaScaDust
+             if (dustPhysics) then
+                call returnKappa(grid, thisOctal, subcell, ilambda=1,&
+                     kappaScaDust=kappaScaDust, kappaAbsDust=kappaAbsDust, &
+                     kappaSca=kappaSca, kappaAbs=kappaAbs)
+                
+                tempStorage(14) = kappaAbsDust
+                tempStorage(15) = kappaScaDust
+             endif
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
        enddo

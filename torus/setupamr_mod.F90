@@ -529,7 +529,7 @@ contains
 !        call createBox(turbBox, 2**maxDepthAMR)
 !        call assignTurbVelocity(grid%octreeRoot, turbBox, 2**maxDepthAMR)
         call randomNumberGenerator(randomSeed = .true.)
-        deallocate(myTurbBox)
+!        deallocate(myTurbBox)
 
 #ifdef MPI
           case("unisphere","gravtest")
