@@ -38,7 +38,8 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   use random_mod
   use memory_mod
   use sph_data_class 
-  use phasematrix_mod, only: resetNewDirectionMie
+! This no longer exists. Comment out so the library builds
+!  use phasematrix_mod, only: resetNewDirectionMie
   use amr_mod, only: returnKappa
   type(GRIDTYPE) :: grid
   type(VECTOR) :: dummy
@@ -125,7 +126,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   call freeGlobalSourceArray()
   dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
   call kill() ! Free SPH data type
-  call resetNewDirectionMie()
+!  call resetNewDirectionMie()
   call returnKappa(grid, grid%octreeRoot, 1, reset_Kappa=.true.)
 #ifdef MPI
   call torus_mpi_barrier
