@@ -478,8 +478,8 @@ contains
            write(message,*) "Using fixed background of: ", background
            call writeInfo(message,FORINFO)
         else
-           background = minVal(thisCube%intensity(:,:,:))
-           write(message,*) "Taking background as minimum value in cube: ", background
+           background = 0.0
+           write(message,*) "Taking background as zero"
            call writeInfo(message,FORINFO)
         endif
 
@@ -491,26 +491,17 @@ contains
               where (S<0.0) S=0.0
               intensitySum = sum( S(:) )
 
-! Multiply intensity sum by channel width to get zero moment in K.km/s
               if (intensitySum /= 0.0 ) then 
-                 zeroMoment(i,j) = intensitySum * deltaV
-              else
-                 zeroMoment(i,j) = blankVal
-              endif
-
-              firstMoment(i,j) = sum( S(:)*vAxis_sp(:) )
-              if (intensitySum /= 0.0 ) then 
-                 firstMoment(i,j) = firstMoment(i,j) / intensitySum
-              else
-                 firstMoment(i,j) = blankVal
-              endif
-
-              secondMoment(i,j) = sum (S(:) * ( (vAxis_sp(:)-firstMoment(i,j))**2 ) )
-              if ( intensitySum /= 0.0 ) then
+                 ! Multiply intensity sum by channel width to get zero moment in K.km/s
+                 zeroMoment(i,j)   = intensitySum * deltaV
+                 firstMoment(i,j)  = sum( S(:)*vAxis_sp(:) ) / intensitySum
+                 secondMoment(i,j) = sum (S(:) * ( (vAxis_sp(:)-firstMoment(i,j))**2 ) )
                  secondMoment(i,j) = sqrt(secondMoment(i,j) / intensitySum)
               else
+                 zeroMoment(i,j)   = blankVal
+                 firstMoment(i,j)  = blankVal
                  secondMoment(i,j) = blankVal
-              end if
+              endif
 
            end do
         end do
