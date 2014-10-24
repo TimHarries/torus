@@ -14196,7 +14196,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -14678,14 +14678,16 @@ end subroutine minMaxDepth
         else
            if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
-           if (thisOctal%threed) then
-              com = com + subcellCentre(thisOctal,subcell) * &
-                   thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30
-           else
-              rVec = subcellCentre(thisOctal,subcell)
-              if (rVec%x > 0.d0) then
-                 com%z = com%z + rVec%z * &
+	   if (.not.thisOctal%ghostCell(subcell)) then
+              if (thisOctal%threed) then 
+                 com = com + subcellCentre(thisOctal, subcell) * &
                       thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30
+              else
+                 rVec = subcellCentre(thisOctal,subcell)
+                 if (rVec%x > 0.d0) then
+                    com%z = com%z + rVec%z * &
+                         thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30
+                 endif
               endif
            endif
         endif
@@ -15039,7 +15041,7 @@ end subroutine minMaxDepth
      type(VECTOR) :: point
      tag = 94
      call findCoM(grid, com)
-
+     if (writeoutput) write(*,*) "Centre of Mass found at ",com
      if (cylindricalHydro) then
         call applyDirichletCylindrical(grid, level)
      else
@@ -15209,7 +15211,7 @@ end subroutine minMaxDepth
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, uHat
      real(double) :: mgrid, phiB
-     real(double) :: temp(1),  muB, rB
+     real(double) :: temp(1),  muB, rB, panal
      integer :: subcell, i
      integer, parameter :: npole = 2
      integer :: ithread
@@ -15280,6 +15282,10 @@ end subroutine minMaxDepth
                  enddo
                  
                  thisOctal%phi_gas(subcell) = phiB
+                 panal = -bigG * 1.d0 * mSol /rb - bigG *msol / sqrt(rb**2 + 5.d18**2)
+                 if (abs((panal-phiB)/panal) > 0.01d0) then
+                    write(*,*) abs((panal-phiB)/panal),  " phiB ",phiB,panal,thisOctal%nDepth
+                 endif
 !                 write(*,*) "phiB complete",phiB, " test ",-bigG * 1.d0 * mSol / rB, phiB/(-bigG * 1.d0 * mSol / rB)
 
               endif
@@ -15298,7 +15304,7 @@ end subroutine minMaxDepth
      integer, parameter :: npole = 2
      integer :: level
      real(double) :: mgrid, phiB
-     real(double) :: temp(1),  muB, rB
+     real(double) :: temp(1),  muB, rB, panal
      integer :: subcell, i
      integer :: ithread
      integer :: tag, ierr, ipole
@@ -15320,9 +15326,6 @@ end subroutine minMaxDepth
            
            Ml(ipole) = 0.d0
            call multipoleExpansionCylindricalLevel(grid%OctreeRoot, com, Ml(ipole), ipole, level)
-
-
-
 
            
            do iThread = 1, nHydroThreadsGlobal
@@ -15371,7 +15374,10 @@ end subroutine minMaxDepth
                  enddo
                  
                  thisOctal%phi_gas(subcell) = phiB
-!                 write(*,*) "phiB ",phiB, " test ",-bigG * 1.d0 * mSol / rB, phiB/(-bigG * 1.d0 * mSol / rB),thisOctal%nDepth
+                 panal = -bigG * 1.d0 * mSol /rb - bigG * msol / sqrt(rb**2 + 5.d18**2)
+                 if (abs((panal-phiB)/panal) > 0.01d0) then
+                    write(*,*) abs((panal-phiB)/panal),  "phiB ",phiB, panal,thisOctal%nDepth
+                 endif
 
               endif
            endif

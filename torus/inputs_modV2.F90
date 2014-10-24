@@ -1468,6 +1468,9 @@ contains
        call getReal("heightinner", heightinner, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
+       call getReal("heightouter", heightOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
        call getReal("ringheight", ringHeight, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 

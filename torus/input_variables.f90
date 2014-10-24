@@ -473,6 +473,7 @@
   real :: height
   real :: heightinner
   real :: ringHeight
+  real :: heightOuter
   real :: heightSplitFac
   real :: sigma0
   real :: rMin, rMaj

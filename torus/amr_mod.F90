@@ -9482,7 +9482,7 @@ endif
     rhoSphere2 = sphereMass2 / ((fourPi/3.d0) * sphereRadius2**3 * 1.d30)
 
 
-    thisOctal%rho(subcell) = 1.d-30
+    thisOctal%rho(subcell) = 1.d-29
     thisOctal%temperature(subcell) = 100.d0
 
     if (rMod1 < sphereRadius1) then
@@ -11587,8 +11587,8 @@ end function readparameterfrom2dmap
     use density_mod, only: density, HD169142Disc
     use inputs_mod, only : rOuter, betaDisc !, rGapOuter2, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, rGapInner1, rGapInner2
-    use inputs_mod, only : height, dustPhysics, photoionization
-    use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1
+    use inputs_mod, only : height, dustPhysics, photoionization, rinner
+    use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1, heightOuter, rGapOuter2
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -11656,14 +11656,18 @@ end function readparameterfrom2dmap
        rVec = subcellCentre(thisOctal, subcell)
        r = sqrt(rVec%x**2+rVec%y**2)
        z = rVec%z
-       dustSettling = 0.5d0
+       dustSettling = 1.d0
        h = dustSettling * height * (r / (100.d0*autocm/1.d10))**betaDisc
        if (r < rGapInner1) then
-          h = dustSettling * heightInner * (r / (100.d0*autocm/1.d10))**betaDisc
+          h = dustSettling * heightInner * (r / rInner)**betaDisc
        endif
        if ((r > rGapOuter1).and.(r < rGapInner2)) then
-          h = dustSettling * ringHeight * (r / (100.d0*autocm/1.d10))**betaDisc
+          h = dustSettling * ringHeight * (r / rGapOuter1)**betaDisc
        endif
+       if (r > rGapOuter2) then
+          h = heightOuter * (r / rGapOuter2)**betaDisc
+       endif
+
        fac = exp(-0.5d0 * (z/h)**2)
        if (r < rGapInner2) then
           thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)

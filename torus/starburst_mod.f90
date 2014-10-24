@@ -286,8 +286,11 @@ contains
          if (source(i)%age > deadAge .and. source(i)%initialMass > 8.d0) then
          if (writeoutput) write(*,*) "Source " ,i, " explodes as a supernova"
             nSupernova=nSupernova+1
+
+! ben - you need to put in an appropriate algorithm to work out a suitable ejecta mass and ke here!
+
             supernovaIndex(nSupernova)=i
-            ejectaMass(nSupernova) = (source(i)%mass - 3.d0) * msol
+            ejectaMass(nSupernova) = source(i)%mass - 3.d0 * msol
             ke(nSupernova) = 1.d51
          endif
       end do

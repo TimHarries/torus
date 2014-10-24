@@ -56,7 +56,7 @@ contains
          hasPhotoionAllocations, allocatePhotoionAttributes
 #endif
 #ifdef HYDRO
-    use inputs_mod, only : hydrodynamics
+    use inputs_mod, only : hydrodynamics, mDisc
 #endif
 #endif
     use vh1_mod
@@ -505,6 +505,14 @@ contains
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 #endif
+
+          case("HD169142")
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             scaleFac = real(mDisc / totalMass)
+             call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
+
+
           case("envelope")
              totalMass = 0.d0
              call findTotalMass(grid%octreeRoot, totalMass)
@@ -1583,6 +1591,10 @@ contains
     select case (geometry)
     case ("shakara")
        call testAMRmass(grid, dble(mdisc))
+
+    case ("HD169142")
+       call testAMRmass(grid, dble(mdisc))
+
 
 #ifdef SPH
     case("molcluster", "theGalaxy", "cluster","sphfile", "dale")

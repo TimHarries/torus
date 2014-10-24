@@ -3563,7 +3563,7 @@ end subroutine writeRadialFile
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     use mpi
-    use inputs_mod, only : inputgfac, dustPhysics
+    use inputs_mod, only : inputgfac, dustPhysics, hydrodynamics
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
@@ -3574,7 +3574,7 @@ end subroutine writeRadialFile
     real(double) :: temperature, r
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 15
+    integer, parameter :: nStorage = 16
     real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux, rpress, radmom
     real(double) :: kappaSca, kappaAbs, kappaAbsDust, kappaScaDust
     integer, parameter :: tag = 30
@@ -3582,6 +3582,7 @@ end subroutine writeRadialFile
     logical :: stillLooping
     integer :: sendThread
     integer :: i
+    logical :: ghostCell
 
     i = npoints
 
@@ -3618,6 +3619,14 @@ end subroutine writeRadialFile
           radmom = tempStorage(13)
           kappaAbs = tempStorage(14)
           kappaSca = tempStorage(15)
+          ghostCell = .false.
+          if (hydrodynamics) then
+             if (tempStorage(16) == 1) then
+                ghostCell = .true.
+             endif
+          endif
+
+          if (.not.ghostCell) then
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
 
              if(cen%x > 0.0078125d0 .and. cen%x < (1.d0+0.0078125d0)) then                
@@ -3632,6 +3641,7 @@ end subroutine writeRadialFile
                   temperature
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
+          endif
           position = cen
           position = position + (tVal+1.d-3*grid%halfSmallestSubcell)*direction
 
@@ -3685,6 +3695,13 @@ end subroutine writeRadialFile
                 
                 tempStorage(14) = kappaAbsDust
                 tempStorage(15) = kappaScaDust
+             endif
+             if (hydrodynamics) then
+                if (thisOctal%ghostCell(subcell)) then
+                   tempStorage(16) = 1
+                else
+                   tempStorage(16) = 0
+                endif
              endif
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
