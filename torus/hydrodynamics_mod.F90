@@ -8137,6 +8137,11 @@ end subroutine sumFluxes
           write(plotfile,'(a,i4.4,a)') "radial",1,".dat"
           call  dumpValuesAlongLine(grid, plotfile, VECTOR(0.d0,0.d0,0.0d0), &
                VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
+           write(plotfile,'(a,i2.2,a)') "gravfull.vtk"
+           call writeVtkFile(grid, plotfile, &
+                valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+
+
           goto 666
 
        end if
@@ -14943,13 +14948,13 @@ end subroutine minMaxDepth
 
            if (.not.thisOctal%ghostCell(subcell).and.(rVec%x > 0.d0)) then
 
-              rVec = subcellCentre(thisOctal, subcell) - com
-              r = modulus(rVec)*1.d10
+!              rVec = subcellCentre(thisOctal, subcell) - com
+              r = modulus(rVec)
 
               rHat = rVec
               call normalize(rHat)
               cosTheta = VECTOR(0.d0, 0.d0, 1.d0).dot.rHat
-              dv = cellVolume(thisOctal, subcell) * 1.d30
+              dv = cellVolume(thisOctal, subcell) 
               Ml = Ml + thisOctal%rho(subcell) * r**iPole * legendre(ipole, cosTheta) * dv
               
            endif
@@ -14975,16 +14980,16 @@ end subroutine minMaxDepth
            rVec = subcellCentre(thisOctal, subcell)
            if (.not.thisOctal%ghostCell(subcell).and.(rVec%x > 0.d0)) then
               
-              rVec = subcellCentre(thisOctal, subcell) - com
-              r = modulus(rVec)*1.d10
+!              rVec = subcellCentre(thisOctal, subcell) - com
+              r = modulus(rVec)
               
               rHat = rVec
               call normalize(rHat)
               cosTheta = VECTOR(0.d0, 0.d0, 1.d0).dot.rHat
-              dv = cellVolume(thisOctal, subcell) * 1.d30
+              dv = cellVolume(thisOctal, subcell)
               Ml = Ml + thisOctal%rho(subcell) * r**iPole * legendre(ipole, cosTheta) * dv
               
-           endif
+          endif
         enddo
      endif
    end subroutine multipoleExpansionCylindricalLevel
@@ -15041,7 +15046,7 @@ end subroutine minMaxDepth
      type(VECTOR) :: point
      tag = 94
      call findCoM(grid, com)
-     if (writeoutput) write(*,*) "Centre of Mass found at ",com
+!     if (writeoutput) write(*,*) "Centre of Mass found at ",com
      if (cylindricalHydro) then
         call applyDirichletCylindrical(grid, level)
      else
@@ -15213,7 +15218,7 @@ end subroutine minMaxDepth
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB, panal
      integer :: subcell, i
-     integer, parameter :: npole = 2
+     integer, parameter :: npole = 6
      integer :: ithread
      integer :: tag, ierr, ipole
      integer :: status(MPI_STATUS_SIZE)
@@ -15247,10 +15252,14 @@ end subroutine minMaxDepth
               if (iThread /= myRankGlobal) then
                  call mpi_recv(mgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
                  Ml(ipole) = Ml(ipole) + mgrid
+!                 if (writeoutput.and.(ipole==1)) write(*,*) "ml ",mgrid,ml(ipole)
               endif
            enddo
         enddo
         firstTime = .false.
+!        if (writeoutput) then
+!           write(*,*) "ml ",ml(0:nPole)
+!        endif
      endif
 
 
@@ -15274,18 +15283,18 @@ end subroutine minMaxDepth
 
                  PhiB = 0.d0
                  do iPole = 0, npole
-                    rB = modulus(point) * gridDistanceScale
+                    rB = modulus(point)
                     uHat = point
                     call normalize(uHat)
                     muB = VECTOR(0.d0, 0.d0, 1.d0).dot. uHat
                     phiB = phiB - bigG * legendre(iPole,muB)*(rB**(-(ipole+1))) * Ml(ipole)
                  enddo
-                 
+                 phiB = phiB * 1.d20
                  thisOctal%phi_gas(subcell) = phiB
-                 panal = -bigG * 1.d0 * mSol /rb - bigG *msol / sqrt(rb**2 + 5.d18**2)
-                 if (abs((panal-phiB)/panal) > 0.01d0) then
-                    write(*,*) abs((panal-phiB)/panal),  " phiB ",phiB,panal,thisOctal%nDepth
-                 endif
+                 panal = -bigG * 1.d0 * mSol /(rb*1.d10) - bigG *msol / (1.d10*modulus(point - VECTOR(0.d0,0.d0,5.d8)))
+!                 if (abs((panal-phiB)/panal) > 0.01d0) then
+!                    write(*,*) abs((panal-phiB)/panal),  " phiB ",phiB,panal,thisOctal%nDepth, point
+!                 endif
 !                 write(*,*) "phiB complete",phiB, " test ",-bigG * 1.d0 * mSol / rB, phiB/(-bigG * 1.d0 * mSol / rB)
 
               endif
@@ -15301,7 +15310,7 @@ end subroutine minMaxDepth
      logical, optional :: reset
      type(OCTAL), pointer :: thisOctal, child
      type(VECTOR) :: com, point, uHat
-     integer, parameter :: npole = 2
+     integer, parameter :: npole = 6
      integer :: level
      real(double) :: mgrid, phiB
      real(double) :: temp(1),  muB, rB, panal
@@ -15326,6 +15335,7 @@ end subroutine minMaxDepth
            
            Ml(ipole) = 0.d0
            call multipoleExpansionCylindricalLevel(grid%OctreeRoot, com, Ml(ipole), ipole, level)
+!           if (writeoutput.and.(ipole==1)) write(*,*) "ml ",ml(ipole),ml(ipole)
 
            
            do iThread = 1, nHydroThreadsGlobal
@@ -15339,11 +15349,14 @@ end subroutine minMaxDepth
               if (iThread /= myRankGlobal) then
                  call mpi_recv(mgrid, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
                  Ml(ipole) = Ml(ipole) + mgrid
+!                 if (writeoutput.and.(ipole==1)) write(*,*) "ml ",mgrid,ml(ipole)
               endif
            enddo
-!           write(*,*) "ml ",ml(ipole)/msol
                                   
         enddo
+!           if (writeoutput) then
+!              write(*,*) "ml ",ml(0:nPole)
+!           endif
         firstTime = .false.
      endif
                  
@@ -15366,18 +15379,20 @@ end subroutine minMaxDepth
 
                  PhiB = 0.d0
                  do iPole = 0, nPole
-                    rB = modulus(point) * gridDistanceScale
+                    rB = modulus(point)
                     uHat = point
                     call normalize(uHat)
                     muB = VECTOR(0.d0, 0.d0, 1.d0).dot. uHat
                     phiB = phiB - bigG * legendre(iPole,muB)*(rB**(-(ipole+1))) * Ml(ipole)
+!		    if (writeoutput) write(*,*) "phib ",ipole, phib
                  enddo
+                 phiB = phiB * 1.d20
                  
                  thisOctal%phi_gas(subcell) = phiB
-                 panal = -bigG * 1.d0 * mSol /rb - bigG * msol / sqrt(rb**2 + 5.d18**2)
-                 if (abs((panal-phiB)/panal) > 0.01d0) then
-                    write(*,*) abs((panal-phiB)/panal),  "phiB ",phiB, panal,thisOctal%nDepth
-                 endif
+                 panal = -bigG * 1.d0 * mSol /(rb*1.d10) - bigG *msol / (1.d10*modulus(point - VECTOR(0.d0,0.d0,5.d8)))
+!                 if (abs((panal-phiB)/panal) > 0.01d0) then
+!                    write(*,*) abs((panal-phiB)/panal),  "phiB ",phiB, panal,thisOctal%nDepth,point
+!                 endif
 
               endif
            endif

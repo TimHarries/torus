@@ -4458,7 +4458,7 @@ CONTAINS
        case("gravtest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.          
           rVec = subcellCentre(thisOctal, subcell)          
-          if(modulus(rVec) > (sphereRadius-(sphereRadius*0.15d0)) .and. modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
+          if(modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
                .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("brunt")
@@ -9482,7 +9482,7 @@ endif
     rhoSphere2 = sphereMass2 / ((fourPi/3.d0) * sphereRadius2**3 * 1.d30)
 
 
-    thisOctal%rho(subcell) = 1.d-29
+    thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 100.d0
 
     if (rMod1 < sphereRadius1) then
