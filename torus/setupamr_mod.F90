@@ -32,7 +32,7 @@ contains
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename
+    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral
     use disc_class, only:  new

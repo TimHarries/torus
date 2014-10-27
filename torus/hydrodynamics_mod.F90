@@ -14196,7 +14196,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -14678,7 +14678,7 @@ end subroutine minMaxDepth
         else
            if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
-	   if (.not.thisOctal%ghostCell(subcell)) then
+           if (.not.thisOctal%ghostCell(subcell)) then
               if (thisOctal%threed) then 
                  com = com + subcellCentre(thisOctal, subcell) * &
                       thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30
