@@ -253,7 +253,7 @@
   logical, protected :: noturb ! Subsonic turbulent velocity
   real, protected :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   integer, protected :: initnray ! number of rays to use in fixed ray case (stage 1)
-  real(double), protected :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ
+  real(double), protected :: rotateViewAboutX, rotateViewAboutY, rotateViewAboutZ, imageBasisPrerotate
   integer, protected :: setmaxlevel ! Maximum level to be converged
   real, protected    :: setmaxleveltemp ! Temperature of maximum level to be converged
   logical :: lineimage

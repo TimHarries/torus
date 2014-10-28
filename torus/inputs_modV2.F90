@@ -3143,18 +3143,6 @@ contains
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
        itrans = 1 ! always 1 for the 21cm line
-
-       if ( .not. internalView ) then 
-          ! Far field h21cm case
-          call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
-               "Galaxy Inclination:", "(a,f5.1,1x,a)", 50.d0, ok, .false.)
-          call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
-               "Galaxy position angle:", "(a,f5.1,1x,a)", 20.d0, ok, .false.)
-! In molecular_mod the observer is looking along the y-axis
-          rotateViewAboutX = 90.0 - galaxyInclination
-          rotateViewAboutY = galaxyPositionAngle - 90.0
-          rotateViewAboutZ = 0.0
-       end if
        
     end if
  
@@ -3176,10 +3164,6 @@ contains
             "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
        call getReal("beamsize", beamsize, 1., cLine, fLine, nLines, &
             "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
-       call getDouble("rotateviewaboutx", rotateViewAboutX, 1.d0, cLine, fLine, nLines, &
-            "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
-       call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, fLine, nLines, &
-            "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
        if (internalView) then
           call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (lon): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
@@ -3197,6 +3181,41 @@ contains
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
        
+! Set observer orientation for molecular_mod. This is only required for the far field case
+! when using molecular or 21cm physics. 
+molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm)) then 
+
+! We should have either rotateViewAbout? parameters galaxy* parameters but not a mixture.
+       if ((checkPresent("rotateViewAboutX", cLine, nlines).or. &
+            checkPresent("rotateViewAboutY", cLine, nlines).or. &
+            checkPresent("rotateViewAboutZ", cLine, nlines)) .and. &
+           (checkPresent("galaxyInclination", cLine, nlines).or. &
+            checkPresent("galaxyPositionAngle", cLine, nlines)) ) then
+          call writeFatal("Found rotateViewAbout parameter and a galaxyInclination/PositionAngle")
+          stop
+       end if
+
+! Read either galaxy parameters or rotate parameters. Default will set all rotations to zero.
+       if ( checkPresent("galaxyInclination", cLine, nlines).or. &
+            checkPresent("galaxyPositionAngle", cLine, nlines)) then
+          call getDouble("galaxyInclination", galaxyInclination, 1.0_db, cLine, fLine, nLines, &
+               "Galaxy Inclination:", "(a,f5.1,1x,a)", 0.d0, ok, .false.)
+          call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
+               "Galaxy position angle:", "(a,f5.1,1x,a)", 0.d0, ok, .false.)
+          rotateViewAboutX    = 90.0 - galaxyInclination
+          imageBasisPrerotate = 90.0 - galaxyPositionAngle
+       else
+          call getDouble("rotateviewaboutx", rotateViewAboutX, 1.d0, cLine, fLine, nLines, &
+               "Angle to rotate about X (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+          call getDouble("rotateviewabouty", rotateViewAboutY, 1.d0, cLine, fLine, nLines, &
+               "Angle to rotate about Y (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+          call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, fLine, nLines, &
+               "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
+          imageBasisPrerotate = 0.0
+       endif
+
+    end if molecular_orientation
+
 ! Set up values in datacube_mod
     call setCubeParams(npixels, cubeAspectRatio, WV_background)
 

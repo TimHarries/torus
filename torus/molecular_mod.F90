@@ -4311,7 +4311,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         use inputs_mod, only : griddistance 
         use inputs_mod, only : observerpos ! line number of observer position in observerfile 
         use inputs_mod, only : centrevecX, centrevecY, centrevecZ
-        use inputs_mod, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ
+        use inputs_mod, only : rotateViewAboutX, rotateviewAboutY, rotateviewAboutZ, imageBasisPrerotate
 
         logical :: paraxial 
         real(double) :: pixelwidth, theta
@@ -4334,11 +4334,17 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            imagebasis(1) = viewvec .cross. zhat
            imagebasis(2) = imagebasis(1) .cross. viewvec
         else
-! Define a vector that points *from* a specific observer that may be rotated wlog
+! Define a vector that points *from* a specific observer that may be rotated
            viewVec = VECTOR(0.d0,1.d0,0.d0) 
            if (amr1d.and.(.not.spherical)) viewVec = VECTOR(-1.d0, 0.d0, 0.d0)
            imagebasis(1) = VECTOR(1.d0,0.d0,0.d0) ! Define a horizontal basis vector for the image
            imagebasis(2) = VECTOR(0.d0,0.d0,1.d0) ! Define a vertical basis vector for the image
+
+! Allow the image basis to be rotated before setting the observer vector.
+! As we are rotating about y-axis there is no need to rotate viewVec here. 
+           imagebasis(1) = rotateY(imagebasis(1), imageBasisPrerotate * degtorad)
+           imagebasis(2) = rotateY(imagebasis(2), imageBasisPrerotate * degtorad)
+
 ! This line controls inclination in a 2D geometry (e.g. IRAS04158, shakara) - ANTI-CLOCKWISE ROTATION           
            viewvec = rotateX(viewvec, -rotateViewAboutX * degtorad) 
 ! Image bases are necessarily orthonormal and linearly independent
