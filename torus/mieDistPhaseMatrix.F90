@@ -933,7 +933,7 @@ contains
 !     .    York,1983), p.100                                       .
 !     ..............................................................
 !      complex b,z,cm,ci,hkl(1001),an,amat(1000),f(1000),g(1000)
-      complex b,z,cm,ci,hkl(10000001),an,amat(10000000),f(10000000),g(10000000) !tjh
+      complex b,z,cm,ci,hkl(10000001),an,amat(10000000),f(1000000),g(1000000) !tjh
       common /cfcom/ f,g,cnrm
 !      dimension cnrm(1000)
       real :: cnrm(10000000) ! tjh, real declaration dma
