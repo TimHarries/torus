@@ -284,7 +284,7 @@ contains
    subroutine mieDistPhaseMatrix(cosTheta, nDist, beshTable, sphereTable, pnmllg, &
                  aArray, da, dist, aFac, miePhase, mReal, mImg, lambda)
       use phasematrix_mod
-      use bhmie_mod, only: MXNANG, bhmie
+!      use bhmie_mod, only: MXNANG, bhmie
       implicit none
       real, parameter :: micronsToCm=1.e-4
       real, intent(in) :: cosTheta
