@@ -1092,6 +1092,11 @@ CONTAINS
     CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
+    CASE ("cassandra")
+       CALL cassandraDisc(thisOctal, subcell ,grid)
+
+
+
     CASE ("HD169142")
        CALL hd169142Disk(thisOctal, subcell ,grid)
 
@@ -5044,6 +5049,15 @@ CONTAINS
 1001      if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
           if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
           
+       case("cassandra")
+
+          rVec = subcellCentre(thisOCtal,subcell)
+          r = sqrt(rvec%x**2 + rVec%y**2)
+          z = r*tan(20.d0*degtorad)
+          if (atan2(abs(rVec%z),r)*radtodeg < 30.d0) then
+             if (z/thisOctal%subcellSize < 10.d0) split = .true.
+          endif
+
        case("shakara","aksco","HD169142","MWC275")
           ! used to be 5
           if (thisOctal%ndepth  < mindepthamr) split = .true.
@@ -11121,7 +11135,7 @@ end function readparameterfrom2dmap
 !    write(*,*) "rvec", rvec, modulus(rvec)
 
 !    if ((r > rInner)) then !.and.(r < rOuter)) then
-       v = sqrt(2.d0*6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
+       v = sqrt(6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
 !    write(*,*) "v", v
  
        keplerianvelocity = VECTOR(0.d0,0.d0,1.d0) .cross. rvec
@@ -11523,9 +11537,8 @@ end function readparameterfrom2dmap
 
     if(molecular) then
  !      if(modulus(rvec) .lt. 1000.) then
-          thisOctal%velocity(subcell) = keplerianVelocity(rvec)
-          CALL fillVelocityCorners(thisOctal, keplerianVelocity)
- !      else
+          thisOctal%velocity(subcell) = keplerianVelocity(rvec) 
+!      else
  !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
  !      endif
     else
@@ -11583,6 +11596,48 @@ end function readparameterfrom2dmap
 
   end subroutine shakaraDisk
 
+  subroutine cassandraDisc(thisOctal, subcell, grid)
+    use eos_mod
+    use inputs_mod, only : tMinGlobal, mCore, molecularPhysics, molAbundance, vturb, mStar, metallicity, mDot
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, vVEc, zAxis
+    real(double) :: x, y, z,  rho, T, omega
+    real(double) :: r
+    rVec = subcellCentre(thisOctal, subcell)
+
+
+   mcore = mstar * msol
+   x = rVec%x * 1.d10 / autocm
+   y = rVec%y * 1.d10 / autocm
+   z = rVec%z * 1.d10 / autocm
+   r = modulus(rVec) * 1.d10
+
+   thisOctal%rho(subcell) = 1.e-24
+   thisOctal%temperature(subcell) = tminglobal
+   thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+   if (atan2(abs(z),(sqrt(x**2 + y**2)))*radtodeg < 30.d0) then
+      CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,Omega)
+
+      thisOctal%rho(subcell) = max(rho,1.d-24)
+      thisOctal%temperature(subcell) = T
+      zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+      vVec = rVec .cross. zAxis
+      call normalize(vVec)
+      thisOctal%velocity(subcell) = (r*omega/cSpeed) * vVec
+   endif
+
+    if (molecularPhysics) then
+       thisOctal%molAbundance(subcell) = molAbundance
+       thisOctal%microTurb(subcell) = vturb * 1.e5/cspeed
+       thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+       CALL fillVelocityCorners(thisOctal, keplerianVelocity)
+    endif
+
+  end subroutine cassandraDisc
+
   subroutine HD169142Disk(thisOctal,subcell,grid)
     use density_mod, only: density, HD169142Disc
     use inputs_mod, only : rOuter, betaDisc !, rGapOuter2, rInner, erInner, erOuter, alphaDisc
@@ -11593,7 +11648,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, rhoFid, thisRSub,z,fac, rho, dustSettling
+    real(double) :: r, h, rd, rhoFid, thisRSub,z,fac, rho, dustSettling, scaleFac, hGas, hDust
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -11656,24 +11711,35 @@ end function readparameterfrom2dmap
        rVec = subcellCentre(thisOctal, subcell)
        r = sqrt(rVec%x**2+rVec%y**2)
        z = rVec%z
-       dustSettling = 1.d0
-       h = dustSettling * height * (r / (100.d0*autocm/1.d10))**betaDisc
+       dustSettling = 0.5d0
+       
+       hGas = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       hDust = dustSettling * hGas
+       scalefac  = sqrt(hDust**2 + hGas**2) / hGas
        if (r < rGapInner1) then
-          h = dustSettling * heightInner * (r / rInner)**betaDisc
+          hGas = heightInner * (r / rInner)**betaDisc
+          hDust = dustSettling * hGas
        endif
        if ((r > rGapOuter1).and.(r < rGapInner2)) then
-          h = dustSettling * ringHeight * (r / rGapOuter1)**betaDisc
+          hGas = ringHeight * (r / rGapOuter1)**betaDisc
+          hDust = dustSettling * hGas
        endif
        if (r > rGapOuter2) then
-          h = heightOuter * (r / rGapOuter2)**betaDisc
+          hGas = heightOuter * (r / rGapOuter2)**betaDisc
+          hDust = dustSettling * hGas
        endif
 
-       fac = exp(-0.5d0 * (z/h)**2)
+       scalefac  = grainFrac(1) * hGas / sqrt(hDust**2 + hGas**2)
+
+       fac = exp(-0.5d0 * (z/hDust)**2)
        if (r < rGapInner2) then
-          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+          thisOctal%dustTypeFraction(subcell,1) = scaleFac
+          thisOctal%dustTypeFraction(subcell,3) = scaleFac
        else
-          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
-          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
+          thisOctal%dustTypeFraction(subcell,1) = fac * scalefac
+          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac
+          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac
+          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac
        endif
 
        rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
@@ -12005,6 +12071,27 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine scaleDensityAMR
+  recursive subroutine scaleVelocityAMR(thisOctal, scaleFac)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  real(double) :: scaleFac
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call scaleVelocityAMR(child, scaleFac)
+                exit
+             end if
+          end do
+       else
+          thisOctal%velocity(subcell) = scaleFac * thisOctal%velocity(subcell)
+       endif
+    enddo
+  end subroutine scaleVelocityAMR
 
   recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, totalMassMol, minRho, maxRho)
   type(octal), pointer   :: thisOctal

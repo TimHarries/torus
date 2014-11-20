@@ -227,6 +227,29 @@ contains
     out = -2.5d0 * log10(flux) + 2.5d0*log10(offset)
   end function returnMagnitude
 
+  function returnFlux(magnitude, band) result(out)
+    real(double) :: magnitude, out, offset
+    character(len=*) :: band
+    select case (band)
+       case("B")
+          offset = 6.4d-9
+       case("V") 
+          offset = 3.75d-9
+       case("R")
+          offset = 1.8e-9
+       case("J")
+          offset = 3.133e-10 ! 2mass from gemini website
+       case("H")
+          offset = 1.111e-10 
+       case("K")
+          offset = 4.288e-11 
+       case DEFAULT
+          call writeWarning("Band "//trim(band)//" not recognised in returnMagntiude")
+          offset = 0.d0
+    end select
+    out = offset * 10.d0**(-0.4d0*magnitude)
+  end function returnFlux
+
   real elemental function blackBody(temperature, wavelength)
 
     real,intent(in) :: temperature

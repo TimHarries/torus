@@ -1364,9 +1364,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
 
 
-!           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-!           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
-!           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
+           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+           if (writeoutput) write(*,'(a,f8.3)') "Chance of continuum emission from dust: ",chanceDust
            
            probDust = chanceDust
            weightDust = 1.

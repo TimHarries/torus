@@ -18,7 +18,6 @@ contains
     !   hand them out to processes that request work.
   
     use mpi
-    use inputs_mod, only: blockhandout
     implicit none
   
     integer, intent(in) :: nProc    ! the number of processes
@@ -28,7 +27,7 @@ contains
     integer,intent(in),optional :: minBlockSize
     integer,intent(in),optional :: maxBlockSize
     logical,intent(in),optional :: setDebug ! print debug messages
-  
+    logical :: blockHandout
     integer :: blockSize
     integer :: iErr     ! error flag
     integer :: nUnits
@@ -183,9 +182,9 @@ contains
     ! this requests a work unit from the root process (which runs mpiBlockHandout)
   
     use mpi
-    use inputs_mod, only: blockhandout
     implicit none
-  
+    logical :: blockHandout
+
     integer, intent(in) :: myRank
     integer, intent(out) :: startUnit, endUnit
     logical, intent(out) :: allDone
@@ -278,6 +277,20 @@ contains
     !end if 
   end subroutine torus_mpi_barrier
 
+  subroutine torus_stop(message)
+    use mpi
+    implicit none
+    integer :: ierr
+    character(len=*), optional, intent(in) :: message 
+    if (PRESENT(message)) then
+       write(*,*) "Process ",myrankGlobal,": ",trim(message)
+    endif
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    call MPI_FINALIZE(ierr)
+    call writeBanner("TORUS stopped prematurely","-",TRIVIAL)
+    stop
+  end subroutine torus_stop
+
 
 ! End of MPI routines ----------------------------------------------------------
 
@@ -295,6 +308,19 @@ contains
        test(1:1) = message(1:1)
     endif
   end subroutine torus_mpi_barrier
+
+!-------------------------------------------------------------------------------
+
+  subroutine torus_stop(message)
+
+    implicit none
+
+    character(len=*), optional, intent(in) :: message 
+    if (PRESENT(message)) then
+       write(*,*) trim(message)
+    endif
+    stop
+  end subroutine torus_stop
 
 #endif
 

@@ -43,9 +43,10 @@ contains
       integer, save :: max_nci = 0
       integer :: ilam_beg, ilam_end
       real :: cosTheta
+      integer :: iMumie_beg, iMumie_end
       real, allocatable :: pnmllg(:,:)
 #ifdef MPI
-    real, allocatable :: temp(:,:,:,:), tempArray(:), tempArray2(:)
+    real, allocatable :: temp(:,:,:), tempArray(:), tempArray2(:)
     integer :: np, n_rmdr, m, ierr, i1, i2
 #endif
 
@@ -86,22 +87,24 @@ contains
 
     ilam_beg = 1
     ilam_end = nLambda
-#ifdef MPI
-    ! Set the range of index for a photon loop used later.     
-    np = nThreadsGlobal
-    n_rmdr = MOD(nLambda,np)
-    m = nLambda/np
+!#ifdef MPI
+!    ! Set the range of index for a photon loop used later.     
+!    np = nThreadsGlobal
+!    n_rmdr = MOD(nLambda,np)
+
+!    m = nLambda/np
           
-    if (myRankGlobal .lt. n_rmdr ) then
-       ilam_beg = (m+1)*myRankGlobal + 1
-       ilam_end = ilam_beg + m
-    else
-       ilam_beg = m*myRankGlobal + 1 + n_rmdr
-       ilam_end = ilam_beg + m -1
-    end if
-#endif
+!    if (myRankGlobal .lt. n_rmdr ) then
+!       ilam_beg = (m+1)*myRankGlobal + 1
+!       ilam_end = ilam_beg + m
+!    else
+!       ilam_beg = m*myRankGlobal + 1 + n_rmdr
+!       ilam_end = ilam_beg + m -1
+!    end if
+!#endif
 
     do j = ilam_beg, ilam_end
+       if (myrankglobal ==0) write(*,*) "ilam ",j
             ! Now set up a precomputed table for sphere for fixed values of
             ! dustType and lambda and varying values of a
             do n = 1, nDist-1
@@ -117,7 +120,30 @@ contains
             !$OMP PRIVATE (k, cosTheta) &
             !$OMP SHARED (nMuMie,  beshTable, sphereTable, pnmllg, a, da, dist, afac, miePhase, j, i, max_nci, xArray, mreal, mimg)
             !$OMP DO SCHEDULE(DYNAMIC)
-            do k = 1, nMumie
+
+
+            iMuMie_beg = 1
+            iMuMie_end = nMumie
+#ifdef MPI
+    ! Set the range of index for a photon loop used later.     
+    np = nThreadsGlobal
+    n_rmdr = MOD(nMumie,np)
+
+    m = nMumie/np
+          
+    if (myRankGlobal .lt. n_rmdr ) then
+       imumie_beg = (m+1)*myRankGlobal + 1
+       imumie_end = imumie_beg + m
+    else
+       imumie_beg = m*myRankGlobal + 1 + n_rmdr
+       imumie_end = imumie_beg + m -1
+    end if
+#endif
+
+
+
+
+            do k = iMumie_beg, iMumie_end
                cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)
                call mieDistPhaseMatrix(cosTheta, nDist, beshTable(j,1:nDist-1), sphereTable, &
                        pnmllg(k,1:max_nci), a, da, dist, aFac, miePhase(i,j,k), mReal(i,j), mImg(i,j), &
@@ -125,6 +151,39 @@ contains
 !               call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), xArray(j), &
 !                       cosTheta, miePhase(i,j,k), mReal(i,j), mImg(i,j))
             enddo
+
+
+#ifdef MPI                
+                allocate(temp(1:nMuMie,1:4,1:4))
+                temp = 0.
+                do k = iMuMie_beg, imumie_end
+                   do i1 = 1, 4
+                      do i2 = 1, 4
+! temp is real so need to explicitly convert from double precision to avoid compiler warning. 
+                         temp(k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
+                      enddo
+                   enddo
+                enddo
+                allocate(tempArray(1:(nMuMie*4*4)))
+                allocate(tempArray2(1:(nMuMie*4*4)))
+                tempArray = reshape(temp, shape(tempArray))
+                call MPI_ALLREDUCE(tempArray, tempArray2, size(tempArray), MPI_REAL,&
+                     MPI_SUM, MPI_COMM_WORLD, ierr)
+                temp(:,:,:) = reshape(tempArray2, shape(temp))
+                do k = 1, nMuMie
+                   do i1 = 1, 4
+                      do i2 = 1, 4
+                         miePhase(i,j,k)%element(i1,i2) = temp(k,i1,i2)
+                      enddo
+                   enddo
+                enddo
+                deallocate(temp, temparray, temparray2)
+#endif
+
+
+
+
+
             !$OMP END DO
             !$OMP END PARALLEL
 
@@ -138,37 +197,37 @@ contains
             end do   ! n
          end do   ! j
 
-#ifdef MPI                
-                allocate(temp(1:nlambda,1:nMuMie,1:4,1:4))
-                temp = 0.
-                do j = iLam_beg, iLam_end
-                   do k = 1, nMuMie
-                      do i1 = 1, 4
-                         do i2 = 1, 4
-! temp is real so need to explicitly convert from double precision to avoid compiler warning. 
-                            temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
-                         enddo
-                      enddo
-                   enddo
-                enddo
-                allocate(tempArray(1:(nLambda*nMuMie*4*4)))
-                allocate(tempArray2(1:(nLambda*nMuMie*4*4)))
-                tempArray = reshape(temp, shape(tempArray))
-
-                call MPI_ALLREDUCE(tempArray, tempArray2, size(tempArray), MPI_REAL,&
-                     MPI_SUM, MPI_COMM_WORLD, ierr)
-                temp(:,:,:,:) = reshape(tempArray2, shape(temp))
-                do j = 1, nLambda
-                   do k = 1, nMuMie
-                      do i1 = 1, 4
-                         do i2 = 1, 4
-                            miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
-                         enddo
-                      enddo
-                   enddo
-                enddo
-                deallocate(temp, temparray, temparray2)
-#endif
+!#ifdef MPI                
+!                allocate(temp(1:nlambda,1:nMuMie,1:4,1:4))
+!                temp = 0.
+!                do j = iLam_beg, iLam_end
+!                   do k = 1, nMuMie
+!                      do i1 = 1, 4
+!                         do i2 = 1, 4
+!! temp is real so need to explicitly convert from double precision to avoid compiler warning. 
+!                            temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
+!                         enddo
+!                      enddo
+!                   enddo
+!                enddo
+!                allocate(tempArray(1:(nLambda*nMuMie*4*4)))
+!                allocate(tempArray2(1:(nLambda*nMuMie*4*4)))
+!                tempArray = reshape(temp, shape(tempArray))
+!                write(*,*) myrankGlobal, " reducing"
+!                call MPI_ALLREDUCE(tempArray, tempArray2, size(tempArray), MPI_REAL,&
+!                     MPI_SUM, MPI_COMM_WORLD, ierr)
+!                temp(:,:,:,:) = reshape(tempArray2, shape(temp))
+!                do j = 1, nLambda
+!                   do k = 1, nMuMie
+!                      do i1 = 1, 4
+!                         do i2 = 1, 4
+!                            miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
+!                         enddo
+!                      enddo
+!                   enddo
+!                enddo
+!                deallocate(temp, temparray, temparray2)
+!#endif
 
 
 
@@ -881,10 +940,10 @@ contains
 !     .    York,1983), p.100                                       .
 !     ..............................................................
 !      complex b,z,cm,ci,hkl(1001),an,amat(1000),f(1000),g(1000)
-      complex b,z,cm,ci,hkl(1000001),an,amat(1000000),f(1000000),g(1000000) !tjh
+      complex b,z,cm,ci,hkl(10000001),an,amat(10000000),f(10000000),g(10000000) !tjh
       common /cfcom/ f,g,cnrm
 !      dimension cnrm(1000)
-      real :: cnrm(1000000) ! tjh, real declaration dma
+      real :: cnrm(10000000) ! tjh, real declaration dma
       real :: x, xc, bj, bjm, rf, rn
       integer :: nc, nci, n, nmx
       hkl = 0

@@ -34,7 +34,7 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -80,6 +80,11 @@ contains
     integer :: counter, nTimes
 !    integer :: nUnrefine
     real :: scalefac
+    integer :: nGrid
+    real(double) :: ke, requiredKE, vScalefac
+    real, pointer :: xVel(:,:,:) => null()
+    real, pointer :: yVel(:,:,:) => null()
+    real, pointer :: zVel(:,:,:) => null()
     type(VECTOR), allocatable :: myTurbBox(:,:,:)
 #ifdef SPH
     type(cluster) :: young_cluster
@@ -172,13 +177,6 @@ contains
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
          
-       case("turbulence")
-#ifdef MPI
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
-          call readGridTurbulence(grid)
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-#endif
 
 #ifdef SPH
        case("cluster")
@@ -529,15 +527,23 @@ contains
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
           case("sphere")
-             allocate(myTurbBox(1:2**maxDepthAMR,1:2**maxDepthAMR,1:2**maxDepthAMR))
+             call readgridTurbulence(nGrid, xvel, yvel, zvel)
+             call assignTurbVelocity(grid%octreeRoot, xvel, yvel, zvel, nGrid)
+             deallocate(xVel, yVel, zVel)
+             ke = 0.d0
 #ifdef MPI
-        call randomNumberGenerator(randomSeed = .true.)
-        call randomNumberGenerator(syncIseed=.true.)
+             call findkeOverAllThreads(grid, ke)
 #endif
-!        call createBox(turbBox, 2**maxDepthAMR)
-!        call assignTurbVelocity(grid%octreeRoot, turbBox, 2**maxDepthAMR)
-        call randomNumberGenerator(randomSeed = .true.)
-!        deallocate(myTurbBox)
+             requiredKE = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
+             if (writeoutput) write(*,*) "Gravitational potential ", requiredke
+             vScaleFac = sqrt(requiredKe / ke)
+             if (writeoutput) write(*,*) "scale fac ",vScaleFac
+             call scaleVelocityAMR(grid%octreeRoot, vScaleFac)
+             ke = 0.d0
+#ifdef MPI
+             call findkeOverAllThreads(grid, ke)
+#endif
+             if (writeoutput) write(*,*) "Kinetic energy ", ke
 
 #ifdef MPI
           case("unisphere","gravtest")
@@ -1082,147 +1088,6 @@ contains
         end subroutine fillGridFogel
 
 
-#ifdef MPI
-!routine to read in the velocity field produced by the generating code of M. R. Bate.
-      subroutine readgridTurbulence(grid)
-      use mpi
-      use inputs_mod, only: turbvelfilex, turbvelfiley, turbvelfilez, readTurb, nturblines
-      type(GRIDTYPE) :: grid
-      type(OCTAL), pointer :: thisOctal
-      integer :: subcell
-      integer :: i, ierr
-      real(double), allocatable :: u(:), v(:), w(:)
-      real(double), allocatable :: x(:), y(:), z(:)
-      real(double) ::  dx, range,  max, min
-      type(VECTOR) :: locator, cen, minusBound
-      integer :: myRank
-
-
-      call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-      if(readTurb) then
-
-         allocate(u(nturblines**3))
-         allocate(v(nturblines**3))
-         allocate(w(nturblines**3))
-         allocate(x(nturblines**3))
-         allocate(y(nturblines**3))
-         allocate(z(nturblines**3))
-         
-         dx = 2.d0*grid%octreeRoot%subcellSize/dble(nturblines)
-
-         cen = grid%octreeRoot%centre
-
-         minusBound%x = cen%x - grid%octreeRoot%subcellSize + dx/2.d0!grid%halfsmallestsubcell
-         minusBound%y = cen%y - grid%octreeRoot%subcellSize + dx/2.d0!grid%halfsmallestsubcell
-         Minusbound%z = cen%z - grid%octreeRoot%subcellSize + dx/2.d0!grid%halfsmallestsubcell
-
-!         print *, "dx ", dx
-!         print *, "cen ", cen
-!         print *, "minusBound%x", minusBound%x
-!         print *, "minusBound%y", minusBound%y
-!         print *, "minusBound%z", minusBound%z
-
-!         print *, "importing turbulent velocity field", dx
-         open(1, file=turbvelfilex, status="old", iostat=ierr)
-         if(ierr /= 0) then
-            print *, "Trouble opening " //turbvelfilex
-         end if
-         open(2, file=turbvelfiley, status="old", iostat=ierr)
-         if(ierr /= 0) then
-            print *, "Trouble opening " //turbvelfiley
-         end if
-         open(3, file=turbvelfilez, status="old", iostat=ierr)
-         if(ierr /= 0) then
-            print *, "Trouble opening " //turbvelfilez
-         end if
-
- !        print *, "reading lines", nTurblines
-         thisOctal => grid%octreeRoot
-         
-         do i=1, (nTurblines**3)
-            read(1, *, iostat=ierr) u(i), x(i), y(i), z(i)
-            if(ierr /= 0) then
-               print *, "error reading from " //turbvelfilex
-            end if
-            read(2, *, iostat=ierr) v(i), x(i), y(i), z(i)
-            if(ierr /= 0) then
-               print *, "error reading from " //turbvelfiley
-            end if
-            read(3, *, iostat=ierr) w(i), x(i), y(i), z(i)
-            if(ierr /= 0) then
-               print *, "error reading from " //turbvelfilez
-            end if
-        end do
-
-        
-        if(maxval(abs(u)) > maxval(abs(v))) then
-           if(maxval(abs(u)) > maxval(abs(w))) then
-              max = maxval(abs(u))
-           else
-              max = maxval(abs(w))
-           end if
-        else
-           if(maxval(abs(v)) > maxval(abs(w))) then
-              max = maxval(abs(v))
-           else
-              max = maxval(abs(w))
-           end if
-        end if
-
-
-        if(minval(abs(u)) < minval(abs(v))) then
-           if(minval(abs(u)) < minval(abs(w))) then
-              min = minval(abs(u))
-           else
-              min = minval(abs(w))
-           end if
-        else
-           if(minval(abs(v)) < minval(abs(w))) then
-              min = minval(abs(v))
-           else
-              min = minval(abs(w))
-           end if
-        end if
-
-        range = max-min
-
-        do i = 1, nturblines**3
-
-           locator = VECTOR(minusBound%x + dble(x(i)-1)*dx, minusBound%y + &
-           dble(y(i)-1)*dx, minusBound%z + dble(z(i)-1)*dx)
-          
-           call findSubcellLocal(locator, thisOctal, subcell)
-           if(octalOnThread(thisOctal, subcell, myRank)) then
-                     
-              thisOctal%rhou(subcell) = thisOctal%rho(subcell)*(u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
-                 thisOctal%energy(subcell))
-              thisOctal%rhov(subcell) = thisOctal%rho(subcell)*(v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)* &
-                 thisOctal%energy(subcell))
-              thisOctal%rhow(subcell) = thisOctal%rho(subcell)*(w(i)/max)*10.d0*sqrt(thisOCtal%rho(subcell)* &
-                 thisOctal%energy(subcell))
-              thisOctal%velocity(subcell) = VECTOR((u(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
-              (v(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)), &
-              (w(i)/max)*10.d0*sqrt(thisOctal%rho(subcell)*thisOctal%energy(subcell)))
-              
-                           
-              thisOctal%energy(subcell) = thisOctal%energy(subcell)+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
-              
-              thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
-           end if
-        end do
-
-         deallocate(u)
-         deallocate(v)
-         deallocate(w)
-         deallocate(x)
-         deallocate(y)
-         deallocate(z)
-
-      end if
-
-
-      end subroutine readgridTurbulence
-#endif
 
 
         subroutine readgridKengo(grid)
@@ -2490,13 +2355,14 @@ subroutine addSpiralWake(grid)
 end subroutine addSpiralWake
 
 
-recursive subroutine assignTurbVelocity(thisOctal, box, n)
+recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
   use inputs_mod, only : amrGridSize
   use inputs_mod, only : maxDepthAMR
   integer, intent(in) :: n
-  type(VECTOR) :: box(n,n,n)
   type(octal), pointer   :: thisOctal
+  real, pointer :: xVel(:,:,:), yVel(:,:,:), zVel(:,:,:)
   type(octal), pointer  :: child 
+  real(double) :: vx, vy, vz, u, v, w, xArray(64), fac1, fac2, fac3
   type(VECTOR) :: rVec
   integer :: subcell, i, i1, j1, k1
   
@@ -2506,21 +2372,59 @@ recursive subroutine assignTurbVelocity(thisOctal, box, n)
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call assignTurbVelocity(child, box, n)
+              call assignTurbVelocity(child, xvel, yvel, zvel, n)
               exit
            end if
         end do
      else 
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
+        do i1 = 1, 64
+           xArray(i1) = 0.5d0/64.d0+dble(i1-1)/64.d0
+        enddo
         rVec  = subcellCentre(thisOctal, subcell)
         
-        i1 = nint(dble(2**maxDepthAMR) *  (rVec%x + amrGridSize/2.d0) / amrGridSize)
-        j1 = nint(dble(2**maxDepthAMR) *  (rVec%y + amrGridSize/2.d0) / amrGridSize)
-        k1 = nint(dble(2**maxDepthAMR) *  (rVec%z + amrGridSize/2.d0) / amrGridSize)
+        fac1 = (rVec%x + amrGridSize/2.d0) / amrGridSize
+        fac2 = (rVec%y + amrGridSize/2.d0) / amrGridSize
+        fac3 = (rVec%z + amrGridSize/2.d0) / amrGridSize
+        
+        call locate(xArray, 64, fac1, i1)
+        call locate(xArray, 64, fac2, j1)
+        call locate(xArray, 64, fac3, k1)
 
-        write(*,*) i1,j1,k1,box(i1,j1,k1)
-        thisOctal%velocity(subcell) = box(i1,j1,k1)
+        u = (fac1 - xArray(i1))/(xArray(i1+1) - xArray(i1))
+        v = (fac2 - xArray(j1))/(xArray(j1+1) - xArray(j1))
+        w = (fac3 - xArray(k1))/(xArray(k1+1) - xArray(k1))
+
+        vx = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * xVel(i1, j1, k1) + &
+             (1.d0 - u) * (1.d0 - v) * (       w) * xVel(i1, j1, k1+1) + &
+             (1.d0 - u) * (       v) * (1.d0 - w) * xVel(i1, j1+1, k1) + &
+             (1.d0 - u) * (       v) * (       w) * xVel(i1, j1+1, k1+1) + &
+             (       u) * (1.d0 - v) * (1.d0 - w) * xVel(i1+1, j1, k1) + &
+             (       u) * (1.d0 - v) * (       w) * xVel(i1+1, j1, k1+1) + &
+             (       u) * (       v) * (1.d0 - w) * xVel(i1+1, j1+1, k1) + &
+             (       u) * (       v) * (       w) * xVel(i1+1, j1+1, k1+1) 
+
+        vy = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * yVel(i1, j1, k1) + &
+             (1.d0 - u) * (1.d0 - v) * (       w) * yVel(i1, j1, k1+1) + &
+             (1.d0 - u) * (       v) * (1.d0 - w) * yVel(i1, j1+1, k1) + &
+             (1.d0 - u) * (       v) * (       w) * yVel(i1, j1+1, k1+1) + &
+             (       u) * (1.d0 - v) * (1.d0 - w) * yVel(i1+1, j1, k1) + &
+             (       u) * (1.d0 - v) * (       w) * yVel(i1+1, j1, k1+1) + &
+             (       u) * (       v) * (1.d0 - w) * yVel(i1+1, j1+1, k1) + &
+             (       u) * (       v) * (       w) * yVel(i1+1, j1+1, k1+1) 
+
+        vz = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * zVel(i1, j1, k1) + &
+             (1.d0 - u) * (1.d0 - v) * (       w) * zVel(i1, j1, k1+1) + &
+             (1.d0 - u) * (       v) * (1.d0 - w) * zVel(i1, j1+1, k1) + &
+             (1.d0 - u) * (       v) * (       w) * zVel(i1, j1+1, k1+1) + &
+             (       u) * (1.d0 - v) * (1.d0 - w) * zVel(i1+1, j1, k1) + &
+             (       u) * (1.d0 - v) * (       w) * zVel(i1+1, j1, k1+1) + &
+             (       u) * (       v) * (1.d0 - w) * zVel(i1+1, j1+1, k1) + &
+             (       u) * (       v) * (       w) * zVel(i1+1, j1+1, k1+1) 
+
+
+        thisOctal%velocity(subcell) = VECTOR(vx, vy, vz)
      endif
   enddo
 end subroutine assignTurbVelocity

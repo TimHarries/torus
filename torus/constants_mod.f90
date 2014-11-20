@@ -38,6 +38,7 @@ module constants_mod
   ! times
 
   real(double), parameter :: secsToYears = 1.d0/(365.25d0*24.d0*3600.d0)
+  real(double), parameter :: yearstoSecs = (365.25d0*24.d0*3600.d0)
 
   real(double), parameter :: barn = 1.d-24
   real(double), parameter :: megabarn = 1.d6 * barn

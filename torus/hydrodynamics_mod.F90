@@ -16437,7 +16437,7 @@ end subroutine minMaxDepth
     if (writeoutput) write(*,*) "Done."
 
     do iSource = 1, nSource
-       if (writeoutput) write(*,*) "Accreting gas onto source ",isource
+!       if (writeoutput) write(*,*) "Accreting gas onto source ",isource
 
 !       write(*,*) "mass accretion rate on rank ",myrankGlobal, " is ",accretedMass(isource)/timestep/msol/secstoyears
 
@@ -16467,13 +16467,13 @@ end subroutine minMaxDepth
 
        if (writeoutput) then
 
-          write(*,*) "source ",isource
-          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
-          write(*,*) "before mass ",sourceArray(isource)%mass/msol
+!          write(*,*) "source ",isource
+!          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
+!          write(*,*) "before mass ",sourceArray(isource)%mass/msol
 
-          write(*,*) "accreted mass ", accretedMass(isource)
-          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
-          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
+!          write(*,*) "accreted mass ", accretedMass(isource)
+!          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
+!          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
        endif
 
        sourceMom = sourceArray(iSource)%mass * sourceArray(iSource)%velocity
@@ -16486,14 +16486,14 @@ end subroutine minMaxDepth
        sourceArray(iSource)%angMomentum = sourceArray(iSource)%angMomentum + accretedAngMomentum(iSource)
 
        sourceArray(iSource)%mdot = accretedMass(isource)/timestep
-       if (myrankWorldGlobal == 1) then
+!       if (myrankWorldGlobal == 1) then
 !          write(*,*) "source data for set ",myHydroSetGlobal
-          write(*,*) "Accretion rate for source ",isource, ": ", &
+       if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
-          write(*,*)  "position ",sourceArray(isource)%position
-          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
-          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
-       endif
+!          write(*,*)  "position ",sourceArray(isource)%position
+!          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
+!          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
+!       endif
     enddo
     deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
 

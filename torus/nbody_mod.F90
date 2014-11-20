@@ -182,7 +182,7 @@ contains
        if ((thisTime + thisDt) > dt) then
           thisDt = dt - thisTime
        endif
-       if (writeoutput) write(*,*) "Calling integrator with ",thisDt, thisTime, dt,eps
+!       if (writeoutput) write(*,*) "Calling integrator with ",thisDt, thisTime, dt,eps
 !       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
        call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
        if (writeoutput) write(*,*) "nok ",nok, " nbad ",nbad
@@ -740,7 +740,7 @@ contains
        else
           nbad=nbad+1
        endif
-       if (Writeoutput) write(*,*) "x1, x2, x, h ",x1,x2,x,h, " percent ",100.*x/x2
+!       if (Writeoutput) write(*,*) "x1, x2, x, h ",x1,x2,x,h, " percent ",100.*x/x2
        if((x-x2)*(x2-x1).ge.zero)then
           do i=1,nvar
              ystart(i)=y(i)

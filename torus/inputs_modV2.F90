@@ -6,6 +6,7 @@ module inputs_mod
   use kind_mod
   use constants_mod
   use units_mod
+  use parallel_mod
 #ifdef USEZLIB
   use zlib_mod, only : uncompressedDumpFiles, buffer, nbuffer
 #endif
@@ -108,7 +109,8 @@ contains
 
     open(unit=32, file=paramfile, status='old', iostat=error)
     if (error /=0) then
-       print *, 'Panic: parameter file open error, file: ',trim(paramFile) ; stop
+       print *, 'Panic: parameter file open error, file: ',trim(paramFile)
+       call torus_stop
     end if
 
     do
@@ -431,9 +433,9 @@ contains
          "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (.not. readsources) then
-       if (checkPresent("nsource", cLine, nLines)) then
+!       if (checkPresent("nsource", cLine, nLines)) then
           call readSourceParameters(cLine, fLine, nLines)
-       endif
+!       endif
     else
        call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
                   "Source filename: ","(a,a,1x,a)","none", ok, .true.)
@@ -558,7 +560,7 @@ contains
 #ifdef MPI
        call mpi_abort(MPI_COMM_WORLD, 1, ierr)
 #else
-       STOP
+       call torus_stop
 #endif
 
     endif
@@ -650,7 +652,7 @@ contains
                "CAK power-law index alpha: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
           if (bigOmega > sqrt(1.d0-eddingtonGamma)) then
              call writeFatal("Omega limit exceeded")
-             stop
+             call torus_stop
           endif
        endif
 
@@ -926,12 +928,12 @@ contains
 
        if (useHartmannTemp .and. isoTherm) then 
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
-          stop
+          call torus_stop
        end if
 
        if (.not.(useHartmannTemp .or. isoTherm)) then 
           if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
-          stop
+          call torus_stop
        end if
 
        if (useHartmannTemp) &
@@ -1177,6 +1179,16 @@ contains
 !            "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
        
 
+    case("cassandra")
+
+       call getDouble("mstar", mStar, 1.d0, cLine, fLine, nLines, &
+            "Mass of central star (solar masses): ","(a,f7.1,a)", 1.d0, ok, .true.)
+       call getDouble("metallicity", metallicity, 1.d0, cLine, fLine, nLines, &
+            "Mass of central star (solar masses): ","(a,f7.1,a)", 1.d0, ok, .true.)
+       call getreal("mdot", mDot, 1., cLine, fLine, nLines, &
+            "Mass accretion rate (solar masses per year): ","(a,1p,e8.2,a)", 1., ok, .true.)
+
+       
 
     case("shakara")
 
@@ -1428,6 +1440,8 @@ contains
           call writeInfo(message,TRIVIAL)
        endif
 
+          call getReal("height", height, real(autocm/1e10), cLine, fLine, nLines, &
+               "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
 
        call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
@@ -1445,8 +1459,11 @@ contains
        call getReal("rgapouter2", rGapOuter2, real(autocm/1.d10), cLine, fLine, nLines, &
             "Outer gap outer radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
 
-       call getReal("rhogap", rhoGap, 1., cLine, fLine, nLines, &
-            "Density in gap (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
+       call getReal("rhogap1", rhoGap1, 1., cLine, fLine, nLines, &
+            "Density in gap 1 (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
+
+       call getReal("rhogap2", rhoGap2, 1., cLine, fLine, nLines, &
+            "Density in gap 2 (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
 
        call getReal("deltacav", deltaCav, 1., cLine, fLine, nLines, &
             "Scaling factor for inner disc: ","(a,1p,e9.3,a)", 1., ok, .false.)
@@ -1461,9 +1478,6 @@ contains
        call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
             "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
 
-
-       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
-            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
        call getReal("heightinner", heightinner, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
@@ -1814,7 +1828,7 @@ contains
 
     if ((.not.(amr1d.or.amr2d.or.amr3d)).and.doSetupAMRgrid) then
        call writeFatal("AMR dimensionality must be specified")
-       stop
+       call torus_stop
     endif
     if (amr1d.and.(amr2d.or.amr3d)) &
        call writeFatal("Only one of amr1d, amr2d or amr3d should be set to true")
@@ -2017,7 +2031,7 @@ contains
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
        if (nDustType .gt. maxDustTypes) then
           if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
-          stop
+          call torus_stop
        end if
        
        call getLogical("readdust", readDustFromFile, cLine, fLine, nLines, &
@@ -2191,12 +2205,35 @@ contains
 
     call writeBanner("Photon source data","#",TRIVIAL)
 
+    call getLogical("starburst", starburst, cLine, fline, nLines, &
+         "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    if (starburst) then
+       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
+            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
+
+       call getDouble("burstage", burstAge, 1.d0, cLine, fLine, nLines, &
+            "Starburst age (years): ","(a,f10.1,a)", 1000.d0, ok, .true.)
+
+
+       call getDouble("bursttime", burstTime, yearstoSecs, cLine, fLine, nLines, &
+            "Starburst time (years): ","(a,f10.1,a)", 0.d0, ok, .false.)
+
+       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
+            "Burst cluster radius (pc): ","(a,f10.2,a)", 0.d0, ok, .false.)
+
+       call getString("bursttype", burstType, cLine, fLine, nLines, &
+            "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
+    endif
+
+
+
     call getInteger("nspheresurface", nSphereSurface, cLine, fLine, nLines, &
          "Number of points on sphere surface: ","(a,i2,a)",1000,ok,.false.)
 
 
     call getInteger("nsource", inputNSource, cLine, fLine, nLines, &
-         "Number of sources: ","(a,i2,a)",1,ok,.true.)
+         "Number of sources: ","(a,i2,a)",0,ok,.false.)
 
 
     call getReal("metallicity", stellarMetallicity, 1.0, cLine, fLine, nLines, &
@@ -2236,7 +2273,7 @@ contains
 
              if (radiusPresent.and.teffPresent.and.lumPresent) then
                 call writeFatal("Source overspecified - choose 2 of teff, R, and Lum")
-                stop
+                call torus_stop
              endif
 
              if (radiusPresent.and.teffPresent) then
@@ -2273,7 +2310,7 @@ contains
                 sourceRadius(i) = sqrt(sourceLum(i) / (fourPi * sourceTeff(i)**4 * stefanBoltz))/1.d10
              else
                 call writeFatal("Source underspecified - need two of radius, teff and lum")
-                stop
+                call torus_stop
              endif
              
              write(keyword, '(a,i1)') "mass",i
@@ -2538,22 +2575,6 @@ contains
          "Include supernova feedback: ", "(a,1l,1x,a)", .false., ok, .false.)
 
 
-    call getLogical("starburst", starburst, cLine, fline, nLines, &
-         "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
-
-    if (starburst) then
-       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
-            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
-
-       call getDouble("burstage", burstAge, 1.d0, cLine, fLine, nLines, &
-            "Starburst age (years): ","(a,f10.1,a)", 1000.d0, ok, .true.)
-
-       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
-            "Burst cluster radius (pc): ","(a,f10.2,a)", 100.d0, ok, .true.)
-
-       call getString("bursttype", burstType, cLine, fLine, nLines, &
-            "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
-    endif
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
@@ -3134,10 +3155,17 @@ contains
           call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
        else
-          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
-          call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+          if (amr3d) then
+             call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
+             call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+          else
+             call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+             call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+          endif
        endif
 
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
@@ -3164,16 +3192,30 @@ contains
             "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
        call getReal("beamsize", beamsize, 1., cLine, fLine, nLines, &
             "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
+
+       rotateViewAboutX = 90.0 - thisInclination*radtodeg
+
+
+       call getDouble("rotateviewaboutz", rotateViewAboutZ, 1.d0, cLine, fLine, nLines, &
+            "Angle to rotate about Z (deg): ","(a,f4.1,1x,a)", 0.d0, ok, .false.)
        if (internalView) then
           call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (lon): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
           call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
        else
+          
+          if (amr3d) then
           call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
-          call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+             call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+          else
+          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+             call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+          endif
           call getDouble("centrevecz", centrevecz, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreZ, ok, .false.)
        end if
@@ -3181,6 +3223,10 @@ contains
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
        
+<<<<<<< .mine
+
+
+=======
 ! Set observer orientation for molecular_mod. This is only required for the far field case
 ! when using molecular or 21cm physics. 
 molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm)) then 
@@ -3216,6 +3262,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     end if molecular_orientation
 
+>>>>>>> .r4437
 ! Set up values in datacube_mod
     call setCubeParams(npixels, cubeAspectRatio, WV_background)
 
@@ -3223,6 +3270,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 #endif
 
   subroutine readImageParameters(cLine, fLine, nLines)
+    use constants_mod
     use image_utils_mod
 
     character(len=lencLine) :: cLine(:)
@@ -3290,6 +3338,11 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getString("imagefluxunits", fluxUnits, cLine, fLine, nLines,&
          "Flux units for image:", "(a,a,1x,a)", "MJy/str", ok, .false.)
+    if (trim(fluxUnits) == "Jy/beam") then
+       call getDouble("beamarea", beamarea, arcsecstoradians**2,cLine, fLine, nLines, &
+            "Beam area in square arcseconds: ", "(a,f10.2,1x,a)", 1.d0, ok, .false.)
+    endif
+
 
     !Thaw for image cut dumps
     call getLogical("dumpCut", dumpCut, cLine, fLine, nLines, &
@@ -3841,7 +3894,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
      else
         call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-        stop
+        call torus_stop
      endif
   endif
  end do
@@ -3868,7 +3921,7 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
      else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
+     call torus_stop
   endif
 endif
 end do
@@ -3897,7 +3950,7 @@ end do
            read(cLine(i)(j+1:lencline),*,iostat=readstat) value
            if(readstat /= 0) then
               write(*,*) "parameters.dat entry with no value given!!" //name
-              stop
+              call torus_stop
            else
               unit = "default"
            end if
@@ -3905,7 +3958,7 @@ end do
         fLine(i) = .true.
      else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
+     call torus_stop
   endif
 endif
 end do
@@ -3932,7 +3985,7 @@ end do
         fline(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
+     call torus_stop
   endif
      endif
 
@@ -3961,7 +4014,7 @@ subroutine findInteger(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
      else
         call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-        stop
+        call torus_stop
      endif
   endif
 end do
@@ -3988,7 +4041,7 @@ end subroutine findInteger
         fLine(i) = .true.
      else
         call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-        stop
+        call torus_stop
      endif
   endif
    end do
@@ -4015,7 +4068,7 @@ subroutine findLogical(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
      else
         call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-        stop
+        call torus_stop
      endif
   endif
 end do
@@ -4049,7 +4102,7 @@ subroutine findString(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
+     call torus_stop
   endif
 endif
  end do
@@ -4078,7 +4131,7 @@ subroutine findLine(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
+     call torus_stop
   endif
 endif
  end do
@@ -4106,7 +4159,7 @@ subroutine findRealArray(name, value, cLine, fLine, nLines, ok)
         fLine(i) = .true.
   else
      call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     stop
+     call torus_stop
   endif
 endif
  end do
@@ -4131,7 +4184,7 @@ endif
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     ival = idef
     default = " (default)"
@@ -4161,7 +4214,7 @@ endif
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     ival = idef
     default = " (default)"
@@ -4192,7 +4245,7 @@ end subroutine getBigInteger
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     rval = rdef
     default = " (default)"
@@ -4239,7 +4292,7 @@ end subroutine getBigInteger
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     dval = ddef
     default = " (default)"
@@ -4276,7 +4329,7 @@ end subroutine getBigInteger
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     dval = ddef
     default = " (default)"
@@ -4307,7 +4360,7 @@ end subroutine getBigInteger
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     dval = ddef
     default = " (default)"
@@ -4339,7 +4392,7 @@ end subroutine getVector
   if (.not. ok) then
     if (musthave) then
        if (writeoutput)  write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     rval = rdef
     default = " (default)"
@@ -4376,7 +4429,7 @@ end subroutine getVector
     if (musthave) then
        write(errorMessage,'(a,a)') name, " must be defined"
        call writeFATAL(errorMessage)
-       STOP
+       call torus_stop
     endif
     rval = rdef
     default = " (default)"
@@ -4414,7 +4467,7 @@ end subroutine getVector
   if (.not. ok) then
     if (musthave) then
        if (writeoutput)  write(*,'(a,a)') name, " must be defined"
-       stop
+       call torus_stop
     endif
     rval(:) = rdef
     default = " (default)"
@@ -4448,7 +4501,7 @@ end subroutine getVector
       case DEFAULT
          print *, "Unrecognised boundary string:", boundaryString
          print *, "Halting."
-         stop
+         call torus_stop
    end select
 
 
@@ -4481,7 +4534,7 @@ end subroutine getVector
 
     if (error /= 0) then
        call writeFatal("Error opening file: "//trim(thisFile))
-       stop
+       call torus_stop
     else
        close(53)
     endif

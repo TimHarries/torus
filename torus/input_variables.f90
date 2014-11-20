@@ -115,6 +115,7 @@
   logical :: supernovae        ! include supernovae in hydro calc
   logical :: starburst         ! set sources from starburst
   real(double) :: burstAge
+  real(double) :: burstTime
   character(len=20) :: burstType
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation 
@@ -285,6 +286,9 @@
 
 !-----------------------------
 
+  real(double) :: mStar
+  real(double) :: metallicity
+
 !----------------------------  
 ! Lucy radiative equilibrium
 !----------------------------
@@ -410,6 +414,7 @@
   real :: thisPA           ! position angle
   real(double) :: thisimagePA
   real(double) :: fwhmPixels ! FWHM in pixels of image resolution (for smoothing)
+  real(double) :: beamArea
   logical :: freefreeSed   !include free-free emission in SED
   logical :: recombinationSed   !include recombination line emission in SED
   logical :: forbiddenSed   !include forbidden line emission in SED
@@ -511,7 +516,7 @@
   real :: flaringPower, gapViscAlpha
   real :: rGap, mPlanet, gapWidth
   real :: rGapInner, rGapOuter, rhoGap, deltaCav
-  real :: rGapInner1, rGapOuter1
+  real :: rGapInner1, rGapOuter1, rhogap1, rhogap2
   real :: rGapInner2, rGapOuter2
   logical :: planetGap
   logical :: planetDisc

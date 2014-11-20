@@ -1090,7 +1090,7 @@ contains
 
   function HD169142Disc(point) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-         alphaDisc, rho0, smoothInnerEdge, rGapInner1, rGapOuter1, rhoGap, rhoAmbient
+         alphaDisc, rho0, smoothInnerEdge, rGapInner1, rGapOuter1, rhoGap1, rhogap2, rhoAmbient
     use inputs_mod, only :   rGapInner2, rGapOuter2, heightInner, ringHeight, heightOuter
     use utils_mod, only: solveQuad
 
@@ -1194,7 +1194,7 @@ contains
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
-       rhoOut =  rhoGap * exp(fac)
+       rhoOut =  rhoGap1 * exp(fac)
 
 
     endif
@@ -1206,7 +1206,7 @@ contains
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
-       rhoOut =  rhoGap * exp(fac)
+       rhoOut =  rhoGap2 * exp(fac)
 
 
     endif

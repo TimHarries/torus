@@ -35,7 +35,9 @@ implicit none
 
 private
 public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
-     neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes
+     neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
+     computeProbDistAMRMpi, putStarsInGridAccordingToDensity
+
 #ifdef HYDRO
 public :: radiationHydro
 #endif
@@ -85,7 +87,7 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, mstarburst, burstTime, starburst, inputseed
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -454,7 +456,7 @@ contains
           do irefine = 1, 1
              if (irefine == 1) then
                 call writeInfo("Calling photoionization loop",TRIVIAL)
-                call setupNeighbourPointers(grid, grid%octreeRoot)
+!                call setupNeighbourPointers(grid, grid%octreeRoot)
                 call resetnh(grid%octreeRoot)
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
@@ -823,7 +825,9 @@ contains
              looplimittime = deltaTForDump
           end if
           if (timeDependentRT) loopLimitTime = dt
-          call setupNeighbourPointers(grid, grid%octreeRoot)
+!         write(*,*) myrankGlobal, " calling setup neighbour pointers"
+!          call setupNeighbourPointers(grid, grid%octreeRoot)
+!          write(*,*) myrankGlobal, " calling resetnh"
           call resetnh(grid%octreeRoot)
 !          if (grid%geometry == "sphere") &
 !               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
@@ -885,6 +889,15 @@ contains
              call calculateEnergyFromTemperature(grid%octreeRoot)
              call calculateRhoE(grid%octreeRoot, direction)
           endif
+
+
+!          call writeVtkFile(grid, "afterloop.vtk", &
+!               valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!               "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
+!               "diff         ","dust1        ","u_i          ",  &
+!               "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
+!               "vphi         ","jnu          ","mu           ", &
+!               "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
 
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
@@ -999,6 +1012,25 @@ contains
           endif
 
           if (severeDamping) call cutVacuum(grid%octreeRoot)
+
+          if (starburst.and.(grid%currentTime > burstTime).and.(globalnSource == 0)) then
+             write(*,*) myrankGlobal, " starting setting up sources"
+             call randomNumberGenerator(putISeed = inputSeed)
+             call randomNumberGenerator(syncIseed=.true.)
+             if (associated(globalSourceArray)) then
+                deallocate(globalSourceArray)
+                globalSourceArray => null()
+             endif
+             allocate(globalsourcearray(1:1000))
+
+             globalsourceArray(:)%outsideGrid = .false.
+             globalnSource = 0
+             call createSources(globalnSource, globalSourceArray, "instantaneous", 0.d0, mStarburst, 0.d0)
+             call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
+             if (doselfgrav.and.(myrankGlobal/=0)) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+             call randomNumberGenerator(randomSeed = .true.)
+             write(*,*) myrankGlobal, " setting up sources done"
+          endif
 
 
           if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray, dt)
@@ -8324,7 +8356,136 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     enddo
   end subroutine radpressureTimeStep
 
+
+
+subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
+  use mpi
+  use source_mod, only : sourcetype
+  use math_mod, only : computeProbDist
+  use inputs_mod, only : rhoFloor
+  type(GRIDTYPE) :: grid
+  integer :: nSource
+  type(SOURCETYPE) :: source(:)
+  real(double) :: mass, temp(3)
+  type(OCTAL), pointer :: sourceOctal
+  integer :: sourceSubcell
+  integer :: i
+  real(double), allocatable :: threadProbArray(:)
+  real(double) :: r, dv
+  integer :: iThread
+  integer, parameter :: tag = 66
+  integer :: ierr, signal
+  integer :: status(MPI_STATUS_SIZE)
+  type(VECTOR) :: rVec
+
+  allocate(threadProbArray(1:nHydroThreadsGlobal))
+  call putDensityInEtaCont(grid%octreeRoot)
+  
+  call computeProbDistAMRMpi(grid, mass, threadProbArray)
+  if (writeoutput) write(*,*) "Total mass for put stars ",mass*1.d30/msol
+
+  
+  if (myrankGlobal == 0) then
+     do i = 1, nSource
+        call randomNumberGenerator(getDouble=r)
+        if (r < threadProbArray(1)) then
+           iThread = 1
+        else
+           call locate(threadProbArray, SIZE(threadProbArray), r, iThread)
+           iThread = iThread + 1
+        endif
+        signal = -99
+        call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+        call MPI_RECV(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+        source(i)%position%x = temp(1)
+        source(i)%position%y = temp(2)
+        source(i)%position%z = temp(3)
+     enddo
+     do iThread = 1, nHydroThreadsGlobal
+        signal = 0
+        call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+     enddo
+  else
+     do 
+        call MPI_RECV(signal, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+        if (signal == -99) then
+           call randomNumberGenerator(getDouble=r)
+           sourceOctal => grid%octreeRoot
+           call locateContProbAMR(r, sourceOctal,sourcesubcell)
+           rVec = randomPositionInCell(sourceOctal, sourceSubcell)
+           temp(1) = rVec%x
+           temp(2) = rVec%y
+           temp(3) = rVec%z
+           call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+        else
+           exit
+        endif
+     enddo
+  endif
+  if (myrankGlobal == 0) then
+     do ithread = 1, nHydroThreadsGlobal
+        call mpi_send(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+        call mpi_send(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+        call mpi_send(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+     enddo
+  else
+     call MPI_RECV(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+     call MPI_RECV(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+     call MPI_RECV(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+     
+  endif
+
+
+  if (myrankGlobal /= 0) then
+     sourceOctal => grid%octreeRoot
+     do i = 1, nSource
+        call findSubcellLocal(source(i)%position, sourceOctal, sourcesubcell)
+        dv = cellVolume(sourceOctal, sourceSubcell) * 1.d30
+        
+        source(i)%velocity%x = sourceOctal%rhou(sourcesubcell)/sourceoctal%rho(sourcesubcell)
+        source(i)%velocity%y = sourceOctal%rhov(sourcesubcell)/sourceoctal%rho(sourcesubcell)
+        source(i)%velocity%z = sourceOctal%rhow(sourcesubcell)/sourceoctal%rho(sourcesubcell)
+        
+!        rhoLeft = max(rhoFloor, sourceOctal%rho(sourcesubcell)  - source(i)%mass/dv)
+!        sourceOctal%rho(sourcesubcell) = rhoLeft
+!        sourceOctal%rhou(sourcesubcell) = rhoLeft * source(i)%velocity%x
+!        sourceOctal%rhov(sourcesubcell) = rhoLeft * source(i)%velocity%y
+!        sourceOctal%rhow(sourcesubcell) = rhoLeft * source(i)%velocity%z
+        
+
+     enddo
+  end if
+
+
+end subroutine putStarsInGridAccordingToDensity
+
+  recursive subroutine putDensityInEtaCont(thisOctal) 
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call putDensityInEtaCont(child)
+                exit
+             end if
+          end do
+       else 
+          if (.not.associated(thisOctal%etaCont)) allocate(thisOctal%etaCont(1:thisOctal%maxChildren))
+          if (.not.associated(thisOctal%etaLine)) allocate(thisOctal%etaLine(1:thisOctal%maxChildren))
+          if (.not.associated(thisOctal%biasCont3D)) allocate(thisOctal%biasCont3D(1:thisOctal%maxChildren))
+          thisOctal%biasCont3d = 1.d0
+          thisOctal%etaCont(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)**1.5d0
+       endif
+    enddo
+  end subroutine putDensityInEtaCont
+
 #endif
+
 
 end module photoionAMR_mod
 

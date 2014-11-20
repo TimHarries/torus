@@ -316,7 +316,6 @@ contains
        endif
 
     endif
-!    call writeVtkFile(nsource, source, "sources_at_setup.vtk")
 
   end subroutine setupSources
 
@@ -788,7 +787,7 @@ contains
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
-          burstType, burstAge
+          burstType, burstAge, burstTime
 #ifdef MPI
      use mpi
 #endif
@@ -860,7 +859,7 @@ contains
         endif
      endif
 
-     if (starburst.and.(.not.readSources)) then
+     if (starburst.and.(.not.readSources).and.(burstTime == 0.d0)) then
 #ifdef MPI
         call randomNumberGenerator(randomSeed = .true.)
         call randomNumberGenerator(syncIseed=.true.)
@@ -908,7 +907,7 @@ contains
        globalNSource = 1
     endif
 
-!    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
+    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
 
 
 end subroutine setupGlobalSources
@@ -1030,7 +1029,6 @@ subroutine testSuiteRandom()
 #endif
 
 end subroutine testSuiteRandom
-
 
 
 end module physics_mod

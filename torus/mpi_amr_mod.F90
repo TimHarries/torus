@@ -313,6 +313,86 @@ contains
     enddo
   end subroutine findTotalMassMPI
 
+  subroutine findkeOverAllThreads(grid, ke)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: ke
+    real(double), allocatable :: keOnThreads(:), temp(:)
+    integer :: ierr
+!    real(double) :: totalVolume
+
+    allocate(keOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    keOnThreads = 0.d0
+    temp = 0.d0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findKEOverAllThreads: grid not split over MPI")
+       ke = 0.d0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findtotalKEMPI(grid%octreeRoot, keOnThreads(myRankGlobal))
+       call MPI_ALLREDUCE(keOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       ke = SUM(temp(1:nThreadsGlobal))
+    end if
+666 continue
+  end subroutine findKEOverAllThreads
+
+    
+  recursive subroutine findTotalKEMPI(thisOctal, totalKE)
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: totalKE
+  real(double) :: dv!, totalVolume
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalKEMPI(child, totalKE)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                dv = cellVolume(thisOctal, subcell)*1.d30
+!                print *, "dv", dv, thisOctal%subcellSize**3
+
+                if (hydrodynamics) then
+                   if (thisOctal%twoD) then
+                      if (cylindricalHydro) then
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         rVec = subcellCentre(thisOctal,subcell)
+                         if (rVec%x < 0.d0) dv = 0.d0
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                      else
+                         dv = thisOctal%subcellSize**2
+                      endif
+                   else if (thisOctal%oned) then
+                      if (spherical) then
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         rVec = subcellCentre(thisOctal,subcell)
+                         if (rVec%x < 0.d0) dv = 0.d0
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                      else
+                         dv = thisOctal%subcellSize**2
+                      endif
+                   endif
+                endif
+                totalKE = totalKE  + 0.5d0 * (thisOctal%rho(subcell) * dv) * &
+                     (modulus(thisOctal%velocity(subcell))*cspeed)**2
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findTotalKEMPI
+
 
   subroutine findMassOverAllThreadsWithinR(grid, mass, radius)
     use mpi

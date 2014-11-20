@@ -152,7 +152,7 @@ program torus
 
        call writeVtkFile(grid, "rho.vtk")
 !       call writeVtkFile(grid, "mpi.vtk",valueTypeString=(/"rho        ","mpithread        "/))
-     endif
+    endif
      call setupGlobalSources(grid)
 
 ! SPH data may be required for setting up sources so only free memeory after this is done

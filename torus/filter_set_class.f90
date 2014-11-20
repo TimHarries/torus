@@ -1222,7 +1222,7 @@ contains
     ! Setting up the natural filter
     !
     ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
+    call init_filter(natural, "natural", nlam, 100.0d0, 1d8)
     natural%response_function(:) = 1.0d0  ! set everything to 1.0
 
 

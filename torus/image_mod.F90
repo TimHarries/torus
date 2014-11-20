@@ -79,7 +79,7 @@ module image_mod
             tot = 0.d0
             do  i1= i - m, i + m
                do j1 = j- m, j + m
-                  f = exp(- ( ((i1-i)**2 / (2.d0*sigma**2)) + ((j1-j)**2 / (2.d0*sigma**2))) )
+                  f = exp(- ( (dble(i1-i)**2 / (2.d0*sigma**2)) + (dble(j1-j)**2 / (2.d0*sigma**2))) )
 
                   outputImage(i,j) = outputImage(i,j) + f * inputImage(min(max(i1,1),nx),min(max(j1,1),ny))
                   tot = tot + f
@@ -259,6 +259,7 @@ module image_mod
              (yPix <= thisImageSet(i)%ny)) then
            ! using a filter response function in filter_set_class here
            filter_response = real( pass_a_filter(filters, i, lambda_obs ))
+!           write(*,*) xpix,ypix,thisPhoton%stokes%i*weight*filter_response, thisPhoton%stokes%i, weight, filter_response
                  
            thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                 + thisPhoton%stokes * weight * filter_response
@@ -418,6 +419,28 @@ module image_mod
        end if
      end subroutine ConvertArrayToMJanskiesPerStr
 
+! Convert from ergs/s/A to MJy/sr (10^6 ergs/s/cm^2/Hz/sr)
+! Note there is no distance dependance as this is per cm^2 AND per sr.
+     subroutine ConvertArrayToJanskiesPerBeam(array, lambda, dx, distance, beamArea)
+       real, intent(inout)      :: array(:,:)
+!       real, intent(in)         :: lambda
+       real         :: lambda
+       real(double), intent(in) :: dx, distance, beamArea
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
+       real(double), parameter :: PerAngstromToPerCm = 1.e8_db
+       real(double) :: nu, PerAngstromToPerHz, strad, scale, beamAreaInPixels
+
+       strad = (dx*1.d10/distance)**2
+       scale = 1.d20/distance**2
+
+       beamAreaInPixels = beamArea * distance**2 / (dx*1.d10)**2
+       nu = cspeed / ( real(lambda,db) * angstromtocm)
+       PerAngstromToPerHz = PerAngstromToPerCm * (cSpeed / nu**2)
+
+       ! Factor of 1.0e20 converts dx to cm from Torus units
+       array = real(FluxToJanskies * PerAngstromToPerHz  * array * scale * beamAreaInPixels)
+     end subroutine ConvertArrayToJanskiesPerBeam
+
 ! Convert from ergs/s/A to magnitudes per square arcsec
      subroutine ConvertArrayToMagPerSqArcsec(array, lambda, dx, distance)
        use utils_mod, only : returnMagnitude
@@ -576,8 +599,9 @@ module image_mod
      subroutine writeFitsImage(image, filename, objectDistance, type, lambdaImage, &
           pointTest, cylinderTest)
 
-       use inputs_mod, only : fwhmPixels
+       use inputs_mod, only : fwhmPixels, beamArea
        use fits_utils_mod
+       use utils_mod, only : returnFlux
        use image_utils_mod
 
 ! Arguments
@@ -593,13 +617,14 @@ module image_mod
        real, allocatable :: array(:,:)
        integer, allocatable :: samplings(:,:)
        integer :: i, j,k, n
-       real(double) :: rMin, rMax, r, tot
+       real(double) :: rMin, rMax, r, tot, starFlux
 
        real(double) :: scale,  dx, dy, phi
        logical :: simple,extend
        logical :: oldFilePresent
        character(len=80) :: message
        real(double) :: refValX, refValY ! co-ordinate values in reference pixel
+       real(double) :: xt, yt
 
        dx = image%xAxisCentre(2) - image%xAxisCentre(1)
        dy = image%yAxisCentre(2) - image%yAxisCentre(1)
@@ -671,9 +696,20 @@ module image_mod
 
           case("polr2")
              array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+             if (abs(lambdaImage - 1.22d4)/1.22d4 < 1.d-4) then
+                starFlux = returnFlux(7.3d0, "J")
+                starFlux = 10.d0**(-0.4d0 * 7.3d0) 
+             else if (abs(lambdaImage - 1.63d4)/1.63d4 < 1.d-4) then
+                starFlux = returnFlux(6.9d0, "H")
+                starFlux = 10.d0**(-0.4d0 * 6.9d0)
+             else
+                starFlux = 1.d0
+             endif
              do i = 1, image%nx
                 do j = 1, image%ny
-                   array(i,j) = array(i,j) * (image%xAxisCentre(i)**2 + image%yAxisCentre(j)**2)
+                   xt = (( image%xAxisCentre(i) * 1.d10)/objectDistance)*radiansToArcsec
+                   yt = (( image%yAxisCentre(j) * 1.d10)/objectDistance)*radiansToArcsec
+                   array(i,j) = array(i,j) * fourPi * (xt**2 + yt**2) /starFlux 
                 enddo
              enddo
 
@@ -722,7 +758,9 @@ module image_mod
              call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
                   samplings, cylinderTest=.true.)
           else
-             select case (getFluxUnits())
+             select case (trim(getFluxUnits()))
+             case("Jy/beam")
+                call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
              case("MJy/str")
                 call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
              case("Jy/pix")
@@ -752,6 +790,8 @@ module image_mod
              call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
           case("Jy/pix")
              call ftpkys(unit,'BUNIT', "JY/PIXEL", "units of image values", status)
+          case("Jy/beam")
+             call ftpkys(unit,'BUNIT', "JY/BEAM", "units of image values", status)
           case("mag/arcsec2")
              call ftpkys(unit,'BUNIT', "MAG/ARCSEC2", "units of image values", status)
           case DEFAULT
@@ -840,7 +880,7 @@ module image_mod
 
        rfile = filename(1:(len(trim(filename))-5))//".dat"
        open(22,file=rfile,status="unknown",form="formatted")
-       do k = 1,50
+       do k = 1,100
           rMin = dble(k-1)/100.d0 * image%xAxisCentre(image%nx)
           rMax = dble(k)/100.d0 *  image%xAxisCentre(image%nx)
           tot = 0.d0

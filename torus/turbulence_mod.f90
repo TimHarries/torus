@@ -146,4 +146,58 @@ contains
     div = div + box(i,j,kp1)%z - box(i,j,km1)%z
 
   end function div
+
+
+!routine to read in the velocity field produced by the generating code of M. R. Bate.
+  subroutine readgridTurbulence(nGrid, xvel, yvel, zvel)
+    use unix_mod
+    real, pointer :: xVel(:,:,:),yVel(:,:,:),zVel(:,:,:)
+    character(len=80) :: turbVelFileX, turbVelFileY, turbVelFileZ, dataDirectory
+    integer :: nGrid, ierr,i,j,k
+    nGrid = 64
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
+    turbVelFileX = trim(dataDirectory)//"/"//"CUBE_V1.DAT"
+    turbVelFileY = trim(dataDirectory)//"/"//"CUBE_V2.DAT"
+    turbVelFileZ = trim(dataDirectory)//"/"//"CUBE_V3.DAT"
+
+    allocate(xvel(1:nGrid,1:nGrid,1:nGrid))
+    allocate(yvel(1:nGrid,1:nGrid,1:nGrid))
+    allocate(zvel(1:nGrid,1:nGrid,1:nGrid))
+
+
+    open(21, file=turbvelfilex, status="old", iostat=ierr, form="unformatted", convert="BIG_ENDIAN")
+    if(ierr /= 0) then
+       print *, "Trouble opening " //turbvelfilex
+    end if
+    open(22, file=turbvelfiley, status="old", iostat=ierr, form="unformatted", convert="BIG_ENDIAN")
+    if(ierr /= 0) then
+       print *, "Trouble opening " //turbvelfiley
+    end if
+    open(23, file=turbvelfilez, status="old", iostat=ierr, form="unformatted", convert="BIG_ENDIAN")
+    if(ierr /= 0) then
+       print *, "Trouble opening " //turbvelfilez
+    end if
+
+
+       read(21, iostat=ierr) (((xvel(i,j,k), i=1,nGrid),j=1,nGrid),k=1,nGrid)
+!       if(ierr /= 0) then
+!          print *, "error reading from " //turbvelfilex
+!       end if
+       read(22, iostat=ierr) (((yvel(i,j,k), i=1,nGrid),j=1,nGrid),k=1,nGrid)
+!       if(ierr /= 0) then
+!          print *, "error reading from " //turbvelfiley
+!       end if
+       read(23, iostat=ierr) (((zvel(i,j,k), i=1,nGrid),j=1,nGrid),k=1,nGrid)
+!       if(ierr /= 0) then
+!          print *, "error reading from " //turbvelfilez
+!       end if
+
+       close(21)
+       close(22)
+       close(23)
+
+
+  end subroutine readgridTurbulence
+
+
 end module turbulence_mod
