@@ -40,15 +40,15 @@ contains
     !   2) temperature
     !   3) internal energy
     !   4) mean molecular weight
-    !	5) Mass Weighted Opacity
-    !	6) Mass-weighted Opacity
+    !   5) Mass Weighted Opacity
+    !   6) Mass-weighted Opacity
     !
     !-----------------------------------------------------------------------
 
     use unix_mod
     implicit none
     integer :: i,j,k,check
-    real :: cv, gamma
+    real(double) :: cv, gamma
     character(len=80) :: fname, dataDirectory
     ! Open eos data file and read in values
 
@@ -72,11 +72,11 @@ contains
        do j = 1,nUpoints
           read(50,*) (eostable(i,j,k),k=1,6)
 
-          !	Now calculate sound speed values for interpolation
+          !     Now calculate sound speed values for interpolation
           cv = eostable(i,j,3)/eostable(i,j,2)
           gamma = 1.0d0 + (Boltzmannk / &
                (mH*eostable(i,j,4)*cv))
-          cstab(i,j) = sqrt(gamma*(gamma-1.0)*eostable(i,j,3))			    
+          cstab(i,j) = sqrt(gamma*(gamma-1.0)*eostable(i,j,3))
        enddo
     enddo
     close(50)
@@ -143,7 +143,7 @@ integer :: iter
 
   !Read in equation of state tables.
   if (firstTime) then
-     allocate(gammamuT(5))	
+     allocate(gammamuT(5))
      CALL eosread
      firstTime = .false.
   endif
@@ -156,7 +156,7 @@ integer :: iter
   ntries    = 0.0
   fine      = 0.01
   iter = 0
-	DO WHILE(ABS(dT)> tolerance) 
+  DO WHILE(ABS(dT)> tolerance)
            if (iter > 20000) then
               write(*,*) "exiting after 20000 iterations ",abs(dt)
               exit
@@ -210,7 +210,7 @@ integer :: iter
            sigma     = sigma*(1.0 +dT/(abs(dT))*fine)
            ntries    = ntries+1
 
-	ENDDO
+        ENDDO
       
       Omega = Omega1
       Temp  = T
@@ -233,14 +233,14 @@ END SUBROUTINE get_eos_info
       real(double) :: mkap,mkap1,mkap2,ckap,ckap1,ckap2,kap1,kap2 
       real(double) :: mkbar,mkbar1,mkbar2,ckbar,ckbar1,ckbar2,kbar1,kbar2
       real(double) :: rho, cs
-      	  		      
+                              
 ! gammamuT columns:
 ! 1) gamma
 ! 2) mu
 ! 3) T
 ! 4) Opacity
 ! 5) Mass Weighted Opacity (Stamatellos et al 2007)
-	gammamuT = 0.0
+      gammamuT = 0.0
 !print*,"in eos"
 ! Find the relevant records in the table...
 ! ... for rho
@@ -250,7 +250,7 @@ END SUBROUTINE get_eos_info
             if ((eostable(i,1,1) >= rho).or.(i == nrhopoints)) exit
             i = i + 1
          enddo
-			
+                        
 ! ... and for internal energy
          if (cs < cstab(1,1)) cs = cstab(1,1)
          j = 1
@@ -259,8 +259,8 @@ END SUBROUTINE get_eos_info
             j = j + 1
          enddo
 
-	IF(j==1) j = j+1
-			
+        IF(j==1) j = j+1
+                        
 ! Interpolate over the j value at i-1
          mT1 = (eostable(i-1,j-1,2) - eostable(i-1,j,2))/ &
               (cstab(i-1,j-1) - cstab(i-1,j))
@@ -271,17 +271,17 @@ END SUBROUTINE get_eos_info
               (cstab(i-1,j-1) - cstab(i-1,j))
          cmu1 = eostable(i-1,j,4) - mmu1*cstab(i-1,j)
          mu1 = mmu1*cs + cmu1
-		 
-	 mkap1 = (eostable(i-1,j-1,6) - eostable(i-1,j,6))/ &
+                 
+         mkap1 = (eostable(i-1,j-1,6) - eostable(i-1,j,6))/ &
               (cstab(i-1,j-1) - cstab(i-1,j))
-	 ckap1 = eostable(i-1,j,6) - mkap1*cstab(i-1,j)
-	 kap1 = mkap1*cs + ckap1
-		 
-	 mkbar1 = (eostable(i-1,j-1,5) - eostable(i-1,j,5))/ &
+         ckap1 = eostable(i-1,j,6) - mkap1*cstab(i-1,j)
+         kap1 = mkap1*cs + ckap1
+                 
+         mkbar1 = (eostable(i-1,j-1,5) - eostable(i-1,j,5))/ &
               (cstab(i-1,j-1) - cstab(i-1,j))
-	ckbar1 = eostable(i-1,j,5) - mkbar1*cstab(i-1,j)
-	kbar1 = mkbar1*cs + ckbar1
-				 
+        ckbar1 = eostable(i-1,j,5) - mkbar1*cstab(i-1,j)
+        kbar1 = mkbar1*cs + ckbar1
+                                 
 ! Then interpolate over the j value at i
 ! Update j value as necessary
          j = 1
@@ -290,8 +290,8 @@ END SUBROUTINE get_eos_info
             j = j + 1
          enddo
 
-	IF(j==1) j = j+1
-			
+        IF(j==1) j = j+1
+                        
          mT2 = (eostable(i,j-1,2) - eostable(i,j,2))/ &
               (cstab(i,j-1) - cstab(i,j))
          cT2 = eostable(i,j,2) - mT2*cstab(i,j)
@@ -301,13 +301,13 @@ END SUBROUTINE get_eos_info
               (cstab(i,j-1) - cstab(i,j))
          cmu2 = eostable(i,j,4) - mmu2*cstab(i,j)
          mu2 = mmu2*cs + cmu2
-		 
+                 
          mkap2 = (eostable(i,j-1,6) - eostable(i,j,6))/ &
               (cstab(i,j-1) - cstab(i,j))
          ckap2 = eostable(i,j,6) - mkap2*cstab(i,j)
          kap2 = mkap2*cs + ckap2
-		 
-	 mkbar2 = (eostable(i,j-1,5) - eostable(i,j,5))/ &
+                 
+         mkbar2 = (eostable(i,j-1,5) - eostable(i,j,5))/ &
               (cstab(i,j-1) - cstab(i,j))
          ckbar2 = eostable(i,j,5) - mkbar2*cstab(i,j)
          kbar2 = mkbar2*cs + ckbar2
@@ -320,12 +320,12 @@ END SUBROUTINE get_eos_info
          mmu = (mu2 - mu1) / (eostable(i,1,1)-eostable(i-1,1,1))
          cmu = mu2 - mmu*eostable(i,1,1)
          gammamuT(2) = mmu*rho + cmu
-		 
-	mkap = (kap2 - kap1) / (eostable(i,1,1)-eostable(i-1,1,1))
+                 
+        mkap = (kap2 - kap1) / (eostable(i,1,1)-eostable(i-1,1,1))
          ckap = kap2 - mkap*eostable(i,1,1)
          gammamuT(4) = mkap*rho + ckap
-		 
-	mkbar = (kbar2 - kbar1) / (eostable(i,1,1)-eostable(i-1,1,1))
+                 
+        mkbar = (kbar2 - kbar1) / (eostable(i,1,1)-eostable(i-1,1,1))
          ckbar = kbar2 - mkbar*eostable(i,1,1)
          gammamuT(5) = mkbar*rho + ckbar
 

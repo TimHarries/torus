@@ -1093,7 +1093,7 @@ CONTAINS
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
     CASE ("cassandra")
-       CALL cassandraDisc(thisOctal, subcell ,grid)
+       CALL cassandraDisc(thisOctal, subcell)
 
 
 
@@ -5053,7 +5053,7 @@ CONTAINS
 
           rVec = subcellCentre(thisOCtal,subcell)
           r = sqrt(rvec%x**2 + rVec%y**2)
-          z = r*tan(20.d0*degtorad)
+          z = real(r*tan(20.d0*degtorad))
           if (atan2(abs(rVec%z),r)*radtodeg < 30.d0) then
              if (z/thisOctal%subcellSize < 10.d0) split = .true.
           endif
@@ -11596,19 +11596,18 @@ end function readparameterfrom2dmap
 
   end subroutine shakaraDisk
 
-  subroutine cassandraDisc(thisOctal, subcell, grid)
+  subroutine cassandraDisc(thisOctal, subcell)
     use eos_mod
     use inputs_mod, only : tMinGlobal, mCore, molecularPhysics, molAbundance, vturb, mStar, metallicity, mDot
     type(OCTAL) :: thisOctal
     integer :: subcell
-    type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, vVEc, zAxis
     real(double) :: x, y, z,  rho, T, omega
     real(double) :: r
     rVec = subcellCentre(thisOctal, subcell)
 
 
-   mcore = mstar * msol
+   mcore = real(mstar * msol)
    x = rVec%x * 1.d10 / autocm
    y = rVec%y * 1.d10 / autocm
    z = rVec%z * 1.d10 / autocm
@@ -11622,7 +11621,7 @@ end function readparameterfrom2dmap
       CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,Omega)
 
       thisOctal%rho(subcell) = max(rho,1.d-24)
-      thisOctal%temperature(subcell) = T
+      thisOctal%temperature(subcell) = real(T)
       zAxis = VECTOR(0.d0, 0.d0, 1.d0)
       vVec = rVec .cross. zAxis
       call normalize(vVec)
@@ -11648,7 +11647,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, rhoFid, thisRSub,z,fac, rho, dustSettling, scaleFac, hGas, hDust
+    real(double) :: r, rd, rhoFid, thisRSub,z,fac, rho, dustSettling, scaleFac, hGas, hDust
     TYPE(vector) :: rVec
     
     type(VECTOR),save :: velocitysum

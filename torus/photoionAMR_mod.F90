@@ -87,7 +87,8 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, mstarburst, burstTime, starburst, inputseed
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
+         mstarburst, burstTime, starburst, inputseed
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -1027,7 +1028,8 @@ contains
              globalnSource = 0
              call createSources(globalnSource, globalSourceArray, "instantaneous", 0.d0, mStarburst, 0.d0)
              call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
-             if (doselfgrav.and.(myrankGlobal/=0)) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+             if (doselfgrav.and.(myrankGlobal/=0)) &
+                  call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
              call randomNumberGenerator(randomSeed = .true.)
              write(*,*) myrankGlobal, " setting up sources done"
           endif

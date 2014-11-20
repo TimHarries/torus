@@ -3223,10 +3223,6 @@ contains
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
        
-<<<<<<< .mine
-
-
-=======
 ! Set observer orientation for molecular_mod. This is only required for the far field case
 ! when using molecular or 21cm physics. 
 molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm)) then 
@@ -3262,7 +3258,6 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     end if molecular_orientation
 
->>>>>>> .r4437
 ! Set up values in datacube_mod
     call setCubeParams(npixels, cubeAspectRatio, WV_background)
 

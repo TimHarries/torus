@@ -709,7 +709,7 @@ module image_mod
                 do j = 1, image%ny
                    xt = (( image%xAxisCentre(i) * 1.d10)/objectDistance)*radiansToArcsec
                    yt = (( image%yAxisCentre(j) * 1.d10)/objectDistance)*radiansToArcsec
-                   array(i,j) = array(i,j) * fourPi * (xt**2 + yt**2) /starFlux 
+                   array(i,j) = array(i,j) * real(fourPi * (xt**2 + yt**2) /starFlux )
                 enddo
              enddo
 

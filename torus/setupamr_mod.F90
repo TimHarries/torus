@@ -85,7 +85,6 @@ contains
     real, pointer :: xVel(:,:,:) => null()
     real, pointer :: yVel(:,:,:) => null()
     real, pointer :: zVel(:,:,:) => null()
-    type(VECTOR), allocatable :: myTurbBox(:,:,:)
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass

@@ -165,15 +165,17 @@ contains
     allocate(zvel(1:nGrid,1:nGrid,1:nGrid))
 
 
-    open(21, file=turbvelfilex, status="old", iostat=ierr, form="unformatted", convert="BIG_ENDIAN")
+    open(21, file=turbvelfilex, status="old", iostat=ierr, form="unformatted")
     if(ierr /= 0) then
        print *, "Trouble opening " //turbvelfilex
     end if
-    open(22, file=turbvelfiley, status="old", iostat=ierr, form="unformatted", convert="BIG_ENDIAN")
+    open(22, file=turbvelfiley, status="old", iostat=ierr, form="unformatted")
+
     if(ierr /= 0) then
        print *, "Trouble opening " //turbvelfiley
     end if
-    open(23, file=turbvelfilez, status="old", iostat=ierr, form="unformatted", convert="BIG_ENDIAN")
+    open(23, file=turbvelfilez, status="old", iostat=ierr, form="unformatted")
+
     if(ierr /= 0) then
        print *, "Trouble opening " //turbvelfilez
     end if
