@@ -5,7 +5,7 @@ implicit none
 real, parameter :: gridSize = 1.e19 
 real, parameter :: r_c = 3.e8  !cylinder radius (10^10cm)
 integer, parameter :: nLines = 201
-integer,parameter :: tolerance = 5
+integer,parameter :: tolerance = 6
 real, parameter :: n_sigma=3.0 
 real :: A_p(nLines)         !Torus pixel value
 real :: E_p(nLines)         !Torus sampling Error
