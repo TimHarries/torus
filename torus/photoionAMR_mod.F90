@@ -1894,10 +1894,10 @@ end subroutine radiationHydro
 !                if (writeoutput) write(*,*) "r1, r2 ",maxDiffRadius1(isource), maxDiffRadius2(iSource)
                 maxDiffRadius(isource) = (maxDiffRadius1(isource) +  maxDiffRadius2(iSource))/2.d0
              else
-!                if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
-                maxDiffRadius(isource) = maxDiffRadius1(isource)
+                if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
+               maxDiffRadius(isource) = maxDiffRadius1(isource)
              endif
-!             if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
+             if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
 
           
