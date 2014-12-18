@@ -116,7 +116,10 @@ contains
        do j = nMuMie, 1, -1
           mu = 2.*real(j-1)/real(nMumie-1)-1.
           ang = acos(mu) * real(radtoDeg)
-          write(23,'(f9.2,f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
+          write(23,'(f9.2,4f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1), &
+               -miePhase(2,k,j)%element(1,2)/miePhase(2,k,j)%element(1,1), &
+               -miePhase(3,k,j)%element(1,2)/miePhase(3,k,j)%element(1,1), &
+               -miePhase(4,k,j)%element(1,2)/miePhase(4,k,j)%element(1,1)
        enddo
        close(23)
     enddo
@@ -1040,7 +1043,7 @@ contains
     real :: underCorrect 
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
-    integer :: subcell, i
+    integer :: subcell, i, j
 
     underCorrect = 1.
 
@@ -1065,55 +1068,57 @@ contains
           end do
        else
 
-          temperature = thisOctal%temperature(subcell)
-          if (present(subTemp)) then
-             sublimationTemp = real(subTemp)
-          else
-             sublimationTemp = real(max(700.d0,tSub * thisOctal%rho(subcell)**(1.95d-2)))
-          endif
+          do j = 1, nDustType
+             temperature = thisOctal%temperature(subcell)
+             if (present(subTemp)) then
+                sublimationTemp = real(subTemp)
+             else
+                sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(1.95d-2)))
+             endif
 
-          if (tThresh /= 0.) sublimationTemp = tThresh
+             if (tThresh /= 0.) sublimationTemp = tThresh
+             if (temperature < sublimationTemp) newFrac = 1.
 
-          if (temperature < sublimationTemp) newFrac = 1.
-
-
-          if (temperature >= sublimationTemp) then
-             newfrac = 0.5d0 * exp(-dble((temperature-sublimationtemp)/subRange))
-          else
-             newfrac = 1.d0 - 0.5d0 * exp(dble((temperature-sublimationtemp)/subRange))
-          endif
-
-
-          newfrac = max(newfrac,smallVal)
-
-          deltaFrac = newFrac - thisOctal%oldFrac(subcell)
-
-          frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
-
-          frac = max(frac, smallVal)
+             
+             if (temperature >= sublimationTemp) then
+                newfrac = 0.5d0 * exp(-dble((temperature-sublimationtemp)/subRange))
+             else
+                newfrac = 1.d0 - 0.5d0 * exp(dble((temperature-sublimationtemp)/subRange))
+             endif
 
 
-          if (.not.associated(thisOctal%origDustTypeFraction)) then
-             allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
-             do i = 1, thisOctal%maxChildren
-                thisOctal%origDustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
-             enddo
-          endif
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%origDustTypeFraction(subcell,1:nDustType) * frac
+             newfrac = max(newfrac,smallVal)
+             
+             deltaFrac = newFrac - thisOctal%oldFrac(subcell)
+             
+             frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
+             
+             frac = max(frac, smallVal)
 
 
-          call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
-          call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+             if (.not.associated(thisOctal%origDustTypeFraction)) then
+                allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+                do i = 1, thisOctal%maxChildren
+                   thisOctal%origDustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
+                enddo
+             endif
+             thisOctal%dustTypeFraction(subcell,j) = thisOctal%origDustTypeFraction(subcell,j) * frac
 
-          thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
-          if (thisTau > tauMax) then
-             frac = tauMax / thisTau 
-             thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac
-          endif
-          
+
+
+             call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
+             call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+
+             thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+             if (thisTau > tauMax) then
+                frac = tauMax / thisTau 
+                thisOctal%dustTypeFraction(subcell,j) = thisOctal%dustTypeFraction(subcell,j) * frac
+             endif
+          enddo
           where (thisOctal%dustTypeFraction(subcell,1:nDustType) < 1.d-20) 
              thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-20
           end where
+          
           if (deltaFrac /= 0.) then
              nfrac = nfrac + 1
              totFrac = totFrac + real(abs(deltaFrac))
@@ -1397,6 +1402,7 @@ contains
   subroutine readDust(dustfile, iDustType, grid, xArray, nLambda, miePhase, nMuMie)
     use phasematrix_mod, only : phasematrix
     character(len=*) :: dustFile
+    character(len=80) :: mieFile
     type(GRIDTYPE) :: grid
     real :: xarray(:)
     integer :: nLambda, iDustType
@@ -1430,6 +1436,7 @@ contains
          ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
+    character(len=80) :: mieFile
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
 !    type(VECTOR) :: uHat, uNew, vec_tmp
 !    real(double) :: cosang
@@ -1538,8 +1545,9 @@ contains
           
        else
 
-       if (readMiePhase) then
-          open(144, file='miephasefile', status="old", form="unformatted")
+       if (readMiePhase.and.(nLambda>1)) then
+          write(miefile,'(a,i3.3,a)') "miephasefile",nLambda,".dat"
+          open(144, file=miefile, status="old", form="unformatted")
           read(unit=144) miePhase
           close(144)
 
@@ -1669,8 +1677,9 @@ contains
           deallocate(mImg)
        endif
     endif
-       if (writeMiePhase) then
-          open(144, file='miephasefile', status="replace", form="unformatted")
+       if (writeMiePhase.and.writeoutput.and.(nlambda>1)) then
+          write(miefile,'(a,i3.3,a)') "miephasefile",nLambda,".dat"
+          open(144, file=mieFile, status="replace", form="unformatted")
           write(unit=144) miePhase
           close(144)
        end if

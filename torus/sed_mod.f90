@@ -8,7 +8,7 @@ module sed_mod
   logical, public, save :: SedInJansky
   logical, public, save :: SedInSiUnits
   logical, public, save :: SedInLambdaFLambda
-
+  logical, public, save :: SedlambdaInMicrons
 ! Which inclinations to use
   integer, private, save :: SedNInc 
   real, private, save, allocatable :: SedInclinations(:)
@@ -26,13 +26,13 @@ module sed_mod
 
 contains
 
-  subroutine setSedParameters(fileName,jansky,SIsed,sed, firstPA, lastPA, &
+  subroutine setSedParameters(fileName,jansky,SIsed,sed, lambdaInMicrons, firstPA, lastPA, &
        nInclination,firstInc,LastInc,cosSpacing,incList,PAlist,thisInclination, thisPA)
     use kind_mod
     use messages_mod
     use constants_mod
 
-    logical, intent(in) :: jansky, SIsed, sed
+    logical, intent(in) :: jansky, SIsed, sed, lambdaInMicrons
     integer, intent(in), optional :: nInclination
     real, intent(in), optional    :: firstInc, LastInc
     real, intent(in)              :: firstPA, lastPA ! Don't need to be optional, default to zero if not required
@@ -54,7 +54,7 @@ contains
     SedInJansky        = jansky
     SedInSiUnits       = SIsed
     SedInLambdaFLambda = sed
-
+    SedLambdaInMicrons = lambdaInMicrons
 ! Set up array of inclinations, either using the supplied list of values 
 ! or calculate from first, last and number of values. 
     if (present(incList)) then 

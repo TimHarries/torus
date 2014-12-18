@@ -1214,6 +1214,7 @@ contains
   end subroutine writeValue
 
   subroutine writeVTKfileSource(nSource, source, vtkFilename)
+    use inputs_mod, only : novtkgrid
     use source_mod
     use mpi_global_mod
     integer :: nSource
@@ -1226,6 +1227,8 @@ contains
     real(double) :: dphi, dtheta
     integer :: nCount
     
+    if(noVtkGrid) return
+
 
     if (myrankWorldGlobal /=0 ) goto 666
     zAxis = VECTOR(0.d0, 0.d0, 1.d0)

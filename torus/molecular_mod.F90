@@ -1018,6 +1018,12 @@ module molecular_mod
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
+      call writeVTKfile(grid, "initial.vtk", valueTypeString=(/"J=0         ",&
+           "J=1         ", "J=2         ", "J=3         ", "J=4         ", "J=5         ", "rho         ", &
+           "molabundance"/))
+
+
+
 ! Useful temporary file containing the depth of each array - filled in allocate molecularlevels
      if(debug) then
         do i = 1, 50

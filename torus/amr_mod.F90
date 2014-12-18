@@ -3532,7 +3532,7 @@ CONTAINS
     use inputs_mod, only : inputnsource, sourcepos, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc
-    use inputs_mod, only : discWind, planetDisc, sourceMass
+    use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -5057,6 +5057,7 @@ CONTAINS
           if (atan2(abs(rVec%z),r)*radtodeg < 30.d0) then
              if (z/thisOctal%subcellSize < 10.d0) split = .true.
           endif
+          if (modulus(rVec) < thisOctal%subcellSize) split = .true.
 
        case("shakara","aksco","HD169142","MWC275")
           ! used to be 5
@@ -5066,7 +5067,14 @@ CONTAINS
           r = sqrt(cellcentre%x**2 + cellcentre%y**2)
           thisHeightSplitFac = heightSplitFac
           if (r < rSublimation) thisheightSplitFac = 1.
+
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          if (grid%geometry=="HD169142") then
+             hr = (10.d0*autocm/1.d10) * (r/(100.d0*autocm/1.d10))**betaDisc
+             if ((modulus(cellCentre) > rInner).and.(modulus(cellCentre)<rGapInner1)) then
+                if (cellSize > (rGapInner1-rInner)/10.d0) split = .true.
+             endif
+          endif
           
           if ((r > rSublimation).and.(grid%geometry=="MWC275")) then
              fac = exp(-abs(r - rSublimation)/(rSublimation))
@@ -5093,7 +5101,7 @@ CONTAINS
                 endif
              endif
           
-          if ((r+cellsize/2.d0) < rInner) split = .false.
+          if ((modulus(cellCentre)+cellsize/2.d0) < rInner) split = .false.
           if ((r-cellsize/2.d0) > Router) split = .false.
           
           !      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
@@ -11728,17 +11736,17 @@ end function readparameterfrom2dmap
           hDust = dustSettling * hGas
        endif
 
-       scalefac  = grainFrac(1) * hGas / sqrt(hDust**2 + hGas**2)
+       scalefac  = hGas / sqrt(hDust**2 + hGas**2)
 
        fac = exp(-0.5d0 * (z/hDust)**2)
-       if (r < rGapInner2) then
-          thisOctal%dustTypeFraction(subcell,1) = scaleFac
-          thisOctal%dustTypeFraction(subcell,3) = scaleFac
+       if (r < rGapInner1) then
+          thisOctal%dustTypeFraction(subcell,1) = scaleFac * grainFrac(1)
+          thisOctal%dustTypeFraction(subcell,3) = scaleFac * grainFrac(3)
        else
-          thisOctal%dustTypeFraction(subcell,1) = fac * scalefac
-          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac
-          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac
-          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac
+          thisOctal%dustTypeFraction(subcell,1) = fac * scalefac * grainFrac(1)
+          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
+          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac * grainFrac(2)
+          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
        endif
 
        rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)

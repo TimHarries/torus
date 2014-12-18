@@ -2476,7 +2476,6 @@ CONTAINS
                  absorbed = .true.
               endif
 
-
 !              thisPhoton%stokes = thisPhoton%stokes * albedo  ! weight adjusted here!!!
 
               if (thisPhoton%stokes%i < reallySmall) then
@@ -3365,7 +3364,7 @@ end subroutine rdintpro
        write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
        call writeInfo(message, TRIVIAL)
 
-       tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
+       sedlambdainmicrons = .true.
 
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
@@ -3374,6 +3373,10 @@ end subroutine rdintpro
        stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda) * 10.
     else 
        tmpXarray = xArray
+    endif
+
+    if (sedlambdainmicrons) then
+       tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
     endif
 
     if (velocitySpace) then

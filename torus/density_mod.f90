@@ -1092,6 +1092,7 @@ contains
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, rGapInner1, rGapOuter1, rhoGap1, rhogap2, rhoAmbient
     use inputs_mod, only :   rGapInner2, rGapOuter2, heightInner, ringHeight, heightOuter
+    use inputs_mod, only : envAngle, envRho
     use utils_mod, only: solveQuad
 
     TYPE(VECTOR), INTENT(IN) :: point
@@ -1105,6 +1106,7 @@ contains
     logical :: ok
     real :: x1, x2
 
+    
 
     if (firstTime) then
 
@@ -1154,11 +1156,13 @@ contains
           h = heightInner * (r / rInner)**betaDisc
        endif
 
+
+
        if ((r > rGapOuter1).and.(r < rGapInner2)) then
           h = ringHeight * (r / rGapOuter1)**betaDisc
        endif
 
-       if (r > rGapOuter2) then
+       if (r > rGapInner2) then
           h = heightOuter * (r / rGapOuter2)**betaDisc
        endif
           
@@ -1185,6 +1189,11 @@ contains
     endif
     
 
+       if ((modulus(point)>rInner).and.(modulus(point)  < rGapInner1).and.(atan2(abs(point%z),point%x) < envAngle)) then
+          rhoOut = max(rhoOut, envRho)
+       endif
+
+
 !    basic gap
 
     if ((r < rGapOuter1).and.(r > rGapInner1)) then
@@ -1201,13 +1210,7 @@ contains
 
     if ((r < rGapOuter2).and.(r > rGapInner2)) then
 
-
-
-       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
-       fac = max(-50.d0,fac)
-       rhoOut =  rhoGap2 * exp(fac)
-
+       rhoOut =  rhoGap2 * rhoOut
 
     endif
 

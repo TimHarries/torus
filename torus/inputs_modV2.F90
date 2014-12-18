@@ -1488,18 +1488,25 @@ contains
        call getReal("ringheight", ringHeight, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height of inner disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
+
+
+       call getDouble("envangle", envAngle, degToRad, cLine, fLine, nLines, &
+            "Half opening angle of envelope (deg): ","(a,1pe8.2,a)",1.d0,ok,.true.)
+
+       call getDouble("envrho", envRho, 1.d0, cLine, fLine, nLines, &
+            "Envelope density (g/cc): ","(a,1pe8.2,a)",1.d0,ok,.true.)
+
        call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
             "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
 
        call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
             "Disc mass (solar masses): ","(a,f8.4,a)", 1.e-4, ok, .true.)
 
-       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
-            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
 
        call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
             "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
+       alphaDisc = betaDisc + 1.d0
        call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
             "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -2015,7 +2022,7 @@ contains
     real :: grainFracTotal
     integer :: i
     character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, grainDensityLabel, &
-         aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel
+         aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel, tsubLabel
 
        oneKappa = .true.
 
@@ -2040,6 +2047,13 @@ contains
        call getLogical("writedust", writeDustToFile, cLine, fLine, nLines, &
          "Write dust opacities and phase matrices to file: ","(a,1l,1x,a)", .false., ok, .false.)
 
+
+       call getLogical("writemiephase", writeMiePhase, cLine, fLine, nLines, &
+            "Write mie scattering phase file: ","(a,1l,1x,a)",.false., ok, .false.)
+
+       call getLogical("readmiephase", readMiePhase, cLine, fLine, nLines, &
+            "Read mie scattering phase file: ","(a,1l,1x,a)",.false., ok, .false.)
+
        call getLogical("dustfile", dustfile, cLine, fline, nLines, &
             "Get dust properties from file: ","(a,1l,1x,a)", .false., ok, .false.)
        if (dustfile) then
@@ -2055,6 +2069,7 @@ contains
           do i = 1, nDustType
              write(grainTypeLabel, '(a,i1.1)') "graintype",i
              write(grainFracLabel, '(a,i1.1)') "grainfrac",i
+             write(tsubLabel, '(a,i1.1)') "tsub",i
              write(grainDensityLabel, '(a,i1.1)') "graindensity",i
              write(aMinLabel, '(a,i1.1)') "amin",i
              write(aMaxLabel, '(a,i1.1)') "amax",i
@@ -2080,6 +2095,9 @@ contains
              call getReal(fillingFactorLabel, porousFillingFactor(i), 1., cLine, fLine, nLines, &
                   "Porosity: ","(a,f5.2,1x,a)", 0. , ok, .false.)
 
+
+             call getDouble(tsublabel, tsub(i), 1.d0, cLine, fLine, nLines, &
+                  "Temperature for dust sublimation (K):  ","(a,e12.3,1x,a)", 2000.d0, ok, .false.)
 
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
@@ -2459,6 +2477,9 @@ contains
 
           call getReal("fracCOdepletion", x_D, 1., cLine, fLine, nLines, &
                "Fraction of CO depletion", "(a,f5.3,a)", 0.1, ok, .true.)
+
+          call getReal("fracCOnormal", x_0, 1., cLine, fLine, nLines, &
+               "Fraction of CO normal level", "(a,f5.3,a)", 0.1, ok, .true.)
           
        endif
 
@@ -2715,9 +2736,6 @@ contains
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
-
-    call getDouble("tsub", tsub, 1.d0, cLine, fLine, nLines, &
-            "Temperature factor for dust sublimation (K):  ","(a,e12.3,1x,a)", 2000.d0, ok, .false.)
 
     call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
          "Dust sublimation temperature (K): ","(a,f8.2,a)", 0., ok, .false.)
@@ -3686,7 +3704,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     integer :: nLines
     logical :: ok, isRange
     character(len=80) :: message
-    logical :: sed, jansky, SIsed, uniformInCos
+    logical :: sed, jansky, SIsed, uniformInCos, lambdaInMicrons
     integer :: nInclination
     real    :: firstInclination, firstPA=0.0
     real    :: lastInclination=80.0, lastPA=0.0
@@ -3811,6 +3829,9 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
     call getLogical("jansky", jansky, cLine, fLine, nLines, &
          "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("lambdainmicrons", lambdainmicrons, cLine, fLine, nLines, &
+         "Write wavelength array in microns: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getReal("sedlammin", SEDlamMin, 1.0e4, cLine, fLine, nLines, &
          "Minimum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 0.1, ok, .false.)
 
@@ -3849,15 +3870,15 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
          "SED inclinations are uniform in cos(inc): ","(a,1l,1x,a)", .true., ok, .false.)
 
     if (allocated(inclinations)) then 
-       call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, incList=inclinations, PAlist=posangs)
+       call setSedParameters(outFile,jansky,SIsed,sed, lambdaInMicrons, firstPA, lastPA, incList=inclinations, PAlist=posangs)
        deallocate(inclinations)
        deallocate(posangs)
     else
        if (nInclination > 1) then
-          call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
+          call setSedParameters(outFile,jansky,SIsed,sed, lambdaInMicrons, firstPA, lastPA, nInclination=nInclination,&
                firstInc=firstInclination,LastInc=LastInclination, cosSpacing=UniformInCos)
        else
-          call setSedParameters(outFile,jansky,SIsed,sed, firstPA, lastPA, nInclination=nInclination,&
+          call setSedParameters(outFile,jansky,SIsed,sed, lambdaInMicrons, firstPA, lastPA, nInclination=nInclination,&
                firstinc=FirstInclination,lastInc=LastInclination,thisInclination=thisInclination, thisPA=thisPA)
        endif
     end if

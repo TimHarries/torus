@@ -52,6 +52,8 @@ program torus
   implicit none
 
   character(len=80) :: message
+  character(len=10) :: stringArray(10)
+  integer :: i
   type(GRIDTYPE) :: grid
   type(VECTOR) :: box(64,64,64)
 #ifdef MPI
@@ -151,6 +153,16 @@ program torus
 !        write(*,*) "OMP THREAD NUMBER ",omp_get_thread_num()
 
        call writeVtkFile(grid, "rho.vtk")
+
+       if (dustPhysics) then
+          if (nDustType >= 1) then
+             do i = 1, nDustType
+                write(stringArray(i),'(a,i1.1)') "dust",i
+             enddo
+             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+          endif
+       endif
+
 !       call writeVtkFile(grid, "mpi.vtk",valueTypeString=(/"rho        ","mpithread        "/))
     endif
      call setupGlobalSources(grid)

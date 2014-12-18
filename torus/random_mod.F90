@@ -558,7 +558,7 @@ contains
        allocate(prob(1:(n+1)))
        prob = 0.
        do i = 2, n+1
-          prob(i) = prob(i-1) + array(n)
+          prob(i) = prob(i-1) + array(i-1)
        enddo
        prob = prob / prob(n+1)
        call randomNumberGenerator(getDouble=r)
