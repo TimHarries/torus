@@ -936,7 +936,7 @@ contains
       complex b,z,cm,ci,hkl(10000001),an,amat(10000000),f(1000000),g(1000000) !tjh
       common /cfcom/ f,g,cnrm
 !      dimension cnrm(1000)
-      real :: cnrm(10000000) ! tjh, real declaration dma
+      real :: cnrm(1000000) ! tjh, real declaration dma
       real :: x, xc, bj, bjm, rf, rn
       integer :: nc, nci, n, nmx
       hkl = 0
