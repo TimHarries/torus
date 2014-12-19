@@ -1402,7 +1402,6 @@ contains
   subroutine readDust(dustfile, iDustType, grid, xArray, nLambda, miePhase, nMuMie)
     use phasematrix_mod, only : phasematrix
     character(len=*) :: dustFile
-    character(len=80) :: mieFile
     type(GRIDTYPE) :: grid
     real :: xarray(:)
     integer :: nLambda, iDustType
