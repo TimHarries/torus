@@ -116,10 +116,10 @@ contains
        do j = nMuMie, 1, -1
           mu = 2.*real(j-1)/real(nMumie-1)-1.
           ang = acos(mu) * real(radtoDeg)
-          write(23,'(f9.2,4f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1), &
-               -miePhase(2,k,j)%element(1,2)/miePhase(2,k,j)%element(1,1), &
-               -miePhase(3,k,j)%element(1,2)/miePhase(3,k,j)%element(1,1), &
-               -miePhase(4,k,j)%element(1,2)/miePhase(4,k,j)%element(1,1)
+          write(23,'(f9.2,4f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1) 
+!               -miePhase(2,k,j)%element(1,2)/miePhase(2,k,j)%element(1,1), &
+!               -miePhase(3,k,j)%element(1,2)/miePhase(3,k,j)%element(1,1), &
+!               -miePhase(4,k,j)%element(1,2)/miePhase(4,k,j)%element(1,1)
        enddo
        close(23)
     enddo

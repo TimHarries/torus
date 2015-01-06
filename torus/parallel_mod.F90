@@ -40,7 +40,7 @@ contains
         !    ^ outdated, but required to work with MPI wrapper 
     !integer :: errorLength
     integer :: count
-
+    blockhandout = .false.
 
     if (present(setDebug)) then
       debugInfo = setDebug
@@ -199,6 +199,7 @@ contains
     !integer :: errorLength
     integer :: count
 
+    blockHandout = .false.
 
     if (present(setDebug)) then
       debugInfo = setDebug

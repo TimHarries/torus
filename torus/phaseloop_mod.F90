@@ -3268,7 +3268,17 @@ end subroutine rdintpro
 
     allocate(yMedian(1:nLambda))
 
+    if (SedInSiUnits) then
+       sedlambdainmicrons = .true.
+    endif
+
+    tmpXarray = xarray
     yMedian = yArray
+
+
+    if (sedlambdainmicrons) then
+       tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
+    endif
 
 
     if (normalizeSpectrum) then
@@ -3364,20 +3374,13 @@ end subroutine rdintpro
        write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
        call writeInfo(message, TRIVIAL)
 
-       sedlambdainmicrons = .true.
-
        stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_u(1:nLambda) = stokes_u(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda) * 10.
        stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda) * 10.
-    else 
-       tmpXarray = xArray
     endif
 
-    if (sedlambdainmicrons) then
-       tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
-    endif
 
     if (velocitySpace) then
        tmpXarray(1:nLambda) = real(cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5) ! wavelength to km/s
