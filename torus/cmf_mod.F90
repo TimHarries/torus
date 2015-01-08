@@ -3832,8 +3832,7 @@ contains
     endif
 
 
-    call addSpatialAxes(cube, -dble(imageSide/2.), dble(imageSide/2.), &
-         -dble(imageSide/2.), dble(imageSide/2.), griddistance)
+    call addSpatialAxes(cube, -dble(imageSide/2.), dble(imageSide/2.), griddistance)
 
 
     if (myRankGlobal == 0) then

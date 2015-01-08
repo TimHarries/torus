@@ -50,6 +50,7 @@ module datacube_mod
   integer, save          :: npixels  ! 
   integer, save, private :: npixelsX ! number of spatial pixels in x-axis
   integer, save, private :: npixelsY ! number of spatial pixels in y-axis
+  real, save, private    :: axisRatio ! ratio of npixelsX to npixelsY
 
   logical, save, private :: useFixedBg
   real, save, private    :: fixedBg
@@ -62,8 +63,9 @@ contains
     real, intent(in)    :: aspectRatio 
     real, intent(in)    :: WV_background
 
-    npixelsX = int(npix_in * aspectratio)
-    npixelsY = npixels
+    npixelsX  = int(npix_in * aspectratio)
+    npixelsY  = npixels
+    axisRatio = aspectratio
 
 ! Set background to subtract when generating moment maps
 ! Negative values of WV_background set the bg to the minimum value in the data cube
@@ -652,14 +654,20 @@ contains
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
-  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax, griddistance, smallestCell)
+! The axis ratio is taken into account so only need to pass in the y-axis min/max
+  subroutine addSpatialAxes(cube, yMin, yMax, griddistance, smallestCell)
     use constants_mod
     type(DATACUBE) :: cube
-    real(double) :: xMin, xMax, yMax, yMin, dx, dy, dxInCm
+    real(double), intent(in) :: yMax, yMin
+    real(double) :: xMin, xMax, dx, dy, dxInCm
     integer :: i
     character(len=100) :: message
     real, intent(in) :: gridDistance
     real(double), intent(in), optional :: smallestCell ! In Torus units
+
+! Calculate xMin and xMax from the axis ratio 
+    xMin = yMin * axisRatio
+    xMax = yMax * axisRatio
 
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
@@ -737,6 +745,9 @@ contains
        cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / 100.0
        cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / 100.0 
        cube%xUnit    = "m"
+
+    case('torus')
+       continue
 
     case DEFAULT 
        call writewarning('Unrecognised unit in convertSpatialAxes')

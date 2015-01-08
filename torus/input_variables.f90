@@ -430,14 +430,15 @@
   logical :: monteCarloRT
   real(double) :: minVel, maxVel ! for molecular_mod and angularImage_mod
   type(VECTOR) :: imageOrigin
-  real :: imageside    ! data cube size for molecular_mod and angularImage_mod
+  real, protected :: imageside    ! data cube size for molecular_mod and angularImage_mod
   integer :: ncubes ! number of data cubes
   integer :: nv ! number of velocity channels
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
   real :: gridDistance ! distance of observer for images, SEDs etc. 
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
   character(len=80) :: lambdaFilename ! wavelength file for dust cube
-  character(len=10) :: dataCubeUnits 
+  character(len=10), protected :: dataCubeUnits 
+  character(len=10), protected :: dataCubeAxisUnits
 
 !----------------------------------------------------------
 ! Geometry specific parameters (this is a large section !)

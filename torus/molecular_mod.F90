@@ -2525,7 +2525,7 @@ doNg:       if(ng) then
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
-        gridDistance, imageside, wantTau, dataCubeUnits
+        gridDistance, imageside, wantTau, dataCubeUnits, datacubeaxisunits
    use datacube_mod, only: convertIntensityToBrightnessTemperature
 #ifdef USECFITSIO
    use fits_utils_mod
@@ -2625,6 +2625,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis,revVel=.true.) 
      endif
 
+! Commented out line for removing background intensity - will want to do this one day
+!   call TranslateCubeIntensity(cube,1.d0*Tcbr) ! 
+
      select case (dataCubeUnits)
      case("flux","Flux")
 ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)     
@@ -2636,10 +2639,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         call convertIntensityToBrightnessTemperature(cube, thisWavelength)
      end select
 
-! Commented out lines are for removing background intensity - will want to do this one day
-
-!   call TranslateCubeIntensity(cube,1.d0*Tcbr) ! 
-!   call cubeIntensityToFlux(cube, thismolecule, itrans)
+     call convertspatialaxes(cube, datacubeaxisunits)
 
      if(observerpos .gt. 0) then
         if(observerpos .lt. 10) then
@@ -2718,10 +2718,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 !!!!READ ROUTINES!!!!
 
-    subroutine makeImageGrid(grid, thisMolecule, iTrans, deltaV, nsubpixels, &
+    subroutine makeImageGrid(grid, cube, thisMolecule, iTrans, deltaV, nsubpixels, &
                              ObserverVec, viewvec, imagebasis, imagegrid, ix1, ix2)
 
       type(GRIDTYPE), intent(IN) :: grid
+      type(DATACUBE), intent(IN) :: cube
       type(MOLECULETYPE), intent(IN) :: thisMolecule
       integer, intent(IN) :: itrans
       real(double), intent(IN) :: deltaV
@@ -2729,17 +2730,16 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       type(VECTOR), intent(IN) :: viewvec, ObserverVec, imagebasis(:)
       real, intent(OUT) :: imagegrid(:,:,:)
       integer, intent(in) :: ix1, ix2
-
-      real(double) :: dnpixels ! npixels as a double, save conversion
-      real(double) :: mydnpixels ! number of x pixels in this slice
       type(VECTOR) :: pixelcorner, thisPixelcorner
       integer :: subpixels
       integer :: ipixels, jpixels
 
-      dnpixels = dble(npixels) 
-      mydnpixels = dble(ix2 - ix1 + 1) 
 ! pixelcorner initialised to TOPLEFT      
-      pixelcorner = ObserverVec - (dnpixels * 0.5d0)*(imagebasis(1) - imagebasis(2)) + imagebasis(2)
+! Previous method: only works for cubes with equal sized spatial axes
+!      dnpixels    = dble(npixels) 
+!      pixelcorner = ObserverVec - (dnpixels * 0.5d0)*(imagebasis(1) - imagebasis(2)) + imagebasis(2)
+! New method allows for cubes with aspect ratios other than unity
+      pixelcorner = ObserverVec - ( dble(cube%nx)*0.5d0*imagebasis(1) - dble(cube%ny)*0.5d0*imagebasis(2) ) + imagebasis(2)
 
 ! For MPI runs move the pixel to the correct x slice, for non-MPI case ix1=1
       pixelcorner = pixelcorner + real( (ix1 - 1), kind=db) * imagebasis(1)
@@ -2750,7 +2750,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
          subpixels = 0
       endif
 
-      do jpixels = 1, npixels ! raster over image
+      do jpixels = 1, cube%ny ! raster over image
          pixelcorner = pixelcorner - imagebasis(2) 
 !$OMP PARALLEL default(shared), private(ipixels, thisPixelcorner)
 !$OMP DO
@@ -2999,10 +2999,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      else
         write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/kpctocm, " kpc"
      endif
-     call writeinfo(message, TRIVIAL) 
+     call writeinfo(message, TRIVIAL)
      write(message,'(a,1pe12.3,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
      call writeinfo(message, TRIVIAL) 
-     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0, gridDistance, &
+     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, gridDistance, &
           smallestCell=2.0_db*grid%halfsmallestsubcell)
 
      if ( present(revVel) ) then 
@@ -3028,20 +3028,20 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         ix1 = (myRankGlobal)   * (cube%nx / (nThreadsGlobal)) + 1
         ix2 = (myRankGlobal+1) * (cube%nx / (nThreadsGlobal))
         if (myRankGlobal == (nThreadsGlobal-1)) ix2 = cube%nx
-        n = (npixels*npixels)
+        n = (cube%nx*cube%ny)
         allocate(tempArray(1:n), tempArray2(1:n))
      else
         ix1 = 1
-        ix2 = npixels
+        ix2 = cube%nx
      endif
 #else
      ix1 = 1
-     ix2 = npixels
+     ix2 = cube%nx
 #endif
 
      deltaV = minVel * 1.e5/cspeed_sgl
      
-     allocate(temp(npixels,npixels,3))
+     allocate(temp(cube%nx,cube%ny,3))
 
      if(nv .ne. 0) then
  
@@ -3065,7 +3065,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
            temp = 0.d0
 
-           call makeImageGrid(grid, thisMolecule, itrans, deltaV, nSubpixels, &
+           call makeImageGrid(grid, cube, thisMolecule, itrans, deltaV, nSubpixels, &
                               ObserverVec, viewvec, imagebasis, temp, ix1, ix2)
 
            if(plotlevels .and. myrankiszero .and. debug) then
@@ -3081,17 +3081,17 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               ! Communicate intensity
               tempArray = reshape(temp(:,:,1), (/ n /))
               call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
-              temp(:,:,1) = reshape(tempArray2, (/ npixels, npixels /))
+              temp(:,:,1) = reshape(tempArray2, (/ cube%nx,cube%ny /))
               
               ! Communicate tau
               tempArray = reshape(temp(:,:,2), (/ n /))
               call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
-              temp(:,:,2) = reshape(tempArray2, (/ npixels, npixels /))
+              temp(:,:,2) = reshape(tempArray2, (/ cube%nx,cube%ny /))
               
               ! Communicate column density
               tempArray = reshape(temp(:,:,3), (/ n /))
               call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_REAL,MPI_SUM,MPI_COMM_WORLD,ierr) 
-              temp(:,:,3) = reshape(tempArray2, (/ npixels, npixels /))
+              temp(:,:,3) = reshape(tempArray2, (/ cube%nx,cube%ny /))
            endif
 #endif           
 
@@ -3104,7 +3104,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               call tune(6, message)  ! stop a stopwatch
            endif
 
-           intensitysum = sum(temp(:,:,1)) / dble(npixels**2)
+           intensitysum = sum(temp(:,:,1)) / dble(cube%nx*cube%ny)
            fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance), thisMolecule)
 
            if(iv .eq. 1) then
@@ -4838,7 +4838,7 @@ END SUBROUTINE sobseq
  subroutine make_h21cm_image(grid)
    
    use inputs_mod, only : nsubpixels, itrans, lineImage, maxRhoCalc
-   use inputs_mod, only : useDust, isInLte, lowmemory
+   use inputs_mod, only : useDust, isInLte, lowmemory, datacubeaxisunits
    use h21cm_mod, only : h21cm_lambda
 
 #ifdef USECFITSIO
@@ -4873,7 +4873,7 @@ END SUBROUTINE sobseq
 
    call createimage(cube, grid, viewvec, observerVec, thismolecule, itrans, nSubpixels, imagebasis)
 
-   call convertSpatialAxes(cube,'kpc')
+   call convertSpatialAxes(cube, datacubeaxisunits)
 
    call convertIntensityToBrightnessTemperature(cube, h21cm_lambda)
 
@@ -5499,8 +5499,8 @@ endif
    dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
    dx = (dx / (gridDistance*1e-10))**2 ! not in steradians (* 2 pi)
 
-   do ipixel = 1,npixels
-      do jpixel = 1,npixels
+   do ipixel = 1,cube%nx
+      do jpixel = 1,cube%ny
          do iv = 1,nv
             ! converting intensity to flux which is stored in intensity
             if(reverse) then

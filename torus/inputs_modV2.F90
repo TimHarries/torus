@@ -2495,6 +2495,9 @@ contains
           endif
        endif
 
+       if (setupMolecularLteOnly.and.(.not.isinlte)) &
+            call writeWarning("setupMolecularLteOnly only works when isinlte is true")
+
   end subroutine readMolecularPhysicsParameters
 
 #ifdef PHOTOION
@@ -3055,8 +3058,8 @@ contains
          "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getString("datacubefile", datacubeFilename, cLine, fLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
-    call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
-         "Image size (x10^10cm):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+    call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
+         "Data cube spatial aspect ratio: ","(a,f4.1,1x,a)", 1.0, ok, .false.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f9.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
@@ -3087,11 +3090,11 @@ contains
     ! Read parameters used by galactic plane survey 
     if ( internalView ) then 
 
+       call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
+            "Image size (degrees):","(a,1p,f7.2,1x,a)", amrGridSize, ok, .false.)
+
        call getLogical("splitCubes", splitCubes, cLine, fLine, nLines, &
             "Split intensity into +/- components: ","(a,1l,a)", .false., ok, .false.)
-
-       call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
-            "Data cube spatial aspect ratio: ","(a,f4.1,1x,a)", 1.0, ok, .false.)
 
        call getLogical("refineQ2Only", refineQ2Only, cLine, fLine, nLines, &
             "Limit refinement to 2nd quadrant:", "(a,1l,1x,a)", .false., ok, .false.)
@@ -3150,11 +3153,32 @@ contains
        end if
 
     else
-       ! Cubes other than angularimage_mod probably need to be square
-       cubeAspectRatio = 1.0
        ! Switchable units are only in molecular mod 
        call getString("datacubeunits", datacubeunits, cLine, fLine, nLines, &
             "Output datacube units: ","(a,a,1x,a)","intensity", ok, .false.)
+       call getString("datacubeaxisunits", datacubeaxisunits, cLine, fLine, nLines, &
+            "Data cube axis units: ","(a,a,1x,a)","torus", ok, .false.)
+
+       select case (datacubeaxisunits)
+          case ("torus")
+             call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
+                  "Image size (x10^10):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+          case ("pc")
+             call getReal("imageside", imageside, real(pctocm/1.0e10), cLine, fLine, nLines, &
+                  "Image size (pc):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+          case ("kpc")
+             call getReal("imageside", imageside, real(kpctocm/1.0e10), cLine, fLine, nLines, &
+                  "Image size (kpc):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+          case('au')
+             call getReal("imageside", imageside, real(autocm/1.0e10), cLine, fLine, nLines, &
+                  "Image size (au):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+          case('cm')
+             call getReal("imageside", imageside, 1.0e-10, cLine, fLine, nLines, &
+                  "Image size (cm):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+          case('m')
+             call getReal("imageside", imageside, 1.0e-8, cLine, fLine, nLines, &
+                  "Image size (m):","(a,1p,e9.3,1x,a)", amrGridSize, ok, .false.)
+          end select
 
     end if
 

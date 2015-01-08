@@ -388,8 +388,8 @@ if (.false.) then
              call setCubeParams(getImagenPixelsX(i), 1., -1.)
              call initCube(thisCube, nv=nCubeLambda)
              call addWavelengthAxis(thiscube, lambdaArray(1:nCubeLambda))
-             call addSpatialAxes(thisCube, dble(-getImageSizeX(i)/2.e10), dble(getImageSizeX(i)/2.e10), &
-                  dble(-getImageSizeY(i)/2.e10), dble(getImageSizeY(i)/2.e10), griddistance, 1.d-30)
+             call addSpatialAxes(thisCube, dble(-getImageSizeY(i)/2.e10), dble(getImageSizeY(i)/2.e10), &
+                  griddistance, 1.d-30)
              do j = 1, nCubeLambda
                 imageSlice = initImage(i)
                 nlambda = 1
