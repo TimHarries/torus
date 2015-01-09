@@ -499,7 +499,7 @@ contains
         lowMemory = .false.
         call molecularLoop(grid, globalMolecule)
         call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/"J=0       ",&
-             "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       "/))
+             "J=1       ", "J=2       ", "J=3       ", "J=4       "/))
      endif
 #endif
 

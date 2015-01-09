@@ -1187,6 +1187,10 @@ contains
             "Mass of central star (solar masses): ","(a,f7.1,a)", 1.d0, ok, .true.)
        call getreal("mdot", mDot, 1., cLine, fLine, nLines, &
             "Mass accretion rate (solar masses per year): ","(a,1p,e8.2,a)", 1., ok, .true.)
+       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+       call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 30.d0, ok, .false.)
 
        
 

@@ -1019,7 +1019,7 @@ module molecular_mod
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
       call writeVTKfile(grid, "initial.vtk", valueTypeString=(/"J=0         ",&
-           "J=1         ", "J=2         ", "J=3         ", "J=4         ", "J=5         ", "rho         ", &
+           "J=1         ", "J=2         ", "J=3         ", "J=4         ", "rho         ", &
            "molabundance"/))
 
 

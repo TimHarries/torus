@@ -5051,6 +5051,7 @@ CONTAINS
           
        case("cassandra")
 
+          splitInAzimuth = .false.
           rVec = subcellCentre(thisOCtal,subcell)
           r = sqrt(rvec%x**2 + rVec%y**2)
           z = real(r*tan(20.d0*degtorad))
@@ -5058,6 +5059,13 @@ CONTAINS
              if (z/thisOctal%subcellSize < 10.d0) split = .true.
           endif
           if (modulus(rVec) < thisOctal%subcellSize) split = .true.
+          if (thisOctal%cylindrical) then
+             dphi = returndPhi(thisOctal)
+             if (dphi > minPhiResolution) then
+                split = .true.
+                splitinAzimuth = .true.
+             endif
+          endif
 
        case("shakara","aksco","HD169142","MWC275")
           ! used to be 5
@@ -11143,7 +11151,7 @@ end function readparameterfrom2dmap
 !    write(*,*) "rvec", rvec, modulus(rvec)
 
 !    if ((r > rInner)) then !.and.(r < rOuter)) then
-       v = sqrt(6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
+       v = sqrt(6.672d-8*mcore/(max(r,1.d-10)*1d10)) ! G in cgs and M in g (from Msun)
 !    write(*,*) "v", v
  
        keplerianvelocity = VECTOR(0.d0,0.d0,1.d0) .cross. rvec
@@ -11606,7 +11614,8 @@ end function readparameterfrom2dmap
 
   subroutine cassandraDisc(thisOctal, subcell)
     use eos_mod
-    use inputs_mod, only : tMinGlobal, mCore, molecularPhysics, molAbundance, vturb, mStar, metallicity, mDot
+    use inputs_mod, only : tMinGlobal, mCore, molecularPhysics, molAbundance, vturb, &
+         mStar, metallicity, mDot, rOuter
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(VECTOR) :: rVec, vVEc, zAxis
@@ -11625,15 +11634,19 @@ end function readparameterfrom2dmap
    thisOctal%temperature(subcell) = tminglobal
    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
-   if (atan2(abs(z),(sqrt(x**2 + y**2)))*radtodeg < 30.d0) then
-      CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,Omega)
-
-      thisOctal%rho(subcell) = max(rho,1.d-24)
-      thisOctal%temperature(subcell) = real(T)
-      zAxis = VECTOR(0.d0, 0.d0, 1.d0)
-      vVec = rVec .cross. zAxis
-      call normalize(vVec)
-      thisOctal%velocity(subcell) = (r*omega/cSpeed) * vVec
+   if (sqrt(rVec%x**2 + rVec%y**2)  < rOuter) then
+      if (atan2(abs(z),(sqrt(x**2 + y**2)))*radtodeg < 30.d0) then
+         CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,Omega)
+!         rho = 1.d-23
+!         t = 3.
+!         omega = sqrt(bigG * mSol / r)/r
+         thisOctal%rho(subcell) = max(rho,1.d-24)
+         thisOctal%temperature(subcell) = real(T)
+         zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+         vVec = rVec .cross. zAxis
+         call normalize(vVec)
+         thisOctal%velocity(subcell) = (r*omega/cSpeed) * vVec
+      endif
    endif
 
     if (molecularPhysics) then

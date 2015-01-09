@@ -123,6 +123,11 @@ real(double) :: betac                          !Beta for cooling
 real(double) :: alpha                          !Gravitational alpha
 real(double) :: Mstar1,Mdot1,z1                !Local copies of (IN)
 real(double) :: Omega1                         !Local copies of (OUT)
+real(double) :: spiralA,spiralB                !a and b in spiral equation
+real(double) :: dSigma, dSigma_max             !Variation in surface density
+real(double) :: theta_s, theta_loc, phi1       !Spiral angle, current location,
+                                               !Difference between them
+real(double) :: x1,y1                          !Local copies of x and y
 integer :: iter
 !------------------------------------------------------------
 
@@ -132,6 +137,8 @@ integer :: iter
   r      = sqrt(x**2 + y**2)
   r      = r*udist
   z1     = abs(z)*udist
+  x1     = x*udist
+  y1     = y*udist
   Omega1 = sqrt(G*Mstar1/r**3)
 
   ! gammamuT columns:
@@ -156,6 +163,8 @@ integer :: iter
   ntries    = 0.0
   fine      = 0.01
   iter = 0
+
+
   DO WHILE(ABS(dT)> tolerance)
            if (iter > 20000) then
               write(*,*) "exiting after 20000 iterations ",abs(dt)
@@ -163,6 +172,8 @@ integer :: iter
            endif
            iter = iter + 1
            !Calculate sound speed assuming fixed Q
+
+
            cs = Q*pi*G*sigma/Omega1
 
            !Calculate scale height
@@ -214,6 +225,40 @@ integer :: iter
       
       Omega = Omega1
       Temp  = T
+	
+  !write(564,*)x,y,z
+  !xcart=x*cos(y)
+  !ycart=x*sin(y)	
+  !write(564,*)xcart,ycart
+
+
+  !Theta for x and y
+  if(x1 .GE. 0.0)then
+     theta_loc = asin(y1/r)
+  else
+     theta_loc = -1.*asin(y1/r) + 3.14159265359
+  end if
+
+  !Spiral stuff
+  spiralA    = 20.0
+  spiralB    = 1.0
+  r          = r/udist
+  theta_s    = (1./spiralB)*log(r/spiralA)
+  r          = r*udist
+  phi1        = theta_s - theta_loc
+
+  dSigma_max = sqrt(sqrt(alpha)**2.)*sigma
+  dSigma     = -1.*dSigma_max*cos(2.*(phi1))
+  sigma      = sigma + dSigma
+  rhomid     = sigma/(2.0*H)
+  arg        = z1/H
+  rho        = rhomid/(cosh(arg)*cosh(arg))
+  cs         = Q*pi*G*sigma/Omega1
+  !Use EoS to calculate tau, gamma, betac
+  CALL eos_cs(rho, cs)
+  Temp          = gammamuT(3)
+
+
 END SUBROUTINE get_eos_info
 
       subroutine eos_cs(rho,cs)
