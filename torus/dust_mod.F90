@@ -320,6 +320,49 @@ contains
        tempIm(1:nRef) = y2(1:n,1)
        close(20)
 
+    case("iron")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"iron.dat"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+81     continue
+       read(20,'(a)',end=82) textline
+       if (textLine(1:1) == "#") goto 81
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 81
+82     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
+
+    case("alumina")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"alumina.dat"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+91     continue
+       read(20,'(a)',end=92) textline
+       if (textLine(1:1) == "#") goto 91
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 91
+92     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
 
 
     case("pinteISM")
@@ -341,13 +384,13 @@ contains
        if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
        open(20,file=filename,status="old",form="formatted")
        n = 0
-81     continue
-       read(20,'(a)',end=82) textline
-       if (textLine(1:1) == "#") goto 81
+501     continue
+       read(20,'(a)',end=502) textline
+       if (textLine(1:1) == "#") goto 501
        n = n + 1
        read(textline,*) x(n),y1(n,1), y2(n,1)
-       goto 81
-82     continue
+       goto 501
+502     continue
        nRef = n
        allocate(lamRef(1:nRef))
        allocate(tempIm(1:nRef))
