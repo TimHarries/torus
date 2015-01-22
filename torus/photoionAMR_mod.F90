@@ -1014,6 +1014,8 @@ contains
 
           if (severeDamping) call cutVacuum(grid%octreeRoot)
 
+          if (writeoutput) write(*,*) "starburst ",starburst, "current ",grid%currentTime, &
+               " burst time ",burstTime, " nSource ",globalnSource
           if (starburst.and.(grid%currentTime > burstTime).and.(globalnSource == 0)) then
              write(*,*) myrankGlobal, " starting setting up sources"
              call randomNumberGenerator(putISeed = inputSeed)
@@ -1028,10 +1030,27 @@ contains
              globalnSource = 0
              call createSources(globalnSource, globalSourceArray, "instantaneous", 0.d0, mStarburst, 0.d0)
              call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
+
+             call writeVtkFilenBody(globalnSource, globalsourceArray, "starburst_initial.vtk")
+
+          call writeVtkFile(grid, "rho_at_starburst.vtk", &
+               valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+               "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
+               "diff         ","dust1        ","u_i          ",  &
+               "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
+               "vphi         ","jnu          ","mu           ", &
+               "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
+
+
              if (doselfgrav.and.(myrankGlobal/=0)) &
                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
              call randomNumberGenerator(randomSeed = .true.)
              write(*,*) myrankGlobal, " setting up sources done"
+             call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
+                  lamArray, 3, loopLimitTime, &
+                  looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie) 
+
+
           endif
 
 
@@ -8371,9 +8390,10 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
   real(double) :: mass, temp(3)
   type(OCTAL), pointer :: sourceOctal
   integer :: sourceSubcell
-  integer :: i
+  integer :: i, j
+  logical :: looping
   real(double), allocatable :: threadProbArray(:)
-  real(double) :: r, dv
+  real(double) :: r, dv, rhoLeft
   integer :: iThread
   integer, parameter :: tag = 66
   integer :: ierr, signal
@@ -8396,12 +8416,23 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
            call locate(threadProbArray, SIZE(threadProbArray), r, iThread)
            iThread = iThread + 1
         endif
-        signal = -99
-        call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
-        call MPI_RECV(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-        source(i)%position%x = temp(1)
-        source(i)%position%y = temp(2)
-        source(i)%position%z = temp(3)
+        looping = .true.
+        do while (looping)
+           signal = -99
+           call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+           call MPI_RECV(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           source(i)%position%x = temp(1)
+           source(i)%position%y = temp(2)
+           source(i)%position%z = temp(3)
+           looping = .false.
+           if (i > 1) then
+              do  j = 1, i-1
+                 if (modulus(source(j)%position - source(i)%position) < source(j)%accretionRadius/1.d10) then
+                    looping = .true.
+                 endif
+              enddo
+           endif
+        enddo
      enddo
      do iThread = 1, nHydroThreadsGlobal
         signal = 0
@@ -8448,11 +8479,11 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
         source(i)%velocity%y = sourceOctal%rhov(sourcesubcell)/sourceoctal%rho(sourcesubcell)
         source(i)%velocity%z = sourceOctal%rhow(sourcesubcell)/sourceoctal%rho(sourcesubcell)
         
-!        rhoLeft = max(rhoFloor, sourceOctal%rho(sourcesubcell)  - source(i)%mass/dv)
-!        sourceOctal%rho(sourcesubcell) = rhoLeft
-!        sourceOctal%rhou(sourcesubcell) = rhoLeft * source(i)%velocity%x
-!        sourceOctal%rhov(sourcesubcell) = rhoLeft * source(i)%velocity%y
-!        sourceOctal%rhow(sourcesubcell) = rhoLeft * source(i)%velocity%z
+        rhoLeft = max(rhoFloor, sourceOctal%rho(sourcesubcell)  - source(i)%mass/dv)
+        sourceOctal%rho(sourcesubcell) = rhoLeft
+        sourceOctal%rhou(sourcesubcell) = rhoLeft * source(i)%velocity%x
+        sourceOctal%rhov(sourcesubcell) = rhoLeft * source(i)%velocity%y
+        sourceOctal%rhow(sourcesubcell) = rhoLeft * source(i)%velocity%z
         
 
      enddo

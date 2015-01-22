@@ -281,6 +281,30 @@ contains
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
          "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
 
+    call getLogical("starburst", starburst, cLine, fline, nLines, &
+         "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    if (starburst) then
+       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
+            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
+
+       call getDouble("burstage", burstAge, 1.d0, cLine, fLine, nLines, &
+            "Starburst age (years): ","(a,f10.1,a)", 1000.d0, ok, .true.)
+
+
+       call getDouble("bursttime", burstTime, yearstoSecs, cLine, fLine, nLines, &
+            "Starburst time (years): ","(a,f10.1,a)", 0.d0, ok, .false.)
+
+       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
+            "Burst cluster radius (pc): ","(a,f10.2,a)", 0.d0, ok, .false.)
+
+       call getString("bursttype", burstType, cLine, fLine, nLines, &
+            "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
+    endif
+
+
+
+
     if (nBodyPhysics) then
        call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
             "End time for calculation: ","(a,e12.3,1x,a)", 1.d10, ok, .false.)
@@ -2226,27 +2250,6 @@ contains
 
 
     call writeBanner("Photon source data","#",TRIVIAL)
-
-    call getLogical("starburst", starburst, cLine, fline, nLines, &
-         "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
-
-    if (starburst) then
-       call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
-            "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
-
-       call getDouble("burstage", burstAge, 1.d0, cLine, fLine, nLines, &
-            "Starburst age (years): ","(a,f10.1,a)", 1000.d0, ok, .true.)
-
-
-       call getDouble("bursttime", burstTime, yearstoSecs, cLine, fLine, nLines, &
-            "Starburst time (years): ","(a,f10.1,a)", 0.d0, ok, .false.)
-
-       call getDouble("clusterradius", clusterRadius, pctocm, cLine, fLine, nLines, &
-            "Burst cluster radius (pc): ","(a,f10.2,a)", 0.d0, ok, .false.)
-
-       call getString("bursttype", burstType, cLine, fLine, nLines, &
-            "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
-    endif
 
 
 

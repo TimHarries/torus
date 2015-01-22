@@ -201,6 +201,7 @@ ifeq ($(SYSTEM), complexity)
     MATHTRAP=
     EXE=torus.complexity
     STATICLIBS= -Bstatic
+    CFITSIOLIBDIR= /home/dc-harr1/torus
     CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
 #    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
     ifeq ($(hdf), yes)
@@ -230,7 +231,8 @@ ifeq ($(SYSTEM), complexity)
     MATHTRAP=
     EXE=torus.complexity
     STATICLIBS= -Bstatic
-    CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
+    CFITSIOLIBDIR= /home/dc-harr1/torus
+    CFITSIOLIBS = -L${CFITSIOLIBDIR} -lcfitsio
 #    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
     ifeq ($(hdf), yes)
        F95COMP+=-I/cm/shared/apps/hdf5-par/intel/1.6.10/lib

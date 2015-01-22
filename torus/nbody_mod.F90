@@ -185,8 +185,8 @@ contains
 !       if (writeoutput) write(*,*) "Calling integrator with ",thisDt, thisTime, dt,eps
 !       call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
        call odeint(ystart, nvar, 0.d0, thisDt, 1.d-3, thisDt, 0.d0, nok, nbad, derivs, bsstep, grid, eps)
-       if (writeoutput) write(*,*) "nok ",nok, " nbad ",nbad
-       if (myrankWorldglobal == 1) write(*,*) "integrator done"
+!       if (writeoutput) write(*,*) "nok ",nok, " nbad ",nbad
+!       if (myrankWorldglobal == 1) write(*,*) "integrator done"
        
        thisTime = thisTime + thisDt
        do i = 1, nSource

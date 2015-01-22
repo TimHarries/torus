@@ -201,7 +201,7 @@ contains
       source(:)%viscosity = .false.
       source(:)%diffuse = .false.
       source(:)%outsideGrid = .false.
-
+      source(:)%prob = 1.d0/dble(nsource)
       call dumpSources(source, nSource)
     end subroutine createSources
 
