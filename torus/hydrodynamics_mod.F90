@@ -1371,18 +1371,25 @@ contains
 
           if ((.not.thisoctal%ghostcell(subcell))) then
 
+
              debug = .false.
              if (inSubcell(thisOctal, subcell, VECTOR(20d3, 0.d0, 1.14e6))) debug=.true.
              if (inSubcell(thisOctal, subcell, VECTOR(10d3, 0.d0, 1.11e6))) debug=.true.
-
              radial = .true. 
              if (abs(direction%x) < 0.1d0) then
                 radial = .false.
              endif
              rVec = subcellCentre(thisOctal,subcell)
+
              if (radial) then
                 area_i(1:2) = twoPi * ((thisOctal%x_i(subcell)-gridDistanceScale*thisOctal%subcellSize/2.d0) &
                      * thisOctal%subcellSize * gridDistanceScale)/2.d0
+!                if (thisOctal%x_i(subcell)-gridDistanceScale*thisOctal%subcellSize/2.d0 < 0.1d0*thisOctal%subcellSize*gridDistanceScale) then
+!                   write(*,*) "area on axis"
+!                   area_i(1:2) = twoPi * ((thisOctal%x_i(subcell)+gridDistanceScale*thisOctal%subcellSize/2.d0) &
+!                        * thisOctal%subcellSize * gridDistanceScale)/2.d0
+!                endif
+                   
                 area_i_plus_1(1:2) = twoPi * ((thisOctal%x_i(subcell)+gridDistanceScale*thisOctal%subcellSize/2.d0) &
                      * thisOctal%subcellSize * gridDistanceScale)/2.d0
              else
@@ -6149,7 +6156,7 @@ end subroutine sumFluxes
       call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
 
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep * secstoYears
 
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
@@ -6299,7 +6306,7 @@ end subroutine sumFluxes
       call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
 
-   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep
+   globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep * secstoYears
 
    if ((globalnSource > 0).and.(timestep > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
@@ -15874,7 +15881,7 @@ end subroutine minMaxDepth
              source(nsource)%mass = (thisOctal%rho(subcell) - rhoThreshold)*thisOctal%subcellSize**3*1.d30
              source(nsource)%radius = rsol/1.d10
              source(nSource)%accretionRadius = accretionRadius * smallestCellSize * 1.d10
-             source(nSource)%age = grid%currentTime
+             source(nSource)%age = 0.d0
              source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
@@ -16486,14 +16493,13 @@ end subroutine minMaxDepth
        sourceArray(iSource)%angMomentum = sourceArray(iSource)%angMomentum + accretedAngMomentum(iSource)
 
        sourceArray(iSource)%mdot = accretedMass(isource)/timestep
-!       if (myrankWorldGlobal == 1) then
-!          write(*,*) "source data for set ",myHydroSetGlobal
+       if (myrankWorldGlobal == 1) then
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
-!          write(*,*)  "position ",sourceArray(isource)%position
-!          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
-!          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
-!       endif
+          write(*,*)  "position ",sourceArray(isource)%position
+          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
+          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
+       endif
     enddo
     deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
 

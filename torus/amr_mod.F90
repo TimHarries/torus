@@ -9260,6 +9260,7 @@ endif
     rhoSphere = sphereMass * (3.d0+beta) / (fourPi * sphereRadius**3 * 1.d30)
     if (firstTime.and.writeoutput) then
        write(*,*) "Rho sphere ",rhosphere
+       write(*,*) "Free fall time (years): ",secstoyears* 1.d0/sqrt(rhosphere*bigg)
        firsttime=.false.
     endif
     if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)

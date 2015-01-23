@@ -74,7 +74,6 @@ module utils_mod
 
 contains
 
-
   real(double) function getGridValue(i, r1, r2, nr, logarithmic)
     integer :: i, nr
     real(double) :: r1, r2

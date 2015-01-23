@@ -2932,23 +2932,6 @@ contains
     call getLogical("readturb", readTurb, cLine, fLine, nLines, &
          "read in a turbulent velocity field from file: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if(readTurb) then
-       call getString("turbvelfilex", turbVelFilex, cLine, fLine, nLines, &
-       "Turbulent velocity field file (x): ","(a,a,1x,a)","cube_v1.dat", ok, .false.)
-       
-       call getString("turbvelfiley", turbVelFiley, cLine, fLine, nLines, &
-       "Turbulent velocity field file (y): ","(a,a,1x,a)","cube_v2.dat", ok, .false.)
-       
-       call getString("turbvelfilez", turbVelFilez, cLine, fLine, nLines, &
-       "Turbulent velocity field file (z): ","(a,a,1x,a)","cube_v3.dat", ok, .false.)
-
-       call getInteger("nturblines", nturblines, cLine, fLine, nLines, &
-       "Number of lines in turbulent velocity field file: ","(a,i2,a)", 128, ok, .false.)
-       
-       
-    end if
-
-
     call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
          "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
 

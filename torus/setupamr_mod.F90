@@ -33,7 +33,7 @@ contains
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
-    use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope
+    use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope, readTurb
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
     use disc_class, only:  new
 #ifdef ATOMIC
@@ -526,24 +526,25 @@ contains
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
           case("sphere")
-             call readgridTurbulence(nGrid, xvel, yvel, zvel)
-             call assignTurbVelocity(grid%octreeRoot, xvel, yvel, zvel, nGrid)
-             deallocate(xVel, yVel, zVel)
-             ke = 0.d0
+             if (readTurb) then
+                call readgridTurbulence(nGrid, xvel, yvel, zvel)
+                call assignTurbVelocity(grid%octreeRoot, xvel, yvel, zvel, nGrid)
+                deallocate(xVel, yVel, zVel)
+                ke = 0.d0
 #ifdef MPI
-             call findkeOverAllThreads(grid, ke)
+                call findkeOverAllThreads(grid, ke)
 #endif
-             requiredKE = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
-             if (writeoutput) write(*,*) "Gravitational potential ", requiredke
-             vScaleFac = sqrt(requiredKe / ke)
-             if (writeoutput) write(*,*) "scale fac ",vScaleFac
-             call scaleVelocityAMR(grid%octreeRoot, vScaleFac)
-             ke = 0.d0
+                requiredKE = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
+                if (writeoutput) write(*,*) "Gravitational potential ", requiredke
+                vScaleFac = sqrt(requiredKe / ke)
+                if (writeoutput) write(*,*) "scale fac ",vScaleFac
+                call scaleVelocityAMR(grid%octreeRoot, vScaleFac)
+                ke = 0.d0
 #ifdef MPI
-             call findkeOverAllThreads(grid, ke)
+                call findkeOverAllThreads(grid, ke)
 #endif
-             if (writeoutput) write(*,*) "Kinetic energy ", ke
-
+                if (writeoutput) write(*,*) "Kinetic energy ", ke
+             endif
 #ifdef MPI
           case("unisphere","gravtest")
              if (hydrodynamics) then

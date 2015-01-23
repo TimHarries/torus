@@ -1885,7 +1885,7 @@ end subroutine radiationHydro
 
        if (.not. cart2d) then
           maxDiffRadius3  = 1.d30
-          tauWanted = 5.d0
+          tauWanted = 1.d0
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, &
                   maxDiffRadius1(iSource))
@@ -8387,14 +8387,14 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
   type(GRIDTYPE) :: grid
   integer :: nSource
   type(SOURCETYPE) :: source(:)
-  real(double) :: mass, temp(3)
+  real(double) :: mass, temp(3), massInCell, starMass
   type(OCTAL), pointer :: sourceOctal
   integer :: sourceSubcell
   integer :: i, j
   logical :: looping
   real(double), allocatable :: threadProbArray(:)
   real(double) :: r, dv, rhoLeft
-  integer :: iThread
+  integer :: iThread, iter
   integer, parameter :: tag = 66
   integer :: ierr, signal
   integer :: status(MPI_STATUS_SIZE)
@@ -8402,32 +8402,37 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
 
   allocate(threadProbArray(1:nHydroThreadsGlobal))
   call putDensityInEtaCont(grid%octreeRoot)
-  
   call computeProbDistAMRMpi(grid, mass, threadProbArray)
   if (writeoutput) write(*,*) "Total mass for put stars ",mass*1.d30/msol
 
   
   if (myrankGlobal == 0) then
      do i = 1, nSource
-        call randomNumberGenerator(getDouble=r)
-        if (r < threadProbArray(1)) then
-           iThread = 1
-        else
-           call locate(threadProbArray, SIZE(threadProbArray), r, iThread)
-           iThread = iThread + 1
-        endif
         looping = .true.
         do while (looping)
+           call randomNumberGenerator(getDouble=r)
+           if (r < threadProbArray(1)) then
+              iThread = 1
+           else
+              call locate(threadProbArray, SIZE(threadProbArray), r, iThread)
+              iThread = iThread + 1
+           endif
            signal = -99
            call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+           call mpi_send(source(i)%mass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
            call MPI_RECV(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           looping = .false.
            source(i)%position%x = temp(1)
+           if (temp(1) < -1.d20) then
+              looping = .true.
+              cycle
+           endif
            source(i)%position%y = temp(2)
            source(i)%position%z = temp(3)
            looping = .false.
            if (i > 1) then
               do  j = 1, i-1
-                 if (modulus(source(j)%position - source(i)%position) < source(j)%accretionRadius/1.d10) then
+                 if (modulus(source(j)%position - source(i)%position) < 0.1d0*source(j)%accretionRadius/1.d10) then
                     looping = .true.
                  endif
               enddo
@@ -8442,11 +8447,21 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
      do 
         call MPI_RECV(signal, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
         if (signal == -99) then
-           call randomNumberGenerator(getDouble=r)
-           sourceOctal => grid%octreeRoot
-           call locateContProbAMR(r, sourceOctal,sourcesubcell)
+           call MPI_RECV(starMass, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+           massInCell = 0.d0
+           iter = 0
+           do while(massInCell < starMass)
+              iter = iter + 1
+              call randomNumberGenerator(getDouble=r)
+              sourceOctal => grid%octreeRoot
+              call locateContProbAMR(r, sourceOctal,sourcesubcell)
+              massInCell = sourceOctal%rho(sourcesubcell) * cellVolume(sourceOctal, sourceSubcell) * 1.d30
+              write(*,*) iter, myRankGlobal, " mass in cell ",massinCell/msol, "star mass ",starMass/msol
+              if (iter > 1000) exit
+           enddo
            rVec = randomPositionInCell(sourceOctal, sourceSubcell)
            temp(1) = rVec%x
+           if (iter > 1000) temp(1) = -1.d21
            temp(2) = rVec%y
            temp(3) = rVec%z
            call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -8468,24 +8483,23 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
      
   endif
 
-
   if (myrankGlobal /= 0) then
      sourceOctal => grid%octreeRoot
      do i = 1, nSource
         call findSubcellLocal(source(i)%position, sourceOctal, sourcesubcell)
-        dv = cellVolume(sourceOctal, sourceSubcell) * 1.d30
-        
-        source(i)%velocity%x = sourceOctal%rhou(sourcesubcell)/sourceoctal%rho(sourcesubcell)
-        source(i)%velocity%y = sourceOctal%rhov(sourcesubcell)/sourceoctal%rho(sourcesubcell)
-        source(i)%velocity%z = sourceOctal%rhow(sourcesubcell)/sourceoctal%rho(sourcesubcell)
-        
-        rhoLeft = max(rhoFloor, sourceOctal%rho(sourcesubcell)  - source(i)%mass/dv)
-        sourceOctal%rho(sourcesubcell) = rhoLeft
-        sourceOctal%rhou(sourcesubcell) = rhoLeft * source(i)%velocity%x
-        sourceOctal%rhov(sourcesubcell) = rhoLeft * source(i)%velocity%y
-        sourceOctal%rhow(sourcesubcell) = rhoLeft * source(i)%velocity%z
-        
-
+        if (octalOnThread(sourceOctal, sourceSubcell, myRankGlobal)) then
+           dv = cellVolume(sourceOctal, sourceSubcell) * 1.d30
+           
+           source(i)%velocity%x = sourceOctal%rhou(sourcesubcell)/sourceoctal%rho(sourcesubcell)
+           source(i)%velocity%y = sourceOctal%rhov(sourcesubcell)/sourceoctal%rho(sourcesubcell)
+           source(i)%velocity%z = sourceOctal%rhow(sourcesubcell)/sourceoctal%rho(sourcesubcell)
+           
+           rhoLeft = max(rhoFloor, sourceOctal%rho(sourcesubcell)  - source(i)%mass/dv)
+           sourceOctal%rho(sourcesubcell) = rhoLeft
+           sourceOctal%rhou(sourcesubcell) = rhoLeft * source(i)%velocity%x
+           sourceOctal%rhov(sourcesubcell) = rhoLeft * source(i)%velocity%y
+           sourceOctal%rhow(sourcesubcell) = rhoLeft * source(i)%velocity%z
+        endif
      enddo
   end if
 
