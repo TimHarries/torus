@@ -252,7 +252,7 @@ contains
       type(SOURCETYPE) :: source(:)
       type(TRACKTABLE),save :: thisTable
       logical,save :: firstTime = .true.
-      real(double) :: t, t1, t2, deadAge
+      real(double) :: t, t1, t2, deadAge, remnantMin1, remnantMin2, absMetallicity
       integer :: i, j
       integer :: nSource, nSupernova, supernovaIndex(:)
       real(double) :: ejectaMass(:), ke(:)
@@ -287,11 +287,60 @@ contains
          if (writeoutput) write(*,*) "Source " ,i, " explodes as a supernova"
             nSupernova=nSupernova+1
 
-! ben - you need to put in an appropriate algorithm to work out a suitable ejecta mass and ke here!
+         ! ejecta mass algorithm for delayed supernova model, calculates ejecta mass based on remnant mass using various
+         ! equations dependant on ZAMS (initial stellar mass) range. Model includes metallicity dependance, assumed to be
+         ! = 1 (ratio to solar for algorithm) within torus currently (14/11/2014).
+
+         absMetallicity = 1     ! ratio to solar metallicity
+
+            if (source(i)%initialMass .lt. 11.d0) then     ! mstar < 11
+                ejectaMass(nSupernova) = source(i)%mass - (1.28 + ((source(i)%initialMass - 8.d0)/3.d0) * 0.08) * msol
+            else if (source(i)%initialMass .ge. 11.d0 .and. source(i)%initialMass .lt. 30.d0) then     ! 11 <= mstar < 30
+                ejectaMass(nSupernova) = source(i)%mass - (1.1 + 0.2 * exp((source(i)%initialMass - 11.d0)/4.d0) - &
+                   (2.0 + absMetallicity) * exp(0.4 * (source(i)%initialMass-26.d0))) * msol
+            else if (source(i)%initialMass .ge. 30.d0 .and. source(i)%initialMass .lt. 50.d0) then     ! 30 <= mstar < 50
+                remnantmin1 = 33.35 + (4.75 + 1.25 * absMetallicity) * (source(i)%initialMass-34d0)
+                remnantmin2 = source(i)%initialMass - ((absMetallicity)**0.5) * (1.3 * source(i)%initialMass - 18.35)
+                ejectaMass(nSupernova) = source(i)%mass - min(remnantmin1, remnantmin2) * msol
+            else if (source(i)%initialMass .ge. 50.d0 .and. source(i)%initialMass .lt. 90.d0) then     ! 50 <= mstar < 90
+                ejectaMass(nSupernova) = source(i)%mass - (1.8 + 0.04 * (90.d0 - source(i)%initialMass)) * msol
+            else if (source(i)%initialMass .ge. 90.d0) then                                            ! mstar >= 90
+                ejectaMass(nSupernova) = source(i)%mass - (1.8 + log10(source(i)%initialMass - 89.d0)) * msol
+            end if
 
             supernovaIndex(nSupernova)=i
-            ejectaMass(nSupernova) = source(i)%mass - 3.d0 * msol
-            ke(nSupernova) = 1.d51
+
+         ! Ejecta energy algorithm for delayed supernova model, calculates kinetic energy based on each SN sources
+         ! ZAMS (initial stellar mass) range. Based on computational model ("Progenitor explosion connection.."
+         ! Ugliano et al. 2012) with similar evolution properties to Schaller. Model assumed to be unitary in
+         ! SN probability and continuous in energy distribution, energy extrapolated within range (16/01/2015)
+
+            if (source(i)%initialMass .lt. 14.d0) then                                ! mstar < 14
+                ke(nSupernova) = (1.5 + ((source(i)%initialMass - 8.d0)/6.d0)*0.25)*1.d51
+            else if (source(i)%initialMass .lt. 16.2 .and. source(i)%initialMass .ge. 14.d0) then     ! 14 <= mstar < 16.2
+                ke(nSupernova) = (1.75 - ((source(i)%initialMass - 14.d0)/2.2)*1.05)*1.d51
+            else if (source(i)%initialMass .lt. 17.d0 .and. source(i)%initialMass .ge. 16.2) then     ! 16.2 <= mstar < 17
+                ke(nSupernova) = (0.7 + ((source(i)%initialMass - 16.2)/0.8)*0.8)*1.d51
+            else if (source(i)%initialMass .lt. 18.5 .and. source(i)%initialMass .ge. 17.d0) then     ! 17 <= mstar < 18.5
+                ke(nSupernova) = (1.5 - ((source(i)%initialMass - 17.d0)/1.5)*0.6)*1.d51
+            else if (source(i)%initialMass .lt. 19.5 .and. source(i)%initialMass .ge. 18.5) then      ! 18.5 <= mstar < 19.5
+                ke(nSupernova) = (0.9 + ((source(i)%initialMass - 18.5)/1)*0.6)*1.d51
+            else if (source(i)%initialMass .lt. 25 .and. source(i)%initialMass .ge. 19.5) then        ! 19.5 <= mstar < 25
+                ke(nSupernova) = (1.5 - ((source(i)%initialMass - 19.5)/5.5)*0.6)*1.d51
+            else if (source(i)%initialMass .lt. 26 .and. source(i)%initialMass .ge. 25.d0) then       ! 25 <= mstar < 26
+                ke(nSupernova) = (0.9 + ((source(i)%initialMass - 25.d0)/1)*0.6)*1.d51
+            else if (source(i)%initialMass .lt. 31.d0 .and. source(i)%initialMass .ge. 26.d0) then    ! 26 <= mstar < 31
+                ke(nSupernova) = (1.5 - ((source(i)%initialMass - 26.d0)/5)*0.3)*1.d51
+            else if (source(i)%initialMass .lt. 35.5 .and. source(i)%initialMass .ge. 31.d0) then     ! 31 <= mstar < 35.5
+                ke(nSupernova) = (1.2 + ((source(i)%initialMass - 31.d0)/4.5)*0.3)*1.d51
+            else if (source(i)%initialMass .lt. 40.d0 .and. source(i)%initialMass .ge. 35.5) then     ! 35.5 <= mstar <= 40
+                ke(nSupernova) = (1.5 - ((source(i)%initialMass - 35.5)/4.5)*0.3)*1.d51
+            else if (source(i)%initialMass .lt. 90.d0 .and. source(i)%initialMass .ge. 40.d0) then    ! 40 <= mstar < 90
+                ke(nSupernova) = (1.2 - ((source(i)%initialMass - 40.d0)/50)*0.7)*1.d51
+            else if (source(i)%initialMass .ge. 90.d0) then                                          ! 90 <= mstar
+                ke(nSupernova) = 0.5d51
+            endif
+
          endif
       end do
     end subroutine checkSourceSupernova
