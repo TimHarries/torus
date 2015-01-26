@@ -9236,7 +9236,7 @@ endif
 
   subroutine calcSphere(thisOctal,subcell)
 
-    use inputs_mod, only : sphereRadius, sphereMass, spherePosition
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, rhoFloor
     use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro, nbodytest
 !    use inputs_mod, only : smallestCellSize
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -9279,7 +9279,7 @@ endif
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
-
+    thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
 
     if (hydrodynamics) then
        thisOctal%iequationOfState(subcell) = 1 ! isothermal
