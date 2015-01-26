@@ -5591,7 +5591,16 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        rVecTemp = rVec + (dble(i-1)* ds) * uHat
        rHat = VECTOR(rVecTemp%x, rVecTemp%y, rVecTemp%z)
        call normalize(rHat)
-       uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
+       uHatDash = uHat
+       if (thisOctal%twoD .and. .not. cart2d) then
+          zHat = VECTOR(0.d0, 0.d0, 1.d0)
+          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+       endif
+
+       if (thisOctal%oneD) then
+          rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
+       endif
        thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
             + (dS * dble(kappaAbs + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
     enddo
