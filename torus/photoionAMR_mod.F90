@@ -1744,6 +1744,10 @@ end subroutine radiationHydro
     endif
 
 
+    if (inputNMonte < 0) then
+       if (writeoutput) write(*,*) "Skipping photoion loop as input nMonte < 0"
+       goto 666
+    endif
 
     !nmonte selector: Only works for fixed grids at present
     if (inputnMonte == 0) then
