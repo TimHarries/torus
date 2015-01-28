@@ -1889,7 +1889,7 @@ end subroutine radiationHydro
 
        if (.not. cart2d) then
           maxDiffRadius3  = 1.d30
-          tauWanted = 1.d0
+          tauWanted = 100.d0
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, &
                   maxDiffRadius1(iSource))
@@ -5591,6 +5591,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     nDist = 50
     dS = distance / dble(nDist)
     gFac = miePhase(1,iLambda, 1)%gfac
+    gFac = 0.d0
     do i = 1, nDist
        rVecTemp = rVec + (dble(i-1)* ds) * uHat
        rHat = VECTOR(rVecTemp%x, rVecTemp%y, rVecTemp%z)
