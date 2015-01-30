@@ -1303,7 +1303,7 @@ end subroutine radiationHydro
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs
 
 
-    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType
+    use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1498,6 +1498,7 @@ end subroutine radiationHydro
     
     if (globalnSource == 0) goto 666
 
+    if (readGrid) splitThisTime = .true.
 
     if(justdump .and. grid%geometry == "lexington") then
        niter = 0
@@ -1889,7 +1890,7 @@ end subroutine radiationHydro
 
        if (.not. cart2d) then
           maxDiffRadius3  = 1.d30
-          tauWanted = 100.d0
+          tauWanted = 1.d0
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, &
                   maxDiffRadius1(iSource))
@@ -3758,19 +3759,23 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     usedMRW = .false.
     i = 0
    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
-!   if (.not.radpressuretest) then
-!       if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
-!          call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-!               freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-!          usedMRW = .true.
-!          thisLam = (cspeed/thisFreq)*1.d8
-!          call locate(lamArray, nLambda, real(thisLam), iLam)
-!          call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
-!               actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-!               grid=grid, inFlow=inFlow)
-!          call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
-!       endif
-!    endif
+
+
+   if (.not.radpressuretest) then
+       if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
+          call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+               freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+          usedMRW = .true.
+          thisLam = (cspeed/thisFreq)*1.d8
+          call locate(lamArray, nLambda, real(thisLam), iLam)
+          call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
+               actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
+               grid=grid, inFlow=inFlow)
+          call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+       endif
+    endif
+
+
     if (radpressureTest) then
        if (thisOctal%rho(subcell)<(1d-3*nDensity*mHydrogen)) then
           kappaAbsDb = 0.d0
@@ -8272,83 +8277,83 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   end subroutine updateGridMPIphoto
 
-!!$  subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-!!$       freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
-!!$!    use inputs_mod, only : smallestCellSize
-!!$    type(GRIDTYPE) :: grid
-!!$    real(double) :: spectrum(2000)
-!!$    real(double) :: freq(:), dfreq(:), thisFreq
-!!$    real :: lamArray(:)
-!!$    integer :: nFreq, nlambda
-!!$    type(OCTAL), pointer :: thisOctal
-!!$    integer :: subcell
-!!$    type(VECTOR) :: rVec, uHat, uHatDash, rHat, zHat
-!!$    real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist
-!!$    real :: kappaP
-!!$    logical, save :: firstTime = .true.
-!!$    integer, parameter :: ny = 100
-!!$    real(double) :: y(ny), prob(ny), thisY
-!!$    integer :: i, n, iLoop
-!!$    real(double), parameter :: gamma = 3.d0
-!!$
-!!$    if (firstTime) then
-!!$       do i = 1, ny
-!!$          y(i) = dble(i-1)/dble(ny-1)
-!!$          prob(i) = 0.d0
-!!$          do n = 1, 1000
-!!$             prob(i) = prob(i) + 2.d0 * (-1.d0)**(n+1) * y(i)**(n**2)
-!!$          enddo
-!!$       enddo
-!!$       prob(ny) = 1.d0
-!!$       firstTime = .false.
-!!$!       do i = 1, ny
-!!$!          write(*,*) i, y(i), prob(i)
-!!$!       enddo
-!!$    endif
-!!$       
-!!$       
-!!$
-!!$    call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
-!!$    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
-!!$    iLoop = 0
-!!$    call distanceToNearestWall(rVec, r0, thisOctal, subcell)
-!!$    do
-!!$       iLoop = iLoop + 1
-!!$       if (iLoop > 100000) then
-!!$          write(*,*) "modified random walk loop exitted early"
-!!$          exit
-!!$       endif
-!!$       call randomNumberGenerator(getDouble=zeta)
-!!$       call locate(prob, ny, zeta, i)
-!!$       thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
-!!$       mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
-!!$       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
-!!$       uHatDash = uHat
-!!$       if (thisOctal%twoD .and. .not. cart2d) then
-!!$          rHat = VECTOR(rVec%x, rVec%y, 0.d0)
-!!$          call normalize(rHat)
-!!$          zHat = VECTOR(0.d0, 0.d0, 1.d0)
-!!$          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
-!!$       endif
-!!$       if (thisOctal%oneD) then
-!!$          rHat = VECTOR(rVec%x, rVec%y, rVec%z)
-!!$          call normalize(rHat)
-!!$          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
-!!$       endif
-!!$
-!!$       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
-!!$       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
-!!$       rVec = rVec + uHat * r0
-!!$       uHat = randomUnitVector()
-!!$       call distanceToNearestWall(rVec, r0, thisOctal, subcell)
-!!$       if (r0 < gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
-!!$    enddo
-!!$    spectrum = 1.d-50
-!!$    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-!!$    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
-!!$!    write(*,*) "exited modified random walk after ",i
-!!$  end subroutine modifiedRandomWalk
-!!$       
+  subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
+       freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+!    use inputs_mod, only : smallestCellSize
+    type(GRIDTYPE) :: grid
+    real(double) :: spectrum(2000)
+    real(double) :: freq(:), dfreq(:), thisFreq
+    real :: lamArray(:)
+    integer :: nFreq, nlambda
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: rVec, uHat, uHatDash, rHat, zHat
+    real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist
+    real :: kappaP
+    logical, save :: firstTime = .true.
+    integer, parameter :: ny = 100
+    real(double) :: y(ny), prob(ny), thisY
+    integer :: i, n, iLoop
+    real(double), parameter :: gamma = 3.d0
+
+    if (firstTime) then
+       do i = 1, ny
+          y(i) = dble(i-1)/dble(ny-1)
+          prob(i) = 0.d0
+          do n = 1, 1000
+             prob(i) = prob(i) + 2.d0 * (-1.d0)**(n+1) * y(i)**(n**2)
+          enddo
+       enddo
+       prob(ny) = 1.d0
+       firstTime = .false.
+!       do i = 1, ny
+!          write(*,*) i, y(i), prob(i)
+!       enddo
+    endif
+       
+       
+
+    call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
+    diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
+    iLoop = 0
+    call distanceToNearestWall(rVec, r0, thisOctal, subcell)
+    do
+       iLoop = iLoop + 1
+       if (iLoop > 100000) then
+          write(*,*) "modified random walk loop exitted early"
+          exit
+       endif
+       call randomNumberGenerator(getDouble=zeta)
+       call locate(prob, ny, zeta, i)
+       thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
+       mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
+       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
+       uHatDash = uHat
+       if (thisOctal%twoD .and. .not. cart2d) then
+          rHat = VECTOR(rVec%x, rVec%y, 0.d0)
+          call normalize(rHat)
+          zHat = VECTOR(0.d0, 0.d0, 1.d0)
+          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+       endif
+       if (thisOctal%oneD) then
+          rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+          call normalize(rHat)
+          uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
+       endif
+
+       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
+       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
+       rVec = rVec + uHat * r0
+       uHat = randomUnitVector()
+       call distanceToNearestWall(rVec, r0, thisOctal, subcell)
+       if (r0 < gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10)) exit
+    enddo
+    spectrum = 1.d-50
+    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+!    write(*,*) "exited modified random walk after ",i
+  end subroutine modifiedRandomWalk
+       
 
 
 
