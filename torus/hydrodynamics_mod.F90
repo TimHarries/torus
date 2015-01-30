@@ -6749,7 +6749,8 @@ end subroutine sumFluxes
                 dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-10)))
              endif
              if (dt == 0.d0) then 
-                write(*,*) myrankGlobal, " dt is zero ",thisOctal%rho(subcell),thisOctal%rhov(subcell),thisoctal%pressure_i_plus_1(subcell), &
+                write(*,*) myrankGlobal, " dt is zero ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
+                     thisoctal%pressure_i_plus_1(subcell), &
                      thisOctal%pressure_i_minus_1(subcell),acc
              endif
           endif
