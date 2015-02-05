@@ -3526,12 +3526,14 @@ contains
              debug = .false.
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
 
+             if (speed > 50.d0) debug = .true.
 !             if (inSubcell(thisOctal, subcell, VECTOR(10.d3, 0.d0, 1.11d6))) then
 !                debug = .true.
 !             endif
 
              if (debug.and.(myHydroSetGlobal == 0)) then
-                write(*,*) "speed before" ,speed
+                write(*,*) "speed before " ,speed, 1.d-5*thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     1.d-5*thisOctal%rhow(subcell)/thisOctal%rho(subcell)
                 write(*,*) "direction ",direction
                 write(*,*) "u_interface ",thisOctal%u_amr_interface(subcell,1:2)/1.d5
                    write(*,*) "flux small i+1 ",thisOctal%flux_amr_i_plus_1(subcell,1:2)
@@ -3630,8 +3632,14 @@ contains
 !!!                      write(*,*) "u speed over 200 after pressure forces"
   !                 endif
                    if (debug) then
-                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from pressure in x ",(- dt * &
-                           (p_i_plus_half - p_i_minus_half) / dx)/(thisOctal%rho(subcell)*1.d5)
+                      if (myHydroSetGlobal == 0) then
+                         write(*,*) "change in speed from pressure in x ",(- dt * &
+                              (p_i_plus_half - p_i_minus_half) / dx)/(thisOctal%rho(subcell)*1.d5)
+                         write(*,*) "alternative pressure gradient ",(-dt * &
+                              (thisOctal%pressure_i_plus_1(subcell)-thisOctal%pressure_i_minus_1(subcell))/(2.d0*dx)/ &
+                              (thisOctal%rho(subcell)*1.d5))
+                      endif
+                      
                    endif
                 endif
 
@@ -3760,8 +3768,10 @@ contains
 
              endif
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
+
              if ((debug).and.(myHydroSetGlobal == 0)) then
-                write(*,*) "speed after " ,speed
+                write(*,*) "speed after " ,speed, 1.d-5*thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     1.d-5*thisOctal%rhow(subcell)/thisOctal%rho(subcell)
              endif
 
 
@@ -3858,7 +3868,8 @@ contains
              endif
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
              if ((debug).and.(myHydroSetGlobal == 0)) then
-                write(*,*) "speed after " ,speed
+                write(*,*) "speed after " ,speed, 1.d-5*thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     1.d-5*thisOctal%rhow(subcell)/thisOctal%rho(subcell)
              endif
           endif
        endif
@@ -6736,18 +6747,19 @@ end subroutine sumFluxes
                 acc = max(1.d-30, abs(acc))
                 
                 
-                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc))
+!                dt = min(dt, 0.5d0*sqrt(dx/acc))
+                dt = min(dt, sqrt(2.d0*dx/acc))
                 if (dt == 0.d0) then
                    write(*,*) "dt is zero from pressure ",0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc)
                 endif
              endif
 
 
-             if (cylindricalHydro) then
-                acc = (1.d0/thisOctal%rho(subcell)) * (thisOctal%rhov(subcell)**2) &
-                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
-                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-10)))
-             endif
+!             if (cylindricalHydro) then
+!                acc = (1.d0/thisOctal%rho(subcell)) * (thisOctal%rhov(subcell)**2) &
+!                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
+!                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-10)))
+!             endif
              if (dt == 0.d0) then 
                 write(*,*) myrankGlobal, " dt is zero ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
                      thisoctal%pressure_i_plus_1(subcell), &
