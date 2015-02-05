@@ -9620,11 +9620,11 @@ endif
 !    mCloud = 1.d0 * msol
 !    rCloud = 5.d16
 
-!    mCloud = 100.d0 * msol
-!    rCloud = 0.1d0 * pctocm
+    mCloud = 100.d0 * msol
+    rCloud = 0.1d0 * pctocm
 
-    mCloud = mSol
-    rCloud = 3.2d16
+!    mCloud = mSol
+!    rCloud = 3.2d16
 
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
@@ -9632,7 +9632,7 @@ endif
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     rVec = subcellCentre(thisOctal,subcell)
     omega = sqrt(2.d0 * beta * eGrav / inertia)
-    omega = 1.6d-12
+!    omega = 1.6d-12
     thisOctal%phi_i(subcell) = -bigG * mCloud / (modulus(rVec)*1.d10)
     thisOctal%velocity(subcell) = vector(0., 0., 0.)
 
@@ -9674,6 +9674,11 @@ endif
 !    thisOctal%pressure_i(subcell) = kerg * thisOctal%temperature(subcell) * thisOctal%rho(subcell)/(2.33d0*mHydrogen)
 !    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
 !    thisOctal%boundaryCondition(subcell) = 4
+
+    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%energy(subcell) = eThermal
+    thisOctal%gamma(subcell) = 2.d0
 
 
   end subroutine calcProtoBinDensity
