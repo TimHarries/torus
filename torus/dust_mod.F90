@@ -881,9 +881,9 @@ contains
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
     real(double) :: r, z
-    real(double) :: thisheight, gasHeight, dustMass, cellMass
-    real(double) :: fac, tot, rhoFid, rho, thisRsub
-    integer :: subcell, i, iDust
+    real(double) :: dustMass, cellMass
+    real(double) :: fac, rhoFid, rho, thisRsub
+    integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
