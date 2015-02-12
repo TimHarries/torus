@@ -5185,8 +5185,8 @@ end subroutine writeRadialFile
           newMass = newMass + thisOctal%rho(isubcell) * dv
        enddo
        
-       massfactor = oldMass / newMass
-       thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * massfactor
+!       massfactor = oldMass / newMass
+!       thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * massfactor
        
     if ( associated (thisOctal%nh) ) thisOctal%nh(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren)/mHydrogen
 
@@ -5223,38 +5223,38 @@ end subroutine writeRadialFile
     if (newEnergy /= 0.d0) then
        factor = oldEnergy/newEnergy
     endif
-    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
+!    thisOctal%rhoe(1:thisOctal%maxChildren) = thisOctal%rhoe(1:thisOctal%maxChildren) * factor
 
 !
 !!!    ! momentum (u)
 
-    oldMom = abs(parent%rhou(parentSubcell))
-    newMom = SUM(abs(thisOctal%rhou(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
-    if (abs(newMom) > TINY(newMom)) then
-       factor = oldMom / newMom
-       thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
-    endif
+!    oldMom = abs(parent%rhou(parentSubcell))
+!    newMom = SUM(abs(thisOctal%rhou(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
+!    if (abs(newMom) > TINY(newMom)) then
+!       factor = oldMom / newMom
+!       thisOctal%rhou(1:thisOctal%maxChildren) = thisOctal%rhou(1:thisOctal%maxChildren) * factor
+!    endif
 !
 !    ! momentum (v)
 !
 
-    if (thisOctal%threed) then
-       oldMom = abs(parent%rhov(parentSubcell))
-       newMom = SUM(abs(thisOctal%rhov(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
-       if (abs(newMom) > TINY(newMOM)) then
-          factor = oldMom / newMom
-          thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
-       endif
-    endif
+!    if (thisOctal%threed) then
+!       oldMom = abs(parent%rhov(parentSubcell))
+!       newMom = SUM(abs(thisOctal%rhov(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
+!       if (abs(newMom) > TINY(newMOM)) then
+!          factor = oldMom / newMom
+!          thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+!       endif
+!    endif
 !
     ! momentum (w)
 
-    oldMom = abs(parent%rhow(parentSubcell))
-    newMom = SUM(abs(thisOctal%rhow(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
-    if (abs(newMom) > TINY(newMom)) then
-       factor = oldMom / newMom
-       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
-    endif
+!   oldMom = abs(parent%rhow(parentSubcell))
+!    newMom = SUM(abs(thisOctal%rhow(1:thisOctal%maxChildren)))/dble(thisOctal%maxChildren)
+!    if (abs(newMom) > TINY(newMom)) then
+!       factor = oldMom / newMom
+!       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
+!    endif
 
 !
     if (PRESENT(constantGravity)) then

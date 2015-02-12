@@ -88,7 +88,7 @@ contains
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
-         mstarburst, burstTime, starburst, inputseed
+         mstarburst, burstTime, starburst, inputseed, doSelfGrav
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -1007,10 +1007,24 @@ contains
                 call writeInfo("Evening up grid", TRIVIAL)
                 call evenUpGridMPI(grid, .false.,.true., evenuparray)
                 if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+
+                if (doselfGrav) then
+                   if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+                   call zeroSourcepotential(grid%octreeRoot)
+                   if (globalnSource > 0) then
+                      call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+                   endif
+                   call sumGasStarGravity(grid%octreeRoot)
+                   if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+                endif
+
              endif
 !             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif
+
+
 
           if (severeDamping) call cutVacuum(grid%octreeRoot)
 

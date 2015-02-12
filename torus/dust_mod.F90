@@ -1517,19 +1517,16 @@ contains
        if (associated(grid%onekappaSca)) deallocate(grid%onekappaSca)
        allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
 
-       if (.not.dustfile) then
-!          call writeInfo(message, FORINFO)
-          do i = 1, nDustType
+       do i = 1, nDustType
+          if (.not.dustfile(i)) then
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
              call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), porousFillingFactor(i),&
                   ngrain, X_grain, grainname, i)
-          enddo
-       else
-          do i = 1, nDustType
+          else
              call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, &
                   grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda), gfac)
-          enddo
-       endif
+          endif
+       enddo
        if (writeoutput) then
           open(20, file="albedo.dat", status="unknown", form="formatted")
           write(20,'(a120)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), &
@@ -1602,137 +1599,145 @@ contains
 
           ! Set up refractive indices
           do i = 1, nDustType
-             call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-             ! quick test for zero total dust abundance.
-             total_dust_abundance = SUM(x_grain)
-             if (total_dust_abundance <= 0.0) then
-                write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-                write(*,*) "  ==> You probably forgot to assign dust abundance in your parameter file!"
-                write(*,*) "  ==> Exiting the program ... "
-                stop 
-             end if
-
-             ! allocate mem for temp arrays
-             allocate(mReal2D(1:ngrain, 1:nLambda))
-             allocate(mImg2D(1:ngrain, 1:nLambda))
-             ! initializing the values
-             mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-
-             ! Find the index of refractions for all types of grains available
-             do k = 1, ngrain
-                call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg, porousFillingFactor(k))
-                mReal2D(k,:) = tmReal(:)  ! copying the values to a 2D maxtrix
-                mImg2D(k,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
-             end do
-
-             ! Finding the weighted average of the refractive index.
-             mReal(i,:) = 0.0; mImg(i,:) = 0.0
-             do j = 1, nLambda
-                do k = 1, ngrain
-                   mReal(i,j) = mReal(i,j) + mReal2D(k,j)*X_grain(k)
-                   mImg(i,j)  = mImg(i,j) + mImg2D(k,j) *X_grain(k)
-                end do
-                mReal(i,j) = mReal(i,j) / total_dust_abundance
-                mImg(i,j)  = mImg(i,j)  / total_dust_abundance
-             end do
-
-             deallocate(mReal2D)
-             deallocate(mImg2D)
-          end do
-
-          deallocate(tmReal)
-          deallocate(tmImg)
-
-          ! You should use the new wrapper as it is much faster.
-          ! The old and new methods give exactly the same result when optimisations
-          ! are turned off.
-          ! When optimisations are turned on, the methods give different result,
-          ! and *neither* matches the result obtained when optimisations are off.
-          useOldMiePhaseCalc = .false.
-
-          if (useOldMiePhaseCalc) then
-             do i = 1, nDustType
-
-
-    ilam_beg = 1
-    ilam_end = grid%nLambda
-#ifdef MPI
-    ! Set the range of index for a photon loop used later.     
-    np = nThreadsGlobal
-    n_rmdr = MOD(grid%nLambda,np)
-    m = grid%nLambda/np
-          
-    if (myRankWorldGlobal .lt. n_rmdr ) then
-       ilam_beg = (m+1)*myRankWorldGlobal + 1
-       ilam_end = ilam_beg + m
-    else
-       ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
-       ilam_end = ilam_beg + m -1
-    end if
-#endif
-
-                do j = ilam_beg, ilam_end
-                   do k = 1, nMumie
-                      mu = 2.*real(k-1)/real(nMumie-1)-1.
-                      call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-                           xArray(j), real(mu), miePhase(i,j,k), mReal(i,j), mImg(i,j))
-                   enddo
-                   call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
-                end do
-#ifdef MPI                
-                allocate(temp(1:grid%nlambda,1:nMuMie,1:4,1:4))
-                temp = 0.
-                do j = 1, iLam_beg, iLam_end
-                   do k = 1, nMuMie
-                      do i1 = 1, 4
-                         do i2 = 1, 4
-! temp is real so need to explicitly convert from double precision to avoid compiler warning
-                            temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
-                         enddo
-                      enddo
-                   enddo
-                enddo
-                allocate(tempArray(1:(grid%nLambda*nMuMie*4*4)))
-                allocate(tempArray2(1:(grid%nLambda*nMuMie*4*4)))
-                tempArray = reshape(temp, shape(tempArray))
-
-                call MPI_ALLREDUCE(tempArray, tempArray2, grid%nLambda, MPI_REAL,&
-                     MPI_SUM, MPI_COMM_WORLD, ierr)
-                temp = reshape(tempArray2, shape(temp))
+             
+             if (dustfile(i)) then
                 do j = 1, grid%nLambda
-                   do k = 1, nMuMie
-                      do i1 = 1, 4
-                         do i2 = 1, 4
-                            miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
+                   do k = 1, nMumie
+                      mu = 2.d0*dble(k-1)/dble(nMumie-1)-1.d0
+                      miePhase(i,j,k) = fillHenyey(mu, gfac(j))
+                   enddo
+                end do
+             else
+
+                call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+                ! quick test for zero total dust abundance.
+                total_dust_abundance = SUM(x_grain)
+                if (total_dust_abundance <= 0.0) then
+                   write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
+                   write(*,*) "  ==> You probably forgot to assign dust abundance in your parameter file!"
+                   write(*,*) "  ==> Exiting the program ... "
+                   stop 
+                end if
+                
+                ! allocate mem for temp arrays
+                allocate(mReal2D(1:ngrain, 1:nLambda))
+                allocate(mImg2D(1:ngrain, 1:nLambda))
+                ! initializing the values
+                mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+                
+                ! Find the index of refractions for all types of grains available
+                do k = 1, ngrain
+                   call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg, porousFillingFactor(k))
+                   mReal2D(k,:) = tmReal(:)  ! copying the values to a 2D maxtrix
+                   mImg2D(k,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
+                end do
+                
+                ! Finding the weighted average of the refractive index.
+                mReal(i,:) = 0.0; mImg(i,:) = 0.0
+                do j = 1, nLambda
+                   do k = 1, ngrain
+                      mReal(i,j) = mReal(i,j) + mReal2D(k,j)*X_grain(k)
+                      mImg(i,j)  = mImg(i,j) + mImg2D(k,j) *X_grain(k)
+                   end do
+                   mReal(i,j) = mReal(i,j) / total_dust_abundance
+                   mImg(i,j)  = mImg(i,j)  / total_dust_abundance
+                end do
+                
+                deallocate(mReal2D)
+                deallocate(mImg2D)
+
+                
+                ! You should use the new wrapper as it is much faster.
+                ! The old and new methods give exactly the same result when optimisations
+                ! are turned off.
+                ! When optimisations are turned on, the methods give different result,
+                ! and *neither* matches the result obtained when optimisations are off.
+                useOldMiePhaseCalc = .false.
+             
+                if (useOldMiePhaseCalc) then
+                      
+                      
+                      ilam_beg = 1
+                      ilam_end = grid%nLambda
+#ifdef MPI
+                      ! Set the range of index for a photon loop used later.     
+                      np = nThreadsGlobal
+                      n_rmdr = MOD(grid%nLambda,np)
+                      m = grid%nLambda/np
+                      
+                      if (myRankWorldGlobal .lt. n_rmdr ) then
+                         ilam_beg = (m+1)*myRankWorldGlobal + 1
+                         ilam_end = ilam_beg + m
+                      else
+                         ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
+                         ilam_end = ilam_beg + m -1
+                      end if
+#endif
+                      
+                      do j = ilam_beg, ilam_end
+                         do k = 1, nMumie
+                            mu = 2.*real(k-1)/real(nMumie-1)-1.
+                            call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+                                 xArray(j), real(mu), miePhase(i,j,k), mReal(i,j), mImg(i,j))
+                         enddo
+                         call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
+                      end do
+#ifdef MPI                
+                      allocate(temp(1:grid%nlambda,1:nMuMie,1:4,1:4))
+                      temp = 0.
+                      do j = 1, iLam_beg, iLam_end
+                         do k = 1, nMuMie
+                            do i1 = 1, 4
+                               do i2 = 1, 4
+                                  ! temp is real so need to explicitly convert from double precision to avoid compiler warning
+                                  temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
+                               enddo
+                            enddo
+                         enddo
+                      enddo
+                      allocate(tempArray(1:(grid%nLambda*nMuMie*4*4)))
+                      allocate(tempArray2(1:(grid%nLambda*nMuMie*4*4)))
+                      tempArray = reshape(temp, shape(tempArray))
+                      
+                      call MPI_ALLREDUCE(tempArray, tempArray2, grid%nLambda, MPI_REAL,&
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+                      temp = reshape(tempArray2, shape(temp))
+                      do j = 1, grid%nLambda
+                         do k = 1, nMuMie
+                            do i1 = 1, 4
+                            do i2 = 1, 4
+                               miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
+                            enddo
                          enddo
                       enddo
                    enddo
-                enddo
-                deallocate(temp, temparray, temparray2)
+                   deallocate(temp, temparray, temparray2)
 #endif
-             end do
-          else
-             call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
-          end if
-
+                else
+                   call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
+                end if
+             endif
+          enddo
           deallocate(mReal)
           deallocate(mImg)
+          deallocate(tmReal)
+          deallocate(tmImg)
        endif
     endif
-       if (writeMiePhase.and.writeoutput.and.(nlambda>1)) then
-          write(miefile,'(a,i3.3,a)') "miephasefile",nLambda,".dat"
-          open(144, file=mieFile, status="replace", form="unformatted")
-          write(unit=144) miePhase
-          close(144)
-       end if
+    if (writeMiePhase.and.writeoutput.and.(nlambda>1)) then
+       write(miefile,'(a,i3.3,a)') "miephasefile",nLambda,".dat"
+       open(144, file=mieFile, status="replace", form="unformatted")
+       write(unit=144) miePhase
+       close(144)
+    end if
+    
 
-
-       call fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
-       do i = 1, nDustType
-          do j = 1, nLambda
-             call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
-          enddo
+    call fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
+    do i = 1, nDustType
+       do j = 1, nLambda
+          call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
        enddo
+    enddo
 
 
     666 continue

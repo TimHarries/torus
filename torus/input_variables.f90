@@ -378,8 +378,9 @@
   character(len=80) :: polarFilename
   real :: polarWavelength
   real :: dusttogas
-  logical :: dustfile
-  character(len=80) :: dustfilename(10) ! used in dust_mod, not set !!!
+  logical :: dustfile(10)
+  character(len=80) :: dustfilename(10)
+  character(len=80) :: kappaFile(10)
   logical :: variableDustSublimation
   real(double) :: tSub(10) ! variable dust sublimation temperature factor
   logical :: dustSettling

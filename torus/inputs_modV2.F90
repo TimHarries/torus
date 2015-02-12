@@ -2050,7 +2050,8 @@ contains
     real :: grainFracTotal
     integer :: i
     character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, grainDensityLabel, &
-         aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel, tsubLabel
+         aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel, tsubLabel, kappaFileLabel, &
+         dustFileLabel
 
        oneKappa = .true.
 
@@ -2082,19 +2083,12 @@ contains
        call getLogical("readmiephase", readMiePhase, cLine, fLine, nLines, &
             "Read mie scattering phase file: ","(a,1l,1x,a)",.false., ok, .false.)
 
-       call getLogical("dustfile", dustfile, cLine, fline, nLines, &
-            "Get dust properties from file: ","(a,1l,1x,a)", .false., ok, .false.)
-       if (dustfile) then
-          call getString("kappafile", dustFilename(1), cline, fLine, nLines, &
-               "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
-          nDustType = 1
-          grainfrac = 1.
-          
-
-       else
 
           grainFracTotal = 0.
           do i = 1, nDustType
+             write(dustFileLabel, '(a,i1.1)') "dustfile",i
+             write(kappaFileLabel, '(a,i1.1)') "kappafile",i
+
              write(grainTypeLabel, '(a,i1.1)') "graintype",i
              write(grainFracLabel, '(a,i1.1)') "grainfrac",i
              write(tsubLabel, '(a,i1.1)') "tsub",i
@@ -2109,6 +2103,16 @@ contains
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
              !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
              !       if (writeoutput) write(*,*)
+
+             call getLogical(dustFileLabel, dustFile(i), cLine, fLine, nLines, &
+                  "Read dust from kappa file: ","(a,a,1x,a)",.false., ok, .false.)
+
+             if (dustFile(i)) then
+                call getString(kappaFileLabel, kappaFile(i), cLine, fLine, nLines, &
+                     "Kappa file: ","(a,a,1x,a)","test", ok, .true.)
+             endif
+
+
              call getString(grainTypeLabel, grainType(i), cLine, fLine, nLines, &
                   "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
@@ -2155,8 +2159,6 @@ contains
           enddo
 
 
-          
-       endif
 
           call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
                "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)

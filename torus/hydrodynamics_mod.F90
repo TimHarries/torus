@@ -5703,7 +5703,7 @@ end subroutine sumFluxes
 
 !    if (selfGravity) then
 !       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-!       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+!       if (dogasgravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 !       call zeroSourcepotential(grid%octreeRoot)
 !       if (globalnSource > 0) then
 !          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
@@ -11340,7 +11340,9 @@ real(double) :: rho
     integer :: evenuparray(nHydroThreadsGlobal), itemp
     integer :: endloop, nworking
     integer, allocatable ::  safe(:, :)
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
+
+
 
     globalConverged = .false.
     if (PRESENT(refinedSomeCells)) refinedSomeCells = .false.
@@ -11374,6 +11376,7 @@ real(double) :: rho
 !             call hydroValuesServer(grid, nworking)
              call hydroValuesServer2(grid, nworking, k, endloop, safe)
           else
+             call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric2(grid%octreeRoot, grid, globalConverged(myRankGlobal), tol, index, inheritval=.false.)
              call shutdownServers2(safe, k, endloop)
           endif
@@ -11383,18 +11386,6 @@ real(double) :: rho
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreadsGlobal, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
        itemp = itemp+1
-!       write(plotfile,"(a,i5.5,a)") "afterefine",itemp,".vtk"
-!             call writeVtkFile(grid, plotfile, &
-!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-!                  "u_i          ", &
-!                  "hydrovelocity", &
-!                  "rhou         ", &
-!                  "rhov         ", &
-!                  "rhow         ", &
-!                  "phi          ", &
-!                  "pressure     ", &
-!                  "mpithread    ", &
-!                  "q_i          "/))
 
        if (ALL(tConverged(1:nHydrothreadsGlobal))) then
           exit
