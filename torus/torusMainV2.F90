@@ -41,6 +41,7 @@ program torus
   use random_mod
   use memory_mod
   use turbulence_mod
+  use pah_mod
 !  use zlib_mod
   use sph_data_class, only: deallocate_sph
 #ifdef MPI
@@ -54,6 +55,7 @@ program torus
   character(len=80) :: message
   character(len=10) :: stringArray(10)
   integer :: i
+  type(PAHtabletype) :: PAHtable
   type(GRIDTYPE) :: grid
   type(VECTOR) :: box(64,64,64)
 #ifdef MPI
@@ -86,6 +88,8 @@ program torus
      if (myRankGlobal/=1) doTuning     = .false.
      if (myRankGlobal/=0) myRankIsZero = .false.
   end if
+
+  call readPAHemissivityTable(PAHtable, "MWC3.1_00")
 
   call initializeCodeUnits()
 
