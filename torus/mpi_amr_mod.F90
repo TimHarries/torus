@@ -4661,7 +4661,6 @@ end subroutine writeRadialFile
     integer :: i
     integer :: iSubcell, parentSubcell, topOctalSubcell
     type(VECTOR) :: rVec, centre
-    real(double) :: newMom, oldMom
     real(double) :: rhoCorner(8)
     real(double) :: rhoeCorner(8)
     real(double) :: rhouCorner(8)
@@ -4671,7 +4670,7 @@ end subroutine writeRadialFile
     real(double) :: phiCorner(8)
     real(double) :: pressureCorner(8)
     real(double) :: x1, x2, y1, y2, z1, z2, u, x, y, z, dv
-    real(double) :: oldMass, newMass, factor, massFactor
+    real(double) :: oldMass, newMass, factor
     real(double) :: oldEnergy, newEnergy
     integer :: npoints
     integer :: ier
