@@ -89,7 +89,7 @@ program torus
      if (myRankGlobal/=0) myRankIsZero = .false.
   end if
 
-  call readPAHemissivityTable(PAHtable, "MWC3.1_00")
+!  call readPAHemissivityTable(PAHtable, "MW3.1_00")
 
   call initializeCodeUnits()
 

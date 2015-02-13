@@ -1,21 +1,31 @@
 module pah_mod
 
-  implicit none
   use constants_mod
+  use unix_mod
+  use messages_mod
+  implicit none
 
   type PAHTABLETYPE
      integer :: nu
      real, allocatable :: u(:)
+     real, allocatable :: lambda(:)
+     real, allocatable :: jnu(:,:)
   end type PAHTABLETYPE
 
 contains
 
-  subroutine readPAHEmissivityspectra(PAHtable, PAHtype)
+  subroutine readPAHEmissivityTable(PAHtable, PAHtype)
     character(len=*) :: PAHtype
     type(PAHTableTYPE) :: PAHTable
+    integer :: i, j 
+    character(len=10) :: cval
+    character(len=80) :: filename, dataDirectory, cjunk
+    real :: vjunk
+
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
 
     PAHtable%nU = 30
-    allocate(PAHtable%U(1:PAHtable%nU))
+    allocate(PAHtable%U(1:PAHtable%nU), PAHtable%lambda(1001), PAHtable%jnu(1:PAHtable%nu,1:1001))
     PAHtable%U(01) = 0.10
     PAHtable%U(02) = 0.15
     PAHtable%U(03) = 0.20
@@ -47,7 +57,6 @@ contains
     PAHtable%U(29) = 1e5
     PAHtable%U(30) = 3e5
    
-    
     do i = 1, PAHtable%nu
 
        if (PAHtable%u(i) <= 10.d0) then
@@ -55,16 +64,32 @@ contains
        else if ((PAHtable%u(i) > 10.d0).and.(PAHtable%u(i) < 100.d0)) then
           write(cval, '(f4.1)') PAHtable%u(i)
        else
-          write(cval, '(1p,e3.0)') PAHtable%u(i)
+          if (i == 23) cval="1e2"
+          if (i == 24) cval="3e2"
+          if (i == 25) cval="1e3"
+          if (i == 26) cval="3e3"
+          if (i == 27) cval="1e4"
+          if (i == 28) cval="3e4"
+          if (i == 29) cval="1e5"
+          if (i == 30) cval="3e5"
        endif
-       write(filename,'(a,a,a,a,a,a,a,a,a,a,a)') &
-            "U",trim(cval),"/","U",trim(cval),"_", &
-            "U",trim(cval),"_",trim(PAHtype),".txt"
-       write(*,*) trim(filename)
-    enddo
-    
-  end subroutine readPAHEmissivityspectra
+       write(filename,'(a,a,a,a,a,a,a,a,a,a,a,a)') &
+            trim(dataDirectory),"/PAH/", &
+            "U",trim(cval),"/U",trim(cval),"_", &
+            trim(cval),"_",trim(PAHtype),".txt"
 
+       open(20,file=filename,status="old",form="formatted")
+       do j = 1, 61
+          read(20,'(a)') cjunk
+       enddo
+       do j = 1, 1001
+          read(20,*) PAHtable%lambda(1002-j), vjunk, PAHtable%jnu(i,1002-j)
+          if (writeoutput) write(*,*) "lambda ",PAHtable%lambda(j), PAHtable%jnu(i,1002-j)
+       enddo
+       close(20)
+    enddo
+  end subroutine readPAHEmissivityTable
+  
 
 
 end module pah_mod

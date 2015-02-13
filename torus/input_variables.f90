@@ -380,7 +380,7 @@
   real :: dusttogas
   logical :: dustfile(10)
   character(len=80) :: dustfilename(10)
-  character(len=80) :: kappaFile(10)
+  character(len=80) :: kappafilename(10)
   logical :: variableDustSublimation
   real(double) :: tSub(10) ! variable dust sublimation temperature factor
   logical :: dustSettling

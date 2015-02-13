@@ -740,7 +740,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         endif
 
         totEnvelopeEmission = totDustContinuumEmission
-        write(*,*) "tot dust ",totdustcontinuumemission,lcore,nsource,grid%lamArray(1),grid%lamArray(nlambda)
+!        write(*,*) "tot dust ",totdustcontinuumemission,lcore,nsource,grid%lamArray(1),grid%lamArray(nlambda)
         chanceDust = 0.d0
         if ((totDustContinuumEmission+lcore) > 0.d0) then
            chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))

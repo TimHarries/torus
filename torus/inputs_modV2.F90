@@ -2108,7 +2108,7 @@ contains
                   "Read dust from kappa file: ","(a,a,1x,a)",.false., ok, .false.)
 
              if (dustFile(i)) then
-                call getString(kappaFileLabel, kappaFile(i), cLine, fLine, nLines, &
+                call getString(kappaFileLabel, kappaFilename(i), cLine, fLine, nLines, &
                      "Kappa file: ","(a,a,1x,a)","test", ok, .true.)
              endif
 

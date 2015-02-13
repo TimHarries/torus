@@ -1474,7 +1474,7 @@ contains
          newDirectionMie
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
-         dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
+         kappafilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
          ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
@@ -1523,7 +1523,7 @@ contains
              call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), porousFillingFactor(i),&
                   ngrain, X_grain, grainname, i)
           else
-             call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, &
+             call dustPropertiesfromFile(kappafilename(i), grid%nlambda, xArray, &
                   grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda), gfac)
           endif
        enddo

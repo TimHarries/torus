@@ -90,7 +90,7 @@ contains
     grid%idump = 0
     grid%currentTime = 0.d0
 
-
+    grid%lcore = 0.d0
     select case (geometry)
     
     case("toruslogo")

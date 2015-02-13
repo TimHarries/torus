@@ -11645,7 +11645,7 @@ end function readparameterfrom2dmap
          CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,Omega)
 !         rho = 1.d-23
 !         t = 3.
-!         omega = sqrt(bigG * mSol / r)/r
+         omega = sqrt(bigG * mSol / r)/r
          thisOctal%rho(subcell) = max(rho,1.d-24)
          thisOctal%temperature(subcell) = real(T)
          zAxis = VECTOR(0.d0, 0.d0, 1.d0)

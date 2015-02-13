@@ -894,7 +894,7 @@ module image_mod
                 endif
              enddo
           enddo
-          write(22,*) 0.5d0*(rMin+rMax)*1.d10/objectDistance*radianstoarcsec,tot/dble(n)
+          if (n/=0)write(22,*) 0.5d0*(rMin+rMax)*1.d10/objectDistance*radianstoarcsec,tot/dble(n)
        enddo
        close(22)
                 
