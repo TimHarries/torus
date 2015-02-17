@@ -15875,10 +15875,10 @@ end subroutine minMaxDepth
              if (.not.createSink) then
                 write(*,*) "Create source failed on converging flow test"
              endif
-             if (divV < 0.d0) then
-                write(*,*) "Source passed divV < 0 test so creating away!"
-                createSink = .true.
-             endif
+!             if (divV < 0.d0) then
+!                write(*,*) "Source passed divV < 0 test so creating away!"
+!                createSink = .true.
+!             endif
           endif
 
           if (createSink) then
