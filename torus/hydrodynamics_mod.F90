@@ -11340,7 +11340,7 @@ real(double) :: rho
     integer :: evenuparray(nHydroThreadsGlobal), itemp
     integer :: endloop, nworking
     integer, allocatable ::  safe(:, :)
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
 
 
