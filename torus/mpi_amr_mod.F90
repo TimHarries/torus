@@ -5126,6 +5126,7 @@ end subroutine writeRadialFile
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
     use inputs_mod, only : maxDepthAMR!, minDepthAmr
     use octal_mod, only: subcellRadius
+    use utils_mod
     use mpi
     use qshep3d_mod
     use qshep2d_mod
@@ -5372,13 +5373,13 @@ end subroutine writeRadialFile
        topOctal => topOctal%parent
     enddo
 
-    if(thisOctal%oneD) then
-       call returnAddNewChildCornerArrays(thisOctal, topOctal, topOctalSubcell, grid, rhoCorner, rhoeCorner, rhouCorner, &
-            rhovCorner, rhowCorner, eCorner, phiCorner, pressureCorner)
-    else 
-       call returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell, grid, rhoPoint, rhoePoint, rhouPoint, &
-            rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint, npoints)
-    end if
+!    if(thisOctal%oneD) then
+!       call returnAddNewChildCornerArrays(thisOctal, topOctal, topOctalSubcell, grid, rhoCorner, rhoeCorner, rhouCorner, &
+!            rhovCorner, rhowCorner, eCorner, phiCorner, pressureCorner)
+!    else 
+!       call returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell, grid, rhoPoint, rhoePoint, rhouPoint, &
+!            rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint, npoints)
+!    end if
 
     x1 = centre%x - topOctal%subcellSize/2.d0
     x2 = centre%x + topOctal%subcellSize/2.d0
@@ -5395,159 +5396,174 @@ end subroutine writeRadialFile
           y = rVec%y
           z = rVec%z
 
-          radius = thisOctal%subcellSize*8.d0
+          radius = thisOctal%subcellSize*2.d0
           nPoints = 0
-
-          do while (nPoints < 33)
-             call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
-                  rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
-             radius = radius * 2.d0
-          enddo
-          uPoint(1:nPoints) = rhouPoint(1:nPoints)/rhoPoint(1:nPoints)
-          vPoint(1:nPoints) = rhovPoint(1:nPoints)/rhoPoint(1:nPoints)
-          wPoint(1:nPoints) = rhowPoint(1:nPoints)/rhoPoint(1:nPoints)
-
-          nq = 17 !min(40, nPoints - 1)
-          nw = 32 !min(40, nPoints - 1)
-          nr = max(1,nint((dble(nPoints)/3.d0)**0.333d0))
-          allocate(lCell(1:nr,1:nr,1:nr))
-          allocate(lnext(1:nPoints))
-          allocate(rsq(1:nPoints))
-          allocate(a(9,1:nPoints))
-          triedLogSpace = .false.
-          doLogSpace = .false.
-          successful = .false.
-          do while(.not.successful)
-
-             if (doLogSpace) then
-                rhoPoint(1:nPoints) = log10(rhoPoint(1:nPoints))
-             endif
-
-             call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-                  xyzdel, rmax, rsq, a, ier ) 
-             if (ier /= 0) then
-                write(message,*) "Qshep3 returned an error ",ier
-                call writeWarning(message)
-                write(*,*) " npoints ",npoints
-                do i = 1, nPoints
-                   write(*,*) xPoint(i), ypoint(i),zpoint(i)
-                enddo
-             endif
-
-             thisRho = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
-                  xyzmin, xyzdel, rmax, rsq, a)
-             if (doLogSpace) then
-                thisRho = 10.d0**thisRho
-                triedLogSpace = .true.
-             endif
-             successful = .true.
-
-             if (thisRho < 0.d0) then
-                successful = .false.
-                write(*,*) "Negative density encountered in qs3val: ",thisRho
-                if (.not.triedLogspace) then
-                   write(*,*) "Trying log space interpolation"
-                   write(77,'(3e12.4)') x,y,z
-                   dologSpace = .true.
-                   do i = 1, nPoints
-                      write(*,*) xPoint(i), ypoint(i),zpoint(i),rhoPoint(i)
-                      write(77,'(3e12.4)') xPoint(i), ypoint(i),zpoint(i)
-                   enddo
-                   stop
-                else
-                   write(*,*) "Can't find sensible interpolation."
-                   write(77,'(3e12.4)') x,y,z
-                   do i = 1, nPoints
-                      write(*,*) xPoint(i), ypoint(i),zpoint(i)
-                      write(77,'(3e12.4)') xPoint(i), ypoint(i),zpoint(i)
-                   enddo
-                   stop
-                endif
-             endif
-          enddo
-
-          
-          thisOctal%rho(isubcell) = thisRho
-
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoePoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          if (dologSpace) rhoePoint(1:nPoints) = log10(rhoePoint(1:nPoints))
-          thisOctal%rhoe(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoePoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-          if (dologSpace) thisOctal%rhoe(isubcell) = 10.d0**thisOctal%rhoe(isubcell)
-
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, uPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          thisOctal%rhou(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, uPoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, vPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          thisOctal%rhov(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, vPoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, wPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          thisOctal%rhow(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, wPoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-
-          if (dologSpace) energyPoint(1:nPoints) = log10(energyPoint(1:nPoints))
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, energyPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          thisOctal%energy(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, energyPoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-          if (dologSpace) thisOctal%energy(isubcell) = 10.d0**thisOctal%energy(isubcell)
+          call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
+               rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhoPoint, x, y, z, thisOctal%rho(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhoePoint, x, y, z, thisOctal%rhoe(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhouPoint, x, y, z, thisOctal%rhou(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhovPoint, x, y, z, thisOctal%rhov(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhowPoint, x, y, z, thisOctal%rhow(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, energyPoint, x, y, z, thisOctal%energy(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, pressurePoint, x, y, z, thisOctal%pressure_i(iSubcell))
+          call myInterp(1,nPoints, xPoint, yPoint, zPoint, phiPoint, x, y, z, thisOctal%phi_gas(iSubcell))
 
 
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, phiPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          thisOctal%phi_gas(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, phiPoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-
-          if (doLogSpace) pressurePoint(1:nPoints) = log10(pressurepoint(1:nPoints))
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, pressurePoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier )
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-          endif
-
-          thisOctal%pressure_i(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, pressurePoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-          if (doLogSpace) thisOctal%pressure_i(iSubcell) = 10.d0**thisOctal%pressure_i(isubcell)
-
-          deallocate(lCell, lnext, rsq, a)
-          
+!
+!          do while (nPoints < 33)
+!             call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
+!                  rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+!             radius = radius * 2.d0
+!          enddo
+!
+!
+!
+!          uPoint(1:nPoints) = rhouPoint(1:nPoints)/rhoPoint(1:nPoints)
+!          vPoint(1:nPoints) = rhovPoint(1:nPoints)/rhoPoint(1:nPoints)
+!          wPoint(1:nPoints) = rhowPoint(1:nPoints)/rhoPoint(1:nPoints)
+!
+!          nq = 17 !min(40, nPoints - 1)
+!          nw = 32 !min(40, nPoints - 1)
+!          nr = max(1,nint((dble(nPoints)/3.d0)**0.333d0))
+!          allocate(lCell(1:nr,1:nr,1:nr))
+!          allocate(lnext(1:nPoints))
+!          allocate(rsq(1:nPoints))
+!          allocate(a(9,1:nPoints))
+!          triedLogSpace = .false.
+!          doLogSpace = .false.
+!          successful = .false.
+!          do while(.not.successful)
+!
+!             if (doLogSpace) then
+!                rhoPoint(1:nPoints) = log10(rhoPoint(1:nPoints))
+!             endif
+!
+!             call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!                  xyzdel, rmax, rsq, a, ier ) 
+!             if (ier /= 0) then
+!                write(message,*) "Qshep3 returned an error ",ier
+!                call writeWarning(message)
+!                write(*,*) " npoints ",npoints
+!                do i = 1, nPoints
+!                   write(*,*) xPoint(i), ypoint(i),zpoint(i)
+!                enddo
+!             endif
+!
+!             thisRho = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
+!                  xyzmin, xyzdel, rmax, rsq, a)
+!             if (doLogSpace) then
+!                thisRho = 10.d0**thisRho
+!                triedLogSpace = .true.
+!             endif
+!             successful = .true.
+!
+!             if (thisRho < 0.d0) then
+!                successful = .false.
+!                write(*,*) "Negative density encountered in qs3val: ",thisRho
+!                if (.not.triedLogspace) then
+!                   write(*,*) "Trying log space interpolation"
+!                   write(77,'(3e12.4)') x,y,z
+!                   dologSpace = .true.
+!                   do i = 1, nPoints
+!                      write(*,*) xPoint(i), ypoint(i),zpoint(i),rhoPoint(i)
+!                      write(77,'(3e12.4)') xPoint(i), ypoint(i),zpoint(i)
+!                   enddo
+!                   stop
+!                else
+!                   write(*,*) "Can't find sensible interpolation."
+!                   write(77,'(3e12.4)') x,y,z
+!                   do i = 1, nPoints
+!                      write(*,*) xPoint(i), ypoint(i),zpoint(i)
+!                      write(77,'(3e12.4)') xPoint(i), ypoint(i),zpoint(i)
+!                   enddo
+!                   stop
+!                endif
+!             endif
+!          enddo
+!
+!          
+!          thisOctal%rho(isubcell) = thisRho
+!
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoePoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          if (dologSpace) rhoePoint(1:nPoints) = log10(rhoePoint(1:nPoints))
+!          thisOctal%rhoe(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoePoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!          if (dologSpace) thisOctal%rhoe(isubcell) = 10.d0**thisOctal%rhoe(isubcell)
+!
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, uPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          thisOctal%rhou(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, uPoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, vPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          thisOctal%rhov(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, vPoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, wPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          thisOctal%rhow(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, wPoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!
+!          if (dologSpace) energyPoint(1:nPoints) = log10(energyPoint(1:nPoints))
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, energyPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          thisOctal%energy(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, energyPoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!          if (dologSpace) thisOctal%energy(isubcell) = 10.d0**thisOctal%energy(isubcell)
+!
+!
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, phiPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          thisOctal%phi_gas(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, phiPoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!
+!          if (doLogSpace) pressurePoint(1:nPoints) = log10(pressurepoint(1:nPoints))
+!          call qshep3 (nPoints, xPoint, yPoint, zPoint, pressurePoint, nq, nw, nr, lcell, lnext, xyzmin, &
+!               xyzdel, rmax, rsq, a, ier )
+!          if (ier /= 0) then
+!             write(message,*) "Qshep3 returned an error ",ier
+!             call writeWarning(message)
+!          endif
+!
+!          thisOctal%pressure_i(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, pressurePoint, nr, lcell, lnext, &
+!               xyzmin, xyzdel, rmax, rsq, a)
+!          if (doLogSpace) thisOctal%pressure_i(iSubcell) = 10.d0**thisOctal%pressure_i(isubcell)
+!
+!          deallocate(lCell, lnext, rsq, a)
+!          
        endif
        if (thisOctal%twod) then
           rVec = subcellcentre(thisOctal, iSubcell)

@@ -3609,5 +3609,24 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     lambdaFunc = x**2/(a1**2 + lambda) + y**2 / (a2**2 + lambda) + z**2 / (a3**2 + lambda) - 1.d0
   end function lambdaFunc
 
+  subroutine myInterp(p,nPoints, x, y, z, a, x0, y0, z0, a0)
+    integer :: nPoints
+    real(kind=double) :: x(:), y(:),z(:),a(:)
+    integer :: p
+    real(kind=double) :: x0, y0, z0, a0
+    real(kind=double), allocatable :: r(:), w(:)
+
+    allocate(r(1:nPoints), w(1:npoints))
+
+    r(1:nPoints) = sqrt((x(1:npoints)-x0)**2 + (y(1:npoints)-y0)**2 + (z(1:npoints)-z0)**2)
+    w(1:nPoints) = (1.d0/r(1:nPoints))**p
+    w(1:npoints) = w(1:nPoints)/SUM(w(1:nPoints))
+
+    a0 = SUM(w(1:npoints)*a(1:nPoints))
+    deallocate(r, w)
+  end subroutine myInterp
+    
+
+
 end module utils_mod
 
