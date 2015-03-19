@@ -1025,7 +1025,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 35
+    integer, parameter :: nStorage = 37
     real(double) :: loc(3), tempStorage(nStorage)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
@@ -1226,6 +1226,8 @@ contains
                 tempStorage(33) = neighbourOctal%temperature(neighbourSubcell)
                 tempStorage(34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
                 tempStorage(35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+                tempStorage(36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
+                tempStorage(37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
 
 !                write(*,*) myrank," set up tempstorage with ", &
 
@@ -1273,6 +1275,8 @@ contains
                 tempStorage(33) = temperature
                 tempStorage(34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
                 tempStorage(35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+                tempStorage(36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
+                tempStorage(37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
 
              endif
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
@@ -2556,6 +2560,479 @@ contains
     endif
   end subroutine getNeighbourValues2
 
+! +ve x face                                                                                                                                                                                  
+! -z -y 2  (1)                                                                                                                                                                                
+! -z +y 4  (2)                                                                                                                                                                                
+! +z -y 6  (3)                                                                                                                                                                                
+! +z +y 8  (4)                                                                                                                                                                                
+
+! -ve x face                                                                                                                                                                                  
+! -z -y 1  (1)                                                                                                                                                                                
+! -z +y 3  (2)                                                                                                                                                                                
+! +z -y 5  (3)                                                                                                                                                                                
+! +z +y 7  (4)                                                                                                                                                                                
+
+! -ve z face                                                                                                                                                                                  
+! -x -y 1  (1)                                                                                                                                                                                
+! -x +y 3  (2)                                                                                                                                                                                
+! +x -y 2  (3)                                                                                                                                                                                
+! +x +y 4  (4)                                                                                                                                                                                
+
+! +ve z face                                                                                                                                                                                  
+! -x -y 5  (1)                                                                                                                                                                                
+! -x +y 7  (2)                                                                                                                                                                                
+! +x -y 6  (3)                                                                                                                                                                                
+! +x +y 8  (4)                                                                                                                                                                                
+
+! -ve y face                                                                                                                                                                                  
+! -x -z 1  (1)                                                                                                                                                                                
+! -x +z 5  (2)                                                                                                                                                                                
+! +x -z 2  (3)                                                                                                                                                                                
+! +x +z 6  (4)                                                                                                                                                                                
+
+! +ve y face                                                                                                                                                                                  
+! -x -z 3  (1)                                                                                                                                                                                
+! -x +z 7  (2)                                                                                                                                                                                
+! +x -z 4  (3)                                                                                                                                                                                
+! +x +z 8  (4)                  
+!       y                  z                                                                                                                                                                  
+!       |                 /                                                                                                                                                                   
+!       |      __________/______                                                                                                                                                              
+!       |     /        /       /|                                                                                                                                                             
+!       |    /   7    /   8   / |                                                                                                                                                             
+!       |   /________/_______/  |                                                                                                                                                             
+!       |  /        /       /| 8|   Diagram showing the convention used here for                                                                                                              
+!       | /   3    /   4   / |  |   numbering the subcells of each octal.                                                                                                                     
+!       |/________/_______/  |  |                                                                                                                                                             
+!       |        |        | 4| /|                                                                                                                                                             
+!       |        |        |  |/ |                                                                                                                                                             
+!       |    3   |   4    |  /  |                                                                                                                                                             
+!       |        |        | /| 6|                                                                                                                                                             
+!       |________|________|/ |  /                                                                                                                                                             
+!       |        |        |  | /                                                                                                                                                              
+!       |        |        | 2|/                                                                                                                                                               
+!       |    1   |   2    |  /                                                                                                                                                                
+!       |        |        | /                                                                                                                                                                 
+!       |________|________|/________\ x                                                                                                                                                       
+!                                   /                                                                                                                                                         
+
+  subroutine getNeighbourValues4(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
+    use mpi
+    use inputs_mod, only : smallestCellSize
+
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
+    type(VECTOR) :: direction, rVec, pVec, locator
+    type(VECTOR), parameter :: xhat = VECTOR(1.d0, 0.d0, 0.d0), yHat = VECTOR(0.d0, 1.d0, 0.d0), zHat = VECTOR(0.d0, 0.d0, 1.d0)
+    integer :: subcell, neighbourSubcell, tSubcell
+    integer :: nBound, nDepth, j
+    integer, intent(out) :: nd
+
+    real(double), intent(out) :: q(4), rho(4), rhoe(4), rhou(4), rhov(4), rhow(4), qnext, x, pressure(4), flux(4), phi, phigas
+    real(double), intent(out) :: xplus, px, py, pz, qViscosity(3,3), rm1, rum1, pm1
+
+    nbound = getNboundFromDirection(direction)
+
+    if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
+       write(*,*) "Bonndary error for twod: ",nbound
+       x = -2.d0
+       x = sqrt(x)
+    endif
+    if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
+
+       nd = neighbourOctal%nDepth
+
+       x = neighbourOctal%x_i(neighbourSubcell)
+       pVEc = subcellCentre(neighbourOctal, neighbourSubcell)
+
+       px = pVec%x
+       py = pVec%y
+       pz = pVec%z
+
+       if (thisOctal%nDepth == neighbourOctal%nDepth) then ! same level
+
+          q(1:4)   = neighbourOctal%q_i(neighbourSubcell)
+          rho(1:4) = neighbourOctal%rho(neighbourSubcell)
+          rhoe(1:4) = neighbourOctal%rhoe(neighbourSubcell)
+          rhou(1:4) = neighbourOctal%rhou(neighbourSubcell)
+          rhov(1:4) = neighbourOctal%rhov(neighbourSubcell)
+          rhow(1:4) = neighbourOctal%rhow(neighbourSubcell)
+          pressure(1:4) = neighbourOctal%pressure_i(neighbourSubcell)
+          flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell,1:4)
+          phi = neighbourOctal%phi_i(neighbourSubcell)
+          phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+          qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
+
+          rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+       else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
+          q(1:4)   = neighbourOctal%q_i(neighbourSubcell)
+          rho(1:4) = neighbourOctal%rho(neighbourSubcell)
+          rhoe(1:4) = neighbourOctal%rhoe(neighbourSubcell)
+          rhou(1:4) = neighbourOctal%rhou(neighbourSubcell)
+          rhov(1:4) = neighbourOctal%rhov(neighbourSubcell)
+          rhow(1:4) = neighbourOctal%rhow(neighbourSubcell)
+          pressure(1:4) = neighbourOctal%pressure_i(neighbourSubcell)
+          phi = neighbourOctal%phi_i(neighbourSubcell)
+          phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+          qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
+
+          rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+
+!       y                  z                                                                                                                                                                  
+!       |                 /                                                                                                                                                                   
+!       |      __________/______                                                                                                                                                              
+!       |     /        /       /|                                                                                                                                                             
+!       |    /   7    /   8   / |                                                                                                                                                             
+!       |   /________/_______/  |                                                                                                                                                             
+!       |  /        /       /| 8|   Diagram showing the convention used here for                                                                                                              
+!       | /   3    /   4   / |  |   numbering the subcells of each octal.                                                                                                                     
+!       |/________/_______/  |  |                                                                                                                                                             
+!       |        |        | 4| /|                                                                                                                                                             
+!       |        |        |  |/ |                                                                                                                                                             
+!       |    3   |   4    |  /  |                                                                                                                                                             
+!       |        |        | /| 6|                                                                                                                                                             
+!       |________|________|/ |  /                                                                                                                                                             
+!       |        |        |  | /                                                                                                                                                              
+!       |        |        | 2|/                                                                                                                                                               
+!       |    1   |   2    |  /                                                                                                                                                                
+!       |        |        | /                                                                                                                                                                 
+!       |________|________|/________\ x                                                                                                                                                       
+!                                   /                                                                                                                                                         
+
+
+! +ve x face                                                                                                                                                                                  
+! -z -y 2  (1)                                                                                                                                                                                
+! -z +y 4  (2)                                                                                                                                                                                
+! +z -y 6  (3)                                                                                                                                                                                
+! +z +y 8  (4)                                                                                                                                                                                
+
+
+
+          if (direction%x > 0.9d0) then
+             select case(subcell)
+                case(2) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 1)
+                case(4) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 2)
+                case(6) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 3)
+                case(8) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 4)
+                case DEFAULT
+                   write(*,*) "error in logic x +ve ",subcell
+             end select
+          endif
+
+! -ve x face                                                                                                                                                                                  
+! -z -y 1  (1)                                                                                                                                                                                
+! -z +y 3  (2)                                                                                                                                                                                
+! +z -y 5  (3)                                                                                                                                                                                
+! +z +y 7  (4)                                                                                                                                                                                
+
+          if (direction%x < -0.9d0) then
+             select case(subcell)
+                case(1) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 1)
+                case(3) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 2)
+                case(5) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 3)
+                case(7) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 4)
+                case DEFAULT
+                   write(*,*) "error in logic x -ve ",subcell
+             end select
+          endif
+
+! -ve z face                                                                                                                                                                                  
+! -x -y 1  (1)                                                                                                                                                                                
+! -x +y 3  (2)                                                                                                                                                                                
+! +x -y 2  (3)                                                                                                                                                                                
+! +x +y 4  (4)                                                                                                                                                                                
+
+          if (direction%z <  -0.9d0) then
+             select case(subcell)
+                case(1) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 1)
+                case(3) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 2)
+                case(2) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 3)
+                case(4) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 4)
+                case DEFAULT
+                   write(*,*) "error in logic z -ve ",subcell
+             end select
+          endif
+
+! +ve z face                                                                                                                                                                                  
+! -x -y 5  (1)                                                                                                                                                                                
+! -x +y 7  (2)                                                                                                                                                                                
+! +x -y 6  (3)                                                                                                                                                                                
+! +x +y 8  (4)                                                                                                                                                                                
+
+          if (direction%z > 0.9d0) then
+             select case(subcell)
+                case(5) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 1)
+                case(7) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 2)
+                case(6) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 3)
+                case(8) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 4)
+                case DEFAULT
+                   write(*,*) "error in logic z +ve ",subcell
+             end select
+          endif
+
+! -ve y face                                                                                                                                                                                  
+! -x -z 1  (1)                                                                                                                                                                                
+! -x +z 5  (2)                                                                                                                                                                                
+! +x -z 2  (3)                                                                                                                                                                                
+! +x +z 6  (4)                                                                                                                                                                                
+
+
+          if (direction%y < -0.9d0) then
+             select case(subcell)
+                case(1) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 1)
+                case(5) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 2)
+                case(2) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 3)
+                case(6) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 4)
+                case DEFAULT
+                   write(*,*) "error in logic y -ve ",subcell
+             end select
+          endif
+
+! +ve y face                                                                                                                                                                                  
+! -x -z 3  (1)                                                                                                                                                                                
+! -x +z 7  (2)                                                                                                                                                                                
+! +x -z 4  (3)                                                                                                                                                                                
+! +x +z 8  (4)                  
+
+          if (direction%y > 0.9d0) then
+             select case(subcell)
+                case(3) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 1)
+                case(7) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 2)
+                case(4) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 3)
+                case(8) 
+                   flux(1:4) = neighbourOctal%flux_amr_i(neighbourSubcell, 4)
+                case DEFAULT
+                   write(*,*) "error in logic y +ve ",subcell
+             end select
+          endif
+
+
+       else
+
+          do j = 1, 4
+
+             rVec = subcellCentre(thisOctal, subcell)
+
+! +ve x face                                                                                                                                                                                  
+! -z -y 2  (1)                                                                                                                                                                                
+! -z +y 4  (2)                                                                                                                                                                                
+! +z -y 6  (3)                                                                                                                                                                                
+! +z +y 8  (4)                                                                                                                                                                                
+             if (abs(direction%x) > 0.9d0) then
+                select case(j)
+                   case(1)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           - 0.25d0 * thisOctal%subcellSize * zHat &
+                           - 0.25d0 * thisOctal%subcellSize * yHat
+                   case(2)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           - (0.25d0 * thisOctal%subcellSize) * zHat &
+                           + (0.25d0 * thisOctal%subcellSize) * yHat
+                   case(3)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           + (0.25d0 * thisOctal%subcellSize) * zHat &
+                           - (0.25d0 * thisOctal%subcellSize) * yHat
+                   case(4)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           + (0.25d0 * thisOctal%subcellSize) * zHat &
+                           + (0.25d0 * thisOctal%subcellSize) * yHat
+                end select
+                locator = locator + rvec
+             endif
+! -ve y face                                                                                                                                                                                  
+! -x -z 1  (1)                                                                                                                                                                                
+! -x +z 5  (2)                                                                                                                                                                                
+! +x -z 2  (3)                                                                                                                                                                                
+! +x +z 6  (4)                                                                                                                                                                                
+             if (abs(direction%y) > 0.9d0) then
+                select case(j)
+                   case(1)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           - (0.25d0 * thisOctal%subcellSize) * xHat &
+                           - (0.25d0 * thisOctal%subcellSize) * zHat
+                   case(2)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           - (0.25d0 * thisOctal%subcellSize) * xHat &
+                           + (0.25d0 * thisOctal%subcellSize) * zHat
+                   case(3)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           + (0.25d0 * thisOctal%subcellSize) * xHat &
+                           - (0.25d0 * thisOctal%subcellSize) * zHat
+                   case(4)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           + (0.25d0 * thisOctal%subcellSize) * xHat &
+                           + (0.25d0 * thisOctal%subcellSize) * zHat
+                end select
+                locator = locator + rvec
+             endif
+! -ve z face                                                                                                                                                                                  
+! -x -y 1  (1)                                                                                                                                                                                
+! -x +y 3  (2)                                                                                                                                                                                
+! +x -y 2  (3)                                                                                                                                                                                
+! +x +y 4  (4)                                                                                                                                                                                
+             if (abs(direction%z) > 0.9d0) then
+                select case(j)
+                   case(1)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           - (0.25d0 * thisOctal%subcellSize) * xHat &
+                           - (0.25d0 * thisOctal%subcellSize) * yHat
+                   case(2)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           - (0.25d0 * thisOctal%subcellSize) * xHat &
+                           + (0.25d0 * thisOctal%subcellSize) * yHat
+                   case(3)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           + (0.25d0 * thisOctal%subcellSize) * xHat &
+                           - (0.25d0 * thisOctal%subcellSize) * yHat
+                   case(4)
+                      locator = (thisOctal%subcellSize/2.d0 + smallestCellSize*0.1)*direction &
+                           + (0.25d0 * thisOctal%subcellSize) * xHat &
+                           + (0.25d0 * thisOctal%subcellSize) * yHat
+                end select
+                locator = locator + rvec
+             endif
+
+
+
+
+             tOctal => thisOctal
+             call findSubcellLocal(locator, tOctal, tSubcell)
+
+             q(j)   = tOctal%q_i(tSubcell)
+             rho(j) = tOctal%rho(tSubcell)
+             rhoe(j) = tOctal%rhoe(tSubcell)
+             rhou(j) = tOctal%rhou(tSubcell)
+             rhov(j) = tOctal%rhov(tSubcell)
+             rhow(j) = tOctal%rhow(tSubcell)
+             pressure(j) = tOctal%pressure_i(tSubcell)
+             phi = neighbourOctal%phi_i(neighbourSubcell)
+             phigas = neighbourOctal%phi_gas(neighbourSubcell)
+             xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
+             qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
+
+             rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+             rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
+             pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+             flux(j) = tOctal%flux_amr_i(tSubcell,j)
+          enddo
+       endif
+
+       
+       rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+            direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+       if (inOctal(grid%octreeRoot, rVec)) then
+          tOctal => neighbourOctal
+          tSubcell = neighbourSubcell
+          call findSubcellLocal(rVec, tOctal, tSubcell)
+          
+          if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
+             qnext = tOctal%q_i(tSubcell)
+          else
+             if (associated(neighbourOctal%mpiBoundaryStorage)) then
+                qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
+             else
+                qNext = 0.d0
+             endif
+          endif
+       else
+          qNext = 0.d0
+       endif
+
+
+
+    else
+
+
+       if (.not.associated(thisOctal%mpiBoundaryStorage)) then
+          write(*,*) "boundary storage not allocated when it should be!", myrankGlobal, &
+               neighbourOctal%mpiThread(neighboursubcell), &
+               thisOctal%mpiThread(subcell)
+          write(*,*) "direction",  direction,nBound
+          write(*,*) "depth ",thisOctal%nDepth
+          write(*,*) "nChildren ",thisOctal%nChildren
+          write(*,*) "rho ",thisOctal%rho(subcell)
+          write(*,*) "this centre",subcellCentre(thisOctal, subcell)
+          write(*,*) "neig centre",subcellCentre(neighbourOctal, neighboursubcell)
+          x = -2.d0
+          x = sqrt(x)
+       endif
+
+       x = thisOctal%mpiBoundaryStorage(subcell, nBound, 7)
+       xplus = thisOctal%mpiBoundaryStorage(subcell, nBound, 14)
+
+       nd =  nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
+
+       nDepth = nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
+
+       q   = thisOctal%mpiBoundaryStorage(subcell, nBound, 1)
+       rho = thisOctal%mpiBoundaryStorage(subcell, nBound, 2)
+       rhoe = thisOctal%mpiBoundaryStorage(subcell, nBound, 3)
+       rhou = thisOctal%mpiBoundaryStorage(subcell, nBound, 4)
+       rhov = thisOctal%mpiBoundaryStorage(subcell, nBound, 5)
+       rhow = thisOctal%mpiBoundaryStorage(subcell, nBound, 6)
+       qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
+       pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
+       flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
+       phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
+       phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
+       px = thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
+       py = thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
+       pz = thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
+       rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
+       rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
+       pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
+
+
+       qViscosity(1,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
+       qViscosity(1,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
+       qViscosity(1,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
+       qViscosity(2,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
+       qViscosity(2,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
+       qViscosity(2,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
+       qViscosity(3,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
+       qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
+       qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
+
+       flux(1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+       flux(2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+       flux(3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+       flux(4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+
+    endif
+  end subroutine getNeighbourValues4
 
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
@@ -4686,6 +5163,9 @@ end subroutine writeRadialFile
     real(double) :: zPoint(maxpts)
     real(double) :: rhoPoint(maxpts)
     real(double) :: rhoePoint(maxpts)
+    real(double) :: uPoint(maxpts)
+    real(double) :: vPoint(maxpts)
+    real(double) :: wPoint(maxpts)
     real(double) :: rhouPoint(maxpts)
     real(double) :: rhovPoint(maxpts)
     real(double) :: rhowPoint(maxpts)
@@ -4693,11 +5173,12 @@ end subroutine writeRadialFile
     real(double) :: energyPoint(maxpts)
     real(double) :: pressurePoint(maxpts)
     real(double) :: dx, dz, xmin, zmin
+    real(double) :: thisRho
 !    integer :: counter
     character(len=80) :: message
     real(double) :: radius
     logical, save :: firstTime = .true.
-    logical :: debug
+    logical :: debug, successful, doLogspace, triedLogSpace
 
     debug = .false.
 
@@ -4882,6 +5363,8 @@ end subroutine writeRadialFile
        enddo
     endif
 
+
+
     topOctal => thisOctal%parent
     topOctalSubcell = thisOctal%parentsubcell
     do while(topOctal%changed(topOctalSubcell))
@@ -4912,48 +5395,80 @@ end subroutine writeRadialFile
           y = rVec%y
           z = rVec%z
 
-          radius = thisOctal%subcellSize*4.d0
+          radius = thisOctal%subcellSize*8.d0
           nPoints = 0
 
-          do while (nPoints < 32)
+          do while (nPoints < 33)
              call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
                   rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
              radius = radius * 2.d0
           enddo
+          uPoint(1:nPoints) = rhouPoint(1:nPoints)/rhoPoint(1:nPoints)
+          vPoint(1:nPoints) = rhovPoint(1:nPoints)/rhoPoint(1:nPoints)
+          wPoint(1:nPoints) = rhowPoint(1:nPoints)/rhoPoint(1:nPoints)
 
-          nq = min(40, nPoints - 1)
-          nw = min(40, nPoints - 1)
+          nq = 17 !min(40, nPoints - 1)
+          nw = 32 !min(40, nPoints - 1)
           nr = max(1,nint((dble(nPoints)/3.d0)**0.333d0))
           allocate(lCell(1:nr,1:nr,1:nr))
           allocate(lnext(1:nPoints))
           allocate(rsq(1:nPoints))
           allocate(a(9,1:nPoints))
+          triedLogSpace = .false.
+          doLogSpace = .false.
+          successful = .false.
+          do while(.not.successful)
 
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoPoint, nq, nw, nr, lcell, lnext, xyzmin, &
-               xyzdel, rmax, rsq, a, ier ) 
-          if (ier /= 0) then
-             write(message,*) "Qshep3 returned an error ",ier
-             call writeWarning(message)
-             write(*,*) " npoints ",npoints
-             do i = 1, nPoints
-                write(*,*) xPoint(i), ypoint(i),zpoint(i)
-             enddo
-          endif
+             if (doLogSpace) then
+                rhoPoint(1:nPoints) = log10(rhoPoint(1:nPoints))
+             endif
 
-          thisOctal%rho(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
-               xyzmin, xyzdel, rmax, rsq, a)
-          if (thisOctal%rho(iSubcell) < 0.d0) then
-             write(*,*) "Negative density after interp ",thisOctal%rho(iSubcell)
-             thisOctal%rho(iSubcell) = SUM(rhoPoint(1:nPoints))/dble(nPoints)
-             thisOctal%rhoe(iSubcell) = SUM(rhoePoint(1:nPoints))/dble(nPoints)
-             thisOctal%rhou(iSubcell) = SUM(rhouPoint(1:nPoints))/dble(nPoints)
-             thisOctal%rhov(iSubcell) = SUM(rhovPoint(1:nPoints))/dble(nPoints)
-             thisOctal%rhow(iSubcell) = SUM(rhowPoint(1:nPoints))/dble(nPoints)
-             thisOctal%energy(iSubcell) = SUM(energyPoint(1:nPoints))/dble(nPoints)
-             thisOctal%phi_gas(iSubcell) = SUM(phiPoint(1:nPoints))/dble(nPoints)
-             thisOctal%pressure_i(iSubcell) = SUM(pressurePoint(1:nPoints))/dble(nPoints)
+             call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+                  xyzdel, rmax, rsq, a, ier ) 
+             if (ier /= 0) then
+                write(message,*) "Qshep3 returned an error ",ier
+                call writeWarning(message)
+                write(*,*) " npoints ",npoints
+                do i = 1, nPoints
+                   write(*,*) xPoint(i), ypoint(i),zpoint(i)
+                enddo
+             endif
 
-          else
+             thisRho = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoPoint, nr, lcell, lnext, &
+                  xyzmin, xyzdel, rmax, rsq, a)
+             if (doLogSpace) then
+                thisRho = 10.d0**thisRho
+                triedLogSpace = .true.
+             endif
+             successful = .true.
+
+             if (thisRho < 0.d0) then
+                successful = .false.
+                write(*,*) "Negative density encountered in qs3val: ",thisRho
+                if (.not.triedLogspace) then
+                   write(*,*) "Trying log space interpolation"
+                   write(77,'(3e12.4)') x,y,z
+                   dologSpace = .true.
+                   do i = 1, nPoints
+                      write(*,*) xPoint(i), ypoint(i),zpoint(i),rhoPoint(i)
+                      write(77,'(3e12.4)') xPoint(i), ypoint(i),zpoint(i)
+                   enddo
+                   stop
+                else
+                   write(*,*) "Can't find sensible interpolation."
+                   write(77,'(3e12.4)') x,y,z
+                   do i = 1, nPoints
+                      write(*,*) xPoint(i), ypoint(i),zpoint(i)
+                      write(77,'(3e12.4)') xPoint(i), ypoint(i),zpoint(i)
+                   enddo
+                   stop
+                endif
+             endif
+          enddo
+
+          
+          thisOctal%rho(isubcell) = thisRho
+
           call qshep3 (nPoints, xPoint, yPoint, zPoint, rhoePoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
@@ -4961,39 +5476,42 @@ end subroutine writeRadialFile
              call writeWarning(message)
           endif
 
+          if (dologSpace) rhoePoint(1:nPoints) = log10(rhoePoint(1:nPoints))
           thisOctal%rhoe(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhoePoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
+          if (dologSpace) thisOctal%rhoe(isubcell) = 10.d0**thisOctal%rhoe(isubcell)
 
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, rhouPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+          call qshep3 (nPoints, xPoint, yPoint, zPoint, uPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
              write(message,*) "Qshep3 returned an error ",ier
              call writeWarning(message)
           endif
 
-          thisOctal%rhou(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhouPoint, nr, lcell, lnext, &
+          thisOctal%rhou(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, uPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, rhovPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+          call qshep3 (nPoints, xPoint, yPoint, zPoint, vPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
              write(message,*) "Qshep3 returned an error ",ier
              call writeWarning(message)
           endif
 
-          thisOctal%rhov(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhovPoint, nr, lcell, lnext, &
+          thisOctal%rhov(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, vPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
-          call qshep3 (nPoints, xPoint, yPoint, zPoint, rhowPoint, nq, nw, nr, lcell, lnext, xyzmin, &
+          call qshep3 (nPoints, xPoint, yPoint, zPoint, wPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
              write(message,*) "Qshep3 returned an error ",ier
              call writeWarning(message)
           endif
 
-          thisOctal%rhow(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, rhowPoint, nr, lcell, lnext, &
+          thisOctal%rhow(iSubcell) = thisRho * qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, wPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
+          if (dologSpace) energyPoint(1:nPoints) = log10(energyPoint(1:nPoints))
           call qshep3 (nPoints, xPoint, yPoint, zPoint, energyPoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
@@ -5003,6 +5521,7 @@ end subroutine writeRadialFile
 
           thisOctal%energy(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, energyPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
+          if (dologSpace) thisOctal%energy(isubcell) = 10.d0**thisOctal%energy(isubcell)
 
 
           call qshep3 (nPoints, xPoint, yPoint, zPoint, phiPoint, nq, nw, nr, lcell, lnext, xyzmin, &
@@ -5015,6 +5534,7 @@ end subroutine writeRadialFile
           thisOctal%phi_gas(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, phiPoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
 
+          if (doLogSpace) pressurePoint(1:nPoints) = log10(pressurepoint(1:nPoints))
           call qshep3 (nPoints, xPoint, yPoint, zPoint, pressurePoint, nq, nw, nr, lcell, lnext, xyzmin, &
                xyzdel, rmax, rsq, a, ier )
           if (ier /= 0) then
@@ -5024,10 +5544,10 @@ end subroutine writeRadialFile
 
           thisOctal%pressure_i(iSubcell) = qs3val(x, y, z, nPoints, xPoint, yPoint, zPoint, pressurePoint, nr, lcell, lnext, &
                xyzmin, xyzdel, rmax, rsq, a)
+          if (doLogSpace) thisOctal%pressure_i(iSubcell) = 10.d0**thisOctal%pressure_i(isubcell)
 
-       endif
           deallocate(lCell, lnext, rsq, a)
-
+          
        endif
        if (thisOctal%twod) then
           rVec = subcellcentre(thisOctal, iSubcell)
@@ -5264,7 +5784,7 @@ end subroutine writeRadialFile
        endif
     endif
     
-  
+665 continue 
     grid%nOctals = grid%nOctals + 1
 
     ! check for a new maximum depth 
@@ -5691,19 +6211,6 @@ end subroutine writeRadialFile
           z(npoints) = storageArray(11)
        end do
     endif
-
-!    do i = 1, nPoints
-!       do counter = 1, nPoints
-!          if( i /= counter) then
-!             if(x(i) == x(counter) .and. y(i) == y(counter) .and. z(i) == z(counter)) then
-!                print *, "x", x(i), x(counter)
-!                print *, "y", y(i), y(counter)
-!                print *, "z", z(i), z(counter)
-!                call torus_abort("DUPLICATE ENTRY B")
-!             end if
-!          end if
-!       end do
-!    end do
 
 
    

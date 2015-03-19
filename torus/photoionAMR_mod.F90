@@ -73,7 +73,7 @@ contains
     use starburst_mod
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
-    use hydrodynamics_mod, only: hydroStep3d, calculaterhou, calculaterhov, calculaterhow, &
+    use hydrodynamics_mod, only: hydroStep3d, hydrostep3d_amr, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
@@ -952,8 +952,24 @@ contains
                 end if
                 
              else if (grid%octreeRoot%threeD) then
-                call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
+
+!                call writeVtkFile(grid, "beforehydro.vtk", &
+!                     valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+!                     "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
+!                     "diff         ","dust1        ","u_i          ",  &
+!                     "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
+!                     "vphi         ","jnu          ","mu           ", &
+!                     "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
+
+
+!                call hydroStep3d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
+!                     , perturbPressure=.false.)
+
+                call hydroStep3d_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
                      , perturbPressure=.false.)
+
+
+
              else if (grid%octreeroot%twod) then
                 call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
                      perturbPressure=.false.)

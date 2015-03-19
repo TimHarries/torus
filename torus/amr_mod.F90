@@ -4429,6 +4429,9 @@ CONTAINS
              split = .true.
              splitInAzimuth = .true.
           endif
+!          case("bondihoyle")
+!             rVec = subcellCentre(thisOctal, subcell)
+!             if (((rVec%x-0.51*thisOctal%subcellSize)<-20.d6).and.(rVec%x+0.51*thisOctal%subcellsize > -20.d6)) split = .true.
 
        case("envelope")
           call calcEnvelope(thisOctal, subcell,checksplit=split)
@@ -9790,24 +9793,20 @@ endif
     n = 2.d0
     ethermal = 0.1d0
     rVec = subcellCentre(thisOctal, subcell)
-    inflowTemp = 10.d0
-    thisOctal%temperature(subcell) = 10.d0
-    thisOCtal%rho(subcell) = 1.d-25
-    thisOctal%pressure_i(subcell) = (thisOctal%rho(subcell)/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+    thisOctal%temperature(subcell) = inflowTemp
+    thisOCtal%rho(subcell) = inflowRho
+    thisOctal%pressure_i(subcell) = inflowPressure
 
-    soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
-    inflowSpeed = 3.d0*soundSpeed
     if (amr3d) then
        thisOctal%velocity(subcell) = VECTOR(inflowSpeed/cSpeed, 0.d0, 0.d0)
     else
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, inflowSpeed/cSpeed)
     endif
     eThermal = kerg * thisOctal%temperature(subcell)/(2.33d0*mHydrogen)
-    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%energy(subcell) = inflowEnergy
     thisOctal%iEquationOfState(subcell) = 1
 
     inflowPressure = thisOctal%pressure_i(subcell)
-    inflowRho = 1.d-25
     inflowMomentum = inflowRho * inflowSpeed
     inflowEnergy = thisOctal%energy(subcell)
     inflowRhoE = inflowEnergy * inflowRho
@@ -17114,17 +17113,27 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%q_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%q_i_minus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%q_i_minus_2,thisOctal%maxchildren)
+          call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
 
-       call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
-       call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,2)
-       call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 2)
-
+       if (thisOctal%twod) then
+          call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,2)
+          call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 2)
+       else
+          call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,4)
+          call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 4)
+       endif
        
 
        call allocateAttribute(thisOctal%fviscosity,thisOctal%maxchildren)
