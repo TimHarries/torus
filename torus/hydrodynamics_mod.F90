@@ -6709,6 +6709,9 @@ end subroutine sumFluxes
    
 
    if (selfGravity) then
+
+!          call writeVtkFile(grid, "grav.vtk", &
+!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
       if (writeoutput) call writeInfo("Solving self gravity...")
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
       if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)!, multigrid=.true.)

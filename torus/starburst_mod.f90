@@ -130,10 +130,9 @@ contains
           source(1:nSource)%age = burstAge
 
        case("supernovatest")
-             nSource = 2
+             nSource = 1
              source(1)%initialMass = 40.d0
-             source(2)%initialMass = 10.d0
-             totMass = 50.d0
+             totMass = 40.d0
              source(1:nSource)%age = burstAge
 
        case DEFAULT
@@ -348,7 +347,7 @@ contains
 
 
     subroutine setSourceProperties(source, thisTable)
-      use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize
+      use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize, burstType
       type(SOURCETYPE) :: source
       type(TRACKTABLE) :: thisTable
       integer :: i, j
@@ -395,6 +394,17 @@ contains
       r = gasdev()
       source%velocity = r * sigmaVel * vVec
       source%accretionRadius = 2.5d0*smallestCellsize*1.d10
+
+      select case(burstType)
+         case("supernovatest")
+            source%position = VECTOR(0.d0, 0.d0, 0.25d0*clusterRadius/1.d10)
+            source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+         case DEFAULT
+      end select
+
+         
+
+
       call buildSphereNBody(source%position, 2.5d0*smallestCellSize, source%surface, 20)
 
 
