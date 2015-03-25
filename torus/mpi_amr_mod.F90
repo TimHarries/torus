@@ -5397,18 +5397,10 @@ end subroutine writeRadialFile
 !          y = rVec%y
 !          z = rVec%z
 
-!          radius = thisOctal%subcellSize*2.d0
-!          nPoints = 0
-!          call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
-!               rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhoPoint, x, y, z, thisOctal%rho(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhoePoint, x, y, z, thisOctal%rhoe(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhouPoint, x, y, z, thisOctal%rhou(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhovPoint, x, y, z, thisOctal%rhov(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, rhowPoint, x, y, z, thisOctal%rhow(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, energyPoint, x, y, z, thisOctal%energy(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, pressurePoint, x, y, z, thisOctal%pressure_i(iSubcell))
-!          call myInterp(1,nPoints, xPoint, yPoint, zPoint, phiPoint, x, y, z, thisOctal%phi_gas(iSubcell))
+
+          call myInterp(2,nPoints, xPoint, yPoint, zPoint, energyPoint, x, y, z, thisOctal%energy(iSubcell))
+          call myInterp(2,nPoints, xPoint, yPoint, zPoint, pressurePoint, x, y, z, thisOctal%pressure_i(iSubcell))
+          call myInterp(2,nPoints, xPoint, yPoint, zPoint, phiPoint, x, y, z, thisOctal%phi_gas(iSubcell))
 
 
          call interpTrilinear(grid, thisOctal, isubcell, thisOctal%rho(isubcell), thisOctal%rhoe(iSubcell), &

@@ -6710,8 +6710,6 @@ end subroutine sumFluxes
 
    if (selfGravity) then
 
-!          call writeVtkFile(grid, "grav.vtk", &
-!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
       if (writeoutput) call writeInfo("Solving self gravity...")
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
       if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)!, multigrid=.true.)
@@ -6722,6 +6720,9 @@ end subroutine sumFluxes
       call sumGasStarGravity(grid%octreeRoot)
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
       if (writeoutput) call writeInfo("Done.")
+!      call writeVtkFile(grid, "grav.vtk", &
+!           valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+
    endif
 
 
@@ -14164,19 +14165,6 @@ end subroutine refineGridGeneric2
     real(double), parameter :: SOR = 1.2d0
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-
-    if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
-       do i = 1, thisOctal%nChildren, 1
-          child => thisOctal%child(i)
-          call gsweep2Level(child, grid, fracChange, ndepth)
-       end do
-       
-       
-    else
-
-       do subcell = 1, thisOctal%maxChildren
-          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-
           if (thisOctal%twoD) then
              nDir = 4
              probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
@@ -14202,6 +14190,19 @@ end subroutine refineGridGeneric2
              dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
              dir(6) = VECTOR(0.d0, 1.d0, 0.d0)
           endif
+
+    if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call gsweep2Level(child, grid, fracChange, ndepth)
+       end do
+       
+       
+    else
+
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
           if (.not.associated(thisOctal%adot)) then
              allocate(thisOctal%adot(1:thisOctal%maxChildren))
              thisOctal%adot = 0.d0
@@ -14309,7 +14310,7 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweep2level
 
-  recursive subroutine gSweep2new(thisOctal, grid, fracChange, it)
+  recursive subroutine gSweep2new(thisOctal, grid, fracChange, fracChange2,it)
     use inputs_mod, only : smallestCellSize
     use mpi
     type(GRIDTYPE) :: grid
@@ -14321,30 +14322,22 @@ end subroutine refineGridGeneric2
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
     real(double) :: x1, x2
-    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6)
-    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
+    real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
     integer :: nd
     real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
     integer :: it
-    gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
+    fourPiTimesgGrav = fourPi * bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call gsweep2new(child, grid, fracChange, it)
-                exit
-             end if
-          end do
-       else
-
-          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+    tauMin  =  (1.d0/dble(2**maxDepthAMR))**2
+    if (amr2d) then
+       deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
+    else
+       deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 4.d0
+    endif
 
           if (thisOctal%twoD) then
              nDir = 4
@@ -14371,6 +14364,22 @@ end subroutine refineGridGeneric2
              dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
              dir(6) = VECTOR(0.d0, 1.d0, 0.d0)
           endif
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call gsweep2new(child, grid, fracChange, fracChange2, it)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
           if (.not.associated(thisOctal%adot)) then
              allocate(thisOctal%adot(1:thisOctal%maxChildren))
              thisOctal%adot = 0.d0
@@ -14441,51 +14450,34 @@ end subroutine refineGridGeneric2
              end do
 
 
-
-
-             tauMin  = 0.5d0*(1.d0/dble(2**maxDepthAMR))**2
-             if (amr2d) then
-                deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
-             else
-                deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 4.d0
-             endif
-
-             dx = thisOctal%subcellSize
+             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
              if (thisOctal%twoD) then
-               d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
-               d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
+               d2phidx2(1) = (g2(1) - g2(2)) / dx
+               d2phidx2(2) = (g2(3) - g2(4)) / dx
                sumd2phidx2 = SUM(d2phidx2(1:2)) + dfdrbyr
              else
-                d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                d2phidx2(3) = (g2(5) - g2(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
+                d2phidx2(1) = (g2(1) - g2(2)) / dx
+                d2phidx2(2) = (g2(3) - g2(4)) / dx
+                d2phidx2(3) = (g2(5) - g2(6)) / dx
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
 
              oldPhi = thisOctal%phi_gas(subcell)
-             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT) 
-
-!             if (newerPhi < -1.d12) then
-!                write(*,*) SOR, oldphi, newerPhi,deltaT, sumd2phidx2,thisOctal%rho(subcell)
-!                write(*,'(a,1p,4e12.2)') "phigas ",ptemp(1:4)
-!                write(*,'(a,1p,4e12.2)') "dx ",dxArray(1:4)
-!                write(*,'(a,1p,4e12.2)') "interface ",phiInterface(1:4)
-!                write(*,'(a,1p,4e12.2)') "g ",g(1:4)
-!                write(*,'(a,1p,4e12.2)') "g2 ",g2(1:4)
-!                write(*,'(a,1p,2e12.2)') "d2phidx2 ",d2phidx2(1:2)
-!             endif
+             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell) * deltaT) 
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
              
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
                 frac = abs((oldPhi - newPhi)/oldPhi)
-!                frac = abs(sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell))/ &
-!                     (fourPi * gGrav * thisOctal%rho(subcell))
-                thisOctal%chiLine(subcell) = frac
+                frac2 = abs(sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell))/ &
+                     (fourPiTimesgGrav * thisOctal%rho(subcell))
+                thisOctal%chiLine(subcell) = frac2
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
+                fracChange2 = max(frac2, fracChange2)
              else
                 fracChange = 1.d30
              endif
@@ -14788,8 +14780,8 @@ end subroutine refineGridGeneric2
                 sumd2phidx2 = (sum(g(1:6)) - 6.d0*thisOctal%phi_gas(subcell))/(thisOctal%subcellSize*gridDistanceScale)**2
 
                 if (thisOctal%phi_gas(subcell) /= 0.d0) then
-                   frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
-!                   frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
+!                   frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
+                   frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
 !                   frac = (0.166666666666666667d0*SUM(g(1:6))-fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell))
                    fracChange = max(frac, fracChange)
                 else
@@ -15061,7 +15053,8 @@ end subroutine refineGridGeneric2
     integer, parameter :: maxThreads = 512
     integer :: iDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
-    real(double) :: fracChange(maxthreads), ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
+    real(double) :: fracChange2(maxthreads), fracChange(maxthreads), &
+         ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
@@ -15074,13 +15067,13 @@ end subroutine refineGridGeneric2
     endif
 ! endif
     if (amr2d) then
-       tol = 1.d-5
-       tol2 = 1.d-6
+       tol = 1.d-2
+       tol2 = 1.d-2
     endif
 
     if (amr3d) then
-       tol = 1.d-5
-       tol2 = 1.d-5
+       tol = 1.d-2
+       tol2 = 1.d-2
     endif
 
 
@@ -15127,6 +15120,8 @@ end subroutine refineGridGeneric2
           else
              deltaT =  (dx)**2 / 6.d0
           endif
+
+
 !          deltaT = deltaT * timeToCodeUnits
           it = 0
           fracChange = 1.d30
@@ -15209,9 +15204,10 @@ end subroutine refineGridGeneric2
 !    deltaT = deltaT * timeToCodeUnits
 
     fracChange = 1.d30
+    fracChange2 = 1.d30
     it =0 
 
-    do while (ANY(fracChange(1:nHydrothreads) > tol2))
+    do while (ANY(fracChange2(1:nHydrothreads) > tol2))
        fracChange = 0.d0
 
 !       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
@@ -15229,8 +15225,9 @@ end subroutine refineGridGeneric2
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        fracChange = 0.d0
+       fracChange2 = 0.d0
 !       call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), it)
-       call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal), it)
+       call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal), fracChange2(myRankGlobal), it)
        it = it + 1
 
        if (cylindricalHydro) then
@@ -15240,6 +15237,8 @@ end subroutine refineGridGeneric2
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange = tempFracChange
+       call MPI_ALLREDUCE(fracChange2, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+       fracChange2 = tempFracChange
 
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
@@ -15253,7 +15252,7 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
-!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2
+!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
        if (it > 10000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit
