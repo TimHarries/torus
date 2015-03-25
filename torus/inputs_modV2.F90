@@ -434,6 +434,9 @@ contains
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("redogravonread", redoGravOnRead, cLine, fLine, nLines, &
+         "Re-solve self-gravity on read: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("simplegrav", simplegrav, cLine, fLine, nLines, &
          "Do simple self gravity calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 

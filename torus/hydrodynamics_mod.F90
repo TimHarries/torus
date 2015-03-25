@@ -15072,8 +15072,8 @@ end subroutine refineGridGeneric2
     endif
 
     if (amr3d) then
-       tol = 1.d-2
-       tol2 = 1.d-2
+       tol = 1.d-1
+       tol2 = 1.d-1
     endif
 
 
@@ -15153,8 +15153,8 @@ end subroutine refineGridGeneric2
 
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
-!             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
-!                  MAXVAL(fracChange(1:nHydroThreads)),tol
+             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
+                  MAXVAL(fracChange(1:nHydroThreads)),tol
 
 
              do i = iDepth, maxDepthAMR-1
@@ -15252,7 +15252,7 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline"/))
 !       endif
 
-!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
+       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
        if (it > 10000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit

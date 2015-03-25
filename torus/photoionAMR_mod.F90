@@ -88,7 +88,7 @@ contains
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
-         mstarburst, burstTime, starburst, inputseed, doSelfGrav
+         mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -631,6 +631,20 @@ contains
 
     nstep = 0
     
+    
+    if ((myrankGlobal/=0).and.redoGravOnRead.and.readGrid) then
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+       call zeroSourcepotential(grid%octreeRoot)
+       if (globalnSource > 0) then
+          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+       endif
+       call sumGasStarGravity(grid%octreeRoot)
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+    endif
+
+
+
 !    !Thaw - trace courant time history                                                                                                                              
 !    open (444, file="tcHistory.dat", status="unknown")
 
