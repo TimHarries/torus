@@ -830,7 +830,7 @@ contains
     integer :: subcell, i, n, ndepth
 
 
-    if (thisoctal%ndepth == (ndepth+1)) then
+    if (thisoctal%ndepth == ndepth) then
 
        if (thisoctal%twod) then
           n = 4
@@ -14332,7 +14332,7 @@ end subroutine refineGridGeneric2
     integer :: it
     fourPiTimesgGrav = fourPi * bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-    tauMin  =  (1.d0/dble(2**maxDepthAMR))**2
+    tauMin  =  0.5*(1.d0/dble(2**maxDepthAMR))**2
     if (amr2d) then
        deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
     else
@@ -14401,7 +14401,7 @@ end subroutine refineGridGeneric2
 
                 ptemp(n) = phigas
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
-                x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                x2 = vector(px,py,pz).dot.dir(n)
 
                 if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
                    x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
@@ -14456,14 +14456,19 @@ end subroutine refineGridGeneric2
                d2phidx2(2) = (g2(3) - g2(4)) / dx
                sumd2phidx2 = SUM(d2phidx2(1:2)) + dfdrbyr
              else
-                d2phidx2(1) = (g2(1) - g2(2)) / dx
-                d2phidx2(2) = (g2(3) - g2(4)) / dx
-                d2phidx2(3) = (g2(5) - g2(6)) / dx
+!                d2phidx2(1) = (g2(1) - g2(2)) / dx
+!                d2phidx2(2) = (g2(3) - g2(4)) / dx
+!                d2phidx2(3) = (g2(5) - g2(6)) / dx
+
+                d2phidx2(1) = (g(1) - g(2)) / dx
+                d2phidx2(2) = (g(3) - g(4)) / dx
+                d2phidx2(3) = (g(5) - g(6)) / dx
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
 
              oldPhi = thisOctal%phi_gas(subcell)
-             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell) * deltaT) 
+             newerPhi = thisOctal%phi_gas(subcell) + deltaT*(sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell))
+
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
              
@@ -14474,6 +14479,7 @@ end subroutine refineGridGeneric2
                 frac = abs((oldPhi - newPhi)/oldPhi)
                 frac2 = abs(sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell))/ &
                      (fourPiTimesgGrav * thisOctal%rho(subcell))
+
                 thisOctal%chiLine(subcell) = frac2
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
@@ -14654,7 +14660,7 @@ end subroutine refineGridGeneric2
              endif
 
              oldPhi = thisOctal%phi_gas(subcell)
-             newerPhi = thisOctal%phi_gas(subcell) + (deltaT * sumd2phidx2 - thisOctal%chiLine(subcell) * deltaT) 
+             newerPhi =  (deltaT * sumd2phidx2 - thisOctal%chiLine(subcell) * deltaT) 
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
              if (.not.associated(thisOCtal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
@@ -14740,54 +14746,31 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                g(n) = phigas
+             enddo
+             dx = thisOCtal%subcellSize
+             
+             if (thisOctal%twoD) then
+                newphi = 0.25d0*(SUM(g(1:4)) - fourpi*gGrav*thisOctal%rho(subcell))
                 
-                x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
-                x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
-                dx = abs(x2-x1)
-                g2(n) =   (phigas - thisOctal%phi_gas(subcell))/((x2 - x1)*gridDistanceScale)
-!                g(n) =   (phi - thisOctal%phi_i(subcell))/thisOctal%subcellSize !!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!                if (slow) then
-                   g(n) = phigas
-!                endif
-
-                enddo
-
-                if (thisOctal%threed) then
-                   d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                   d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                   d2phidx2(3) = (g2(5) - g2(6)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                   sumd2phidx2 = SUM(d2phidx2(1:3))
-                else
-                   d2phidx2(1) = (g2(1) - g2(2)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                   d2phidx2(2) = (g2(3) - g2(4)) / (returnCodeUnitLength(dx*gridDistanceScale))
-                   sumd2phidx2 = SUM(d2phidx2(1:2))
-                endif
-
-                if (thisOctal%twoD) then
-                   newphi = 0.25d0*(SUM(g(1:4))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
-
-                else
-                   newphi = 0.16666666666667d0*(SUM(g(1:6))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
-                endif
-                if (thisOctal%ghostCell(subcell)) then
-                   ghostFracChange = max(fracChange, ghostFracChange)
-                endif
-                deltaPhi = newPhi - thisOctal%phi_gas(subcell)
-                newPhi = thisOctal%phi_gas(subcell) + sorFactor * deltaPhi
-
-                sumd2phidx2 = (sum(g(1:6)) - 6.d0*thisOctal%phi_gas(subcell))/(thisOctal%subcellSize*gridDistanceScale)**2
-
-                if (thisOctal%phi_gas(subcell) /= 0.d0) then
-!                   frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
-                   frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
-!                   frac = (0.166666666666666667d0*SUM(g(1:6))-fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell))
-                   fracChange = max(frac, fracChange)
-                else
-                   fracChange = 1.d30
-                endif
-                thisOCtal%phi_gas(subcell) = newPhi             
+             else
+                newphi = 0.16666666666667d0*(SUM(g(1:6)) - fourpi*gGrav*thisOctal%rho(subcell)*(returnCodeUnitLength(dx*gridDistanceScale))**2)
+             endif
+             
+             deltaPhi = newPhi - thisOctal%phi_gas(subcell)
+             newPhi = thisOctal%phi_gas(subcell) + sorFactor * deltaPhi
+             
+             sumd2phidx2 = (sum(g(1:6)) - 6.d0*newPhi)/(thisOctal%subcellSize*gridDistanceScale)**2
+             
+             if (thisOctal%phi_gas(subcell) /= 0.d0) then
+                frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
+                thisOctal%chiLine(subcell) = frac
+                fracChange = max(frac, fracChange)
+             else
+                fracChange = 1.d30
+             endif
+             thisOCtal%phi_gas(subcell) = newPhi             
           endif
        enddo
     endif
@@ -15058,7 +15041,7 @@ end subroutine refineGridGeneric2
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -15072,7 +15055,7 @@ end subroutine refineGridGeneric2
     endif
 
     if (amr3d) then
-       tol = 1.d-1
+       tol = 1.d-2
        tol2 = 1.d-1
     endif
 
@@ -15153,22 +15136,15 @@ end subroutine refineGridGeneric2
 
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
-             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
-                  MAXVAL(fracChange(1:nHydroThreads)),tol
-
-
-             do i = iDepth, maxDepthAMR-1
-                call updatePhiTree(grid%octreeRoot, i)
-             enddo
-
+!             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
+!                  MAXVAL(fracChange(1:nHydroThreads)),tol
 
 
 !             if (writeoutput) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads)),tol
           enddo
 
-!          write(plotfile,'(a,i1,a)') "grav_",idepth,".vtk"
-!          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline "/))
+
+
 
 
           if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
@@ -15249,7 +15225,7 @@ end subroutine refineGridGeneric2
 !       if (mod(it,10) == 0) then
 !          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
 !          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline"/))
+!               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
 !       endif
 
        if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
