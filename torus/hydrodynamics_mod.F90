@@ -15145,8 +15145,6 @@ end subroutine refineGridGeneric2
 
 
 
-
-
           if (myRankWorldGlobal == 1) write(*,*) "Gsweep of depth ", iDepth, " done in ", it, " iterations"
 
        enddo
