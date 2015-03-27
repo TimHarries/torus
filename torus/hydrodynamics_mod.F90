@@ -14764,7 +14764,8 @@ end subroutine refineGridGeneric2
              sumd2phidx2 = (sum(g(1:6)) - 6.d0*newPhi)/(thisOctal%subcellSize*gridDistanceScale)**2
              
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
-                frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
+!                frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
+		 frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                 thisOctal%chiLine(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
@@ -15050,13 +15051,13 @@ end subroutine refineGridGeneric2
     endif
 ! endif
     if (amr2d) then
-       tol = 1.d-2
-       tol2 = 1.d-2
+       tol = 1.d-6
+       tol2 = 1.d-6
     endif
 
     if (amr3d) then
-       tol = 1.d-2
-       tol2 = 1.d-1
+       tol = 1.d-6
+       tol2 = 1.d-6
     endif
 
 
@@ -15181,7 +15182,7 @@ end subroutine refineGridGeneric2
     fracChange2 = 1.d30
     it =0 
 
-    do while (ANY(fracChange2(1:nHydrothreads) > tol2))
+    do while (ANY(fracChange(1:nHydrothreads) > tol2))
        fracChange = 0.d0
 
 !       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
