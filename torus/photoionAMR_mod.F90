@@ -763,6 +763,10 @@ contains
        dt = dt * dble(cfl)
 
 
+!       call findMassOverAllThreads(grid, totalMass)
+!       if (writeoutput) write(*,*) "Total mass on grid 1  is ", totalmass/mSol
+
+
 !       write(444, *) jt, MINVAL(tc(1:nHydroThreads)), dt
        
 !       if (nstep < 3) then
@@ -983,6 +987,8 @@ contains
                      , perturbPressure=.false.)
 
 
+!       call findMassOverAllThreads(grid, totalMass)
+!       if (writeoutput) write(*,*) "Total mass on grid 2  is ", totalmass/mSol
 
              else if (grid%octreeroot%twod) then
                 call hydroStep2d(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup, &
@@ -1150,14 +1156,27 @@ contains
        if (myrankGlobal /= 0) then
           if (dounrefine) then
              iUnrefine = iUnrefine + 1
-             if (iUnrefine == 50) then
+             if (iUnrefine == 1) then
                 if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
+                nUnrefine = 0
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
+                if (writeoutput) write(*,*) "Number of unrefined cells = ",nUnrefine
                 if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
-             call evenUpGridMPI(grid, .true., .true., evenuparray)
- !            call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             if (nUnrefine > 0) then
+                call evenUpGridMPI(grid, .true., .true., evenuparray)
+                if (doselfGrav) then
+                   if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+                   call zeroSourcepotential(grid%octreeRoot)
+                   if (globalnSource > 0) then
+                      call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+                   endif
+                   call sumGasStarGravity(grid%octreeRoot)
+                   if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+                endif
+             endif
           endif
        endif
 

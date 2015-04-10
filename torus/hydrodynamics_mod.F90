@@ -2565,6 +2565,16 @@ contains
              thisoctal%u_amr_interface(subcell,1:4) = &
                   weight*thisRhou/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1(1:4)/rho_i_minus_1(1:4)
+
+             if (ANY(thisOctal%u_amr_interface(subcell,:) > 3d6)) then
+                write(*,*) "u interface warning ",thisOctal%u_amr_interface(subcell,1:4)/1.d5
+                write(*,*) "thisrhou ",thisRhou, " thisrho ",thisOctal%rho(subcell), " this u ", &
+                     weight*thisRhou/thisoctal%rho(subcell)
+                write(*,*) "rhou_i_minus_1 ",rhou_i_minus_1(1:4), " rho_i_minus_1 ",rho_i_minus_1(1:4), &
+                     "u_i_minus_1 ",rhou_i_minus_1(1:4)/rho_i_minus_1(1:4)
+             endif
+
+
              if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
              thisOctal%u_i(subcell) = thisRhou / thisOctal%rho(subcell)
 
@@ -5359,16 +5369,15 @@ contains
              thisoctal%rho(subcell) = max(thisoctal%q_i(subcell),rhofloor)
           endif
 
-          if (thisoctal%rho(subcell) < 0.d0) then
+          if ((thisoctal%rho(subcell) < 0.d0).or.(thisOctal%rho(subcell)>1.d-8)) then
              write(*,*) "rho warning ", thisoctal%rho(subcell), subcellcentre(thisoctal, subcell)
              write(*,*) "rhou, rhov, rhow ", thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
              write(*,*) "label ",thisoctal%label
              write(*,*) "direction ", direction
              write(*,*) "phi limit ", thisoctal%philimit(subcell)
-             write(*,*) "flux ", thisoctal%flux_i_plus_1(subcell), thisoctal%flux_i(subcell), &
-                  thisoctal%flux_i_minus_1(subcell)
-             write(*,*) "u ", thisoctal%u_i_plus_1(subcell)/1.e5, thisoctal%u_interface(subcell)/1.e5, &
-                  thisoctal%u_i_minus_1(subcell)/1.e5
+             write(*,*) "flux ", thisoctal%flux_amr_i_plus_1(subcell,1:4), thisoctal%flux_amr_i(subcell,1:4), &
+                  thisoctal%flux_amr_i_minus_1(subcell,1:4)
+             write(*,*) "u ", thisoctal%u_amr_interface(subcell,1:4)/1.e5
              write(*,*) "x ", thisoctal%x_i_plus_1(subcell), thisoctal%x_i(subcell), thisoctal%x_i_minus_1(subcell)
              write(*,*) "dx ", thisoctal%x_i_plus_1(subcell) - thisoctal%x_i(subcell), thisoctal%x_i(subcell) - &
                   thisoctal%x_i_minus_1(subcell)
@@ -6514,10 +6523,10 @@ end subroutine sumFluxes
     logical, optional :: doSelfGrav
     logical :: selfGravity
     integer :: group(:), nGroup
-    real(double) :: dt, timestep
+    real(double) :: dt, timestep, totalMass
     type(VECTOR) :: direction
     integer :: iDir, thisBound, i
-!    character(len=80) :: cfile
+    character(len=80) :: plotfile
     logical, optional :: perturbPressure
 
     selfGravity = .true.
@@ -6552,8 +6561,19 @@ end subroutine sumFluxes
     endif
     if (myrankWorldglobal == 1) call tune(6,"Boundary conditions")
 
+
+
+
     if (.not.nBodyTest) then
     do iDir = 1, 4
+
+!   call findMassOverAllThreads(grid, totalMass)
+!   if (writeoutput) write(*,*) "Total mass on grid before step ",idir,"  is ", totalmass/mSol
+
+!   write(plotfile,'(a,i1.1,a)') "beforestep",idir,".dat"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"rho          ","hydrovelocity"/))
+
        select case (iDir)
           case(1)
              direction = VECTOR(1.d0, 0.d0, 0.d0)
@@ -6670,6 +6690,9 @@ end subroutine sumFluxes
 !           "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
 
 
+!   call findMassOverAllThreads(grid, totalMass)
+!   if (writeoutput) write(*,*) "Total mass on grid afer step ",idir,"  is ", totalmass/mSol
+
    enddo
    endif
    if (severeDamping) call damp(grid%octreeRoot)
@@ -6687,9 +6710,17 @@ end subroutine sumFluxes
    endif
  
    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
+
+!   call findMassOverAllThreads(grid, totalMass)
+!   if (writeoutput) write(*,*) "Total mass on grid before accretion  is ", totalmass/mSol
    if ((globalnSource > 0).and.(timestep > 0.d0).and.nBodyPhysics) then
       call domyAccretion(grid, globalsourceArray, globalnSource, timestep)
    endif
+
+
+!   call findMassOverAllThreads(grid, totalMass)
+!   if (writeoutput) write(*,*) "Total mass on grid after accretion  is ", totalmass/mSol
+
    if (myrankWorldglobal == 1) call tune(6,"Accretion onto sources")
 
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
@@ -6707,6 +6738,9 @@ end subroutine sumFluxes
    endif
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
    
+!   call findMassOverAllThreads(grid, totalMass)
+!   if (writeoutput) write(*,*) "Total mass on grid after accretion  is ", totalmass/mSol
+
 
    if (selfGravity) then
 
@@ -8149,6 +8183,7 @@ end subroutine sumFluxes
           call setupQX(grid%octreeRoot, grid, direction)
           if (doselfGrav) then
              
+
              call findMassOverAllThreads(grid, totalmass)
              if (writeoutput) write(*,*) "Total mass: ",totalMass/msol, " solar masses"
 
@@ -12838,22 +12873,14 @@ end subroutine refineGridGeneric2
           if (globalnSource > 0) then
              centre = subcellCentre(thisOctal, subcell)
              do iSource = 1, globalNSource
-                r = modulus(centre - globalsourceArray(iSource)%position)/smallestCellSize
-                if (r < 12.d0) then
+                r = modulus(centre - globalsourceArray(iSource)%position)
+                if (r*1.d10 < globalSourceArray(iSource)%accretionRadius) then
                    unrefine = .false.
                    goto 666
                 endif
              enddo
           endif
 
-          if (globalnSource > 0) then
-             do iSource = 1, globalNSource
-                if (inSubcell(thisOctal,subcell, globalSourceArray(isource)%position))then
-                   unrefine = .false.
-                   goto 666
-                endif
-             enddo
-          endif
 
 
        enddo
@@ -12902,95 +12929,95 @@ end subroutine refineGridGeneric2
 
 
 
-    if (unrefine) then
-
-       if (thisOctal%threed) then
-          nDir = 6
-          dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-          dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-          dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-          dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-          dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-          dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
-       else if (thisOctal%twod) then
-          nDir = 4
-          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-          dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
-          dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
-          dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
-       else
-          nDir = 2
-          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-          dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-       endif
-       
-       do i = 1, nDir
-          do subcell = 1, thisOctal%maxChildren
-             locator = subcellCentre(thisOctal, subcell) + (thisOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)*dirVec(i)
-             neighbourOctal => thisOctal
-             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-             call getNeighbourValues(grid, thisOctal, Subcell, neighbourOctal, neighbourSubcell, dirVec(i), q, rhot, rhoet, &
-                  rhout, rhovt, rhowt, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
-             if (thisOctal%nDepth < nd) then
-                unrefine = .false.
-                goto 666
-             endif
-          enddo
-       enddo
-
-
-       meanRho = sum(rho(1:nc))/dble(nc)
-       thisSpeed = (sum(rhou(1:nc))/dble(nc))**2 + (sum(rhov(1:nc))/dble(nc))**2 + (sum(rhow(1:nc))/dble(nc))**2
-       thisSpeed = sqrt(thisSpeed/meanrho**2)
-       r = thisOctal%subcellSize + 0.01d0*grid%halfSmallestSubcell
-       centre = thisOctal%centre
-
-!       unrefine = .true.
-       do i = 1, nDir
-          maxGradient = 1.d-30
-          locator = centre + r*dirVec(i)
-          if (inOctal(grid%octreeRoot, locator)) then
-             neighbourOctal => thisOctal
-             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-             
-             if (octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then
-
-                rho1 = neighbourOctal%rho(neighbourSubcell)
-                rhou1 = neighbourOctal%rhou(neighbourSubcell)
-                rhov1 = neighbourOctal%rhov(neighbourSubcell)
-                rhow1 = neighbourOctal%rhow(neighbourSubcell)
-                rhoe1 = neighbourOctal%rhoe(neighbourSubcell)
-                split = .false.
-                
-                grad = abs((meanrho-rho1) / meanRho)
-                if (grad > splitLimit) then
-                   split = .true.
-                endif
-                speed = sqrt(rhou1**2 + rhov1**2 + rhow1**2)/rho1
-                if (thisSpeed > 0.d0) then
-                   grad = abs(thisSpeed-speed) / thisSpeed
-                   if ((grad > limit).and.(speed/meancs > 1d-2)) then
-                      split = .true.
-                   endif
-                endif
-
-                !THaw - added ".and. unrefine because previously it would only care about the last direction
-                if (split) then
-                   unrefine = .false.
-                endif
-             endif
-          endif
-       enddo
-    endif
-
-
-    if (unrefine.and.photoionization) then
-       if ( (.not.all(thisOctal%ionFrac(1:thisOctal%maxChildren,2) < 0.01d0)).or. &
-            (.not.all(thisOctal%ionFrac(1:thisOctal%maxChildren,2) < 0.99d0)) ) unrefine = .false.
-    endif
-
-    if(cornercell) unrefine=.false.
-
+!    if (unrefine) then
+!
+!       if (thisOctal%threed) then
+!          nDir = 6
+!          dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+!          dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+!          dirVec(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+!          dirVec(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+!          dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+!          dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+!       else if (thisOctal%twod) then
+!          nDir = 4
+!          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+!          dirVec(2) = VECTOR(-1.d0,0.d0, 0.d0)
+!          dirVec(3) = VECTOR( 0.d0, 0.d0,  1.d0)
+!          dirVec(4) = VECTOR( 0.d0, 0.d0, -1.d0)
+!       else
+!          nDir = 2
+!          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
+!          dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+!       endif
+!       
+!       do i = 1, nDir
+!          do subcell = 1, thisOctal%maxChildren
+!             locator = subcellCentre(thisOctal, subcell) + (thisOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)*dirVec(i)
+!             neighbourOctal => thisOctal
+!             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!             call getNeighbourValues(grid, thisOctal, Subcell, neighbourOctal, neighbourSubcell, dirVec(i), q, rhot, rhoet, &
+!                  rhout, rhovt, rhowt, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
+!             if (thisOctal%nDepth < nd) then
+!                unrefine = .false.
+!                goto 666
+!             endif
+!          enddo
+!       enddo
+!
+!
+!       meanRho = sum(rho(1:nc))/dble(nc)
+!       thisSpeed = (sum(rhou(1:nc))/dble(nc))**2 + (sum(rhov(1:nc))/dble(nc))**2 + (sum(rhow(1:nc))/dble(nc))**2
+!       thisSpeed = sqrt(thisSpeed/meanrho**2)
+!       r = thisOctal%subcellSize + 0.01d0*grid%halfSmallestSubcell
+!       centre = thisOctal%centre
+!
+!!       unrefine = .true.
+!       do i = 1, nDir
+!          maxGradient = 1.d-30
+!          locator = centre + r*dirVec(i)
+!          if (inOctal(grid%octreeRoot, locator)) then
+!             neighbourOctal => thisOctal
+!             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!             
+!             if (octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then
+!
+!                rho1 = neighbourOctal%rho(neighbourSubcell)
+!                rhou1 = neighbourOctal%rhou(neighbourSubcell)
+!                rhov1 = neighbourOctal%rhov(neighbourSubcell)
+!                rhow1 = neighbourOctal%rhow(neighbourSubcell)
+!                rhoe1 = neighbourOctal%rhoe(neighbourSubcell)
+!                split = .false.
+!                
+!                grad = abs((meanrho-rho1) / meanRho)
+!                if (grad > splitLimit) then
+!                   split = .true.
+!                endif
+!                speed = sqrt(rhou1**2 + rhov1**2 + rhow1**2)/rho1
+!                if (thisSpeed > 0.d0) then
+!                   grad = abs(thisSpeed-speed) / thisSpeed
+!                   if ((grad > limit).and.(speed/meancs > 1d-2)) then
+!                      split = .true.
+!                   endif
+!                endif
+!
+!                !THaw - added ".and. unrefine because previously it would only care about the last direction
+!                if (split) then
+!                   unrefine = .false.
+!                endif
+!             endif
+!          endif
+!       enddo
+!    endif
+!
+!
+!    if (unrefine.and.photoionization) then
+!       if ( (.not.all(thisOctal%ionFrac(1:thisOctal%maxChildren,2) < 0.01d0)).or. &
+!            (.not.all(thisOctal%ionFrac(1:thisOctal%maxChildren,2) < 0.99d0)) ) unrefine = .false.
+!    endif
+!
+!    if(cornercell) unrefine=.false.
+!
     if ((thisOctal%nChildren == 0).and.unrefine) then
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
             grid = grid, adjustGridInfo = .true.)
@@ -15057,7 +15084,7 @@ end subroutine refineGridGeneric2
 
     if (amr3d) then
        tol = 1.d-6
-       tol2 = 1.d-6
+       tol2 = 1.d-5
     endif
 
 
@@ -15227,7 +15254,7 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
 !       endif
 
-       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
+!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
        if (it > 10000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit

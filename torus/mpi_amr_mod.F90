@@ -1025,9 +1025,9 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 37
+    integer, parameter :: nStorage = 57
     real(double) :: loc(3), tempStorage(nStorage)
-    type(VECTOR) :: octVec, direction, rVec, pVec
+    type(VECTOR) :: octVec, direction, rVec, pVec,locator
     integer :: nBound
     integer :: iOctal
     integer :: subcell, neighbourSubcell
@@ -1036,6 +1036,8 @@ contains
     logical :: sendLoop
     integer :: nDepth
     integer :: ierr
+    integer :: j
+    type(VECTOR), parameter :: xhat = VECTOR(1.d0, 0.d0, 0.d0), yHat = VECTOR(0.d0, 1.d0, 0.d0), zHat = VECTOR(0.d0, 0.d0, 1.d0)
     real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
     real(double) :: temperature
     real(double) :: rm1, rum1, pm1, qViscosity(3,3)
@@ -1121,6 +1123,12 @@ contains
 
                 call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrank, " received temp storage"
+                if (associated(thisOctal%mpiBoundaryStorage).and.(size(thisOctal%mpiBoundaryStorage,3)/=nStorage)) then
+                   deallocate(thisOctal%mpiBoundaryStorage)
+                   allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
+                   thisOctal%mpiBoundaryStorage = 0.d0
+                endif
+
                 if (.not.associated(thisOctal%mpiBoundaryStorage)) then
                    allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
                    thisOctal%mpiBoundaryStorage = 0.d0
@@ -1234,7 +1242,7 @@ contains
 !                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
 !                     neighbourOctal%edgeCell(neighbourSubcell)
 
-             else ! need to average
+             else ! need to average (neighbour octal depth > this Octal depth)
                 call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
                      flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
                 tempStorage(1) = q
@@ -1278,7 +1286,104 @@ contains
                 tempStorage(36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
                 tempStorage(37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
 
+
+
+          do j = 1, 4
+
+! +ve x face                                                                                                                                                                                  
+! -z -y 2  (1)                                                                                                                                                                                
+! -z +y 4  (2)                                                                                                                                                                                
+! +z -y 6  (3)                                                                                                                                                                                
+! +z +y 8  (4)                                                                                                                                                                                
+             if (abs(direction%x) > 0.9d0) then
+                select case(j)
+                   case(1)
+                      locator = octVec &
+                           - 0.5d0 * neighbourOctal%subcellSize * zHat &
+                           - 0.5d0 * neighbourOctal%subcellSize * yHat
+                   case(2)
+                      locator = octVec &
+                           - (0.5d0 * neighbourOctal%subcellSize) * zHat &
+                           + (0.5d0 * neighbourOctal%subcellSize) * yHat
+                   case(3)
+                      locator = octVec &
+                           + (0.5d0 * neighbourOctal%subcellSize) * zHat &
+                           - (0.5d0 * neighbourOctal%subcellSize) * yHat
+                   case(4)
+                      locator = octVec &
+                           + (0.5d0 * neighbourOctal%subcellSize) * zHat &
+                           + (0.5d0 * neighbourOctal%subcellSize) * yHat
+                end select
              endif
+! -ve y face                                                                                                                                                                                  
+! -x -z 1  (1)                                                                                                                                                                                
+! -x +z 5  (2)                                                                                                                                                                                
+! +x -z 2  (3)                                                                                                                                                                                
+! +x +z 6  (4)                                                                                                                                                                                
+             if (abs(direction%y) > 0.9d0) then
+                select case(j)
+                   case(1)
+                      locator = octVec &
+                           - (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           - (0.5d0 * neighbourOctal%subcellSize) * zHat
+                   case(2)
+                      locator = octVec &
+                           - (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           + (0.5d0 * neighbourOctal%subcellSize) * zHat
+                   case(3)
+                      locator = octVec &
+                           + (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           - (0.5d0 * neighbourOctal%subcellSize) * zHat
+                   case(4)
+                      locator = octVec &
+                           + (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           + (0.5d0 * neighbourOctal%subcellSize) * zHat
+                end select
+             endif
+! -ve z face                                                                                                                                                                                  
+! -x -y 1  (1)                                                                                                                                                                                
+! -x +y 3  (2)                                                                                                                                                                                
+! +x -y 2  (3)                                                                                                                                                                                
+! +x +y 4  (4)                                                                                                                                                                                
+             if (abs(direction%z) > 0.9d0) then
+                select case(j)
+                   case(1)
+                      locator = octVec &
+                           - (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           - (0.5d0 * neighbourOctal%subcellSize) * yHat
+                   case(2)
+                      locator = octVec &
+                           - (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           + (0.5d0 * neighbourOctal%subcellSize) * yHat
+                   case(3)
+                      locator = octVec &
+                           + (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           - (0.5d0 * neighbourOctal%subcellSize) * yHat
+                   case(4)
+                      locator = octVec &
+                           + (0.5d0 * neighbourOctal%subcellSize) * xHat &
+                           + (0.5d0 * neighbourOctal%subcellSize) * yHat
+                end select
+             endif
+
+
+
+
+             tOctal => thisOctal
+             call findSubcellLocal(locator, tOctal, tSubcell)
+
+             tempStorage(42+j-1) = tOctal%q_i(tSubcell)
+             tempStorage(38+j-1) = tOctal%rho(tSubcell)
+             tempStorage(46+j-1) = tOctal%rhou(tSubcell)
+             tempStorage(50+j-1) = tOctal%rhov(tSubcell)
+             tempStorage(54+j-1) = tOctal%rhow(tSubcell)
+             tempStorage(34+j-1) = tOctal%flux_amr_i(tSubcell,j)
+
+          enddo
+       endif
+       
+     
+
 !                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
 !                          write(*,*) myRank, " temp storage sent"
@@ -2997,39 +3102,254 @@ contains
 
        nDepth = nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
 
-       q   = thisOctal%mpiBoundaryStorage(subcell, nBound, 1)
-       rho = thisOctal%mpiBoundaryStorage(subcell, nBound, 2)
-       rhoe = thisOctal%mpiBoundaryStorage(subcell, nBound, 3)
-       rhou = thisOctal%mpiBoundaryStorage(subcell, nBound, 4)
-       rhov = thisOctal%mpiBoundaryStorage(subcell, nBound, 5)
-       rhow = thisOctal%mpiBoundaryStorage(subcell, nBound, 6)
-       qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
-       pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
-       flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
-       phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
-       phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
-       px = thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
-       py = thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
-       pz = thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
-       rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
-       rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
-       pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
+       if (nDepth <= thisOctal%nDepth) then
+
+          q   = thisOctal%mpiBoundaryStorage(subcell, nBound, 1)
+          rho = thisOctal%mpiBoundaryStorage(subcell, nBound, 2)
+          rhoe = thisOctal%mpiBoundaryStorage(subcell, nBound, 3)
+          rhou = thisOctal%mpiBoundaryStorage(subcell, nBound, 4)
+          rhov = thisOctal%mpiBoundaryStorage(subcell, nBound, 5)
+          rhow = thisOctal%mpiBoundaryStorage(subcell, nBound, 6)
+          qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
+          pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
+          flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
+          phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
+          phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
+          px = thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
+          py = thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
+          pz = thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
+          rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
+          rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
+          pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
 
 
-       qViscosity(1,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
-       qViscosity(1,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
-       qViscosity(1,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
-       qViscosity(2,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
-       qViscosity(2,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
-       qViscosity(2,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
-       qViscosity(3,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
-       qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
-       qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
+          qViscosity(1,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
+          qViscosity(1,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
+          qViscosity(1,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
+          qViscosity(2,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
+          qViscosity(2,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
+          qViscosity(2,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
+          qViscosity(3,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
+          qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
+          qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
 
-       flux(1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
-       flux(2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
-       flux(3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
-       flux(4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+
+
+
+!       y                  z                                                                                                                                                                  
+!       |                 /                                                                                                                                                                   
+!       |      __________/______                                                                                                                                                              
+!       |     /        /       /|                                                                                                                                                             
+!       |    /   7    /   8   / |                                                                                                                                                             
+!       |   /________/_______/  |                                                                                                                                                             
+!       |  /        /       /| 8|   Diagram showing the convention used here for                                                                                                              
+!       | /   3    /   4   / |  |   numbering the subcells of each octal.                                                                                                                     
+!       |/________/_______/  |  |                                                                                                                                                             
+!       |        |        | 4| /|                                                                                                                                                             
+!       |        |        |  |/ |                                                                                                                                                             
+!       |    3   |   4    |  /  |                                                                                                                                                             
+!       |        |        | /| 6|                                                                                                                                                             
+!       |________|________|/ |  /                                                                                                                                                             
+!       |        |        |  | /                                                                                                                                                              
+!       |        |        | 2|/                                                                                                                                                               
+!       |    1   |   2    |  /                                                                                                                                                                
+!       |        |        | /                                                                                                                                                                 
+!       |________|________|/________\ x                                                                                                                                                       
+!                                   /                                                                                                                                                         
+
+
+! +ve x face                                                                                                                                                                                  
+! -z -y 2  (1)                                                                                                                                                                                
+! -z +y 4  (2)                                                                                                                                                                                
+! +z -y 6  (3)                                                                                                                                                                                
+! +z +y 8  (4)                                                                                                                                                                                
+
+
+
+          if (direction%x > 0.9d0) then
+             select case(subcell)
+                case(2) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+                case(4) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+                case(6) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+                case(8) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+                case DEFAULT
+                   write(*,*) "error in logic x +ve ",subcell
+             end select
+          endif
+
+! -ve x face                                                                                                                                                                                  
+! -z -y 1  (1)                                                                                                                                                                                
+! -z +y 3  (2)                                                                                                                                                                                
+! +z -y 5  (3)                                                                                                                                                                                
+! +z +y 7  (4)                                                                                                                                                                                
+
+          if (direction%x < -0.9d0) then
+             select case(subcell)
+                case(1) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+                case(3) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+                case(5) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+                case(7) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+                case DEFAULT
+                   write(*,*) "error in logic x -ve ",subcell
+             end select
+          endif
+
+! -ve z face                                                                                                                                                                                  
+! -x -y 1  (1)                                                                                                                                                                                
+! -x +y 3  (2)                                                                                                                                                                                
+! +x -y 2  (3)                                                                                                                                                                                
+! +x +y 4  (4)                                                                                                                                                                                
+
+          if (direction%z <  -0.9d0) then
+             select case(subcell)
+                case(1) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+                case(3) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+                case(2) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+                case(4) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+                case DEFAULT
+                   write(*,*) "error in logic z -ve ",subcell
+             end select
+          endif
+
+! +ve z face                                                                                                                                                                                  
+! -x -y 5  (1)                                                                                                                                                                                
+! -x +y 7  (2)                                                                                                                                                                                
+! +x -y 6  (3)                                                                                                                                                                                
+! +x +y 8  (4)                                                                                                                                                                                
+
+          if (direction%z > 0.9d0) then
+             select case(subcell)
+                case(5) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+                case(7) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+                case(6) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+                case(8) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+                case DEFAULT
+                   write(*,*) "error in logic z +ve ",subcell
+             end select
+          endif
+
+! -ve y face                                                                                                                                                                                  
+! -x -z 1  (1)                                                                                                                                                                                
+! -x +z 5  (2)                                                                                                                                                                                
+! +x -z 2  (3)                                                                                                                                                                                
+! +x +z 6  (4)                                                                                                                                                                                
+
+
+          if (direction%y < -0.9d0) then
+             select case(subcell)
+                case(1) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+                case(5) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+                case(2) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+                case(6) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+                case DEFAULT
+                   write(*,*) "error in logic y -ve ",subcell
+             end select
+          endif
+
+! +ve y face                                                                                                                                                                                  
+! -x -z 3  (1)                                                                                                                                                                                
+! -x +z 7  (2)                                                                                                                                                                                
+! +x -z 4  (3)                                                                                                                                                                                
+! +x +z 8  (4)                  
+
+          if (direction%y > 0.9d0) then
+             select case(subcell)
+                case(3) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+                case(7) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+                case(4) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+                case(8) 
+                   flux(1:4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+                case DEFAULT
+                   write(*,*) "error in logic y +ve ",subcell
+             end select
+          endif
+
+
+
+
+
+
+       else
+
+
+          rhoe = thisOctal%mpiBoundaryStorage(subcell, nBound, 3)
+          qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
+          phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
+          phigas = thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
+          px = thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
+          py = thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
+          pz = thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
+          rm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
+          rum1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
+          pm1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
+
+
+          qViscosity(1,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
+          qViscosity(1,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
+          qViscosity(1,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
+          qViscosity(2,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
+          qViscosity(2,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
+          qViscosity(2,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
+          qViscosity(3,1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
+          qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
+          qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
+
+
+
+          flux(1) = thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
+          flux(2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
+          flux(3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
+          flux(4) = thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
+
+          rho(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 38)
+          rho(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 39)
+          rho(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 40)
+          rho(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 41)
+
+          q(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 42)
+          q(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 43)
+          q(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 44)
+          q(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 45)
+
+          rhou(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 46)
+          rhou(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 47)
+          rhou(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 48)
+          rhou(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 49)
+
+          rhov(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 50)
+          rhov(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 51)
+          rhov(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 52)
+          rhov(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 53)
+
+          rhow(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 54)
+          rhow(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 55)
+          rhow(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 56)
+          rhow(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 57)
+
+       endif
 
     endif
   end subroutine getNeighbourValues4
@@ -5398,9 +5718,9 @@ end subroutine writeRadialFile
 !          z = rVec%z
 
 
-          call myInterp(2,nPoints, xPoint, yPoint, zPoint, energyPoint, x, y, z, thisOctal%energy(iSubcell))
-          call myInterp(2,nPoints, xPoint, yPoint, zPoint, pressurePoint, x, y, z, thisOctal%pressure_i(iSubcell))
-          call myInterp(2,nPoints, xPoint, yPoint, zPoint, phiPoint, x, y, z, thisOctal%phi_gas(iSubcell))
+!          call myInterp(2,nPoints, xPoint, yPoint, zPoint, energyPoint, x, y, z, thisOctal%energy(iSubcell))
+!          call myInterp(2,nPoints, xPoint, yPoint, zPoint, pressurePoint, x, y, z, thisOctal%pressure_i(iSubcell))
+!          call myInterp(2,nPoints, xPoint, yPoint, zPoint, phiPoint, x, y, z, thisOctal%phi_gas(iSubcell))
 
 
          call interpTrilinear(grid, thisOctal, isubcell, thisOctal%rho(isubcell), thisOctal%rhoe(iSubcell), &
