@@ -13531,6 +13531,9 @@ end function readparameterfrom2dmap
     parentOctal%rho(parentSubcell) =                    &
     SUM(childOctal%rho(1:nVals)) / nValsREAL
 
+    if (associated(parentOctal%phi_gas)) parentOctal%phi_gas(parentSubcell) =                    &
+    SUM(childOctal%phi_gas(1:nVals)) / nValsREAL
+
     if (associated(parentOctal%nh)) parentOctal%nh(parentSubcell) =                    &
     SUM(childOctal%nh(1:nVals)) / nValsREAL
 

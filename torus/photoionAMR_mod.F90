@@ -121,7 +121,7 @@ contains
     logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells, sneAdded, lArray(1)
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
-    integer :: iterStack(3)
+    integer :: iterStack(3), itemp
     integer :: optID
     logical, save :: firstWN=.true.
     integer :: niter
@@ -1155,17 +1155,22 @@ contains
 
        if (myrankGlobal /= 0) then
           if (dounrefine) then
+             nUnrefine = 0
              iUnrefine = iUnrefine + 1
-             if (iUnrefine == 1) then
+             if (iUnrefine == 5) then
                 if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
-                nUnrefine = 0
                 call unrefineCells(grid%octreeRoot, grid, nUnrefine,amrUnrefinetolerance)
+                call MPI_ALLREDUCE(nUnrefine, itemp, 1, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+                nUnrefine = itemp
                 if (writeoutput) write(*,*) "Number of unrefined cells = ",nUnrefine
                 if (myrankWorldglobal == 1) call tune(6, "Unrefine grid")
                 iUnrefine = 0
              endif
+
+
              if (nUnrefine > 0) then
                 call evenUpGridMPI(grid, .true., .true., evenuparray)
+                call allocateHydrodynamicsAttributes(grid%octreeRoot)
                 if (doselfGrav) then
                    if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
                    call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)

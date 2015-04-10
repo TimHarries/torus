@@ -1921,7 +1921,7 @@ contains
          "Maximum gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.) 
 
     call getDouble("unreftol", amrUnrefinetolerance, 1.d0 , cLine, fLine, nLines, &
-         "Minimum gradient allowed before AMR grid unrefines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.) 
+         "Minimum gradient allowed before AMR grid unrefines: ","(a,1p,e9.3,1x,a)", 1.d-2, ok, .false.) 
 
     if(refineontemperature) then
        call getDouble("amrtemperaturetol", amrTemperatureTol, 1.d0 , cLine, fLine, nLines, &
