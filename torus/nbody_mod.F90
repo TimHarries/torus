@@ -12,6 +12,13 @@ module nbody_mod
 
 contains
 
+  function plummerSoftening(r, eps) result(out)
+    real(double) :: r, eps, out
+
+    out = r / (r**2 + eps**2)**1.5d0
+  end function plummerSoftening
+
+    
 
   subroutine calculateGasSourceInteraction(source, nSource, grid, eps)
     use inputs_mod, only : doNbodyOnly
@@ -35,7 +42,7 @@ contains
     enddo
 
     if (.not. donBodyOnly) then
-!    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
+    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
     if (grid%splitOverMpi) call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
 #ifdef MPI
@@ -48,7 +55,6 @@ contains
           temp((i-1)*3+2) = source(i)%force%y
           temp((i-1)*3+3) = source(i)%force%z
        enddo
-!       write(*,*) myrankGlobal, " force ",source(1)%force
        call MPI_ALLREDUCE(temp, temp2, n, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
 
        do i = 1, nSource
@@ -56,6 +62,11 @@ contains
           source(i)%force%y = temp2((i-1)*3+2)
           source(i)%force%z = temp2((i-1)*3+3)
        enddo
+
+!       if (writeoutput) then 
+!          write(*,*) "force 1 ",source(1)%force
+!          write(*,*) "force 2 ",source(2)%force
+!       endif
 
  !      if (writeoutput) write(*,*) "total ",source(1)%force
        deallocate(temp, temp2)
@@ -70,9 +81,15 @@ contains
 !    call writeInfo("Calculating source potential for gas", TRIVIAL)
 !    call writeInfo("Done.", TRIVIAL)
 
-!    call writeInfo("Calculating source-source forces", TRIVIAL)
+    call writeInfo("Calculating source-source forces", TRIVIAL)
     if (nSource > 1) call sourceSourceForces(source, nSource, eps)
-!    call writeInfo("Done.", TRIVIAL)
+
+!       if (writeoutput) then 
+!          write(*,*) "final 1 ",source(1)%force
+!          write(*,*) "final 2 ",source(2)%force
+!       endif
+
+    call writeInfo("Done.", TRIVIAL)
 
   end subroutine calculateGasSourceInteraction
 
@@ -237,7 +254,7 @@ contains
     enddo
     eps = 1.d-6 * minSep
     eps = max(eps, smallestCellSize*1.d10)
-    eps = 0.5d0*smallestCellSize*1.d10
+    eps = 2.5d0*smallestCellSize*1.d10
   end subroutine calculateEps
 
   subroutine nBodyStep(source, nSource, dt, grid)
@@ -361,13 +378,13 @@ contains
           cen = subcellCentre(thisOctal, subcell)
           dv = cellVolume(thisOctal, subcell)*1.d30
           do iSource = 1, nSource
-             if (modulus(cen - source(iSource)%position) > 2.d0*thisOctal%subcellSize) then
+             if (.not.inSubcell(thisOctal, subcell,source(isource)%position)) then
                 rVec = source(isource)%position - cen
                 r = modulus(rVec)
                 rHat = rVec
                 call normalize(rHat)
                 source(iSource)%force = source(iSource)%force - &
-                     ((bigG*source(isource)%mass * dv * thisOctal%rho(subcell) * splineSoftening(r*gridDistanceScale,eps))*rHat)
+                     ((bigG*source(isource)%mass * dv * thisOctal%rho(subcell) * plummerSoftening(r*gridDistanceScale,eps))*rHat)
 
              else
                 massSub  = (thisOctal%rho(subcell)*dv)/dble(nSub**3)
@@ -382,7 +399,7 @@ contains
                          rHat = rVec
                          call normalize(rHat)
                          source(iSource)%force = source(iSource)%force - &
-                              ((bigG*source(isource)%mass * massSub * splineSoftening(r*gridDistanceScale,eps/dble(nsub)))*rHat)
+                              ((bigG*source(isource)%mass * massSub * plummerSoftening(r*gridDistanceScale,eps))*rHat)
                       enddo
                    enddo
                 enddo
