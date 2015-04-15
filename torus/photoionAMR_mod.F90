@@ -309,6 +309,7 @@ contains
     if (myrankGlobal /= 0) then
        call writeInfo("Setting up even up array", TRIVIAL)
        call setupEvenUpArray(grid, evenUpArray)
+       call autoSetupEvenupArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
 !       call evenUpGridMPI(grid, .false., .true., evenuparray)
        call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)

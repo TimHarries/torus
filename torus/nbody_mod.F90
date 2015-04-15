@@ -42,7 +42,7 @@ contains
     enddo
 
     if (.not. donBodyOnly) then
-    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
+!    call writeInfo("Calculating force from gas on sources...",TRIVIAL)
     if (grid%splitOverMpi) call recursiveForceFromGas(grid%octreeRoot, source, nSource, eps)
 
 #ifdef MPI
@@ -81,7 +81,7 @@ contains
 !    call writeInfo("Calculating source potential for gas", TRIVIAL)
 !    call writeInfo("Done.", TRIVIAL)
 
-    call writeInfo("Calculating source-source forces", TRIVIAL)
+!    call writeInfo("Calculating source-source forces", TRIVIAL)
     if (nSource > 1) call sourceSourceForces(source, nSource, eps)
 
 !       if (writeoutput) then 
@@ -89,7 +89,7 @@ contains
 !          write(*,*) "final 2 ",source(2)%force
 !       endif
 
-    call writeInfo("Done.", TRIVIAL)
+!    call writeInfo("Done.", TRIVIAL)
 
   end subroutine calculateGasSourceInteraction
 
