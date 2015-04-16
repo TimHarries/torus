@@ -12948,7 +12948,7 @@ end subroutine refineGridGeneric2
 !       else
 !          nDir = 2
 !          dirVec(1) = VECTOR( 1.d0, 0.d0, 0.d0)
-!          dirVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+!          dirVecx(2) = VECTOR(-1.d0, 0.d0, 0.d0)
 !       endif
 !       
 !       do i = 1, nDir
@@ -13114,8 +13114,10 @@ end subroutine refineGridGeneric2
     integer :: nLocs(512), tempNlocs(20000)
     integer :: thread(100000), nLocsGlobal,i, depth(200000)
     integer, intent(in) :: evenUpArray(:)
+    integer :: nSent, nTemp
+    real(double) :: temp1d(80000), tempsent1d(80000)
     real(double) :: temp(20000,4),tempsent(4)
-    integer :: nTemp(1), nSent(1), eDepth(200000)
+    integer :: eDepth(200000)
     integer :: iThread, nExternalLocs
     integer :: iter, k, endloop, j, nworking
     integer, parameter :: tag = 1
@@ -13213,23 +13215,31 @@ end subroutine refineGridGeneric2
              do thisThread = 1, nHydroThreadsGlobal
                 if(thisThread == myRankGlobal) then
                    do iThread = 1, nHydroThreadsGlobal
-                      nTemp(1) = 0
+                      nTemp = 0
                       if (iThread /= myRankGlobal) then
                          do i = 1 , nLocs(myRankGlobal)
                             if (thread(i) == iThread) then
-                               nTemp(1) = nTemp(1) + 1
-                               temp(nTemp(1),1) = locs(i)%x
-                               temp(nTemp(1),2) = locs(i)%y
-                               temp(nTemp(1),3) = locs(i)%z
-                               temp(nTemp(1),4) = dble(depth(i))
+                               nTemp = nTemp + 1
+
+!tjh
+!                               temp(nTemp,1) = locs(i)%x
+!                               temp(nTemp,2) = locs(i)%y
+!                               temp(nTemp,3) = locs(i)%z
+!                               temp(nTemp,4) = dble(depth(i))
+
+                               temp1d(ntemp*4-3) = locs(i)%x
+                               temp1d(ntemp*4-2) = locs(i)%y
+                               temp1d(ntemp*4-1) = locs(i)%z
+                               temp1d(ntemp*4  ) = dble(depth(i))
+
                             endif
                          enddo
                          call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
-                         if (nTemp(1) > 0) then
-                            do i = 1, nTemp(1)
-                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-!                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, i, tag, localWorldCommunicator, ierr)
-                            enddo
+                         if (nTemp > 0) then
+                            call mpi_send(temp1d, ntemp*4, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+!                            do i = 1, nTemp(1)
+!                               call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+!                            enddo
                          endif
                          
                       endif
@@ -13239,23 +13249,26 @@ end subroutine refineGridGeneric2
                    call mpi_recv(nSent, 1, MPI_INTEGER, thisThread, tag, localWorldCommunicator, status, ierr)
                          ! write(*,*) myRank, "received ",nSent, "from ", thisThread
                   
-                   if (nSent(1) > 0) then
-                      do i = 1, nSent(1)
-                         call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, localWorldCommunicator, status, ierr)
-                         eLocs(nExternalLocs + i)%x = tempsent(1)
-                         eLocs(nExternalLocs + i)%y = tempsent(2)
-                         eLocs(nExternalLocs + i)%z = tempsent(3)
-                         eDepth(nExternalLocs + i) = nint(tempsent(4))
+                   if (nSent > 0) then
+                         call mpi_recv(tempsent1d, nsent*4, MPI_DOUBLE_PRECISION, thisThread, tag, localWorldCommunicator, status, ierr)
+
+                      do i = 1, nSent
+
+                         eLocs(nExternalLocs + i)%x = tempSent1d(i*4-3)
+                         eLocs(nExternalLocs + i)%y = tempSent1d(i*4-2)
+                         eLocs(nExternalLocs + i)%z = tempSent1d(i*4-1)
+                         eDepth(nExternalLocs + i) = nint(tempSent1d(i*4   ))
+
+!                         call mpi_recv(tempsent, 4, MPI_DOUBLE_PRECISION, thisThread, tag, localWorldCommunicator, status, ierr)
+!                         eLocs(nExternalLocs + i)%x = tempsent(1)
+!                         eLocs(nExternalLocs + i)%y = tempsent(2)
+!                         eLocs(nExternalLocs + i)%z = tempsent(3)
+!                         eDepth(nExternalLocs + i) = nint(tempsent(4))
                          
                       enddo
                    endif
-                   nExternalLocs = nExternalLocs + nSent(1)
+                   nExternalLocs = nExternalLocs + nSent
 
-!                   do i = 1, nExternalLocs
-!                      call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank))
-!                      converged=.true.
-!                      if(ANY(localChanged)) converged = .false.
-!                   enddo 
 
                endif
              enddo
