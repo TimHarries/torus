@@ -2221,7 +2221,8 @@ contains
     type(GRIDTYPE) :: grid
     integer :: evenUpArray(:)
     integer, allocatable :: nNeighbours(:), neighbourList(:,:), tempInt(:)
-    integer :: ierr, iThread, iPass, iThread1, iThread2
+    integer :: ierr, iThread, iPass, iThread1, iThread2, j
+    logical :: checkNoSharedNeighbours
     allocate(nNeighbours(1:nHydroThreadsGlobal), neighbourList(1:nHydroThreadsGlobal,1:26))
     
     nNeighbours = 0
@@ -2239,21 +2240,40 @@ contains
     enddo
     deallocate(tempInt)
 
+    if (writeoutput) then
+       do ithread = 1, nHydrothreadsGlobal
+          write(*,'(26i4)') ithread, nNeighbours(ithread), neighbourList(ithread,1:nNeighbours(ithread))
+       enddo
+    endif
+
     iPass = 1
     evenUpArray = 0
 
+
     do iThread1 = 1, nHydrothreadsGlobal
-       evenUpArray(iThread1) = iPass
-       do iThread2 = 1, nHydrothreadsGlobal
+       if (evenUpArray(iThread1) == 0) then
+          evenUpArray(iThread1) = iPass
+       else
+          cycle
+       endif
+       do iThread2 = iThread1, nHydrothreadsGlobal
           if (evenUpArray(iThread2) == 0) then
-             if (noSharedNeighbours(iThread1, iThread2, nHydroThreadsGlobal, nNeighbours, neighbourList)) then
+
+             checkNoSharedNeighbours = .true.
+             do j = 1, nHydroThreadsGlobal
+                if (evenupArray(j) == iPass) then
+                   checkNoSharedNeighbours = checkNosharedNeighbours.and.&
+                        noSharedNeighbours(j, iThread2, nHydroThreadsGlobal, nNeighbours, neighbourList)
+                endif
+             enddo
+             if (checkNoSharedNeighbours) then
                 evenUpArray(iThread2) = iPass
              endif
           endif
        enddo
        iPass = iPass + 1
     enddo
-    write(*,*) myrankGlobal," evenupArray auto ",evenUpArray(1:nHydroThreadsGlobal)
+    if (Writeoutput) write(*,*) " evenupArray auto ",evenUpArray(1:nHydroThreadsGlobal)
   end subroutine autoSetupEvenupArray
 
   logical function noSharedNeighbours(i1, i2, nThreads, nNeighbours, neighbourList)
@@ -2267,6 +2287,9 @@ contains
           exit
        endif
     enddo
+    if (ANY(neighbourList(i1,1:nNeighbours(i1)) == i2).or. &
+         ANY(neighbourList(i2,1:nNeighbours(i2)) == i1)) noSharedNeighbours = .false.
+
   end function noSharedNeighbours
 
 
@@ -2300,7 +2323,7 @@ contains
           end do
        else
 
-          if (.not.octalOnThread(thisOctal, subcell, iThread)) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -2313,34 +2336,32 @@ contains
              dirVec(5) = VECTOR( 0.d0, 1.d0,  0.d0)
              dirVec(6) = VECTOR( 0.d0,-1.d0,  0.d0)
 
-             dirVec(7)   = VECTOR( oneByRootThree,  oneByRootThree, -oneByRootThree)
-             dirVec(8)   = VECTOR( oneByRootThree, -oneByRootThree, -oneByRootThree)
-             dirVec(9)   = VECTOR( oneByRootThree,  oneByRootThree,  oneByRootThree)
-             dirVec(10)  = VECTOR( oneByRootThree, -oneByRootThree,  oneByRootThree)
-             dirVec(11)  = VECTOR(-oneByRootThree,  oneByRootThree, -oneByRootThree)
-             dirVec(12)  = VECTOR(-oneByRootThree, -oneByRootThree, -oneByRootThree)
-             dirVec(13)  = VECTOR(-oneByRootThree,  oneByRootThree,  oneByRootThree)
-             dirVec(14)  = VECTOR(-oneByRootThree, -oneByRootThree,  oneByRootThree)
+             dirVec(7)   = VECTOR( RootThree,  RootThree, -RootThree)
+             dirVec(8)   = VECTOR( RootThree, -RootThree, -RootThree)
+             dirVec(9)   = VECTOR( RootThree,  RootThree,  RootThree)
+             dirVec(10)  = VECTOR( RootThree, -RootThree,  RootThree)
+             dirVec(11)  = VECTOR(-RootThree,  RootThree, -RootThree)
+             dirVec(12)  = VECTOR(-RootThree, -RootThree, -RootThree)
+             dirVec(13)  = VECTOR(-RootThree,  RootThree,  RootThree)
+             dirVec(14)  = VECTOR(-RootThree, -RootThree,  RootThree)
 
-             dirVec(15) = VECTOR( oneByRootTwo,  0.d0, oneByRootTwo)
-             dirVec(16) = VECTOR(-oneByRootTwo,  0.d0,-oneByRootTwo)
-             dirVec(17) = VECTOR( oneByRootTwo,  0.d0,-oneByRootTwo)
-             dirVec(18) = VECTOR(-oneByRootTwo,  0.d0, oneByRootTwo)
+             dirVec(15) = VECTOR( RootTwo,  0.d0, RootTwo)
+             dirVec(16) = VECTOR(-RootTwo,  0.d0,-RootTwo)
+             dirVec(17) = VECTOR( RootTwo,  0.d0,-RootTwo)
+             dirVec(18) = VECTOR(-RootTwo,  0.d0, RootTwo)
 
-             dirVec(19) = VECTOR(  0.d0, oneByRootTwo, oneByRootTwo)
-             dirVec(20) = VECTOR(  0.d0,-oneByRootTwo,-oneByRootTwo)
-             dirVec(21) = VECTOR(  0.d0, oneByRootTwo,-oneByRootTwo)
-             dirVec(22) = VECTOR(  0.d0,-oneByRootTwo, oneByRootTwo)
+             dirVec(19) = VECTOR(  0.d0, RootTwo, RootTwo)
+             dirVec(20) = VECTOR(  0.d0,-RootTwo,-RootTwo)
+             dirVec(21) = VECTOR(  0.d0, RootTwo,-RootTwo)
+             dirVec(22) = VECTOR(  0.d0,-RootTwo, RootTwo)
 
-             dirVec(23) = VECTOR( oneByRootTwo,  oneByRootTwo,  0.d0)
-             dirVec(24) = VECTOR(-oneByRootTwo, -oneByRootTwo,  0.d0)
-             dirVec(25) = VECTOR( oneByRootTwo, -oneByRootTwo,  0.d0)
-             dirVec(26) = VECTOR(-oneByRootTwo,  oneByRootTwo,  0.d0)
-
-
-
+             dirVec(23) = VECTOR( RootTwo,  RootTwo,  0.d0)
+             dirVec(24) = VECTOR(-RootTwo, -RootTwo,  0.d0)
+             dirVec(25) = VECTOR( RootTwo, -RootTwo,  0.d0)
+             dirVec(26) = VECTOR(-RootTwo,  RootTwo,  0.d0)
 
           else if (thisOctal%twod) then
+
              nDir = 8
              dirVec(1) = VECTOR(-1.d0, 0.d0, 0.d0)
              dirVec(2) = VECTOR(+1.d0, 0.d0, 0.d0)
@@ -2362,7 +2383,7 @@ contains
              if (inOctal(grid%octreeRoot, octVec)) then
                 neighbourOctal => thisOctal 
                 call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
-                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
+                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then
                    if (nNeighbours == 0) then
                       nNeighbours = nNeighbours + 1
                       neighbourList(nNeighbours) = neighbourOctal%mpiThread(neighbourSubcell)

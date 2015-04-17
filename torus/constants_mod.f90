@@ -28,6 +28,7 @@ module constants_mod
   real(double), parameter :: radToDeg = 180.d0/pi
   real(double), parameter :: oneByRootTwo = 1.d0/sqrt(2.d0)
   real(double), parameter :: rootTwo = sqrt(2.d0)
+  real(double), parameter :: rootThree = sqrt(3.d0)
   real(double), parameter :: oneByRootThree = 1.d0/sqrt(3.d0)
   real(double), parameter :: radiansToArcSec = radToDeg * 60.d0 * 60.d0
   real(double), parameter :: ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
@@ -98,6 +99,7 @@ module constants_mod
   real(double), parameter :: mEarth = 5.98d27            ! g
   real(double), parameter :: mMoon = 7.349d25            ! g
   real(double), parameter :: bigG = 6.67259d-8           ! cgs
+  real(double), parameter :: fourPiTimesBigG = 4.d0 * pi * bigG
   real(double), parameter :: mElectron = 9.109565D-28    ! g
 
   real(double), parameter :: aRad = 4.d0 * stefanBoltz / cSpeed

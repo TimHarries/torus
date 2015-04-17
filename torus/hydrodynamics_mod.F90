@@ -14350,13 +14350,14 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweep2level
 
-  recursive subroutine gSweep2new(thisOctal, grid, fracChange, fracChange2,it)
+  recursive subroutine gSweep2new(thisOctal, grid, fracChange, fracChange2,it,deltaT,doOnlyChanged)
     use inputs_mod, only : smallestCellSize
     use mpi
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
+    logical :: doOnlyChanged
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
@@ -14365,19 +14366,12 @@ end subroutine refineGridGeneric2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
     real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
     integer :: nd
-    real(double) :: tauMin, dfdrbyr
+    real(double) :: dfdrbyr
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
     integer :: it
-    fourPiTimesgGrav = fourPi * bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
 
-    tauMin  =  0.5*(1.d0/dble(2**maxDepthAMR))**2
-    if (amr2d) then
-       deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
-    else
-       deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 4.d0
-    endif
 
           if (thisOctal%twoD) then
              nDir = 4
@@ -14412,13 +14406,15 @@ end subroutine refineGridGeneric2
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call gsweep2new(child, grid, fracChange, fracChange2, it)
+                call gsweep2new(child, grid, fracChange, fracChange2, it, deltaT, doOnlyChanged)
                 exit
              end if
           end do
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if ((.not.thisOctal%changed(subcell)).and.doOnlyChanged) cycle
 
           if (.not.associated(thisOctal%adot)) then
              allocate(thisOctal%adot(1:thisOctal%maxChildren))
@@ -14428,7 +14424,7 @@ end subroutine refineGridGeneric2
           if (.not.thisOctal%ghostCell(subcell)) then
 
              locator = subcellCentre(thisOctal, subcell)
-             thisR = returnCodeUnitLength(locator%x*gridDistanceScale)
+             thisR = locator%x*gridDistanceScale
              do n = 1, nDir
                 
                 locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize)
@@ -14447,32 +14443,37 @@ end subroutine refineGridGeneric2
                    x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                    x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
                    dx = x2 - x1
+                   dx = dx * gridDistanceScale
                 else
                    if (nd == thisOctal%nDepth) then ! coarse/coarse or fine/fine
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                       x2 = VECTOR(px, py, pz).dot.dir(n)
                       dx = x2 - x1
+                      dx = dx * gridDistanceScale
 
                    else if (nd > thisOctal%nDepth) then ! coarse cells with a fine boundary
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                       x2 = VECTOR(px, py, pz).dot.dir(n)
                       dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
                    else
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n) ! fine cells
                       x2 = VECTOR(px, py, pz).dot.dir(n)
                       dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
                    endif
                 endif
 
                 dxArray(n) = dx
-                g(n) =   (phigas - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+                g(n) =   (phigas - thisOctal%phi_gas(subcell))/dxArray(n)
              enddo
 
 !get the gravitational potential values at the cell interface
              do n = 1, nDir
                 dx = sign(thisOctal%subcellSize/2.d0,dxArray(n))
-                   phiInterface(n) = thisOctal%phi_gas(subcell) +  g(n)*(&
-                        returnCodeUnitLength(dx*gridDistanceScale))
+                   phiInterface(n) = thisOctal%phi_gas(subcell) +  g(n)*(dx*gridDistanceScale)
              end do
 
 
@@ -14486,20 +14487,16 @@ end subroutine refineGridGeneric2
 !calculate the new gradient
              do n = 1, nDir
                 dx = sign(thisOctal%subcellSize/2.d0,dxArray(n))
-                g2(n) = (phiInterface(n) - thisOctal%phi_gas(subcell))/(returnCodeUnitLength(dx*gridDistanceScale))
+                g2(n) = (phiInterface(n) - thisOctal%phi_gas(subcell))/(dx*gridDistanceScale)
              end do
 
 
-             dx = returnCodeUnitLength(thisOctal%subcellSize*gridDistanceScale)
+             dx = thisOctal%subcellSize*gridDistanceScale
              if (thisOctal%twoD) then
                d2phidx2(1) = (g2(1) - g2(2)) / dx
                d2phidx2(2) = (g2(3) - g2(4)) / dx
                sumd2phidx2 = SUM(d2phidx2(1:2)) + dfdrbyr
              else
-!                d2phidx2(1) = (g2(1) - g2(2)) / dx
-!                d2phidx2(2) = (g2(3) - g2(4)) / dx
-!                d2phidx2(3) = (g2(5) - g2(6)) / dx
-
                 d2phidx2(1) = (g(1) - g(2)) / dx
                 d2phidx2(2) = (g(3) - g(4)) / dx
                 d2phidx2(3) = (g(5) - g(6)) / dx
@@ -14507,7 +14504,7 @@ end subroutine refineGridGeneric2
              endif
 
              oldPhi = thisOctal%phi_gas(subcell)
-             newerPhi = thisOctal%phi_gas(subcell) + deltaT*(sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell))
+             newerPhi = thisOctal%phi_gas(subcell) + deltaT*(sumd2phidx2 - fourPiTimesbigG * thisOctal%rho(subcell))
 
 
              newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
@@ -14517,8 +14514,8 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
                 frac = abs((oldPhi - newPhi)/oldPhi)
-                frac2 = abs(sumd2phidx2 - fourPiTimesgGrav * thisOctal%rho(subcell))/ &
-                     (fourPiTimesgGrav * thisOctal%rho(subcell))
+                frac2 = abs(sumd2phidx2 - fourPiTimesbigG * thisOctal%rho(subcell))/ &
+                     (fourPiTimesbigG * thisOctal%rho(subcell))
 
                 thisOctal%chiLine(subcell) = frac2
                 thisOctal%adot(subcell) = frac
@@ -15069,11 +15066,12 @@ end subroutine refineGridGeneric2
 
   end subroutine simpleGravity
 
-  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid)
+  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid, onlyChanged)
     use inputs_mod, only :  maxDepthAMR, dirichlet, simpleGrav
     use mpi
     type(gridtype) :: grid
-    logical, optional :: multigrid
+    logical, optional :: multigrid, onlyChanged
+    logical :: doOnlyChanged
     integer, parameter :: maxThreads = 512
     integer :: iDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
@@ -15083,6 +15081,9 @@ end subroutine refineGridGeneric2
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, i, minLevel
     character(len=80) :: plotfile
+
+    doOnlyChanged = .false.
+    if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -15196,8 +15197,7 @@ end subroutine refineGridGeneric2
     call setupGhosts(grid%octreeRoot, grid)
 
 
-
-    if(dirichlet) then
+    if(dirichlet.and.(.not.doOnlyChanged)) then
        if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
        call applyDirichlet(grid)
        if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
@@ -15241,8 +15241,17 @@ end subroutine refineGridGeneric2
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        fracChange = 0.d0
        fracChange2 = 0.d0
-!       call gSweep2(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), it)
-       call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal), fracChange2(myRankGlobal), it)
+
+
+       tauMin  =  0.5*(1.d0/dble(2**maxDepthAMR))**2
+       if (amr2d) then
+          deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 2.d0
+       else
+          deltaT = tauMin * (gridDistanceScale * amrGridSize)**2 / 4.d0
+       endif
+
+
+       call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal), fracChange2(myRankGlobal), it, deltaT, doOnlyChanged)
        it = it + 1
 
        if (cylindricalHydro) then

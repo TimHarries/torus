@@ -1047,7 +1047,7 @@ contains
 
                 if (doselfGrav) then
                    if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+                   call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, onlyChanged=.true.)
                    call zeroSourcepotential(grid%octreeRoot)
                    if (globalnSource > 0) then
                       call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
