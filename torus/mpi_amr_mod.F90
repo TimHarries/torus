@@ -5437,7 +5437,7 @@ end subroutine writeRadialFile
                 tau = tau + dble(kappap) * tval * 1.d10 
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
                 if (tau > tauWanted) then
-                   tauRad = modulus(position)
+                   tauRad = modulus(position-rVec)
                    tempStorage(1) = 1.d30
                    tempStorage(2) = tauRad 
                    exit
