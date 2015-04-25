@@ -144,6 +144,7 @@
 !---------------
 
   integer, protected :: nHydroThreadsInput !Number of hydrothreads for domain decomposition
+  logical :: loadBalancing            ! Use load balancing MPI methods
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
   logical :: redoGravOnRead           !Resolve self-gravity on readin

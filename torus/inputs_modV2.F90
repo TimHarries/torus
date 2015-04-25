@@ -166,6 +166,8 @@ contains
     if (splitOverMPI) then
        call getInteger("nhydrothreads", nHydroThreadsInput, cLine, fLine, nLines, &
             "Number of threads for domain decomposition: ","(a,i3,a)", 0, ok, .false.)
+       call getLogical("loadbalancing", loadBalancing, cLine, fLine, nLines, &
+            "Employ load balancing MPI methods: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
 
 

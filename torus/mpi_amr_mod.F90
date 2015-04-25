@@ -10,7 +10,7 @@ contains
 
   subroutine setupAMRCOMMUNICATOR
     use mpi
-    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr1d, amr2d, amr3d
+    use inputs_mod, only : nHydroThreadsinput, splitOverMPI, amr1d, amr2d, amr3d, loadBalancing
     integer :: ierr, i, j, iset, k
     integer, allocatable :: ranks(:)
     integer :: worldGroup, amrGroup, localWorldGroup
@@ -29,67 +29,96 @@ contains
     nHydroThreadsGlobal = nHydroThreadsinput
     if (splitOverMPI) then
 
-       if (nHydroThreadsInput == 0) then
-
-          if (amr3d.and.(mod(nThreadsGlobal, 513) == 0)) then
-             nHydroThreadsGlobal = 512
-          else if (amr3d.and.(mod(nThreadsGlobal, 65) == 0)) then
-             nHydroThreadsGlobal = 64
-          else if (amr3d.and.(mod(nThreadsGlobal, 9) == 0)) then
-             nHydroThreadsGlobal = 8
-          else if (amr2d.and.(mod(nThreadsGlobal, 65) == 0)) then
-             nHydroThreadsGlobal = 64
-          else if (amr2d.and.(mod(nThreadsGlobal, 17) == 0)) then
-             nHydroThreadsGlobal = 16
-          else if (amr2d.and.(mod(nThreadsGlobal, 5) == 0)) then
-             nHydroThreadsGlobal = 4
-          else if (amr1d.and.(mod(nThreadsGlobal, 3) == 0)) then
-             nHydroThreadsGlobal = 2
+       if (loadBalancing) then
+          if (nHydroThreadsInput == 0) then
+             call torus_abort("nHydrothreads must be specified for load balancing")
           else
+             nHydroThreadsGlobal  = nHydroThreadsInput
+             nLoadBalancingThreadsGlobal = nThreadsGlobal - nHydroThreadsGlobal - 1
+             nHydroSetsGlobal = 1
+             myHydroSetGlobal = 0
+             loadBalancingThreadGlobal = .false.
+             if (myRankWorldGlobal > nHydroThreadsGlobal) loadBalancingThreadGlobal = .true.
+          endif
+       else
+
+          if (nHydroThreadsInput == 0) then
+
+             if (amr3d.and.(mod(nThreadsGlobal, 513) == 0)) then
+                nHydroThreadsGlobal = 512
+             else if (amr3d.and.(mod(nThreadsGlobal, 65) == 0)) then
+                nHydroThreadsGlobal = 64
+             else if (amr3d.and.(mod(nThreadsGlobal, 9) == 0)) then
+                nHydroThreadsGlobal = 8
+             else if (amr2d.and.(mod(nThreadsGlobal, 65) == 0)) then
+                nHydroThreadsGlobal = 64
+             else if (amr2d.and.(mod(nThreadsGlobal, 17) == 0)) then
+                nHydroThreadsGlobal = 16
+             else if (amr2d.and.(mod(nThreadsGlobal, 5) == 0)) then
+                nHydroThreadsGlobal = 4
+             else if (amr1d.and.(mod(nThreadsGlobal, 3) == 0)) then
+                nHydroThreadsGlobal = 2
+             else
+                write(*,*) "Number of MPI threads is ",nThreadsGlobal
+                write(*,*) "Can't figure out automatically what domain decomp is required"
+                stop
+             endif
+          endif
+
+          if (mod(nThreadsGlobal, (nHydroThreadsGlobal+1)) /= 0) then
              write(*,*) "Number of MPI threads is ",nThreadsGlobal
-             write(*,*) "Can't figure out automatically what domain decomp is required"
+             write(*,*) "Number of threads per decomposed domain is ", nHydroThreadsGlobal+1
+             write(*,*) "Can't distribute work properly"
              stop
           endif
+
+          nHydroSetsGlobal = nThreadsGlobal / (nHydroThreadsGlobal+1)
+
+
+          myHydroSetGlobal = myRankWorldGlobal / (nHydroThreadsGlobal+1)
        endif
-
-       if (mod(nThreadsGlobal, (nHydroThreadsGlobal+1)) /= 0) then
-          write(*,*) "Number of MPI threads is ",nThreadsGlobal
-          write(*,*) "Number of threads per decomposed domain is ", nHydroThreadsGlobal+1
-          write(*,*) "Can't distribute work properly"
-          stop
-       endif
-       
-       nHydroSetsGlobal = nThreadsGlobal / (nHydroThreadsGlobal+1)
-
-       
-       myHydroSetGlobal = myRankWorldGlobal / (nHydroThreadsGlobal+1)
-
        if (myrankWorldGlobal == 0) then
           write(*,*) " "
           write(*,*) "Parallel info:"
           write(*,*) "nThreadsGlobal: ",nThreadsGlobal
           write(*,*) "nHydrothreads: ",nHydroThreadsGlobal
           write(*,*) "nHydroSetsGlobal: ",nHydroSetsGlobal
+          write(*,*) "nLoadBalancingThreadsGlobal: ",nLoadBalancingThreadsGlobal
           write(*,*) " "
        endif
-       
+
        call MPI_COMM_GROUP(MPI_COMM_WORLD, worldGroup, ierr)
 
-       allocate(ranks(1:(nHydroThreadsGlobal+1)))
-       do i = 1, nHydroThreadsGlobal+1
-          ranks(i) = myHydroSetGlobal * (nHydroThreadsGlobal+1) + i - 1
+       allocate(ranks(1:(nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal)))
+       do i = 1, nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal
+          ranks(i) = myHydroSetGlobal * (nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal) + i - 1
        enddo
-       call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal+1, ranks, localWorldGroup, ierr)
+       call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal, ranks, localWorldGroup, ierr)
        call MPI_COMM_CREATE(MPI_COMM_WORLD, localWorldGroup, localWorldCOMMUNICATOR, ierr)
+       deallocate(ranks)
+
+       allocate(ranks(1:1+nLoadBalancingThreadsGlobal))
+       ranks(1) = 0
+       do i = 1, nLoadBalancingThreadsGlobal
+          ranks(1+i) = nHydroThreadsGlobal+i
+       enddo
+       call MPI_GROUP_EXCL(localWorldGroup, 1+nLoadBalancingThreadsGlobal, ranks, amrGroup, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, amrGroup, amrCOMMUNICATOR, ierr)
        deallocate(ranks)
 
        allocate(ranks(1:1))
        ranks(1) = 0
        call MPI_GROUP_EXCL(localWorldGroup, 1, ranks, amrGroup, ierr)
-       call MPI_COMM_CREATE(MPI_COMM_WORLD, amrGroup, amrCOMMUNICATOR, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, amrGroup, allDomainsCOMMUNICATOR, ierr)
        deallocate(ranks)
-       call MPI_COMM_RANK(localWorldCommunicator, myRankGlobal, ierr)
 
+
+
+       if (loadBalancingThreadGlobal) then
+          call MPI_COMM_RANK(MPI_COMM_WORLD, myRankGlobal, ierr)
+       else
+          call MPI_COMM_RANK(localWorldCommunicator, myRankGlobal, ierr)
+       endif
        allocate(amrParallelCommunicator(1:nHydroThreadsGlobal))
        allocate(ranks(1:nHydroSetsGlobal))
        do i = 1, nHydroThreadsGlobal
@@ -119,7 +148,7 @@ contains
           call mpi_barrier(MPI_COMM_WORLD, ierr)
        enddo
 
-       if (nHydroThreadsGlobal == 8) then
+       if ((nHydroThreadsGlobal == 8).and.(.not.loadBalancingThreadGlobal)) then
           optimized = .true.
           do iSet = 1, nHydroSetsGlobal
 
@@ -142,7 +171,6 @@ contains
           enddo
 
 
-          call mpi_barrier(MPI_COMM_WORLD, ierr)
           if (.not.optimized) then
              write(message,'(a)') "!!! Eight-way domain decomposition not optimized."
              if (myrankGlobal ==0) write(*,*) trim(message)
@@ -150,23 +178,23 @@ contains
        endif
 
 
-!       if ((nHydroThreadsGlobal == 8).and.(nHydroSetsGlobal > nHydroThreadsGlobal)) then
-!          allocate(ranks(1:nhydroThreadsGlobal**2))
-!          n = 1
-!          ranks(1) = 0
-!          do i = 1, nHydroThreadsGlobal
-!             do j = 1, nHydroThreadsGlobal
-!                n = n + 1
-!                ranks(n) = (i-1) * (nHydroThreadsGlobal+1) + j
-!             enddo
-!          enddo
-!          call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal**2+1, ranks, hydroGroup, ierr)
-!          call MPI_COMM_CREATE(MPI_COMM_WORLD, hydroGroup, hydroCommunicator, ierr)
-!          deallocate(ranks)
-!       endif
-          
-          
-!       call testMPIspeeds()
+       !       if ((nHydroThreadsGlobal == 8).and.(nHydroSetsGlobal > nHydroThreadsGlobal)) then
+       !          allocate(ranks(1:nhydroThreadsGlobal**2))
+       !          n = 1
+       !          ranks(1) = 0
+       !          do i = 1, nHydroThreadsGlobal
+       !             do j = 1, nHydroThreadsGlobal
+       !                n = n + 1
+       !                ranks(n) = (i-1) * (nHydroThreadsGlobal+1) + j
+       !             enddo
+       !          enddo
+       !          call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal**2+1, ranks, hydroGroup, ierr)
+       !          call MPI_COMM_CREATE(MPI_COMM_WORLD, hydroGroup, hydroCommunicator, ierr)
+       !          deallocate(ranks)
+       !       endif
+
+
+       !       call testMPIspeeds()
     else
        myrankGlobal = myrankWorldGlobal
     endif
@@ -5362,6 +5390,8 @@ end subroutine writeRadialFile
     integer :: sendThread
     logical :: hitGrid
 
+    if (loadBalancingThreadGlobal) goto 666
+
     thisOctal => grid%octreeRoot
     position = rVec + ((-10.d0*grid%octreeRoot%subcellSize) * uHat)
     tval = distanceToGridFromOutside(grid, position, uHat, hitGrid)
@@ -5471,6 +5501,7 @@ end subroutine writeRadialFile
     logical :: stillLooping
     integer :: sendThread
 
+    if (loadBalancingThreadGlobal) goto 666
     thisOctal => grid%octreeRoot
     position = rVec
     tauAbs = 0.d0; tauSca = 0.d0;
@@ -5588,16 +5619,13 @@ end subroutine writeRadialFile
     endif
 
     nOctals=0; nVoxels=0
-    if (myRankGlobal /= 0) call countSubcellsMPI(thisgrid, nVoxels)
-!    call MPI_BARRIER(localWorldCommunicator, ierr)
-!    print *, "myRankGlobal ", myRankGlobal, "is counting subcells "
-!    call countSubcellsMPI(thisgrid, nVoxels)
-    call MPI_BARRIER(localWorldCommunicator, ierr)
-       call MPI_REDUCE(thisgrid%maxDepth, tempInt, 1, MPI_INTEGER, MPI_MAX, 1, localWorldCommunicator, ierr)
+    if (myRankGlobal /= 0) then
+       call countSubcellsMPI(thisgrid, nVoxels)
+       call MPI_REDUCE(thisgrid%maxDepth, tempInt, 1, MPI_INTEGER, MPI_MAX, 1, amrCommunicator, ierr)
        maxDepth = tempInt(1)
-       call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, localWorldCommunicator, ierr)
+       call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 1, amrCommunicator, ierr)
        halfSmallestSubcell = tempDouble(1)
-    
+    endif
     if (myRankWorldGlobal == 1) then
        write(UN,'(a)') ' '
        write(UN,'(a)') '######################################################'

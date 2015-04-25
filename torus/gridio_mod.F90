@@ -2209,66 +2209,72 @@ contains
 
 #ifdef MPI
 
-    subroutine receiveSingleIntegerFlexi(value)
+    subroutine receiveSingleIntegerFlexi(value, ithread)
       use mpi
       integer, intent(out) :: value
+      integer :: ithread
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleIntegerFlexi
 
-    subroutine receiveSingleRealFlexi(value)
+    subroutine receiveSingleRealFlexi(value, ithread)
       use mpi
       real, intent(out) :: value
+      integer :: ithread
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, 1, MPI_REAL, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleRealFlexi
 
-    subroutine receiveSingleDoubleFlexi(value)
+    subroutine receiveSingleDoubleFlexi(value, ithread)
       use mpi
       real(double), intent(out) :: value
+      integer :: ithread
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleDoubleFlexi
 
-    subroutine receiveSingleLogicalFlexi(value)
+    subroutine receiveSingleLogicalFlexi(value,ithread)
       use mpi
+      integer :: ithread
       logical, intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(value, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, 1, MPI_LOGICAL, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleLogicalFlexi
 
-    subroutine receiveSingleVectorFlexi(value)
+    subroutine receiveSingleVectorFlexi(value,ithread)
       use mpi
+      integer :: ithread
       type(VECTOR), intent(out) :: value
       real(double) :: v(3)
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(v, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(v, 3, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
       
       value = VECTOR(v(1), v(2), v(3))
 
     end subroutine receiveSingleVectorFlexi
 
-    subroutine receiveSingleCharacterFlexi(value)
+    subroutine receiveSingleCharacterFlexi(value,ithread)
       use mpi
+      integer :: ithread
       character(len=*), intent(out) :: value
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
@@ -2277,8 +2283,8 @@ contains
       do i = 1, len(value)
          value(i:i) = " "
       enddo
-      call MPI_RECV(i, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(value, i, MPI_CHARACTER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(i, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, i, MPI_CHARACTER, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveSingleCharacterFlexi
 #endif    
@@ -3237,60 +3243,65 @@ contains
 
 
 
-    subroutine receiveArrayIntegerFlexi(value)
+    subroutine receiveArrayIntegerFlexi(value,ithread)
       use mpi
+      integer :: ithread
       integer, intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayIntegerFlexi
 
-    subroutine receiveArrayRealFlexi(value)
+    subroutine receiveArrayRealFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real, intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(value, n, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_REAL, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayRealFlexi
 
-    subroutine receiveArrayLogicalFlexi(value)
+    subroutine receiveArrayLogicalFlexi(value,ithread)
       use mpi
+      integer :: ithread
       logical, intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_LOGICAL, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayLogicalFlexi
 
-    subroutine receiveArrayDoubleFlexi(value)
+    subroutine receiveArrayDoubleFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real(double), intent(out) :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveArrayDoubleFlexi
 
-    subroutine receiveArrayVectorFlexi(value)
+    subroutine receiveArrayVectorFlexi(value,ithread)
       use mpi
+      integer :: ithread
       type(VECTOR), intent(out) :: value(:)
       integer :: n , n3, i, j
       real(double), allocatable :: temp(:)
@@ -3298,10 +3309,10 @@ contains
       integer, parameter :: tag = 50
       integer :: ierr
 
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       n3 = 3 * n
       allocate(temp(1:n3))
-      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
       do i = 1, n
          j = (i-1)*3
          value(i) = VECTOR(temp(j+1), temp(j+2), temp(j+3))
@@ -3312,8 +3323,9 @@ contains
 
 
 
-    subroutine receiveIntegerPointer1dFlexi(value)
+    subroutine receiveIntegerPointer1dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       integer, pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -3324,14 +3336,15 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveIntegerPointer1dFlexi
 
-    subroutine receiveRealPointer1dFlexi(value)
+    subroutine receiveRealPointer1dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real, pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -3342,14 +3355,15 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_REAL, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveRealPointer1dFlexi
 
-    subroutine receiveDoublePointer1dFlexi(value)
+    subroutine receiveDoublePointer1dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real(double), pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -3360,14 +3374,15 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveDoublePointer1dFlexi
 
-    subroutine receiveDoublePointer2dFlexi(value)
+    subroutine receiveDoublePointer2dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real(double), pointer :: value(:,:)
       integer :: n, m
       real(double), allocatable :: temp(:)
@@ -3379,17 +3394,18 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n, 1:m))
       allocate(temp(1:(n*m)))
-      call MPI_RECV(temp, n*m, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(temp, n*m, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
       value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
       deallocate(temp)
     end subroutine receiveDoublePointer2dFlexi
 
-    subroutine receiveDoublePointer3dFlexi(value)
+    subroutine receiveDoublePointer3dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real(double), pointer :: value(:,:,:)
       integer :: n, m, l
       real(double), allocatable :: temp(:)
@@ -3401,18 +3417,19 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(l, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(l, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n, 1:m, 1:l))
       allocate(temp(1:(n*m*l)))
-      call MPI_RECV(temp, n*m*l, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(temp, n*m*l, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
       value(1:n,1:m,1:l) = RESHAPE(temp, SHAPE(value))
       deallocate(temp)
     end subroutine receiveDoublePointer3dFlexi
 
-    subroutine receiveRealPointer2dFlexi(value)
+    subroutine receiveRealPointer2dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       real, pointer :: value(:,:)
       integer :: n, m
       real, allocatable :: temp(:)
@@ -3424,18 +3441,19 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
-      call MPI_RECV(m, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n, 1:m))
       allocate(temp(1:(n*m)))
-      call MPI_RECV(temp, n*m, MPI_REAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(temp, n*m, MPI_REAL, ithread, tag, localWorldCommunicator, status, ierr)
       value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
       deallocate(temp)
     end subroutine receiveRealPointer2dFlexi
 
 
-    subroutine receiveLogicalPointer1dFlexi(value)
+    subroutine receiveLogicalPointer1dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       logical, pointer :: value(:)
       integer :: n 
       integer :: status(MPI_STATUS_SIZE)
@@ -3446,16 +3464,17 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
-      call MPI_RECV(value, n, MPI_LOGICAL, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(value, n, MPI_LOGICAL, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveLogicalPointer1dFlexi
 
 
 
-    subroutine receiveVectorPointer1dFlexi(value)
+    subroutine receiveVectorPointer1dFlexi(value,ithread)
       use mpi
+      integer :: ithread
       type(VECTOR), pointer :: value(:)
       integer :: n, n3, i, j
       integer :: status(MPI_STATUS_SIZE)
@@ -3467,11 +3486,11 @@ contains
          deallocate(value)
          nullify(value)
       endif
-      call MPI_RECV(n, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
       allocate(value(1:n))
       n3 = 3 * n
       allocate(temp(1:n3))
-      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(temp, n3, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator, status, ierr)
       do i = 1, n
          j = (i-1)*3
          value(i) = VECTOR(temp(j+1), temp(j+2), temp(j+3))
@@ -3838,7 +3857,7 @@ contains
                   grid%octreeRoot%nDepth = 1
                   nOctal = 0
 !                  print *, myrankglobal, "doing its thing"
-                  call getBranchOverMPI(grid%octreeRoot, null())
+                  call getBranchOverMPI(grid%octreeRoot, null(),0)
                   write(message, '(a,i3.3,a,i3.3)') "AMR grid read for thread: ",myrankGlobal, " set ",myHydroSetGlobal
                   write(*,*) trim(message)
                else
@@ -4158,7 +4177,7 @@ contains
                allocate(grid%octreeRoot)
                grid%octreeRoot%nDepth = 1
                nOctals = 0
-               call getBranchOverMPI(grid%octreeRoot, null())
+               call getBranchOverMPI(grid%octreeRoot, null(),0)
             endif
             write(message,'(a,i3,a)') "Thread ",ithread, " read"
          else
@@ -4226,22 +4245,23 @@ contains
        end subroutine readBranchFromFile
 
 
-       recursive subroutine getBranchOverMPI(thisOctal, parent)
+       recursive subroutine getBranchOverMPI(thisOctal, parent, ithread)
          type(OCTAL), pointer :: thisOctal
          type(OCTAL), pointer :: parent
+         integer :: ithread
          type(OCTAL), pointer :: child
          integer :: i
 
          thisOctal%parent => parent
 !         write(*,*) myrankGlobal, " receiving octal from 0"
-         call receiveOctalViaMPI(thisOctal)
+         call receiveOctalViaMPI(thisOctal, ithread)
 !         write(*,'(i4,a,i4,i4,8i4)') myrankGlobal, " received successfully. depth ",thisOctal%nDepth, thisOctal%nChildren, thisOctal%mpiThread
          if (thisOctal%nChildren > 0) then
             allocate(thisOctal%child(1:thisOctal%nChildren)) 
             do i = 1, thisOctal%nChildren
                child => thisOctal%child(i)
 !               write(*,*) myrankGlobal," getting branch for child ",i, " of ",thisOctal%nchildren, " at depth ",thisOctal%nDepth, thisOctal%hasChild
-               call getBranchOverMpi(child, thisOctal)
+               call getBranchOverMpi(child, thisOctal, ithread)
             enddo
          endif
        end subroutine getBranchOverMPI
@@ -4818,18 +4838,19 @@ contains
 
 #ifdef MPI
 
-   subroutine receiveOctalViaMPI(thisOctal)
+   subroutine receiveOctalViaMPI(thisOctal, ithread)
      use mpi
      type(OCTAL), pointer :: thisOctal
      integer :: status(MPI_STATUS_SIZE)
      integer, parameter :: mpitag = 50
+     integer :: ithread
      character(len=20) :: tag
      character(len=80) :: message
      integer :: ierr
 
       do while (.true.)
 
-         call MPI_RECV(tag, 20, MPI_CHARACTER, 0, mpitag, localWorldCommunicator, status, ierr)
+         call MPI_RECV(tag, 20, MPI_CHARACTER, ithread, mpitag, localWorldCommunicator, status, ierr)
 
          tag = ADJUSTL(tag)
 
@@ -4838,337 +4859,337 @@ contains
          if (tag == "OCTALENDS") exit
          select case (tag)
          case("nDepth")
-            call receiveSingleFlexi(thisOctal%nDepth)
+            call receiveSingleFlexi(thisOctal%nDepth, ithread)
          case("nChildren")
-            call receiveSingleFlexi(thisOctal%nChildren)
+            call receiveSingleFlexi(thisOctal%nChildren, ithread)
          case("indexChild")
-            call receiveArrayFlexi(thisOctal%indexChild)
+            call receiveArrayFlexi(thisOctal%indexChild, ithread)
          case("hasChild")
-            call receiveArrayFlexi(thisOctal%hasChild)
+            call receiveArrayFlexi(thisOctal%hasChild, ithread)
          case("centre")
-            call receiveSingleFlexi(thisOctal%centre)
+            call receiveSingleFlexi(thisOctal%centre, ithread)
          case("rho")
-            call receiveArrayFlexi(thisOctal%rho)
+            call receiveArrayFlexi(thisOctal%rho, ithread)
          case("temperature")
-            call receiveArrayFlexi(thisOctal%temperature)
+            call receiveArrayFlexi(thisOctal%temperature, ithread)
          case("label")
-            call receiveArrayFlexi(thisOctal%label)
+            call receiveArrayFlexi(thisOctal%label, ithread)
          case("subcellSize")
-            call receiveSingleFlexi(thisOctal%subcellSize)
+            call receiveSingleFlexi(thisOctal%subcellSize, ithread)
          case("threeD")
-            call receiveSingleFlexi(thisOctal%threeD)
+            call receiveSingleFlexi(thisOctal%threeD, ithread)
          case("twoD")
-            call receiveSingleFlexi(thisOctal%twoD)
+            call receiveSingleFlexi(thisOctal%twoD, ithread)
          case("oneD")
-            call receiveSingleFlexi(thisOctal%oneD)
+            call receiveSingleFlexi(thisOctal%oneD, ithread)
          case("maxChildren")
-            call receiveSingleFlexi(thisOctal%maxChildren)
+            call receiveSingleFlexi(thisOctal%maxChildren, ithread)
          case("cylindrical")
-            call receiveSingleFlexi(thisOctal%cylindrical)
+            call receiveSingleFlexi(thisOctal%cylindrical, ithread)
          case("splitAzimuthally")
-            call receiveSingleFlexi(thisOctal%splitAzimuthally)
+            call receiveSingleFlexi(thisOctal%splitAzimuthally, ithread)
          case("phi")
-            call receiveSingleFlexi(thisOctal%phi)
+            call receiveSingleFlexi(thisOctal%phi, ithread)
          case("dphi")
-            call receiveSingleFlexi(thisOctal%dphi)
+            call receiveSingleFlexi(thisOctal%dphi, ithread)
          case("phimin")
-            call receiveSingleFlexi(thisOctal%phimin)
+            call receiveSingleFlexi(thisOctal%phimin, ithread)
          case("phimax")
-            call receiveSingleFlexi(thisOctal%phimax)
+            call receiveSingleFlexi(thisOctal%phimax, ithread)
          case("r")
-            call receiveSingleFlexi(thisOctal%r)
+            call receiveSingleFlexi(thisOctal%r, ithread)
 
          case("xMax")
-            call receiveSingleFlexi(thisOctal%xMax)
+            call receiveSingleFlexi(thisOctal%xMax, ithread)
          case("yMax")
-            call receiveSingleFlexi(thisOctal%yMax)
+            call receiveSingleFlexi(thisOctal%yMax, ithread)
          case("zMax")
-            call receiveSingleFlexi(thisOctal%zMax)
+            call receiveSingleFlexi(thisOctal%zMax, ithread)
          case("xMin")
-            call receiveSingleFlexi(thisOctal%xMin)
+            call receiveSingleFlexi(thisOctal%xMin, ithread)
          case("yMin")
-            call receiveSingleFlexi(thisOctal%yMin)
+            call receiveSingleFlexi(thisOctal%yMin, ithread)
          case("zMin")
-            call receiveSingleFlexi(thisOctal%zMin)
+            call receiveSingleFlexi(thisOctal%zMin, ithread)
 
          case("parentSubcell")
-            call receiveSingleFlexi(thisOctal%parentSubcell)
+            call receiveSingleFlexi(thisOctal%parentSubcell, ithread)
          case("inStar")
-            call receiveArrayFlexi(thisOctal%inStar)
+            call receiveArrayFlexi(thisOctal%inStar, ithread)
          case("inFlow")
-            call receiveArrayFlexi(thisOctal%inFlow)
+            call receiveArrayFlexi(thisOctal%inFlow, ithread)
          case("velocity")
-            call receiveArrayFlexi(thisOctal%velocity)
+            call receiveArrayFlexi(thisOctal%velocity, ithread)
          case("cornervelocity")
-            call receivePointerFlexi(thisOctal%cornervelocity)
+            call receivePointerFlexi(thisOctal%cornervelocity, ithread)
          case("cornerrho")
-            call receivePointerFlexi(thisOctal%cornerrho)
+            call receivePointerFlexi(thisOctal%cornerrho, ithread)
          case("chiLine")
-            call receivePointerFlexi(thisOctal%chiLine)
+            call receivePointerFlexi(thisOctal%chiLine, ithread)
          case("etaLine")
-            call receivePointerFlexi(thisOctal%etaLine)
+            call receivePointerFlexi(thisOctal%etaLine, ithread)
          case("etaCont")
-            call receivePointerFlexi(thisOctal%etaCont)
+            call receivePointerFlexi(thisOctal%etaCont, ithread)
          case("biasLine3D")
-            call receivePointerFlexi(thisOctal%biasLine3D)
+            call receivePointerFlexi(thisOctal%biasLine3D, ithread)
          case("biasCont3D")
-            call receivePointerFlexi(thisOctal%biasCont3D)
+            call receivePointerFlexi(thisOctal%biasCont3D, ithread)
          case("probDistLine")
-            call receivePointerFlexi(thisOctal%probDistLine)
+            call receivePointerFlexi(thisOctal%probDistLine, ithread)
          case("probDistCont")
-            call receivePointerFlexi(thisOctal%probDistCont)
+            call receivePointerFlexi(thisOctal%probDistCont, ithread)
          case("ne")
-            call receivePointerFlexi(thisOctal%ne)
+            call receivePointerFlexi(thisOctal%ne, ithread)
          case("nH")
-            call receivePointerFlexi(thisOctal%nH)
+            call receivePointerFlexi(thisOctal%nH, ithread)
          case("nTot")
-            call receivePointerFlexi(thisOctal%nTot)
+            call receivePointerFlexi(thisOctal%nTot, ithread)
          case("dustType")
-            call receivePointerFlexi(thisOctal%dustType)
+            call receivePointerFlexi(thisOctal%dustType, ithread)
          case("dustTypeFraction")
-            call receivePointerFlexi(thisOctal%dustTypeFraction)
+            call receivePointerFlexi(thisOctal%dustTypeFraction, ithread)
          case("oldFrac")
-            call receivePointerFlexi(thisOctal%oldFrac)
+            call receivePointerFlexi(thisOctal%oldFrac, ithread)
          case("scatteredIntensity")
-            call receivePointerFlexi(thisOctal%scatteredIntensity)
+            call receivePointerFlexi(thisOctal%scatteredIntensity, ithread)
          case("meanIntensity")
-            call receivePointerFlexi(thisOctal%meanIntensity)
+            call receivePointerFlexi(thisOctal%meanIntensity, ithread)
          case("mpiThread")
-            call receiveArrayFlexi(thisOctal%mpiThread)
+            call receiveArrayFlexi(thisOctal%mpiThread, ithread)
          case("kappaAbs")
-            call receivePointerFlexi(thisOctal%kappaAbs)
+            call receivePointerFlexi(thisOctal%kappaAbs, ithread)
          case("kappaSca")
-            call receivePointerFlexi(thisOctal%kappaSca)
+            call receivePointerFlexi(thisOctal%kappaSca, ithread)
          case("ionFrac")
-            call receivePointerFlexi(thisOctal%ionFrac)
+            call receivePointerFlexi(thisOctal%ionFrac, ithread)
 
 #ifdef PDR
          case("AV")
-            call receivePointerFlexi(thisOctal%AV)
+            call receivePointerFlexi(thisOctal%AV, ithread)
          case("UV")
-            call receivePointerFlexi(thisOctal%UV)
+            call receivePointerFlexi(thisOctal%UV, ithread)
          case("radsurface")
-            call receivePointerFlexi(thisOctal%radsurface)
+            call receivePointerFlexi(thisOctal%radsurface, ithread)
          case("dust_T")
-            call receivePointerFlexi(thisOctal%dust_T)
+            call receivePointerFlexi(thisOctal%dust_T, ithread)
          case("abundance")
-            call receivePointerFlexi(thisOctal%abundance)
+            call receivePointerFlexi(thisOctal%abundance, ithread)
 #endif
 
          case("photoIonCoeff")
-            call receivePointerFlexi(thisOctal%photoIonCoeff)
+            call receivePointerFlexi(thisOctal%photoIonCoeff, ithread)
          case("distanceGrid")
-            call receivePointerFlexi(thisOctal%distanceGrid)
+            call receivePointerFlexi(thisOctal%distanceGrid, ithread)
 
          case("nCrossings")
-            call receivePointerFlexi(thisOctal%nCrossings)
+            call receivePointerFlexi(thisOctal%nCrossings, ithread)
          case("hHeating")
-            call receivePointerFlexi(thisOctal%hHeating)
+            call receivePointerFlexi(thisOctal%hHeating, ithread)
          case("tDust")
-            call receivePointerFlexi(thisOctal%tDust)
+            call receivePointerFlexi(thisOctal%tDust, ithread)
          case("heHeating")
-            call receivePointerFlexi(thisOctal%heHeating)
+            call receivePointerFlexi(thisOctal%heHeating, ithread)
 
          case("undersampled")
-            call receivePointerFlexi(thisOctal%undersampled)
+            call receivePointerFlexi(thisOctal%undersampled, ithread)
          case("nDiffusion")
-            call receivePointerFlexi(thisOctal%nDiffusion)
+            call receivePointerFlexi(thisOctal%nDiffusion, ithread)
          case("diffusionApprox")
-            call receivePointerFlexi(thisOctal%diffusionApprox)
+            call receivePointerFlexi(thisOctal%diffusionApprox, ithread)
 
 
          case("molecularLevel")
-            call receivePointerFlexi(thisOctal%molecularLevel)
+            call receivePointerFlexi(thisOctal%molecularLevel, ithread)
          case("oldmolecularLevel")
-            call receivePointerFlexi(thisOctal%oldmolecularLevel)         
+            call receivePointerFlexi(thisOctal%oldmolecularLevel, ithread)
          case("oldestmolecularLevel")
-            call receivePointerFlexi(thisOctal%oldestmolecularLevel)         
+            call receivePointerFlexi(thisOctal%oldestmolecularLevel, ithread)         
          case("newmolecularLevel")
-            call receivePointerFlexi(thisOctal%newmolecularLevel)
+            call receivePointerFlexi(thisOctal%newmolecularLevel, ithread)
 
          case("jnu")
-            call receivePointerFlexi(thisOctal%jnu)
+            call receivePointerFlexi(thisOctal%jnu, ithread)
          case("bnu")
-            call receivePointerFlexi(thisOctal%bnu)
+            call receivePointerFlexi(thisOctal%bnu, ithread)
          case("molAbundance")
-            call receivePointerFlexi(thisOctal%molAbundance)
+            call receivePointerFlexi(thisOctal%molAbundance, ithread)
          case("nsplit")
-            call receivePointerFlexi(thisOctal%nsplit)
+            call receivePointerFlexi(thisOctal%nsplit, ithread)
          case("nh2")
-            call receivePointerFlexi(thisOctal%nh2)
+            call receivePointerFlexi(thisOctal%nh2, ithread)
          case("microTurb")
-            call receivePointerFlexi(thisOctal%microTurb)
+            call receivePointerFlexi(thisOctal%microTurb, ithread)
          case("N")
-            call receivePointerFlexi(thisOctal%n)
+            call receivePointerFlexi(thisOctal%n, ithread)
          case("departCoeff")
-            call receivePointerFlexi(thisOctal%departCoeff)
+            call receivePointerFlexi(thisOctal%departCoeff, ithread)
          case("atomAbundance")
-            call receivePointerFlexi(thisOctal%atomAbundance)
+            call receivePointerFlexi(thisOctal%atomAbundance, ithread)
          case("atomLevel")
-            call receivePointerFlexi(thisOctal%atomLevel)
+            call receivePointerFlexi(thisOctal%atomLevel, ithread)
          case("jnuCont")
-            call receivePointerFlexi(thisOctal%jnuCont)
+            call receivePointerFlexi(thisOctal%jnuCont, ithread)
          case("jnuLine")
-            call receivePointerFlexi(thisOctal%jnuLine)
+            call receivePointerFlexi(thisOctal%jnuLine, ithread)
 
          case("q_i")
-            call receivePointerFlexi(thisOctal%q_i)
+            call receivePointerFlexi(thisOctal%q_i, ithread)
          case("q_i_plus_1")
-            call receivePointerFlexi(thisOctal%q_i_plus_1)
+            call receivePointerFlexi(thisOctal%q_i_plus_1, ithread)
          case("q_i_minus_1")
-            call receivePointerFlexi(thisOctal%q_i_minus_1)
+            call receivePointerFlexi(thisOctal%q_i_minus_1, ithread)
          case("q_i_minus_2")
-            call receivePointerFlexi(thisOctal%q_i_minus_2)
+            call receivePointerFlexi(thisOctal%q_i_minus_2, ithread)
 
          case("x_i")
-            call receivePointerFlexi(thisOctal%x_i)
+            call receivePointerFlexi(thisOctal%x_i, ithread)
          case("x_i_plus_1")
-            call receivePointerFlexi(thisOctal%x_i_plus_1)
+            call receivePointerFlexi(thisOctal%x_i_plus_1, ithread)
          case("x_i_minus_1")
-            call receivePointerFlexi(thisOctal%x_i_minus_1)
+            call receivePointerFlexi(thisOctal%x_i_minus_1, ithread)
 
          case("x_i_minus_2")
-            call receivePointerFlexi(thisOctal%x_i_minus_2)
+            call receivePointerFlexi(thisOctal%x_i_minus_2, ithread)
 
          case("u_interface")
-            call receivePointerFlexi(thisOctal%u_interface)
+            call receivePointerFlexi(thisOctal%u_interface, ithread)
          case("u_i")
-            call receivePointerFlexi(thisOctal%u_i)
+            call receivePointerFlexi(thisOctal%u_i, ithread)
          case("u_i_plus_1")
-            call receivePointerFlexi(thisOctal%u_i_plus_1)
+            call receivePointerFlexi(thisOctal%u_i_plus_1, ithread)
          case("u_i_minus_1")
-            call receivePointerFlexi(thisOctal%u_i_minus_1)
+            call receivePointerFlexi(thisOctal%u_i_minus_1, ithread)
 
          case("flux_i")
-            call receivePointerFlexi(thisOctal%flux_i)
+            call receivePointerFlexi(thisOctal%flux_i, ithread)
          case("flux_i_plus_1")
-            call receivePointerFlexi(thisOctal%flux_i_plus_1)
+            call receivePointerFlexi(thisOctal%flux_i_plus_1, ithread)
          case("flux_i_minus_1")
-            call receivePointerFlexi(thisOctal%flux_i_minus_1)
+            call receivePointerFlexi(thisOctal%flux_i_minus_1, ithread)
 
 
          case("phiLimit")
-            call receivePointerFlexi(thisOctal%phiLimit)
+            call receivePointerFlexi(thisOctal%phiLimit, ithread)
 
          case("ghostCell")
-            call receivePointerFlexi(thisOctal%ghostCell)
+            call receivePointerFlexi(thisOctal%ghostCell, ithread)
 
          case("columnRho")
-            call receivePointerFlexi(thisOctal%columnRho)
+            call receivePointerFlexi(thisOctal%columnRho, ithread)
 
          case("corner")
-            call receivePointerFlexi(thisOctal%corner)
+            call receivePointerFlexi(thisOctal%corner, ithread)
 
 
          case("feederCell")
-            call receivePointerFlexi(thisOctal%feederCell)
+            call receivePointerFlexi(thisOctal%feederCell, ithread)
          case("edgeCell")
-            call receivePointerFlexi(thisOctal%edgeCell)
+            call receivePointerFlexi(thisOctal%edgeCell, ithread)
          case("refinedLastTime")
-            call receivePointerFlexi(thisOctal%refinedLastTime)
+            call receivePointerFlexi(thisOctal%refinedLastTime, ithread)
 
          case("pressure_i")
-            call receivePointerFlexi(thisOctal%pressure_i)
+            call receivePointerFlexi(thisOctal%pressure_i, ithread)
          case("pressure_i_plus_1")
-            call receivePointerFlexi(thisOctal%pressure_i_plus_1)
+            call receivePointerFlexi(thisOctal%pressure_i_plus_1, ithread)
          case("pressure_i_minus_1")
-            call receivePointerFlexi(thisOctal%pressure_i_minus_1)
+            call receivePointerFlexi(thisOctal%pressure_i_minus_1, ithread)
 
          case("rhou")
-            call receivePointerFlexi(thisOctal%rhou)
+            call receivePointerFlexi(thisOctal%rhou, ithread)
          case("rhov")
-            call receivePointerFlexi(thisOctal%rhov)
+            call receivePointerFlexi(thisOctal%rhov, ithread)
          case("rhow")
-            call receivePointerFlexi(thisOctal%rhow)
+            call receivePointerFlexi(thisOctal%rhow, ithread)
 
          case("rhorv_i_plus_1")
-            call receivePointerFlexi(thisOctal%rhorv_i_plus_1)
+            call receivePointerFlexi(thisOctal%rhorv_i_plus_1, ithread)
          case("rhorv_i_minus_1")
-            call receivePointerFlexi(thisOctal%rhorv_i_minus_1)
+            call receivePointerFlexi(thisOctal%rhorv_i_minus_1, ithread)
 
 
 
          case("rhoe")
-            call receivePointerFlexi(thisOctal%rhoe)
+            call receivePointerFlexi(thisOctal%rhoe, ithread)
          case("rhoeLast")
-            call receivePointerFlexi(thisOctal%rhoeLastTime)
+            call receivePointerFlexi(thisOctal%rhoeLastTime, ithread)
          case("energy")
-            call receivePointerFlexi(thisOctal%energy)
+            call receivePointerFlexi(thisOctal%energy, ithread)
 
          case("qViscosity")
-            call receivePointerFlexi(thisOctal%qViscosity)
+            call receivePointerFlexi(thisOctal%qViscosity, ithread)
 
 
          case("phi_i")
-            call receivePointerFlexi(thisOctal%phi_i)
+            call receivePointerFlexi(thisOctal%phi_i, ithread)
          case("phi_stars")
-            call receivePointerFlexi(thisOctal%phi_stars)
+            call receivePointerFlexi(thisOctal%phi_stars, ithread)
          case("phi_gas")
-            call receivePointerFlexi(thisOctal%phi_gas)
+            call receivePointerFlexi(thisOctal%phi_gas, ithread)
          case("phi_i_plus_1")
-            call receivePointerFlexi(thisOctal%phi_i_plus_1)
+            call receivePointerFlexi(thisOctal%phi_i_plus_1, ithread)
          case("phi_i_minus_1")
-            call receivePointerFlexi(thisOctal%phi_i_minus_1)
+            call receivePointerFlexi(thisOctal%phi_i_minus_1, ithread)
 
          case("rho_i_plus_1")
-            call receivePointerFlexi(thisOctal%rho_i_plus_1)
+            call receivePointerFlexi(thisOctal%rho_i_plus_1, ithread)
          case("rho_i_minus_1")
-            call receivePointerFlexi(thisOctal%rho_i_minus_1)
+            call receivePointerFlexi(thisOctal%rho_i_minus_1, ithread)
 
          case("boundaryCondition")
-            call receivePointerFlexi(thisOctal%boundaryCondition)
+            call receivePointerFlexi(thisOctal%boundaryCondition, ithread)
 
          case("boundaryCell")
-            call receivePointerFlexi(thisOctal%boundaryCell)
+            call receivePointerFlexi(thisOctal%boundaryCell, ithread)
 
          case("boundaryPartner")
-            call receivePointerFlexi(thisOctal%boundaryPartner)
+            call receivePointerFlexi(thisOctal%boundaryPartner, ithread)
          case("gravboundaryPartner")
-            call receivePointerFlexi(thisOctal%gravboundaryPartner)
+            call receivePointerFlexi(thisOctal%gravboundaryPartner, ithread)
          case("radiationMomentum")
-            call receivePointerFlexi(thisOctal%radiationMomentum)
+            call receivePointerFlexi(thisOctal%radiationMomentum, ithread)
          case("kappaTimesFlux")
-            call receivePointerFlexi(thisOctal%kappaTimesFlux)
+            call receivePointerFlexi(thisOctal%kappaTimesFlux, ithread)
          case("UVvector")
-            call receivePointerFlexi(thisOctal%UVvector)
+            call receivePointerFlexi(thisOctal%UVvector, ithread)
          case("UVvectorPlus")
-            call receivePointerFlexi(thisOctal%UVvectorPlus)
+            call receivePointerFlexi(thisOctal%UVvectorPlus, ithread)
          case("UVvectorMinus")
-            call receivePointerFlexi(thisOctal%UVvectorMinus)
+            call receivePointerFlexi(thisOctal%UVvectorMinus, ithread)
          case("changed")
-            call receivePointerFlexi(thisOctal%changed)
+            call receivePointerFlexi(thisOctal%changed, ithread)
          case("rLimit")
-            call receivePointerFlexi(thisOctal%rLimit)
+            call receivePointerFlexi(thisOctal%rLimit, ithread)
 
          case("iEquationOfState")
-            call receivePointerFlexi(thisOctal%iEquationOfState)
+            call receivePointerFlexi(thisOctal%iEquationOfState, ithread)
 
          case("iAnalyticalVelocity")
-            call receivePointerFlexi(thisOctal%iAnalyticalVelocity)
+            call receivePointerFlexi(thisOctal%iAnalyticalVelocity, ithread)
 
          case("gamma")
-            call receivePointerFlexi(thisOctal%gamma)
+            call receivePointerFlexi(thisOctal%gamma, ithread)
 
          case("udens")
-            call receivePointerFlexi(thisOctal%udens)
+            call receivePointerFlexi(thisOctal%udens, ithread)
          case("adot")
-            call receivePointerFlexi(thisOctal%aDot)
+            call receivePointerFlexi(thisOctal%aDot, ithread)
          case("adotdist")
-            call receivePointerFlexi(thisOctal%distanceGridaDot)
+            call receivePointerFlexi(thisOctal%distanceGridaDot, ithread)
          case("dfromgas")
-            call receivePointerFlexi(thisOctal%distanceGridPhotonFromGas)
+            call receivePointerFlexi(thisOctal%distanceGridPhotonFromGas, ithread)
          case("dfromsource")
-            call receivePointerFlexi(thisOctal%distanceGridPhotonFromSource)
+            call receivePointerFlexi(thisOctal%distanceGridPhotonFromSource, ithread)
          case("ufromgas")
-            call receivePointerFlexi(thisOctal%photonEnergyDensityFromGas)
+            call receivePointerFlexi(thisOctal%photonEnergyDensityFromGas, ithread)
          case("ufromsource")
-            call receivePointerFlexi(thisOctal%photonEnergyDensityFromSource)
+            call receivePointerFlexi(thisOctal%photonEnergyDensityFromSource, ithread)
          case("utotal")
-            call receivePointerFlexi(thisOctal%photonEnergyDensityFromSource)
+            call receivePointerFlexi(thisOctal%photonEnergyDensityFromSource, ithread)
          case("oldutotal")
-            call receivePointerFlexi(thisOctal%oldphotonEnergyDensity)
+            call receivePointerFlexi(thisOctal%oldphotonEnergyDensity, ithread)
          case("fixedtemperature")
-            call receivePointerFlexi(thisOctal%fixedtemperature)
+            call receivePointerFlexi(thisOctal%fixedtemperature, ithread)
 
 
          case DEFAULT

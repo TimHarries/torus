@@ -1521,7 +1521,8 @@ contains
     integer :: iThread
 #endif
 
-    if(noVtkGrid) return
+    if (noVtkGrid) goto 666
+    if (loadBalancingThreadGlobal) goto 666
 
     call findMultiFilename(rootVTKFilename, iModel, vtkfilename)
 

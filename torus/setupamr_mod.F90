@@ -91,14 +91,16 @@ contains
     real(double) :: objectDistance
 #endif
 #ifdef MPI 
-    integer :: i
+    integer :: i, ierr
 #endif
+
 
 
 #ifdef MPI
     call randomNumberGenerator(randomSeed=.true.)
     call randomNumberGenerator(syncIseed=.true.)
 #endif
+
 
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
 
@@ -112,7 +114,7 @@ contains
          (zminusbound==6)) call setupInflowParameters()
 
 
-    if (readgrid) then
+    if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
@@ -159,7 +161,13 @@ contains
        call initAMRGrid(grid)
        grid%splitOverMPI = splitOverMPI
 
+
        amrGridCentre = VECTOR(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
+
+       if (loadBalancingThreadGlobal) then
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          goto 666
+       endif
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        if (writeoutput) write(*,*) "amr grid centre ", amrgridcentre
 
@@ -584,7 +592,7 @@ contains
         else
            if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
         endif
-        call torus_mpi_barrier
+!        call MPI_BARRIER(localWorldCommunicator, ierr)
 
 #else
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
@@ -622,6 +630,7 @@ contains
         call deallocate_vh1
         call delete_particle_lists(grid%octreeRoot)
 
+666 continue
   end subroutine setupamrgrid
 
   subroutine doSmoothOnTau(grid)

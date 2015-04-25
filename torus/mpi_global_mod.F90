@@ -8,11 +8,16 @@ module mpi_global_mod
   integer :: myRankWorldGlobal
   integer :: nThreadsGlobal
   integer :: nHydroThreadsGlobal
+  integer :: nLoadBalancingThreadsGlobal
   integer :: nHydroSetsGlobal
   integer :: myHydroSetGlobal
   integer, allocatable :: amrParallelCommunicator(:)
   integer, allocatable :: hydroCommunicator(:)
   integer :: zeroThreadCommunicator
+  integer :: allDomainsCommunicator
+  logical :: loadBalancingThreadGlobal
+  integer :: copyOfThread
+
 
 ! Set logical variables to say how Torus is parallelised
 ! For hybrid MPI/OpenMP configurations all three are set to true

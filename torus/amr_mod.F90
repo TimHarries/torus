@@ -18829,26 +18829,30 @@ end function readparameterfrom2dmap
     
   function octalOnThread(thisOctal, subcell, myRank) result(check)
     use inputs_mod, only : splitOverMPI
+    use mpi_global_mod, only : loadBalancingThreadGlobal, copyOfThread
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    integer :: myRank
+    integer :: myRank, thisRank
     logical :: check
     integer :: nFirstLevel
 
     check = .true.
+    thisRank = myRank
+    if (loadBalancingThreadGlobal) thisRank = copyOfThread
+
 
     if (splitOverMPI) then
 
     if (thisOctal%twoD) then
        if (nHydroThreadsGlobal == 4) then
-          if (thisOctal%mpiThread(subcell) == myRank) then
+          if (thisOctal%mpiThread(subcell) == thisRank) then
              check = .true.
           else
              check = .false.
           endif
        endif
        if (nHydroThreadsGlobal == 16) then
-          nFirstLevel = (myRank-1) / 4 + 1
+          nFirstLevel = (thisRank-1) / 4 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
@@ -18856,7 +18860,7 @@ end function readparameterfrom2dmap
                 check = .false.
              endif
           else
-             if (thisOctal%mpiThread(subcell) == myRank) then
+             if (thisOctal%mpiThread(subcell) == thisRank) then
                 check = .true.
              else
                 check = .false.
@@ -18865,7 +18869,7 @@ end function readparameterfrom2dmap
        endif
 
        if (nHydroThreadsGlobal == 64) then
-          nFirstLevel = (myRank-1) / 16 + 1
+          nFirstLevel = (thisRank-1) / 16 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
@@ -18873,14 +18877,14 @@ end function readparameterfrom2dmap
                 check = .false.
              endif
           else if (thisOctal%nDepth == 2) then
-             nFirstLevel = (myRank-1) / 4  + 1
+             nFirstLevel = (thisRank-1) / 4  + 1
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
              else
                 check = .false.
              endif
           else
-             if (thisOctal%mpiThread(subcell) == myRank) then
+             if (thisOctal%mpiThread(subcell) == thisRank) then
                 check = .true.
              else
                 check = .false.
@@ -18892,7 +18896,7 @@ end function readparameterfrom2dmap
     if (thisOctal%threeD) then
        if (nHydroThreadsGlobal == 8) then
 
-          if (thisOctal%mpiThread(subcell) == myRank) then
+          if (thisOctal%mpiThread(subcell) == thisRank) then
              check = .true.
           else
              check = .false.
@@ -18900,7 +18904,7 @@ end function readparameterfrom2dmap
        endif
 
        if (nHydroThreadsGlobal == 64) then
-          nFirstLevel = (myRank-1) / 8 + 1
+          nFirstLevel = (thisRank-1) / 8 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
@@ -18908,7 +18912,7 @@ end function readparameterfrom2dmap
                 check = .false.
              endif
           else
-             if (thisOctal%mpiThread(subcell) == myRank) then
+             if (thisOctal%mpiThread(subcell) == thisRank) then
                 check = .true.
              else
                 check = .false.
@@ -18918,7 +18922,7 @@ end function readparameterfrom2dmap
        endif
 
        if (nHydroThreadsGlobal == 512) then
-          nFirstLevel = (myRank-1) / 64 + 1
+          nFirstLevel = (thisRank-1) / 64 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
@@ -18926,14 +18930,14 @@ end function readparameterfrom2dmap
                 check = .false.
              endif
           else if (thisOctal%nDepth == 2) then
-             nFirstLevel = (myRank-1) / 8  + 1
+             nFirstLevel = (thisRank-1) / 8  + 1
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
              else
                 check = .false.
              endif
           else
-             if (thisOctal%mpiThread(subcell) == myRank) then
+             if (thisOctal%mpiThread(subcell) == thisRank) then
                 check = .true.
              else
                 check = .false.
@@ -18948,14 +18952,14 @@ end function readparameterfrom2dmap
 
     if (thisOctal%oned) then
        if (nHydroThreadsGlobal == 2) then
-          if (thisOctal%mpiThread(subcell) == myRank) then
+          if (thisOctal%mpiThread(subcell) == thisRank) then
              check = .true.
           else
              check = .false.
           endif
        endif
        if (nHydroThreadsGlobal == 4) then
-          nFirstLevel = (myRank-1) / 2 + 1
+          nFirstLevel = (thisRank-1) / 2 + 1
           if (thisOctal%nDepth == 1) then
              if (thisOctal%mpiThread(subcell) == nFirstLevel) then
                 check = .true.
@@ -18963,7 +18967,7 @@ end function readparameterfrom2dmap
                 check = .false.
              endif
           else
-             if (thisOctal%mpiThread(subcell) == myRank) then
+             if (thisOctal%mpiThread(subcell) == thisRank) then
                 check = .true.
              else
                 check = .false.
