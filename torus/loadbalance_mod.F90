@@ -1,3 +1,5 @@
+#ifdef MPI
+
 module loadbalance_mod
 
   use mpi_global_mod
@@ -147,3 +149,13 @@ contains
 
 
 end module loadbalance_mod
+
+#else
+
+! Dummy module for non-MPI builds
+
+module loadbalance_mod
+
+end module loadbalance_mod
+
+#endif
