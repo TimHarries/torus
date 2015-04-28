@@ -2080,6 +2080,8 @@ end subroutine radiationHydro
        globalEpsOverDeltaT = epsOverDeltaT
 
 
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (firstLoadBalancing) then
           call setLoadBalancingThreadsBySources(grid)
@@ -2088,6 +2090,8 @@ end subroutine radiationHydro
           call  setLoadBalancingThreadsByCrossings(grid)
        endif
 
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
 

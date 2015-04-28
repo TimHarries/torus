@@ -97,7 +97,8 @@ contains
     if (writeoutput) then
        write(*,*) "Load balancing thread list"
        do i = 1, nHydroThreadsGlobal
-          write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
+          if (nLoadbalanceList(i) > 1) &
+               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
        enddo
     end if
 
@@ -194,7 +195,8 @@ contains
     if (writeoutput) then
        write(*,*) "Load balancing thread list"
        do i = 1, nHydroThreadsGlobal
-          write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
+          if (nLoadbalanceList(i) > 1) &
+               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
        enddo
     end if
 
@@ -209,7 +211,6 @@ contains
     type(GRIDTYPE) :: grid
     integer :: i, ierr
 
-    if (myrankWorldGlobal == 1) call tune(6, "Broadcasting domain")  ! stop a stopwatch
     do i = 1, nHydroThreadsGlobal
        if (nLoadBalanceList(i) > 1) then
           if (any(loadBalanceList(i,1:nLoadBalanceList(i)) == myrankGlobal)) then
@@ -218,7 +219,6 @@ contains
        endif
     enddo
     call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-    if (myrankWorldGlobal == 1) call tune(6, "Broadcasting domain")  ! stop a stopwatch
 
   end subroutine createLoadBalancingThreadDomainCopies
 
