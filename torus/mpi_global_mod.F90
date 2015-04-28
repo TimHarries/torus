@@ -11,7 +11,9 @@ module mpi_global_mod
   integer :: nLoadBalancingThreadsGlobal
   integer :: nHydroSetsGlobal
   integer :: myHydroSetGlobal
+  integer :: zeroPlusAMRCommunicator
   integer, allocatable :: amrParallelCommunicator(:)
+  integer, allocatable :: loadBalanceCommunicator(:)
   integer, allocatable :: hydroCommunicator(:)
   integer :: zeroThreadCommunicator
   integer :: allDomainsCommunicator

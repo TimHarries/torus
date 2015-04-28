@@ -99,7 +99,6 @@ contains
 
 #ifdef MPI
           endif
-          call torus_mpi_barrier
        enddo
 #endif
        call writeSourceList(source, nSource)

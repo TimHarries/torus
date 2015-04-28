@@ -30,7 +30,7 @@ module gridio_mod
 
 
   public
-
+  private buffer, nbuffer, maxbuffer
 
   interface writeAttributePointerFlexi
      module procedure writeAttributePointerInteger1dFlexi
@@ -194,7 +194,7 @@ contains
 
        if (myHydroSetGlobal /= 0) goto 666
 
-       call MPI_BARRIER(localWorldCommunicator, ierr)
+       call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
 
        do iThread = 0, nHydroThreadsGlobal
 
@@ -202,8 +202,8 @@ contains
  
             if (.not.uncompressedDumpFiles) then
                if (iThread > 0) then
-                  call MPI_RECV(nBuffer, 1, MPI_INTEGER, ithread-1, tag, localWorldCommunicator, status, ierr)
-                  call MPI_RECV(buffer, maxBuffer, MPI_BYTE, ithread-1, tag, localWorldCommunicator, status, ierr)
+                  call MPI_RECV(nBuffer, 1, MPI_INTEGER, ithread-1, tag, zeroPlusAMRCommunicator, status, ierr)
+                  call MPI_RECV(buffer, maxBuffer, MPI_BYTE, ithread-1, tag, zeroPlusAMRCommunicator, status, ierr)
                endif
             endif
             
@@ -211,17 +211,17 @@ contains
             
             if (.not.uncompressedDumpFiles) then
                if (iThread < nHydroThreadsGlobal) then
-                  call MPI_SEND(nBuffer, 1, MPI_INTEGER, iThread+1, tag, localWorldCommunicator, ierr)
-                  call MPI_SEND(buffer, maxBuffer, MPI_BYTE, iThread+1, tag, localWorldCommunicator, ierr)
+                  call MPI_SEND(nBuffer, 1, MPI_INTEGER, iThread+1, tag, zeroPlusAMRCommunicator, ierr)
+                  call MPI_SEND(buffer, maxBuffer, MPI_BYTE, iThread+1, tag, zeroPlusAMRCommunicator, ierr)
                endif
             endif
 
          endif
           
-          if (uncompressedDumpFiles) call MPI_BARRIER(localWorldCommunicator, ierr)
+          if (uncompressedDumpFiles) call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
        enddo
 
-       call MPI_BARRIER(localWorldCommunicator, ierr)
+       call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
 
 #ifdef USEZLIB
        if (.not.uncompressedDumpFiles) call zeroZlibBuffer()
@@ -231,7 +231,7 @@ contains
 
 
 #ifdef MPI
-    call MPI_BARRIER(localWorldCommunicator, ierr)
+    call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
 #endif
 
 666 continue
@@ -984,7 +984,6 @@ contains
 !          endif
 !       enddo
        call grid_info_mpi(grid, "info_grid.dat")
-       call torus_mpi_barrier
     endif
 #endif
 
@@ -3849,7 +3848,7 @@ contains
 !                     print *, myrankglobal, "out of readstatic"
                      close(20)
                   endif
-                  call mpi_barrier(localWorldCommunicator, ierr)
+                  call mpi_barrier(zeroPlusAMRCommunicator, ierr)
                enddo
 !               print *, myrankglobal, "Doing next stuff"
                if (myrankGlobal /= 0) then
@@ -4167,7 +4166,6 @@ contains
                   call readStaticComponents(grid, fileFormatted)
                   close(20)
                endif
-               call torus_mpi_barrier
             enddo
             
             if (myrankGlobal == 0) then
@@ -5191,6 +5189,13 @@ contains
          case("fixedtemperature")
             call receivePointerFlexi(thisOctal%fixedtemperature, ithread)
 
+         case("sourcecontrib")
+            call receivePointerFlexi(thisOctal%sourceContribution, ithread)
+         case("normsourcecontrib")
+            call receivePointerFlexi(thisOctal%normsourceContribution, ithread)
+         case("diffusecontrib")
+            call receivePointerFlexi(thisOctal%diffuseContribution, ithread)
+
 
          case DEFAULT
             write(message,*) "Unrecognised tag on receive: "//trim(tag)
@@ -5400,6 +5405,10 @@ contains
       call sendAttributePointerFlexi(iThread, "ufromsource", thisOctal%photonEnergyDensityFromSource)
       call sendAttributePointerFlexi(iThread, "utotal", thisOctal%photonEnergyDensity)
       call sendAttributePointerFlexi(iThread, "oldutotal", thisOctal%oldphotonEnergyDensity)
+
+      call sendAttributePointerFlexi(iThread, "sourcecontrib", thisOctal%sourceContribution)
+      call sendAttributePointerFlexi(iThread, "diffusecontrib", thisOctal%diffuseContribution)
+      call sendAttributePointerFlexi(iThread, "normsourcecontrib", thisOctal%normSourceContribution)
 
       call sendAttributePointerFlexi(iThread, "fixedtemperature", thisOctal%fixedTemperature)
 

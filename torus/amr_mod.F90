@@ -12320,7 +12320,7 @@ end function readparameterfrom2dmap
   SUBROUTINE checkAMRgrid(grid,checkNoctals)
     ! does some checking that the cells in an AMR grid are
     !   set up and linked to correctly.
-    use inputs_mod, only : amr1d, spherical, hydrodynamics
+    use inputs_mod, only : amr1d, spherical, hydrodynamics, maxDepthAMR
     TYPE(gridType), INTENT(IN) :: grid
     LOGICAL, INTENT(IN) :: checkNoctals ! whether to confirm grid%nOctals
     
@@ -12382,7 +12382,7 @@ end function readparameterfrom2dmap
          END IF
       END IF
       
-      IF ( thisOctal%nDepth > grid%maxDepth ) THEN
+      IF ( thisOctal%nDepth > maxDepthAMR ) THEN
         PRINT *, "Error: In checkAMRgridPrivate, maxDepth exceeded"
         CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
       END IF

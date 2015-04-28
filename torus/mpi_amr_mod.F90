@@ -6,6 +6,55 @@ module mpi_amr_mod
   use mpi_global_mod
   implicit none
 
+  real(double), allocatable :: buffer(:)
+  integer :: nBuffer, maxBuffer
+
+  interface packAttributeStatic
+     module procedure packAttributeIntegerSingle
+     module procedure packAttributeDoubleSingle
+     module procedure packAttributeLogicalSingle
+     module procedure packAttributeIntegerArray
+     module procedure packAttributeLogicalArray
+     module procedure packAttributeDoubleArray
+     module procedure packAttributeRealArray
+     module procedure packAttributeVectorSingle
+  end interface
+
+
+  interface packAttributePointer
+     module procedure packAttributeDoubleArray1Dpointer
+     module procedure packAttributeRealArray1Dpointer
+     module procedure packAttributeVectorArray1Dpointer
+     module procedure packAttributeIntegerArray1Dpointer
+     module procedure packAttributeLogicalArray1Dpointer
+     module procedure packAttributeDoubleArray2Dpointer
+     module procedure packAttributeDoubleArray3Dpointer
+  end interface
+
+  interface unpackAttributePointer
+     module procedure unpackAttributeDoubleArray1Dpointer
+     module procedure unpackAttributeRealArray1Dpointer
+     module procedure unpackAttributeVectorArray1Dpointer
+     module procedure unpackAttributeLogicalArray1Dpointer
+     module procedure unpackAttributeIntegerArray1Dpointer
+     module procedure unpackAttributeDoubleArray2Dpointer
+     module procedure unpackAttributeDoubleArray3Dpointer
+  end interface
+
+  interface unpackAttributeStatic
+     module procedure unpackAttributeIntegerSingle
+     module procedure unpackAttributeDoubleSingle
+     module procedure unpackAttributeLogicalSingle
+     module procedure unpackAttributeIntegerArray
+     module procedure unpackAttributeLogicalArray
+     module procedure unpackAttributeDoubleArray
+     module procedure unpackAttributeRealArray
+     module procedure unpackAttributeVectorSingle
+  end interface
+
+
+  private buffer, nbuffer, maxBuffer
+
 contains
 
   subroutine setupAMRCOMMUNICATOR
@@ -89,6 +138,14 @@ contains
 
        call MPI_COMM_GROUP(MPI_COMM_WORLD, worldGroup, ierr)
 
+       allocate(ranks(1:(nHydroThreadsGlobal+1)))
+       do i = 1, nHydroThreadsGlobal+1
+          ranks(i) = myHydroSetGlobal * (nHydroThreadsGlobal) + i - 1
+       enddo
+       call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal+1, ranks, localWorldGroup, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, localWorldGroup, zeroplusAmrCOMMUNICATOR, ierr)
+       deallocate(ranks)
+
        allocate(ranks(1:(nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal)))
        do i = 1, nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal
           ranks(i) = myHydroSetGlobal * (nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal) + i - 1
@@ -96,6 +153,9 @@ contains
        call MPI_GROUP_INCL(worldGroup, nHydroThreadsGlobal+1+nLoadBalancingThreadsGlobal, ranks, localWorldGroup, ierr)
        call MPI_COMM_CREATE(MPI_COMM_WORLD, localWorldGroup, localWorldCOMMUNICATOR, ierr)
        deallocate(ranks)
+
+
+
 
        allocate(ranks(1:1+nLoadBalancingThreadsGlobal))
        ranks(1) = 0
@@ -118,6 +178,7 @@ contains
           call MPI_COMM_RANK(MPI_COMM_WORLD, myRankGlobal, ierr)
        else
           call MPI_COMM_RANK(localWorldCommunicator, myRankGlobal, ierr)
+          copyOfThread = myrankGlobal
        endif
        allocate(amrParallelCommunicator(1:nHydroThreadsGlobal))
        allocate(ranks(1:nHydroSetsGlobal))
@@ -256,6 +317,8 @@ contains
     real(double), allocatable :: massOnThreads(:), temp(:), volumeOnThreads(:)
     integer :: ierr
 !    real(double) :: totalVolume
+
+    if (loadBalancingThreadGlobal) goto 666
 
     allocate(massOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
     allocate(volumeOnThreads(1:nThreadsGlobal))
@@ -8214,6 +8277,548 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
       deallocate(w, h)
       
     end function shepardsMethod
+
+
+    
+      
+
+
+  recursive subroutine packBranch(thisOctal)
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: i
+
+    call packOctal(thisOctal)
+
+
+    IF ( thisOctal%nChildren > 0 ) THEN
+      DO i = 1, thisOctal%nChildren, 1
+         ! call this subroutine recursively on each of its children
+        child => thisOctal%child(i)
+        CALL packBranch(child)
+      END DO
+    END IF
+  end subroutine packBranch
+
+  recursive subroutine unpackBranch(thisOctal, parent)
+    type(OCTAL), pointer :: thisOctal, child, parent
+    integer :: i
+
+    call unpackOctal(thisOctal)
+
+
+
+    if (thisOctal%nChildren > 0) allocate(thisOctal%child(1:thisOctal%nChildren))
+    thisOctal%parent => parent
+
+    IF ( thisOctal%nChildren > 0 ) THEN
+      DO i = 1, thisOctal%nChildren, 1
+         ! call this subroutine recursively on each of its children
+        child => thisOctal%child(i)
+        CALL unpackBranch(child, thisOctal)
+      END DO
+    END IF
+  end subroutine unpackBranch
+  
+
+  subroutine packOctal(thisOctal)
+    type(OCTAL), pointer :: thisOctal
+
+    call packAttributeStatic(thisOctal%nDepth)
+    call packAttributeStatic(thisOctal%maxChildren)
+    call packAttributeStatic(thisOctal%mpiThread)
+    call packAttributeStatic(thisOctal%nChildren)
+    call packAttributeStatic(thisOctal%oneD)
+    call packAttributeStatic(thisOctal%twoD)
+    call packAttributeStatic(thisOctal%threeD)
+    call packAttributeStatic(thisOctal%cylindrical)
+    call packAttributeStatic(thisOctal%splitAzimuthally)
+    call packAttributeStatic(thisOctal%hasChild)
+    call packAttributeStatic(thisOctal%indexChild)
+    call packAttributeStatic(thisOctal%parentSubcell)
+    call packAttributeStatic(thisOctal%centre)
+    call packAttributeStatic(thisOctal%xMax)
+    call packAttributeStatic(thisOctal%xMin)
+    call packAttributeStatic(thisOctal%yMax)
+    call packAttributeStatic(thisOctal%yMin)
+    call packAttributeStatic(thisOctal%zMax)
+    call packAttributeStatic(thisOctal%zMin)
+    call packAttributeStatic(thisOctal%subcellSize)
+    call packAttributeStatic(thisOctal%rho)
+    call packAttributeStatic(thisOctal%temperature)
+    call packAttributeStatic(thisOctal%inflow)
+
+
+    call packAttributePointer(thisOctal%dustTypeFraction)
+    call packAttributePointer(thisOctal%diffusionApprox)
+    call packAttributePointer(thisOctal%changed)
+    call packAttributePointer(thisOctal%nDiffusion)
+    call packAttributePointer(thisOctal%eDens)
+    call packAttributePointer(thisOctal%diffusionCoeff)
+    call packAttributePointer(thisOctal%oldeDens)
+    call packAttributePointer(thisOctal%nDirectPhotons)
+    call packAttributePointer(thisOctal%underSampled)
+    call packAttributePointer(thisOctal%oldTemperature)
+    call packAttributePointer(thisOctal%kappaRoss)
+    call packAttributePointer(thisOctal%distanceGrid)
+    call packAttributePointer(thisOctal%nCrossings)
+    call packAttributePointer(thisOctal%nTot)
+    call packAttributePointer(thisOctal%chiLine)
+    call packAttributePointer(thisOctal%biasLine3D)
+    call packAttributePointer(thisOctal%etaCont)
+    call packAttributePointer(thisOctal%nh)
+    call packAttributePointer(thisOctal%ne)
+    call packAttributePointer(thisOctal%nhi)
+    call packAttributePointer(thisOctal%nhei)
+    call packAttributePointer(thisOctal%nhii)
+    call packAttributePointer(thisOctal%biasCont3D)
+    call packAttributePointer(thisOctal%etaLine)
+    call packAttributePointer(thisOctal%HHeating)
+    call packAttributePointer(thisOctal%HeHeating)
+    call packAttributePointer(thisOctal%radiationMomentum)
+    call packAttributePointer(thisOctal%ionFrac)
+    call packAttributePointer(thisOctal%photoionCoeff)
+    call packAttributePointer(thisOctal%sourceContribution)
+    call packAttributePointer(thisOctal%diffuseContribution)
+    call packAttributePointer(thisOctal%normSourceContribution)
+    call packAttributePointer(thisOctal%kappaTimesFlux)
+    call packAttributePointer(thisOctal%uvvector)
+
+  end subroutine packOctal
+
+  subroutine unpackOctal(thisOctal)
+    type(OCTAL), pointer :: thisOctal
+
+    call unpackAttributeStatic(thisOctal%nDepth)
+    call unpackAttributeStatic(thisOctal%maxChildren)
+    call unpackAttributeStatic(thisOctal%mpiThread)
+    call unpackAttributeStatic(thisOctal%nChildren)
+    call unpackAttributeStatic(thisOctal%oneD)
+    call unpackAttributeStatic(thisOctal%twoD)
+    call unpackAttributeStatic(thisOctal%threeD)
+    call unpackAttributeStatic(thisOctal%cylindrical)
+    call unpackAttributeStatic(thisOctal%splitAzimuthally)
+    call unpackAttributeStatic(thisOctal%hasChild)
+    call unpackAttributeStatic(thisOctal%indexChild)
+    call unpackAttributeStatic(thisOctal%parentSubcell)
+    call unpackAttributeStatic(thisOctal%centre)
+    call unpackAttributeStatic(thisOctal%xMax)
+    call unpackAttributeStatic(thisOctal%xMin)
+    call unpackAttributeStatic(thisOctal%yMax)
+    call unpackAttributeStatic(thisOctal%yMin)
+    call unpackAttributeStatic(thisOctal%zMax)
+    call unpackAttributeStatic(thisOctal%zMin)
+    call unpackAttributeStatic(thisOctal%subcellSize)
+    call unpackAttributeStatic(thisOctal%rho)
+    call unpackAttributeStatic(thisOctal%temperature)
+    call unpackAttributeStatic(thisOctal%inflow)
+
+    call unpackAttributePointer(thisOctal%dustTypeFraction)
+    call unpackAttributePointer(thisOctal%diffusionApprox)
+    call unpackAttributePointer(thisOctal%changed)
+    call unpackAttributePointer(thisOctal%nDiffusion)
+    call unpackAttributePointer(thisOctal%eDens)
+    call unpackAttributePointer(thisOctal%diffusionCoeff)
+    call unpackAttributePointer(thisOctal%oldeDens)
+    call unpackAttributePointer(thisOctal%nDirectPhotons)
+    call unpackAttributePointer(thisOctal%underSampled)
+    call unpackAttributePointer(thisOctal%oldTemperature)
+    call unpackAttributePointer(thisOctal%kappaRoss)
+    call unpackAttributePointer(thisOctal%distanceGrid)
+    call unpackAttributePointer(thisOctal%nCrossings)
+    call unpackAttributePointer(thisOctal%nTot)
+    call unpackAttributePointer(thisOctal%chiLine)
+    call unpackAttributePointer(thisOctal%biasLine3D)
+    call unpackAttributePointer(thisOctal%etaCont)
+    call unpackAttributePointer(thisOctal%nh)
+    call unpackAttributePointer(thisOctal%ne)
+    call unpackAttributePointer(thisOctal%nhi)
+    call unpackAttributePointer(thisOctal%nhei)
+    call unpackAttributePointer(thisOctal%nhii)
+    call unpackAttributePointer(thisOctal%biasCont3D)
+    call unpackAttributePointer(thisOctal%etaLine)
+    call unpackAttributePointer(thisOctal%HHeating)
+    call unpackAttributePointer(thisOctal%HeHeating)
+    call unpackAttributePointer(thisOctal%radiationMomentum)
+    call unpackAttributePointer(thisOctal%ionFrac)
+    call unpackAttributePointer(thisOctal%photoionCoeff)
+    call unpackAttributePointer(thisOctal%sourceContribution)
+    call unpackAttributePointer(thisOctal%diffuseContribution)
+    call unpackAttributePointer(thisOctal%normSourceContribution)
+    call unpackAttributePointer(thisOctal%kappaTimesFlux)
+    call unpackAttributePointer(thisOctal%uvvector)
+
+
+  end subroutine unPackOctal
+
+
+  subroutine broadcastBranch(grid, fromThread, communicator)
+    use timing
+    use mpi
+    integer :: fromThread, nOctals
+    type(OCTAL), pointer :: thisOctal
+    type(GRIDTYPE) :: grid
+    integer :: communicator
+    integer :: ierr, i
+
+    if (allocated(buffer)) deallocate(buffer)
+    maxBuffer = 0
+    if (myrankGlobal == fromThread) then
+       call countVoxels(grid%octreeRoot, nOctals, maxBuffer)
+       maxBuffer = maxBuffer * 100
+    endif
+    call MPI_BCAST(maxBuffer, 1, MPI_INTEGER, 0, communicator, ierr)
+    allocate(buffer(1:maxBuffer))
+    nBuffer = 1
+
+    if (myrankGlobal == fromThread) then
+       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+       call packBranch(grid%octreeRoot)
+    endif
+
+! NB fromThread is the zeroth rank of the communicator
+
+    call MPI_BCAST(nBuffer, 1, MPI_INTEGER, 0, communicator, ierr)
+    call MPI_BCAST(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, communicator, ierr)
+
+    if (myrankGlobal /= fromThread) then
+       nBuffer = 1
+
+       call unpackbranch(grid%octreeRoot, null())
+
+       CALL updateMaxDepth(grid)
+       CALL setSmallestSubcell(grid)
+       call countVoxels(grid%octreeRoot, grid%nOctals, i)
+
+       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+       copyOfThread = fromThread
+    endif
+    call MPI_BARRIER(communicator,ierr)
+
+  end subroutine broadcastBranch
+
+  subroutine packAttributeDoubleArray2Dpointer(array)
+    real(double) :: array(:,:)
+    integer :: m, n, dim(1)
+    m = SIZE(array,1)
+    n = SIZE(array,2)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer) = dble(n)
+    nBuffer = nBuffer + 1
+    dim(1) = n*m
+    buffer(nBuffer:(nBuffer+m*n-1)) = reshape(array, dim)
+    nBuffer = nBuffer + m*n
+  end subroutine packAttributeDoubleArray2Dpointer
+
+  subroutine packAttributeDoubleArray3Dpointer(array)
+    real(double) :: array(:,:,:)
+    integer :: m, n, o, dim(1)
+    m = SIZE(array,1)
+    n = SIZE(array,2)
+    o = SIZE(array,3)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer) = dble(n)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer) = dble(o)
+    nBuffer = nBuffer + 1
+    dim(1) = n*m*o
+    buffer(nBuffer:(nBuffer+m*n*o-1)) = reshape(array, dim)
+    nBuffer = nBuffer + m*n*o
+  end subroutine packAttributeDoubleArray3Dpointer
+
+  subroutine packAttributeDoubleArray1Dpointer(array)
+    real(double) :: array(:)
+    integer :: m
+    m = SIZE(array)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer:(nBuffer+m-1)) = array
+    nBuffer = nBuffer + m
+  end subroutine packAttributeDoubleArray1Dpointer
+
+  subroutine packAttributeRealArray1Dpointer(array)
+    real :: array(:)
+    integer :: m
+    m = SIZE(array)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer:(nBuffer+m-1)) = real(array)
+    nBuffer = nBuffer + m
+  end subroutine packAttributeRealArray1Dpointer
+
+  subroutine packAttributeLogicalArray1Dpointer(array)
+    logical :: array(:)
+    integer :: m
+    m = SIZE(array)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer:(nBuffer+m-1)) = 0.d0
+    where(array(1:m))
+       buffer(nBuffer:(nBuffer+m-1)) = 1.d0
+    end where
+
+    nBuffer = nBuffer + m
+  end subroutine packAttributeLogicalArray1Dpointer
+
+
+
+  subroutine packAttributeVectorArray1Dpointer(array)
+    type(VECTOR) :: array(:)
+    integer :: m
+    m = SIZE(array)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+
+    buffer(nBuffer:(nBuffer+m-1)) = array(1:m)%x
+    nBuffer = nBuffer + m
+    buffer(nBuffer:(nBuffer+m-1)) = array(1:m)%y
+    nBuffer = nBuffer + m
+    buffer(nBuffer:(nBuffer+m-1)) = array(1:m)%z
+    nBuffer = nBuffer + m
+  end subroutine packAttributeVectorArray1Dpointer
+
+  subroutine packAttributeIntegerArray1Dpointer(array)
+    integer :: array(:)
+    integer :: m
+    m = SIZE(array)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer:(nBuffer+m-1)) = dble(array)
+    nBuffer = nBuffer + m
+  end subroutine packAttributeIntegerArray1Dpointer
+
+  subroutine unpackAttributeDoubleArray2Dpointer(array)
+    real(double), pointer :: array(:,:)
+    integer :: m, n, dim(2)
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    n = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m,1:n))
+    dim(1) = m
+    dim(2) = n
+    array = reshape(buffer(nBuffer:(nBuffer+m*n-1)),dim)
+    nBuffer = nBuffer + m*n
+  end subroutine unpackAttributeDoubleArray2Dpointer
+
+  subroutine unpackAttributeDoubleArray3Dpointer(array)
+    real(double), pointer :: array(:,:, :)
+    integer :: m, n, o, dim(3)
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    n = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    o = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m,1:n,1:o))
+    dim(1) = m
+    dim(2) = n
+    dim(3) = o
+    array = reshape(buffer(nBuffer:(nBuffer+m*n*o-1)),dim)
+    nBuffer = nBuffer + m*n*o
+  end subroutine unpackAttributeDoubleArray3Dpointer
+
+  subroutine unpackAttributeDoubleArray1Dpointer(array)
+    real(double), pointer :: array(:)
+    integer :: m
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m))
+    array = buffer(nBuffer:(nBuffer+m-1))
+    nBuffer = nBuffer + m
+  end subroutine unpackAttributeDoubleArray1Dpointer
+
+  subroutine unpackAttributeRealArray1Dpointer(array)
+    real, pointer :: array(:)
+    integer :: m
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m))
+    array = real(buffer(nBuffer:(nBuffer+m-1)))
+    nBuffer = nBuffer + m
+  end subroutine unpackAttributeRealArray1Dpointer
+
+  subroutine unpackAttributeLogicalArray1Dpointer(array)
+    logical, pointer :: array(:)
+    integer :: m
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m))
+    array = .false.
+    where (buffer(nBuffer:(nBuffer+m-1)) > 0.d0)
+       array = .true.
+    end where
+    nBuffer = nBuffer + m
+  end subroutine unpackAttributeLogicalArray1Dpointer
+
+  subroutine unpackAttributeVectorArray1Dpointer(array)
+    type(VECTOR), pointer :: array(:)
+    integer :: m
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m))
+    array(1:m)%x = buffer(nBuffer:(nBuffer+m-1))
+    nBuffer = nBuffer + m
+    array(1:m)%y = buffer(nBuffer:(nBuffer+m-1))
+    nBuffer = nBuffer + m
+    array(1:m)%z = buffer(nBuffer:(nBuffer+m-1))
+    nBuffer = nBuffer + m
+  end subroutine unpackAttributeVectorArray1Dpointer
+
+  subroutine unpackAttributeIntegerArray1Dpointer(array)
+    integer, pointer :: array(:)
+    integer :: m
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m))
+    array = nint(buffer(nBuffer:(nBuffer+m-1)))
+    nBuffer = nBuffer + m
+  end subroutine unpackAttributeIntegerArray1Dpointer
+
+
+
+
+  subroutine packAttributeIntegerSingle(i)
+    integer :: i
+    buffer(nBuffer) = dble(i)
+    nBuffer = nBuffer + 1
+  end subroutine packAttributeIntegerSingle
+
+  subroutine packAttributeDoubleSingle(i)
+    real(double) :: i
+    buffer(nBuffer) = i
+    nBuffer = nBuffer + 1
+  end subroutine packAttributeDoubleSingle
+
+  subroutine packAttributeVectorSingle(v)
+    type(VECTOR) :: v
+    buffer(nBuffer) = v%x
+    nBuffer = nBuffer + 1
+    buffer(nBuffer) = v%y
+    nBuffer = nBuffer + 1
+    buffer(nBuffer) = v%z
+    nBuffer = nBuffer + 1
+  end subroutine packAttributeVectorSingle
+
+  subroutine unpackAttributeVectorSingle(v)
+    type(VECTOR) :: v
+    v%x = buffer(nBuffer)
+    nBuffer = nBuffer + 1
+    v%y = buffer(nBuffer)
+    nBuffer = nBuffer + 1
+    v%z = buffer(nBuffer)
+    nBuffer = nBuffer + 1
+  end subroutine unpackAttributeVectorSingle
+
+  subroutine packAttributeLogicalSingle(i)
+    logical :: i
+    if (i) then
+       buffer(nBuffer) = 1.d0
+    else
+       buffer(nBuffer) = 0.d0
+    endif
+    nBuffer = nBuffer + 1
+  end subroutine packAttributeLogicalSingle
+
+  subroutine packAttributeIntegerArray(array)
+    integer :: array(:)
+    integer :: n
+    n = size(array)
+    buffer(nBuffer:(nBuffer+n-1)) = dble(array(1:n))
+    nBuffer = nBuffer + n
+  end subroutine packAttributeIntegerArray
+
+  subroutine packAttributeLogicalArray(array)
+    logical :: array(:)
+    integer :: i(8)
+    integer :: n
+    n = size(array)
+    i = 0 
+    where(array)
+       i = 1
+    end where
+    buffer(nBuffer:(nBuffer+n-1)) = dble(i(1:n))
+    nBuffer = nBuffer + n
+  end subroutine packAttributeLogicalArray
+
+  subroutine packAttributeDoubleArray(array)
+    real(double) :: array(:)
+    integer :: n
+    n = size(array)
+    buffer(nBuffer:(nBuffer+n-1)) = array(1:n)
+    nBuffer = nBuffer + n
+  end subroutine packAttributeDoubleArray
+
+  subroutine packAttributeRealArray(array)
+    real :: array(:)
+    integer :: n
+    n = size(array)
+    buffer(nBuffer:(nBuffer+n-1)) = dble(array(1:n))
+    nBuffer = nBuffer + n
+  end subroutine packAttributeRealArray
+
+
+  subroutine unpackAttributeIntegerSingle(i)
+    integer :: i
+    i = nint(buffer(nbuffer))
+    nBuffer = nBuffer + 1
+  end subroutine unpackAttributeIntegerSingle
+
+
+  subroutine unpackAttributeDoubleSingle(i)
+    real(double) :: i
+    i = buffer(nBuffer)
+    nBuffer = nBuffer + 1
+  end subroutine unpackAttributeDoubleSingle
+
+
+  subroutine unpackAttributeLogicalSingle(i)
+    logical:: i
+    if (buffer(nBuffer) == 0.d0) then
+       i = .false.
+    else
+       i = .true.
+    endif
+    nBuffer = nBuffer + 1
+  end subroutine unpackAttributeLogicalSingle
+
+  subroutine unpackAttributeIntegerArray(array)
+    integer :: array(:)
+    integer :: n
+    n = size(array)
+    array(1:n) = nint(buffer(nBuffer:(nBuffer+n-1)))
+    nBuffer = nBuffer + n
+  end subroutine unpackAttributeIntegerArray
+
+  subroutine unpackAttributeDoubleArray(array)
+    real(double) :: array(:)
+    integer :: n
+    n = size(array)
+    array(1:n) = buffer(nBuffer:(nBuffer+n-1))
+    nBuffer = nBuffer + n
+  end subroutine unpackAttributeDoubleArray
+
+  subroutine unpackAttributeRealArray(array)
+    real :: array(:)
+    integer :: n
+    n = size(array)
+    array(1:n) = real(buffer(nBuffer:(nBuffer+n-1)))
+    nBuffer = nBuffer + n
+  end subroutine unpackAttributeRealArray
+
+  subroutine unpackAttributeLogicalArray(array)
+    logical :: array(:)
+    integer :: n
+    n = size(array)
+    array = .false.
+    where(buffer(nBuffer:(nBuffer+n-1)) > 0.d0)
+       array = .true.
+    end where
+    nBuffer = nBuffer + n
+  end subroutine unpackAttributeLogicalArray
+
+
 #endif
 
   end module mpi_amr_mod
