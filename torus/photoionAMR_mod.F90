@@ -82,7 +82,8 @@ contains
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, hydroStep2dCylindrical_amr, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
-         imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity, allocatehydrodynamicsAttributes
+         imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity, allocatehydrodynamicsAttributes, &
+         broadCastSinks
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -845,7 +846,6 @@ contains
        else
           photoLoopGlobal = .true.
        endif
-
        if(photoLoopGlobal .and. .not. noPhoto) then
           call writeInfo("Calling photoionization loop A",TRIVIAL)
 !          call ionizeGrid(grid%octreeRoot)
@@ -862,9 +862,9 @@ contains
 !          if (grid%geometry == "sphere") &
 !               call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
-                if (nbodyPhysics.and.hosokawaTracks) then
-                   call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
-                endif
+          if (nbodyPhysics.and.hosokawaTracks) then
+             call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
+          endif
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
@@ -1035,8 +1035,6 @@ contains
 
     currentlyDoingHydroStep = .false.
 
-
-
 !       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
 
 
@@ -1144,6 +1142,16 @@ contains
 !add/merge sink particles where necessary
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
           if (nbodyPhysics.and.addSinkParticles) call addSinks(grid, globalsourceArray, globalnSource)       
+
+!xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+!          call freeglobalsourceArray()
+!          globalnSource = 1
+!          allocate(globalSourceArray(1:1))
+!          globalSourceArray(1)%position = VECTOR(2d7,2d7,2d7)
+!          globalSourceArray(1)%mass = 20.d0*msol
+!          globalSourceArray(1)%accretionRadius = 1.d10
+
+
 !          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
 !          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
 !          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
@@ -1155,6 +1163,13 @@ contains
 
        endif
        call sendSinksToZerothThread(globalnSource, globalsourceArray)
+       call broadcastSinks
+       if (nbodyPhysics.and.hosokawaTracks) then
+          call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
+       endif
+
+
+       
 
 !       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
 !       call writeVtkFile(grid, mpiFilename, &
@@ -1831,7 +1846,6 @@ end subroutine radiationHydro
        write(*,'(a,1pe12.1)') "Ionizing photons per second ", nIonizingPhotons
     endif
 
-
     if (inputNMonte < 0) then
        if (writeoutput) write(*,*) "Skipping photoion loop as input nMonte < 0"
        goto 666
@@ -1950,6 +1964,7 @@ end subroutine radiationHydro
  
       nIter = nIter + 1
 
+
 ! Set up the dust fraction
        if (variableDustSublimation) then
 
@@ -2032,6 +2047,8 @@ end subroutine radiationHydro
     if (writeoutput) then
        write(*,*) "Setting nSmallPackets to ",nSmallPackets
     endif
+
+
 
       nInf=0
       nMonte = nTotalMonte / max(nSmallPackets,1)

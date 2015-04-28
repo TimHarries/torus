@@ -16704,7 +16704,7 @@ end subroutine minMaxDepth
 !             write(*,*) "virial test failed ",abs(SUM(eGrav)),2.d0*SUM(ethermal)
           endif
 
-          deallocate(eGrav, eKinetic, eThermal)
+          deallocate(eGrav, eKinetic, eThermal) 
           if (.not.createSink) cycle
 
 !          if (createSink) write(*,*) "Source creating passed virial test ",abs(eGrav),2.d0*eThermal
@@ -16800,6 +16800,51 @@ end subroutine minMaxDepth
     enddo
   end subroutine recursaddSinks
 
+  subroutine broadcastSinks
+    use mpi
+    integer :: ierr
+     if (myrankGlobal /= 0) then
+        call freeGlobalSourceArray()
+     endif
+     call MPI_BCAST(globalnSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) " globalnsource ",globalnsource
+     if (globalnSource > 0) then
+        if (myrankGlobal /= 0) then
+           allocate(globalSourceArray(1:globalnSource))
+        endif
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "pos x"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "pos y"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "pos z"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "vel x"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "vel y"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "vel z"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%mass     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "mass"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%radius   , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "radius"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%mdot     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "mdot"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%accretionradius     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "acc rad"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%x     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "angmom x"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%y     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "ang mom y"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%z     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "ang mom z"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%stellar     , globalnSource, MPI_LOGICAL, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "stellar"
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%diffuse     , globalnSource, MPI_LOGICAL, 0, localWorldCommunicator, ierr)
+     if (myrankGlobal == 64) write(*,*) "diffuse"
+  endif
+end subroutine broadcastSinks
+  
   subroutine sendSinksToZerothThread(nSource, source)
     use mpi
     integer :: nSource, iSource, ierr
