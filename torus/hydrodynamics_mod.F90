@@ -16360,7 +16360,7 @@ end subroutine minMaxDepth
      integer :: status(MPI_STATUS_SIZE), ierr, np, i
      integer :: maxPoints, startPoint
 
-     maxPoints = 8 * (2**(mindepthAMR+1))
+     maxPoints = 8*(2**minDepthAmr)**2
      allocate(points(1:maxPoints), v(1:maxPoints), nPointsByThread(1:nHydroThreadsGlobal))
 
 
@@ -16374,9 +16374,9 @@ end subroutine minMaxDepth
         nPointsByThread(1) = nPoints
         do iThread = 2, nHydroThreadsGlobal
            call mpi_recv(np, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points(nPoints:(nPoints+np-1))%x, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points(nPoints:(nPoints+np-1))%y, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points(nPoints:(nPoints+np-1))%z, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points(nPoints:(nPoints+np-1))%x, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points(nPoints:(nPoints+np-1))%y, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points(nPoints:(nPoints+np-1))%z, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
            nPointsByThread(ithread) = np
            nPoints = nPoints + np
         enddo

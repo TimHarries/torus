@@ -318,7 +318,6 @@ contains
 !       call autoSetupEvenupArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
 !       call evenUpGridMPI(grid, .false., .true., evenuparray)
-       call writeInfo("Done", TRIVIAL)
        call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
     endif
 
