@@ -108,8 +108,8 @@ contains
     real(double) ::  nextDumpTime
     type(VECTOR) :: direction, viewVec
     logical :: gridConverged
-    integer :: thread1(512), thread2(512), nBound(512), nPairs
-    integer :: group(1000), nGroup
+    integer :: thread1(5120), thread2(5120), nBound(5120), nPairs
+    integer :: group(2000), nGroup
 !    logical :: globalConverged(512), tConverged(512)
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
@@ -318,6 +318,7 @@ contains
 !       call autoSetupEvenupArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
 !       call evenUpGridMPI(grid, .false., .true., evenuparray)
+       call writeInfo("Done", TRIVIAL)
        call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
     endif
 
@@ -330,10 +331,10 @@ contains
     if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
 
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!       do i = 1, nPairs
-!          if (myrankWorldglobal==1) &
-!               write(*,'(a,i4,i4,a,i4,a,i4,a,i4)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
-!       enddo
+       do i = 1, nPairs
+          if (myrankWorldglobal==1) &
+               write(*,'(a,i4,i4,a,i4,a,i4,a,i4)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
+       enddo
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call resetnh(grid%octreeRoot)

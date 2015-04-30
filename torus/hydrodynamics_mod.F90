@@ -12473,7 +12473,8 @@ real(double) :: rho
        do iSource = 1, globalNSource
           
           r = modulus(centre - globalsourceArray(iSource)%position)/smallestCellSize
-          if ((r < 12.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
+          if ((r < 5.d0) .and. (thisOctal%nDepth < maxDepthAMR)) then
+             write(*,*) myrankGlobal, " splitting cell near sink"
              call addNewChildWithInterp(thisOctal, subcell, grid)
              converged = .false.
              exit
@@ -15929,14 +15930,19 @@ end subroutine minMaxDepth
      integer :: status(MPI_STATUS_SIZE)
      integer :: ierr, j
      real(double) :: v,m
-
      type(VECTOR) :: point
+
+
+     call  dirichletQuick(grid)
+     goto 666
+
      tag = 94
      call findCoM(grid, com)
 !     if (writeoutput) write(*,*) "Centre of Mass found at ",com
      if (cylindricalHydro) then
         call applyDirichletCylindrical(grid, level)
      else
+
 
      do iThread = 1, nHydroThreadsGlobal
         if (myRankGlobal == iThread) then
@@ -15972,7 +15978,7 @@ end subroutine minMaxDepth
         call mpi_barrier(amrCommunicator, ierr)
      enddo
   endif
-  
+666 continue  
    end subroutine applyDirichlet
 
    subroutine applyDirichletCylindrical(grid, level)
@@ -16339,6 +16345,121 @@ end subroutine minMaxDepth
         enddo
      endif
    end subroutine recursApplyDirichletLevel
+
+
+   subroutine dirichletQuick(grid)
+     use mpi
+     type(GRIDTYPE) :: grid
+     integer :: npoints
+     type(VECTOR) :: com
+     integer, allocatable :: nPointsByThread(:)
+     type(VECTOR), allocatable :: points(:)
+     real(double),allocatable :: v(:), temp(:)
+     integer :: ithread
+     integer, parameter :: tag = 45
+     integer :: status(MPI_STATUS_SIZE), ierr, np, i
+     integer :: maxPoints, startPoint
+
+     maxPoints = 8 * (2**(mindepthAMR+1))
+     allocate(points(1:maxPoints), v(1:maxPoints), nPointsByThread(1:nHydroThreadsGlobal))
+
+
+     call findCoM(grid, com)
+
+
+
+     if (myrankGlobal == 1) then
+        nPoints = 0
+        call getEdgePointsRecur(grid%octreeRoot, nPoints, points)
+        nPointsByThread(1) = nPoints
+        do iThread = 2, nHydroThreadsGlobal
+           call mpi_recv(np, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points(nPoints:(nPoints+np-1))%x, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points(nPoints:(nPoints+np-1))%y, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points(nPoints:(nPoints+np-1))%z, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           nPointsByThread(ithread) = np
+           nPoints = nPoints + np
+        enddo
+     else
+        nPoints = 0
+        call getEdgePointsRecur(grid%octreeRoot, nPoints, points)
+        call mpi_send(nPoints, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, ierr)
+        call mpi_send(points(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+        call mpi_send(points(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+        call mpi_send(points(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+     endif
+     call MPI_BCAST(npoints, 1, MPI_INTEGER, 1, localWorldCommunicator, ierr)
+     call MPI_BCAST(npointsbythread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
+     call MPI_BCAST(points%x, npoints, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
+     call MPI_BCAST(points%y, npoints, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
+     call MPI_BCAST(points%z, npoints, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
+
+     do i = 1, nPoints
+        call multipoleExpansion(grid%octreeRoot, points(i), com, v(i))
+     enddo
+     allocate(temp(1:nPoints))
+     call MPI_ALLREDUCE(v(1:nPoints), temp, npoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+     v = temp(1:npoints)
+     deallocate(temp)
+     if (myrankGlobal == 1) then
+        startPoint = 1
+     else
+        startPoint = SUM(nPointsByThread(1:myrankGlobal-1))+1
+     endif
+     call putDirichletPotential(grid%OctreeRoot, v, startPoint)
+   end subroutine dirichletQuick
+
+   recursive subroutine putDirichletPotential(thisOctal, v, counter)
+     type(OCTAL), pointer :: thisOctal, child
+     integer :: counter, subcell, i
+     real(double) :: v(:), r
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call putDirichletPotential(child, v, counter)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%edgeCell(subcell)) then
+             thisOctal%phi_gas(subcell) = v(counter)
+             r = modulus(subcellCentre(thisOctal, subcell))
+             write(*,*) "test ",v(counter), -bigG*100.d0*msol/r
+             counter = counter + 1
+          endif
+       endif
+    enddo
+  end subroutine putDirichletPotential
+
+  recursive subroutine getEdgePointsRecur(thisOctal, nPoints, points)
+     type(OCTAL), pointer :: thisOctal, child
+     integer :: nPoints, subcell, i
+     type(VECTOR) :: points(:)
+     do subcell = 1, thisOctal%maxChildren
+        if (thisOctal%hasChild(subcell)) then
+           ! find the child
+           do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getEdgePointsRecur(child, nPoints, points)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%edgeCell(subcell)) then
+             nPoints = npoints + 1
+             points(npoints) = subcellCentre(thisOctal, subcell)
+          endif
+       endif
+    enddo
+  end subroutine getEdgePointsRecur
+  
+             
 
 
    subroutine mergeSinksFF(grid, source, nSource)
@@ -16830,9 +16951,9 @@ end subroutine broadcastSinks
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 32
     if (myrankGlobal == 0) then
-
+ 
      call mpi_recv(nSource, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
-  
+ 
        do iSource = 1, nSource
           call mpi_recv(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)

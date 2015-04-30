@@ -1460,7 +1460,7 @@ contains
 
 
 
-             tOctal => thisOctal
+             tOctal => neighbourOctal
              call findSubcellLocal(locator, tOctal, tSubcell)
 
              tempStorage(42+j-1) = tOctal%q_i(tSubcell)
@@ -2499,7 +2499,7 @@ contains
     integer :: i
     integer, allocatable :: indx(:), itmp(:)
     real, allocatable :: sort(:)
-    integer :: list(1000), nList
+    integer :: list(10000), nList
 
 
     nPairs = 0
@@ -2510,7 +2510,7 @@ contains
     if (nPairs > 1) then
        allocate(indx(1:nPairs), sort(1:nPairs), itmp(1:nPairs))
        do i = 1, nPairs
-          sort(i) = real(thread1(i))*100. + real(thread2(i))
+          sort(i) = real(thread1(i))*512. + real(thread2(i))
        enddo
        call indexx(nPairs, sort, indx)
        
@@ -7015,23 +7015,8 @@ end subroutine writeRadialFile
                7, 8, 1, 2, 16, 17, 10, 11, 9, 7, 5, 1, 18, 16, 14, 10/) !pane 4      
                
        else if(nHydroTHreadsGlobal==512) then
-          !not yet corrected for shephard's method - may have issues
-            evenUpArray = (/1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 1  
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 2           
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 3           
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 4   
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 5   
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 6   
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, & !pane 7   
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8, &
-                 1, 3, 2, 4, 5, 7, 6, 8, 1, 3, 2, 4, 5, 7, 6, 8/) !pane 8    
+          call autoSetupEvenupArray(grid, evenUpArray)
+
        else
           write(*,*) "nHydroThreadsGlobal ",nHydroThreadsGlobal
           call torus_abort("unknown no. of hydro threads in setupEvenUpArray")
