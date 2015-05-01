@@ -15933,7 +15933,11 @@ end subroutine minMaxDepth
      type(VECTOR) :: point
 
 
-     call  dirichletQuick(grid)
+     if (PRESENT(level)) then
+        call  dirichletQuick(grid, level=level)
+     else
+        call  dirichletQuick(grid)
+     endif
      goto 666
 
      tag = 94
@@ -16347,14 +16351,16 @@ end subroutine minMaxDepth
    end subroutine recursApplyDirichletLevel
 
 
-   subroutine dirichletQuick(grid)
+   subroutine dirichletQuick(grid, level)
      use mpi
      type(GRIDTYPE) :: grid
+     integer, optional :: level
      integer :: npoints
      type(VECTOR) :: com
      integer, allocatable :: nPointsByThread(:)
      type(VECTOR), allocatable :: points(:)
      real(double),allocatable :: v(:), temp(:)
+     real(double) :: m
      integer :: ithread
      integer, parameter :: tag = 45
      integer :: status(MPI_STATUS_SIZE), ierr, np, i
@@ -16363,56 +16369,73 @@ end subroutine minMaxDepth
      maxPoints = 8*(2**minDepthAmr)**2
      allocate(points(1:maxPoints), v(1:maxPoints), nPointsByThread(1:nHydroThreadsGlobal))
 
-
      call findCoM(grid, com)
-
-
 
      if (myrankGlobal == 1) then
         nPoints = 0
-        call getEdgePointsRecur(grid%octreeRoot, nPoints, points)
+        if (.not.PRESENT(level)) then
+           call getEdgePointsRecur(grid%octreeRoot, nPoints, points)
+        else
+           call getEdgePointsRecurLevel(grid%octreeRoot, nPoints, points, level)
+        endif
         nPointsByThread(1) = nPoints
         do iThread = 2, nHydroThreadsGlobal
            call mpi_recv(np, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points(nPoints:(nPoints+np-1))%x, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points(nPoints:(nPoints+np-1))%y, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points(nPoints:(nPoints+np-1))%z, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points((nPoints+1):(nPoints+np))%x, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points((nPoints+1):(nPoints+np))%y, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points((nPoints+1):(nPoints+np))%z, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
            nPointsByThread(ithread) = np
            nPoints = nPoints + np
         enddo
      else
         nPoints = 0
-        call getEdgePointsRecur(grid%octreeRoot, nPoints, points)
+        if (.not.PRESENT(level)) then
+           call getEdgePointsRecur(grid%octreeRoot, nPoints, points)
+        else
+           call getEdgePointsRecurLevel(grid%octreeRoot, nPoints, points, level)
+        endif
         call mpi_send(nPoints, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, ierr)
         call mpi_send(points(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
         call mpi_send(points(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
         call mpi_send(points(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
      endif
-     call MPI_BCAST(npoints, 1, MPI_INTEGER, 1, localWorldCommunicator, ierr)
-     call MPI_BCAST(npointsbythread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
-     call MPI_BCAST(points%x, npoints, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
-     call MPI_BCAST(points%y, npoints, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
-     call MPI_BCAST(points%z, npoints, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
-
+     write(*,*) myrankGlobal, " waiting for bcast"
+     call mpi_barrier(amrCommunicator,ierr)
+     call MPI_BCAST(npoints, 1, MPI_INTEGER, 0, amrCommunicator, ierr)
+     call MPI_BCAST(npointsbythread, nHydroThreadsGlobal, MPI_INTEGER, 0, amrCommunicator, ierr)
+     call MPI_BCAST(points%x, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
+     call MPI_BCAST(points%y, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
+     call MPI_BCAST(points%z, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
+     write(*,*) myrankGlobal, " finished bcast and running multipole"
+     v = 0.d0
      do i = 1, nPoints
-        call multipoleExpansion(grid%octreeRoot, points(i), com, v(i))
+        call multipoleExpansionLevel(grid%octreeRoot, points(i), com, v(i), m, level=4)
      enddo
+     write(*,*) myrankGlobal, " finished multipole and awaiting allreduce"
      allocate(temp(1:nPoints))
      call MPI_ALLREDUCE(v(1:nPoints), temp, npoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
-     v = temp(1:npoints)
+     v(1:npoints) = temp(1:npoints)
+     write(*,*) myrankGlobal, " done all reduce"
      deallocate(temp)
      if (myrankGlobal == 1) then
         startPoint = 1
      else
         startPoint = SUM(nPointsByThread(1:myrankGlobal-1))+1
      endif
-     call putDirichletPotential(grid%OctreeRoot, v, startPoint)
+     if (.not.present(LEVEL)) then
+         call putDirichletPotential(grid%OctreeRoot, v, startPoint)
+     else
+         call putDirichletPotentialLevel(grid%OctreeRoot, v, startPoint, level)
+      endif
+     write(*,*) myrankGlobal, " finished quick"
+
+      deallocate(points, v, nPointsbythread)
    end subroutine dirichletQuick
 
    recursive subroutine putDirichletPotential(thisOctal, v, counter)
      type(OCTAL), pointer :: thisOctal, child
      integer :: counter, subcell, i
-     real(double) :: v(:), r
+     real(double) :: v(:), r, fac
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
            ! find the child
@@ -16428,12 +16451,33 @@ end subroutine minMaxDepth
           if (thisOctal%edgeCell(subcell)) then
              thisOctal%phi_gas(subcell) = v(counter)
              r = modulus(subcellCentre(thisOctal, subcell))
-             write(*,*) "test ",v(counter), -bigG*100.d0*msol/r
              counter = counter + 1
           endif
        endif
     enddo
   end subroutine putDirichletPotential
+
+   recursive subroutine putDirichletPotentialLevel(thisOctal, v, counter, nDepth)
+     type(OCTAL), pointer :: thisOctal, child
+     integer :: counter, subcell, i, nDepth
+     real(double) :: v(:), r, fac
+     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
+        do i = 1, thisOctal%nChildren, 1
+           child => thisOctal%child(i)
+           call putDirichletPotentialLevel(child, v, counter, nDepth)
+        end do
+     else
+
+        do subcell = 1, thisOctal%maxChildren
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (thisOctal%edgeCell(subcell)) then
+              thisOctal%phi_gas(subcell) = v(counter)
+              r = modulus(subcellCentre(thisOctal, subcell))
+              counter = counter + 1
+           endif
+        enddo
+     endif
+   end subroutine putDirichletPotentialLevel
 
   recursive subroutine getEdgePointsRecur(thisOctal, nPoints, points)
      type(OCTAL), pointer :: thisOctal, child
@@ -16458,6 +16502,29 @@ end subroutine minMaxDepth
        endif
     enddo
   end subroutine getEdgePointsRecur
+
+  recursive subroutine getEdgePointsRecurLevel(thisOctal, nPoints, points, nDepth)
+     type(OCTAL), pointer :: thisOctal, child
+     integer :: nPoints, subcell, i, nDepth
+     type(VECTOR) :: points(:)
+
+     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
+        do i = 1, thisOctal%nChildren, 1
+           child => thisOctal%child(i)
+           call  getEdgePointsRecurLevel(child, nPoints, points, nDepth)
+        end do
+     else
+
+        do subcell = 1, thisOctal%maxChildren
+
+           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+           if (thisOctal%edgeCell(subcell)) then
+              nPoints = npoints + 1
+              points(npoints) = subcellCentre(thisOctal, subcell)
+           endif
+        enddo
+     endif
+   end subroutine getEdgePointsRecurLevel
   
              
 
