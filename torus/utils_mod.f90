@@ -74,6 +74,15 @@ module utils_mod
 
 contains
 
+  integer function median(iArray)
+    integer :: n, iArray(:)
+    integer, allocatable :: iT(:)
+    n = size(iArray)
+    allocate(it(1:n))
+    call sort(n, it)
+    median = it(n/2)
+  end function median
+
   real(double) function getGridValue(i, r1, r2, nr, logarithmic)
     integer :: i, nr
     real(double) :: r1, r2

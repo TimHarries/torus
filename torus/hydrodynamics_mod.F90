@@ -16399,23 +16399,19 @@ end subroutine minMaxDepth
         call mpi_send(points(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
         call mpi_send(points(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
      endif
-     write(*,*) myrankGlobal, " waiting for bcast"
      call mpi_barrier(amrCommunicator,ierr)
      call MPI_BCAST(npoints, 1, MPI_INTEGER, 0, amrCommunicator, ierr)
      call MPI_BCAST(npointsbythread, nHydroThreadsGlobal, MPI_INTEGER, 0, amrCommunicator, ierr)
      call MPI_BCAST(points%x, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
      call MPI_BCAST(points%y, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
      call MPI_BCAST(points%z, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
-     write(*,*) myrankGlobal, " finished bcast and running multipole"
      v = 0.d0
      do i = 1, nPoints
         call multipoleExpansionLevel(grid%octreeRoot, points(i), com, v(i), m, level=4)
      enddo
-     write(*,*) myrankGlobal, " finished multipole and awaiting allreduce"
      allocate(temp(1:nPoints))
      call MPI_ALLREDUCE(v(1:nPoints), temp, npoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
      v(1:npoints) = temp(1:npoints)
-     write(*,*) myrankGlobal, " done all reduce"
      deallocate(temp)
      if (myrankGlobal == 1) then
         startPoint = 1
@@ -16427,7 +16423,6 @@ end subroutine minMaxDepth
      else
          call putDirichletPotentialLevel(grid%OctreeRoot, v, startPoint, level)
       endif
-     write(*,*) myrankGlobal, " finished quick"
 
       deallocate(points, v, nPointsbythread)
    end subroutine dirichletQuick

@@ -121,14 +121,17 @@ contains
   
   subroutine setLoadBalancingThreadsByCrossings(grid)
     use mpi
+    use utils_mod, only : median
     type(GRIDTYPE) :: grid
     integer :: i, iThread, j
     integer :: subcell
     integer, allocatable :: itemp(:)
     integer, allocatable :: numberOfCrossingsOnThread(:)
+    real(double), allocatable :: frac(:)
     integer :: ierr
 
     allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
+    allocate(frac(1:nHydroThreadsGlobal))
 
 
     numberOfCrossingsOnThread = 0
@@ -139,8 +142,10 @@ contains
        numberOfCrossingsOnThread = itemp
        deallocate(itemp)
     endif
+
+
     call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
-!    if (myrankGlobal ==0 )write(*,*) "crossings ",numberOfCrossingsOnThread(1:nHydroThreadsGlobal)
+    frac = dble(numberOfCrossingsOnThread)/dble(SUM(numberOfCrossingsOnThread))
 
     if (associated(nLoadBalanceList)) then
        deallocate(nloadBalanceList)
@@ -164,18 +169,22 @@ contains
     do i = 1, nHydroThreadsGlobal
        loadBalanceList(i,1) = i
     enddo
+    nLoadBalanceList(1:nHydroThreadsGlobal) =  1 + &
+         nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
 
-    nLoadBalanceList(1:nHydroThreadsGlobal) = nLoadBalanceList(1:nHydroThreadsGlobal) + &
-         nint(dble(nLoadBalancingThreadsGlobal) * &
-         dble(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))/dble(SUM(numberofCrossingsOnThread(1:nHydroThreadsGlobal))))
 
     do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
 
+
        if ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) > nLoadBalancingThreadsGlobal) then
-          nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) - 1
+          frac = frac / 1.001d0
        else
-          nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) + 1
+          frac = frac * 1.001d0
        endif
+       nLoadBalanceList(1:nHydroThreadsGlobal) = 1 + &
+            nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
+
+
     end do
 
 
