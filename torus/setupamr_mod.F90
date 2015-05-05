@@ -451,17 +451,17 @@ contains
              grid%nOctals = nOctals
 
           case("ttauri")
-             if (ttauriMagnetosphere) then
-                call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                     minRcubedRHoSquared)
-                call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
-                     minRCubedRhoSquared)
-             endif
-             call testVelocity(grid%octreeRoot,grid)
-       
-             if (ttauriwind)  call addDiscWind(grid)
-             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
-             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
+!             if (ttauriMagnetosphere) then
+!                call assignDensitiesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+!                     minRcubedRHoSquared)
+!                call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
+!                     minRCubedRhoSquared)
+!             endif
+!             call testVelocity(grid%octreeRoot,grid)
+!       
+!             if (ttauriwind)  call addDiscWind(grid)
+!             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+!             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
 
              call writeVtkFile(grid, "deriv.vtk",  valueTypeString=(/"rho        ", &
 !                                                                     "dust1      ", &

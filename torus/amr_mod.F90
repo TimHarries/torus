@@ -17214,7 +17214,6 @@ end function readparameterfrom2dmap
 
   subroutine deallocateOctalDynamicAttributes(thisOctal)
     type(OCTAL) :: thisOctal
-
     call deallocateAttribute(thisOctal%iEquationOfState)
     call deallocateAttribute(thisOctal%iAnalyticalVelocity)
     call deallocateAttribute(thisOctal%gamma)

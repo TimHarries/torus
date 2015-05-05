@@ -8462,6 +8462,11 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call MPI_BCAST(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, communicator, ierr)
 
     if (myrankGlobal /= fromThread) then
+
+       call deleteOctreeBranch(thisOctal=grid%octreeroot,                      &
+               onlyChildren=.FALSE.,                                           &
+               adjustParent=.FALSE.)
+
        nBuffer = 1
 
        call unpackbranch(grid%octreeRoot, null())
