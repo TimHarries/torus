@@ -1990,22 +1990,26 @@ end subroutine radiationHydro
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
+       call MPI_BARRIER(localWorldCommunicator,ierr)
        if (.not. cart2d) then
           maxDiffRadius3  = 1.d30
           tauWanted = 1.d0
           do isource = 1, globalnSource
              call tauRadius(grid, globalSourceArray(iSource)%position, VECTOR(-1.d0, 0.d0, 0.d0), tauWanted, &
                   maxDiffRadius1(iSource))
+             call MPI_BARRIER(localWorldCommunicator,ierr)
              call MPI_BCAST(maxDiffRadius1(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
 
              if (amr2d.or.amr3d) then
                 call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, 0.d0, -1.d0), tauWanted, &
                      maxDiffRadius2(iSource))
+                call MPI_BARRIER(localWorldCommunicator,ierr)
                 call MPI_BCAST(maxDiffRadius2(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              endif
              if (amr3D) then
                 call tauRadius(grid, globalSourceArray(iSource)%position,VECTOR(0.d0, -1.d0, 0.d0), tauWanted, &
                      maxDiffRadius3(iSource))
+                call MPI_BARRIER(localWorldCommunicator,ierr)
                 call MPI_BCAST(maxDiffRadius3(iSource), 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
              endif
              call MPI_BARRIER(localWorldCommunicator, ierr)
@@ -2045,7 +2049,7 @@ end subroutine radiationHydro
        end if
        if (radPressureTest) nSmallPackets = 0
     if (writeoutput) then
-       write(*,*) "Setting nSmallPackets to ",nSmallPackets
+       write(*,*) myrankGlobal, " Setting nSmallPackets to ",nSmallPackets
     endif
 
 
