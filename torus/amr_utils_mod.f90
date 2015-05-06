@@ -516,9 +516,6 @@ module amr_utils_mod
    else
 
       amrGridVelocity = analyticalVelocity(point, resultOctal%iAnalyticalVelocity(subcell))
-!      write(*,*) "analytical ",amrgridvelocity*cspeed/1.d5
-!      write(*,*) "grid       ", resultoctal%velocity(subcell)*cspeed/1.d5
-!      write(*,*) " "
    endif
 
 666   continue

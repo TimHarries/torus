@@ -128,7 +128,7 @@ contains
     integer, allocatable :: itemp(:)
     integer, allocatable :: numberOfCrossingsOnThread(:)
     real(double), allocatable :: frac(:)
-    integer :: ierr
+    integer :: ierr, iter
 
     allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
     allocate(frac(1:nHydroThreadsGlobal))
@@ -173,6 +173,7 @@ contains
          nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
 
 
+    iter = 0
     do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
 
 
@@ -183,8 +184,9 @@ contains
        endif
        nLoadBalanceList(1:nHydroThreadsGlobal) = 1 + &
             nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
-
-
+       write(*,*) iter, (SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal), nLoadBalancingThreadsGlobal
+       iter = iter + 1
+       if (iter > 10000) exit
     end do
 
 
