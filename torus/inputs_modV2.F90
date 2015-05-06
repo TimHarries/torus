@@ -2919,7 +2919,7 @@ contains
          "Time between dump files: ","(a,e12.3,1x,a)", 0.d0, ok, .true.)
 
     call getLogical("rhieChow", rhieChow, cLine, fLine, nLines, &
-         "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .true., ok, .false.)
+         "Use Rhie-Chow interpolation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("radpressure", radiationPressure, cLine, fLine, nLines, &
          "Include radiation pressure terms: ","(a,1l,1x,a)", .false., ok, .false.)

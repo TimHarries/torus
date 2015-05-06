@@ -2566,7 +2566,7 @@ end subroutine radiationHydro
                !$OMP SHARED(nSaved, maxStackLimit, source, uv_vector) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest, augerArray, firstwarning) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal, nToNextEventPhoto, nNotEscaped) &
-               !$OMP SHARED(miephase, nmumie, ndusttype, photonmomentum)
+               !$OMP SHARED(miephase, nmumie, ndusttype, photonmomentum, loadBalancing, nDomainThreads)
                
                finished = .false.
                escaped = .false.
@@ -3159,6 +3159,7 @@ end subroutine radiationHydro
     np = 1
     firstTime = .true.
 
+    if (allocated(octalArray)) deallocate(octalArray)
     allocate(octalArray(grid%nOctals))
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
@@ -3280,7 +3281,7 @@ end subroutine radiationHydro
        !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT, uv_vector) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal) &
-       !$OMP SHARED(augerArray, firstwarning, radpressuretest)
+       !$OMP SHARED(augerArray, firstwarning, radpressuretest, loadbalancing)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end

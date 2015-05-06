@@ -8365,6 +8365,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%normSourceContribution)
     call packAttributePointer(thisOctal%kappaTimesFlux)
     call packAttributePointer(thisOctal%uvvector)
+    call packAttributePointer(thisOctal%oldfrac)
 
   end subroutine packOctal
 
@@ -8427,6 +8428,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%normSourceContribution)
     call unpackAttributePointer(thisOctal%kappaTimesFlux)
     call unpackAttributePointer(thisOctal%uvvector)
+    call unpackAttributePointer(thisOctal%oldfrac)
 
 
   end subroutine unPackOctal
