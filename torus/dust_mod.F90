@@ -872,8 +872,8 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only : rSublimation, rOuter, dustHeight, dustBeta, nDustType, grainFrac, height, &
-         betaDisc, dustSettling, curvedInnerEdge
+!    use inputs_mod, only : rOuter, dustHeight, dustBeta, height, betaDisc, dustSettling
+    use inputs_mod, only: rSublimation, nDustType, curvedInnerEdge, grainFrac
     use octal_mod, only : cellVolume
     use density_mod
     type(gridtype) :: grid

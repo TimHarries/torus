@@ -2366,7 +2366,6 @@ end subroutine addSpiralWake
 
 recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
   use inputs_mod, only : amrGridSize
-  use inputs_mod, only : maxDepthAMR
   integer, intent(in) :: n
   type(octal), pointer   :: thisOctal
   real, pointer :: xVel(:,:,:), yVel(:,:,:), zVel(:,:,:)

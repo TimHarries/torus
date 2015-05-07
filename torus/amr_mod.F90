@@ -9793,7 +9793,7 @@ endif
     n = 2.d0
     ethermal = 0.1d0
     rVec = subcellCentre(thisOctal, subcell)
-    thisOctal%temperature(subcell) = inflowTemp
+    thisOctal%temperature(subcell) = real(inflowTemp)
     thisOCtal%rho(subcell) = inflowRho
     thisOctal%pressure_i(subcell) = inflowPressure
 
