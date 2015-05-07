@@ -22,6 +22,7 @@ contains
     integer :: subcell
     integer, allocatable :: numberOfSourcesonThread(:), itemp(:)
     integer :: ierr
+    real(double), allocatable :: frac(:)
 
     allocate(numberOfSourcesOnThread(1:nHydroThreadsGlobal))
     numberOfSourcesOnThread = 0 
@@ -68,18 +69,13 @@ contains
        loadBalanceList(i,1) = i
     enddo
 
+    allocate(frac(1:nHydroThreadsGlobal))
+    frac = dble(numberOfSourcesOnThread(1:nHydroThreadsGlobal))/dble(globalnsource)
     nLoadBalanceList(1:nHydroThreadsGlobal) = nLoadBalanceList(1:nHydroThreadsGlobal) + &
          int(dble(nLoadBalancingThreadsGlobal)*dble(numberOfSourcesOnThread(1:nHydroThreadsGlobal))/dble(globalnSource))
 
 
-    do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
-
-       if ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) > nLoadBalancingThreadsGlobal) then
-          nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) - 1
-       else
-          nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) + 1
-       endif
-    end do
+    call normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
 
     iThread = nHydroThreadsGlobal+1
     do i = 1, nHydroThreadsGlobal
@@ -103,7 +99,7 @@ contains
     end if
 
     call createLoadBalanceCommunicator
-    call createLoadBalancingThreadDomainCopies(grid)
+    call createLoadThreadDomainCopies(grid)
 
   end subroutine setLoadBalancingThreadsBySources
 
@@ -169,26 +165,8 @@ contains
     do i = 1, nHydroThreadsGlobal
        loadBalanceList(i,1) = i
     enddo
-    nLoadBalanceList(1:nHydroThreadsGlobal) =  1 + &
-         nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
 
-
-    iter = 0
-    do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
-
-
-       if ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) > nLoadBalancingThreadsGlobal) then
-          frac = frac / 1.00001d0
-       else
-          frac = frac * 1.0001d0
-       endif
-       nLoadBalanceList(1:nHydroThreadsGlobal) = 1 + &
-            nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
-       write(*,*) iter, (SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal), nLoadBalancingThreadsGlobal
-       iter = iter + 1
-       if (iter > 1000000) exit
-    end do
-
+    call normaliseLoadBalanceThreads(nHydroThreadsGlobal,  nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
 
     iThread = nHydroThreadsGlobal+1
     do i = 1, nHydroThreadsGlobal
@@ -212,11 +190,11 @@ contains
     end if
 
     call createLoadBalanceCommunicator
-    call createLoadBalancingThreadDomainCopies(grid)
+    call createLoadThreadDomainCopies(grid)
 
   end subroutine setLoadBalancingThreadsByCrossings
        
-  subroutine createLoadBalancingThreadDomainCopies(grid)
+  subroutine createLoadThreadDomainCopies(grid)
     use mpi
     use timing
     type(GRIDTYPE) :: grid
@@ -231,7 +209,7 @@ contains
     enddo
     call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
-  end subroutine createLoadBalancingThreadDomainCopies
+  end subroutine createLoadThreadDomainCopies
 
   subroutine copyDomain(fromThread, toThread, grid)
     integer :: fromThread, toThread
@@ -336,9 +314,43 @@ recursive subroutine sumCrossings(thisOctal, n)
      end if
   end do
 end subroutine sumCrossings
-       
+subroutine normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
+  integer :: nHydroThreadsGlobal, nLoadBalancingThreadsGlobal
+  real(double) :: frac(:)
+  integer :: nLoadBalanceList(:)
+  integer :: iter
 
+  nLoadBalanceList(1:nHydroThreadsGlobal) = 1 + &
+       nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
+
+  iter = 0
+  do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
+
+     if ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) > nLoadBalancingThreadsGlobal) then
+        frac = frac / 1.0001d0
+     else
+        frac = frac * 1.0001d0
+     endif
+     nLoadBalanceList(1:nHydroThreadsGlobal) = 1 + &
+          nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
+     iter = iter + 1
+     if (iter > 100000) exit
+  end do
+
+
+  do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
+     
+     if ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) > nLoadBalancingThreadsGlobal) then
+        nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) - 1
+     else
+        nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) + 1
+     endif
+  end do
+
+end subroutine normaliseLoadBalanceThreads
+       
 end module loadbalance_mod
+
 
 #else
 

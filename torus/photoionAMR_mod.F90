@@ -2048,9 +2048,9 @@ end subroutine radiationHydro
           endif
        end if
        if (radPressureTest) nSmallPackets = 0
-    if (writeoutput) then
+!    if (writeoutput) then
        write(*,*) myrankGlobal, " Setting nSmallPackets to ",nSmallPackets
-    endif
+!    endif
 
 
 
