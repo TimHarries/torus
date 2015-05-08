@@ -17560,13 +17560,13 @@ end subroutine broadcastSinks
 
        if (writeoutput) then
 
-!          write(*,*) "source ",isource
-!          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
-!          write(*,*) "before mass ",sourceArray(isource)%mass/msol
+          write(*,*) "source ",isource
+          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
+          write(*,*) "before mass ",sourceArray(isource)%mass/msol
 
-!          write(*,*) "accreted mass ", accretedMass(isource)
-!          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
-!          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
+          write(*,*) "accreted mass ", accretedMass(isource)
+          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
+          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
        endif
 
        sourceMom = sourceArray(iSource)%mass * sourceArray(iSource)%velocity

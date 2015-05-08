@@ -441,6 +441,8 @@ contains
 !       if (grid%geometry(1:6) == "sphere") &
 !            call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 
+
+
        if(.not. noPhoto) then
 
           if ((myrankglobal==1)) then
@@ -997,6 +999,7 @@ contains
 
                 call hydroStep3d_amr(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=doselfGrav &
                      , perturbPressure=.false.)
+
 
 
 !       call findMassOverAllThreads(grid, totalMass)
@@ -2350,7 +2353,6 @@ end subroutine radiationHydro
                 enddo
                 
                 nEscaped = SUM(nEscapedArray(1:nDomainThreads))
-             
                 nEscapedGlobal = nEscaped
 !                if (myRankGlobal == 0) write(*,*) myhydrosetglobal," nEscaped ",nEscaped
                 if (nEscaped == nThreadMonte*max(nSmallPackets,1)) then
@@ -3958,10 +3960,10 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     tempDouble = dfreq(1)
     usedMRW = .false.
     i = 0
-   call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
+    call distanceToNearestWall(rVec, wallDist, thisOctal, subcell)
 
-
-   if (.not.radpressuretest) then
+!    write(*,*) "ross tau to wall ",(thisOctal%rho(subcell)*kappaRoss*1.d10*wallDist)
+    if (.not.radpressuretest) then
        if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
           call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
                freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
@@ -3972,6 +3974,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
+!          write(*,*) "used MRW ",rVec
        endif
     endif
 

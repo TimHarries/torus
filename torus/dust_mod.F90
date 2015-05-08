@@ -1328,11 +1328,15 @@ contains
              freq = cSpeed / (grid%lamArray(i)*1.e-8)
              dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
              if ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)) /= 0.) then
-                rosselandKappa = rosselandKappa + (bnu(freq, dble(temperature)) * dFreq / &
-                     (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)))
-                bnutot = bnutot + bnu(freq, dble(temperature))*dfreq
-             endif
+!                rosselandKappa = rosselandKappa + (bnu(freq, dble(temperature)) * dFreq / &
+!                     (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)))
+!                bnutot = bnutot + bnu(freq, dble(temperature))*dfreq
 
+
+                rosselandKappa = rosselandKappa + (dbnubydt(freq, dble(temperature)) * dFreq / &
+                     (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i)))
+                bnutot = bnutot + dbnubydt(freq, dble(temperature))*dfreq
+             endif
           enddo
           if (rosselandkappa /= 0.) then
              rosselandKappa = (bnutot / rosselandKappa)/1.d10
@@ -1374,6 +1378,22 @@ contains
 !!$
 !!$  end subroutine Equation2dust
 
+
+  real(double) function dbnubydt(nu, T) 
+    real(double) :: nu, T, fac1, fac2, fac3
+    real(double), parameter :: c1 = (2.d0*hCgs/cSpeed**2)
+    real(double), parameter :: c2 = hCgs/kErg
+
+    fac1 = (c1*c2*nu**4/T**2)
+    fac3 = c2*nu/T
+    if (fac3 < 20.d0) then
+       fac2 = exp(fac3)/(exp(fac3)-1.d0)**2
+    else
+       fac2 = exp(-c2*nu/T)
+    endif
+    dBnuBydT = fac1 * fac2
+
+  end function dbnubydt
 
   subroutine parseGrainType(grainString, nTypes, name, abundance)
 
