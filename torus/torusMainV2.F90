@@ -41,6 +41,7 @@ program torus
   use random_mod
   use memory_mod
   use turbulence_mod
+  use loadbalance_mod
 !  use pah_mod
 !  use zlib_mod
   use sph_data_class, only: deallocate_sph
@@ -170,6 +171,8 @@ program torus
     endif
      call setupGlobalSources(grid)
 
+
+!     call testBranchCopying(grid)
 
 ! SPH data may be required for setting up sources so only free memeory after this is done
 #ifdef SPH

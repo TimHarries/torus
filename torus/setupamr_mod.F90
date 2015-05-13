@@ -2387,6 +2387,7 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
      else 
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
+
         do i1 = 1, 64
            xArray(i1) = 0.5d0/64.d0+dble(i1-1)/64.d0
         enddo

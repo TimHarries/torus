@@ -194,6 +194,40 @@ contains
 
   end subroutine setLoadBalancingThreadsByCrossings
        
+  subroutine testBranchCopying(grid)
+    type(GRIDTYPE) :: grid
+    integer :: i
+
+    if (associated(nLoadBalanceList)) then
+       deallocate(nloadBalanceList)
+       nullify(nloadBalanceList)
+    endif
+    if (associated(LoadBalanceList)) then
+       deallocate(loadBalanceList)
+       nullify(loadBalanceList)
+    endif
+    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
+    nLoadBalanceList = 1
+
+    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
+    do i = 1, nHydroThreadsGlobal
+       loadBalanceList(i,1) = i
+    enddo
+    
+    do i = nHydroThreadsGlobal+1, nHydroThreadsGlobal+nLoadBalancingThreadsGlobal
+       nLoadBalanceList(1) = nLoadBalanceList(1)+1
+       loadBalanceList(1,nLoadBalanceList(1)) = i
+    enddo
+    
+    do i = 1, 100000
+       if (myrankGlobal == 1) write(*,*) "Sending branch repeat ",i
+       call createLoadBalanceCommunicator
+       call createLoadThreadDomainCopies(grid)
+    enddo
+
+
+  end subroutine testBranchCopying
+
   subroutine createLoadThreadDomainCopies(grid)
     use mpi
     use timing
@@ -273,11 +307,19 @@ contains
     integer, allocatable :: ranks(:)
     integer :: worldGroup, ierr, loadBalanceThreadGroup
 
-    if (allocated(loadBalanceCommunicator)) deallocate(loadBalanceCommunicator)
+    if (allocated(loadBalanceCommunicator)) then
+       do iThread = 1, nHydroThreadsGlobal
+          if (myrankGlobal == iThread) then
+             call MPI_COMM_FREE(loadBalanceCommunicator(iThread), ierr)
+          endif
+       enddo
+       deallocate(loadBalanceCommunicator)
+    endif
 
     allocate(loadBalanceCommunicator(1:nHydroThreadsGlobal))
     
     call MPI_COMM_GROUP(MPI_COMM_WORLD, worldGroup, ierr)
+
 
 
     do iThread = 1, nHydroThreadsGlobal
@@ -287,8 +329,10 @@ contains
        enddo
        call MPI_GROUP_INCL(worldGroup, nLoadBalanceList(iThread), ranks, loadBalanceThreadGroup, ierr)
        call MPI_COMM_CREATE(MPI_COMM_WORLD, loadBalanceThreadGroup, loadBalanceCommunicator(iThread), ierr)
+       call MPI_GROUP_FREE(loadBalanceThreadGroup, ierr)
        deallocate(ranks)
     enddo
+    call MPI_GROUP_FREE(worldGroup, ierr)
 
 
   end subroutine createLoadBalanceCommunicator
