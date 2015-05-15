@@ -309,7 +309,7 @@ contains
 
     if (allocated(loadBalanceCommunicator)) then
        do iThread = 1, nHydroThreadsGlobal
-          if (myrankGlobal == iThread) then
+          if (any(loadBalanceList(iThread,1:nLoadBalanceList(iThread)) == myrankGlobal)) then
              call MPI_COMM_FREE(loadBalanceCommunicator(iThread), ierr)
           endif
        enddo
@@ -323,7 +323,7 @@ contains
 
 
     do iThread = 1, nHydroThreadsGlobal
-       if (myrankGlobal == iThread) then
+       if (any(loadBalanceList(iThread,1:nLoadBalanceList(iThread)) == myrankGlobal)) then
           allocate(ranks(1:nLoadBalanceList(iThread)))
           do j = 1, nLoadBalanceList(iThread)
              ranks(j) = loadBalanceList(iThread,j)
