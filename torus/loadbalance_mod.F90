@@ -323,14 +323,16 @@ contains
 
 
     do iThread = 1, nHydroThreadsGlobal
-       allocate(ranks(1:nLoadBalanceList(iThread)))
-       do j = 1, nLoadBalanceList(iThread)
-          ranks(j) = loadBalanceList(iThread,j)
-       enddo
-       call MPI_GROUP_INCL(worldGroup, nLoadBalanceList(iThread), ranks, loadBalanceThreadGroup, ierr)
-       call MPI_COMM_CREATE(MPI_COMM_WORLD, loadBalanceThreadGroup, loadBalanceCommunicator(iThread), ierr)
-       call MPI_GROUP_FREE(loadBalanceThreadGroup, ierr)
-       deallocate(ranks)
+       if (myrankGlobal == iThread) then
+          allocate(ranks(1:nLoadBalanceList(iThread)))
+          do j = 1, nLoadBalanceList(iThread)
+             ranks(j) = loadBalanceList(iThread,j)
+          enddo
+          call MPI_GROUP_INCL(worldGroup, nLoadBalanceList(iThread), ranks, loadBalanceThreadGroup, ierr)
+          call MPI_COMM_CREATE(MPI_COMM_WORLD, loadBalanceThreadGroup, loadBalanceCommunicator(iThread), ierr)
+          call MPI_GROUP_FREE(loadBalanceThreadGroup, ierr)
+          deallocate(ranks)
+       endif
     enddo
     call MPI_GROUP_FREE(worldGroup, ierr)
 
