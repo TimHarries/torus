@@ -309,7 +309,7 @@ contains
 
     if (allocated(loadBalanceCommunicator)) then
        do iThread = 1, nHydroThreadsGlobal
-          if (any(loadBalanceList(iThread,1:nLoadBalanceList(iThread)) == myrankGlobal)) then
+          if (loadBalanceCommunicator(iThread) /= MPI_COMM_NULL) then
              call MPI_COMM_FREE(loadBalanceCommunicator(iThread), ierr)
           endif
        enddo
@@ -323,16 +323,14 @@ contains
 
 
     do iThread = 1, nHydroThreadsGlobal
-       if (any(loadBalanceList(iThread,1:nLoadBalanceList(iThread)) == myrankGlobal)) then
-          allocate(ranks(1:nLoadBalanceList(iThread)))
-          do j = 1, nLoadBalanceList(iThread)
-             ranks(j) = loadBalanceList(iThread,j)
-          enddo
-          call MPI_GROUP_INCL(worldGroup, nLoadBalanceList(iThread), ranks, loadBalanceThreadGroup, ierr)
-          call MPI_COMM_CREATE(MPI_COMM_WORLD, loadBalanceThreadGroup, loadBalanceCommunicator(iThread), ierr)
-          call MPI_GROUP_FREE(loadBalanceThreadGroup, ierr)
-          deallocate(ranks)
-       endif
+       allocate(ranks(1:nLoadBalanceList(iThread)))
+       do j = 1, nLoadBalanceList(iThread)
+          ranks(j) = loadBalanceList(iThread,j)
+       enddo
+       call MPI_GROUP_INCL(worldGroup, nLoadBalanceList(iThread), ranks, loadBalanceThreadGroup, ierr)
+       call MPI_COMM_CREATE(MPI_COMM_WORLD, loadBalanceThreadGroup, loadBalanceCommunicator(iThread), ierr)
+       call MPI_GROUP_FREE(loadBalanceThreadGroup, ierr)
+       deallocate(ranks)
     enddo
     call MPI_GROUP_FREE(worldGroup, ierr)
 
