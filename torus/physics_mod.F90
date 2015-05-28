@@ -324,7 +324,7 @@ contains
     use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
-         lucy_undersampled, molecularPhysics, hydrodynamics!, UV_vector
+         lucy_undersampled, molecularPhysics, hydrodynamics, setupMolecularLteOnly !, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump
@@ -479,7 +479,7 @@ contains
      endif
 
 #ifdef MOLECULAR
-     if (molecularPhysics.and.statisticalEquilibrium) then
+     if (molecularPhysics.and.(statisticalEquilibrium.or.setupMolecularLteOnly)) then
 #ifdef MPI
         if (grid%splitOverMPI.and.hydrovelocityconv) then
            call setallUnchanged(grid%octreeRoot)
