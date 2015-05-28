@@ -316,10 +316,6 @@ contains
     real(double) :: minMass, maxMass
     character(len=150) :: message
 
-! Basic sanity check of input variables
-    if (sphwithchem.and.(.not.molecularPhysics))  &
-         call writeFatal("sphwithchem can only be used with molecularPhysics=T")
-
     select case (inputFileFormat)
 
     case("mpi","binary")
@@ -1241,24 +1237,25 @@ gaspart: do i=1, nGasTotal
           read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
-! Read H2 fraction if required
+! Read H2 fraction and CO abundance if required
        if ( ConvertRhoToHI .or. sphWithChem ) then 
           READ (LUIN) ( h2ratio(i), i=iiigas+1,iiigas+blocknpart)
-          do j=1,nums(6)-12
+          do j=1,3 
+             READ (LUIN)
+          end do
+          if (sphWithChem) then
+             READ (LUIN) ( COfrac(i), i=iiigas+1,iiigas+blocknpart)
+          else
+             READ (LUIN)
+          end if
+          do j=1,nums(6)-15
              READ (LUIN)
           end do
        else
-          do j=1,nums(6)-11
+          do j=1,nums(6)-10
              READ (LUIN)
           end do
        end if
-
-! Read CO abundance if required
-       if ( sphWithChem ) then
-          READ (LUIN) ( COfrac(i), i=iiigas+1,iiigas+blocknpart)
-       else
-          READ (LUIN)
-       endif
 
        READ (LUIN)
 
