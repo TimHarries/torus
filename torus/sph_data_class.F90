@@ -311,7 +311,7 @@ contains
 ! according to the string inputFileFormat
 ! D. Acreman, June 2012
   subroutine read_sph_data_wrapper
-    use inputs_mod, only: inputFileFormat, sphdatafilename, sphwithchem, limitScalar
+    use inputs_mod, only: inputFileFormat, sphdatafilename, limitScalar
 
     real(double) :: minMass, maxMass
     character(len=150) :: message
