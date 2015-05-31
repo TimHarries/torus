@@ -6523,10 +6523,10 @@ end subroutine sumFluxes
     logical, optional :: doSelfGrav
     logical :: selfGravity
     integer :: group(:), nGroup
-    real(double) :: dt, timestep, totalMass
+    real(double) :: dt, timestep !, totalMass
     type(VECTOR) :: direction
     integer :: iDir, thisBound, i
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
     logical, optional :: perturbPressure
 
     selfGravity = .true.
@@ -7592,7 +7592,7 @@ end subroutine sumFluxes
   end subroutine pressureGradientTimeStep
 
   recursive subroutine pressureTimeStep(thisoctal, dt)
-    use inputs_mod, only : gridDistanceScale, smallestCellSize, cylindricalHydro, includePressureTerms
+    use inputs_mod, only : gridDistanceScale, smallestCellSize, includePressureTerms !, cylindricalHydro
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -12796,23 +12796,23 @@ end subroutine refineGridGeneric2
     use inputs_mod, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal
-    integer :: subcell, i, neighbourSubcell
+    type(octal), pointer  :: child !, neighbourOctal
+    integer :: subcell, i !, neighbourSubcell
     logical :: unrefine
     integer :: nc
     integer, intent(inout) :: nUnrefine
     real(double) :: rhow(8), rhov(8), rhou(8), rho(8), rhoe(8) , fac, limit
     real(double) :: cs(8), mass
-    logical :: refinedLastTime, ghostCell, split
-    real(double) :: r, maxGradient
-    real(double) :: rho1, rhoe1, rhou1, rhov1, rhow1, grad, speed, thisSpeed, meanrho, meancs
+    logical :: refinedLastTime, ghostCell !, split
+    real(double) :: r !, maxGradient
+    real(double) ::  meancs !,rhou1, rhov1, rhow1, speed, thisSpeed, rho1, rhoe1,, meanrho, grad
     real(double) :: splitLimit, dv
-    integer :: ndir, isource
+    integer :: isource !, ndir
     logical :: debug, cornerCell
-    real(double) :: x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz, qViscosity(3,3), q
-    real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
-    integer :: nd
-    type(VECTOR) :: dirvec(6), locator, centre
+!    real(double) :: x, xnext, qnext, qViscosity(3,3) , q , flux, phi, phigas, pressure, px, py, pz
+!    real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
+!    integer :: nd
+    type(VECTOR) ::  centre !, dirvec(6), locator
 
     debug = .false.
 !    limit  = 5.0d-3
@@ -13117,7 +13117,7 @@ end subroutine refineGridGeneric2
     integer, intent(in) :: evenUpArray(:)
     integer :: nSent, nTemp
     real(double) :: temp1d(80000), tempsent1d(80000)
-    real(double) :: temp(20000,4),tempsent(4)
+!    real(double) :: temp(20000,4),tempsent(4)
     integer :: eDepth(200000)
     integer :: iThread, nExternalLocs
     integer :: iter, k, endloop, j, nworking
@@ -13251,7 +13251,8 @@ end subroutine refineGridGeneric2
                          ! write(*,*) myRank, "received ",nSent, "from ", thisThread
                   
                    if (nSent > 0) then
-                         call mpi_recv(tempsent1d, nsent*4, MPI_DOUBLE_PRECISION, thisThread, tag, localWorldCommunicator, status, ierr)
+                         call mpi_recv(tempsent1d, nsent*4, MPI_DOUBLE_PRECISION, thisThread, tag, localWorldCommunicator, &
+                              status, ierr)
 
                       do i = 1, nSent
 
@@ -14365,7 +14366,7 @@ end subroutine refineGridGeneric2
     integer :: n, ndir
     real(double) :: x1, x2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
-    real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
+    real(double) :: deltaT, fracChange, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
     integer :: nd
     real(double) :: dfdrbyr
     real(double), parameter :: maxM = 100000.d0
@@ -14741,9 +14742,9 @@ end subroutine refineGridGeneric2
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
     integer :: n, ndir
-    real(double) :: x1, x2, g(6),g2(6) 
+    real(double) :: g(6) 
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
-    real(double) :: sorFactor, deltaPhi, d2phidx2(3), dx, sumd2phidx2
+    real(double) :: sorFactor, deltaPhi, dx, sumd2phidx2
     real(double) :: xnext, px, py, pz,qViscosity(3,3), rm1, um1, pm1
     sorFactor = 1.2d0
 
@@ -14793,7 +14794,8 @@ end subroutine refineGridGeneric2
                 newphi = 0.25d0*(SUM(g(1:4)) - fourpi*gGrav*thisOctal%rho(subcell))
                 
              else
-                newphi = 0.16666666666667d0*(SUM(g(1:6)) - fourpi*gGrav*thisOctal%rho(subcell)*(returnCodeUnitLength(dx*gridDistanceScale))**2)
+                newphi = 0.16666666666667d0*(SUM(g(1:6)) - &
+                     fourpi*gGrav*thisOctal%rho(subcell)*(returnCodeUnitLength(dx*gridDistanceScale))**2)
              endif
              
              deltaPhi = newPhi - thisOctal%phi_gas(subcell)
@@ -14803,7 +14805,7 @@ end subroutine refineGridGeneric2
              
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
 !                frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
-		 frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
+                frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
                 thisOctal%chiLine(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
@@ -15080,8 +15082,8 @@ end subroutine refineGridGeneric2
          ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
     integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
-    integer :: it, ierr, i, minLevel
-    character(len=80) :: plotfile
+    integer :: it, ierr, minLevel
+!    character(len=80) :: plotfile
 
     doOnlyChanged = .false.
     if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
@@ -16381,9 +16383,12 @@ end subroutine minMaxDepth
         nPointsByThread(1) = nPoints
         do iThread = 2, nHydroThreadsGlobal
            call mpi_recv(np, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points((nPoints+1):(nPoints+np))%x, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points((nPoints+1):(nPoints+np))%y, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
-           call mpi_recv(points((nPoints+1):(nPoints+np))%z, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+           call mpi_recv(points((nPoints+1):(nPoints+np))%x, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, &
+                status, ierr)
+           call mpi_recv(points((nPoints+1):(nPoints+np))%y, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, &
+                status, ierr)
+           call mpi_recv(points((nPoints+1):(nPoints+np))%z, np, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, &
+                status, ierr)
            nPointsByThread(ithread) = np
            nPoints = nPoints + np
         enddo
@@ -16430,7 +16435,7 @@ end subroutine minMaxDepth
    recursive subroutine putDirichletPotential(thisOctal, v, counter)
      type(OCTAL), pointer :: thisOctal, child
      integer :: counter, subcell, i
-     real(double) :: v(:), r, fac
+     real(double) :: v(:), r
      do subcell = 1, thisOctal%maxChildren
         if (thisOctal%hasChild(subcell)) then
            ! find the child
@@ -16455,7 +16460,7 @@ end subroutine minMaxDepth
    recursive subroutine putDirichletPotentialLevel(thisOctal, v, counter, nDepth)
      type(OCTAL), pointer :: thisOctal, child
      integer :: counter, subcell, i, nDepth
-     real(double) :: v(:), r, fac
+     real(double) :: v(:), r
      if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
         do i = 1, thisOctal%nChildren, 1
            child => thisOctal%child(i)
@@ -16988,21 +16993,36 @@ end subroutine minMaxDepth
     integer :: ierr
      call MPI_BCAST(globalnSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
      if (globalnSource > 0) then
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%mass     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%radius   , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%mdot     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%accretionradius     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%x     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%y     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%z     , globalnSource, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%stellar     , globalnSource, MPI_LOGICAL, 0, localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%diffuse     , globalnSource, MPI_LOGICAL, 0, localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%mass     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%radius   , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%mdot     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%accretionradius     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%x     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%y     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%z     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%stellar     , globalnSource, MPI_LOGICAL, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%diffuse     , globalnSource, MPI_LOGICAL, 0, &
+             localWorldCommunicator, ierr)
      endif
 end subroutine broadcastSinks
   

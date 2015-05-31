@@ -151,9 +151,9 @@ endif
 # MPI build with the gfortran compiler
 ifeq ($(SYSTEM), ompiosx)
     F95COMP  = mpif90 
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
-    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
+    CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
     ZLIBLIBS = -lz	
     MPIFLAG = -DMPI

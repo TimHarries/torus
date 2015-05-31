@@ -1180,7 +1180,8 @@ contains
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
-       if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) &
+            call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrankGlobal /= 0) call resetNh(grid%octreeRoot)
 
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
@@ -1409,7 +1410,6 @@ end subroutine radiationHydro
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
     use diffusion_mod, only : defineDiffusionOnKappap
-    use loadbalance_mod
     use mpi
     implicit none
     integer :: nMuMie

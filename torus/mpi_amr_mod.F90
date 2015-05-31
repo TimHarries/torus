@@ -2368,7 +2368,8 @@ contains
   end subroutine autoSetupEvenupArray
 
   logical function noSharedNeighbours(i1, i2, nThreads, nNeighbours, neighbourList)
-    integer :: i1, i2, nNeighbours(nThreads), neighbourList(nThreads,26), i, nThreads
+    integer, intent(in) :: nThreads
+    integer :: i1, i2, nNeighbours(nThreads), neighbourList(nThreads,26), i
 
     noSharedNeighbours = .true.
 
@@ -2393,12 +2394,11 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
     !
-    integer :: subcell, i, iThread
+    integer :: subcell, i
     type(VECTOR) :: dirVec(26), centre, octVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     integer :: nNeighbours, neighbourList(:)
-    logical :: alreadyInList
 
 
     do subcell = 1, thisOctal%maxChildren
@@ -5740,17 +5740,17 @@ end subroutine writeRadialFile
     real(double) :: rhovCorner(8)
     real(double) :: rhowCorner(8)
     real(double) :: eCorner(8)
-    real(double) :: phiCorner(8)
-    real(double) :: pressureCorner(8)
+!    real(double) :: phiCorner(8)
+!    real(double) :: pressureCorner(8)
     real(double) :: x1, x2, y1, y2, z1, z2, u, x, y, z, dv
     real(double) :: oldMass, newMass, factor
     real(double) :: oldEnergy, newEnergy
     integer :: npoints
     integer :: ier
     integer :: nr, nw, nq
-    integer, allocatable :: lnext(:), lcell(:,:,:)
+    integer, allocatable :: lnext(:) !, lcell(:,:,:)
     integer, allocatable :: lcell2d(:,:)
-    real(double) :: xyzmin(3), xyzdel(3)
+!    real(double) :: xyzmin(3), xyzdel(3)
     real(double) :: rMax
     real(double), allocatable :: a(:,:), rsq(:)
     integer, parameter :: maxpts = 10000
@@ -5759,9 +5759,9 @@ end subroutine writeRadialFile
     real(double) :: zPoint(maxpts)
     real(double) :: rhoPoint(maxpts)
     real(double) :: rhoePoint(maxpts)
-    real(double) :: uPoint(maxpts)
-    real(double) :: vPoint(maxpts)
-    real(double) :: wPoint(maxpts)
+!    real(double) :: uPoint(maxpts)
+!    real(double) :: vPoint(maxpts)
+!    real(double) :: wPoint(maxpts)
     real(double) :: rhouPoint(maxpts)
     real(double) :: rhovPoint(maxpts)
     real(double) :: rhowPoint(maxpts)
@@ -5769,12 +5769,12 @@ end subroutine writeRadialFile
     real(double) :: energyPoint(maxpts)
     real(double) :: pressurePoint(maxpts)
     real(double) :: dx, dz, xmin, zmin
-    real(double) :: thisRho
+!    real(double) :: thisRho
 !    integer :: counter
-    character(len=80) :: message
+!    character(len=80) :: message
     real(double) :: radius
     logical, save :: firstTime = .true.
-    logical :: debug, successful, doLogspace, triedLogSpace
+    logical :: debug !, successful , doLogspace, triedLogSpace
 
     debug = .false.
 
@@ -6394,7 +6394,6 @@ end subroutine writeRadialFile
        endif
     endif
     
-665 continue 
     grid%nOctals = grid%nOctals + 1
 
     ! check for a new maximum depth 
@@ -6414,13 +6413,13 @@ end subroutine writeRadialFile
   subroutine interpTrilinear(grid, thisOctal, subcell, rho, rhoe, rhou, rhov, rhow, energy, phi, pressure)
     use inputs_mod, only : maxDepthAMR!, minDepthAmr
     use mpi
-    type(OCTAL), pointer :: thisOctal, topOctal
+    type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
     integer :: iCorner, iDir, nCorner, nDir
-    integer :: nd, topOctalSubcell, j, subcell
+    integer :: nd, j, subcell
     type(VECTOR) :: dir(8), corner(8), position, rVec, centre
     real(double) :: rho, rhoe, rhou, rhov, rhow, e, phi, pressure,r, energy
-    real(double) :: u,v,w, x, y, z, d
+    real(double) :: u,v,w
     real(double) :: rhoCorner(8)
     real(double) :: rhoeCorner(8)
     real(double) :: rhouCorner(8)
@@ -6431,7 +6430,7 @@ end subroutine writeRadialFile
     real(double) :: pressureCorner(8)
     real(double) :: weight, totalWeight
     real(double) :: xh, yh, zh, smallDist
-    logical :: debug, addLocal
+    logical :: debug
 
     debug=.false.
 
@@ -8438,7 +8437,6 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     use timing
     use mpi
     integer :: fromThread, nOctals
-    type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
     integer :: communicator
     integer :: ierr, i

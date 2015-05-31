@@ -5,7 +5,7 @@ module loadbalance_mod
   use mpi_global_mod
   use gridio_mod
   use gridtype_mod
-  use octal_mod
+  use octal_mod, only: OCTAL
   use source_mod
   implicit none
 
@@ -120,11 +120,10 @@ contains
     use utils_mod, only : median
     type(GRIDTYPE) :: grid
     integer :: i, iThread, j
-    integer :: subcell
     integer, allocatable :: itemp(:)
     integer, allocatable :: numberOfCrossingsOnThread(:)
     real(double), allocatable :: frac(:)
-    integer :: ierr, iter
+    integer :: ierr
 
     allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
     allocate(frac(1:nHydroThreadsGlobal))

@@ -91,7 +91,7 @@ contains
     real(double) :: objectDistance
 #endif
 #ifdef MPI 
-    integer :: i, ierr
+    integer :: i !, ierr
 #endif
 
 
