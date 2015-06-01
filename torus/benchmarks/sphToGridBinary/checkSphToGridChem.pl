@@ -10,7 +10,7 @@ my $tolerance=0.12;
 my $COmassRequired=12660.161777656678;
 my $COtolerance=0.10;
 
-open RUNLOG, "<$ARGV[0]";
+open RUNLOG, "<$ARGV[0]" or die "Cannot open log file";
 
 my @line;
 my $mass;
@@ -44,7 +44,8 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $COmassRequired) / $COmassRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $COtolerance ){
-      print "CO mass agrees within tolerance of $tolerance\n\n"
+	print "CO mass agrees within tolerance of $tolerance\n\n";
+	print "TORUS: Test successful\n";
     } else
       {
 	print "TORUS: test failed (CO mass)\n";
@@ -52,8 +53,6 @@ while(<RUNLOG>){
       }
   }
 }
-
-print "TORUS: Test successful\n";
 
 close RUNLOG;
 
