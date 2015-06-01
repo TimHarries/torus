@@ -7054,12 +7054,12 @@ end subroutine sumFluxes
    if ((globalnSource > 0).and.(dt > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
          if (Writeoutput) write(*,*) "Updating source position"
-         call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+         call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
          if (Writeoutput) write(*,*) "Done."
       else
          if (globalnSource == 1) then
             globalSourceArray(1)%position =  globalSourceArray(1)%position + &
-                 (dt * globalSourceArray(1)%velocity/1.d10)
+                 (timestep * globalSourceArray(1)%velocity/1.d10)
          endif
       endif
    else
@@ -7204,17 +7204,16 @@ end subroutine sumFluxes
    if ((globalnSource > 0).and.(timestep > 0.d0).and.nBodyPhysics.and.moveSources) then
       if (doselfGrav) then
          if (writeoutput) write(*,*) "Updating source positions..."
-         call updateSourcePositions(globalsourceArray, globalnSource, dt, grid)
+         call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
          if (writeoutput) write(*,*) "Done."
       else
          if (globalnSource == 1) then
             globalSourceArray(1)%position =  globalSourceArray(1)%position + &
-                 (dt * globalSourceArray(1)%velocity/1.d10)
+                 (timestep * globalSourceArray(1)%velocity/1.d10)
          endif
       endif
-   else
-      globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
+   if (.not.moveSources) globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    
  
   end subroutine hydroStep2dCylindrical_amr
@@ -8888,7 +8887,7 @@ end subroutine sumFluxes
     integer :: i, it, iUnrefine
     character(len=80) :: plotfile
     real(double) :: nextDumpTime, tff!, ang
-    real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous, vBulk, vSound, dt_grav
+    real(double) :: totalEnergy, totalMass, tempdouble, dt_pressure, dt_viscous, vBulk, vSound, dt_grav, dt_nbody
     type(VECTOR) :: initAngMom
     
     type(VECTOR) :: direction, viewVec, totalAngMom
@@ -8909,6 +8908,7 @@ end subroutine sumFluxes
     it = grid%iDump
     currentTime = grid%currentTime
     nextDumpTime = 0.d0
+
 
     if (it /= 1) then
        call writeVTKfile(grid, "readin.vtk")
@@ -9073,15 +9073,19 @@ end subroutine sumFluxes
        tc = 0.d0
        dt_pressure = 1.d30
        dt_viscous = 1.d30
+       dt_nbody = 1.d30
        if (myrankGlobal /= 0) then
           tc(myrankGlobal) = 1.d30
           call computeCourantTime(grid, grid%octreeRoot, tc(myRankGlobal))
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
           if (includePressureTerms) call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
           call viscousTimescaleCylindrical(grid%octreeRoot, grid, dt_viscous)
+          if (nBodyPhysics) call computeCourantTimeNbody(grid, GlobalnSource, globalsourceArray, dt_nbody)
        endif
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
+       call MPI_ALLREDUCE(dt_nbody, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       dt_nbody = tempDouble
        call MPI_ALLREDUCE(dt_viscous, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_viscous = tempDouble
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, localWorldCommunicator, ierr)
@@ -9089,6 +9093,7 @@ end subroutine sumFluxes
        dt = MINVAL(tc(1:nHydroThreads))
        dt = MIN(dt_pressure, dt)
        dt = MIN(dt_viscous, dt)
+       dt = MIN(dt_nbody, dt)
        if (writeoutput) then
           write(*,*) "Courant time from v ",dt
           write(*,*) "Courant time from P ",dt_pressure
@@ -9115,6 +9120,7 @@ end subroutine sumFluxes
 
 !loop until simulation end time
     do while(currentTime < tEnd)
+
 
        if (myrankWorldGlobal == 1) write(*,*) "current time " ,currentTime
        jt = jt + 1

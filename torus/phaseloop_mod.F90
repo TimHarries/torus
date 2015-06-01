@@ -1890,9 +1890,9 @@ CONTAINS
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
 !                 endif
-                 if (modulus(thisPhoton%position) == 0.d0) then
-                    write(*,*) "bug setting photon position "
-                 endif
+!                 if (modulus(thisPhoton%position) == 0.d0) then
+!                    write(*,*) "bug setting photon position "
+!                 endif
 
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)

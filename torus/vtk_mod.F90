@@ -2341,7 +2341,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef MPI
   use mpi
 #endif
-  use inputs_mod, only : vtkIncludeGhosts
+  use inputs_mod, only : vtkIncludeGhosts, nDustType
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
   integer :: nValueType
@@ -2353,6 +2353,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   integer :: lunit = 69
   integer :: nOctals, nVoxels
   integer(bigint) :: i
+  integer :: j
   integer :: nPointOffset
   integer(kind=1), allocatable :: cellTypes(:)
   integer(kind=bigint), allocatable :: offsets(:)
@@ -2435,9 +2436,24 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
   if (PRESENT(valueTypeString)) then
      nValueType = SIZE(valueTypeString)
-     valueType(1:nValueType) = valueTypeString(1:nValueType)
-  endif
 
+     if (ANY(valueTypestring == "dust")) then
+        nValueType = SIZE(valuetypestring)
+        valueType(1:nValueType) = valueTypeString(1:nValueType)
+        i = nValueType
+        do j = 1, i
+           if (valueType(j)=="dust") then
+              valuetype(j) = "dust1"
+           endif
+        enddo
+        if (nDustType > 1) then
+           nValuetype = i + nDustType - 1
+           do j = 2, nDustType
+              write(valueType(i+j-1),'(a,i1)') "dust",j
+           enddo
+        endif
+     endif
+  endif
 
   if (grid%octreeRoot%threed) then
      nPointOffset = 8

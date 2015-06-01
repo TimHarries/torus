@@ -926,7 +926,7 @@ contains
 !          call writeVtkFile(grid, "afterloop.vtk", &
 !               valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !               "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-!               "diff         ","dust1        ","u_i          ",  &
+!               "diff         ","dust         ","u_i          ",  &
 !               "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
 !               "vphi         ","jnu          ","mu           ", &
 !               "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
@@ -988,7 +988,7 @@ contains
 !                call writeVtkFile(grid, "beforehydro.vtk", &
 !                     valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !                     "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-!                     "diff         ","dust1        ","u_i          ",  &
+!                     "diff         ","dust         ","u_i          ",  &
 !                     "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
 !                     "vphi         ","jnu          ","mu           ", &
 !                     "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
@@ -1099,7 +1099,7 @@ contains
           call writeVtkFile(grid, "rho_at_starburst.vtk", &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         ","dust1        ","u_i          ",  &
+               "diff         ","dust         ","u_i          ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
                "vphi         ","jnu          ","mu           ", &
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
@@ -1298,7 +1298,7 @@ contains
           call writeVtkFile(grid, mpiFilename, &
                valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
                "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         ","dust1        ","u_i          ",  &
+               "diff         ","dust         ","u_i          ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
                "vphi         ","jnu          ","mu           ", &
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
@@ -1985,7 +1985,7 @@ end subroutine radiationHydro
              call writeInfo(message, TRIVIAL)
              call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, subTemp=1500.d0, minLevel=1.d-10)
           endif
-!          call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust1"/))
+!          call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust"/))
           if (maxIter == 1) call  sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax=1.e30, subTemp=1500.d0)
        end if
 
@@ -2132,7 +2132,7 @@ end subroutine radiationHydro
        countArray = 0.d0
 
 !       call writeVtkFile(grid, "beforeloop.vtk", &
-!            valueTypeString=(/"rho          ","dust1        ", "HI           " , "temperature  ", &
+!            valueTypeString=(/"rho          ","dust        ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     ", &
 !            "crossings    "/))!
 
@@ -3673,7 +3673,7 @@ end subroutine radiationHydro
 !          "hydrovelocity","sourceCont   ","pressure     ", &
 !          "crossings    ", &
 !          "chiline      ", &
-!          "dust1        ", &
+!          "dust         ", &
 !          "diff         "/))
 
 !     if(singleMegaPhoto) then
@@ -3686,7 +3686,7 @@ end subroutine radiationHydro
  !       call writeVtkFile(grid, mpiFilename, &
   !           valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  "/))
 !             "OI           ","HeI          ","HeII         ", "OI           ", "OII          ", &
-!             "OIII         ","dust1        ","dust2        " /))
+!             "OIII         ","dust         ","dust2        " /))
 !     end if
 !
 !     if(hydrodynamics) then

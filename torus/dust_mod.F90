@@ -6,7 +6,7 @@ module dust_mod
   use gridtype_mod, only: GRIDTYPE
   use utils_mod, only: locate
   use octal_mod, only: OCTAL, subcellCentre
-  use amr_mod, only: amrGridValues, returnKappa, octalOnThread
+  use amr_mod, only: amrGridValues, returnKappa, octalOnThread, findTotalMass
   use mpi_global_mod
   use mieDistCrossSection_mod, only: mieDistCrossSection
 
@@ -872,15 +872,17 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-!    use inputs_mod, only : rOuter, dustHeight, dustBeta, height, betaDisc, dustSettling
+    use inputs_mod, only : rOuter, dustHeight, dustBeta, height, betaDisc, dustSettling
     use inputs_mod, only: rSublimation, nDustType, curvedInnerEdge, grainFrac
     use octal_mod, only : cellVolume
     use density_mod
+    integer :: iDust
+    real(double) :: thisHeight, gasHeight
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
-    real(double) :: r, z
+    real(double) :: r, z, fracGas, fracDust
     real(double) :: dustMass, cellMass
     real(double) :: fac, rhoFid, rho, thisRsub
     integer :: subcell, i
@@ -916,6 +918,22 @@ contains
              fac = (thisRsub-r)/(0.002d0*rSublimation)
              thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
           endif
+
+          if (dustSettling) then
+
+
+             if ( (r > rSublimation).and.(r < rOuter)) then
+                do iDust = 1, nDustType
+                   thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+                   gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                   fracGas = max(1.d0/(gasHeight*sqrt(2.d0*pi)) * exp(-0.5d0*(z/gasHeight)**2),1.d-30)
+                   fracDust = max(1.d-30,1.d0/(thisHeight*sqrt(2.d0*pi)) * exp(-0.5d0*(z/thisHeight)**2))
+                   thisOctal%dustTypeFraction(subcell, iDust) = max(1.d-30,grainFrac(iDust) * fracDust / fracGas)
+                enddo
+             endif
+             
+          endif
+
  !         thisOctal%dustTypeFraction(subcell,1:nDustType) = thisRsub/1496.
 !          if (nDustType > 1) then
 !             if (.not.dustSettling) then
@@ -949,6 +967,56 @@ contains
     end do
 
   end subroutine fillDustShakara
+
+  subroutine reportMasses(grid)
+    use inputs_mod, only : nDustType
+    type(GRIDTYPE) :: grid
+    integer :: i
+    real(double) :: gasMass, dustMass
+
+    gasMass = 0.d0
+    call findTotalMass(grid%octreeRoot, gasMass)
+
+    if (writeoutput) then
+       write(*,'(a,1pe12.5)') "Gas mass (solar masses): ",gasMass/msol
+       do i = 1, nDustType
+          dustMass = 0.d0
+          call findDustMassSingle(grid, grid%octreeRoot, dustMass, i)
+          write(*,'(a,i2,a,1pe12.5)') "Dust mass ",i, " (solar masses): ",dustMass/mSol
+       enddo
+    endif
+  end  subroutine reportMasses
+
+  recursive subroutine findDustMassSingle(grid, thisOctal, dustmass, iDust)
+
+    use inputs_mod, only : nDustType
+    use octal_mod, only : cellVolume
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: dustMass, cellMass
+    integer :: subcell, i, iDust
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findDustMassSingle(grid, child, dustMass, iDust)
+                exit
+             end if
+          end do
+       else
+
+          cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
+          dustMass = dustMass + thisOctal%dustTypeFraction(subcell,iDust)*cellMass
+          
+       endif
+
+    end do
+
+  end subroutine findDustMassSingle
 
   recursive subroutine findDustMass(grid, thisOctal, dustmass)
 
@@ -1091,7 +1159,7 @@ contains
     underCorrect = 1.
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 10.d0
+    subrange = 1.d0
 
     if (present(minLevel)) then
        smallVal = minLevel
@@ -1117,6 +1185,7 @@ contains
                 sublimationTemp = real(subTemp)
              else
                 sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(1.95d-2)))
+                sublimationTemp = tSub(j)
              endif
 
              if (tThresh /= 0.) sublimationTemp = tThresh

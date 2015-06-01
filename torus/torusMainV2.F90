@@ -160,10 +160,11 @@ program torus
 
        if (dustPhysics) then
           if (nDustType >= 1) then
-             do i = 1, nDustType
-                write(stringArray(i),'(a,i1.1)') "dust",i
-             enddo
-             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+!             do i = 1, nDustType
+!                write(stringArray(i),'(a,i1.1)') "dust",i
+!             enddo
+!             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+             call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
           endif
        endif
 

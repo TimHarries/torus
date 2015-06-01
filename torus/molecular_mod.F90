@@ -946,7 +946,7 @@ module molecular_mod
 
         write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
         call writeVtkFile(grid, mpiFilename, &                                               
-             valueTypeString=(/"rho          ", "dust1        " , "temperature  "/))
+             valueTypeString=(/"rho          ", "dust         " , "temperature  "/))
 !     print *, "WRITTEN FILE"                         
      end if
 #endif

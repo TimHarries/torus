@@ -636,7 +636,7 @@ contains
     real :: tempphiProbDistLine(2000)
 
     logical :: photonFromEnvelope, mie
-    real(double) :: tempSpectrum(2000), prob(5000), weightarray(5000)
+    real(double) :: tempSpectrum(2000), prob(5000), weightarray(5000), weightPos
     real(double) :: rd, bias(5000),totDouble, lambias(5000), dlambias(5000)
     integer :: i, nbias
 
@@ -759,7 +759,8 @@ contains
           
           if (.not.photonFromEnvelope) then
              if (nSource > 0) then
-                call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar, grid)
+                call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar, grid, weightPos)
+                thisPhoton%stokes = thisPhoton%stokes * weightPos
                 thisPhoton%stellar = .true.
                 call findSubcellTD(thisPhoton%position, grid%octreeRoot, sourceOctal, sourceSubcell)
              endif

@@ -36,7 +36,7 @@ contains
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
-         normalizeDustFractions, findDustMass, setupOrigDustFraction
+         normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses
     use random_mod
     use gas_opacity_mod, only: atomhydrogenRayXsection
     use gridio_mod, only: writeAMRgrid
@@ -239,27 +239,23 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if ((.not.discWind).and.(.not.dustSettling).and.(grid%geometry == "shakara")) then
+    if ((.not.discWind).and.(grid%geometry == "shakara")) then
        dustMass = 0.d0
        call fillDustShakara(grid, grid%octreeRoot, dustMass)
-       if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
-       dustMass = 0.d0
-       call findDustMass(grid, grid%octreeRoot, dustMass)
-       if (writeOutput) then
-          write(*,*) "Mass of dust in disc (solar masses): ",dustMass/msol
-       endif
+!       if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
+       call reportMasses(grid)
     endif
 
-    if ((nDusttype >=2 ).and.(dustSettling)) then
-       call fillDustSettled(grid, grid%octreeRoot)
-       call writeVtkFile(grid, "settled.vtu", &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
-            "diff       "/))
-       dustMass = 0.d0
-       call findDustMass(grid, grid%octreeRoot, dustMass)
-       if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
-    endif
+!    if ((nDusttype >=2 ).and.(dustSettling)) then
+!       call fillDustSettled(grid, grid%octreeRoot)
+!       call writeVtkFile(grid, "settled.vtu", &
+!            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+!            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+!            "diff       "/))
+!       dustMass = 0.d0
+!!       call findDustMass(grid, grid%octreeRoot, dustMass)
+!!       if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
+!    endif
 
 
 
@@ -283,6 +279,15 @@ contains
        call fillDustUniform(grid, grid%octreeRoot)
     endif
 
+
+    if (nDustType >= 1) then
+       do i = 1, nDustType
+          write(stringArray(i),'(a,i1.1)') "dust",i
+       enddo
+       call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+    endif
+
+
     if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
        call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
@@ -293,12 +298,6 @@ contains
        call stripDustAway(grid%octreeRoot, 1.d-10, 1.d30)
     endif
 
-    if (nDustType >= 1) then
-       do i = 1, nDustType
-          write(stringArray(i),'(a,i1.1)') "dust",i
-       enddo
-       call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
-    endif
 
     nCellsInDiffusion = 0
     call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
@@ -869,12 +868,12 @@ contains
           tauMax = 1.e30
 
 
-          if ((mod(iIter_grand, 3) == 0).and.(iIter_grand >= 6)) then
+          if ((mod(iIter_grand, 3) == 0).and.(iIter_grand >= 3)) then
 
-             if (iIter_grand == 6) tauMax = 0.01e0
-             if (iIter_grand == 9) tauMax = 0.1e0
-             if (iIter_grand == 12) tauMax = 1.d0
-             if (iIter_grand == 15) tauMax = 1.e30
+             if (iIter_grand == 3) tauMax = 0.01e0
+             if (iIter_grand == 6) tauMax = 0.1e0
+             if (iIter_grand == 9) tauMax = 1.d0
+             if (iIter_grand >  9) tauMax = 1.e30
              tauMax = 1.e30
              ! Sublimate the dust and smooth at the photosphere on the last pass
              if (iIter_Grand <= 15) &
@@ -899,7 +898,7 @@ contains
              !                endif
              !             endif
 
-             if ((iiter_grand == 10000).and.doSmoothGridTau) then
+             if ((iiter_grand == 15).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -991,7 +990,7 @@ contains
        if (iIter_grand < iterlucy) converged = .false.
 
        if (variableDustSublimation) then
-          if (iIter_grand < 9) then
+          if (iIter_grand < 16) then
              converged = .false.
           endif
        endif
@@ -1017,16 +1016,9 @@ contains
        endif
 
 
-       if (nDusttype == 1) then
-          call writeVtkFile(grid, tfilename, &
-               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-               "dust1      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       "/))
-       else
-          call writeVtkFile(grid, tfilename, &
-               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-               "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
-               "diff       "/))
-       endif
+       call writeVtkFile(grid, tfilename, &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       "/))
        !    !
        !    ! Write grid structure to a tmp file.
        !    !

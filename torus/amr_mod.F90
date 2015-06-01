@@ -9797,6 +9797,8 @@ endif
     thisOCtal%rho(subcell) = inflowRho
     thisOctal%pressure_i(subcell) = inflowPressure
 
+    soundSpeed = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+
     if (amr3d) then
        thisOctal%velocity(subcell) = VECTOR(inflowSpeed/cSpeed, 0.d0, 0.d0)
     else
@@ -9819,6 +9821,8 @@ endif
           r = bigG * msol / (soundSpeed**2)
           write(*,*) "Bondi-Hoyle radius is ",r
           write(*,*) "Bondi-Hoyle radius is ",(r/1.d10)/smallestCellSize," cells"
+          write(*,*) "inflowspeed ",inflowspeed,soundspeed
+          write(*,*) "sound speed ",soundSpeed
        endif
        firstTime = .false.
     endif
@@ -9977,7 +9981,6 @@ endif
     temperature = inflowTemp
     pressure = (inflowRho/(2.33d0*mHydrogen))*kerg*temperature
     soundSpeed = sqrt(pressure / inflowRho)
-    inflowSpeed = 3.d0*soundSpeed
 
     inflowPressure = pressure
     inflowMomentum = inflowRho * inflowSpeed

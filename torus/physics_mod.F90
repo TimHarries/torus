@@ -315,6 +315,7 @@ contains
        endif
 
     endif
+    call writeVtkFile(nsource, source, "sources_at_setup.vtk")
 
   end subroutine setupSources
 

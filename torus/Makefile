@@ -614,7 +614,7 @@ GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
 
 
 all: depends $(ALLOBJ)
-	svnversion
+#	svnversion
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."

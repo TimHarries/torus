@@ -735,6 +735,8 @@
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
       type(VECTOR) :: cornerDir
+      type(VECTOR), parameter :: zAxis=VECTOR(0.d0, 0.d0, 1.d0)
+      real(double) :: prob, chance
       logical :: ok
 
       if (PRESENT(weight)) weight = 1.d0
@@ -745,6 +747,7 @@
                !      ! simply treating as a point source
                position = source%position
                direction = randomUnitVector()
+               
                if (biasPhiDirection > 0.d0) then
                   if (.not.PRESENT(weight)) then
                      call writeFatal("getPhotonPositionDirection called without weight when weighted direction required")
@@ -771,7 +774,31 @@
                   
                endif
                
-                  
+
+               if (present(weight)) then
+                  call randomNumberGenerator(getDouble=r)
+                  chance = 1.d0 - twoPi * (cos(80.d0*degtorad)-cos(100.d0*degtoRad))/fourPi
+                  prob = 0.01d0
+                  if (r < prob) then
+                     direction = randomUnitVector()
+                     ang = acos(direction.dot.zAxis)*radtodeg
+                     do while ((ang >= 80.d0).and.(ang <= 100.d0))
+                        direction = randomUnitVector()
+                        ang = acos(direction.dot.zAxis)*radtodeg
+                     enddo
+                     weight = chance/prob
+                  else
+                     direction = randomUnitVector()
+                     ang = acos(direction.dot.zAxis)*radtodeg
+                     do while ((ang <= 80.d0).or.(ang >= 100.d0))
+                        direction = randomUnitVector()
+                        ang = acos(direction.dot.zAxis)*radtodeg
+                     enddo
+                     weight = (1.d0-chance)/(1.d0-prob)
+                  endif
+                  ang = acos(direction.dot.zAxis)*radtodeg
+               endif
+
                
             else
                rHat = randomUnitVector()

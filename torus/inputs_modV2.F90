@@ -2056,7 +2056,7 @@ contains
     integer :: i
     character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, grainDensityLabel, &
          aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel, tsubLabel, kappaFileLabel, &
-         dustFileLabel
+         dustFileLabel, heightLabel, betaLabel
 
        oneKappa = .true.
 
@@ -2068,6 +2068,10 @@ contains
 
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+
+
+       call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
+               "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
        if (nDustType .gt. maxDustTypes) then
@@ -2104,6 +2108,11 @@ contains
              write(pDistLabel, '(a,i1.1)') "pdist",i
              write(a0Label, '(a,i1.1)') "a0",i
              write(fillingFactorLabel, '(a,i1.1)') "porosity",i
+
+
+
+
+
              
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
              !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
@@ -2134,7 +2143,7 @@ contains
 
 
              call getDouble(tsublabel, tsub(i), 1.d0, cLine, fLine, nLines, &
-                  "Temperature for dust sublimation (K):  ","(a,e12.3,1x,a)", 2000.d0, ok, .false.)
+                  "Temperature for dust sublimation (K):  ","(a,e12.3,1x,a)", 2000.d0, ok, .true.)
 
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
@@ -2158,6 +2167,14 @@ contains
           "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
 
 
+
+          write(heightLabel, '(a,i1.1)') "dustheight",i
+          call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
+       
+          write(betaLabel, '(a,i1.1)') "dustbeta",i
+          call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
+               "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
 
 
              if (writeoutput) write(*,*)
