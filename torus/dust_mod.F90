@@ -989,7 +989,6 @@ contains
 
   recursive subroutine findDustMassSingle(grid, thisOctal, dustmass, iDust)
 
-    use inputs_mod, only : nDustType
     use octal_mod, only : cellVolume
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -1185,7 +1184,7 @@ contains
                 sublimationTemp = real(subTemp)
              else
                 sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(1.95d-2)))
-                sublimationTemp = tSub(j)
+                sublimationTemp = real(tSub(j))
              endif
 
              if (tThresh /= 0.) sublimationTemp = tThresh

@@ -54,8 +54,8 @@ program torus
   implicit none
 
   character(len=80) :: message
-  character(len=10) :: stringArray(10)
-  integer :: i
+!  character(len=10) :: stringArray(10)
+!  integer :: i
 !  type(PAHtabletype) :: PAHtable
   type(GRIDTYPE) :: grid
   type(VECTOR) :: box(64,64,64)

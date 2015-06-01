@@ -2353,7 +2353,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   integer :: lunit = 69
   integer :: nOctals, nVoxels
   integer(bigint) :: i
-  integer :: j
+  integer :: j, i_tmp
   integer :: nPointOffset
   integer(kind=1), allocatable :: cellTypes(:)
   integer(kind=bigint), allocatable :: offsets(:)
@@ -2440,16 +2440,16 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      if (ANY(valueTypestring == "dust")) then
         nValueType = SIZE(valuetypestring)
         valueType(1:nValueType) = valueTypeString(1:nValueType)
-        i = nValueType
-        do j = 1, i
+        i_tmp = nValueType
+        do j = 1, i_tmp
            if (valueType(j)=="dust") then
               valuetype(j) = "dust1"
            endif
         enddo
         if (nDustType > 1) then
-           nValuetype = i + nDustType - 1
+           nValuetype = i_tmp + nDustType - 1
            do j = 2, nDustType
-              write(valueType(i+j-1),'(a,i1)') "dust",j
+              write(valueType(i_tmp+j-1),'(a,i1)') "dust",j
            enddo
         endif
      endif

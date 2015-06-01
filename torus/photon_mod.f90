@@ -759,7 +759,8 @@ contains
           
           if (.not.photonFromEnvelope) then
              if (nSource > 0) then
-                call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar, grid, weightPos)
+                call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, &
+                     rHatInStar, grid, weightPos)
                 thisPhoton%stokes = thisPhoton%stokes * weightPos
                 thisPhoton%stellar = .true.
                 call findSubcellTD(thisPhoton%position, grid%octreeRoot, sourceOctal, sourceSubcell)
