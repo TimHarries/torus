@@ -174,8 +174,8 @@ contains
 ! The test case has a constant density 
        nCol = path_len * kpctocm * (rho/mHydrogen)
 
-       xPix_min = theta_deg*pixPerDegree
-       xPix_max = theta_deg*pixPerDegree + (pixPerDegree-1)
+       xPix_min = theta_deg*pixPerDegree + 1
+       xPix_max = theta_deg*pixPerDegree + pixPerDegree
 
        nCol_torus_av = SUM(nCol_torus(xPix_min:xPix_max,yPix)) / real(pixPerDegree) 
 
