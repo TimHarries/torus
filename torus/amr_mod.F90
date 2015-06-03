@@ -14811,7 +14811,7 @@ end function readparameterfrom2dmap
   subroutine myScaleSmooth(factor, grid, converged, &
        inheritProps, interpProps)
     use memory_mod, only : globalMemoryFootprint
-    use inputs_mod, only : maxMemoryAvailable
+    use inputs_mod, only : maxMemoryAvailable, minDepthAMR, maxDepthAMR
     type(gridtype) :: grid
     real :: factor
     integer :: nTagged
@@ -14819,6 +14819,7 @@ end function readparameterfrom2dmap
     !
     logical :: converged
 
+    if (minDepthAMR == maxDepthAMR) goto 666
     if ( factor <= 0 ) then 
        call writewarning ("Splitting factor in myScaleSmooth is <= 0")
        return
@@ -14830,6 +14831,7 @@ end function readparameterfrom2dmap
     call splitTagged(grid%octreeRoot, grid, inheritProps, interpProps)
     if (globalMemoryFootprint > maxMemoryAvailable) converged = .true.
 
+666 continue
   end subroutine myScaleSmooth
 
   recursive subroutine zeroChiLineLocal(thisOctal)

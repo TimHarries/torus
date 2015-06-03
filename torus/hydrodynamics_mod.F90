@@ -678,6 +678,59 @@ contains
     endif
   end subroutine updatedensitytree
 
+  recursive subroutine SumPhiUptree(thisoctal, nDepth)
+    use mpi
+    type(octal), pointer   :: thisoctal, parentoctal, testoctal
+    type(octal), pointer  :: child 
+    integer :: i, n, m, j, nDepth
+    real(double) :: mass(8), totMass, v(8), sumphi
+
+
+
+    if (thisoctal%nchildren > 0) then
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call sumPhiUptree(child, nDepth)
+       end do
+    else
+
+          
+       testoctal => thisoctal
+       sumPhi = 0.d0
+       do while(testoctal%ndepth > nDepth)
+             
+          parentoctal => testoctal%parent
+          m = testoctal%parentsubcell
+          if (testoctal%twod) then
+             n = 4
+          else
+             n = 8
+          endif
+
+          sumPhi = sumPhi +  sum(testoctal%phi_gas(1:n))/dble(n)
+          testoctal => parentoctal
+          m = testOctal%parentSubcell
+       enddo
+       if (.not.testOctal%edgeCell(m)) then
+          testOctal%phi_gas(m) = sumPhi
+       endif
+    endif
+  end subroutine SumPhiUptree
+
+  recursive subroutine zeroFlux(thisOctal)
+    type(octal), pointer :: thisOctal, child
+    integer :: i
+
+    if (.not.associated(thisOctal%flux_i)) allocate(thisOctal%flux_i(1:thisOctal%maxChildren))
+    thisOctal%flux_i = thisOctal%phi_gas
+
+    do i = 1, thisOctal%nChildren
+       child => thisOctal%child(i)
+       call zeroFlux(child)
+    enddo
+  end subroutine zeroFlux
+  
+
   recursive subroutine restrictResiduals(thisoctal, nDepth)
     use mpi
     type(octal), pointer   :: thisoctal
@@ -685,99 +738,105 @@ contains
     integer :: i, nDepth, j
     real(double) :: mass(8)
 
-
-    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
-       do i = 1, thisoctal%nchildren, 1
-          child => thisoctal%child(i)
-          call restrictResiduals(child, nDepth)
-       end do
-    else
-       if (ANY(thisOctal%ghostCell)) goto 666
-
-       do j = 1, thisOctal%maxChildren 
-          mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
-       enddo
-
+    if (thisOctal%nDepth == nDepth) then
        if (.not.associated(thisOctal%parent%chiline)) allocate(thisOctal%parent%chiline(1:thisOctal%parent%maxChildren))
+
+
        thisOctal%parent%chiLine(thisOctal%parentSubcell) = &
-            SUM(thisOctal%chiline(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:thisOctal%maxChildren))
+            SUM(thisOctal%chiline(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
+    else
+
+       if (thisoctal%nchildren > 0) then
+          do i = 1, thisoctal%nchildren, 1
+             child => thisoctal%child(i)
+             call restrictResiduals(child, nDepth)
+          end do
+       endif
     endif
-    666 continue
   end subroutine restrictResiduals
 
-  recursive subroutine restrictPhi(thisoctal, nDepth)
+  recursive subroutine addPhiFromBelow(thisoctal, nDepth)
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth, j, n
+    integer :: i, nDepth, j
     real(double) :: mass(8)
 
+    if (thisOctal%nDepth == (nDepth+1)) then
 
-    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
-       do i = 1, thisoctal%nchildren, 1
-          child => thisoctal%child(i)
-          call restrictPhi(child, nDepth)
-       end do
+
+!       write(*,*) "parent ",thisOctal%parent%phi_gas(thisOctal%parentSubcell),thisOctal%parent%ndepth
+!       write(*,*) "this ",thisOctal%phi_gas(1:thisOctal%maxChildren)
+       thisOctal%parent%phi_gas(thisOctal%parentSubcell) = &
+       thisOctal%parent%phi_gas(thisOctal%parentSubcell) + &
+            SUM(thisOctal%phi_gas(1:thisOctal%maxChildren))/dble(thisOctal%maxChildren)
     else
 
-       if (thisoctal%twod) then
-          n = 4
-       else
-          n = 8
+       if (thisoctal%nchildren > 0) then
+          do i = 1, thisoctal%nchildren, 1
+             child => thisoctal%child(i)
+             call addPhiFromBelow(child, nDepth)
+          end do
        endif
-       do j = 1, n 
-          mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
-       enddo
-
-       thisOctal%parent%phi_gas(thisOctal%parentSubcell) = &
-            SUM(thisOctal%phi_gas(1:thisOctal%maxChildren)*mass(1:thisOctal%maxChildren))/sum(mass(1:n))
     endif
-  end subroutine restrictPhi
+  end subroutine addPhiFromBelow
+
 
 
   recursive subroutine setSourceToFourPiRhoG(thisoctal, nDepth)
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth
+    integer :: i, nDepth, subcell
 
-
-    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
-       do i = 1, thisoctal%nchildren, 1
-          child => thisoctal%child(i)
-          call setSourceToFourPiRhoG(child, nDepth)
-       end do
-    else
+    if (thisOctal%nDepth == nDepth) then
        if (.not.associated(thisOctal%source)) allocate(thisOctal%source(1:thisOctal%maxChildren))
        thisOctal%source(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * bigG * fourPi
+    else
+       if (thisoctal%nchildren > 0) then
+          do i = 1, thisoctal%nchildren, 1
+             child => thisoctal%child(i)
+             call setSourceToFourPiRhoG(child, nDepth)
+          end do
+       endif
     endif
+
+
   end subroutine setSourceToFourPiRhoG
 
   recursive subroutine setSourceToResiduals(thisoctal, nDepth)
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth
+    integer :: i, nDepth,subcell
 
 
-    if ((thisoctal%nchildren > 0).and.(thisOctal%nDepth < nDepth)) then
-       do i = 1, thisoctal%nchildren, 1
-          child => thisoctal%child(i)
-          call setSourceToResiduals(child, nDepth)
-       end do
-    else
+    if (thisOctal%nDepth == nDepth) then
        if (.not.associated(thisOctal%source)) allocate(thisOctal%source(1:thisOctal%maxChildren))
        if (.not.associated(thisOctal%chiLine)) then
           allocate(thisOctal%chiLine(1:thisOctal%maxChildren))
           thisOctal%chiline = 0.d0
        endif
-       thisOctal%source = thisOctal%chiLine
+       do subcell = 1, thisOctal%maxChildren
+          if (thisOctal%edgeCell(subcell)) then
+             thisOctal%source(subcell) = 0.d0
+          else
+             thisOctal%source(subcell) = thisOctal%chiLine(subcell)
+          endif
+       enddo
+    else
+       if (thisoctal%nchildren > 0) then
+          do i = 1, thisoctal%nchildren, 1
+             child => thisoctal%child(i)
+             call setSourceToResiduals(child, nDepth)
+          end do
+       endif
     endif
   end subroutine setSourceToResiduals
 
 
 
-  recursive subroutine prolongateCorrections(thisoctal, ndepth)
+  recursive subroutine prolongatePhiGas(thisoctal, ndepth)
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -787,21 +846,10 @@ contains
 
     if (thisoctal%ndepth == ndepth) then
 
-       if (thisoctal%twod) then
-          n = 4
-       else
-          n = 8
-       endif
-       do j = 1, n 
-          mass(j) = thisOctal%rho(j) * cellVolume(thisOctal, j) * 1.d30
-       enddo
-
-
-       if (.not.associated(thisOctal%phi_gas_corr)) then
-          allocate(thisOctal%phi_gas_corr(1:thisOctal%maxChildren))
-       endif
-       do j = 1, n
-          thisoctal%phi_gas_corr(j) = mass(j)*thisoctal%parent%phi_gas_corr(thisoctal%parentsubcell)/SUM(mass(1:n))
+       do i = 1, thisOctal%maxChildren
+          if (.not.thisOctal%edgeCell(i)) then
+             thisOctal%phi_gas(i) = thisOctal%parent%phi_gas(thisOctal%parentSubcell)
+          endif
        enddo
     else
 
@@ -811,7 +859,7 @@ contains
              do i = 1, thisoctal%nchildren, 1
                 if (thisoctal%indexchild(i) == subcell) then
                    child => thisoctal%child(i)
-                   call prolongateCorrections(child, ndepth)
+                   call prolongatePhiGas(child, ndepth)
                    exit
                 end if
              end do
@@ -819,8 +867,42 @@ contains
        enddo
     endif
 
-  end subroutine prolongateCorrections
+  end subroutine prolongatePhiGas
 
+  recursive subroutine addCorrections(thisoctal, ndepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, n, ndepth, j
+    real(double) :: mass(8)
+
+
+    if (thisoctal%ndepth == ndepth) then
+
+       do i = 1, thisOctal%maxChildren
+          if (.not.thisOctal%edgeCell(i)) then
+             thisOctal%phi_gas(i) = &
+                  thisOctal%phi_gas(i) + thisOctal%parent%phi_gas(thisOctal%parentSubcell)
+          endif
+       enddo
+    else
+
+       do subcell = 1, thisoctal%maxchildren
+          if (thisoctal%haschild(subcell)) then
+             ! find the child
+             do i = 1, thisoctal%nchildren, 1
+                if (thisoctal%indexchild(i) == subcell) then
+                   child => thisoctal%child(i)
+                   call addCorrections(child, ndepth)
+                   exit
+                end if
+             end do
+          endif
+       enddo
+    endif
+
+  end subroutine addCorrections
+  
 
 
   recursive subroutine updatephitree(thisoctal, ndepth)
@@ -901,6 +983,75 @@ contains
     endif
 
   end subroutine updatephitreeNew
+
+  recursive subroutine zeroPhiGasLevel(thisoctal, ndepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, n, ndepth, j
+
+
+    if (thisoctal%ndepth == ndepth) then
+
+       if (.not.associated(thisOctal%adot)) then
+          allocate(thisOctal%adot(1:thisOctal%maxChildren))
+          thisOctal%adot = 0.d0
+       endif
+
+       do subcell = 1, thisOctal%maxChildren
+          thisOctal%adot(subcell) = thisOctal%phi_gas(subcell)
+          if (.not.thisOctal%edgeCell(subcell)) then
+             thisoctal%phi_gas(subcell) = 0.d0
+          endif
+       enddo
+    else
+
+       do subcell = 1, thisoctal%maxchildren
+          if (thisoctal%haschild(subcell)) then
+             ! find the child
+             do i = 1, thisoctal%nchildren, 1
+                if (thisoctal%indexchild(i) == subcell) then
+                   child => thisoctal%child(i)
+                   call zeroPhiGasLevel(child, ndepth)
+                   exit
+                end if
+             end do
+          endif
+       enddo
+    endif
+
+  end subroutine zeroPhiGasLevel
+
+  recursive subroutine restorePhiGas(thisoctal, ndepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, n, ndepth, j
+
+
+    if (thisoctal%ndepth == ndepth) then
+
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.thisOctal%hasChild(subcell).and.(.not.thisOctal%edgeCell(subcell))) then
+             thisOctal%phi_gas(subcell) = thisOctal%adot(subcell)
+          endif
+       enddo
+    else
+       do subcell = 1, thisoctal%maxchildren
+          if (thisoctal%haschild(subcell)) then
+             ! find the child
+             do i = 1, thisoctal%nchildren, 1
+                if (thisoctal%indexchild(i) == subcell) then
+                   child => thisoctal%child(i)
+                   call restorePhiGas(child, ndepth)
+                   exit
+                end if
+             end do
+          endif
+       enddo
+    endif
+
+  end subroutine restorePhiGas
 
 
   subroutine setupAlphaViscosity(grid, alpha, HoverR)
@@ -1147,7 +1298,7 @@ contains
     real(double) :: dt, dx, speed
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
-    integer :: nd
+    integer :: nd, nc
     logical :: debug, writeDebug
   
     do subcell = 1, thisoctal%maxchildren
@@ -1168,7 +1319,7 @@ contains
           neighbouroctal => thisoctal
           call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
           call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
           ! need to construct flux correctly at this point
           if (.not.thisoctal%edgecell(subcell)) then
@@ -1224,7 +1375,7 @@ contains
     real(double) :: dt, dx
     real(double) :: q(2), rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), x, qnext, pressure(2), flux(2), phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
-    integer :: nd
+    integer :: nd, nc
     logical :: writeDebug
   
     do subcell = 1, thisoctal%maxchildren
@@ -1291,7 +1442,7 @@ contains
     real(double) :: dt, dx
     real(double) :: q(4), rho(4), rhoe(4), rhou(4), rhov(4), rhow(4), x, qnext, pressure(4), flux(4), phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
-    integer :: nd
+    integer :: nd, nc
     logical :: writeDebug
   
     do subcell = 1, thisoctal%maxchildren
@@ -1359,7 +1510,7 @@ contains
     real(double) :: dt, dx, speed
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
-    integer :: nd
+    integer :: nd, nc
     logical :: debug, writeDebug
   
     do subcell = 1, thisoctal%maxchildren
@@ -1380,7 +1531,7 @@ contains
           neighbouroctal => thisoctal
           call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
           call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+               rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
           ! need to construct flux correctly at this point
           if (.not.thisoctal%edgecell(subcell)) then
@@ -1854,7 +2005,7 @@ contains
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas
     real(double) :: xnext, px, py, pz, qViscosity(3,3), rm1, um1, pm1
     integer :: subcell, i, neighboursubcell
-    integer :: nd
+    integer :: nd, nc
     type(vector) :: direction, locator, reversedirection
 
 
@@ -1882,7 +2033,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              thisoctal%x_i_plus_1(subcell) = x
              thisoctal%q_i_plus_1(subcell) = q
@@ -1893,7 +2044,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%x_i_minus_1(subcell) = x
 !             thisoctal%x_i_minus_2(subcell) = xnext
              thisoctal%q_i_minus_1(subcell) = q
@@ -2049,7 +2200,7 @@ contains
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator, reversedirection
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, px, py, pz, rm1, um1, pm1
 
     do subcell = 1, thisoctal%maxchildren
@@ -2071,7 +2222,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              thisoctal%rho_i_plus_1(subcell) = rho
              thisoctal%phi_i_plus_1(subcell) = phi
@@ -2082,7 +2233,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%rho_i_minus_1(subcell) = rho
              thisoctal%phi_i_minus_1(subcell) = phi
 
@@ -2101,7 +2252,7 @@ contains
     real(double) :: rhoe, rhou, rhov, rhow, rho, q, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator, reversedirection
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, px, py, pz, rm1, um1, pm1
 
     do subcell = 1, thisoctal%maxchildren
@@ -2125,7 +2276,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              thisoctal%rhorv_i_plus_1(subcell) = rhov
              reversedirection = (-1.d0) * direction
@@ -2134,7 +2285,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, reversedirection, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%rhorv_i_minus_1(subcell) = rhov
 
           endif
@@ -2150,7 +2301,7 @@ contains
     type(octal), pointer   :: neighbouroctal
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas, qViscosity(3,3)
-    integer :: subcell, i, neighboursubcell, nd
+    integer :: subcell, i, neighboursubcell, nd, nc
     type(vector) :: direction, locator!, rotator
     real(double) :: rhou_i_minus_1, rho_i_minus_1, dt
     real(double) :: rhou_i_plus_1, x_interface_i_p_half
@@ -2183,7 +2334,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
 
              rho_i_minus_1 = rho
              rhou_i_minus_1 = direction.dot.VECTOR(rhou,rhov,rhow)
@@ -2205,7 +2356,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
 
              rho_i_plus_1 = rho
              rhou_i_plus_1 = direction.dot.VECTOR(rhou,rhov,rhow)
@@ -2260,7 +2411,7 @@ contains
                 neighbouroctal => thisoctal
                 call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
                 call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, &
                      xnext, px, py, pz, rm1, um1, pm1, qViscosity)
 
                 rho_i_plus_1 = rho
@@ -2340,7 +2491,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd,  xnext, px, py, pz,rm1,um1, pm1, qViscosity)
 
              rho_i_minus_1(1:2) = rho(1:2)
              do j = 1, 2
@@ -2364,7 +2515,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd,  xnext, px, py, pz,rm1,um1, pm1, qViscosity)
 
              rho_i_plus_1(1:2) = rho(1:2)
              do j = 1, 2
@@ -2508,7 +2659,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues4(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd,  xnext, px, py, pz,rm1,um1, pm1, qViscosity)
 
              rho_i_minus_1(1:4) = rho(1:4)
              do j = 1, 4
@@ -2656,7 +2807,7 @@ contains
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
-    integer :: nd
+    integer :: nd,nc
     real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
 
 
@@ -2679,7 +2830,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
    
              thisoctal%flux_i_plus_1(subcell) = flux
@@ -2688,7 +2839,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%flux_i_minus_1(subcell) = flux
              
 
@@ -2724,7 +2875,7 @@ contains
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
 
 
@@ -2747,7 +2898,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
    
 
@@ -2778,7 +2929,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1, um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz,rm1, um1, pm1, qViscosity)
              thisoctal%flux_i_minus_1(subcell) = flux
              
 
@@ -2836,7 +2987,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues2(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd,  xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
              
              thisoctal%flux_amr_i_plus_1(subcell,1:2) = flux(1:2)
@@ -2920,7 +3071,7 @@ contains
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, fac, px, py, pz, rm1, um1, pm1
 
 
@@ -2943,7 +3094,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
    
              thisoctal%flux_i_plus_1(subcell) = flux
@@ -2952,7 +3103,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1, um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz,rm1, um1, pm1, qViscosity)
              thisoctal%flux_i_minus_1(subcell) = flux
              
 
@@ -3171,7 +3322,7 @@ contains
     integer :: nCornerBound
     real(double) :: rho, rhoe, rhou, rhov, rhow, x, q, qnext, pressure, flux, phi, phigas,qViscosity(3,3)
     
-    integer :: nd, i, ID(2)
+    integer :: nd, i, ID(2), nc
     real(double) :: xnext, dx, px, py, pz, rm1, um1, pm1
     logical :: upper
     logical :: fineToCoarse = .false.
@@ -3179,7 +3330,7 @@ contains
     ID = 0
 
     call getneighbourvalues(grid, thisOctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, &
-         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1 ,qViscosity)
+         rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1 ,qViscosity)
          
     nVec = VECTOR(px, py, pz)
 
@@ -3199,11 +3350,11 @@ contains
                 
                 if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
-                        direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, &
+                        direction, q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, &
                         px, py, pz, rm1,um1, pm1, qViscosity)
                 else
                    call getneighbourvalues(grid, neighbouroctal, neighboursubcell, communityoctal, communitysubcell, &
-                        community(i), q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, &
+                        community(i), q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, &
                         xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
                 end if
                 
@@ -3217,11 +3368,11 @@ contains
                 !Get first try values
                 if(octalOnTHread(communityOctal, communitySubcell, myRankGlobal)) then
                    call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, direction, q, &
-                        rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
+                        rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, &
                         rm1,um1, pm1, qViscosity)
                 else
                    call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitySubcell, community(i), q, &
-                        rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
+                        rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, &
                         rm1,um1, pm1, qViscosity)
                 end if
                 
@@ -3244,11 +3395,11 @@ contains
                    if(octalOnTHread(mirrorOctal, mirrorSubcell, myRankGlobal)) then
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, direction, q, &
                            rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                           nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                           nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                    else
                       Call getneighbourvalues(grid, communityOctal, communitySubcell, mirrorOctal, mirrorsubcell, community(i), &
                            q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                           nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                           nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                    end if
                    
                    mVec = VECTOR(px, py, pz)
@@ -3273,11 +3424,11 @@ contains
                       if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, direction, q, &
                               rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                              nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                              nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                       else
                          call getneighbourvalues(grid, communityOctal, communitySubcell, faceOctal, facesubcell, community(i), &
                               q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, &
-                              nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                              nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                       end if
                       
                       ID(i) = 2
@@ -3289,7 +3440,7 @@ contains
                       end if
                       
                       call getneighbourvalues(grid, thisoctal, subcell, communityoctal, communitysubcell, direction, q, &
-                           rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, &
+                           rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, &
                            rm1,um1, pm1, qViscosity)
                       ID(i) = 3
                    end if
@@ -3340,7 +3491,7 @@ contains
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
       
                    call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, rho, & 
-                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, &
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, &
                         pm1, qViscosity)
                    ID(i) = 2
 
@@ -3368,7 +3519,7 @@ contains
 
 !                   !Get the values ...
 !                   call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
-!                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz) 
+!                   rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz) 
                   
 !                   rVec = subcellcentre(communityoctal, communitysubcell)
                    f(i) = flux
@@ -3403,11 +3554,11 @@ contains
 
 !                   if(octalOnThread(faceOctal, faceSubcell, myRankGlobal)) then
                       call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, direction, q, rho, &
-                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, &
+                           rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, &
                            qViscosity)
 !                   else
 !                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, faceoctal, facesubcell, community(i), q, rho, &
-!                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)
+!                      rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz)
 !                   End if
 
 !Probe across the mpi boundary and check if the corresponding cell is the community subcell
@@ -3416,7 +3567,7 @@ contains
 
                    call findsubcelllocal(locator, communityOctal, communitySubcell)
                    call getneighbourvalues(grid, faceoctal, facesubcell, communityoctal, communitysubcell, direction, q, rho, &
-                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, &
+                        rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, &
                         qViscosity)
                    
                    cvec = VECTOR(px, py, pz)
@@ -3425,7 +3576,7 @@ contains
                     !Found the community subcell 
                     !Get the values ...  
 !                      call getneighbourvalues(grid, mirroroctal, mirrorsubcell, communityoctal, communitysubcell, direction, q, &
-!                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz)  
+!                      rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz)  
 !                      
 !                      rVec = subcellcentre(communityoctal, communitysubcell) 
 
@@ -3644,7 +3795,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, px, py, pz , rm1, um1, pm1
 
 
@@ -3669,7 +3820,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%pressure_i_plus_1(subcell) = pressure
 
              
@@ -3677,7 +3828,7 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz,rm1,um1, pm1, qViscosity)
              thisoctal%pressure_i_minus_1(subcell) = pressure
 
           endif
@@ -3696,7 +3847,7 @@ contains
     integer :: subcell, i, neighboursubcell
     type(vector) :: direction, locator
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, qViscosity(3,3)
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, px, py, pz, rm1, um1, pm1
 
 
@@ -3719,14 +3870,14 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%u_i_plus_1(subcell) = (direction.dot.VECTOR(rhou, rhov, rhow))/rho
              
              locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              thisoctal%u_i_minus_1(subcell) =  (direction.dot.VECTOR(rhou, rhov, rhow))/rho
              thisOctal%rho_i_minus_1(subcell) = rho
           endif
@@ -3767,14 +3918,14 @@ contains
 !             neighbouroctal => thisoctal
 !             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 !             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
-!                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+!                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, q11, q22, q33)
 !             thisoctal%u_i_plus_1(subcell) = rhou/rho
 !             
 !             locator = subcellcentre(thisoctal, subcell) - direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
 !             neighbouroctal => thisoctal
 !             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
 !             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*direction, q, rho, rhoe, &
-!                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, q11, q22, q33)
+!                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, q11, q22, q33)
 !             thisoctal%u_i_minus_1(subcell) = rhou/rho
 !
 !          endif
@@ -8143,29 +8294,29 @@ end subroutine sumFluxes
 
 !evening up the grid ensures that no two neighbouring cells differ by more than one level of refinement          
           if(dorefine) then
-             call writeVtkFile(grid, "beforeinitevenup.vtk", &
-                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-                  "u_i          ", &
-                  "hydrovelocity", &
-                  "rhou         ", &
-                  "rhov         ", &
-                  "rhow         ", &
-                  "phi          ", &
-                  "pressure     ", &
-                  "q_i          "/))
+!             call writeVtkFile(grid, "beforeinitevenup.vtk", &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrankWorldGlobal == 1) call tune(6, "Initial refine")
-             call writeVtkFile(grid, "afterinitevenup.vtk", &
-                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
-                  "u_i          ", &
-                  "hydrovelocity", &
-                  "rhou         ", &
-                  "rhov         ", &
-                  "rhow         ", &
-                  "phi          ", &
-                  "pressure     ", &
-                  "q_i          "/))
+!             call writeVtkFile(grid, "afterinitevenup.vtk", &
+!                  valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+!                  "u_i          ", &
+!                  "hydrovelocity", &
+!                  "rhou         ", &
+!                  "rhov         ", &
+!                  "rhow         ", &
+!                  "phi          ", &
+!                  "pressure     ", &
+!                  "q_i          "/))
           end if
        end if
 
@@ -12964,7 +13115,7 @@ end subroutine refineGridGeneric2
 !             neighbourOctal => thisOctal
 !             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 !             call getNeighbourValues(grid, thisOctal, Subcell, neighbourOctal, neighbourSubcell, dirVec(i), q, rhot, rhoet, &
-!                  rhout, rhovt, rhowt, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
+!                  rhout, rhovt, rhowt, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz,  rm1,um1, pm1, qViscosity)
 !             if (thisOctal%nDepth < nd) then
 !                unrefine = .false.
 !                goto 666
@@ -13154,6 +13305,12 @@ end subroutine refineGridGeneric2
     call setupGhosts(grid%octreeRoot, grid)
 
     if (minDepthAMR == maxDepthAMR) goto 666 ! fixed grid
+
+    if (checkEven(grid)) then
+       call writeInfo("No evenup necessary")
+       goto 666
+    endif
+
 
     allThreadsConverged = .false.
 
@@ -13888,7 +14045,7 @@ end subroutine refineGridGeneric2
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
-    integer :: n, ndir, nd
+    integer :: n, ndir, nd, nc
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
     real(double) :: xnext, px, py, pz, rm1, um1, pm1
@@ -13937,7 +14094,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
@@ -13994,7 +14151,7 @@ end subroutine refineGridGeneric2
     real(double) :: x1, x2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
-    integer :: nd
+    integer :: nd, nc
     real(double) :: tauMin
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
@@ -14058,7 +14215,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
@@ -14206,7 +14363,7 @@ end subroutine refineGridGeneric2
     real(double) :: x1, x2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
-    integer :: nd
+    integer :: nd, nc
     real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
@@ -14268,7 +14425,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell,nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
@@ -14358,6 +14515,152 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweep2level
 
+  recursive subroutine gaussSeidelSweep(thisOctal, grid, fracChange,nDepth, onlyCellsWithChildren)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer :: nDepth
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
+    integer :: subcell, i, neighbourSubcell
+    type(VECTOR) :: locator, dir(6), probe(6)
+    integer :: n, ndir
+    real(double) :: x1, x2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
+    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
+    integer :: nd, nc
+    logical :: onlyCellsWithChildren
+    real(double) :: tauMin, dfdrbyr
+    real(double), parameter :: maxM = 100000.d0
+    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double), parameter :: SOR = 1.2d0
+
+    nDir = 6
+    dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+    dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+    dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+    dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
+    dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+    dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
+       
+    if (thisOctal%nDepth == nDepth) then
+
+
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (onlyCellsWithChildren .and. .not.thisOctal%hasChild(subcell)) cycle
+
+
+          if (.not.associated(thisOctal%adot)) then
+             allocate(thisOctal%adot(1:thisOctal%maxChildren))
+             thisOctal%adot = 0.d0
+          endif
+          if (.not.associated(thisOctal%chiLine)) then
+             allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+             thisOctal%chiLine = 0.d0
+          endif
+
+          if (.not.thisOctal%edgeCell(subcell)) then
+
+             do n = 1, nDir                
+                locator = subcellCentre(thisOctal, subcell) + dir(n) * (thisOctal%subcellSize/2.d0+0.01d0*smallestCellsize)
+                neighbourOctal => grid%octreeRoot
+                call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
+                call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                g(n) = phigas
+             enddo
+             dx = thisOCtal%subcellSize
+             
+
+             sumd2phidx2 = (sum(g(1:6)) - 6.d0*thisOctal%phi_gas(subcell))/(thisOctal%subcellSize*gridDistanceScale)**2
+             thisOctal%chiline(subcell) = thisOctal%source(subcell) - sumd2phidx2 
+
+             thisOctal%phi_gas(subcell) = 0.16666666666667d0*(SUM(g(1:6)) - thisOctal%source(subcell)*(returnCodeUnitLength(dx*gridDistanceScale))**2)
+
+             if (thisOctal%source(subcell)/=0.d0) fracChange = max(fracChange,abs(sumd2phidx2 - thisOctal%source(subcell))/abs(thisOctal%source(subcell)))
+
+          endif
+       enddo
+    else
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call gaussSeidelSweep(child, grid, fracChange, ndepth, onlyCellsWithChildren)
+       end do
+    endif
+
+  end subroutine gaussSeidelSweep
+
+  recursive subroutine calculateResiduals(thisOctal, grid, nDepth)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer :: nDepth
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
+    integer :: subcell, i, neighbourSubcell
+    type(VECTOR) :: locator, dir(6), probe(6)
+    integer :: n, ndir
+    real(double) :: x1, x2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
+    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
+    integer :: nd, nc
+    real(double) :: tauMin, dfdrbyr
+    real(double), parameter :: maxM = 100000.d0
+    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double), parameter :: SOR = 1.2d0
+
+    nDir = 6
+    dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+    dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+    dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+    dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
+    dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+    dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
+
+
+    if (thisOctal%nDepth == nDepth) then
+
+
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          thisOctal%chiline(subcell) = 0.d0
+
+
+          if (.not.thisOctal%edgeCell(subcell)) then! .and. .not. thisOctal%edgecell(subcell)) then
+
+             do n = 1, nDir                
+                locator = subcellCentre(thisOctal, subcell) + dir(n) * (thisOctal%subcellSize/2.d0+0.01d0*smallestCellsize)
+                neighbourOctal => grid%octreeRoot
+                call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
+                call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                g(n) = phigas
+             enddo
+             dx = thisOCtal%subcellSize
+             
+
+             sumd2phidx2 = (sum(g(1:6)) - 6.d0*thisOctal%phi_gas(subcell))/(thisOctal%subcellSize*gridDistanceScale)**2
+             thisOctal%chiline(subcell) = thisOctal%source(subcell) - sumd2phidx2 
+
+
+          endif
+       enddo
+
+    else
+       if (thisOctal%nChildren > 0) then
+          do i = 1, thisOctal%nChildren, 1
+             child => thisOctal%child(i)
+             call calculateResiduals(child, grid, ndepth)
+          end do
+       endif
+    endif
+  end subroutine calculateResiduals
+
   recursive subroutine gSweep2new(thisOctal, grid, fracChange, fracChange2,it,deltaT,doOnlyChanged)
     use inputs_mod, only : smallestCellSize
     use mpi
@@ -14378,7 +14681,7 @@ end subroutine refineGridGeneric2
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
-    integer :: it
+    integer :: it, nc
 
 
           if (thisOctal%twoD) then
@@ -14441,7 +14744,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
 
                 ptemp(n) = phigas
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
@@ -14540,6 +14843,360 @@ end subroutine refineGridGeneric2
     enddo
   end subroutine gSweep2new
 
+  recursive subroutine calculateResiduals2(thisOctal, grid, nDepth)
+    use inputs_mod, only : smallestCellSize
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    logical :: doOnlyChanged
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
+    integer :: subcell, i, neighbourSubcell
+    type(VECTOR) :: locator, dir(6), probe(6)
+    integer :: n, ndir
+    integer :: nDepth
+    logical :: onlyCellsWithChildren
+    real(double) :: x1, x2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
+    real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
+    integer :: nd
+    real(double) :: dfdrbyr
+    real(double), parameter :: maxM = 100000.d0
+    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double), parameter :: SOR = 1.2d0
+    integer :: it, nc
+
+
+    if (thisOctal%twoD) then
+       nDir = 4
+       probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       probe(4) = VECTOR(0.d0, 0.d0,-1.d0)
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(4) = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (thisOctal%threed) then
+       nDir = 6
+       probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       probe(4) = VECTOR(0.d0, 0.d0,-1.d0)
+       probe(5) = VECTOR(0.d0, 1.d0, 0.d0)
+       probe(6) = VECTOR(0.d0,-1.d0, 0.d0)
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(4) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(6) = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+
+    if (thisOctal%nDepth == nDepth) then
+
+       do subcell = 1, thisOctal%maxChildren
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (.not.associated(thisOctal%adot)) then
+             allocate(thisOctal%adot(1:thisOctal%maxChildren))
+             thisOctal%adot = 0.d0
+          endif
+
+          if(thisOctal%threed) then
+             deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 6.d0
+          else
+             deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 4.d0
+          endif
+
+
+
+          if (.not.thisOctal%edgeCell(subcell)) then
+
+             locator = subcellCentre(thisOctal, subcell)
+             thisR = locator%x*gridDistanceScale
+             do n = 1, nDir
+
+                locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize)
+                neighbourOctal => grid%octreeRoot
+
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+                call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+
+                ptemp(n) = phigas
+                x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                x2 = vector(px,py,pz).dot.dir(n)
+
+                if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
+                   x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                   x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                   dx = x2 - x1
+                   dx = dx * gridDistanceScale
+                else
+                   if (nd == thisOctal%nDepth) then ! coarse/coarse or fine/fine
+                      x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
+                      dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
+                   else if (nd > thisOctal%nDepth) then ! coarse cells with a fine boundary
+                      x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
+                      dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
+                   else
+                      x1 = subcellCentre(thisOctal, subcell).dot.dir(n) ! fine cells
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
+                      dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
+                   endif
+                endif
+
+                dxArray(n) = dx
+                g(n) =   (phigas - thisOctal%phi_gas(subcell))/dxArray(n)
+             enddo
+
+             !get the gravitational potential values at the cell interface
+             do n = 1, nDir
+                dx = sign(thisOctal%subcellSize/2.d0,dxArray(n))
+                phiInterface(n) = thisOctal%phi_gas(subcell) +  g(n)*(dx*gridDistanceScale)
+             end do
+
+
+             if (thisOctal%twoD) then
+                dfdrbyr = (phiInterface(1) - phiInterface(2))/(thisOctal%subcellSize*gridDistanceScale)
+                dfdrbyr = dfdrbyr / thisR
+             endif
+
+
+
+             !calculate the new gradient
+             do n = 1, nDir
+                dx = sign(thisOctal%subcellSize/2.d0,dxArray(n))
+                g2(n) = (phiInterface(n) - thisOctal%phi_gas(subcell))/(dx*gridDistanceScale)
+             end do
+
+
+             dx = thisOctal%subcellSize*gridDistanceScale
+             if (thisOctal%twoD) then
+                d2phidx2(1) = (g2(1) - g2(2)) / dx
+                d2phidx2(2) = (g2(3) - g2(4)) / dx
+                sumd2phidx2 = SUM(d2phidx2(1:2)) + dfdrbyr
+             else
+                d2phidx2(1) = (g(1) - g(2)) / dx
+                d2phidx2(2) = (g(3) - g(4)) / dx
+                d2phidx2(3) = (g(5) - g(6)) / dx
+                sumd2phidx2 = SUM(d2phidx2(1:3))
+             endif
+
+             oldPhi = thisOctal%phi_gas(subcell)
+             newerPhi = thisOctal%phi_gas(subcell) + deltaT*(sumd2phidx2 - thisOctal%source(subcell))
+
+
+             newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
+
+             if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+
+             if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
+             thisOctal%chiLine(subcell) = thisOctal%source(subcell) - sumd2phidx2
+
+          endif
+       enddo
+    else
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call calculateResiduals2(child, grid, ndepth)
+       end do
+    endif
+
+
+  end subroutine calculateResiduals2
+
+  recursive subroutine gaussSeidelSweep2(thisOctal, grid, fracChange, ndepth, onlyCellsWithChildren)
+    use inputs_mod, only : smallestCellSize
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    logical :: doOnlyChanged
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
+    integer :: subcell, i, neighbourSubcell
+    type(VECTOR) :: locator, dir(6), probe(6)
+    integer :: n, ndir
+    integer :: nDepth
+    logical :: onlyCellsWithChildren
+    real(double) :: x1, x2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
+    real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
+    integer :: nd
+    real(double) :: dfdrbyr
+    real(double), parameter :: maxM = 100000.d0
+    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double), parameter :: SOR = 1.2d0
+    integer :: it, nc
+
+
+    if (thisOctal%twoD) then
+       nDir = 4
+       probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       probe(4) = VECTOR(0.d0, 0.d0,-1.d0)
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(4) = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (thisOctal%threed) then
+       nDir = 6
+       probe(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       probe(4) = VECTOR(0.d0, 0.d0,-1.d0)
+       probe(5) = VECTOR(0.d0, 1.d0, 0.d0)
+       probe(6) = VECTOR(0.d0,-1.d0, 0.d0)
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(4) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(6) = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+
+    if (thisOctal%nDepth == nDepth) then
+
+       do subcell = 1, thisOctal%maxChildren
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (onlyCellsWithChildren .and. .not.thisOctal%hasChild(subcell)) cycle
+          if (.not.associated(thisOctal%adot)) then
+             allocate(thisOctal%adot(1:thisOctal%maxChildren))
+             thisOctal%adot = 0.d0
+          endif
+
+          if(thisOctal%threed) then
+             deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 6.d0
+          else
+             deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 4.d0
+          endif
+
+
+          if (.not.thisOctal%edgeCell(subcell)) then
+
+             locator = subcellCentre(thisOctal, subcell)
+             thisR = locator%x*gridDistanceScale
+             do n = 1, nDir
+
+                locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize)
+                neighbourOctal => grid%octreeRoot
+
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+                call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+
+                ptemp(n) = phigas
+                x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                x2 = vector(px,py,pz).dot.dir(n)
+
+                if (octalOnThread(neighbourOctal, neighbourSubcell, myRankGlobal)) then
+                   x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                   x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
+                   dx = x2 - x1
+                   dx = dx * gridDistanceScale
+                else
+                   if (nd == thisOctal%nDepth) then ! coarse/coarse or fine/fine
+                      x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
+                      dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
+                   else if (nd > thisOctal%nDepth) then ! coarse cells with a fine boundary
+                      x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
+                      dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
+                   else
+                      x1 = subcellCentre(thisOctal, subcell).dot.dir(n) ! fine cells
+                      x2 = VECTOR(px, py, pz).dot.dir(n)
+                      dx = x2 - x1
+                      dx = dx * gridDistanceScale
+
+                   endif
+                endif
+
+                dxArray(n) = dx
+                g(n) =   (phigas - thisOctal%phi_gas(subcell))/dxArray(n)
+             enddo
+
+             !get the gravitational potential values at the cell interface
+             do n = 1, nDir
+                dx = sign(thisOctal%subcellSize/2.d0,dxArray(n))
+                phiInterface(n) = thisOctal%phi_gas(subcell) +  g(n)*(dx*gridDistanceScale)
+             end do
+
+
+             if (thisOctal%twoD) then
+                dfdrbyr = (phiInterface(1) - phiInterface(2))/(thisOctal%subcellSize*gridDistanceScale)
+                dfdrbyr = dfdrbyr / thisR
+             endif
+
+
+
+             !calculate the new gradient
+             do n = 1, nDir
+                dx = sign(thisOctal%subcellSize/2.d0,dxArray(n))
+                g2(n) = (phiInterface(n) - thisOctal%phi_gas(subcell))/(dx*gridDistanceScale)
+             end do
+
+
+             dx = thisOctal%subcellSize*gridDistanceScale
+             if (thisOctal%twoD) then
+                d2phidx2(1) = (g2(1) - g2(2)) / dx
+                d2phidx2(2) = (g2(3) - g2(4)) / dx
+                sumd2phidx2 = SUM(d2phidx2(1:2)) + dfdrbyr
+             else
+                d2phidx2(1) = (g(1) - g(2)) / dx
+                d2phidx2(2) = (g(3) - g(4)) / dx
+                d2phidx2(3) = (g(5) - g(6)) / dx
+                sumd2phidx2 = SUM(d2phidx2(1:3))
+             endif
+
+             oldPhi = thisOctal%phi_gas(subcell)
+             newerPhi = thisOctal%phi_gas(subcell) + deltaT*(sumd2phidx2 - thisOctal%source(subcell))
+
+
+             newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
+
+             if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
+
+             if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
+             thisOctal%phi_gas(subcell) = newPhi
+
+             if (sumd2phidx2 /= 0.) then
+                fracChange = max(fracChange,abs((newphi - sumd2phidx2)/sumd2phidx2))
+             endif
+
+          endif
+       enddo
+    else
+       do i = 1, thisOctal%nChildren, 1
+          child => thisOctal%child(i)
+          call gaussSeidelSweep2(child, grid, fracChange, ndepth, onlyCellsWithChildren)
+       end do
+    endif
+
+
+  end subroutine gaussSeidelSweep2
+
   recursive subroutine gSweep2residuals(thisOctal, grid, deltaT, fracChange, nDepth)
     use mpi
     type(GRIDTYPE) :: grid
@@ -14554,7 +15211,7 @@ end subroutine refineGridGeneric2
     real(double) :: x1, x2, thisDx
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
-    integer :: nd
+    integer :: nd, nc
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
     gGrav = bigG * lengthToCodeUnits**3 / (massToCodeUnits * timeToCodeUnits**2)
@@ -14610,7 +15267,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                 x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
@@ -14747,7 +15404,7 @@ end subroutine refineGridGeneric2
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6)
-    integer :: n, ndir
+    integer :: n, ndir, nc
     real(double) :: g(6) 
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
     real(double) :: sorFactor, deltaPhi, dx, sumd2phidx2
@@ -14791,7 +15448,7 @@ end subroutine refineGridGeneric2
                 call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
                 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
-                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                     rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
                 g(n) = phigas
              enddo
              dx = thisOCtal%subcellSize
@@ -14823,223 +15480,213 @@ end subroutine refineGridGeneric2
     endif
   end subroutine gSweepLevel
   
-  subroutine multiGrid(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+  subroutine multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     use mpi
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     integer :: minLevel, iDepth
     real(double) :: deltaT, fracChange, ghostFracChange, tempFracChange
-    integer :: ierr, iter, bigLoop
-    logical :: firstTime
+    integer :: ierr, iter, bigLoop, bigIter
     character(len=80) :: plotfile
 
     call updateDensityTree(grid%octreeRoot)
     call updatePhiTree(grid%octreeRoot, 4)
 
+    call unsetGhosts(grid%octreeRoot)
+    do iDepth = 3, maxDepthAMR
+       call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
+    enddo
 
-    minLevel = 5
-    if (cylindricalHydro) minLevel = 5
-    call updateDensityTree(grid%octreeRoot)
-
-    firstTime = .true.
-    bigLoop = 0
-    fracChange = 1.d0
-    do while (fracChange > 1.d-2)
-       bigLoop = bigLoop + 1
+    if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
+    call applyDirichlet(grid)
+    if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
 
 
-       do iDepth = minLevel, maxDepthAMR
-          if (writeoutput) write(*,*) "Multigrid working at idepth ",idepth
-          call unsetGhosts(grid%octreeRoot)
-          call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
-          call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
+    fracChange = 1d3
+    bigIter = 0
+    do while(fracChange > 0.01d0)
+       call writeInfo("Starting V-cycle", TRIVIAL)
 
-             if(dirichlet.and.firstTime) then
-                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-                call applyDirichlet(grid, iDepth)
-                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-             endif
+       ! a few gauss-seidel sweeps at maximum depth
 
-          if (cylindricalHydro) then
-             call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
-             call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
+
+       call setSourceTofourPiRhoG(grid%octreeRoot, maxDepthAMR)
+       call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, maxDepthAMR)
+
+       fracChange = 1.d3
+       iter = 0 
+
+       do while(fracChange > 1.d-20)
+          iter = iter + 1
+          fracChange = 0.d0
+          call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, maxDepthAMR, onlyCellsWithChildren = .false.)
+          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, maxDepthAMR)
+          call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+          fracChange = tempFracChange
+          if (writeoutput) write(*,*) "Depth ",maxDepthAMR, " iter ",iter, " frac ",fracchange
+          if (iter == 2) exit
+       enddo
+       call calculateResiduals2(grid%octreeRoot, grid, maxDepthAMR)
+
+
+
+
+       ! now the down part of the V-cycle
+
+       call writeInfo("Starting down part of V-cycle", TRIVIAL)
+       do iDepth = maxDepthAMR-1, 3,-1
+
+          if (iDepth > (minDepthAMR-1)) then
+
+! first we need to iterate over residuals at this level for cells that have children
+
+             call restrictResiduals(grid%octreeRoot, iDepth+1) ! from the depth deeper to this depth
+             call setSourceToResiduals(grid%octreeRoot, iDepth)
+             call zeroPhiGasLevel(grid%octreeRoot, iDepth)
+             
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+             call writeInfo("Iterating residuals", TRIVIAL)
+             iter = 0 
+             fracChange = 1.e3
+             do while(fracChange > 1.d-6)
+                iter = iter + 1
+                fracChange = 0.d0
+                call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.true.)
+                call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+                call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+                fracChange = tempFracChange
+                if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
+                if ((iter == 2).and.(iDepth > 3)) exit
+                if (iter == 1000)exit
+             enddo
+             
+             call addPhiFromBelow(grid%octreeRoot, iDepth)
+             call restorePhiGas(grid%octreeRoot, iDepth)
+             ! now cells at idepth have phi_gas as true phi_gas and not errors on phigas
+             ! now we set source as fourpi rho G
+             
+             call setSourceTofourPiRhoG(grid%octreeRoot, iDepth)
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+             call writeInfo("Iterating phis", TRIVIAL)
+             
+             ! now iterate over this for ALL cells at this level and calculate the residuals
+             iter = 0 
+             do while(fracChange > 1.d-20)
+                iter = iter + 1
+                fracChange = 0.d0
+                call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren = .false.)
+                call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+                call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+                fracChange = tempFracChange
+                if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
+                if (iter == 5) exit
+             enddo
+             call calculateResiduals2(grid%octreeRoot, grid, iDepth)
+             
+             ! now we repeat
+             
+          else
+             ! since all cells are at this level of refinement or above we can do something simpler
+
+
+             call restrictResiduals(grid%octreeRoot, iDepth+1) ! from the depth deeper to this depth
+             call setSourceToResiduals(grid%octreeRoot, iDepth)
+             call zeroPhiGasLevel(grid%octreeRoot, iDepth)
+             
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+             call writeInfo("Iterating residuals", TRIVIAL)
+             iter = 0 
+             do while(fracChange > 1.d-6)
+                iter = iter + 1
+                fracChange = 0.d0
+                call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.)
+                call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+                call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+                fracChange = tempFracChange
+                if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
+                if ((iter == 2).and.(iDepth > 3)) exit
+                if (iter == 1000)exit
+             enddo
+             call calculateResiduals2(grid%octreeRoot, grid, iDepth)
+
           endif
+
+       enddo
+
+       ! now the up part of the V-cycle
+       call writeInfo("Beginning up part of V-cycle", TRIVIAL)
+
+       do iDepth = 4, minDepthAMR-1
+
+          fracChange = 1.d3
+          iter = 0 
+
+          call addCorrections(grid%octreeRoot, idepth) ! from depth above
+
           call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
 
-
-          fracChange = 1.d3
-          iter = 0 
-
-          call setSourceTofourPiRhoG(grid%octreeRoot, iDepth)
-
-          do while(fracChange > 1.d-2)
+          do while(fracChange > 1.d-20)
              iter = iter + 1
-
-
              fracChange = 0.d0
-             if (cylindricalHydro) then
-                call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth)
-             else
-                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth)
-             endif
-             if (cylindricalHydro) then
-                call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
-                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
-             endif
+             call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.)
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-
              call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
-
-             if (iter == 10) exit
-          enddo
-
-          call restrictResiduals(grid%octreeRoot, iDepth)
-          call zeroCorrections(grid%octreeRoot, iDepth-1)
-          call swapCorrectionsforPhiGas(grid%octreeRoot, iDepth-1)
-
-
-          fracChange = 1.d3
-          iter = 0 
-
-          call setSourceToResiduals(grid%octreeRoot, iDepth-1)
-
-
-          call unsetGhosts(grid%octreeRoot)
-          call setupEdgesLevel(grid%octreeRoot, grid, iDepth-1)
-          call setupGhostsLevel(grid%octreeRoot, grid, iDepth-1)
-
-          if (cylindricalHydro) then
-             call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth-1, phi_gas=.true.)
-             call transferTempStorageLevel(grid%octreeRoot, iDepth-1, justGrav = .true.)
-          endif
-          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
-          do while(fracChange > 1.d-2)
-             iter = iter + 1
-
-
-             fracChange = 0.d0
-             if (cylindricalHydro) then
-                call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth-1)
-             else
-                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth-1)
-             endif
-             if (cylindricalHydro) then
-                call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth-1, phi_gas=.true.)
-                call transferTempStorageLevel(grid%octreeRoot, iDepth-1, justGrav = .true.)
-             endif
-             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
-
-             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
-             fracChange = tempFracChange
-
-             if (iter == 10) exit
-          enddo
-
-          call swapPhiGasForCorrections(grid%octreeRoot, iDepth-1)
-          call prolongateCorrections(grid%octreeRoot, idepth)
-          call applyCorrections(grid%octreeRoot, iDepth)
-
-          fracChange = 1.d3
-          iter = 0 
-
-          call setSourceTofourPiRhoG(grid%octreeRoot, iDepth)
-
-          call unsetGhosts(grid%octreeRoot)
-          call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
-          call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
-
-             if(dirichlet.and.firstTime) then
-                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-                call applyDirichlet(grid, iDepth)
-                if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-             endif
-
-          if (cylindricalHydro) then
-             call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
-             call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
-          endif
-          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-
-          do while(fracChange > 1.d-2)
-             iter = iter + 1
-
-
-             fracChange = 0.d0
-             if (cylindricalHydro) then
-                call  gSweep2level(grid%octreeRoot, grid, fracChange, idepth)
-             else
-                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange, ghostFracChange, iDepth)
-             endif
-             if (cylindricalHydro) then
-                call imposeBoundaryLevel(grid%octreeRoot, grid, iDepth, phi_gas=.true.)
-                call transferTempStorageLevel(grid%octreeRoot, iDepth, justGrav = .true.)
-             endif
-             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-
-             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
-             fracChange = tempFracChange
-
-             if (iter == 10) exit
+             if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
+             if (iter == 5) exit
           enddo
 
        enddo
 
+       call addCorrections(grid%octreeRoot, minDepthAMR) ! from depth above
 
-       firstTime = .false.
-       if (writeoutput) write(*,*) "Convergence ",fracChange
-           write(plotfile,'(a,i2.2,a)') "gravfull_",bigLoop,".vtk"
-           call writeVtkFile(grid, plotfile, &
-                valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
-    enddo
+       do iDepth = minDepthAMR, maxDepthAMR-1
 
-
-    call writeInfo("Gsweep2called",TRIVIAL)
-    call unsetGhosts(grid%octreeRoot)
-    call setupEdges(grid%octreeRoot, grid)
-    call setupGhosts(grid%octreeRoot, grid)
-
-    if(dirichlet) then
-       if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-       call applyDirichlet(grid)
-       if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
-    end if
-    if (cylindricalHydro) then
-       call imposeBoundary(grid%octreeRoot, grid, phi_gas=.true.)
-       call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-    endif
-
-    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-    fracChange = 1.d3
-    iter = 0 
-    write(plotfile,'(a,i4.4,a)') "grav_",iter,".vtk"
-!    call writeVtkFile(grid, plotfile, &
-!         valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
-
-    do while(fracChange > 1.d-2)
-       iter = iter + 1
+          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+          
+          iter = 0 
+          do while(fracChange > 1.d-20)
+             iter = iter + 1
+             fracChange = 0.d0
+             call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren = .false.)
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+             fracChange = tempFracChange
+             if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
+             if (iter == 5) exit
+          enddo
+          call prolongatePhiGas(grid%octreeRoot, iDepth+1)! from depth above
+       enddo
 
 
-       fracChange = 0.d0
-       call  gSweep2(grid%octreeRoot, grid, deltaT, fracChange, iter)
-       if (cylindricalHydro) then
-          call imposeBoundary(grid%octreeRoot, grid, phi_gas=.true.)
-          call transferTempStorage(grid%octreeRoot, justGrav = .true.)
-       endif
+
+
+       call unsetGhosts(grid%octreeRoot)
+       call setupEdges(grid%octreeRoot, grid)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
-       fracChange = tempFracChange
-       !          write(plotfile,'(a,i4.4,a)') "grav_",iter,".vtk"
-       !          call writeVtkFile(grid, plotfile, &
-       !               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
-
-       if (writeoutput) write(*,*) "gsweep2 ",iter,fracChange
+       fracChange = 1.d3
+       iter = 0 
+       do while(fracChange > 1.d-20)
+          iter = iter + 1
+          fracChange = 0.d0
+          call  gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, maxDepthAMR, onlyCellsWithChildren=.false.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+          call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+          fracChange = tempFracChange
+          if (writeoutput) write(*,*) "iteration ",iter, " fracchange ", fracchange
+       write(plotfile,'(a,i4.4,a)') "smallgrav",bigiter*100+iter,".vtk"
+       call writeVtkFile(grid, plotfile, &
+            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
+          if (iter == 10) exit
+       enddo
+       bigIter = bigIter + 1
+       write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
+       call writeVtkFile(grid, plotfile, &
+            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
+       call writeInfo("Done.", TRIVIAL)
     enddo
-
-
-  end subroutine multiGrid
+  end subroutine multiGridVcycle
   
   
   recursive subroutine simpleGravity(thisOctal)
@@ -15086,13 +15733,18 @@ end subroutine refineGridGeneric2
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange2(maxthreads), fracChange(maxthreads), &
          ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
-    integer :: nHydrothreads
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, minLevel
 !    character(len=80) :: plotfile
 
+
+
     doOnlyChanged = .false.
     if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
+
+!    call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!    goto 555
+
 
     if(simpleGrav) then
        call simpleGravity(grid%octreeRoot)
@@ -15112,7 +15764,6 @@ end subroutine refineGridGeneric2
 
 
 
-    Nhydrothreads = nHydroThreadsGlobal
 
     if (amr1d) then
        call selfGrav1D(grid)
@@ -15159,7 +15810,7 @@ end subroutine refineGridGeneric2
 !          deltaT = deltaT * timeToCodeUnits
           it = 0
           fracChange = 1.d30
-          do while (ANY(fracChange(1:nHydrothreads) > tol)) 
+          do while (ANY(fracChange(1:nHydrothreadsGlobal) > tol)) 
              fracChange = 0.d0
              ghostFracChange = 0.d0
              it = it + 1
@@ -15185,13 +15836,13 @@ end subroutine refineGridGeneric2
             endif
 
 
-             call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
 !             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
-!                  MAXVAL(fracChange(1:nHydroThreads)),tol
+!                  MAXVAL(fracChange(1:nHydroThreadsGlobal)),tol
 
 
-!             if (writeoutput) write(*,*) it,MAXVAL(fracChange(1:nHydroThreads)),tol
+!             if (writeoutput) write(*,*) it,MAXVAL(fracChange(1:nHydroThreadsGlobal)),tol
           enddo
 
 
@@ -15200,7 +15851,9 @@ end subroutine refineGridGeneric2
 
        enddo
     endif
-        
+       
+555 continue
+ 
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)
     call setupGhosts(grid%octreeRoot, grid)
@@ -15231,7 +15884,7 @@ end subroutine refineGridGeneric2
     fracChange2 = 1.d30
     it =0 
 
-    do while (ANY(fracChange(1:nHydrothreads) > tol2))
+    do while (ANY(fracChange(1:nHydrothreadsGlobal) > tol2))
        fracChange = 0.d0
 
 !       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
@@ -15268,16 +15921,16 @@ end subroutine refineGridGeneric2
           call transferTempStorage(grid%octreeRoot, justGrav = .true.)
        endif
 
-       call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange = tempFracChange
-       call MPI_ALLREDUCE(fracChange2, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(fracChange2, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange2 = tempFracChange
 
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
+!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreadsGlobal))
 
-!       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
-!            MAXVAL(fracChange(1:nHydroThreads))
+       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
+            MAXVAL(fracChange(1:nHydroThreadsGlobal))
 
 !       if (mod(it,10) == 0) then
 !          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
@@ -15285,7 +15938,7 @@ end subroutine refineGridGeneric2
 !               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
 !       endif
 
-!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreads)),tol2,maxval(fracChange2(1:nHydroThreads))
+!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
        if (it > 10000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit

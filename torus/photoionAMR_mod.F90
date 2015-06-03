@@ -312,14 +312,6 @@ contains
 
     if (.not.loadBalancingThreadGlobal) call allocateHydrodynamicsAttributes(grid%octreeRoot)
 
-    if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
-       call writeInfo("Setting up even up array", TRIVIAL)
-       call setupEvenUpArray(grid, evenUpArray)
-!       call autoSetupEvenupArray(grid, evenUpArray)
-       call writeInfo("Done", TRIVIAL)
-!       call evenUpGridMPI(grid, .false., .true., evenuparray)
-       call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
-    endif
 
 
 !    call writeVtkFile(grid, "inighosts.vtk", &
@@ -335,6 +327,16 @@ contains
 !               write(*,'(a,i4,i4,a,i4,a,i4,a,i4)') "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i), " group ", group(i)
 !       enddo
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+    if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
+       call writeInfo("Setting up even up array", TRIVIAL)
+       call setupEvenUpArray(grid, evenUpArray)
+!       call autoSetupEvenupArray(grid, evenUpArray)
+       call writeInfo("Done", TRIVIAL)
+!       call evenUpGridMPI(grid, .false., .true., evenuparray)
+       call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
+    endif
+
 
        call resetnh(grid%octreeRoot)
 
@@ -1051,6 +1053,8 @@ contains
                 call refineGridGeneric(grid, amrtolerance, evenuparray, refinedSomeCells=refinedSomeCells)
                 if (myRankWorldGlobal == 1) call tune(6,"Refine grid")
              endif
+
+
              if (refinedSomeCells) then
                 if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
                 call writeInfo("Evening up grid", TRIVIAL)
@@ -2090,7 +2094,7 @@ end subroutine radiationHydro
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
-       if (firstLoadBalancing) then
+       if (firstLoadBalancing.and.(.not.readGrid)) then
           call setLoadBalancingThreadsBySources(grid)
           firstLoadBalancing = .false.
        else
@@ -3165,14 +3169,6 @@ end subroutine radiationHydro
     np = 1
     firstTime = .true.
 
-    if (allocated(octalArray)) deallocate(octalArray)
-    allocate(octalArray(grid%nOctals))
-    nOctal = 0
-    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
-    if (nOctal /= grid%nOctals) then
-       write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
-       stop
-    endif
 
 
 ! now we need to reduce the estimators across all the hydro sets.
@@ -3232,6 +3228,18 @@ end subroutine radiationHydro
 !         valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !         "hydrovelocity","sourceCont   ","pressure     ", &
 !         "crossings    "/))!
+
+
+    if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
+
+    if (allocated(octalArray)) deallocate(octalArray)
+    allocate(octalArray(grid%nOctals))
+    nOctal = 0
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    if (nOctal /= grid%nOctals) then
+       write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+       stop
+    endif
 
 
     if (myRankGlobal /= 0) then
@@ -3323,6 +3331,9 @@ end subroutine radiationHydro
                 
              else
                 oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
+                if (.not.associated(thisOctal%ionFrac)) then
+                   write(*,*) "not associated ",myrankGlobal,copyOfThread
+                endif
                 oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
                 converged = .false.
                 iter = 0

@@ -192,6 +192,85 @@ contains
     call createLoadThreadDomainCopies(grid)
 
   end subroutine setLoadBalancingThreadsByCrossings
+
+  subroutine setLoadBalancingThreadsByCells(grid)
+    use mpi
+    use utils_mod, only : median
+    type(GRIDTYPE) :: grid
+    integer :: i, iThread, j
+    integer :: subcell
+    integer, allocatable :: itemp(:)
+    integer, allocatable :: numberOfCellsOnThread(:)
+    real(double), allocatable :: frac(:)
+    integer :: ierr, iter
+
+    allocate(numberOfCellsOnThread(1:nHydroThreadsGlobal))
+    allocate(frac(1:nHydroThreadsGlobal))
+
+
+    numberOfCellsOnThread = 0
+    if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
+       call sumCellsOnThread(grid%octreeRoot, numberOfCellsOnThread(myRankGlobal))
+       allocate(itemp(1:nHydroThreadsGlobal))
+       call MPI_ALLREDUCE(numberOfCellsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+       numberOfCellsOnThread = itemp
+       deallocate(itemp)
+    endif
+
+
+    call MPI_BCAST(numberOfCellsOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
+    frac = dble(numberOfCellsOnThread)/dble(SUM(numberOfCellsOnThread))
+
+    if (associated(nLoadBalanceList)) then
+       deallocate(nloadBalanceList)
+       nullify(nloadBalanceList)
+    endif
+    if (associated(LoadBalanceList)) then
+       deallocate(loadBalanceList)
+       nullify(loadBalanceList)
+    endif
+    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
+    nLoadBalanceList = 1
+
+    if (associated(listCounter)) then
+       deallocate(listCounter)
+       nullify(listCounter)
+    endif
+    allocate(listCounter(1:nHydroThreadsGlobal))
+    listCounter = 1
+
+    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
+    do i = 1, nHydroThreadsGlobal
+       loadBalanceList(i,1) = i
+    enddo
+
+    call normaliseLoadBalanceThreads(nHydroThreadsGlobal,  nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
+
+    iThread = nHydroThreadsGlobal+1
+    do i = 1, nHydroThreadsGlobal
+       if (nLoadBalanceList(i) > 1) then
+          do j  = 2, nLoadBalanceList(i)
+             if (iThread > nThreadsGlobal-1) then
+                write(*,*) "Error assigning load balancing threads"
+             endif
+             loadBalanceList(i,j) = iThread
+             iThread = iThread + 1
+          enddo
+       endif
+    enddo
+
+    if (writeoutput) then
+       write(*,*) "Load balancing thread list"
+       do i = 1, nHydroThreadsGlobal
+          if (nLoadbalanceList(i) > 1) &
+               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
+       enddo
+    end if
+
+    call createLoadBalanceCommunicator
+    call createLoadThreadDomainCopies(grid)
+
+  end subroutine setLoadBalancingThreadsByCells
        
   subroutine testBranchCopying(grid)
     type(GRIDTYPE) :: grid
@@ -218,7 +297,7 @@ contains
        loadBalanceList(1,nLoadBalanceList(1)) = i
     enddo
     
-    do i = 1, 100000
+    do i = 1, 100
        if (myrankGlobal == 1) write(*,*) "Sending branch repeat ",i
        call createLoadBalanceCommunicator
        call createLoadThreadDomainCopies(grid)
@@ -357,6 +436,28 @@ recursive subroutine sumCrossings(thisOctal, n)
      end if
   end do
 end subroutine sumCrossings
+
+recursive subroutine sumCellsOnThread(thisOctal, n)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell, n
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call sumCellsOnThread(child, n)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+        n = n + 1
+     end if
+  end do
+end subroutine sumCellsOnThread
 subroutine normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
   integer :: nHydroThreadsGlobal, nLoadBalancingThreadsGlobal
   real(double) :: frac(:)

@@ -1116,8 +1116,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 57
-    real(double) :: loc(3), tempStorage(nStorage)
+    integer, parameter :: nStorage = 58
     type(VECTOR) :: octVec, direction, rVec, pVec,locator
     integer :: nBound
     integer :: iOctal
@@ -1127,11 +1126,15 @@ contains
     logical :: sendLoop
     integer :: nDepth
     integer :: ierr
-    integer :: j
+    integer :: i, j
     type(VECTOR), parameter :: xhat = VECTOR(1.d0, 0.d0, 0.d0), yHat = VECTOR(0.d0, 1.d0, 0.d0), zHat = VECTOR(0.d0, 0.d0, 1.d0)
     real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
     real(double) :: temperature
     real(double) :: rm1, rum1, pm1, qViscosity(3,3)
+    real(double), allocatable :: locStack(:), temp1d(:), tempStorage(:,:)
+    integer, allocatable :: nDepthStorage(:)
+    
+    integer :: nLoc
 
     select case(boundaryType)
     case("left")
@@ -1168,6 +1171,9 @@ contains
           stop
        endif
 !       write(*,*) myrank," generated ",nOctals, " array of octals"
+       nLoc = 0
+       allocate(locStack(1:nOctals*8*3))
+       allocate(nDepthStorage(1:nOctals*8))
        do iOctal =  1, nOctals
           
           thisOctal => octalArray(iOctal)%content
@@ -1175,7 +1181,6 @@ contains
           do subcell = 1, thisOctal%maxChildren             
              if (.not.thisOctal%hasChild(subcell)) then
                 
-!                if (thisOctal%mpiThread(subcell) /= myRank) cycle
                 if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
                 
                 octVec = subcellCentre(thisOctal, subcell) + &
@@ -1201,18 +1206,24 @@ contains
                    stop
                 endif
 
-                loc(1) = octVec%x
-                loc(2) = octVec%y
-                loc(3) = octVec%z
+                nLoc = nLoc + 1
+                locStack(nLoc*3-2) = octVec%x
+                locStack(nLoc*3-1) = octVec%y
+                locStack(nLoc*3  ) = octVec%z
+                nDepthStorage(nLoc) = thisOctal%nDepth
+
+
 !                write(*,*) myRank, " has identified a boundary cell ", loc(1:3)
 
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+
+
+!                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
+!                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
 !                write(*,*) myrank, " sent the locator to ", sendThread
 
-                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+!               call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrank, " received temp storage"
                 if (associated(thisOctal%mpiBoundaryStorage).and.(size(thisOctal%mpiBoundaryStorage,3)/=nStorage)) then
                    deallocate(thisOctal%mpiBoundaryStorage)
@@ -1224,18 +1235,66 @@ contains
                    allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
                    thisOctal%mpiBoundaryStorage = 0.d0
                 endif
-                thisOctal%mpiBoundaryStorage(subcell, nBound, 1:nStorage) = tempStorage(1:nStorage)
 !                write(*,*) myrank, " successfully stored"
 
              end if
           enddo
        enddo
+
+       call MPI_SEND(nLoc, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(locStack, 3*nLoc, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(nDepthStorage, nLoc, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
+
+       allocate(tempStorage(nLoc, nStorage))
+       allocate(temp1d(nLoc*nStorage))
+       call MPI_RECV(temp1d, nLoc*nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+       tempStorage = RESHAPE(temp1d, shape=SHAPE(tempStorage))
+       deallocate(temp1d)
+
+       nLoc = 0
+
+       do iOctal =  1, nOctals
+          
+          thisOctal => octalArray(iOctal)%content
+          
+          do subcell = 1, thisOctal%maxChildren             
+             if (.not.thisOctal%hasChild(subcell)) then
+                
+                if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+                
+                octVec = subcellCentre(thisOctal, subcell) + &
+                     (thisOctal%subcellSize/2.d0+0.01d0 * smallestCellSize) * direction
+                
+                if (.not.inOctal(grid%octreeRoot, octVec)) then
+                   write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
+                   write(*,*) "centre",subcellCentre(thisOctal, subcell)
+                   write(*,*) "depth",thisOctal%nDepth, thisOctal%haschild(1:8)
+                   write(*,*) octVec
+                   stop
+                endif
+                
+                neighbourOctal => thisOctal
+                call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+
+                if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
+
+                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
+                   write(*,*) "Error 1 Neighbour on ",boundaryType, " of ", myrankglobal, &
+                        "  is not on thread ", sendThread, " but ", &
+                   neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
+                   stop
+                endif
+
+                nLoc = nLoc + 1
+                thisOctal%mpiBoundaryStorage(subcell, nBound, 1:nStorage) = tempStorage(nLoc,1:nStorage)
+
+             end if
+          enddo
+       enddo
+
+       deallocate(tempStorage)
        deallocate(octalArray)
-       loc(1) = HUGE(loc(1))
-       loc(2) = 0.d0
-       loc(3) = 0.d0
-!       write(*,*) myrank, " sending a huge value to ", sendThread
-       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+
 
        ! now send a finish signal to the sendThread
     else
@@ -1243,140 +1302,135 @@ contains
           write(*,*) "subroutine called within thread ", myRankGlobal, " but expecing to be ", sendthread
           stop
        endif
-       sendLoop = .true.
-       do while (sendLoop)
-          ! receive a locator
-!          write(*,*) myrank, " waiting for a locator"
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
-!          write(*,*) myrank, " received a locator ", loc(1:3)
-          if (loc(1) > 1.d20) then
-             sendLoop = .false.
-!             write(*,*) myRank, " found the signal to end the send loop"
-          else
 
-             octVec = VECTOR(loc(1), loc(2), loc(3))
+       call MPI_RECV(nLoc, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
+       allocate(locStack(1:nLoc*3))
+       allocate(nDepthStorage(1:nLoc))
+       allocate(tempStorage(1:nLoc,1:nStorage))
+       call MPI_RECV(locStack, 3*nLoc, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
+       call MPI_RECV(nDepthStorage, nLoc, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
 
-             call MPI_RECV(nDepth, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
+       do i = 1, nLoc
+          octVec = VECTOR(locStack(i*3-2), locStack(i*3-1), locStack(i*3))
+          nDepth = nDepthStorage(i)
 
-             call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
 
-             pVec = subcellCentre(neighbourOctal, neighbourSubcell)
+          call findSubcellTD(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell)
 
-             tempStorage(15) = pVec%x
-             tempStorage(16) = pVec%y
-             tempStorage(17) = pVec%z
+          pVec = subcellCentre(neighbourOctal, neighbourSubcell)
 
-             if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
-                write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
-                write(*,*) "rather is on ", neighbourOctal%mpiThread(neighboursubcell)
+          tempStorage(i,15) = pVec%x
+          tempStorage(i,16) = pVec%y
+          tempStorage(i,17) = pVec%z
+          
+          if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
+             write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
+             write(*,*) "rather is on ", neighbourOctal%mpiThread(neighboursubcell)
+             stop
+          endif
+          
+          if (neighbourOctal%nDepth <= nDepth) then
+             if ((nDepth - neighbourOctal%nDepth) > 1) then
+                write(*,*) "Octal depth differs by more than 1 across boundary!!!"
+                write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
+                write(*,*) "myrank ",myrankGlobal
+                write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
+                write(*,*) "at ", pVec%x, pVec%y, pVec%z
                 stop
+                
              endif
+             tempStorage(i,1) = neighbourOctal%q_i(neighbourSubcell)
+             tempStorage(i,2) = neighbourOctal%rho(neighbourSubcell)
+             tempStorage(i,3) = neighbourOctal%rhoe(neighbourSubcell)
+             tempStorage(i,4) = neighbourOctal%rhou(neighbourSubcell)
+             tempStorage(i,5) = neighbourOctal%rhov(neighbourSubcell)
+             tempStorage(i,6) = neighbourOctal%rhow(neighbourSubcell)
+             tempStorage(i,7) = neighbourOctal%x_i(neighbourSubcell)
+             rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+                  direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
+             tOctal => neighbourOctal
+             tSubcell = neighbourSubcell
+             call findSubcellLocal(rVec, tOctal, tSubcell)
+             tempStorage(i,8) = tOctal%q_i(tsubcell)
+             
+             tempStorage(i,9) = dble(neighbourOctal%nDepth)
+             tempStorage(i,10) = neighbourOctal%pressure_i(neighbourSubcell)
+             tempStorage(i,11) = neighbourOctal%flux_i(neighbourSubcell)
+             
+             tempStorage(i,12) = neighbourOctal%phi_i(neighbourSubcell)
+             
+             tempStorage(i,13) = neighbourOctal%phi_gas(neighbourSubcell)
+             tempStorage(i,14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
+             
+             
+             
+             tempStorage(i,21) = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+             tempStorage(i,22) = neighbourOctal%u_i_minus_1(neighbourSubcell)
+             tempStorage(i,23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+             
+             
+             tempStorage(i,24) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
+             tempStorage(i,25) = neighbourOctal%qViscosity(neighbourSubcell,1,2)
+             tempStorage(i,26) = neighbourOctal%qViscosity(neighbourSubcell,1,3)
+             tempStorage(i,27) = neighbourOctal%qViscosity(neighbourSubcell,2,1)
+             tempStorage(i,28) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
+             tempStorage(i,29) = neighbourOctal%qViscosity(neighbourSubcell,2,3)
+             tempStorage(i,30) = neighbourOctal%qViscosity(neighbourSubcell,3,1)
+             tempStorage(i,31) = neighbourOctal%qViscosity(neighbourSubcell,3,2)
+             tempStorage(i,32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
+             
+             tempStorage(i,33) = neighbourOctal%temperature(neighbourSubcell)
+             tempStorage(i,34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
+             tempStorage(i,35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+             tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
+             tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
+             tempStorage(i,58) = dble(neighbourOctal%nChildren)
 
-             if (neighbourOctal%nDepth <= nDepth) then
-                if ((nDepth - neighbourOctal%nDepth) > 1) then
-                   write(*,*) "Octal depth differs by more than 1 across boundary!!!"
-                   write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
-                   write(*,*) "myrank ",myrankGlobal
-                   write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
-                   write(*,*) "at ", pVec%x, pVec%y, pVec%z
-                   stop
-
-                endif
-                tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
-                tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
-                tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
-                tempStorage(4) = neighbourOctal%rhou(neighbourSubcell)
-                tempStorage(5) = neighbourOctal%rhov(neighbourSubcell)
-                tempStorage(6) = neighbourOctal%rhow(neighbourSubcell)
-                tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
-                rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
-                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
-                tOctal => neighbourOctal
-                tSubcell = neighbourSubcell
-                call findSubcellLocal(rVec, tOctal, tSubcell)
-                tempStorage(8) = tOctal%q_i(tsubcell)
-                
-                tempStorage(9) = dble(neighbourOctal%nDepth)
-                tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
-                tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
-
-                tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
-
-                tempStorage(13) = neighbourOctal%phi_gas(neighbourSubcell)
-                tempStorage(14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
-
-
-
-                tempStorage(21) = neighbourOctal%rho_i_minus_1(neighbourSubcell)
-                tempStorage(22) = neighbourOctal%u_i_minus_1(neighbourSubcell)
-                tempStorage(23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
-
-
-                tempStorage(24) = neighbourOctal%qViscosity(neighbourSubcell,1,1)
-                tempStorage(25) = neighbourOctal%qViscosity(neighbourSubcell,1,2)
-                tempStorage(26) = neighbourOctal%qViscosity(neighbourSubcell,1,3)
-                tempStorage(27) = neighbourOctal%qViscosity(neighbourSubcell,2,1)
-                tempStorage(28) = neighbourOctal%qViscosity(neighbourSubcell,2,2)
-                tempStorage(29) = neighbourOctal%qViscosity(neighbourSubcell,2,3)
-                tempStorage(30) = neighbourOctal%qViscosity(neighbourSubcell,3,1)
-                tempStorage(31) = neighbourOctal%qViscosity(neighbourSubcell,3,2)
-                tempStorage(32) = neighbourOctal%qViscosity(neighbourSubcell,3,3)
-
-                tempStorage(33) = neighbourOctal%temperature(neighbourSubcell)
-                tempStorage(34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
-                tempStorage(35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
-                tempStorage(36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
-                tempStorage(37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
-
-!                write(*,*) myrank," set up tempstorage with ", &
-
-!                     tempstorage(1:nStorage),neighbourOctal%nDepth, neighbourSubcell,neighbourOctal%ghostCell(neighbourSubcell), &
-!                     neighbourOctal%edgeCell(neighbourSubcell)
-
-             else ! need to average (neighbour octal depth > this Octal depth)
-                call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-                     flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
-                tempStorage(1) = q
-                tempStorage(2) = rho
-                tempStorage(3) = rhoe
-                tempStorage(4) = rhou
-                tempStorage(5) = rhov
-                tempStorage(6) = rhow
-                tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
-                rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
-                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
-                tOctal => neighbourOctal
-                tSubcell = neighbourSubcell
-                call findSubcellLocal(rVec, tOctal, tSubcell)
-                tempStorage(8) = tOctal%q_i(tsubcell)
-                
-                tempStorage(9) = dble(neighbourOctal%nDepth)
-                tempStorage(10) = pressure
-                tempStorage(11) = flux
-                tempStorage(12) = phi
-                tempStorage(13) = phigas
-                tempstorage(14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
-                tempStorage(21) = rm1
-                tempStorage(22) = rum1
-                tempStorage(23) = pm1
-
-		
-                tempStorage(24) = qViscosity(1,1)
-                tempStorage(25) = qViscosity(1,2)
-                tempStorage(26) = qViscosity(1,3)
-                tempStorage(27) = qViscosity(2,1)
-                tempStorage(28) = qViscosity(2,2)
-                tempStorage(29) = qViscosity(2,3)
-                tempStorage(30) = qViscosity(3,1)
-                tempStorage(31) = qViscosity(3,2)
-                tempStorage(32) = qViscosity(3,3)
-
-                tempStorage(33) = temperature
-                tempStorage(34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
-                tempStorage(35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
-                tempStorage(36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
-                tempStorage(37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
-
+          else ! need to average (neighbour octal depth > this Octal depth)
+             call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
+                  flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
+             tempStorage(i,1) = q
+             tempStorage(i,2) = rho
+             tempStorage(i,3) = rhoe
+             tempStorage(i,4) = rhou
+             tempStorage(i,5) = rhov
+             tempStorage(i,6) = rhow
+             tempStorage(i,7) = neighbourOctal%x_i(neighbourSubcell)
+             rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+                  direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
+             tOctal => neighbourOctal
+             tSubcell = neighbourSubcell
+             call findSubcellLocal(rVec, tOctal, tSubcell)
+             tempStorage(i,8) = tOctal%q_i(tsubcell)
+             
+             tempStorage(i,9) = dble(neighbourOctal%nDepth)
+             tempStorage(i,10) = pressure
+             tempStorage(i,11) = flux
+             tempStorage(i,12) = phi
+             tempStorage(i,13) = phigas
+             tempstorage(i,14) = neighbourOctal%x_i_minus_1(neighbourSubcell)
+             tempStorage(i,21) = rm1
+             tempStorage(i,22) = rum1
+             tempStorage(i,23) = pm1
+             
+             
+             tempStorage(i,24) = qViscosity(1,1)
+             tempStorage(i,25) = qViscosity(1,2)
+             tempStorage(i,26) = qViscosity(1,3)
+             tempStorage(i,27) = qViscosity(2,1)
+             tempStorage(i,28) = qViscosity(2,2)
+             tempStorage(i,29) = qViscosity(2,3)
+             tempStorage(i,30) = qViscosity(3,1)
+             tempStorage(i,31) = qViscosity(3,2)
+             tempStorage(i,32) = qViscosity(3,3)
+             
+             tempStorage(i,33) = temperature
+             tempStorage(i,34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
+             tempStorage(i,35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
+             tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
+             tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
+             
+             tempStorage(i,58) = dble(neighbourOctal%nChildren)
 
 
           do j = 1, 4
@@ -1463,24 +1517,24 @@ contains
              tOctal => neighbourOctal
              call findSubcellLocal(locator, tOctal, tSubcell)
 
-             tempStorage(42+j-1) = tOctal%q_i(tSubcell)
-             tempStorage(38+j-1) = tOctal%rho(tSubcell)
-             tempStorage(46+j-1) = tOctal%rhou(tSubcell)
-             tempStorage(50+j-1) = tOctal%rhov(tSubcell)
-             tempStorage(54+j-1) = tOctal%rhow(tSubcell)
-             tempStorage(34+j-1) = tOctal%flux_amr_i(tSubcell,j)
+             tempStorage(i,42+j-1) = tOctal%q_i(tSubcell)
+             tempStorage(i,38+j-1) = tOctal%rho(tSubcell)
+             tempStorage(i,46+j-1) = tOctal%rhou(tSubcell)
+             tempStorage(i,50+j-1) = tOctal%rhov(tSubcell)
+             tempStorage(i,54+j-1) = tOctal%rhow(tSubcell)
+             tempStorage(i,34+j-1) = tOctal%flux_amr_i(tSubcell,j)
 
           enddo
        endif
        
-     
 
-!                          write(*,*) myRank, " sending temp storage ", tempStorage(1:nStorage)
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
-!                          write(*,*) myRank, " temp storage sent"
-             
-          endif
-       end do
+    enddo
+       
+    allocate(temp1d(nStorage*nLoc))
+    temp1d = RESHAPE(tempStorage, SHAPE=SHAPE(temp1d))
+
+    call MPI_SEND(tempStorage, nStorage*nLoc, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
+    deallocate(temp1d, tempStorage)
     endif
   end subroutine receiveAcrossMpiBoundary
 
@@ -1779,7 +1833,7 @@ contains
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
     use mpi
-!    use inputs_mod, only : useTensorViscosity
+    !    use inputs_mod, only : useTensorViscosity
     integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -1788,8 +1842,12 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 33
-    real(double) :: loc(3), tempStorage(nStorage), qViscosity(3,3)
+    integer, parameter :: nStorage = 58
+    integer :: nLoc
+    real(double),allocatable :: tempStorage(:,:),temp1d(:)
+    real(double), allocatable :: locStack(:)
+    integer :: i
+    real(double) :: qViscosity(3,3)
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
     integer :: iOctal
@@ -1822,162 +1880,189 @@ contains
        write(*,*) "boundary type not recognised ",boundaryType
        stop
     end select
-!    write(*,*) myrank, "boundary number is ",nbound
-    
+    !    write(*,*) myrank, "boundary number is ",nbound
+
 
     if (myRankGlobal == receiveThread) then
        allocate(octalArray(grid%nOctals))
        nOctals = 0
        call getOctalArrayLevel(grid%octreeRoot,octalArray, nOctals, nDepth)
-!       write(*,*) myrank," generated ",nOctals, " array of octals"
+       !       write(*,*) myrank," generated ",nOctals, " array of octals"
+
+       allocate(locStack(1:nOctals*8*3))
+       nLoc = 0
+
        do iOctal =  1, nOctals
-          
+
           thisOctal => octalArray(iOctal)%content
-!          write(*,*) myrank, " doing octal of ", thisOctal%ndepth, " depth "
-          
+          !          write(*,*) myrank, " doing octal of ", thisOctal%ndepth, " depth "
+
           do subcell = 1, thisOctal%maxChildren
-             
-                
-!                if (thisOctal%mpiThread(subcell) /= myRank) cycle
-                if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-                
-                octVec = subcellCentre(thisOctal, subcell) + &
-                     (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
-                
-                if (.not.inOctal(grid%octreeRoot, octVec)) then
-                   write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
-                   write(*,*) "centre",subcellCentre(thisOctal, subcell)
-                   write(*,*) "depth",thisOctal%nDepth, thisOctal%haschild(1:8)
-                   write(*,*) octVec
-                   stop
-                endif
-                
-                neighbourOctal => grid%octreeRoot
-                call findSubcellLocalLevel(octVec, neighbourOctal, neighbourSubcell, nDepth)
 
-                if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
 
-                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
-                   write(*,*) "Error 2 Neighbour on ",boundaryType, " of ", myrankglobal, &
-                        "  is not on thread ", sendThread, " but ", &
-                   neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
-                   stop
-                endif
+             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-                loc(1) = octVec%x
-                loc(2) = octVec%y
-                loc(3) = octVec%z
-!                write(*,*) myRank, " has identified a boundary cell ", loc(1:3)
+             octVec = subcellCentre(thisOctal, subcell) + &
+                  (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
 
-                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
-!                write(*,*) myrank, " sent the locator to ", sendThread
-
-                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
-!                write(*,*) myrank, " sent the locator to ", sendThread
-
-                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
-!                write(*,*) myrank, " received temp storage"
-                if (.not.associated(thisOctal%mpiBoundaryStorage)) then
-                   allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
-                   thisOctal%mpiBoundaryStorage = 0.d0
-                endif
-                thisOctal%mpiBoundaryStorage(subcell, nBound, 1:nStorage) = tempStorage(1:nStorage)
-!                write(*,*) myrank, " successfully stored"
-
-             enddo
-       enddo
-       deallocate(octalArray)
-       loc(1) = HUGE(loc(1))
-       loc(2) = 0.d0
-       loc(3) = 0.d0
-!       write(*,*) myrank, " sending a huge value to ", sendThread
-       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
-
-       ! now send a finish signal to the sendThread
-    else
-       if (myRankGlobal /= sendThread) then
-          write(*,*) "subroutine called within thread ", myRankGlobal, " but expecing to be ", sendthread
-          stop
-       endif
-       sendLoop = .true.
-       do while (sendLoop)
-          ! receive a locator
-!          write(*,*) myrank, " waiting for a locator"
-          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
-!          write(*,*) myrank, " received a locator ", loc(1:3)
-          if (loc(1) > 1.d20) then
-             sendLoop = .false.
-!             write(*,*) myRank, " found the signal to end the send loop"
-          else
-
-             octVec = VECTOR(loc(1), loc(2), loc(3))
-
-             call MPI_RECV(thisnDepth, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
-
-             call findSubcellTDLevel(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell, nDepth)
-
-             pVec = subcellCentre(neighbourOctal, neighbourSubcell)
-
-             if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
-                write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
+             if (.not.inOctal(grid%octreeRoot, octVec)) then
+                write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
+                write(*,*) "centre",subcellCentre(thisOctal, subcell)
+                write(*,*) "depth",thisOctal%nDepth, thisOctal%haschild(1:8)
+                write(*,*) octVec
                 stop
              endif
 
-!             if (neighbourOctal%nDepth <= thisnDepth) then
-                Tempstorage(1) = neighbourOctal%q_i(neighbourSubcell)
-                tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
-                tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
-                tempStorage(4) = neighbourOctal%rhou(neighbourSubcell)
-                tempStorage(5) = neighbourOctal%rhov(neighbourSubcell)
-                tempStorage(6) = neighbourOctal%rhow(neighbourSubcell)
-                tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
-                rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
-                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
-                tOctal => grid%octreeRoot
-                tSubcell = neighbourSubcell
-                call findSubcellLocalLevel(rVec, tOctal, tSubcell, nDepth)
-                tempStorage(8) = tOctal%q_i(tsubcell)
-                
-                tempStorage(9) = dble(neighbourOctal%nDepth)
-                tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
-                tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
- 
+             neighbourOctal => grid%octreeRoot
+             call findSubcellLocalLevel(octVec, neighbourOctal, neighbourSubcell, nDepth)
 
-                tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
+             if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
 
-                tempStorage(13) = neighbourOctal%phi_gas(neighbourSubcell)
+             if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
+                write(*,*) "Error 2 Neighbour on ",boundaryType, " of ", myrankglobal, &
+                     "  is not on thread ", sendThread, " but ", &
+                     neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
+                stop
+             endif
 
-                tempStorage(15) = pVec%x
-                tempStorage(16) = pVec%y
-                tempStorage(17) = pVec%z
+             nLoc = nLoc  +  1
+             locStack(nLoc*3-2) = octVec%x
+             locStack(nLoc*3-1) = octVec%y
+             locStack(nLoc*3  ) = octVec%z
 
-                tempStorage(21) = neighbourOctal%rho_i_minus_1(neighbourSubcell)
-                tempStorage(22) = neighbourOctal%u_i_minus_1(neighbourSubcell)
-                tempStorage(23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+             if (.not.associated(thisOctal%mpiBoundaryStorage)) then
+                allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
+                thisOctal%mpiBoundaryStorage = 0.d0
+             endif
 
-                tempStorage(24) = qViscosity(1,1)
-                tempStorage(25) = qViscosity(1,2)
-                tempStorage(26) = qViscosity(1,3)
-                tempStorage(27) = qViscosity(2,1)
-                tempStorage(28) = qViscosity(2,2)
-                tempStorage(29) = qViscosity(2,3)
-                tempStorage(30) = qViscosity(3,1)
-                tempStorage(31) = qViscosity(3,2)
-                tempStorage(32) = qViscosity(3,3)
-
-!                          write(*,*) myRank, " sending temp storage"
-             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
-!                          write(*,*) myRank, " temp storage sent"
-
-!             else ! need to average
-
-!                write(*,*) "Error on receiveAcrossMpiBoundaryLevel"
-!                stop
-            
-
-!          endif
-          endif
+          enddo
        enddo
+
+       call MPI_SEND(nLoc, 1, MPI_INTEGER, sendThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(locStack, 3*nLoc, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, ierr)
+
+       allocate(tempStorage(nLoc, nStorage))
+       allocate(temp1d(nLoc*nStorage))
+       call MPI_RECV(temp1d, nLoc*nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
+       tempStorage = RESHAPE(temp1d, shape=SHAPE(tempStorage))
+       deallocate(temp1d)
+
+       nLoc = 0
+
+       do iOctal =  1, nOctals
+
+          thisOctal => octalArray(iOctal)%content
+          !          write(*,*) myrank, " doing octal of ", thisOctal%ndepth, " depth "
+
+          do subcell = 1, thisOctal%maxChildren
+
+
+             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+             octVec = subcellCentre(thisOctal, subcell) + &
+                  (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
+
+             if (.not.inOctal(grid%octreeRoot, octVec)) then
+                write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
+                write(*,*) "centre",subcellCentre(thisOctal, subcell)
+                write(*,*) "depth",thisOctal%nDepth, thisOctal%haschild(1:8)
+                write(*,*) octVec
+                stop
+             endif
+
+             neighbourOctal => grid%octreeRoot
+             call findSubcellLocalLevel(octVec, neighbourOctal, neighbourSubcell, nDepth)
+
+             if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
+
+             if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
+                write(*,*) "Error 2 Neighbour on ",boundaryType, " of ", myrankglobal, &
+                     "  is not on thread ", sendThread, " but ", &
+                     neighbourOctal%mpiThread(neighboursubcell), " depth ",neighbourOctal%ndepth
+                stop
+             endif
+
+             if (.not.associated(thisOctal%mpiBoundaryStorage)) then
+                allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
+                thisOctal%mpiBoundaryStorage = 0.d0
+             endif
+             nLoc = nLoc + 1
+             thisOctal%mpiBoundaryStorage(subcell, nBound, 1:nStorage) = tempStorage(nLoc,1:nStorage)
+          enddo
+       enddo
+
+    else
+
+
+       call MPI_RECV(nLoc, 1, MPI_INTEGER, receiveThread, tag, localWorldCommunicator, status, ierr)
+       allocate(locStack(1:nLoc*3))
+       allocate(tempStorage(1:nLoc,1:nStorage))
+       call MPI_RECV(locStack, 3*nLoc, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
+
+       do i = 1, nLoc
+          octVec = VECTOR(locStack(i*3-2), locStack(i*3-1), locStack(i*3))
+
+
+          call findSubcellTDLevel(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell, nDepth)
+
+          pVec = subcellCentre(neighbourOctal, neighbourSubcell)
+
+          if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
+             write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
+             stop
+          endif
+
+          !             if (neighbourOctal%nDepth <= thisnDepth) then
+          Tempstorage(i,1) = neighbourOctal%q_i(neighbourSubcell)
+          tempStorage(i,2) = neighbourOctal%rho(neighbourSubcell)
+          tempStorage(i,3) = neighbourOctal%rhoe(neighbourSubcell)
+          tempStorage(i,4) = neighbourOctal%rhou(neighbourSubcell)
+          tempStorage(i,5) = neighbourOctal%rhov(neighbourSubcell)
+          tempStorage(i,6) = neighbourOctal%rhow(neighbourSubcell)
+          tempStorage(i,7) = neighbourOctal%x_i(neighbourSubcell)
+          rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+               direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+          tOctal => grid%octreeRoot
+          tSubcell = neighbourSubcell
+          call findSubcellLocalLevel(rVec, tOctal, tSubcell, nDepth)
+          tempStorage(i,8) = tOctal%q_i(tsubcell)
+
+          tempStorage(i,9) = dble(neighbourOctal%nDepth)
+          tempStorage(i,10) = neighbourOctal%pressure_i(neighbourSubcell)
+          tempStorage(i,11) = neighbourOctal%flux_i(neighbourSubcell)
+
+
+          tempStorage(i,12) = neighbourOctal%phi_i(neighbourSubcell)
+
+          tempStorage(i,13) = neighbourOctal%phi_gas(neighbourSubcell)
+
+          tempStorage(i,15) = pVec%x
+          tempStorage(i,16) = pVec%y
+          tempStorage(i,17) = pVec%z
+
+          tempStorage(i,21) = neighbourOctal%rho_i_minus_1(neighbourSubcell)
+          tempStorage(i,22) = neighbourOctal%u_i_minus_1(neighbourSubcell)
+          tempStorage(i,23) = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
+
+          tempStorage(i,24) = qViscosity(1,1)
+          tempStorage(i,25) = qViscosity(1,2)
+          tempStorage(i,26) = qViscosity(1,3)
+          tempStorage(i,27) = qViscosity(2,1)
+          tempStorage(i,28) = qViscosity(2,2)
+          tempStorage(i,29) = qViscosity(2,3)
+          tempStorage(i,30) = qViscosity(3,1)
+          tempStorage(i,31) = qViscosity(3,2)
+          tempStorage(i,32) = qViscosity(3,3)
+
+          tempStorage(i,58) = dble(neighbourOctal%nChildren)
+
+       enddo
+
+       allocate(temp1d(nStorage*nLoc))
+       temp1d = RESHAPE(tempStorage, SHAPE=SHAPE(temp1d))
+
+       call MPI_SEND(tempStorage, nStorage*nLoc, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
+       deallocate(temp1d, tempStorage)
     endif
   end subroutine receiveAcrossMpiBoundaryLevel
   
@@ -2562,7 +2647,7 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
     use mpi
 !    use inputs_mod, only : useTensorViscosity
 
@@ -2571,7 +2656,7 @@ contains
     type(VECTOR) :: direction, rVec, pVec
     integer :: subcell, neighbourSubcell, tSubcell
     integer :: nBound, nDepth
-    integer, intent(out) :: nd
+    integer, intent(out) :: nd, nc
 
     real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
     real(double), intent(out) :: xplus, px, py, pz, qViscosity(3,3), rm1, rum1, pm1
@@ -2588,6 +2673,7 @@ contains
 !         thisOctal%mpiThread(subcell) == neighbourOctal%mpiThread(neighboursubcell)) then
 
        nd = neighbourOctal%nDepth
+       nc = neighbourOctal%nChildren
 
        x = neighbourOctal%x_i(neighbourSubcell)
        pVEc = subcellCentre(neighbourOctal, neighbourSubcell)
@@ -2610,7 +2696,6 @@ contains
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
-
           rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
           rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
           pm1 = neighbourOctal%pressure_i_minus_1(neighbourSubcell)
@@ -2723,6 +2808,7 @@ contains
        qViscosity(3,2) = thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
        qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
 
+       nc = nint(thisOctal%mpiBoundaryStorage(subcell, nBound, 58))
 
     endif
   end subroutine getNeighbourValues
@@ -8336,11 +8422,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%diffusionApprox)
     call packAttributePointer(thisOctal%changed)
     call packAttributePointer(thisOctal%nDiffusion)
-    call packAttributePointer(thisOctal%diffusionCoeff)
-    call packAttributePointer(thisOctal%nDirectPhotons)
     call packAttributePointer(thisOctal%underSampled)
-    call packAttributePointer(thisOctal%oldTemperature)
-    call packAttributePointer(thisOctal%kappaRoss)
     call packAttributePointer(thisOctal%distanceGrid)
     call packAttributePointer(thisOctal%nCrossings)
     call packAttributePointer(thisOctal%nTot)
@@ -8349,11 +8431,6 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%etaCont)
     call packAttributePointer(thisOctal%nh)
     call packAttributePointer(thisOctal%ne)
-    call packAttributePointer(thisOctal%nhi)
-    call packAttributePointer(thisOctal%nhei)
-    call packAttributePointer(thisOctal%nhii)
-    call packAttributePointer(thisOctal%biasCont3D)
-    call packAttributePointer(thisOctal%etaLine)
     call packAttributePointer(thisOctal%HHeating)
     call packAttributePointer(thisOctal%HeHeating)
     call packAttributePointer(thisOctal%radiationMomentum)
@@ -8399,11 +8476,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%diffusionApprox)
     call unpackAttributePointer(thisOctal%changed)
     call unpackAttributePointer(thisOctal%nDiffusion)
-    call unpackAttributePointer(thisOctal%diffusionCoeff)
-    call unpackAttributePointer(thisOctal%nDirectPhotons)
     call unpackAttributePointer(thisOctal%underSampled)
-    call unpackAttributePointer(thisOctal%oldTemperature)
-    call unpackAttributePointer(thisOctal%kappaRoss)
     call unpackAttributePointer(thisOctal%distanceGrid)
     call unpackAttributePointer(thisOctal%nCrossings)
     call unpackAttributePointer(thisOctal%nTot)
@@ -8412,11 +8485,6 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%etaCont)
     call unpackAttributePointer(thisOctal%nh)
     call unpackAttributePointer(thisOctal%ne)
-    call unpackAttributePointer(thisOctal%nhi)
-    call unpackAttributePointer(thisOctal%nhei)
-    call unpackAttributePointer(thisOctal%nhii)
-    call unpackAttributePointer(thisOctal%biasCont3D)
-    call unpackAttributePointer(thisOctal%etaLine)
     call unpackAttributePointer(thisOctal%HHeating)
     call unpackAttributePointer(thisOctal%HeHeating)
     call unpackAttributePointer(thisOctal%radiationMomentum)
@@ -8803,6 +8871,71 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     end where
     nBuffer = nBuffer + n
   end subroutine unpackAttributeLogicalArray
+
+
+  logical function checkEven(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    logical, allocatable :: check(:), tc(:)
+    integer :: ierr
+    allocate(check(1:nHydroThreadsGlobal), tc(1:nHydroThreadsGlobal))
+
+    check = .true.
+    call recurCheckEven(grid, grid%octreeRoot, check(myRankGlobal))
+    call MPI_ALLREDUCE(check, tc, nHydrothreadsGlobal, MPI_LOGICAL, MPI_LAND, amrCommunicator, ierr)
+    check = tc
+    checkEven = .false.
+    if (ALL(check(1:nHydroThreadsGlobal))) checkEven = .true.
+    deallocate(check, tc)
+  end function checkEven
+
+
+recursive subroutine recurCheckEven(grid, thisOctal, check)
+  use inputs_mod, only : smallestCellSize
+  type(GRIDTYPE) :: grid
+  type(OCTAL), pointer :: thisOctal, neighbourOctal, child
+  integer :: i, subcell, neighbourSubcell
+  real(double) :: neig
+  logical :: check
+  type(VECTOR) :: locator,direction(6)
+  integer :: nDir, nd, idir, nc
+  real(double) :: q, rho, rhoe, rhov, rhou,rhow,x,qnext,pressure,&
+       flux,phi,phigas,xnext,px,py,pz,rm1,um1,pm1,qviscosity(3,3)
+  
+  ndir = 6
+  direction(1) = VECTOR( 0.d0, 0.d0, +1.d0)
+  direction(2) = VECTOR( 0.d0,+1.d0,  0.d0)
+  direction(3) = VECTOR(+1.d0, 0.d0,  0.d0)
+  direction(4) = VECTOR(-1.d0, 0.d0,  0.d0)
+  direction(5) = VECTOR( 0.d0,-1.d0,  0.d0)
+  direction(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+
+
+  if (thisOctal%nChildren > 0) then
+     do i = 1, thisOctal%nChildren, 1
+        child => thisOctal%child(i)
+        call recurCheckEven(grid, child, check)
+     end do
+  else
+     
+     do subcell = 1, thisOctal%maxChildren
+        
+        if (.not.octalOnThread(thisOctal, subcell,myrankGlobal)) cycle
+
+        do idir = 1, nDir
+          locator = subcellcentre(thisoctal, subcell) + direction(idir) * (thisoctal%subcellsize/2.d0+0.01d0*smallestCellsize)
+          if (inOctal(grid%octreeRoot, locator)) then
+             neighbouroctal => thisoctal
+             call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+             call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction(idir), q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+             if (abs(thisOctal%nDepth-nd) > 1) check = .false.
+          endif
+
+        enddo
+     enddo
+  endif
+end subroutine recurCheckEven
 
 
 #endif
