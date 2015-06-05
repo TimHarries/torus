@@ -1006,21 +1006,43 @@ contains
        enddo
     else
 
-       do subcell = 1, thisoctal%maxchildren
-          if (thisoctal%haschild(subcell)) then
-             ! find the child
-             do i = 1, thisoctal%nchildren, 1
-                if (thisoctal%indexchild(i) == subcell) then
-                   child => thisoctal%child(i)
-                   call zeroPhiGasLevel(child, ndepth)
-                   exit
-                end if
-             end do
-          endif
-       enddo
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call zeroPhiGasLevel(child, ndepth)
+       end do
+
     endif
 
   end subroutine zeroPhiGasLevel
+
+  recursive subroutine zeroPhiGasLevelEverywhere(thisoctal, ndepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, n, ndepth, j
+
+
+    if (thisoctal%ndepth == ndepth) then
+
+       if (.not.associated(thisOctal%adot)) then
+          allocate(thisOctal%adot(1:thisOctal%maxChildren))
+          thisOctal%adot = 0.d0
+       endif
+
+       do subcell = 1, thisOctal%maxChildren
+          thisOctal%adot(subcell) = thisOctal%phi_gas(subcell)
+          thisoctal%phi_gas(subcell) = 0.d0
+       enddo
+    else
+
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call zeroPhiGasLevelEverywhere(child, ndepth)
+       end do
+
+    endif
+
+  end subroutine zeroPhiGasLevelEverywhere
 
   recursive subroutine restorePhiGas(thisoctal, ndepth)
     use mpi
@@ -1037,18 +1059,11 @@ contains
           endif
        enddo
     else
-       do subcell = 1, thisoctal%maxchildren
-          if (thisoctal%haschild(subcell)) then
-             ! find the child
-             do i = 1, thisoctal%nchildren, 1
-                if (thisoctal%indexchild(i) == subcell) then
-                   child => thisoctal%child(i)
-                   call restorePhiGas(child, ndepth)
-                   exit
-                end if
-             end do
-          endif
-       enddo
+
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call zeroPhiGasLevel(child, ndepth)
+       end do
     endif
 
   end subroutine restorePhiGas
@@ -4048,7 +4063,7 @@ contains
           if (.not.thisoctal%ghostcell(subcell)) then
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
-                write(*,*) myrankGlobal," error in setting up x_i values"
+                write(*,*) myrankGlobal," error in setting up x_i values in pressure force"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
                 write(*,*) thisoctal%ndepth
                 write(*,*) "centre ",subcellcentre(thisoctal,subcell)
@@ -14922,7 +14937,7 @@ end subroutine refineGridGeneric2
                 locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize)
                 neighbourOctal => grid%octreeRoot
 
-                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell,ndepth)
 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
                      rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
@@ -14994,12 +15009,6 @@ end subroutine refineGridGeneric2
                 d2phidx2(3) = (g(5) - g(6)) / dx
                 sumd2phidx2 = SUM(d2phidx2(1:3))
              endif
-
-             oldPhi = thisOctal%phi_gas(subcell)
-             newerPhi = thisOctal%phi_gas(subcell) + deltaT*(sumd2phidx2 - thisOctal%source(subcell))
-
-
-             newPhi = (1.d0-SOR)*oldPhi + SOR*newerPhi
 
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
 
@@ -15180,7 +15189,7 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              thisOctal%phi_gas(subcell) = newPhi
 
-!             write(*,*) "old phi ",oldphi, " newer phi ",newerPhi, " source ",thisOctal%source(subcell),g(1:6)
+!             if (nDepth == 5) write(*,*) "old phi ",oldphi, " newer phi ",newerPhi, " source ",thisOctal%source(subcell),g(1:6)
 
              if (sumd2phidx2 /= 0.) then
                 fracChange = max(fracChange,abs((thisOctal%source(subcell) - sumd2phidx2)/thisOctal%source(subcell)))
@@ -15543,7 +15552,7 @@ end subroutine refineGridGeneric2
 
              call restrictResiduals(grid%octreeRoot, iDepth+1) ! from the depth deeper to this depth
              call setSourceToResiduals(grid%octreeRoot, iDepth)
-             call zeroPhiGasLevel(grid%octreeRoot, iDepth)
+             call zeroPhiGasLevelEverywhere(grid%octreeRoot, iDepth)
              
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call writeInfo("Iterating residuals", TRIVIAL)
@@ -15592,7 +15601,7 @@ end subroutine refineGridGeneric2
 
              call restrictResiduals(grid%octreeRoot, iDepth+1) ! from the depth deeper to this depth
              call setSourceToResiduals(grid%octreeRoot, iDepth)
-             call zeroPhiGasLevel(grid%octreeRoot, iDepth)
+             call zeroPhiGasLevelEverywhere(grid%octreeRoot, iDepth)
              
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call writeInfo("Iterating residuals", TRIVIAL)
@@ -15664,6 +15673,7 @@ end subroutine refineGridGeneric2
 
        call unsetGhosts(grid%octreeRoot)
        call setupEdges(grid%octreeRoot, grid)
+       call setupGhosts(grid%octreeRoot, grid)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        fracChange = 1.d3
@@ -15676,17 +15686,18 @@ end subroutine refineGridGeneric2
           call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
           fracChange = tempFracChange
           if (writeoutput) write(*,*) "iteration ",iter, " fracchange ", fracchange
-       write(plotfile,'(a,i4.4,a)') "smallgrav",bigiter*100+iter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
-          if (iter == 10) exit
+!       write(plotfile,'(a,i4.4,a)') "smallgrav",bigiter*100+iter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
+          if (iter == 5) exit
        enddo
        bigIter = bigIter + 1
-       write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
+!       write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
        call writeInfo("Done.", TRIVIAL)
     enddo
+
   end subroutine multiGridVcycle
   
   
@@ -15743,8 +15754,8 @@ end subroutine refineGridGeneric2
     doOnlyChanged = .false.
     if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
 
-!    call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!    goto 555
+    call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    goto 666
 
 
     if(simpleGrav) then
