@@ -2437,6 +2437,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
   if (PRESENT(valueTypeString)) then
      nValueType = SIZE(valueTypeString)
+     valueType(1:nValueType) = valueTypeString(1:nValueType)
 
      if (ANY(valueTypestring == "dust")) then
         nValueType = SIZE(valuetypestring)

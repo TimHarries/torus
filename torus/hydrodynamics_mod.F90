@@ -15080,9 +15080,8 @@ end subroutine refineGridGeneric2
              allocate(thisOctal%adot(1:thisOctal%maxChildren))
              thisOctal%adot = 0.d0
           endif
-
           if(thisOctal%threed) then
-             deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 6.d0
+             deltaT =  0.1d0*(2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 6.d0
           else
              deltaT =  (2.d0*returnCodeUnitLength(gridDistanceScale*thisOctal%subcellSize))**2 / 4.d0
           endif
@@ -15097,7 +15096,7 @@ end subroutine refineGridGeneric2
                 locator = subcellCentre(thisOctal, subcell) + probe(n) * (thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize)
                 neighbourOctal => grid%octreeRoot
 
-                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                call findSubcellLocalLevel(locator, neighbourOctal, neighbourSubcell, nDepth)
 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
                      rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
@@ -15181,8 +15180,10 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              thisOctal%phi_gas(subcell) = newPhi
 
+!             write(*,*) "old phi ",oldphi, " newer phi ",newerPhi, " source ",thisOctal%source(subcell),g(1:6)
+
              if (sumd2phidx2 /= 0.) then
-                fracChange = max(fracChange,abs((newphi - sumd2phidx2)/sumd2phidx2))
+                fracChange = max(fracChange,abs((thisOctal%source(subcell) - sumd2phidx2)/thisOctal%source(subcell)))
              endif
 
           endif
