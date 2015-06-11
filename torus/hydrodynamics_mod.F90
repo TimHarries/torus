@@ -14593,9 +14593,11 @@ end subroutine refineGridGeneric2
              sumd2phidx2 = (sum(g(1:6)) - 6.d0*thisOctal%phi_gas(subcell))/(thisOctal%subcellSize*gridDistanceScale)**2
              thisOctal%chiline(subcell) = thisOctal%source(subcell) - sumd2phidx2 
 
-             thisOctal%phi_gas(subcell) = 0.16666666666667d0*(SUM(g(1:6)) - thisOctal%source(subcell)*(returnCodeUnitLength(dx*gridDistanceScale))**2)
+             thisOctal%phi_gas(subcell) = 0.16666666666667d0*(SUM(g(1:6)) - &
+                  thisOctal%source(subcell)*(returnCodeUnitLength(dx*gridDistanceScale))**2)
 
-             if (thisOctal%source(subcell)/=0.d0) fracChange = max(fracChange,abs(sumd2phidx2 - thisOctal%source(subcell))/abs(thisOctal%source(subcell)))
+             if (thisOctal%source(subcell)/=0.d0) fracChange = max(fracChange,abs(sumd2phidx2 - &
+                  thisOctal%source(subcell))/abs(thisOctal%source(subcell)))
 
           endif
        enddo
@@ -15686,15 +15688,15 @@ end subroutine refineGridGeneric2
           call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
           fracChange = tempFracChange
           if (writeoutput) write(*,*) "iteration ",iter, " fracchange ", fracchange
-!       write(plotfile,'(a,i4.4,a)') "smallgrav",bigiter*100+iter,".vtk"
-!       call writeVtkFile(grid, plotfile, &
-!            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
-          if (iter == 5) exit
+       write(plotfile,'(a,i4.4,a)') "smallgrav",bigiter*100+iter,".vtk"
+       call writeVtkFile(grid, plotfile, &
+            valueTypeString=(/"phigas   ", "rho      ","chiline  "/))
+          if (iter == 10) exit
        enddo
        bigIter = bigIter + 1
-!       write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
-!       call writeVtkFile(grid, plotfile, &
-!            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
+       write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
+       call writeVtkFile(grid, plotfile, &
+            valueTypeString=(/"phigas   ", "rho      ","chiline  "/))
        call writeInfo("Done.", TRIVIAL)
     enddo
 
@@ -15848,7 +15850,8 @@ end subroutine refineGridGeneric2
             endif
 
 
-             call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR &
+                  , ierr)
              fracChange = tempFracChange
 !             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
 !                  MAXVAL(fracChange(1:nHydroThreadsGlobal)),tol
@@ -15863,8 +15866,9 @@ end subroutine refineGridGeneric2
 
        enddo
     endif
-       
-555 continue
+ 
+! Used to bail out after multiGridVcycle      
+!555 continue
  
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)

@@ -2337,7 +2337,7 @@ function returnBase64Char(i) result(c)
   endif
 end function returnBase64Char
 
-subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString, level)
+subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeString)
 #ifdef MPI
   use mpi
 #endif
@@ -2345,7 +2345,6 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
   integer :: nValueType
-  integer, optional :: level
   character(len=20) :: valueType(50)
   character(len=*), optional ::  valueTypeFilename
   character(len=*), optional ::  valueTypeString(:)

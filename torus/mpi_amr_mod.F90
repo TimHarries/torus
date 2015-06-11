@@ -1123,7 +1123,6 @@ contains
     integer :: subcell, neighbourSubcell
     integer :: tag = 77
     integer :: status(MPI_STATUS_SIZE)
-    logical :: sendLoop
     integer :: nDepth
     integer :: ierr
     integer :: i, j
@@ -1851,11 +1850,10 @@ contains
     type(VECTOR) :: octVec, direction, rVec, pVec
     integer :: nBound
     integer :: iOctal
-    integer :: nDepth, thisnDepth
+    integer :: nDepth !, thisnDepth
     integer :: subcell, neighbourSubcell
     integer :: tag = 77
     integer :: status(MPI_STATUS_SIZE)
-    logical :: sendLoop
 
     select case(boundaryType)
     case("left")
@@ -8895,7 +8893,6 @@ recursive subroutine recurCheckEven(grid, thisOctal, check)
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal, neighbourOctal, child
   integer :: i, subcell, neighbourSubcell
-  real(double) :: neig
   logical :: check
   type(VECTOR) :: locator,direction(6)
   integer :: nDir, nd, idir, nc
