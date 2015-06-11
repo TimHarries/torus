@@ -682,8 +682,8 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal, parentoctal, testoctal
     type(octal), pointer  :: child 
-    integer :: i, n, m, j, nDepth
-    real(double) :: mass(8), totMass, v(8), sumphi
+    integer :: i, n, m, nDepth
+    real(double) :: sumphi
 
 
 
@@ -735,8 +735,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth, j
-    real(double) :: mass(8)
+    integer :: i, nDepth
 
     if (thisOctal%nDepth == nDepth) then
        if (.not.associated(thisOctal%parent%chiline)) allocate(thisOctal%parent%chiline(1:thisOctal%parent%maxChildren))
@@ -759,8 +758,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth, j
-    real(double) :: mass(8)
+    integer :: i, nDepth
 
     if (thisOctal%nDepth == (nDepth+1)) then
 
@@ -787,7 +785,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: i, nDepth, subcell
+    integer :: i, nDepth
 
     if (thisOctal%nDepth == nDepth) then
        if (.not.associated(thisOctal%source)) allocate(thisOctal%source(1:thisOctal%maxChildren))
@@ -840,8 +838,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth, j
-    real(double) :: mass(8)
+    integer :: subcell, i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -873,8 +870,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth, j
-    real(double) :: mass(8)
+    integer :: subcell, i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -988,7 +984,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth, j
+    integer :: subcell, i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -1019,7 +1015,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth, j
+    integer :: subcell, i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -1048,7 +1044,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth, j
+    integer :: subcell, i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -1390,7 +1386,7 @@ contains
     real(double) :: dt, dx
     real(double) :: q(2), rho(2), rhoe(2), rhou(2), rhov(2), rhow(2), x, qnext, pressure(2), flux(2), phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
-    integer :: nd, nc
+    integer :: nd
     logical :: writeDebug
   
     do subcell = 1, thisoctal%maxchildren
@@ -1457,7 +1453,7 @@ contains
     real(double) :: dt, dx
     real(double) :: q(4), rho(4), rhoe(4), rhou(4), rhov(4), rhow(4), x, qnext, pressure(4), flux(4), phi, phigas, xnext, px, py, pz
     real(double) :: qViscosity(3,3), rm1, um1, pm1
-    integer :: nd, nc
+    integer :: nd
     logical :: writeDebug
   
     do subcell = 1, thisoctal%maxchildren
@@ -14539,16 +14535,14 @@ end subroutine refineGridGeneric2
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
-    type(VECTOR) :: locator, dir(6), probe(6)
+    type(VECTOR) :: locator, dir(6)
     integer :: n, ndir
-    real(double) :: x1, x2
-    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
-    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) ::  g(6), dx
+    real(double) :: fracChange, sumd2phidx2
     integer :: nd, nc
     logical :: onlyCellsWithChildren
-    real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
-    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double) :: xnext, px, py, pz, rm1, um1, pm1
     real(double), parameter :: SOR = 1.2d0
 
     nDir = 6
@@ -14619,15 +14613,13 @@ end subroutine refineGridGeneric2
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
-    type(VECTOR) :: locator, dir(6), probe(6)
+    type(VECTOR) :: locator, dir(6)
     integer :: n, ndir
-    real(double) :: x1, x2
-    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
-    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) ::  g(6), dx
+    real(double) :: sumd2phidx2
     integer :: nd, nc
-    real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
-    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double) :: xnext, px, py, pz, rm1, um1, pm1
     real(double), parameter :: SOR = 1.2d0
 
     nDir = 6
@@ -14867,22 +14859,20 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    logical :: doOnlyChanged
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
     integer :: nDepth
-    logical :: onlyCellsWithChildren
     real(double) :: x1, x2
-    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
-    real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6)
+    real(double) :: deltaT, d2phidx2(3), sumd2phidx2
     integer :: nd
     real(double) :: dfdrbyr
     real(double), parameter :: maxM = 100000.d0
-    real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
+    real(double) :: xnext, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
-    integer :: it, nc
+    integer :: nc
 
 
     if (thisOctal%twoD) then
@@ -15036,7 +15026,6 @@ end subroutine refineGridGeneric2
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    logical :: doOnlyChanged
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
@@ -15044,14 +15033,14 @@ end subroutine refineGridGeneric2
     integer :: nDepth
     logical :: onlyCellsWithChildren
     real(double) :: x1, x2
-    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6), frac2
-    real(double) :: deltaT, fracChange, fourPiTimesgGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
+    real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6),ptemp(6)
+    real(double) :: deltaT, fracChange, newPhi, newerPhi, d2phidx2(3), sumd2phidx2
     integer :: nd
     real(double) :: dfdrbyr
     real(double), parameter :: maxM = 100000.d0
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR
     real(double), parameter :: SOR = 1.2d0
-    integer :: it, nc
+    integer :: nc
 
 
     if (thisOctal%twoD) then
@@ -15496,9 +15485,9 @@ end subroutine refineGridGeneric2
     use mpi
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
-    integer :: minLevel, iDepth
-    real(double) :: deltaT, fracChange, ghostFracChange, tempFracChange
-    integer :: ierr, iter, bigLoop, bigIter
+    integer :: iDepth
+    real(double) :: fracChange, tempFracChange
+    integer :: ierr, iter, bigIter
     character(len=80) :: plotfile
 
     call updateDensityTree(grid%octreeRoot)

@@ -198,11 +198,10 @@ contains
     use utils_mod, only : median
     type(GRIDTYPE) :: grid
     integer :: i, iThread, j
-    integer :: subcell
     integer, allocatable :: itemp(:)
     integer, allocatable :: numberOfCellsOnThread(:)
     real(double), allocatable :: frac(:)
-    integer :: ierr, iter
+    integer :: ierr
 
     allocate(numberOfCellsOnThread(1:nHydroThreadsGlobal))
     allocate(frac(1:nHydroThreadsGlobal))
