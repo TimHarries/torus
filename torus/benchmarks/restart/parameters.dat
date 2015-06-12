@@ -36,6 +36,7 @@ rho 8.16136e-18  ! density at inner edge midplane (g/cc)
 iso_scatter T      ! Assume isotropic scattering (assumed by benchmark)
 graintype1 sil_dl  ! Draine and Lee silicates
 grainfrac1 0.01    ! grain mass fraction (in terms of gas)
+tsub1 2000.0       ! Temperature for dust sublimation
 amin1 0.12         ! minimum grain size (microns)
 amax1 0.1201       ! maximum grain size (microns)
 qdist1 0.01        ! power law index (flat)

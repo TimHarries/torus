@@ -56,6 +56,7 @@ sourcepos1  0.d0,0.0,0.0
 
 dusttogas 1.e-20
 graintype1 draine_sil
+tsub1 2000.0  
 amin1 0.1
 amax1 0.11
 qdist1 0.0
