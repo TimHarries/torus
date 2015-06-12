@@ -50,6 +50,7 @@ photoioneq   T
 
 graintype1 draine_sil
 grainfrac1 1.d-20
+tsub1 2000.0
 amin1 0.1
 amax1 0.11
 qdist1 0.0
