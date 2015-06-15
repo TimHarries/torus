@@ -177,8 +177,7 @@ MODULE octal_mod
     real(double), pointer :: divV(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
 #ifdef PHOTOION
-    real, DIMENSION(8)        :: TLastIter     !Temperature at last iteration thaw
-    real, dimension(8)        :: TLastLastIter !Temperature at -2 iterations
+    real, DIMENSION(8)        :: TLastIter = 0.0    !Temperature at last iteration thaw, initialise here. 
 #endif
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
 #ifdef SPH

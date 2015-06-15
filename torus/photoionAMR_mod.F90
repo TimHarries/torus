@@ -4376,6 +4376,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     TYPE(OCTAL),pointer :: thisOctal
     TYPE(OCTAL),pointer :: child
     real(double) :: frac
+    real         :: thisFrac
     integer :: i, subcell
     logical :: undersampled
 
@@ -4391,8 +4392,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-          frac = max(abs(dble(thisOctal%temperature(subcell)) - &
-               thisOctal%TlastIter(subcell))/dble(thisOctal%temperature(subcell)), frac)
+          thisFrac = thisOctal%temperature(subcell) - thisOctal%TlastIter(subcell) / thisOctal%temperature(subcell)
+          frac = max(abs(dble(thisFrac)), frac)
           thisOctal%tLastIter(subcell) = thisOctal%temperature(subcell)
           if (thisOctal%nCrossings(subcell) < minCrossings) undersampled = .true.
        endif
