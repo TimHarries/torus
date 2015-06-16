@@ -175,7 +175,7 @@ ${TORUS_FC} -o check check.f90
 check_angImg()
 {
 echo "Compiling check.f90 for angular image test"
-nagfor -o check -lcfitsio -L/Users/acreman/cfitsio_nagfor check.f90 
+${TORUS_FC} -o check check.f90 -lcfitsio -L${TORUS_FITSLIBS}
 ./check
 }
 
@@ -232,18 +232,18 @@ for sys in ${SYS_TO_TEST}; do
 	export SYSTEM=ompiosx
 	export USEOPENMP=yes
 	export NUM_MPI_PROC=2
-	export OMP_NUM_THREADS=2
+	export OMP_NUM_THREADS=4
 	echo "Building ompiosx with OpenMP"
     elif [[ ${sys} == "ompiosx" ]]; then
 	export SYSTEM=ompiosx
 	export USEOPENMP=no
-	export NUM_MPI_PROC=4
+	export NUM_MPI_PROC=8
 	export USEGCOV=yes
 	echo "Building ompiosx without OpenMP"
     elif [[ ${sys} == "gfortran" ]]; then
 	export SYSTEM=gfortran
 	export USEOPENMP=yes
-	export OMP_NUM_THREADS=4
+	export OMP_NUM_THREADS=8
     elif [[ ${sys} == "nagfor" ]]; then
 	export SYSTEM=nagfor
 	export USEOPENMP=no
@@ -297,7 +297,7 @@ for sys in ${SYS_TO_TEST}; do
     case ${sys} in
 	ompiosx|zen)  echo "Running domain decomposed HII region benchmark"
 	    export THIS_BENCH=HII_regionMPI
-	    run_dom_decomp 3
+	    run_dom_decomp 9
 	    check_hII > check_log_${SYSTEM}_hII_MPI.txt 2>&1 
 	    cat check_log_${SYSTEM}_hII_MPI.txt
 	    echo ;;
@@ -391,7 +391,7 @@ for sys in ${SYS_TO_TEST}; do
     echo "Running SPH to grid test (binary dump with chemistry)"
     export THIS_BENCH=sphToGridBinary
     cd ${WORKING_DIR}/benchmarks/sphToGridBinary
-    ln -s /Users/acreman/torus_dev/forTestSuite/SQA0321
+    ln -s ${HOME}/torus_dev/forTestSuite/SQA0321
     run_bench
     ./checkSphToGridChem.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
@@ -526,12 +526,11 @@ done
 case ${MODE} in 
 
     daily) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
-           export BUILD_ONLY="nagfor"
+           export BUILD_ONLY=""
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="gfortran -g -fcheck=all"
-	   export TORUS_FITSLIBS="/Users/acreman/cfitsio"
-	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
-	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
+	   export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
+	   export PATH=~/openmpi/bin:~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
@@ -542,7 +541,6 @@ case ${MODE} in
 	   export TORUS_FC="gfortran -g -fcheck=all"
 	   export TORUS_FITSLIBS="/Users/acreman/cfitsio"
 	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
-	   export NAG_KUSARI_FILE=/Users/acreman/NAG/nag.licence
 	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
@@ -588,10 +586,10 @@ for opt in ${DEBUG_OPTS}; do
 
 # Set name of output directory
     case ${MODE} in 
-	daily)  export TEST_DIR=${HOME}/SCRATCH/torus_daily_test;;
-	stable) export TEST_DIR=${HOME}/SCRATCH/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
+	daily)  export TEST_DIR=/data/torustest/torus_daily_test;;
+	stable) export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
 	zen)    export TEST_DIR=/scratch/${USER}/torus_tests/debug=${USEDEBUGFLAGS};;
-	build)  export TEST_DIR=${HOME}/SCRATCH/torus_build_tests
+	build)  export TEST_DIR=${HOME}/torus_build_tests
     esac
 
     export TORUS_DATA=${TEST_DIR}/torus/data
