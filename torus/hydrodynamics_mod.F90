@@ -711,7 +711,7 @@ contains
           testoctal => parentoctal
           m = testOctal%parentSubcell
        enddo
-       if (.not.testOctal%edgeCell(m)) then
+       if (.not.testOctal%ghostCell(m)) then
           testOctal%phi_gas(m) = sumPhi
        endif
     endif
@@ -816,7 +816,7 @@ contains
           thisOctal%chiline = 0.d0
        endif
        do subcell = 1, thisOctal%maxChildren
-          if (thisOctal%edgeCell(subcell)) then
+          if (thisOctal%edgecell(subcell)) then
              thisOctal%source(subcell) = 0.d0
           else
              thisOctal%source(subcell) = thisOctal%chiLine(subcell)
@@ -843,25 +843,22 @@ contains
 
     if (thisoctal%ndepth == ndepth) then
 
+       thisOctal%phi_gas = thisOctal%phi_gas - SUM(thisOctal%phi_gas)/dble(thisOctal%maxChildren)
+
+
        do i = 1, thisOctal%maxChildren
           if (.not.thisOctal%edgeCell(i)) then
-             thisOctal%phi_gas(i) = thisOctal%parent%phi_gas(thisOctal%parentSubcell)
+             thisOctal%phi_gas(i) = thisOctal%phi_gas(i) + thisOctal%parent%phi_gas(thisOctal%parentSubcell)
+!             thisOctal%phi_gas(i) = thisOctal%parent%phi_gas(thisOctal%parentSubcell)
           endif
        enddo
     else
 
-       do subcell = 1, thisoctal%maxchildren
-          if (thisoctal%haschild(subcell)) then
-             ! find the child
-             do i = 1, thisoctal%nchildren, 1
-                if (thisoctal%indexchild(i) == subcell) then
-                   child => thisoctal%child(i)
-                   call prolongatePhiGas(child, ndepth)
-                   exit
-                end if
-             end do
-          endif
+       do i = 1, thisOctal%nChildren
+          child => thisOctal%child(i)
+          call prolongatePhiGas(child, nDepth)
        enddo
+
     endif
 
   end subroutine prolongatePhiGas
@@ -1049,20 +1046,36 @@ contains
 
     if (thisoctal%ndepth == ndepth) then
 
-       do subcell = 1, thisOctal%maxChildren
-          if (.not.thisOctal%hasChild(subcell).and.(.not.thisOctal%edgeCell(subcell))) then
-             thisOctal%phi_gas(subcell) = thisOctal%adot(subcell)
-          endif
-       enddo
+       thisOctal%phi_gas = thisOctal%adot
     else
 
        do i = 1, thisoctal%nchildren, 1
           child => thisoctal%child(i)
-          call zeroPhiGasLevel(child, ndepth)
+          call restorePhiGas(child, ndepth)
        end do
     endif
 
   end subroutine restorePhiGas
+
+  recursive subroutine storePhiGas(thisoctal, ndepth)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, n, ndepth, j
+
+
+    if (thisoctal%ndepth == ndepth) then
+
+       thisOctal%adot  = thisOctal%phi_gas  
+    else
+
+       do i = 1, thisoctal%nchildren, 1
+          child => thisoctal%child(i)
+          call storePhiGas(child, ndepth)
+       end do
+    endif
+
+  end subroutine storePhiGas
 
 
   subroutine setupAlphaViscosity(grid, alpha, HoverR)
@@ -14571,7 +14584,8 @@ end subroutine refineGridGeneric2
              thisOctal%chiLine = 0.d0
           endif
 
-          if (.not.thisOctal%edgeCell(subcell)) then
+
+          if (.not.thisOctal%ghostCell(subcell)) then
 
              do n = 1, nDir                
                 locator = subcellCentre(thisOctal, subcell) + dir(n) * (thisOctal%subcellSize/2.d0+0.01d0*smallestCellsize)
@@ -14640,7 +14654,7 @@ end subroutine refineGridGeneric2
           thisOctal%chiline(subcell) = 0.d0
 
 
-          if (.not.thisOctal%edgeCell(subcell)) then! .and. .not. thisOctal%edgecell(subcell)) then
+          if (.not.thisOctal%ghostCell(subcell)) then! .and. .not. thisOctal%edgecell(subcell)) then
 
              do n = 1, nDir                
                 locator = subcellCentre(thisOctal, subcell) + dir(n) * (thisOctal%subcellSize/2.d0+0.01d0*smallestCellsize)
@@ -14920,7 +14934,7 @@ end subroutine refineGridGeneric2
 
 
 
-          if (.not.thisOctal%edgeCell(subcell)) then
+          if (.not.thisOctal%ghostCell(subcell)) then
 
              locator = subcellCentre(thisOctal, subcell)
              thisR = locator%x*gridDistanceScale
@@ -15100,6 +15114,13 @@ end subroutine refineGridGeneric2
 
                 call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
                      rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                if ((nc > 0).and.(nDepth >= minDepthAMR)) then
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                   call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
+                        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                endif
+
+
 
                 ptemp(n) = phigas
                 x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
@@ -15110,7 +15131,10 @@ end subroutine refineGridGeneric2
                    x2 = subcellCentre(neighbourOctal, neighbourSubcell).dot.dir(n)
                    dx = x2 - x1
                    dx = dx * gridDistanceScale
+
                 else
+
+
                    if (nd == thisOctal%nDepth) then ! coarse/coarse or fine/fine
                       x1 = subcellCentre(thisOctal, subcell).dot.dir(n)
                       x2 = VECTOR(px, py, pz).dot.dir(n)
@@ -15178,12 +15202,19 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
 
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
+
+          if (.not.associated(thisOctal%etaLine)) then
+             allocate(thisOctal%etaline(1:thisOctal%maxChildren))
+             thisOctal%etaLine = 0.d0
+          endif
+
              thisOctal%phi_gas(subcell) = newPhi
 
 !             if (nDepth == 5) write(*,*) "old phi ",oldphi, " newer phi ",newerPhi, " source ",thisOctal%source(subcell),g(1:6)
 
              if (sumd2phidx2 /= 0.) then
                 fracChange = max(fracChange,abs((thisOctal%source(subcell) - sumd2phidx2)/thisOctal%source(subcell)))
+                thisOctal%etaline(subcell) = abs((thisOctal%source(subcell) - sumd2phidx2)/thisOctal%source(subcell))
              endif
 
           endif
@@ -15486,8 +15517,9 @@ end subroutine refineGridGeneric2
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     integer :: iDepth
-    real(double) :: fracChange, tempFracChange
-    integer :: ierr, iter, bigIter
+    real(double) :: fracChange, tempFracChange, deltaT, temp
+    integer :: ierr, iter, bigIter, j
+
     character(len=80) :: plotfile
 
     call updateDensityTree(grid%octreeRoot)
@@ -15496,6 +15528,7 @@ end subroutine refineGridGeneric2
     call unsetGhosts(grid%octreeRoot)
     do iDepth = 3, maxDepthAMR
        call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
+       call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
     enddo
 
     if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
@@ -15505,7 +15538,7 @@ end subroutine refineGridGeneric2
 
     fracChange = 1d3
     bigIter = 0
-    do while(fracChange > 0.01d0)
+    do while((fracChange > 0.01d0).or.(bigIter < 20))
        call writeInfo("Starting V-cycle", TRIVIAL)
 
        ! a few gauss-seidel sweeps at maximum depth
@@ -15525,7 +15558,7 @@ end subroutine refineGridGeneric2
           call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
           fracChange = tempFracChange
           if (writeoutput) write(*,*) "Depth ",maxDepthAMR, " iter ",iter, " frac ",fracchange
-          if (iter == 2) exit
+          if (iter == 5) exit
        enddo
        call calculateResiduals2(grid%octreeRoot, grid, maxDepthAMR)
 
@@ -15557,8 +15590,7 @@ end subroutine refineGridGeneric2
                 call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
                 fracChange = tempFracChange
                 if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-                if ((iter == 2).and.(iDepth > 3)) exit
-                if (iter == 1000)exit
+                if (iter == 5)exit
              enddo
              
              call addPhiFromBelow(grid%octreeRoot, iDepth)
@@ -15572,6 +15604,7 @@ end subroutine refineGridGeneric2
              
              ! now iterate over this for ALL cells at this level and calculate the residuals
              iter = 0 
+             fracChange = 1.d3
              do while(fracChange > 1.d-20)
                 iter = iter + 1
                 fracChange = 0.d0
@@ -15597,6 +15630,7 @@ end subroutine refineGridGeneric2
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call writeInfo("Iterating residuals", TRIVIAL)
              iter = 0 
+             fracChange = 1.d3
              do while(fracChange > 1.d-6)
                 iter = iter + 1
                 fracChange = 0.d0
@@ -15605,8 +15639,7 @@ end subroutine refineGridGeneric2
                 call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
                 fracChange = tempFracChange
                 if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-                if ((iter == 2).and.(iDepth > 3)) exit
-                if (iter == 1000)exit
+                if (iter == 5) exit
              enddo
              call calculateResiduals2(grid%octreeRoot, grid, iDepth)
 
@@ -15626,6 +15659,7 @@ end subroutine refineGridGeneric2
 
           call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
 
+          fracChange = 1.d3
           do while(fracChange > 1.d-20)
              iter = iter + 1
              fracChange = 0.d0
@@ -15641,38 +15675,43 @@ end subroutine refineGridGeneric2
 
        call addCorrections(grid%octreeRoot, minDepthAMR) ! from depth above
 
-       do iDepth = minDepthAMR, maxDepthAMR-1
+!       do iDepth = minDepthAMR, maxDepthAMR
+!          iter = 0 
+!          fracChange = 1.d3
+!          do while(fracChange > 0.01d0)
+!             iter = iter + 1
+!             fracChange = 0.d0
+!             call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren = .false.)
+!             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+!             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
+!             fracChange = tempFracChange
+!             if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
+!             if (iter == 2) exit
+!          enddo
+!          call prolongatePhiGas(grid%octreeRoot, iDepth+1)! from depth above
+!       enddo
 
-          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-          
-          iter = 0 
-          do while(fracChange > 1.d-20)
-             iter = iter + 1
-             fracChange = 0.d0
-             call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren = .false.)
-             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-             call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
-             fracChange = tempFracChange
-             if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-             if (iter == 5) exit
-          enddo
-          call prolongatePhiGas(grid%octreeRoot, iDepth+1)! from depth above
+       do iDepth = minDepthAMR, maxDepthAMR
+          call setSourceToFourPiRhoG(grid%octreeRoot,iDepth)
        enddo
-
-
-
 
        call unsetGhosts(grid%octreeRoot)
        call setupEdges(grid%octreeRoot, grid)
        call setupGhosts(grid%octreeRoot, grid)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
+
+       deltaT =  0.1d0*(2.d0*returnCodeUnitLength(gridDistanceScale*smallestCellSize))**2 / 6.d0
+
        fracChange = 1.d3
        iter = 0 
-       do while(fracChange > 1.d-20)
+       do while(fracChange > 0.01)
           iter = iter + 1
           fracChange = 0.d0
-          call  gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, maxDepthAMR, onlyCellsWithChildren=.false.)
+!          call  gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, maxDepthAMR, onlyCellsWithChildren=.false.)
+
+          call gSweep2new(grid%octreeRoot, grid, temp, fracChange, j, deltaT, doOnlyChanged=.false.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
           fracChange = tempFracChange
@@ -15738,23 +15777,9 @@ end subroutine refineGridGeneric2
          ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, minLevel
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
 
 
-
-    doOnlyChanged = .false.
-    if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
-
-    call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-    goto 666
-
-
-    if(simpleGrav) then
-       call simpleGravity(grid%octreeRoot)
-       if (myRankWorldGlobal == 1) write(*,*) "Done simplified self gravity calculation!"
-       goto 666
-    endif
-! endif
     if (amr2d) then
        tol = 1.d-6
        tol2 = 1.d-6
@@ -15764,6 +15789,20 @@ end subroutine refineGridGeneric2
        tol = 1.d-6
        tol2 = 1.d-5
     endif
+
+    doOnlyChanged = .false.
+    if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
+
+!    call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+!    goto 555
+
+
+    if(simpleGrav) then
+       call simpleGravity(grid%octreeRoot)
+       if (myRankWorldGlobal == 1) write(*,*) "Done simplified self gravity calculation!"
+       goto 666
+    endif
+! endif
 
 
 

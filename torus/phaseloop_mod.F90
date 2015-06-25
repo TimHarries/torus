@@ -1097,11 +1097,14 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            viewVec     = getSedViewVec(iInclination)
         end if
 
+        
 
         imagePA = real(thisimagePA)
 
         if (writeoutput) then
            write(message,*) " "
+           call writeInfo(message, TRIVIAL)
+           write(message,*) "Doing inclination number ",iInclination, " of ",nInclination
            call writeInfo(message, TRIVIAL)
            write(message,'(a,f6.2,a)') "Inclination   = ",inclination*radToDeg,' degrees'
            call writeInfo(message, TRIVIAL)
@@ -1551,6 +1554,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
           
           call writeSpectrum(outFile,  nLambda, grid%lamArray, yArray, varianceArray,&
                .false., objectDistance, .false., lamLine)
+
+          if (geometry == "slab") then
+             call writeSpectrumTrust(outFile,  nLambda, grid%lamArray, yArray, yArrayStellarDirect, yArrayStellarScattered, &
+                  yArrayThermalDirect, yArrayThermalScattered, varianceArray,&
+                  .false., objectDistance, .false., lamLine)
+          endif
           
           specFile = trim(outfile)//"_stellar_direct"
           call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayStellarDirect, varianceArray,&
@@ -1702,6 +1711,7 @@ CONTAINS
     logical :: thrustar
     logical :: escaped, absorbed
     logical :: photonFromEnvelope
+    logical :: thisPointSource
 
     type(VECTOR) :: rHatinStar
     integer :: nScat
@@ -1779,7 +1789,7 @@ CONTAINS
 !$OMP PRIVATE(photonfromEnvelope, sourceOctal, nFromEnv) &
 !$OMP PRIVATE(sourceSubcell, tau_tmp, exp_minus_tau) &
 !$OMP PRIVATE(testPhoton, dtau, currentOctal, currentSubcell) &
-!$OMP PRIVATE(tempOctal, tempsubcell, thistaudble, finaltau ) &
+!$OMP PRIVATE(tempOctal, tempsubcell, thistaudble, finaltau ,thisPointSource ) &
 !$OMP SHARED(iLambdaPhoton, maxTau, nOuterLoop, pointSource, doIntensivePeelOff, nMuMie) &
 !$OMP SHARED(grid, nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
 !$OMP SHARED(weightLinePhoton, weightSource, flatSpec, secondSource, secondSourcePosition) &
@@ -1880,7 +1890,7 @@ CONTAINS
                       lamLine, weightLinePhoton, &
                       weightContPhoton, contPhoton, flatspec, &
                       secondSource, secondSourcePosition, &
-                      ramanSourceVelocity, contWindPhoton, directionalWeight, &
+                      ramanSourceVelocity, contWindPhoton, directionalWeight, thisPointsource, &
                       chanceSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto, weightSource, &
                       source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
@@ -2092,7 +2102,7 @@ CONTAINS
                  if (contWindPhoton) then
                     obs_weight = real(oneOnFourPi*exp(-tauExt(nTau)))
                  else 
-                    if (.not.pointSource) then
+                    if (.not.thispointSource) then
                        obs_weight = real((outVec.dot.rHatinStar)*exp(-tauExt(nTau))/pi)
                     else
                        obs_weight = real(oneOnFourPi * exp(-tauExt(nTau)))
@@ -2104,6 +2114,7 @@ CONTAINS
                  if (ok) then
 !$OMP CRITICAL ( updateYarray )
 !                    write(*,*) "addingPhoton",thisPhoton%stokes%i,obs_weight
+!                    write(*,*) "hit core",hitcore
                     yArray(iLambda) = yArray(iLambda) + thisPhoton%stokes * obs_weight
 
                     if (thisPhoton%stellar) then
@@ -3419,6 +3430,250 @@ end subroutine rdintpro
     deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
 
   end subroutine writeSpectrum
+
+  subroutine writeSpectrumTrust(outFile,  nLambda, xArray, yArray, &
+       yArrayStellarDirect, yArrayStellarScattered, yArrayThermalDirect, &
+       yArrayThermalScattered, &
+       varianceArray,&
+       normalizeSpectrum, objectDistance, velocitySpace, lamLine)
+    use sed_mod
+    use kind_mod
+    use messages_mod
+    use constants_mod
+    use phasematrix_mod
+    use utils_mod, only: convertToJanskies
+
+    implicit none
+    integer, intent(in) :: nLambda
+    character(len=*), intent(in) :: outFile
+    real, intent(in) :: xArray(:)
+    logical, intent(in) :: normalizeSpectrum, velocitySpace
+    real(double), intent(in) :: objectDistance
+    real(double) :: area
+    real, intent(in) :: lamLine
+    type(STOKESVECTOR), intent(in) :: yArray(:), varianceArray(:)
+    type(STOKESVECTOR), allocatable :: ytmpArray(:),  ymedian(:)
+    type(STOKESVECTOR), intent(in) :: yArrayStellarDirect(:)
+    type(STOKESVECTOR), intent(in) :: yArrayStellarScattered(:)
+    type(STOKESVECTOR), intent(in) :: yArrayThermalDirect(:)
+    type(STOKESVECTOR), intent(in) :: yArrayThermalScattered(:)
+    real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
+    real(double), allocatable :: stokes_i_sd(:)
+    real(double), allocatable :: stokes_i_ss(:)
+    real(double), allocatable :: stokes_i_td(:)
+    real(double), allocatable :: stokes_i_ts(:)
+    real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
+    real, allocatable, dimension(:) :: tmpXarray
+    !  real :: tot
+    real :: x
+    integer :: i
+    character(len=80) :: message
+
+    if (.not. SedIsInitialised) then 
+       call writeWarning("SED parameters have not been initialised")
+    end if
+
+    allocate(ytmpArray(1:nLambda))
+    allocate(tmpXarray(1:nLambda))
+
+    allocate(dlam(1:nLambda))
+    allocate(stokes_i(1:nLambda))
+    allocate(stokes_i_sd(1:nLambda))
+    allocate(stokes_i_ss(1:nLambda))
+    allocate(stokes_i_td(1:nLambda))
+    allocate(stokes_i_ts(1:nLambda))
+    allocate(stokes_q(1:nLambda))
+    allocate(stokes_qv(1:nLambda))
+    allocate(stokes_u(1:nLambda))
+    allocate(stokes_uv(1:nLambda))
+
+    allocate(yMedian(1:nLambda))
+
+    if (SedInSiUnits) then
+       sedlambdainmicrons = .true.
+    endif
+
+    tmpXarray = xarray
+    yMedian = yArray
+
+
+    if (sedlambdainmicrons) then
+       tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
+    endif
+
+
+    if (normalizeSpectrum) then
+       if (yMedian(1)%i /= 0.) then
+          x = real(1.d0/yMedian(1)%i)
+          !        x = 1.d0/yArray(nLambda)%i
+       else
+          x  = 1.d0
+       endif
+    else
+       x = 1.d0
+    endif
+
+    !  
+    do i = 1, nLambda
+       ytmpArray(i) = yMedian(i) * x !!!!!!!!!!!!!
+    enddo
+
+
+
+    stokes_i = ytmpArray%i
+
+    stokes_i_sd = yArrayStellarDirect%i
+    stokes_i_ss = yArrayStellarScattered%i
+    stokes_i_td = yArrayThermalDirect%i
+    stokes_i_ts = yArrayThermalScattered%i
+
+    stokes_q = ytmpArray%q
+    stokes_u = ytmpArray%u
+    stokes_qv = varianceArray%q
+    stokes_uv = varianceArray%u
+
+    dlam(1) = (xArray(2)-xArray(1))
+    dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
+    do i = 2, nLambda-1
+       dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
+    enddo
+
+    if (.not.normalizeSpectrum) then
+       !     ! convert from erg/s to erg/s/A
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+
+       stokes_i_sd(1:nLambda) = stokes_i_sd(1:nLambda) / dlam(1:nLambda)
+       stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) / dlam(1:nLambda)
+       stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) / dlam(1:nLambda)
+       stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) / dlam(1:nLambda)
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+
+
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
+
+       ! convert to erg/s/A to erg/s/cm^2/A
+
+       area =  objectDistance**2  ! (nb flux is alread per sterad)
+       !
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) / area
+
+       stokes_i_sd(1:nLambda) = stokes_i_sd(1:nLambda) / area
+       stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) / area
+       stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) / area
+       stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) / area
+
+
+
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) / area
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) / area
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area**2
+
+
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) * 1.d20
+
+       stokes_i_sd(1:nLambda) = stokes_i_sd(1:nLambda) * 1.d20
+       stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) * 1.d20
+       stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) * 1.d20
+       stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) * 1.d20
+
+       stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
+       stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
+
+       if (SedInJansky) then
+          do i = 1, nLambda
+             stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+
+             stokes_i_sd(i) = convertToJanskies(dble(stokes_i_sd(i)), dble(xArray(i)))
+             stokes_i_ss(i) = convertToJanskies(dble(stokes_i_ss(i)), dble(xArray(i)))
+             stokes_i_td(i) = convertToJanskies(dble(stokes_i_td(i)), dble(xArray(i)))
+             stokes_i_ts(i) = convertToJanskies(dble(stokes_i_ts(i)), dble(xArray(i)))
+
+             stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+             stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+             stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))
+             stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))
+          enddo
+       endif
+    endif
+
+    if (SedInLambdaFlambda) then
+       write(message,'(a)') "Writing spectrum as lambda F_lambda"
+       call writeInfo(message, TRIVIAL)
+
+
+       !     tot = 0.
+       !     do i = 1, nLambda
+       !        tot = tot + stokes_i(i)* dlam(i)
+       !     enddo
+
+       !     stokes_i = stokes_i / tot
+       !     stokes_q = stokes_q / tot
+       !     stokes_u = stokes_u / tot
+       !     stokes_qv = stokes_qv / tot**2
+       !     stokes_uv = stokes_uv / tot**2
+
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
+
+       stokes_i_sd(1:nLambda) = stokes_i_sd(1:nLambda) * xArray(1:nLambda)
+       stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) * xArray(1:nLambda)
+       stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) * xArray(1:nLambda)
+       stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) * xArray(1:nLambda)
+
+
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
+    endif
+
+    if (SedInSiUnits) then
+       write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
+       call writeInfo(message, TRIVIAL)
+
+       stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_u(1:nLambda) = stokes_u(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda) * 10.
+       stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda) * 10.
+    endif
+
+
+    if (velocitySpace) then
+       tmpXarray(1:nLambda) = real(cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5) ! wavelength to km/s
+    endif
+
+    write(message,*) "Writing spectrum to ",trim(outfile),".dat"
+    call writeInfo(message, TRIVIAL)
+
+    if (index(outfile,".") == 0) then
+       open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+    else
+       open(20,file=trim(outFile),status="unknown",form="formatted")
+    endif
+
+
+33  format(7(1x, 1PE14.5))
+       !34   format(a1, a14, 5(a6))
+       ! You should always put a header!
+       !     write(20, "(a)") "# Writteng by writeSpectrum."
+       !     write(20,34)  "#", "xaxis", "I", "Q", "QV", "U", "UV"
+    do i = 1, nLambda
+       write(20,33) tmpXarray(i),stokes_i(i), stokes_i_sd(i), stokes_i_ss(i), &
+            stokes_i_td(i), stokes_i_ts(i), 0.d0
+    enddo
+    close(20)
+
+    deallocate(ytmpArray)
+    deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
+    deallocate(stokes_i_sd, stokes_i_ss, stokes_i_td, stokes_i_ts)
+
+  end subroutine writeSpectrumTrust
 
 
 end module phaseloop_mod

@@ -532,7 +532,7 @@ contains
            call setupevenuparray(grid, evenuparray)
            
 !           if(.not. startFromNeutral) then
-           print *, "ionizing grid"
+!           print *, "ionizing grid"
            call ionizeGrid(grid%octreeRoot)
            call setupPhotoGrid(grid%octreeRoot)
  !          endif
@@ -627,7 +627,7 @@ contains
            if ( present(numLam) ) then 
               nLambda = numLam
            else
-              nLambda = 200
+              nLambda = 400
            end if
 
            if (.not.resolveSilicateFeature) then
@@ -639,7 +639,7 @@ contains
            if ( present(lamMin) ) then 
               lamStart = lamMin
            else
-              lamStart = 100.d0
+              lamStart = 1000.d0
            end if
            if ( present(lamMax) ) then 
               lamEnd = lamMax
@@ -657,7 +657,7 @@ contains
               call setupLogSpacing
            end if
            
-           if (lamFile) then
+           if ((lamFile).and.(nLambda /= 1))  then
               call setupLamFile
            endif
            
@@ -756,6 +756,7 @@ contains
             read(77,*) xArray(i)
          enddo
          close(77)
+         xArray = xArray * 1e4 
 
        end subroutine setupLamfile
 

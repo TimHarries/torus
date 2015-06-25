@@ -1040,7 +1040,7 @@ contains
 
     currentlyDoingHydroStep = .false.
 
-!       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
+       if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
 
 
           if ((myRankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
@@ -3186,18 +3186,16 @@ end subroutine radiationHydro
              endif
           endif
        enddo
+    else
+       if (nHydroSetsGlobal > 1) then
+          do iThread = 1, nHydroThreadsGlobal
+             if (myRankGlobal == iThread) then
+                call updateGridMPIphoto(grid, amrParallelCommunicator(iThread))
+             endif
+             call mpi_barrier(MPI_COMM_WORLD, ierr)
+          enddo
+       endif
     endif
-
-
-!    if (nHydroSetsGlobal > 1) then
-!       do iThread = 1, nHydroThreadsGlobal
-!          if (myRankGlobal == iThread) then
-!!             write(*,*) myHydroSetGlobal, myrankGlobal, " calling updategridMpi"
-!             call updateGridMPIphoto(grid, amrParallelCommunicator(iThread))
-!          endif
-!          call mpi_barrier(MPI_COMM_WORLD, ierr)
-!       enddo
-!    endif
 
 
 
@@ -3436,7 +3434,7 @@ end subroutine radiationHydro
 
 
     if(grid%geometry == "lexington" .or. grid%geometry == "lexpdr") then
-      call dumpLexingtonMPI(grid, epsoverdeltat, niter)
+      if (.not.loadBalancingThreadGlobal) call dumpLexingtonMPI(grid, epsoverdeltat, niter)
    end if
 
     if(grid%geometry == "lexington" .and. 0 == 1) then

@@ -104,7 +104,7 @@ contains
 !#endif
 
     do j = ilam_beg, ilam_end
-       if (myrankglobal ==0) write(*,*) "ilam ",j
+!       if (myrankglobal ==0) write(*,*) "ilam ",j
             ! Now set up a precomputed table for sphere for fixed values of
             ! dustType and lambda and varying values of a
             do n = 1, nDist-1

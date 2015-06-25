@@ -3957,10 +3957,16 @@ CONTAINS
        case("slab")
           cellCentre = subcellCentre(thisOctal,subcell)
           d = thisOctal%subcellSize/2.d0
-          if ((cellCentre%z < -2.d0*pctocm/1.d10).and.(thisOctal%nDepth < 7)) split = .true.
-          if  (((cellCentre%z+d) > -2.d0*pctocm/1.d10).and.((cellCentre%z-d) < -2.d0*pctocm/1.d10)) then
-             if (thisOctal%nDepth < maxDepthAMR) split = .true.
-          endif
+          if ((cellCentre%z < -2.d0*pctocm/1.d10).and.(thisOctal%nDepth < 8)) split = .true.
+!          if  (((cellCentre%z+d) > -2.d0*pctocm/1.d10).and.((cellCentre%z-d) < -2.d0*pctocm/1.d10)) then
+!             if (thisOctal%nDepth < maxDepthAMR) split = .true.
+!          endif
+          if ((cellCentre%x -d) > 5.d0*pctocm/1.d10) split = .false.
+          if ((cellCentre%y -d) > 5.d0*pctocm/1.d10) split = .false.
+          if ((cellCentre%x + d) < -5.d0*pctocm/1.d10) split = .false.
+          if ((cellCentre%y + d) < -5.d0*pctocm/1.d10) split = .false.
+          if ((cellCentre%z -d) > -2.d0*pctocm/1.d10) split = .false.
+          if ((cellCentre%z + d) < -5.d0*pctocm/1.d10) split = .false.
        case("lighthouse")
           cellCentre = subcellCentre(thisOctal,subcell)
           d = thisOctal%subcellSize/2.d0
@@ -7584,7 +7590,7 @@ endif
     real(double) :: kappa5500
     type(VECTOR) :: rVec
 
-    kappa5500 = 2.9368e4
+    kappa5500 = 3.0099e4
     rhoSlab = tauSlab / (kappa5500*3.d0*pctocm)
 !    Write(*,*) "rho slab " ,rhoSlab
 
@@ -7594,8 +7600,12 @@ endif
     thisOctal%inflow(subcell) = .false.
     thisOctal%rho(subcell) = 1.d-30
     if ((rVec%z < -2.d0*pctocm/1.d10).and.(rVec%z > -5.d0*pctocm/1.d10)) then
-       thisOctal%rho(subcell) = rhoSlab
-    thisOctal%inflow(subcell) = .true.
+       if ((rVec%x < 5.d0*pctocm/1.d10).and.(rVec%x > -5.d0*pctocm/1.d10)) then
+          if ((rVec%y < 5.d0*pctocm/1.d10).and.(rVec%y > -5.d0*pctocm/1.d10)) then
+             thisOctal%rho(subcell) = rhoSlab
+             thisOctal%inflow(subcell) = .true.
+          endif
+       endif
     endif
     thisOctal%dustTypeFraction(subcell, 1:nDustType) = grainFrac(1:nDustType)
 

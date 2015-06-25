@@ -119,7 +119,7 @@ contains
     logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
-    integer :: nVoxels, nOctals
+    integer :: nVoxels, nOctals, nInFlow
 
     integer :: icritupper, icritlower
     real(double) :: logt, weight
@@ -395,6 +395,8 @@ contains
           nKilled = 0
 
           call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+          nInflow = 0
+          call countInflow(grid%OctreeRoot,nInFlow)
           if (nLucy /= 0) then
              nMonte = nLucy
           else
@@ -772,7 +774,7 @@ contains
           nUndersampled = 0
           if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
           call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
-          percent_undersampled  = 100.*real(nUndersampled)/real(nVoxels-nCellsInDiffusion)
+          percent_undersampled  = 100.*real(nUndersampled)/real(nInflow-nCellsInDiffusion)
 
 
           call calculateEtaCont(grid, grid%octreeRoot, nFreq, freq, dnu, lamarray, nLambda, kAbsArray)
@@ -1650,6 +1652,27 @@ contains
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine countInflow(thisOctal,n)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i, n
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call countInflow(child, n)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%inFlow(subcell)) n = n + 1
+       endif
+    enddo
+  end subroutine countInflow
 
   recursive subroutine calculateMeanIntensity(thisOctal, epsOverDt, dnu)
   type(octal), pointer   :: thisOctal

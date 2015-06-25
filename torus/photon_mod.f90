@@ -531,7 +531,7 @@ contains
 
   subroutine initPhoton(thisPhoton, Grid, nLambda, lambda, sourceSpectrum, &
        lamLine, weightLinePhoton, weightContPhoton, contPhoton, flatspec, &
-       secondSource, secondSourcePosition, ramanSourceVelocity, contWindPhoton, directionalWeight, &
+       secondSource, secondSourcePosition, ramanSourceVelocity, contWindPhoton, directionalWeight, thisPointSource, &
        chanceSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, weightSource,&
        source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
@@ -547,7 +547,7 @@ contains
     use grid_mod, only: getIndices
 
     implicit none
-
+    logical :: thisPointSource
     integer :: nSource, thisSource
     type(SOURCETYPE) :: source(:)
     type(SURFACETYPE) :: starSurface
@@ -676,6 +676,7 @@ contains
     thisPhoton%scattered = .false.
     thisPhoton%thermal = .false.
     thisPhoton%stellar = .false.
+    thisPointSource = .false.
 
     thisPhoton%stokes%q = 0.
     thisPhoton%stokes%u = 0.
@@ -687,6 +688,7 @@ contains
     if (nSource > 0) then
        call randomSource(source, nSource, thisSource, sourceWeight)
     endif
+    thisPointsource = source(thisSource)%pointsource
 
     thisPhoton%stokes = thisPHoton%stokes * sourceWeight
 

@@ -2126,6 +2126,14 @@ contains
                      "Kappa file: ","(a,a,1x,a)","test", ok, .true.)
              endif
 
+             if (dustfile(i)) then
+                call getReal(grainFracLabel, grainFrac(i), 1., cLine, fLine, nLines, &
+                     "Grain fractional abundance: ","(a,f8.5,1x,a)",0.01 , ok, .false.)
+                grainFracTotal = grainFracTotal + grainFrac(i)
+             endif
+
+
+             if (.not.dustFile(i)) then
 
              call getString(grainTypeLabel, grainType(i), cLine, fLine, nLines, &
                   "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
@@ -2143,7 +2151,7 @@ contains
 
 
              call getDouble(tsublabel, tsub(i), 1.d0, cLine, fLine, nLines, &
-                  "Temperature for dust sublimation (K):  ","(a,e12.3,1x,a)", 2000.d0, ok, .true.)
+                  "Temperature for dust sublimation (K):  ","(a,e12.3,1x,a)", 1500.d0, ok, .false.)
 
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
@@ -2176,7 +2184,7 @@ contains
           call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
                "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
 
-
+          endif
              if (writeoutput) write(*,*)
           enddo
 
@@ -2190,7 +2198,7 @@ contains
 
          if (henyeyGreensteinPhaseFunction) &
          call getDouble("gfac", inputgFac, 1.d0, cLine, fLine, nLines, &
-            "Henyey-Greenstein g-factor: ","(a,f7.3,a)",0.d0, ok, .true.)
+            "Henyey-Greenstein g-factor: ","(a,f7.3,a)",0.d0, ok, .false.)
 
 
          call getLogical("writepolar", writePolar, cLine, fLine, nLines, &
@@ -3343,13 +3351,16 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real :: aspectRatio, thisAspectRatio
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
+         "Number of photons in image: ","(a,i9,a)", 10000, ok, .false.)
+    nPhotImage = nPhotons
+    call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", 10000, ok, .true.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
 
     call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
-         "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .false.)
+         "Grid distance (pc): ","(a,f10.1,1x,a)", 100., ok, .false.)
 
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
@@ -3751,6 +3762,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
+         "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
+    nPhotSpec = nPhotons
+    call getBigInteger("nphotspec", nPhotSpec, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &

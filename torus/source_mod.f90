@@ -570,6 +570,7 @@
       if (present(sourceNumber)) sourceNumber = 0 
       distance = 1.d30
       mainloop: do i = 1, nSource
+         if (source(i)%pointsource) cycle
          cosTheta = (uHat .dot. (source(i)%position - rVec))/modulus(source(i)%position - rVec)
          if (cosTheta < 0.) then ! source is behind you
             cycle mainloop
@@ -775,29 +776,29 @@
                endif
                
 
-               if (present(weight)) then
-                  call randomNumberGenerator(getDouble=r)
-                  chance = 1.d0 - twoPi * (cos(80.d0*degtorad)-cos(100.d0*degtoRad))/fourPi
-                  prob = 0.01d0
-                  if (r < prob) then
-                     direction = randomUnitVector()
-                     ang = acos(direction.dot.zAxis)*radtodeg
-                     do while ((ang >= 80.d0).and.(ang <= 100.d0))
-                        direction = randomUnitVector()
-                        ang = acos(direction.dot.zAxis)*radtodeg
-                     enddo
-                     weight = chance/prob
-                  else
-                     direction = randomUnitVector()
-                     ang = acos(direction.dot.zAxis)*radtodeg
-                     do while ((ang <= 80.d0).or.(ang >= 100.d0))
-                        direction = randomUnitVector()
-                        ang = acos(direction.dot.zAxis)*radtodeg
-                     enddo
-                     weight = (1.d0-chance)/(1.d0-prob)
-                  endif
-                  ang = acos(direction.dot.zAxis)*radtodeg
-               endif
+!               if (present(weight)) then
+!                  call randomNumberGenerator(getDouble=r)
+!                  chance = 1.d0 - twoPi * (cos(80.d0*degtorad)-cos(100.d0*degtoRad))/fourPi
+!                  prob = 0.01d0
+!                  if (r < prob) then
+!                     direction = randomUnitVector()
+!                     ang = acos(direction.dot.zAxis)*radtodeg
+!                     do while ((ang >= 80.d0).and.(ang <= 100.d0))
+!                        direction = randomUnitVector()
+!                        ang = acos(direction.dot.zAxis)*radtodeg
+!                     enddo
+!                     weight = chance/prob
+!                  else
+!                     direction = randomUnitVector()
+!                     ang = acos(direction.dot.zAxis)*radtodeg
+!                     do while ((ang <= 80.d0).or.(ang >= 100.d0))
+!                        direction = randomUnitVector()
+!                        ang = acos(direction.dot.zAxis)*radtodeg
+!                     enddo
+!                     weight = (1.d0-chance)/(1.d0-prob)
+!                  endif
+!                  ang = acos(direction.dot.zAxis)*radtodeg
+!               endif
 
                
             else

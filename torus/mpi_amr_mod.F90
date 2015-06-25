@@ -8511,7 +8511,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     maxBuffer = 0
     if (myrankGlobal == fromThread) then
        call countVoxels(grid%octreeRoot, nOctals, maxBuffer)
-       maxBuffer = maxBuffer * 100
+       maxBuffer = maxBuffer * 1000
     endif
     call MPI_BCAST(maxBuffer, 1, MPI_INTEGER, 0, communicator, ierr)
     allocate(buffer(1:maxBuffer))

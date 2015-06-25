@@ -2577,7 +2577,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   ! test along z-axis 
   !
-  octVec = VECTOR(1.d-3, 1.2d-4, 1.d0)
+  octVec = VECTOR(1.d-3, 1.2d-4, -1.d0)
 !  position = (octVec*R)
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
