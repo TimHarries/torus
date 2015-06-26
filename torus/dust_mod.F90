@@ -796,13 +796,14 @@ contains
        call locate(tlam,npts,lambda(i),j)
        kappaAbs(i) = logint(lambda(i), tlam(j), tlam(j+1), tAbs(j), tAbs(j+1))*1.e10
        kappaSca(i) = logint(lambda(i), tlam(j), tlam(j+1), tSca(j), tSca(j+1))*1.e10
-       gfac(i) = tgfac(j) + (lambda(i)-tlam(j)) * (tgfac(j+1)-tgfac(j)) / (tlam(j+1)-tlam(j))
-       if (writeoutput) write(*,*) lambda(i), kappaAbs(i), kappaSca(i)
-    enddo
 
-    !    write(*,*) "Correcting xsections by dust-to-gas ratio!!!!!!!!"
-    !    kappaAbs(1:nLambda) = kappaAbs(1:nLambda) * 0.01
-    !    kappaSca(1:nLambda) = kappaSca(1:nLambda) * 0.01
+
+!       kappaAbs(i) = 1.d10*(tabs(j) + (lambda(i) - tlam(j)) * (tabs(j+1) - tabs(j))/ ( tlam(j+1) - tlam(j)))
+!       kappaSca(i) = 1.d10*(tsca(j) + (lambda(i) - tlam(j)) * (tsca(j+1) - tsca(j))/ ( tlam(j+1) - tlam(j)))
+       
+       gfac(i) = tgfac(j) + (lambda(i)-tlam(j)) * (tgfac(j+1)-tgfac(j)) / (tlam(j+1)-tlam(j))
+       if (writeoutput) write(*,*) lambda(i), kappaAbs(i)+ kappaSca(i), kappaAbs(i), kappaSca(i)
+    enddo
 
   end subroutine dustPropertiesfromFile
 
@@ -1831,7 +1832,6 @@ contains
     666 continue
 
        call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
-
        call writeInfo("Completed.",TRIVIAL)
     endif
   end subroutine createDustCrossSectionPhaseMatrix

@@ -339,9 +339,7 @@ if (.false.) then
 
           fastIntegrate=.true.
           nPhotons = nPhotSpec
-          write(*,*) "calling phaseloop to calculate spectrum"
           call do_phaseloop(grid, .false., 10000, miePhase, globalnsource, globalsourcearray, nmumie)
-          write(*,*) "done calling phaseloop to calculate spectrum"
        end if
 
        if ((calcImage.or.calcMovie).and.(.not.calcDustCube)) then
@@ -378,10 +376,8 @@ if (.false.) then
 #endif
              nPhotons = nPhotImage
              fastIntegrate=.true.
-             write(*,*) "calling phaseloop to calculate image ",i, " nlambda ",nlambda
                 call do_phaseloop(grid, .false., 10000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
-             write(*,*) "done calling phaseloop to calculate image ",i
           enddo
        endif
 

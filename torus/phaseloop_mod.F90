@@ -3546,7 +3546,6 @@ end subroutine rdintpro
        stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) / dlam(1:nLambda)
        stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) / dlam(1:nLambda)
        stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) / dlam(1:nLambda)
-       stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
 
 
        stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)

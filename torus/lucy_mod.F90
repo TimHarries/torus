@@ -72,7 +72,7 @@ contains
     integer :: i, j
     real(oct) :: freq(nLambda), dnu(nLambda), probDistJnu(nLambda+1)
     !    real(oct) :: probDistPlanck(nFreq)
-    real(double) :: kappaScadb, kappaAbsdb
+    real(double) :: kappaScadb, kappaAbsdb, totalLumInPackets
     integer(double) :: nDiffusion
     integer(double) :: nScat, nAbs
     integer(bigInt) :: nMonte, iMonte
@@ -146,6 +146,7 @@ contains
     integer, parameter :: tag = 0
     integer(bigInt) ::  np, n_rmdr, m  
     real :: buffer_real(nThreadsGlobal)     
+    real(double) :: buffer_double(nThreadsGlobal)     
 
     ! FOR MPI IMPLEMENTATION=======================================================
     writeoutput = .false.
@@ -393,6 +394,7 @@ contains
           nAbs = 0
           nDiffusion = 0
           nKilled = 0
+          totalLumInPackets = 0.d0
 
           call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
           nInflow = 0
@@ -407,6 +409,7 @@ contains
              endif
           endif
           nMonte = nMonte * iMultiplier
+          epsOverDeltaT = lCore / dble(nMonte)
 
           write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
           call writeInfo(message, TRIVIAL)
@@ -463,8 +466,8 @@ contains
                 !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
                 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
-                !$OMP SHARED(dnu, nFreq, freq, nMonte) &
-                !$OMP REDUCTION (+: nAbs, nScat, nInf, nDiffusion, nKilled) 
+                !$OMP SHARED(dnu, nFreq, freq, nMonte, epsOverDeltaT) &
+                !$OMP REDUCTION (+: nAbs, nScat, nInf, totalLumInPackets, nDiffusion, nKilled) 
 
                  call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
@@ -525,6 +528,7 @@ contains
                       If (escaped) then
                          !$OMP ATOMIC
                          nInf = nInf + 1
+                         totalLumInPackets = totalLumInPackets + packetWeight*epsOverDeltaT
                       endif
 
                       if (photonInDiffusionZone) then
@@ -716,6 +720,10 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           nAbs = INT(SUM(buffer_real), double)
 
+          call MPI_ALLGATHER(totalLumInPackets, 1, MPI_DOUBLE, buffer_double, 1, MPI_DOUBLE, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          totalLumInPackets = SUM(buffer_double)
+
           call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           nKilled = INT(SUM(buffer_real))
@@ -734,6 +742,8 @@ contains
           write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
           call writeInfo(message,IMPORTANT)
           write(message,'(a,f13.3)') "Fraction of photons in diffusion zone: ",real(nDiffusion)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
+          write(message,'(a,1pe13.3)') "Total luminosity in packets: ",totalLumInPackets/lsol
           call writeInfo(message,IMPORTANT)
 
 
@@ -3013,6 +3023,9 @@ subroutine setBiasOnTau(grid, iLambda)
 
           if (.not.thisOctal%hasChild(subcell)) then
 
+             thisOctal%biasCont3d(subcell) = 1.d0
+             cycle
+
              rVec = subcellCentre(thisOctal, subcell)
              if (thisOctal%threed) then
                 rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
@@ -3060,6 +3073,7 @@ subroutine setBiasOnTau(grid, iLambda)
 !                else
                    thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-3)
 !                endif
+                 
 
              endif
 

@@ -254,7 +254,7 @@ contains
                    !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
                    !                  1000)
                    !          else
-                   call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4,1000)
+                   call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 100.d0, 2000.d4,10000)
                    !          end if
                 case("kurucz")
                    call fillSpectrumKurucz(source(isource)%spectrum, source(isource)%teff, source(isource)%mass, &
@@ -639,7 +639,7 @@ contains
            if ( present(lamMin) ) then 
               lamStart = lamMin
            else
-              lamStart = 1000.d0
+              lamStart = 100.d0
            end if
            if ( present(lamMax) ) then 
               lamEnd = lamMax

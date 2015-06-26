@@ -3957,7 +3957,7 @@ CONTAINS
        case("slab")
           cellCentre = subcellCentre(thisOctal,subcell)
           d = thisOctal%subcellSize/2.d0
-          if ((cellCentre%z < -2.d0*pctocm/1.d10).and.(thisOctal%nDepth < 8)) split = .true.
+          if (((cellCentre%z-d) < -2.d0*pctocm/1.d10).and.(thisOctal%nDepth < 8)) split = .true.
 !          if  (((cellCentre%z+d) > -2.d0*pctocm/1.d10).and.((cellCentre%z-d) < -2.d0*pctocm/1.d10)) then
 !             if (thisOctal%nDepth < maxDepthAMR) split = .true.
 !          endif
@@ -7590,7 +7590,7 @@ endif
     real(double) :: kappa5500
     type(VECTOR) :: rVec
 
-    kappa5500 = 3.0099e4
+    kappa5500 = 3.0123e4
     rhoSlab = tauSlab / (kappa5500*3.d0*pctocm)
 !    Write(*,*) "rho slab " ,rhoSlab
 
