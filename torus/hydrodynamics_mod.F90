@@ -838,7 +838,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, ndepth
+    integer :: i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -1041,7 +1041,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, ndepth
+    integer :: i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -1061,7 +1061,7 @@ contains
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, ndepth, j
+    integer :: i, ndepth
 
 
     if (thisoctal%ndepth == ndepth) then
@@ -15117,7 +15117,8 @@ end subroutine refineGridGeneric2
                 if ((nc > 0).and.(nDepth >= minDepthAMR)) then
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                    call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, probe(n), q, rho, rhoe, &
-                        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, &
+                        qViscosity)
                 endif
 
 
@@ -15777,7 +15778,7 @@ end subroutine refineGridGeneric2
          ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, minLevel
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
 
     if (amr2d) then

@@ -737,7 +737,7 @@
       type(VECTOR),intent(out) :: position, direction, rHat
       type(VECTOR) :: cornerDir
       type(VECTOR), parameter :: zAxis=VECTOR(0.d0, 0.d0, 1.d0)
-      real(double) :: prob, chance
+!      real(double) :: prob, chance
       logical :: ok
 
       if (PRESENT(weight)) weight = 1.d0
