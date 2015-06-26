@@ -7590,7 +7590,7 @@ endif
     real(double) :: kappa5500
     type(VECTOR) :: rVec
 
-    kappa5500 = 3.0123e4
+    kappa5500 = 3.1429108d4
     rhoSlab = tauSlab / (kappa5500*3.d0*pctocm)
 !    Write(*,*) "rho slab " ,rhoSlab
 
