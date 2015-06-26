@@ -3354,7 +3354,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
          "Number of photons in image: ","(a,i9,a)", 10000, ok, .false.)
     nPhotImage = nPhotons
     call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
-         "Number of photons in image: ","(a,i9,a)", 10000, ok, .true.)
+         "Number of photons in image: ","(a,i9,a)", 10000, ok, .false.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
