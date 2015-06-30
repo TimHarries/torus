@@ -2419,12 +2419,14 @@ contains
           RhoArray(:) = sphdata%rhon(ind(:))
 
           if (kerneltype == 1) then
-             call writeWarning("Using spline kernel. Check the mass on the grid")
+             call writeInfo("Spline kernel in use. Will calculate variable eta")
              ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
+             ! etaarray stores 1/(eta**3)
              allocate(etaArray(npart)) 
-             etaarray(:) = ((50.d0 / npart) / rhoarray(:)) / harray(:)**3
-          !       write(*,*) sum(etaarray(:)) / npart, sqrt(sum(etaarray(:)**2)/npart), &
-          !            sqrt(sum(etaarray(:)**2)/npart) - (sum(etaarray(:)) / npart)
+             etaarray(:) = sphdata%gasmass(:) / (rhoarray(:) * harray(:)**3)
+             write(message, *) "Max/min eta", (1.d0/maxval(etaArray(:)))**(1.0/3.0), &
+                                              (1.d0/minval(etaArray(:)))**(1.0/3.0)
+             call writeinfo(message, TRIVIAL)
           endif
 
           write(message, *) "Critical smoothing Length in code units", hcrit
