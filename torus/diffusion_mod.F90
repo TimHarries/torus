@@ -879,7 +879,7 @@ end subroutine gaussSeidelSweep
     integer :: subcell
     integer :: i
     real(double) :: tau
-    real :: kappap
+    real(double) :: kappap
     kappap = 0.d0
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

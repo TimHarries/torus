@@ -305,7 +305,9 @@ contains
     integer :: ierr
 
     if ( myRankGlobal /= 0 ) then 
-       call MPI_COMM_FREE(amrCOMMUNICATOR, ierr)
+       if (amrCommunicator /= MPI_COMM_NULL) then
+          call MPI_COMM_FREE(amrCOMMUNICATOR, ierr)
+       endif
     end if
 
   end subroutine freeAMRCOMMUNICATOR
@@ -5532,7 +5534,7 @@ end subroutine writeRadialFile
     real(double) :: tempSTorage(nStorage), tval
     integer, parameter :: tag = 30
     integer :: status(MPI_STATUS_SIZE), ierr
-    real :: kappap
+    real(double) :: kappap
     logical :: stillLooping
     integer :: sendThread
     logical :: hitGrid

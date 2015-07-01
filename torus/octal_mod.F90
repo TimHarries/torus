@@ -243,6 +243,10 @@ MODULE octal_mod
     real(double), pointer :: oldmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: oldestmolecularLevel(:,:) => null() ! molecular level populations
 
+
+    real(double), pointer :: spectrum(:,:) => null() 
+    integer, pointer :: nFreq(:) =>  null()
+
 ! time dependent RT stuff
 
     real(double), pointer :: Adot(:) => null()

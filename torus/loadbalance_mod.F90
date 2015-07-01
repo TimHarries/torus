@@ -462,6 +462,7 @@ subroutine normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThread
   real(double) :: frac(:)
   integer :: nLoadBalanceList(:)
   integer :: iter
+  logical, allocatable :: thisMask(:)
 
   nLoadBalanceList(1:nHydroThreadsGlobal) = 1 + &
        nint(dble(nLoadBalancingThreadsGlobal) * frac(1:nHydroThreadsGlobal))
@@ -481,14 +482,18 @@ subroutine normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThread
   end do
 
 
+  allocate(thisMask(1:nHydroThreadsGlobal))
+  thisMask = .true.
   do while ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) /= nLoadBalancingThreadsGlobal)
      
      if ((SUM(nLoadBalanceList(1:nHydroThreadsGlobal)) - nHydroThreadsGlobal) > nLoadBalancingThreadsGlobal) then
         nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) - 1
      else
-        nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) + 1
+        nLoadBalanceList(MAXLOC(nLoadBalanceList,mask=thisMask)) = nLoadBalanceList(MAXLOC(nLoadBalanceList,mask=thisMask)) + 1
+        thismask(MAXLOC(nLoadBalanceList)) = .false.
      endif
   end do
+  deallocate(thisMask)
 
 end subroutine normaliseLoadBalanceThreads
        

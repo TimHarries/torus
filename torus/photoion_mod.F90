@@ -1127,7 +1127,7 @@ end subroutine photoIonizationloop
     real :: t1, t2, tm
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, gasGrainCool
     real :: deltaT
-    real :: kappaP
+    real(double) :: kappaP
     real :: underCorrection = 0.9
     integer :: nIter
 ! For testing convergence

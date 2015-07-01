@@ -2741,7 +2741,7 @@ contains
                   weight*thisRhou/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1(1:4)/rho_i_minus_1(1:4)
 
-             if (ANY(thisOctal%u_amr_interface(subcell,:) > 3d6)) then
+             if (ANY(thisOctal%u_amr_interface(subcell,:) > 3d7)) then
                 write(*,*) "u interface warning ",thisOctal%u_amr_interface(subcell,1:4)/1.d5
                 write(*,*) "thisrhou ",thisRhou, " thisrho ",thisOctal%rho(subcell), " this u ", &
                      weight*thisRhou/thisoctal%rho(subcell)
@@ -15974,8 +15974,8 @@ end subroutine refineGridGeneric2
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreadsGlobal))
 
-       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
-            MAXVAL(fracChange(1:nHydroThreadsGlobal))
+!       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
+!            MAXVAL(fracChange(1:nHydroThreadsGlobal))
 
 !       if (mod(it,10) == 0) then
 !          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"

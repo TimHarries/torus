@@ -390,7 +390,7 @@ contains
     integer :: nLambda 
     real(double) :: packetWeight
     real(double) :: temp, dustMass, ksca, kabs
-    real :: temp2
+    real(double) :: temp2
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 200

@@ -1424,7 +1424,8 @@ end subroutine radiationHydro
     real(double) :: tLimit
     real(double) :: deltaTime
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal, beforeOctal
+    integer :: beforeSubcell
 !    character(len=80) :: message
     integer :: nlambda
     real :: lamArray(:)
@@ -1460,7 +1461,7 @@ end subroutine radiationHydro
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
     integer, parameter :: nTemp = 9
     real(double) :: v, dustHeating
-    real :: kappaP
+    real(double) :: kappaP
 !    integer, parameter :: nFreq = 1000
     integer :: nFreq
 
@@ -1578,7 +1579,7 @@ end subroutine radiationHydro
     integer :: maxChild
     integer :: nScatBigPacket, j, nScatSmallPacket
     logical :: sourceInThickCell, tempLogical
-    logical :: undersampled, flushBuffer, containsLastPacket
+    logical :: undersampled, flushBuffer, containsLastPacket, movedCells
     logical, save :: splitThisTime = .false.
     logical, save :: firstWarning = .true.
     logical, save :: firstLoadBalancing = .true.
@@ -1588,7 +1589,8 @@ end subroutine radiationHydro
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
     integer :: nDomainThreads, localRank, m
-
+    real :: FinishTime, WaitingTime, globalStartTime, globalTime
+    real :: sleepStart, sleepEnd
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
 
@@ -2135,6 +2137,8 @@ end subroutine radiationHydro
 
        countArray = 0.d0
 
+       call zeroNFreq(grid%octreeRoot)
+
 !       call writeVtkFile(grid, "beforeloop.vtk", &
 !            valueTypeString=(/"rho          ","dust        ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     ", &
@@ -2277,7 +2281,7 @@ end subroutine radiationHydro
                             end if
                          end do
 ! stuck here
-                         call MPI_SSEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
+                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
                               OptCounter, tag, localWorldCommunicator,  ierr)
 
                          !reset the counter for this thread's bundle recieve 
@@ -2337,6 +2341,7 @@ end subroutine radiationHydro
              photonsStillProcessing = .true.
              
              i = 0
+
              do while(photonsStillProcessing)                   
 
 !                do iThread = 1, nHydroThreadsGlobal
@@ -2368,7 +2373,7 @@ end subroutine radiationHydro
                    end do
                    photonsStillProcessing = .false.
                 end if
-!                print *, "nEscaped ", nEscapedGlobal
+                print *, "nEscaped ", nEscapedGlobal
                 if (i > 100000) then
                    write(*,*) "!!! Problem with photon conservation ",nEscaped 
                    exit
@@ -2400,6 +2405,8 @@ end subroutine radiationHydro
              stackSize = 0
              nSaved = 0
              nNotEndLoop = 0
+             waitingTime = 0.d0
+             call wallTime(globalStartTime)
              sendAllPhotons = .false.
              !needNewPhotonArray = .true.  
              do while(.not.endLoop) 
@@ -2411,8 +2418,12 @@ end subroutine radiationHydro
                 iSignal = -1
                 if(stackSize == 0) then
                    flushBuffer = .true.
+                   call walltime(startTime)
                    call MPI_RECV(toSendStack, maxStackLimit, MPI_PHOTON_STACK, MPI_ANY_SOURCE, &
                         tag, localWorldCommunicator, status, ierr)
+                   call walltime(finishTime)
+                   waitingTime = waitingTime + (finishTime-startTime)
+
                       currentStack = toSendStack
                       
 !                      write(*,*) myrankGlobal, " received stack ",currentStack(1)%destination
@@ -2667,9 +2678,15 @@ end subroutine radiationHydro
  !                        write(*,*) "thisOctal%xmin ",thisOctal%xmin
  !                        write(*,*) "thisOctal%xmax ",thisOctal%xmax
                       endif
+                      
+                      call findsubcellTd(rVec, grid%octreeRoot, beforeOctal, beforeSubcell)
+
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
-                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, miePhase, nMuMie)
+                           crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, miePhase, nMuMie, movedCells)
+
+                      if (nToNextEventPhoto == 1) movedCells = .true. ! a new photon has effectively moved cells
+                      
 
                       if (loadBalancing.and.crossedMPIboundary) newThread = loadBalancedThreadNumber(newThread)
 
@@ -2761,8 +2778,8 @@ end subroutine radiationHydro
 !                              write(*,*) myrankGlobal, " set finished true ", ismallPhotonPacket,doingsmallPackets
                       endif
 
-                      if ((.not.crossedMPIboundary).and.finished.and.doingSmallPackets &
-                           .and.escaped) write(*,*) "ismall ",ismallphotonpacket
+!                      if ((.not.crossedMPIboundary).and.finished.and.doingSmallPackets &
+!                           .and.escaped) write(*,*) "ismall ",ismallphotonpacket
 
                       
 
@@ -2776,11 +2793,11 @@ end subroutine radiationHydro
                             if (smallPhotonPacket) nEscaped = nEscaped + 1
                             if (bigPhotonPacket) nEscaped = nEscaped + max(nSmallPackets,1)
                             if (lastPhoton.and.smallPhotonPacket) then
-!                               write(*,*) myrankWorldGlobal, " last small photon escaped"
+                               write(*,*) myrankWorldGlobal, " last small photon escaped ",rVec,inOctal(grid%octreeRoot, rVec)
                                call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                             endif
                             if (lastPhoton.and.bigPhotonPacket) then
-!                               write(*,*) myrankWorldGlobal, " last big photon escaped"
+                               write(*,*) myrankWorldGlobal, " last big photon escaped ",rVec,inOctal(grid%octreeRoot,rvec)
                                do i = 1, max(1,nSmallPackets)
                                   call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                                enddo
@@ -2798,6 +2815,8 @@ end subroutine radiationHydro
                                  lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                             
                             albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
+
+
                             call randomNumberGenerator(getDouble=r)
 
 
@@ -2821,56 +2840,64 @@ end subroutine radiationHydro
 !                               if (myrankglobal == 1) write(*,*) "new uhat scattering ",uhat, ntotscat
                             else
                                
-                               
+                               if (thisOctal%nFreq(subcell) == 0) then ! only need to recalculate emissivity spectrum
+                                  thisOctal%nFreq(subcell) = nFreq
+                                  if (.not.associated(thisOctal%spectrum)) then
+                                     allocate(thisOctal%spectrum(1:thisOctal%maxChildren, 1:nfreq))
+                                  endif
                                spectrum = 1.d-30
                                
                                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                     kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
                                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
                                                
-                               
-
-               
-                               if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
-                                  if (thisOctal%temperature(subcell) == 0.0) then
-                                     write(*,*) "temperature of cell is zero"
-                                     write(*,*) "cell is ghost " ,thisOctal%ghostCell(subcell)
-                                     write(*,*) "edge? ", thisOctal%edgeCell(subcell)
-                                  endif
-                                  call randomNumberGenerator(getDouble=r1)
+                                              
+!                               if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+!                                  if (thisOctal%temperature(subcell) == 0.0) then
+!                                     write(*,*) "temperature of cell is zero"
+!                                     write(*,*) "cell is ghost " ,thisOctal%ghostCell(subcell)
+!                                     write(*,*) "edge? ", thisOctal%edgeCell(subcell)
+!                                  endif
+!                                  call randomNumberGenerator(getDouble=r1)
                                   
-                                  if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
+!                                  if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
                                      call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                      call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                                      call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                                      !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                      call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                                  else
+!                                  else
                                      call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, & 
                                           nlambda, lamArray)
-                                  endif
+!                                  endif
                                   !Subsequent progress is now a diffuse photon
                                   sourcePhoton = .false.
-                               else ! non-ionizing photon must be absorbed by dust
-                                  call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, &
-                                       subcell, grid, nlambda, lamArray)
-                               endif
-                               if (firsttime.and.(myrankWorldglobal==1)) then
-                                  firsttime = .false.
-                                  open(67,file="pdf.dat",status="unknown",form="formatted")
-                                  write(67,*) "% ",thisOctal%temperature(subcell)
-                                  do i = 1, nfreq
-                                     write(67,*) (cspeed/freq(i))*1.e8, spectrum(i), &
-                                          bnu(freq(i),dble(thisOctal%temperature(subcell)))
-                                  enddo
-                                  close(67)
+!                               else ! non-ionizing photon must be absorbed by dust
+!                                  call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, &
+!                                       subcell, grid, nlambda, lamArray)
+!                               endif
+
+
+!                               if (firsttime.and.(myrankWorldglobal==1)) then
+!                                  firsttime = .false.
+!                                  open(67,file="pdf.dat",status="unknown",form="formatted")
+!                                  write(67,*) "% ",thisOctal%temperature(subcell)
+!                                  do i = 1, nfreq
+!                                     write(67,*) (cspeed/freq(i))*1.e8, spectrum(i), &
+!                                          bnu(freq(i),dble(thisOctal%temperature(subcell)))
+!                                  enddo
+!                                  close(67)
 !                                  open(68,file="freq.dat",status="unknown",form="formatted")
 !                                  do i = 1, nfreq
 !                                     write(68,*) i, freq(i)
 !                                  enddo
 !                                  close(68)
-                               endif
-                               thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+!                               endif
+
+                               thisOctal%spectrum(subcell,1:nfreq) = spectrum(1:nFreq)
+                            endif
+
+                               thisFreq =  getPhotonFreq(nfreq, freq, thisOctal%spectrum(subcell,1:nFreq))
 
                                uHat = randomUnitVector() ! isotropic emission
 !                               if(cart2d) then
@@ -3127,9 +3154,15 @@ end subroutine radiationHydro
           epsoverdeltat = lcore/dble(nMonte)
 !          print *, "epsAlarm"
        end if
+
  
+       call wallTime(globalTime)
+       globalTime = globalTime - globalStartTime
 
        if (myrankGlobal /= 0) then
+          write(*,*) myrankGlobal, " waited for ",waitingTime, " seconds or ",waitingTime/GlobalTime*100.,"% of run"
+
+
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, allDomainsCommunicator, ierr)
           nTotScat = i
           if (writeoutput) write(*,*) "Iteration had ",&
@@ -3772,6 +3805,7 @@ end subroutine radiationHydro
  call MPI_TYPE_FREE(mpi_vector, ierr)
  call MPI_TYPE_FREE(mpi_photon_stack, ierr)
 
+ call freeOctalSpectrum(grid%octreeRoot)
  deallocate(nSaved)
  deallocate(nEscapedArray)
  if(allocated(buffer)) then
@@ -3877,9 +3911,56 @@ recursive subroutine  setPhotoionIsothermal(thisOctal)
   end do
 end subroutine setPhotoionIsothermal
 
+recursive subroutine  zeroNfreq(thisOctal)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call zeroNfreq(child)
+              exit
+           end if
+        end do
+     else
+        if (.not.associated(thisOctal%nfreq)) allocate(thisOctal%nFreq(1:thisOctal%maxChildren))
+        thisOctal%nFreq(subcell) = 0
+     end if
+  end do
+end subroutine zeroNfreq
+
+recursive subroutine  freeOctalSpectrum(thisOctal)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call freeOctalSpectrum(child)
+              exit
+           end if
+        end do
+     else
+        if (associated(thisOctal%spectrum)) then
+           deallocate(thisOctal%spectrum)
+           thisOctal%spectrum => null()
+        endif
+     end if
+  end do
+end subroutine freeOctalSpectrum
+
 
 SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight, epsOverDeltaT, &
-     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, MiePhase, nMuMie)
+     nfreq, freq, dfreq, tPhoton, tLimit, crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, MiePhase, nMuMie, &
+     movedCells)
 
   use inputs_mod, only : periodicX, periodicY, periodicZ, amrgridcentrey
   use inputs_mod, only : amrgridcentrez, radpressuretest, nDensity, timeDependentRT
@@ -3889,6 +3970,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(VECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, oldRvec, upperBound, lowerBound, iniVec
    type(PHASEMATRIX) :: miePhase(:,:,:)
    integer :: nMuMie
+   logical :: movedCells
    type(OCTAL), pointer :: thisOctal
    type(OCTAL),pointer :: oldOctal
    real(double) :: tPhoton, tLimit, epsOverDeltaT
@@ -3910,7 +3992,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    real(oct) :: thisLam
    integer :: iLam
    logical ::inFlow
-   real :: kappap
+   real(double) :: kappap
 !   real :: lambda
 !   integer :: ilambda
    logical, intent(out) :: crossedMPIboundary
@@ -3925,6 +4007,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     stillinGrid = .true.
     escaped = .false.
     
+    movedCells = .false.
     crossedMPIboundary = .false.
     outOfTime = .false.
 
@@ -4023,7 +4106,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        oldrVec = rVec
        rVec = rVec + (tVal+1.d-5*grid%halfSmallestSubcell) * uHat ! rvec is now at face of thisOctal, subcell
-
+       movedCells = .true.
 
        tPhoton = tPhoton + (tVal * 1.d10) / cSpeed
        if ((tPhoton > tLimit).and.timeDependentRT) then
@@ -4136,6 +4219,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
              stillInGrid = .false.
              escaped = .true.
              crossedMPIboundary = .true.
+             movedCells = .true.
              newThread = nextOctal%mpiThread(nextSubcell)
           endif
        endif
@@ -4147,6 +4231,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam, nfreq, freq, &
                sourcePhoton, uHat, tVec,"first", miePhase, nMuMie)!octVec)
        endif
+
          
        if (stillinGrid) then
           
@@ -5550,7 +5635,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double) :: log10te,betarec, coolrec, betaff, coolff
     real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
     real(double) :: becool
-    real :: kappap
+    real(double) :: kappap
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
 
@@ -8508,7 +8593,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     integer :: subcell
     type(VECTOR) :: rVec, uHat, uHatDash, rHat, zHat
     real(double) :: r0, zeta, kappaRoss, diffCoeff, mrwDist
-    real :: kappaP
+    real(double) :: kappaP
     logical, save :: firstTime = .true.
     integer, parameter :: ny = 100
     real(double) :: y(ny), prob(ny), thisY

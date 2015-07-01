@@ -343,15 +343,15 @@ contains
   real(double) function bNu(nu,T)
     
     real(double) :: fac1, fac2, fac3, nu, T
-
-    fac1 = (twoTimeshCgs*nu**3)/cSpeedSquared
-    fac3 =  hCgsOverKErg * nu / max(T, 1.d-30)
+    real(double), parameter :: TwoTimeshCgsOverCspeedSquared = twoTimeshCGS/cSpeedSquared
+    fac1 = TwoTimeshCgsOverCspeedSquared * nu * nu * nu
+    fac3 =  hCgsOverKErg * nu / T
     if (fac3 > 100.d0) then
        fac2 = 0.d0
     else
        fac2 = 1.d0/(exp(fac3) - 1.d0)
     endif
-    bNu = max(fac1 * fac2,0.d0)
+    bNu = fac1 * fac2
   end function bNu
 
 

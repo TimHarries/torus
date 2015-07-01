@@ -911,7 +911,7 @@ contains
     real(double) :: deltaT, currentTime
     real(double) :: deltaUdens
     real(double) :: time_equilibrium, temp_equilibrium, newUDens
-    real :: kappaP
+    real(double) :: kappaP
     integer :: subcell, i
 
     type(VECTOR) :: rVec
@@ -966,7 +966,7 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    real :: kappap
+    real(double) :: kappap
     integer :: subcell, i
 
     Do subcell = 1, thisOctal%maxChildren

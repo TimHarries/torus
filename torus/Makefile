@@ -16,6 +16,7 @@
 
 USEMKL  = no
 cfitsio = yes
+minusg = no
 netcdf = no
 sundials = no
 hdf = no
@@ -430,6 +431,11 @@ endif
 ifeq ($(debug), yes)
    FASTFLAG =
    ETCFLAG += $(DEBUGFLAG)
+endif
+
+ifeq ($(minusg), yes)
+   FASTFLAG =
+   ETCFLAG += -g
 endif
 
 ifeq ($(profile), yes)

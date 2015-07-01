@@ -3086,7 +3086,7 @@ CONTAINS
     REAL(double),OPTIONAL         :: kappaAbsArray(:)
     REAL(double),OPTIONAL         :: kappaScaArray(:)
     REAL(double),OPTIONAL        :: rosselandKappa
-    REAL, OPTIONAL        :: kappap
+    REAL(double), OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
     REAL(double),INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
@@ -14161,14 +14161,14 @@ end function readparameterfrom2dmap
     real(double), optional, intent(out) :: rosselandKappa
     real(double), optional, intent(out) :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
     logical, optional :: debug
-    real, optional, intent(out) :: kappap
+    real(double), optional, intent(out) :: kappap
     real, optional :: atthistemperature
     logical, optional, intent(in) :: reset_kappa
     real :: temperature
     real :: frac
     real :: tlambda
 !    real, parameter :: sublimationTemp = 1500., subRange = 100.
-    real(double) :: tArray(1000)
+    real(double) :: tArray(1000), tempDouble
     real(double) :: freq, dfreq, norm !,  bnutot
     integer :: i,j,m,itemp
     real :: fac
@@ -14491,26 +14491,27 @@ end function readparameterfrom2dmap
       endif
       kappaP = 0.d0
       norm = 0.d0
+      tempDouble = dble(temperature)
       if (includeGasOpacity) then
-         call returnGasKappaValue(grid,real(temperature), thisOctal%rho(subcell),  kappaAbsArray=tarray)
+         call returnGasKappaValue(grid,temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
       endif
       do i = 2, grid%nLambda
-         freq = cSpeed / (grid%lamArray(i)*1.e-8)
-         dfreq = cSpeed / (grid%lamArray(i-1)*1.e-8) - cSpeed / (grid%lamArray(i)*1.e-8)
+         freq = cSpeed / (grid%lamArray(i)*1.d-8)
+         dfreq = cSpeed / (grid%lamArray(i-1)*1.d-8) - cSpeed / (grid%lamArray(i)*1.d-8)
          do j = 1, nDustType
-            kappaP = kappaP + real(thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
+            kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  thisOctal%rho(subcell) *&
-                 dble(bnu(dble(freq),dble(temperature)))  * dfreq)
+                 bnu(freq,tempdouble)  * dfreq
 
             if (includeGasOpacity) then
-               kappaP = kappaP + real(tarray(i)*thisOctal%rho(subcell) * dble(bnu(dble(freq),dble(temperature)))  * dfreq)
+               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tempDouble))  * dfreq
             endif
 
          enddo
-         norm = norm + dble(bnu(dble(freq),dble(temperature)))  * dfreq
+         norm = norm + bnu(freq,tempDouble)  * dfreq
       enddo
       if (norm /= 0.d0) then
-         kappaP = real((kappaP / norm) /1.d10)
+         kappaP = ((kappaP / norm) /1.d10)
       else
          kappaP = tiny(kappap)
       endif

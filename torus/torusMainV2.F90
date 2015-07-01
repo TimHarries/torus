@@ -82,7 +82,7 @@ program torus
   outputinfo     = .true.
   myRankIsZero   = .true.
 
-  call createBox(box,64)
+!  call createBox(box,64)
   
   if (TorusMpi) then 
      if (myRankGlobal/=1) writeoutput  = .false.
