@@ -7587,11 +7587,11 @@ endif
     TYPE(octal),target :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real(double) rhoSlab
-    real(double) :: kappa5500
+    real(double) :: kappa1
     type(VECTOR) :: rVec
 
-    kappa5500 = 3.1429108d4
-    rhoSlab = tauSlab / (kappa5500*3.d0*pctocm)
+    kappa1 = 1.103739d4
+    rhoSlab = tauSlab / (kappa1*3.d0*pctocm)
 !    Write(*,*) "rho slab " ,rhoSlab
 
 

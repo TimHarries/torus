@@ -1588,7 +1588,7 @@ end subroutine radiationHydro
     real(double) :: maxDiffRadius3(1:100), tauWanted, photonMomentum
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
-    integer :: nDomainThreads, localRank, m
+    integer :: nDomainThreads, localRank, m, nBundles
     real :: FinishTime, WaitingTime, globalStartTime, globalTime
     real :: sleepStart, sleepEnd
     !xray stuff
@@ -2129,6 +2129,7 @@ end subroutine radiationHydro
        nTotScat = 0
        nPhot = 0
        nSaved = 0
+       nBundles = 0
        photonPacketStack%destination = 0
        photonPacketStack%freq = 0.d0
        toSendStack%freq = 0.d0
@@ -2238,7 +2239,7 @@ end subroutine radiationHydro
                       photonPacketStack(optCounter)%sourcePhoton = .true.
                       photonPacketStack(optCounter)%bigPhotonPacket = .true.
                       photonPacketStack(optCounter)%smallPhotonPacket = .false.
-                      photonPacketStack(optCounter)%lastPhoton = lastPhoton
+                      photonPacketStack(optCounter)%lastPhoton = .false.
                       exit
                    end if
                 end do
@@ -2280,7 +2281,9 @@ end subroutine radiationHydro
                             
                             end if
                          end do
+                         toSendStack(thisPacket - 1)%lastPhoton = .true.
 ! stuck here
+                         nBundles = nBundles + 1
                          call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
                               OptCounter, tag, localWorldCommunicator,  ierr)
 
@@ -2319,7 +2322,7 @@ end subroutine radiationHydro
              end if
 
 
-             do i = 1, max(nSmallPackets,1)
+             do i = 1, max(nSmallPackets,1)*nBundles
 !               write(*,*) myHydroSetGlobal," looping from 1 to ",max(nsmallpackets,1), i
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
                      finaltag, localWorldCommunicator, status, ierr)
@@ -2793,11 +2796,11 @@ end subroutine radiationHydro
                             if (smallPhotonPacket) nEscaped = nEscaped + 1
                             if (bigPhotonPacket) nEscaped = nEscaped + max(nSmallPackets,1)
                             if (lastPhoton.and.smallPhotonPacket) then
-                               write(*,*) myrankWorldGlobal, " last small photon escaped ",rVec,inOctal(grid%octreeRoot, rVec)
+!                               write(*,*) myrankWorldGlobal, " last small photon escaped ",rVec,inOctal(grid%octreeRoot, rVec)
                                call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                             endif
                             if (lastPhoton.and.bigPhotonPacket) then
-                               write(*,*) myrankWorldGlobal, " last big photon escaped ",rVec,inOctal(grid%octreeRoot,rvec)
+!                               write(*,*) myrankWorldGlobal, " last big photon escaped ",rVec,inOctal(grid%octreeRoot,rvec)
                                do i = 1, max(1,nSmallPackets)
                                   call MPI_BSEND(myrankGlobal, 1, MPI_INTEGER, 0, finaltag, localWorldCommunicator,  ierr)
                                enddo
