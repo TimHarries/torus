@@ -1590,7 +1590,6 @@ end subroutine radiationHydro
     integer :: receivedStackSize, nToSend
     integer :: nDomainThreads, localRank, m, nBundles
     real :: FinishTime, WaitingTime, globalStartTime, globalTime
-    real :: sleepStart, sleepEnd
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
 
@@ -2581,7 +2580,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend, containslastpacket) &
-               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat) & 
+               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, beforeSubcell, beforeOctal, movedCells) & 
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
@@ -3345,7 +3344,7 @@ end subroutine radiationHydro
                    v = cellVolume(thisOctal, subcell)
                    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                    dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
-                   kappap = max(1.e-30,kappap)
+                   kappap = max(1.d-30,kappap)
                    thisOctal%temperature(subcell) = max(tMinGlobal,real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0)
                 endif
              enddo

@@ -58,7 +58,7 @@ program torus
 !  integer :: i
 !  type(PAHtabletype) :: PAHtable
   type(GRIDTYPE) :: grid
-  type(VECTOR) :: box(64,64,64)
+!  type(VECTOR) :: box(64,64,64)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
