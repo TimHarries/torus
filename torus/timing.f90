@@ -44,6 +44,7 @@ contains
                                           !  was called with a given ID
     real,save :: cpu_start(max_id)             ! time at the first tuning pt
     real :: cputime                       ! elapsed CPU time
+    real :: clockMax                      ! Maximum time from system_clock in seconds 
     logical :: found
     logical,save :: very_first_time            ! true if this routine is called
                                           !  very first time
@@ -73,9 +74,6 @@ contains
        !  -- If first time to write, an old file will be overwritten.
        close(1)
        very_first_time = .false.
-
-    else 
-       continue
     end if
     
     ! Checks if ID is already exists in stored array (id_stored)
@@ -93,13 +91,11 @@ contains
           found = .true.
        elseif (id_stored(i).eq.' ') then ! reached the end of 
                                          ! the list and 
-                                         ! could not found the matching ID.
+                                         ! could not find the matching ID.
           id_num = i                    
           id_stored(id_num)=id
           N_th_call(id_num)=1
           found = .true.
-       else 
-          continue
        end if
     end do
 
@@ -114,13 +110,16 @@ contains
     elseif (dum_i.eq.0) then ! the second call in pair
        !cpu_time = ETIME(time_array) - cpu_start(id_num)
 !       call CPU_TIME(cputime)
-       call wallTime(cpuTime)
+       call wallTime(cpuTime, clockMax)
        cputime = cputime - cpu_start(id_num)
+! Handle cases where the system clock reaches the 32bit limit and wraps.
+       if (cputime < 0.0) cputime = cputime+clockMax
 !       minutes = NINT(cputime)/60 ! this is wrong! (RK)
        minutes = INT(cputime/60.)
        seconds = MOD(cputime,60.)
        
 ! Trap the negative timing bug. DMA 15/4/14
+! This should not be triggered any more but leave it in just in case ...
        if (minutes<0) then
           write(*,*) "Diagnsotic messages: minutes<0 in tune"
           write(*,*) "cputime= ", cputime
@@ -136,19 +135,25 @@ contains
        write(1,40) 'Tune ID:: ',id_stored(id_num),minutes, &
             'min',seconds,'sec'
        close(1)
-    else
-       continue
     end if
     
     return
   end subroutine tune
 
 
-  subroutine wallTime(rSec)
-    integer ::  count,countRate
-    real :: rSec
-    call system_clock(count=count,count_rate=countRate)
+  subroutine wallTime(rSec, clockMax)
+    integer ::  count, countRate, countMax
+    real, optional, intent(out) :: clockMax
+    real, intent(out) :: rSec
+
+    if (present(clockMax)) then
+       call system_clock(count=count,count_rate=countRate, count_max=countMax)
+       clockMax = real(countMax)/real(countRate)
+    else
+       call system_clock(count=count,count_rate=countRate)
+    endif
     rSec = real(count)/real(countRate)
+
   end subroutine wallTime
 
   subroutine mySleep(delay)
