@@ -1458,7 +1458,8 @@ end subroutine radiationHydro
     real(double) :: freq(1006), dfreq(1006), spectrum(1006)
 !    real(double) :: freq(1000+(2*grid%nIon)), dfreq(1000+(2*grid%nIon)), spectrum(1000+(2*grid%nIon)) 
     real(double) :: nuStart, nuEnd
-    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
+    real(double) :: kappaAbsGas, kappaAbsDust, escat 
+!    real(double) :: r1 ! add this to the private openmp section if reinstated
     integer, parameter :: nTemp = 9
     real(double) :: v, dustHeating
     real(double) :: kappaP
@@ -2578,7 +2579,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
-               !$OMP PRIVATE(r1, finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
+               !$OMP PRIVATE(finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend, containslastpacket) &
                !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, beforeSubcell, beforeOctal, movedCells) & 
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
