@@ -2647,7 +2647,7 @@ contains
             "Perform a bundle size optimization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
        call getInteger("stacklimit", stacklimit, cLine, fLine, nLines, &
-            "Maximum number of photons in a stack","(a,i8,a)", 200, ok, .false.)
+            "Maximum number of photons in a stack","(a,i8,a)", 10, ok, .false.)
        
        call getInteger("dstack", dstack, cLine, fLine, nLines, &
             "Optimization tweak level","(a,i8,a)", 100, ok, .false.)

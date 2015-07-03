@@ -453,10 +453,11 @@ recursive subroutine sumCellsOnThread(thisOctal, n)
         end do
      else
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-        n = n + 1
+        if (.not.thisOctal%undersampled(subcell)) n = n + 1
      end if
   end do
 end subroutine sumCellsOnThread
+
 subroutine normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
   integer :: nHydroThreadsGlobal, nLoadBalancingThreadsGlobal
   real(double) :: frac(:)
@@ -490,7 +491,7 @@ subroutine normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThread
         nLoadBalanceList(MAXLOC(nLoadBalanceList)) = nLoadBalanceList(MAXLOC(nLoadBalanceList)) - 1
      else
         nLoadBalanceList(MAXLOC(nLoadBalanceList,mask=thisMask)) = nLoadBalanceList(MAXLOC(nLoadBalanceList,mask=thisMask)) + 1
-        thismask(MAXLOC(nLoadBalanceList)) = .false.
+        thismask(MAXLOC(nLoadBalanceList,mask=thisMask)) = .false.
      endif
   end do
   deallocate(thisMask)

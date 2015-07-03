@@ -344,14 +344,18 @@ contains
     
     real(double) :: fac1, fac2, fac3, nu, T
     real(double), parameter :: TwoTimeshCgsOverCspeedSquared = twoTimeshCGS/cSpeedSquared
+    real(double), parameter :: twoTimesKoverCsquared = 2.d0 * kErg /cSpeedSquared
     fac1 = TwoTimeshCgsOverCspeedSquared * nu * nu * nu
     fac3 =  hCgsOverKErg * nu / T
     if (fac3 > 100.d0) then
-       fac2 = 0.d0
+       fac2 = exp(-fac3) ! wein's else
+       bNu = fac1 * fac2
+    else if (fac3  < 0.01d0) then
+       bNu = twoTimesKOverCSquared * T * nu * nu ! Rayleigh-Jeans approx
     else
        fac2 = 1.d0/(exp(fac3) - 1.d0)
+       bNu = fac1 * fac2
     endif
-    bNu = fac1 * fac2
   end function bNu
 
 

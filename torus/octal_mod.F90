@@ -210,6 +210,7 @@ MODULE octal_mod
     REAL, DIMENSION(:), pointer                 :: oldTemperature  => null()   ! grid subcell temperatures
     REAL(double), DIMENSION(:), pointer                 :: kappaRoss => null()
     REAL(double), DIMENSION(:), pointer         :: distanceGrid  => null()  ! distance crossing used by lucy R Eq
+    REAL(double), DIMENSION(:), pointer         :: kappaP  => null()
     real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     real(double), dimension(:), pointer       :: meanIntensity => null()
     INTEGER, DIMENSION(:), pointer              :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq

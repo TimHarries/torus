@@ -2093,6 +2093,8 @@ end subroutine radiationHydro
        globalEpsOverDeltaT = epsOverDeltaT
 
 
+
+
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
@@ -2107,6 +2109,8 @@ end subroutine radiationHydro
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
+
+       if (myrankGlobal /= 0) call setKappaP(grid%octreeRoot, grid)
 
        if (myrankWorldGlobal == 1) write(*,*) "Running photoionAMR loop with ",nmonte," photons. Iteration: ",niter, maxIter
 
@@ -2664,7 +2668,8 @@ end subroutine radiationHydro
                             smallPhotonPacket = .true.
                             bigPhotonPacket = .false.
                             call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
-                            call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+                            kappaP = thisOctal%kappaP(subcell)
+!                            call returnKappa(grid, thisOctal, subcell, kappap=kappap)
 !                            write(*,*) myrankWorldGlobal, " creating small photon packet ",ismallPhotonPacket, &
 !                                 thisOctal%subcellSize*kappap*1.d10, (cspeed/thisFreq)*1.d8
 !                            write(*,*) "escaped ",escaped
@@ -3325,13 +3330,16 @@ end subroutine radiationHydro
        endif
 
        !$OMP PARALLEL DEFAULT(NONE) &
-       !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i) &
+       !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i, endTime,startTime) &
        !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT, uv_vector) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal) &
        !$OMP SHARED(augerArray, firstwarning, radpressuretest, loadbalancing, copyOfThread)
 
        !$OMP DO SCHEDULE(DYNAMIC,2)
+
+       call walltime(startTime)
+
        do iOctal =  iOctal_beg, iOctal_end
           
           thisOctal => octalArray(iOctal)%content
@@ -3452,7 +3460,8 @@ end subroutine radiationHydro
           deallocate(temp1, temp2, tempIon)
           call resetNe(grid%octreeRoot)
        endif
-
+       call walltime(endTime)
+       write(*,*) myrankGlobal, " did thermal balance in ",endTime - startTime
     endif
 
     !deallocate(octalArray)
@@ -4048,7 +4057,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
          actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, rosselandKappa=kappaRoss, &
-         grid=grid, inFlow=inFlow, kappap=kappap)
+         grid=grid, inFlow=inFlow)
+    kappaP = thisOctal%kappap(subcell)
     oldOctal => thisOctal
 
 
@@ -8620,7 +8630,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        
        
 
-    call returnKappa(grid, thisOctal, subcell, kappap=kappap, rosselandKappa = kappaRoss)
+    call returnKappa(grid, thisOctal, subcell,  rosselandKappa = kappaRoss)
+    kappap = thisOctal%kappap(subcell)
     diffCoeff = 1.d0 / (3.d0*thisOctal%rho(subcell)*kappaRoss)
     iLoop = 0
     call distanceToNearestWall(rVec, r0, thisOctal, subcell)
