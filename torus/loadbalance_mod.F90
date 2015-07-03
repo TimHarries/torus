@@ -453,7 +453,7 @@ recursive subroutine sumCellsOnThread(thisOctal, n)
         end do
      else
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-        if (.not.thisOctal%undersampled(subcell)) n = n + 1
+        n = n + 1
      end if
   end do
 end subroutine sumCellsOnThread
