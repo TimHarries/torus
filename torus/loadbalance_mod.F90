@@ -90,13 +90,13 @@ contains
        endif
     enddo
 
-    if (writeoutput) then
-       write(*,*) "Load balancing thread list"
-       do i = 1, nHydroThreadsGlobal
-          if (nLoadbalanceList(i) > 1) &
-               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
-       enddo
-    end if
+!    if (writeoutput) then
+!       write(*,*) "Load balancing thread list"
+!       do i = 1, nHydroThreadsGlobal
+!          if (nLoadbalanceList(i) > 1) &
+!               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
+!       enddo
+!    end if
 
     call createLoadBalanceCommunicator
     call createLoadThreadDomainCopies(grid)

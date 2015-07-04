@@ -14849,62 +14849,6 @@ end function readparameterfrom2dmap
 
 
 
-  recursive subroutine setKappaP(thisOctal, grid)
-    use inputs_mod, only : includeGasOpacity, ndusttype
-    use gas_opacity_mod, only: returnGasKappaValue
-    use atom_mod, only : bnu
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    integer :: subcell, i, j, k
-    real(double) :: tempDouble, kappap, freq, norm, dfreq
-    real(double) :: tarray(1000)
-    
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do k = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(k) == subcell) then
-                child => thisOctal%child(k)
-                call setKappaP(child, grid)
-                exit
-             end if
-          end do
-       else
-
-          kappaP = 0.d0
-          norm = 0.d0
-          tempDouble = dble(thisOctal%temperature(subcell))
-          if (includeGasOpacity) then
-             call returnGasKappaValue(grid,thisOctal%temperature(subcell), thisOctal%rho(subcell),  kappaAbsArray=tarray)
-          endif
-          do i = 2, grid%nLambda
-             freq = cSpeed / (grid%lamArray(i)*1.d-8)
-             dfreq = cSpeed / (grid%lamArray(i-1)*1.d-8) - cSpeed / (grid%lamArray(i)*1.d-8)
-             do j = 1, nDustType
-                kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
-                     thisOctal%rho(subcell) *&
-                     bnu(freq,tempdouble)  * dfreq
-                
-                if (includeGasOpacity) then
-                   kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tempDouble))  * dfreq
-                endif
-                
-             enddo
-             norm = norm + bnu(freq,tempDouble)  * dfreq
-          enddo
-          if (norm /= 0.d0) then
-             kappaP = ((kappaP / norm) /1.d10)
-          else
-             kappaP = tiny(kappap)
-          endif
-          if (.not.associated(thisOctal%kappaP)) then
-             allocate(thisOctal%kappaP(1:thisOctal%maxChildren))
-          endif
-          thisOctal%kappaP(subcell) = kappaP
-       endif
-    enddo
-  end subroutine setKappaP
 
   recursive subroutine zeroChiLineLocal(thisOctal)
   type(octal), pointer   :: thisOctal

@@ -63,6 +63,7 @@ end type PHOTONPACKET
   real :: heIIrecombinationLines(3:30, 2:16)
   type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
   real(double) :: globalEpsOverDeltaT
+  real(double) :: kappaPArray(10,2000)
 contains
 
 #ifdef HYDRO
@@ -312,6 +313,7 @@ contains
 
     if (.not.loadBalancingThreadGlobal) call allocateHydrodynamicsAttributes(grid%octreeRoot)
 
+    call setupKappaParrays(grid)
 
 
 !    call writeVtkFile(grid, "inighosts.vtk", &
@@ -2380,7 +2382,7 @@ end subroutine radiationHydro
                    end do
                    photonsStillProcessing = .false.
                 end if
-                print *, "nEscaped ", nEscapedGlobal
+!                print *, "nEscaped ", nEscapedGlobal
                 if (i > 100000) then
                    write(*,*) "!!! Problem with photon conservation ",nEscaped 
                    exit
@@ -3168,7 +3170,7 @@ end subroutine radiationHydro
        globalTime = globalTime - globalStartTime
 
        if (myrankGlobal /= 0) then
-          write(*,*) myrankGlobal, " waited for ",waitingTime, " seconds or ",waitingTime/GlobalTime*100.,"% of run"
+!          write(*,*) myrankGlobal, " waited for ",waitingTime, " seconds or ",waitingTime/GlobalTime*100.,"% of run"
 
 
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, allDomainsCommunicator, ierr)
@@ -3461,7 +3463,7 @@ end subroutine radiationHydro
           call resetNe(grid%octreeRoot)
        endif
        call walltime(endTime)
-       write(*,*) myrankGlobal, " did thermal balance in ",endTime - startTime
+!       write(*,*) myrankGlobal, " did thermal balance in ",endTime - startTime
     endif
 
     !deallocate(octalArray)
@@ -5420,6 +5422,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       IF (FB*FA.GT.0.d0) then
                          t1 = tMinGlobal
                          t2 = 20000.
+!                         write(*,*) "failed using nearby temps ",thisOctal%temperature(subcell)
+                      else
+!                         write(*,*) "success using nearby temps ",thisOctal%temperature(subcell)
                       endif
 
                       A = t1
@@ -5482,6 +5487,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          ENDIF
                          FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
                       enddo
+!                      write(*,*) "finished after ",iter, " iterations"
                       if (ABS(XM).gt.TOL1) write(*,*) 'ZBRENT exceeding maximum iterations.', xm, tol1
                       newT = B
 
@@ -5489,12 +5495,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    END if
                    deltaT = newT- dble(thisOctal%temperature(subcell))
                    thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * real(deltaT)
-!                   write(*,*) "thermal balance new converged after ",iter
+                   !                   write(*,*) "thermal balance new converged after ",iter
                 endif
              endif
           end if
        endif
-      enddo
+    enddo
   end subroutine calculateThermalBalanceNew
 
   subroutine calculateEquilibriumTemperature(grid, thisOctal, subcell, epsOverDeltaT, Teq)
@@ -5789,7 +5795,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
  
     endif
 
-    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+!    call returnKappa(grid, thisOctal, subcell, kappap=kappap, atthistemperature=temperature)
+    kappaP = returnKappaP(thisOctal, subcell, dble(temperature))
     dustCooling = fourPi * kappaP * (stefanBoltz/pi) * temperature**4
 
     coolingRate = coolingRate + dustCooling
@@ -8213,6 +8220,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     enddo
   end subroutine propagateObserverPhoton
 
+
+
+
+
   subroutine moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisphoton
@@ -8672,6 +8683,87 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 !    write(*,*) "exited modified random walk after ",i
   end subroutine modifiedRandomWalk
        
+  subroutine setupKappaPArrays(grid)
+    use inputs_mod, only : nDustType
+    type(GRIDTYPE) :: grid
+    integer :: i, j, itemp, iDust
+    real(double) :: temperature, freq, dfreq, kappap, norm
+    do iTemp = 1, 2000
+       do iDust = 1, nDustType
+          temperature = dble(itemp)
+          kappaP = 0.d0
+          norm = 0.d0
+          do i = 2, grid%nLambda
+             freq = cSpeed / (grid%lamArray(i)*1.d-8)
+             dfreq = cSpeed / (grid%lamArray(i-1)*1.d-8) - cSpeed / (grid%lamArray(i)*1.d-8)
+             do j = 1, nDustType
+                kappaP = kappaP + dble(grid%oneKappaAbs(iDust,i)) * &
+                     bnu(freq,temperature)  * dfreq
+             enddo
+             norm = norm + bnu(freq,temperature)  * dfreq
+          enddo
+          if (norm /= 0.d0) then
+             kappaP = ((kappaP / norm) /1.d10)
+          else
+             kappaP = tiny(kappap)
+          endif
+          kappapArray(iDust, iTemp) = kappaP
+       enddo
+    enddo
+  end subroutine setupKappaPArrays
+
+  function returnKappaP(thisOctal, subcell, temperature) result(kappap)
+    use inputs_mod, only : nDustType
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: temperature
+    real(double) :: kappaP, frac
+    integer :: itemp, i, itemp1
+
+    itemp = min(int(temperature),2000)
+    itemp1 = min(itemp+1,2000)
+    frac = min(temperature,2000.d0) - dble(itemp)
+
+    kappaP = 0.d0
+    do i = 1, nDustType
+       kappaP = kappaP + thisOctal%dustTypeFraction(subcell,i) * &
+            ((1.d0-frac) * kappaPArray(i, itemp) + frac*kappaPArray(i, itemp1))
+    enddo
+    kappaP = kappaP * thisOctal%rho(subcell)
+  end function returnKappaP
+
+  recursive subroutine setKappaP(thisOctal, grid)
+    use inputs_mod, only : includeGasOpacity, ndusttype
+    use gas_opacity_mod, only: returnGasKappaValue
+    use atom_mod, only : bnu
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, j, k
+    real(double) :: tempDouble, kappap, freq, norm, dfreq
+    real(double) :: tarray(1000)
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do k = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(k) == subcell) then
+                child => thisOctal%child(k)
+                call setKappaP(child, grid)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.associated(thisOctal%kappap)) then
+             allocate(thisOctal%kappap(1:ThisOctal%maxChildren))
+          endif
+          thisOctal%kappaP(subcell) = returnKappaP(thisOctal, subcell, dble(thisOctal%temperature(subcell)))
+          
+       endif
+    enddo
+  end subroutine setKappaP
+
 
 
 
@@ -8867,6 +8959,11 @@ end subroutine putStarsInGridAccordingToDensity
        endif
     enddo
   end subroutine putDensityInEtaCont
+
+
+
+
+
 
 #endif
 
