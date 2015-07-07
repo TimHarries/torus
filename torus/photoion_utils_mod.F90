@@ -1624,6 +1624,7 @@ function recombToGround(temperature) result (alpha1)
 end function recombToGround
 
 function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Gamma)
+  use inputs_mod, only : grainFrac
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nHydrogen
@@ -1632,7 +1633,7 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Ga
   sigmaGrain = pi * rGrain**2
   grainVolume = (4.d0/3.d0)*pi*rGrain**3
   grainDensity = 3.5d0
-  dustTogas = 1.d-2
+  dustTogas = grainFrac(1)
 
   if (ionizationFraction > 0.5d0) then
      f = 11.8d0

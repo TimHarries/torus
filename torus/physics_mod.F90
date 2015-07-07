@@ -627,7 +627,7 @@ contains
            if ( present(numLam) ) then 
               nLambda = numLam
            else
-              nLambda = 400
+              nLambda = 200
            end if
 
            if (.not.resolveSilicateFeature) then
@@ -639,7 +639,7 @@ contains
            if ( present(lamMin) ) then 
               lamStart = lamMin
            else
-              lamStart = 100.d0
+              lamStart = 1200.d0
            end if
            if ( present(lamMax) ) then 
               lamEnd = lamMax

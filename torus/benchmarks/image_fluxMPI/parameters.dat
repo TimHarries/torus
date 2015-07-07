@@ -30,7 +30,7 @@ dustphysics      T
 !
 
 image T
-nphotons 2000000
+nphotimage 2000000
 imagesize 8.25e5
 distance 1.
 imagefile testImage.fits

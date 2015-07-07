@@ -56,7 +56,7 @@ spectrum T   ! produce a spectrum
 ninc 2               ! number of inclinations
 firstinc 12.5        ! the first inclination (degrees)
 lastinc 77.5         ! the last inclination (degrees)
-nphotons 500000      ! the number of photon packets in each SED
+nphotspec 500000      ! the number of photon packets in each SED
 filename test        ! the root of the output filename
 sised T              ! Write spectrum as lambda vs F lambda in SI units
 distance 2.25558e-8  ! Distance to observer

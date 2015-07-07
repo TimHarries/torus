@@ -352,21 +352,21 @@ contains
                         kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
 
 
-                   if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
-                      call randomNumberGenerator(getDouble=r1)
-                      if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
+!                   if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+!                      call randomNumberGenerator(getDouble=r1)
+!                      if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
                          call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                          call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                          call addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell)
 !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                      else
+!                      else
                          call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-                      endif
-                   else ! non-ionizing photon must be absorbed by dust
-                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-                   endif
+!                      endif
+!                   else ! non-ionizing photon must be absorbed by dust
+!                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+!                   endif
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
                       open(67,file="spec.dat",status="unknown",form="formatted")

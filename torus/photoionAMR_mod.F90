@@ -2588,6 +2588,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend, containslastpacket) &
                !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, beforeSubcell, beforeOctal, movedCells) & 
+               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat,movedCells) & 
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
@@ -2689,7 +2690,7 @@ end subroutine radiationHydro
  !                        write(*,*) "thisOctal%xmax ",thisOctal%xmax
                       endif
                       
-                      call findsubcellTd(rVec, grid%octreeRoot, beforeOctal, beforeSubcell)
+!                      call findsubcellTd(rVec, grid%octreeRoot, beforeOctal, beforeSubcell)
 
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &

@@ -5544,7 +5544,7 @@ contains
              thisoctal%rho(subcell) = max(thisoctal%q_i(subcell),rhofloor)
           endif
 
-          if ((thisoctal%rho(subcell) < 0.d0).or.(thisOctal%rho(subcell)>1.d-8)) then
+          if ((thisoctal%rho(subcell) < 0.d0)) then
              write(*,*) "rho warning ", thisoctal%rho(subcell), subcellcentre(thisoctal, subcell)
              write(*,*) "rhou, rhov, rhow ", thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
              write(*,*) "label ",thisoctal%label
