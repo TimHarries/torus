@@ -202,7 +202,7 @@ ifeq ($(SYSTEM), complexity)
     MATHTRAP=
     EXE=torus.complexity
     STATICLIBS= -Bstatic
-    CFITSIOLIBDIR= /home/dc-harr1/torus
+    CFITSIOLIBDIR= /home/dc-harr1/cfitsio
     CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
 #    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
     ifeq ($(hdf), yes)
@@ -232,7 +232,7 @@ ifeq ($(SYSTEM), complexity)
     MATHTRAP=
     EXE=torus.complexity
     STATICLIBS= -Bstatic
-    CFITSIOLIBDIR= /home/dc-harr1/torus
+    CFITSIOLIBDIR= /home/dc-harr1/cfitsio
     CFITSIOLIBS = -L${CFITSIOLIBDIR} -lcfitsio
 #    CFITSIOLIBS = -L/home/dc-harr1/cfitsio -lcfitsio
     ifeq ($(hdf), yes)

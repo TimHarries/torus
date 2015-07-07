@@ -3155,6 +3155,13 @@ end subroutine writeXMLVtkFileAMR
                case("ne")
                   rArray(1, n) = real(real(thisOctal%ne(subcell)))
 
+               case("level2")
+                  rArray(1, n) = real(thisOctal%atomLevel(subcell,1,2))
+
+               case("level3")
+                  rArray(1, n) = real(thisOctal%atomLevel(subcell,1,3))
+
+
                case("pressure")
                   rArray(1, n) = real(real(thisOctal%pressure_i(subcell)))
 

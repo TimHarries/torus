@@ -825,7 +825,7 @@ end subroutine readSurface
          surface%nuArray(lineIndex+1),&
          surface%hnuArray(lineIndex),&
          surface%hnuArray(lineIndex+1))
-    write(*,*) "core ", flux,lineindex,SIZE(surface%nuArray),surface%hnuarray
+!    write(*,*) "core ", flux,lineindex,SIZE(surface%nuArray),surface%hnuarray
 
 
     do i = 1, SIZE(surface%element)

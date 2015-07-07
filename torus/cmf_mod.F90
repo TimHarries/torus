@@ -1386,6 +1386,8 @@ contains
     character(len=80) :: message, ifilename
     real :: r
     logical :: ionized
+    logical,allocatable :: doneByThisThread(:)
+    integer :: nOctals, ithread
     integer :: nIter, idump, nt, nInuse, nConverged
     real(double) :: percentageConverged
     real(double), save, allocatable :: oldpops1(:,:), oldpops2(:,:), oldpops3(:,:), oldpops4(:,:)
@@ -1401,7 +1403,9 @@ contains
     integer       ::   nVoxels
     integer       :: nOCtal
     integer       ::   isubcell
+    integer :: status(MPI_STATUS_SIZE)
     integer :: nToDo, j, n
+    integer, parameter :: tag = 54
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
@@ -1622,69 +1626,44 @@ contains
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
 
-
-#ifdef MPI
-
-          nToDo = 0 
-          do i = 1, size(octalArray)
-             thisOctal => octalarray(i)%content
-             do subcell = 1, thisOctal%maxChildren
-                if (OctalArray(i)%inUse(subcell).and.thisOctal%inFlow(subcell)) then
-                   nToDo = nToDo + 1
-                   exit
-                endif
-             enddo
-          enddo
-
-          m = nToDo/np
-
-          ioctal_beg = 1
-          ioctal_end = 0
-          do j = 0, myRankGlobal
-             n = 0
-             do i = 1, size(octalArray)
-                thisOctal => octalarray(i)%content
-                do subcell = 1, thisOctal%maxChildren
-                   if (octalArray(i)%inUse(subcell).and.thisOctal%inFlow(subcell)) then
-                      n = n + 1
-                      exit
-                   endif
-                enddo
-                if (n == (j+1)*m) then
-                   iOctal_end = i
-                   exit
-                endif
-             enddo
-             if (j < myRankGlobal) then
-                iOctal_beg = iOctal_end + 1
-             endif
-          enddo
-          if (myrankGlobal == (nThreadsGlobal-1)) iOctal_end = size(octalArray)
-
-          write(*,*) "myrank ",myrankglobal, " doing ",iOctal_beg, iOctal_end
-
-
-          ! Set the range of index for octal loop used later.     
-          !            np = nThreadsGlobal
-          !            n_rmdr = MOD(SIZE(octalArray),np)
-          !            m = SIZE(octalArray)/np
-
-          !            if (myRankGlobal .lt. n_rmdr ) then
-          !               ioctal_beg = (m+1)*myRankGlobal + 1
-          !               ioctal_end = ioctal_beg + m
-          !            else
-          !               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
-          !               ioctal_end = ioctal_beg + m - 1
-          !            end if
-
-#endif
           if (fixedRays) then
-             call randomNumberGenerator(synciSeed = .true.)
+             call randomNumberGenerator(putIseed = iseed)
+             call randomNumberGenerator(reset = .true.)
           else
              call randomNumberGenerator(randomSeed=.true.)
           endif
 
 
+
+
+#ifdef MPI
+
+         nOctals = size(octalArray)
+         allocate(doneBythisThread(1:nOctals))
+         donebythisthread = .false.
+
+         if (myrankGlobal == 0) then
+            do i = 1, nOctals
+               call MPI_RECV(iThread, 1, MPI_INTEGER, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+               call MPI_SEND(i, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD,  ierr)
+            enddo
+            do i = 1, nThreadsGlobal-1
+               call MPI_RECV(iThread, 1, MPI_INTEGER, i, tag, MPI_COMM_WORLD, status, ierr)
+               call MPI_SEND(-1, 1, MPI_INTEGER, i, tag, MPI_COMM_WORLD,  ierr)
+            enddo
+         else
+            
+            do
+               call MPI_SEND(myrankGlobal, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, ierr)
+               call MPI_RECV(iOctal, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
+               if (iOctal < 0) then
+                  exit
+               endif
+
+               ioctal_beg = ioctal
+               ioctal_end = ioctal
+               doneByThisThread(iOctal_beg:iOctal_end) = .true.
+#endif
           !$OMP PARALLEL DEFAULT (NONE) &
           !$OMP PRIVATE (iOctal, thisOctal, subcell, i0, position, direction, nt, iCellSeed) &
                !$OMP PRIVATE(rayDeltaV, ds, phi, hcol, heicol, heiicol, hitphotosphere, sourcenumber, costheta,weightfreq) &
@@ -1724,15 +1703,6 @@ contains
           allocate(oldpops2(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
           allocate(oldpops3(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
           allocate(oldpops4(nAtom, maxval(thisAtom(1:nAtom)%nLevels)))
-
-          if (fixedRays) then
-             call randomNumberGenerator(putIseed = iseed)
-             call randomNumberGenerator(reset = .true.)
-          else
-             call randomNumberGenerator(randomSeed=.true.)
-          endif
-          call randomNumberGenerator(getReal=r)
-          write(*,*) myrankGlobal, " ran ",r
 
 
 
@@ -1781,7 +1751,7 @@ contains
                    if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then 
 
 
-                      write(*,*) myrankGlobal, nt, subcell, " doing octal ",iOctal, " of ",ioctal_end
+                      write(*,*) myrankGlobal, nt, subcell, " doing octal ",iOctal, " of ",nOctals
 
 
 
@@ -2126,6 +2096,8 @@ contains
                 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
 
 #ifdef MPI
+             enddo
+             endif
 
                 write(*,*) myrankGlobal, " now waiting at barrier"
                 call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -2151,7 +2123,7 @@ contains
                 do iAtom = 1, nAtom
                    do i = 1, thisAtom(iAtom)%nLevels
                       tArrayd = 0.d0
-                      call packAtomLevel(octalArray, nVoxels, tArrayd,  iAtom, i, ioctal_beg, ioctal_end)
+                      call packAtomLevel(octalArray, nVoxels, tArrayd,  iAtom, i, doneByThisThread)
                       write(*,*) myrankglobal, " packed"
                       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                            MPI_SUM,MPI_COMM_WORLD,ierr)
@@ -2163,7 +2135,7 @@ contains
                 call calcNe(grid%octreeRoot, thisAtom)
                 do i = 1, nFreq
                    tArrayd = 0.d0
-                   call packJnu(octalArray, nVoxels, tArrayd, i, ioctal_beg, ioctal_end)
+                   call packJnu(octalArray, nVoxels, tArrayd, i, doneByThisThread)
                    call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                         MPI_SUM,MPI_COMM_WORLD,ierr)
                       if (my_rank == 0) write(*,*) "allreduce freqs done ",i
@@ -2172,7 +2144,7 @@ contains
                 enddo
 
 
-                call packBiasLine3d(octalArray, nVoxels, tArrayd, ioctal_beg, ioctal_end)
+                call packBiasLine3d(octalArray, nVoxels, tArrayd, doneByThisThread)
                 call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                      MPI_SUM,MPI_COMM_WORLD,ierr)
                 if (my_rank == 0) write(*,*) "allreduce biasline3d done"
@@ -3274,12 +3246,12 @@ contains
                 etaline = 0.d0
              endif
 
-             if (associated(thisOctal%fixedTemperature)) then
-                if (.not.thisOctal%fixedTemperature(subcell)) then
-                   jnu = 0.d0
-                   etaline = 0.d0
-                endif
-             endif
+!             if (associated(thisOctal%fixedTemperature)) then
+!                if (.not.thisOctal%fixedTemperature(subcell)) then
+!                   jnu = 0.d0
+!                   etaline = 0.d0
+!                endif
+!             endif
 
              if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
                 bfOpac = 1.d30
@@ -3444,7 +3416,7 @@ contains
          "sourceline ",  &
          "ne         ", "jnu        ","haschild   ", &
          "inflow     ","temperature", "velocity   ", &
-         "cornervel  "/))
+         "cornervel  ","level2","level3"/))
 
 
     doCube = calcDataCube
@@ -3527,7 +3499,7 @@ contains
 
 
     do iv = iv1, iv2
-!       write(*,*) iv,varray(iv)*cspeed/1.d5
+       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
@@ -4017,7 +3989,7 @@ contains
 
 
 #ifdef MPI
-      subroutine packAtomLevel(octalArray, nTemps, tArray, iAtom, iLevel, ioctal_beg, ioctal_end)
+      subroutine packAtomLevel(octalArray, nTemps, tArray, iAtom, iLevel, doneByThisThread)
 
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: nTemps
@@ -4026,6 +3998,7 @@ contains
         integer :: iOctal, iSubcell, iAtom
         integer :: iLevel
         type(OCTAL), pointer :: thisOctal
+        logical :: doneByThisThread(:)
 
        !
        ! Update the edens values of grid computed by all processors.
@@ -4034,11 +4007,12 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
+
           
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                 if (doneByThisThread(iOctal)) then
                    tArray(nTemps) = thisOctal%newAtomLevel(isubcell, iAtom, iLevel)
                  else 
                    tArray(nTemps) = 0.d0
@@ -4074,7 +4048,7 @@ contains
        end do
      end subroutine unpackAtomLevel
 
-      subroutine packjnu(octalArray, nTemps, tArray, iFreq, ioctal_beg, ioctal_end)
+      subroutine packjnu(octalArray, nTemps, tArray, iFreq, doneByThisThread)
 
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: ioctal_beg, ioctal_end
@@ -4082,7 +4056,7 @@ contains
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell, iFreq
         type(OCTAL), pointer :: thisOctal
-
+        logical :: doneByThisThread(:)
        !
        ! Update the edens values of grid computed by all processors.
        !
@@ -4094,7 +4068,7 @@ contains
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                 if (doneByThisThread(iOctal)) then
                    tArray(nTemps) = thisOctal%jnuCont(isubcell, ifreq)
                  else 
                    tArray(nTemps) = 0.d0
@@ -4104,7 +4078,7 @@ contains
        end do
      end subroutine packJnu
 
-      subroutine packbiasline3d(octalArray, nTemps, tArray, ioctal_beg, ioctal_end)
+      subroutine packbiasline3d(octalArray, nTemps, tArray, doneByThisThread)
 
         type(OCTALWRAPPER) :: octalArray(:)
         integer :: ioctal_beg, ioctal_end
@@ -4112,6 +4086,7 @@ contains
         real(double) :: tArray(:)
         integer :: iOctal, iSubcell
         type(OCTAL), pointer :: thisOctal
+        logical :: doneByThisThread(:)
 
        !
        ! Update the edens values of grid computed by all processors.
@@ -4124,7 +4099,7 @@ contains
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
+                 if (DoneByThisThread(iOctal)) then
                    tArray(nTemps) = thisOctal%biasLine3d(isubcell)
                  else 
                    tArray(nTemps) = 0.d0
