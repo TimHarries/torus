@@ -9534,10 +9534,10 @@ endif
        thisOctal%temperature(subcell) = 10.d0
     endif
 
-    if (rMod2 < sphereRadius2) then
-       thisOctal%rho(subcell) = rhoSphere2
-       thisOctal%temperature(subcell) = 10.d0
-    endif
+!    if (rMod2 < sphereRadius2) then
+!       thisOctal%rho(subcell) = rhoSphere2
+!       thisOctal%temperature(subcell) = 10.d0
+!    endif
     thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
     thisOctal%iequationOfState(subcell) = 3 ! n=1 polytrope
     ethermal = 1.5d0*(1.d0/(mHydrogen))*kerg*thisOctal%temperature(subcell)
@@ -17141,16 +17141,16 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%q_i_minus_2,thisOctal%maxchildren)
           call allocateAttribute(thisOctal%u_interface,thisOctal%maxchildren)
 
-       if (thisOctal%twod) then
-          call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,2)
-          call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 2)
-       else
+!       if (thisOctal%twod) then
+!          call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%u_amr_interface_i_plus_1,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%flux_amr_i,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,2)
+!          call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 2)
+!       else
           call allocateAttribute(thisOctal%q_amr_i_minus_1,thisOctal%maxchildren,4)
           call allocateAttribute(thisOctal%q_amr_i_plus_1,thisOctal%maxchildren,4)
           call allocateAttribute(thisOctal%u_amr_interface,thisOctal%maxchildren,4)
@@ -17159,7 +17159,7 @@ end function readparameterfrom2dmap
           call allocateAttribute(thisOctal%flux_amr_i_plus_1,thisOctal%maxchildren,4)
           call allocateAttribute(thisOctal%flux_amr_i_minus_1,thisOctal%maxchildren,4)
           call allocateAttribute(thisOctal%phiLimit_amr,thisOctal%maxchildren, 4)
-       endif
+!       endif
        
 
        call allocateAttribute(thisOctal%fviscosity,thisOctal%maxchildren)

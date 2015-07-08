@@ -8106,6 +8106,7 @@ end subroutine sumFluxes
              call setAllUnchanged(grid%octreeRoot)
              call refineGridGeneric(grid, amrTolerance, evenuparray)
           end if
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)          
           call evenUpGridMPI(grid, .true., dorefine, evenuparray)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)          
        else
@@ -9117,6 +9118,7 @@ end subroutine sumFluxes
        call setupEvenUpArray(grid, evenUpArray)
        call writeInfo("Done", TRIVIAL)
 
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call writeInfo("Evening up", TRIVIAL)
        call evenUpGridMPI(grid, .true.,dorefine, evenUpArray)
        call writeInfo("Done", TRIVIAL)
@@ -15782,8 +15784,8 @@ end subroutine refineGridGeneric2
 
 
     if (amr2d) then
-       tol = 1.d-6
-       tol2 = 1.d-6
+       tol = 1.d-7
+       tol2 = 1.d-7
     endif
 
     if (amr3d) then
@@ -15984,7 +15986,7 @@ end subroutine refineGridGeneric2
 !       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
-       if (it > 10000) then
+       if (it > 100000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit
        endif
@@ -16639,19 +16641,20 @@ end subroutine minMaxDepth
      type(VECTOR) :: point
 
 
-     if (PRESENT(level)) then
-        call  dirichletQuick(grid, level=level)
-     else
-        call  dirichletQuick(grid)
-     endif
-     goto 666
-
-     tag = 94
-     call findCoM(grid, com)
-!     if (writeoutput) write(*,*) "Centre of Mass found at ",com
      if (cylindricalHydro) then
         call applyDirichletCylindrical(grid, level)
      else
+        if (PRESENT(level)) then
+           call  dirichletQuick(grid, level=level)
+        else
+           call  dirichletQuick(grid)
+        endif
+     endif
+     goto 666
+     
+     tag = 94
+     call findCoM(grid, com)
+!     if (writeoutput) write(*,*) "Centre of Mass found at ",com
 
 
      do iThread = 1, nHydroThreadsGlobal
@@ -16687,7 +16690,6 @@ end subroutine minMaxDepth
         endif
         call mpi_barrier(amrCommunicator, ierr)
      enddo
-  endif
 666 continue  
    end subroutine applyDirichlet
 

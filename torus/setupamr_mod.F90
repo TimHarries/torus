@@ -560,7 +560,7 @@ contains
                 call findmassoverallthreads(grid, totalmass)
                 if (writeoutput) write(*,*) "Total mass in sphere before (solar masses): ",totalMass/msol
                 call  torus_mpi_barrier
-                if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, 2.d0*msol/totalMass)
+                if (myrankGlobal /= 0) call scaleDensityAMR(grid%octreeRoot, 1.d0*msol/totalMass)
                 call  torus_mpi_barrier
                 totalMass = 0.d0
                 call findmassoverallthreads(grid, totalmass)

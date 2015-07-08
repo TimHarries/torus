@@ -5826,8 +5826,8 @@ end subroutine writeRadialFile
     real(double) :: rhovCorner(8)
     real(double) :: rhowCorner(8)
     real(double) :: eCorner(8)
-!    real(double) :: phiCorner(8)
-!    real(double) :: pressureCorner(8)
+    real(double) :: phiCorner(8)
+    real(double) :: pressureCorner(8)
     real(double) :: x1, x2, y1, y2, z1, z2, u, x, y, z, dv
     real(double) :: oldMass, newMass, factor
     real(double) :: oldEnergy, newEnergy
@@ -6054,14 +6054,6 @@ end subroutine writeRadialFile
        topOctal => topOctal%parent
     enddo
 
-!    if(thisOctal%oneD) then
-!       call returnAddNewChildCornerArrays(thisOctal, topOctal, topOctalSubcell, grid, rhoCorner, rhoeCorner, rhouCorner, &
-!            rhovCorner, rhowCorner, eCorner, phiCorner, pressureCorner)
-!    else 
-!       call returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell, grid, rhoPoint, rhoePoint, rhouPoint, &
-!            rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint, npoints)
-!    end if
-
     x1 = centre%x - topOctal%subcellSize/2.d0
     x2 = centre%x + topOctal%subcellSize/2.d0
     y1 = centre%y - topOctal%subcellSize/2.d0
@@ -6244,124 +6236,111 @@ end subroutine writeRadialFile
 !          
        endif
        if (thisOctal%twod) then
-          rVec = subcellcentre(thisOctal, iSubcell)
-          x = rVec%x
-          y = 0.d0
-          z = rVec%z
-!          nPoints = 0
-          rVec%y = 0.d0
 
-!          radius = 4.d0*grid%octreeRoot%subcellSize / &
-!                                2.0_oc**REAL(minDepthAmr,kind=oct)
+         call interpBilinear(grid, thisOctal, isubcell, thisOctal%rho(isubcell), thisOctal%rhoe(iSubcell), &
+               thisOctal%rhou(iSubcell), thisOctal%rhov(iSubcell), thisOctal%rhow(iSubcell), thisOctal%energy(iSubcell), &
+               thisOctal%phi_gas(iSubcell), thisOctal%pressure_i(iSubcell))
 
-          radius = thisOctal%subcellSize*4.d0
+!          rVec = subcellcentre(thisOctal, iSubcell)
+!          x = rVec%x
+!          y = 0.d0
+!          z = rVec%z
+!!          nPoints = 0
+!          rVec%y = 0.d0
+!
+!!          radius = 4.d0*grid%octreeRoot%subcellSize / &
+!!                                2.0_oc**REAL(minDepthAmr,kind=oct)
+!
+!          radius = thisOctal%subcellSize*4.d0
+!
+!          do while (nPoints < 12)
+! !            call returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell, rhoPoint, rhoePoint, rhouPoint, &
+! !                 rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint)
+!             call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
+!                  rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
+!             radius = radius * 2.d0
+!          end do
+!
+!          ypoint = 0.d0
+!          y = 0.d0
+!!          rhovPoint = 0.d0
+!                    
+!          nq = min(40, nPoints - 1)
+!          nw = min(40, nPoints - 1)
+!          nr = max(1,nint((dble(nPoints)/3.d0)**0.5d0))
+!          allocate(lCell2d(1:nr,1:nr))
+!          allocate(lnext(1:nPoints))
+!          allocate(rsq(1:nPoints))
+!          allocate(a(5,1:nPoints))
+!
+!          call qshep2 (nPoints, xPoint, zPoint, rhoPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for rho")
+!          thisOctal%rho(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoPoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!
+!          call qshep2 (nPoints, xPoint, zPoint, rhoePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhoe")
+!          thisOctal%rhoe(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoePoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!          call qshep2 (nPoints, xPoint, zPoint, rhouPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
+!          thisOctal%rhou(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!
+!          call qshep2 (nPoints, xPoint, zPoint, rhovPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
+!          thisOctal%rhov(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhovPoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!
+!          call qshep2 (nPoints, xPoint, zPoint, rhowPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhow")
+!          thisOctal%rhow(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhowPoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!          call qshep2 (nPoints, xPoint, zPoint, energyPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for energy")
+!          thisOctal%energy(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, energyPoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!          call qshep2 (nPoints, xPoint, zPoint, phiPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for phi")
+!          thisOctal%phi_gas(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, phiPoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!
+!          call qshep2 (nPoints, xPoint, zPoint, pressurePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
+!               dx, dz, rmax, rsq, a, ier )
+!
+!          if (ier /= 0) call writeWarning("Qshep2 returned an error for pressure")
+!          thisOctal%pressure_i(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, pressurePoint, nr, lcell2d, lnext, &
+!               xmin, zmin, dx, dz, rmax, rsq, a)
+!
+!
+!          deallocate(lCell2d, lnext, rsq, a)
 
-          do while (nPoints < 12)
- !            call returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell, rhoPoint, rhoePoint, rhouPoint, &
- !                 rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint)
-             call getPointsInRadius(rVec, radius, grid, npoints, rhoPoint, rhoePoint, &
-                  rhouPoint, rhovPoint, rhowPoint, energyPoint, pressurePoint, phiPoint, xPoint, yPoint, zPoint)
-             radius = radius * 2.d0
-          end do
-
-          ypoint = 0.d0
-          y = 0.d0
-!          rhovPoint = 0.d0
-                    
-          nq = min(40, nPoints - 1)
-          nw = min(40, nPoints - 1)
-          nr = max(1,nint((dble(nPoints)/3.d0)**0.5d0))
-          allocate(lCell2d(1:nr,1:nr))
-          allocate(lnext(1:nPoints))
-          allocate(rsq(1:nPoints))
-          allocate(a(5,1:nPoints))
-
-          call qshep2 (nPoints, xPoint, zPoint, rhoPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for rho")
-          thisOctal%rho(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-
-          call qshep2 (nPoints, xPoint, zPoint, rhoePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhoe")
-          thisOctal%rhoe(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhoePoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-          call qshep2 (nPoints, xPoint, zPoint, rhouPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
-          thisOctal%rhou(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhouPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-
-          call qshep2 (nPoints, xPoint, zPoint, rhovPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhou")
-          thisOctal%rhov(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhovPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-
-          call qshep2 (nPoints, xPoint, zPoint, rhowPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for rhow")
-          thisOctal%rhow(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, rhowPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-          call qshep2 (nPoints, xPoint, zPoint, energyPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for energy")
-          thisOctal%energy(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, energyPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-          call qshep2 (nPoints, xPoint, zPoint, phiPoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for phi")
-          thisOctal%phi_gas(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, phiPoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-
-          call qshep2 (nPoints, xPoint, zPoint, pressurePoint, nq, nw, nr, lcell2d, lnext, xmin, zmin, &
-               dx, dz, rmax, rsq, a, ier )
-
-          if (ier /= 0) call writeWarning("Qshep2 returned an error for pressure")
-          thisOctal%pressure_i(iSubcell) = qs2val(x, z, nPoints, xPoint, zPoint, pressurePoint, nr, lcell2d, lnext, &
-               xmin, zmin, dx, dz, rmax, rsq, a)
-
-
-          deallocate(lCell2d, lnext, rsq, a)
-
-       endif
+      endif
 
        if (thisOctal%oned) then
-          rVec = subcellcentre(thisOctal, iSubcell)
-          x = rVec%x
-          u = (x - x1)/(x2 - x1)
-          thisOctal%rho(iSubcell) = (1.d0 - u) * rhoCorner(1) + &
-                                    (       u) * rhoCorner(2)
-
-          thisOctal%rhoe(iSubcell) = (1.d0 - u) * rhoeCorner(1) + &
-                                    (       u) * rhoeCorner(2)
-
-
-          thisOctal%rhou(iSubcell) = (1.d0 - u) * rhouCorner(1) + &
-                                    (       u) *  rhouCorner(2)
-
-          thisOctal%rhov(iSubcell) = (1.d0 - u) * rhovCorner(1) + &
-                                    (       u) *  rhovCorner(2)
-
-          thisOctal%rhow(iSubcell) = (1.d0 - u) * rhowCorner(1) + &
-                                    (       u) *  rhowCorner(2)
-
-          thisOctal%energy(iSubcell) = (1.d0 - u) * eCorner(1) + &
-                                    (       u) *  eCorner(2)
+         call interplinear(grid, thisOctal, isubcell, thisOctal%rho(isubcell), thisOctal%rhoe(iSubcell), &
+               thisOctal%rhou(iSubcell), thisOctal%rhov(iSubcell), thisOctal%rhow(iSubcell), thisOctal%energy(iSubcell), &
+               thisOctal%phi_gas(iSubcell), thisOctal%pressure_i(iSubcell))
        Endif
        
     Enddo
@@ -6398,6 +6377,9 @@ end subroutine writeRadialFile
           newMass = newMass + thisOctal%rho(isubcell) * dv
        enddo
        
+       write(*,*) "ndepth ",thisOctal%nDepth
+       write(*,*) "rho parent ",parent%rho(parentsubcell)
+       write(*,*) "old mass, new mass ",oldmass, newmass
        massfactor = oldMass / newMass
        thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * massfactor
        
@@ -6672,6 +6654,248 @@ end subroutine writeRadialFile
 
 
   end subroutine interpTrilinear
+
+  subroutine interpBilinear(grid, thisOctal, subcell, rho, rhoe, rhou, rhov, rhow, energy, phi, pressure)
+    use inputs_mod, only : maxDepthAMR!, minDepthAmr
+    use mpi
+    type(OCTAL), pointer :: thisOctal
+    type(GRIDTYPE) :: grid
+    integer :: iCorner, iDir, nCorner, nDir
+    integer :: nd, j, subcell
+    type(VECTOR) :: dir(8), corner(8), position, rVec, centre
+    real(double) :: rho, rhoe, rhou, rhov, rhow, e, phi, pressure,r, energy
+    real(double) :: u,v,w
+    real(double) :: rhoCorner(8)
+    real(double) :: rhoeCorner(8)
+    real(double) :: rhouCorner(8)
+    real(double) :: rhovCorner(8)
+    real(double) :: rhowCorner(8)
+    real(double) :: eCorner(8)
+    real(double) :: phiCorner(8)
+    real(double) :: pressureCorner(8)
+    real(double) :: weight, totalWeight
+    real(double) :: xh, yh, zh, smallDist
+    logical :: debug
+
+    debug=.false.
+
+    smallDist = 0.01d0*grid%octreeRoot%subcellSize / &
+         2.0_oc**REAL(maxDepthAmr,kind=oct)
+
+    centre = subcellCentre(thisOctal%parent, thisOctal%parentSubcell)
+
+    
+    nDir = 4
+    r = 0.1d0*smallDist
+    dir(1) = VECTOR(-r, 0.d0,  -r)
+    dir(2) = VECTOR(+r, 0.d0, -r)
+    dir(3) = VECTOR(-r, 0.d0, +r)
+    dir(4) = VECTOR(+r, 0.d0, +r)
+       
+    nCorner = 4
+    r = thisOctal%subcellSize
+    corner(1) = centre + VECTOR(-r, 0.d0, -r)
+    corner(2) = centre + VECTOR(+r, 0.d0, -r)
+    corner(3) = centre + VECTOR(-r, 0.d0, +r)
+    corner(4) = centre + VECTOR(+r, 0.d0, +r)
+
+
+    rhoCorner = 0.d0
+    rhoeCorner = 0.d0
+    eCorner = 0.d0
+    rhouCorner = 0.d0
+    rhovCorner = 0.d0
+    rhowCorner = 0.d0
+    phicorner  = 0.d0
+    pressureCorner = 0.d0
+
+    do iCorner = 1, nCorner
+
+       totalWeight = 0.d0
+       j = 0
+
+       do iDir = 1, nDir
+
+          position = corner(iCorner) + dir(iDir)
+
+          if (inOctal(grid%octreeRoot, position)) then
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure, .true.)
+             weight = 1.d0/modulus(position-VECTOR(xh,yh,zh))
+             totalWeight = totalWeight + weight
+             rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
+             rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe
+             rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
+             rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
+             rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
+             eCorner(iCorner) = eCorner(iCorner) + weight * energy
+             phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
+             pressureCorner(iCorner) = pressureCorner(iCorner) + weight * pressure
+          endif
+
+       enddo
+       rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
+       rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
+       rhouCorner(iCorner) = rhouCorner(iCorner) / totalWeight
+       rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
+       rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
+       eCorner(iCorner) = eCorner(iCorner) / totalWeight
+       phiCorner(iCorner) = phiCorner(iCorner) / totalWeight
+       pressureCorner(iCorner) = pressureCorner(iCorner) / totalWeight
+    enddo
+    
+    rVec = subcellCentre(thisOctal, subcell)
+    u = (rVec%x - corner(1)%x)/(corner(2)%x - corner(1)%x)
+    w = (rVec%z - corner(4)%z)/(corner(5)%z - corner(4)%z)
+
+    rho = rhoCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+          rhoCorner(2) * (       u)*(1.d0 - w) + &
+          rhoCorner(3) * (1.d0 - u)*(       w) + &
+          rhoCorner(4) * (       u)*(       w) 
+
+    rhoe = rhoeCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           rhoeCorner(2) * (       u)*(1.d0 - w) + &
+           rhoeCorner(3) * (1.d0 - u)*(       w) + &
+           rhoeCorner(4) * (       u)*(       w)
+
+    rhou = rhouCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           rhouCorner(2) * (       u)*(1.d0 - w) + &
+           rhouCorner(3) * (1.d0 - u)*(       w) + &
+           rhouCorner(4) * (       u)*(       w) 
+
+    rhov = rhovCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           rhovCorner(2) * (       u)*(1.d0 - w) + &
+           rhovCorner(3) * (1.d0 - u)*(       w) + &
+           rhovCorner(4) * (       u)*(       w) 
+
+    rhow = rhowCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           rhowCorner(2) * (       u)*(1.d0 - w) + &
+           rhowCorner(3) * (1.d0 - u)*(       w) + &
+           rhowCorner(4) * (       u)*(       w) 
+
+    e    = eCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           eCorner(2) * (       u)*(1.d0 - w) + &
+           eCorner(3) * (1.d0 - u)*(       w) + &
+           eCorner(4) * (       u)*(       w) 
+
+    phi  = phiCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           phiCorner(2) * (       u)*(1.d0 - w) + &
+           phiCorner(3) * (1.d0 - u)*(       w) + &
+           phiCorner(4) * (       u)*(       w) 
+
+    pressure  = pressureCorner(1) * (1.d0 - u)*(1.d0 - w) + &
+           pressureCorner(2) * (       u)*(1.d0 - w) + &
+           pressureCorner(3) * (1.d0 - u)*(       w) + &
+           pressureCorner(4) * (       u)*(       w) 
+
+  end subroutine interpBilinear
+
+  subroutine interplinear(grid, thisOctal, subcell, rho, rhoe, rhou, rhov, rhow, energy, phi, pressure)
+    use inputs_mod, only : maxDepthAMR!, minDepthAmr
+    use mpi
+    type(OCTAL), pointer :: thisOctal
+    type(GRIDTYPE) :: grid
+    integer :: iCorner, iDir, nCorner, nDir
+    integer :: nd, j, subcell
+    type(VECTOR) :: dir(8), corner(8), position, rVec, centre
+    real(double) :: rho, rhoe, rhou, rhov, rhow, e, phi, pressure,r, energy
+    real(double) :: u,v,w
+    real(double) :: rhoCorner(8)
+    real(double) :: rhoeCorner(8)
+    real(double) :: rhouCorner(8)
+    real(double) :: rhovCorner(8)
+    real(double) :: rhowCorner(8)
+    real(double) :: eCorner(8)
+    real(double) :: phiCorner(8)
+    real(double) :: pressureCorner(8)
+    real(double) :: weight, totalWeight
+    real(double) :: xh, yh, zh, smallDist
+    logical :: debug
+
+    debug=.false.
+
+    smallDist = 0.01d0*grid%octreeRoot%subcellSize / &
+         2.0_oc**REAL(maxDepthAmr,kind=oct)
+
+    centre = subcellCentre(thisOctal%parent, thisOctal%parentSubcell)
+
+    
+    nDir = 8
+    r = 0.1d0*smallDist
+    dir(1) = VECTOR(-r, 0.d0, 0.d0)
+    dir(2) = VECTOR(+r, 0.d0, 0.d0)
+       
+    nCorner = 2
+    r = thisOctal%subcellSize
+    corner(1) = centre + VECTOR(-r, 0.d0, 0.d0)
+    corner(2) = centre + VECTOR(+r, 0.d0, 0.d0)
+
+
+    rhoCorner = 0.d0
+    rhoeCorner = 0.d0
+    eCorner = 0.d0
+    rhouCorner = 0.d0
+    rhovCorner = 0.d0
+    rhowCorner = 0.d0
+    phicorner  = 0.d0
+    pressureCorner = 0.d0
+
+    do iCorner = 1, nCorner
+
+       totalWeight = 0.d0
+       j = 0
+
+       do iDir = 1, nDir
+
+          position = corner(iCorner) + dir(iDir)
+
+          if (inOctal(grid%octreeRoot, position)) then
+             call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure, .true.)
+             weight = 1.d0/modulus(position-VECTOR(xh,yh,zh))
+             totalWeight = totalWeight + weight
+             rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
+             rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe
+             rhouCorner(iCorner) = rhouCorner(iCorner) + weight * rhou
+             rhovCorner(iCorner) = rhovCorner(iCorner) + weight * rhov
+             rhowCorner(iCorner) = rhowCorner(iCorner) + weight * rhow
+             eCorner(iCorner) = eCorner(iCorner) + weight * energy
+             phiCorner(iCorner) = phiCorner(iCorner) + weight * phi
+             pressureCorner(iCorner) = pressureCorner(iCorner) + weight * pressure
+          endif
+
+       enddo
+       rhoCorner(iCorner) = rhoCorner(iCorner) / totalWeight
+       rhoeCorner(iCorner) = rhoeCorner(iCorner) / totalWeight
+       rhouCorner(iCorner) = rhouCorner(iCorner) / totalWeight
+       rhovCorner(iCorner) = rhovCorner(iCorner) / totalWeight
+       rhowCorner(iCorner) = rhowCorner(iCorner) / totalWeight
+       eCorner(iCorner) = eCorner(iCorner) / totalWeight
+       phiCorner(iCorner) = phiCorner(iCorner) / totalWeight
+       pressureCorner(iCorner) = pressureCorner(iCorner) / totalWeight
+    enddo
+    
+    rVec = subcellCentre(thisOctal, subcell)
+    u = (rVec%x - corner(1)%x)/(corner(2)%x - corner(1)%x)
+ 
+    rho = rhoCorner(1) * (1.d0 - u) + &
+          rhoCorner(2) * (       u)
+
+    rhoe = rhoeCorner(1) * (1.d0 - u) + &
+           rhoeCorner(2) * (       u)
+
+    rhou = rhouCorner(1) * (1.d0 - u) + &
+           rhouCorner(2) * (       u)
+
+
+    e    = eCorner(1) * (1.d0 - u) + &
+           eCorner(2) * (       u)
+
+    phi  = phiCorner(1) * (1.d0 - u) + &
+           phiCorner(2) * (       u)
+
+    pressure  = pressureCorner(1) * (1.d0 - u) + &
+           pressureCorner(2)
+
+  end subroutine interplinear
 
   subroutine returnAddNewChildPointArrays(thisOctal, topOctal, topOctalSubcell,  grid, rhoPoint, rhoePoint, &
        rhouPoint, rhovPoint, rhowPoint, phiPoint, energyPoint, pressurePoint, npoints)
@@ -8901,13 +9125,19 @@ recursive subroutine recurCheckEven(grid, thisOctal, check)
   real(double) :: q, rho, rhoe, rhov, rhou,rhow,x,qnext,pressure,&
        flux,phi,phigas,xnext,px,py,pz,rm1,um1,pm1,qviscosity(3,3)
   
-  ndir = 6
-  direction(1) = VECTOR( 0.d0, 0.d0, +1.d0)
-  direction(2) = VECTOR( 0.d0,+1.d0,  0.d0)
-  direction(3) = VECTOR(+1.d0, 0.d0,  0.d0)
-  direction(4) = VECTOR(-1.d0, 0.d0,  0.d0)
-  direction(5) = VECTOR( 0.d0,-1.d0,  0.d0)
-  direction(6) = VECTOR( 0.d0, 0.d0, -1.d0)
+  if (thisOctal%threed) then
+     ndir = 6
+  else if (thisOctal%twod) then
+     ndir = 4
+  else 
+     ndir = 2
+  endif
+  direction(1) = VECTOR(+1.d0, 0.d0,  0.d0)
+  direction(2) = VECTOR(-1.d0, 0.d0,  0.d0)
+  direction(3) = VECTOR( 0.d0, 0.d0, -1.d0)
+  direction(4) = VECTOR( 0.d0, 0.d0, +1.d0)
+  direction(5) = VECTOR( 0.d0,+1.d0,  0.d0)
+  direction(6) = VECTOR( 0.d0,-1.d0,  0.d0)
 
 
   if (thisOctal%nChildren > 0) then

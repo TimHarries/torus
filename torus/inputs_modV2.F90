@@ -3352,9 +3352,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", 10000, ok, .false.)
-    nPhotImage = nPhotons
+
     call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
-         "Number of photons in image: ","(a,i9,a)", 10000, ok, .false.)
+         "Number of photons in image: ","(a,i9,a)", nPhotons, ok, .false.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
@@ -3763,9 +3763,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
-    nPhotSpec = nPhotons
+
     call getBigInteger("nphotspec", nPhotSpec, cLine, fLine, nLines, &
-         "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
+         "Number of photons in SED: ", "(a,i15,1x,a)", nphotspec, ok, .false.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
@@ -4266,7 +4266,7 @@ endif
  subroutine getBigInteger(name, ival, cLine, fLine, nLines, message, format, idef, ok, &
                        musthave)
   character(len=*) :: name
-  integer(kind=bigInt) :: ival
+  integer(kind=bigInt) :: ival,idef
   character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
@@ -4274,7 +4274,6 @@ endif
   character(len=*) :: message, format
   character(len=10) :: default
   logical :: musthave
-  integer :: idef
   logical :: ok
   ok = .true.
   default = " "
