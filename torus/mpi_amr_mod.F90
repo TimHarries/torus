@@ -5818,47 +5818,39 @@ end subroutine writeRadialFile
     integer :: newChildIndex
     integer :: i
     integer :: iSubcell, parentSubcell, topOctalSubcell
-    type(VECTOR) :: rVec, centre
+    type(VECTOR) :: centre !, rVec
     real(double) :: massFactor, newMom, oldMom
-    real(double) :: rhoCorner(8)
-    real(double) :: rhoeCorner(8)
-    real(double) :: rhouCorner(8)
-    real(double) :: rhovCorner(8)
-    real(double) :: rhowCorner(8)
-    real(double) :: eCorner(8)
-    real(double) :: phiCorner(8)
-    real(double) :: pressureCorner(8)
-    real(double) :: x1, x2, y1, y2, z1, z2, u, x, y, z, dv
+    real(double) :: x1, x2, y1, y2, z1, z2, dv !, u, x, y, z
     real(double) :: oldMass, newMass, factor
     real(double) :: oldEnergy, newEnergy
-    integer :: npoints
-    integer :: ier
-    integer :: nr, nw, nq
-    integer, allocatable :: lnext(:) !, lcell(:,:,:)
-    integer, allocatable :: lcell2d(:,:)
+!    integer :: npoints
+!    integer :: ier
+!    integer :: nr, nw, nq
+!    integer, allocatable :: lnext(:), lcell(:,:,:)
+!    integer, allocatable :: lcell2d(:,:)
 !    real(double) :: xyzmin(3), xyzdel(3)
-    real(double) :: rMax
-    real(double), allocatable :: a(:,:), rsq(:)
-    integer, parameter :: maxpts = 10000
-    real(double) :: xPoint(maxpts)
-    real(double) :: yPoint(maxpts)
-    real(double) :: zPoint(maxpts)
-    real(double) :: rhoPoint(maxpts)
-    real(double) :: rhoePoint(maxpts)
+!    real(double) :: rMax
+!    real(double), allocatable :: rsq(:), a(:,:)
+!    integer, parameter :: maxpts = 10000
+!    real(double) :: xPoint(maxpts)
+!    real(double) :: yPoint(maxpts)
+!    real(double) :: zPoint(maxpts)
+!    real(double) :: rhoPoint(maxpts)
+!    real(double) :: rhoePoint(maxpts)
 !    real(double) :: uPoint(maxpts)
 !    real(double) :: vPoint(maxpts)
 !    real(double) :: wPoint(maxpts)
-    real(double) :: rhouPoint(maxpts)
-    real(double) :: rhovPoint(maxpts)
-    real(double) :: rhowPoint(maxpts)
-    real(double) :: phiPoint(maxpts)
-    real(double) :: energyPoint(maxpts)
-    real(double) :: pressurePoint(maxpts)
-    real(double) :: dx, dz, xmin, zmin
+!    real(double) :: rhouPoint(maxpts)
+!    real(double) :: rhovPoint(maxpts)
+!    real(double) :: rhowPoint(maxpts)
+!    real(double) :: phiPoint(maxpts)
+!    real(double) :: energyPoint(maxpts)
+!    real(double) :: pressurePoint(maxpts)
+!    real(double) :: xmin, zmin, dx, dz
 !    real(double) :: thisRho
 !    integer :: counter
 !    character(len=80) :: message
-    real(double) :: radius
+!    real(double) :: radius
     logical, save :: firstTime = .true.
     logical :: debug !, successful , doLogspace, triedLogSpace
 
@@ -6664,7 +6656,7 @@ end subroutine writeRadialFile
     integer :: nd, j, subcell
     type(VECTOR) :: dir(8), corner(8), position, rVec, centre
     real(double) :: rho, rhoe, rhou, rhov, rhow, e, phi, pressure,r, energy
-    real(double) :: u,v,w
+    real(double) :: u,w
     real(double) :: rhoCorner(8)
     real(double) :: rhoeCorner(8)
     real(double) :: rhouCorner(8)
@@ -6798,7 +6790,7 @@ end subroutine writeRadialFile
     integer :: nd, j, subcell
     type(VECTOR) :: dir(8), corner(8), position, rVec, centre
     real(double) :: rho, rhoe, rhou, rhov, rhow, e, phi, pressure,r, energy
-    real(double) :: u,v,w
+    real(double) :: u
     real(double) :: rhoCorner(8)
     real(double) :: rhoeCorner(8)
     real(double) :: rhouCorner(8)

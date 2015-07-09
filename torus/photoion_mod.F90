@@ -86,7 +86,8 @@ contains
     type(RECOMBTABLE) :: Hrecombtable
 
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
-    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
+! r1 needs to be OMP private if reintated
+    real(double) :: kappaAbsGas, kappaAbsDust, escat !, r1
 
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
@@ -284,7 +285,7 @@ contains
        !$OMP PARALLEL DEFAULT(NONE) &
        !$OMP PRIVATE (imonte, isource, thisSource, rVec, uHat, rHat, tempOctal, tempsubcell) &
        !$OMP PRIVATE (photonPacketWeight, sourceWeight, escaped, subcell, temp, ok, directPhoton, wavelength) &
-       !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r, r1) &
+       !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r) &
        !$OMP PRIVATE (freqWeight, thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
        !$OMP SHARED (nlambda, writeoutput)

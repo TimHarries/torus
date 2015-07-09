@@ -5566,14 +5566,14 @@ contains
              if (.not.associated(thisoctal%mpiboundarystorage)) &
                 write(*,*) "cell is not on a boundary"
              
-             thisOctal%rho(subcell) = SUM(thisOctal%rho(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
-                  dble(thisOctal%maxChildren)
-             thisOctal%rhou(subcell) = SUM(thisOctal%rhou(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
-                  dble(thisOctal%maxChildren)
-             thisOctal%rhov(subcell) = SUM(thisOctal%rhov(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
-                  dble(thisOctal%maxChildren)
-             thisOctal%rhow(subcell) = SUM(thisOctal%rhow(1:thisOctal%maxChildren),MASK = thisOctal%rho > 0.d0) / &
-                  dble(thisOctal%maxChildren)
+             thisOctal%rho(subcell) = SUM(thisOctal%rho(1:thisOctal%maxChildren), &
+                  MASK = thisOctal%rho(1:thisOctal%maxChildren) > 0.d0) / dble(thisOctal%maxChildren)
+             thisOctal%rhou(subcell) = SUM(thisOctal%rhou(1:thisOctal%maxChildren), & 
+                  MASK = thisOctal%rho(1:thisOctal%maxChildren) > 0.d0) / dble(thisOctal%maxChildren)
+             thisOctal%rhov(subcell) = SUM(thisOctal%rhov(1:thisOctal%maxChildren), & 
+                  MASK = thisOctal%rho(1:thisOctal%maxChildren) > 0.d0) / dble(thisOctal%maxChildren)
+             thisOctal%rhow(subcell) = SUM(thisOctal%rhow(1:thisOctal%maxChildren), &
+                  MASK = thisOctal%rho(1:thisOctal%maxChildren) > 0.d0) / dble(thisOctal%maxChildren)
 
           endif
        endif

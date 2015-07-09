@@ -132,7 +132,7 @@ contains
          "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
 
     call getbigInteger("seed", inputSeed, cLine, fLine, nLines, &
-         "Random number seed","(a,i12,a)", 0, ok, .false.)
+         "Random number seed","(a,i12,a)", 0_bigInt, ok, .false.)
 
 
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
@@ -278,7 +278,7 @@ contains
     slabwidth = slabwidth*pctocm/1.d10
 
     call getbigInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
-         "Number of photon packets","(a,i12,a)", 0, ok, .false.)
+         "Number of photon packets","(a,i12,a)", 0_bigInt, ok, .false.)
 
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
          "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
@@ -500,7 +500,7 @@ contains
          "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
-         "Maximum memory available (Mb): ","(a,i12,a)", 2000, ok, .false.)
+         "Maximum memory available (Mb): ","(a,i12,a)", 2000_bigInt, ok, .false.)
     maxMemoryAvailable = maxMemoryAvailable * 1000000
 
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)
@@ -2840,7 +2840,7 @@ contains
     call getInteger("nlucy", nLucy, cLine, fLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",0,ok,.false.)
 
     call getbigInteger("nmonte", inputnMonte, cLine, fLine, nLines, &
-         "Number of photons in image","(a,i12,a)", 0, ok, .false.)
+         "Number of photons in image","(a,i12,a)", 0_bigInt, ok, .false.)
 
     call getLogical("massiveStars", massiveStars, cLine, fLine, nLines, &
          "Only include stars over 20Msol in photoion calc: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -3351,7 +3351,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real :: aspectRatio, thisAspectRatio
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
-         "Number of photons in image: ","(a,i9,a)", 10000, ok, .false.)
+         "Number of photons in image: ","(a,i9,a)", 10000_bigInt, ok, .false.)
 
     call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", nPhotons, ok, .false.)
@@ -3593,7 +3593,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real(double) :: ang
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
-         "Number of photons in image: ","(a,i9,a)", 10000, ok, .true.)
+         "Number of photons in image: ","(a,i9,a)", 10000_bigInt, ok, .true.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
@@ -3762,7 +3762,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
-         "Number of photons in SED: ", "(a,i15,1x,a)", 100000, ok, .false.)
+         "Number of photons in SED: ", "(a,i15,1x,a)", 100000_bigInt, ok, .false.)
 
     call getBigInteger("nphotspec", nPhotSpec, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", nphotspec, ok, .false.)

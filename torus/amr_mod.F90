@@ -3531,7 +3531,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : cavdens, limitscalar, addDisc, amrgridsize
+    use inputs_mod, only : cavdens, limitscalar, addDisc
     use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin

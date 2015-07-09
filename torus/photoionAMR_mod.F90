@@ -1426,8 +1426,9 @@ end subroutine radiationHydro
     real(double) :: tLimit
     real(double) :: deltaTime
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, beforeOctal
-    integer :: beforeSubcell
+    ! Commented out variables beforeSubcell and beforeOctal need to be declared OMP private if re-instated
+    type(OCTAL), pointer :: thisOctal!, beforeOctal
+!    integer :: beforeSubcell
 !    character(len=80) :: message
     integer :: nlambda
     real :: lamArray(:)
@@ -2587,8 +2588,7 @@ end subroutine radiationHydro
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend, containslastpacket) &
-               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, beforeSubcell, beforeOctal, movedCells) & 
-               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat,movedCells) & 
+               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, movedCells) & 
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
@@ -3339,10 +3339,9 @@ end subroutine radiationHydro
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal) &
        !$OMP SHARED(augerArray, firstwarning, radpressuretest, loadbalancing, copyOfThread)
 
-       !$OMP DO SCHEDULE(DYNAMIC,2)
-
        call walltime(startTime)
 
+       !$OMP DO SCHEDULE(DYNAMIC,2)
        do iOctal =  iOctal_beg, iOctal_end
           
           thisOctal => octalArray(iOctal)%content
@@ -8734,15 +8733,12 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
   end function returnKappaP
 
   recursive subroutine setKappaP(thisOctal, grid)
-    use inputs_mod, only : includeGasOpacity, ndusttype
     use gas_opacity_mod, only: returnGasKappaValue
     use atom_mod, only : bnu
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, j, k
-    real(double) :: tempDouble, kappap, freq, norm, dfreq
-    real(double) :: tarray(1000)
+    integer :: subcell, k
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
