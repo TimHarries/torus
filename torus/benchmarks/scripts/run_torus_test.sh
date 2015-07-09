@@ -61,7 +61,6 @@ ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 case ${SYSTEM} in
     ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
     gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
@@ -79,7 +78,6 @@ export TORUS_JOB_DIR=./
 case ${SYSTEM} in
     ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
     gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    nagfor) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
 
@@ -228,11 +226,13 @@ for sys in ${SYS_TO_TEST}; do
 
 # Details of how to run each system are set here
     export USEGCOV=no
+# OpenMPI will bind to core by default so we'll use the 2 OpenMP threads available from hyperthreading.
+# Binding can be diabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
     if [[ ${sys} == "ompiosx-openmp" ]]; then
 	export SYSTEM=ompiosx
 	export USEOPENMP=yes
-	export NUM_MPI_PROC=2
-	export OMP_NUM_THREADS=4
+	export NUM_MPI_PROC=4
+	export OMP_NUM_THREADS=2
 	echo "Building ompiosx with OpenMP"
     elif [[ ${sys} == "ompiosx" ]]; then
 	export SYSTEM=ompiosx
@@ -244,9 +244,6 @@ for sys in ${SYS_TO_TEST}; do
 	export SYSTEM=gfortran
 	export USEOPENMP=yes
 	export OMP_NUM_THREADS=8
-    elif [[ ${sys} == "nagfor" ]]; then
-	export SYSTEM=nagfor
-	export USEOPENMP=no
     elif [[ ${sys} == "zen" ]]; then
 	export SYSTEM=zen
 	export USEOPENMP=no
@@ -446,9 +443,6 @@ for sys in ${BUILD_ONLY}; do
     elif [[ ${sys} == "gfortran" ]]; then
 	export SYSTEM=gfortran
 	export USEOPENMP=yes
-    elif [[ ${sys} == "nagfor" ]]; then
-	export SYSTEM=nagfor
-	export USEOPENMP=no
     elif [[ ${sys} == "zen" ]]; then
 	export SYSTEM=zen
 	export USEOPENMP=no
@@ -536,11 +530,11 @@ case ${MODE} in
 	   echo;;
 
     build) export SYS_TO_TEST=" "
-           export BUILD_ONLY="nagfor gfortran ompiosx ompiosx-openmp"
+           export BUILD_ONLY="gfortran ompiosx ompiosx-openmp"
 	   export DEBUG_OPTS="yes"
 	   export TORUS_FC="gfortran -g -fcheck=all"
-	   export TORUS_FITSLIBS="/Users/acreman/cfitsio"
-	   export PATH=~/bin:/usr/local/bin:${PATH}:/usr/bin
+	   export TORUS_FITSLIBS="/home/torustest/cfitsio"
+	   export PATH=~/openmpi/bin:~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
@@ -610,4 +604,3 @@ done
 rm ${TEST_DIR}/lock
 
 exit ${RETURN_CODE}
-
