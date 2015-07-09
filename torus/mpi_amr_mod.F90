@@ -8744,7 +8744,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     nBuffer = 1
 
     if (myrankGlobal == fromThread) then
-       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+!       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
        call packBranch(grid%octreeRoot)
     endif
 
@@ -8767,7 +8767,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
        CALL setSmallestSubcell(grid)
        call countVoxels(grid%octreeRoot, grid%nOctals, i)
 
-       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+!       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
        copyOfThread = fromThread
     endif
     call MPI_BARRIER(communicator,ierr)

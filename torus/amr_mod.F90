@@ -3531,7 +3531,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : cavdens, limitscalar, addDisc
+    use inputs_mod, only : cavdens, limitscalar, addDisc, amrgridsize
     use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -4416,8 +4416,18 @@ CONTAINS
           
                          
        case("sphere")
-!          if (thisOctal%subcellSize > (rGrid(i+1)-rGrid(i))) then
-!             if (thisOctal%nDepth < minDepthAMR) split = .true.
+!          if (amr2d) then
+!             nr = 1000
+!             do i = 1, nr
+!                rgrid(i) = dble(i-1)/dble(nr-1) * log10(amrGridSize)
+!                rgrid(i) = 10.d0**rGrid(i)
+!             enddo
+!             rgrid(1) = 0.d0
+!             rVec = subcellCentre(thisOctal, subcell)
+!             call locate(rGrid, nr, modulus(rVec),i)
+!             if (thisOctal%subcellSize > (rGrid(i+1)-rGrid(i))) then
+!                if (thisOctal%nDepth < maxDepthAMR) split = .true.
+!       endif
 !          endif
           bigJ = 0.25d0
           cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))

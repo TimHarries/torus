@@ -642,7 +642,7 @@ contains
 
  !            thisTime = (twoPi*r)/sqrt(bigG*mSol/r)
  !            dt = min(thisTime, dt)
-             dt = 1.d30
+ !            dt = 1.d30
           endif
        endif
     enddo

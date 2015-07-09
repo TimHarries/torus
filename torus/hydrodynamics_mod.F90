@@ -8859,7 +8859,7 @@ end subroutine sumFluxes
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
           call computeDivV(grid%octreeRoot, grid)
           call pressureGradientTimeStep(grid, dt_pressure, npairs,thread1,thread2,nbound,group,ngroup)
-!          call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
+          call viscousTimescale(grid%octreeRoot, grid, dt_viscous)
        endif
        call MPI_ALLREDUCE(dt_pressure, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        dt_pressure = tempDouble
@@ -15784,8 +15784,8 @@ end subroutine refineGridGeneric2
 
 
     if (amr2d) then
-       tol = 1.d-7
-       tol2 = 1.d-7
+       tol = 1.d-5
+       tol2 = 1.d-5
     endif
 
     if (amr3d) then
