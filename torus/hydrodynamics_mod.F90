@@ -1954,8 +1954,8 @@ contains
              if((abs(direction%x) + abs(direction%y) + abs(direction%z)) /= 1.d0) then
                 print *, "boundary partner is at a diagonal!"
                 print *, "direction ", direction
-                print *, "rVec ", rVec
-                print *, "bVec ", bVec
+                print *, "rVec ", rVec,thisOctal%nDepth
+                print *, "bVec ", bVec,bOctal%nDepth
 !                stop
              end if
 

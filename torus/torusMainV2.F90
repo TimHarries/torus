@@ -176,9 +176,12 @@ program torus
 !     call testBranchCopying(grid)
 
 ! SPH data may be required for setting up sources so only free memeory after this is done
+
 #ifdef SPH
         call deallocate_sph
 #endif
+
+     call torus_mpi_barrier
 
      call writeBanner("Run-time messages","+",TRIVIAL)
 

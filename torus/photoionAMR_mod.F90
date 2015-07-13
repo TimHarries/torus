@@ -2102,7 +2102,7 @@ end subroutine radiationHydro
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (firstLoadBalancing.and.(.not.readGrid)) then
-          call setLoadBalancingThreadsBySources(grid)
+          call setLoadBalancingThreadsByCells(grid)
           firstLoadBalancing = .false.
        else
           call  setLoadBalancingThreadsByCrossings(grid)
