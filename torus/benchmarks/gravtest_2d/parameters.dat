@@ -20,6 +20,7 @@ cfl 0.3
 amr3d F
 amr2d T
 cylindricalhydro T
+nhydrothreads 4
 amr1d F
 
 nsource 1

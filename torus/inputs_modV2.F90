@@ -165,9 +165,9 @@ contains
 
     if (splitOverMPI) then
        call getInteger("nhydrothreads", nHydroThreadsInput, cLine, fLine, nLines, &
-            "Number of threads for domain decomposition: ","(a,i3,a)", 0, ok, .false.)
+            "Number of threads for domain decomposition: ","(a,i3,a)", 0, ok, .true.)
        call getLogical("loadbalancing", loadBalancing, cLine, fLine, nLines, &
-            "Employ load balancing MPI methods: ","(a,1l,1x,a)", .false., ok, .false.)
+            "Employ load balancing MPI methods: ","(a,1l,1x,a)", .true., ok, .false.)
     endif
 
 
@@ -3765,7 +3765,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
          "Number of photons in SED: ", "(a,i15,1x,a)", 100000_bigInt, ok, .false.)
 
     call getBigInteger("nphotspec", nPhotSpec, cLine, fLine, nLines, &
-         "Number of photons in SED: ", "(a,i15,1x,a)", nphotspec, ok, .false.)
+         "Number of photons in SED: ", "(a,i15,1x,a)", nphotons, ok, .false.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)

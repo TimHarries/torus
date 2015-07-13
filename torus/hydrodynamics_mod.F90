@@ -8329,6 +8329,7 @@ end subroutine sumFluxes
 !                  "phi          ", &
 !                  "pressure     ", &
 !                  "q_i          "/))
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              call evenUpGridMPI(grid,.false., dorefine, evenUpArray)
              call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)             
              if (myrankWorldGlobal == 1) call tune(6, "Initial refine")
@@ -14375,7 +14376,7 @@ end subroutine refineGridGeneric2
   end subroutine gSweep2
 
 !This is for cylindrical hydro calcs?
-  recursive subroutine gSweep2level(thisOctal, grid, fracChange,nDepth)
+  recursive subroutine gSweep2level(thisOctal, grid, fracChange, fracChange2, nDepth)
     use mpi
     type(GRIDTYPE) :: grid
     integer :: nDepth
@@ -14388,7 +14389,7 @@ end subroutine refineGridGeneric2
     integer :: n, ndir
     real(double) :: x1, x2
     real(double) ::  g(6), dx, dxArray(6), g2(6), phiInterface(6)
-    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) :: deltaT, fracChange, gGrav, newPhi, newerPhi, frac, d2phidx2(3), sumd2phidx2, fracChange2
     integer :: nd, nc
     real(double) :: tauMin, dfdrbyr
     real(double), parameter :: maxM = 100000.d0
@@ -14425,7 +14426,7 @@ end subroutine refineGridGeneric2
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
        do i = 1, thisOctal%nChildren, 1
           child => thisOctal%child(i)
-          call gsweep2Level(child, grid, fracChange, ndepth)
+          call gsweep2Level(child, grid, fracChange, fracChange2, ndepth)
        end do
        
        
@@ -14525,13 +14526,16 @@ end subroutine refineGridGeneric2
              if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
              if (.not.associated(thisOctal%adot)) allocate(thisOctal%adot(1:thisOctal%maxChildren))
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
-!                frac = abs(sumd2phidx2 - thisOctal%source(subcell))/thisOctal%source(subcell)
                 frac = abs((oldPhi - newPhi)/oldPhi)
                 thisOctal%chiline(subcell) = frac
                 thisOctal%adot(subcell) = frac
                 fracChange = max(frac, fracChange)
+                frac = abs(sumd2phidx2 - thisOctal%source(subcell))/thisOctal%source(subcell)
+                fracChange2 = max(frac, fracChange2)
+
              else
                 fracChange = 1.d30
+                fracChange2 = 1.d30
              endif
 
              thisOctal%phi_gas(subcell) = newPhi
@@ -14829,7 +14833,7 @@ end subroutine refineGridGeneric2
 
              dx = thisOctal%subcellSize*gridDistanceScale
              if (thisOctal%twoD) then
-               d2phidx2(1) = (g2(1) - g2(2)) / dx
+               d2phidx2(1) = (g2(1) - g2(2)) / dx 
                d2phidx2(2) = (g2(3) - g2(4)) / dx
                sumd2phidx2 = SUM(d2phidx2(1:2)) + dfdrbyr
              else
@@ -15428,7 +15432,7 @@ end subroutine refineGridGeneric2
 
 
 
-  recursive subroutine gSweepLevel(thisOctal, grid, deltaT, fracChange, ghostFracChange, nDepth)
+  recursive subroutine gSweepLevel(thisOctal, grid, deltaT, fracChange, fracChange2, ghostFracChange, nDepth)
     use mpi
     integer :: nd
     type(GRIDTYPE) :: grid
@@ -15442,7 +15446,7 @@ end subroutine refineGridGeneric2
     integer :: n, ndir, nc
     real(double) :: g(6) 
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, ghostFracChange !, d2phidx2(3), sumd2phidx2
-    real(double) :: sorFactor, deltaPhi, dx, sumd2phidx2
+    real(double) :: sorFactor, deltaPhi, dx, sumd2phidx2, fracChange2
     real(double) :: xnext, px, py, pz,qViscosity(3,3), rm1, um1, pm1
     sorFactor = 1.2d0
 
@@ -15452,7 +15456,7 @@ end subroutine refineGridGeneric2
     if ((thisOctal%nChildren > 0).and.(thisOctal%nDepth < nDepth)) then
        do i = 1, thisOctal%nChildren, 1
           child => thisOctal%child(i)
-          call gsweepLevel(child, grid, deltaT, fracChange, ghostFracChange, ndepth)
+          call gsweepLevel(child, grid, deltaT, fracChange, fracChange2, ghostFracChange, ndepth)
        end do
     else
 
@@ -15504,11 +15508,14 @@ end subroutine refineGridGeneric2
              if (thisOctal%phi_gas(subcell) /= 0.d0) then
 !                frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
                 frac = abs((newPhi - thisOctal%phi_gas(subcell))/thisOctal%phi_gas(subcell))
+             if (.not.associated(thisOctal%chiline)) allocate(thisOctal%chiline(1:thisOctal%maxChildren))
                 thisOctal%chiLine(subcell) = frac
                 fracChange = max(frac, fracChange)
              else
                 fracChange = 1.d30
              endif
+             frac = abs((sumd2phidx2 - fourPi*gGrav*thisOctal%rho(subcell))/(fourPi*gGrav*thisOctal%rho(subcell)))
+             fracChange2 = max(frac, fracChange2)
              thisOCtal%phi_gas(subcell) = newPhi             
           endif
        enddo
@@ -15675,6 +15682,10 @@ end subroutine refineGridGeneric2
           enddo
 
        enddo
+       bigiter = bigiter+1
+    enddo
+
+    do
 
        call addCorrections(grid%octreeRoot, minDepthAMR) ! from depth above
 
@@ -15784,8 +15795,8 @@ end subroutine refineGridGeneric2
 
 
     if (amr2d) then
-       tol = 1.d-5
-       tol2 = 1.d-5
+       tol = 1.d-8
+       tol2 = 1.d-8
     endif
 
     if (amr3d) then
@@ -15797,7 +15808,7 @@ end subroutine refineGridGeneric2
     if (PRESENT(onlyChanged)) doOnlyChanged = onlyChanged
 
 !    call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!    goto 555
+!    goto 666
 
 
     if(simpleGrav) then
@@ -15855,8 +15866,10 @@ end subroutine refineGridGeneric2
 !          deltaT = deltaT * timeToCodeUnits
           it = 0
           fracChange = 1.d30
+          fracChange2 = 1.d30
           do while (ANY(fracChange(1:nHydrothreadsGlobal) > tol)) 
              fracChange = 0.d0
+             fracChange2 = 0.d0
              ghostFracChange = 0.d0
              it = it + 1
               
@@ -15866,9 +15879,10 @@ end subroutine refineGridGeneric2
               
 !             if (myrankglobal == 1) call tune(6,"Gsweep level")
              if (cylindricalHydro) then
-                call  gSweep2level(grid%octreeRoot, grid, fracChange(myrankGlobal), idepth)
+                call  gSweep2level(grid%octreeRoot, grid, fracChange(myrankGlobal), fracChange2(myrankGlobal), idepth)
              else
-                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), ghostFracChange(myRankGlobal),iDepth)
+                call gSweepLevel(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal), fracChange2(myrankGlobal), &
+                     ghostFracChange(myRankGlobal),iDepth)
              endif
 !             if (myrankglobal == 1) call tune(6,"Gsweep level")
 
@@ -15884,11 +15898,16 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR &
                   , ierr)
              fracChange = tempFracChange
+
+
+             call MPI_ALLREDUCE(fracChange2, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR &
+                  , ierr)
+             fracChange2 = tempFracChange
 !             if (myrankGlobal == 1) write(*,*) "Multigrid iteration ",it, " maximum fractional change ", &
 !                  MAXVAL(fracChange(1:nHydroThreadsGlobal)),tol
 
 
-!             if (writeoutput) write(*,*) it,MAXVAL(fracChange(1:nHydroThreadsGlobal)),tol
+!             if (writeoutput) write(*,*) it,MAXVAL(fracChange2(1:nHydroThreadsGlobal)),tol
           enddo
 
 
@@ -15934,18 +15953,6 @@ end subroutine refineGridGeneric2
     do while (ANY(fracChange(1:nHydrothreadsGlobal) > tol2))
        fracChange = 0.d0
 
-!       write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!       call writeVtkFile(grid, plotfile, &
-!            valueTypeString=(/"phigas ", "rho    ","chiline  "/))
-
-!       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-
-!       thisFrac = 1.d30
-!       do while (thisFrac > 1.d-6)
-!          thisFrac = 0.d0
-!       do j = 1,20
-!          call gSweep2(grid%octreeRoot, grid, deltaT, thisFrac)
-!       enddo
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        fracChange = 0.d0
@@ -15986,6 +15993,7 @@ end subroutine refineGridGeneric2
 !       endif
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
+!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange2(1:nHydroThreadsGlobal)),tol2
        if (it > 100000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
           exit

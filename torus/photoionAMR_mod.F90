@@ -2416,7 +2416,7 @@ end subroutine radiationHydro
              nSaved = 0
              nNotEndLoop = 0
              waitingTime = 0.d0
-             call wallTime(globalStartTime)
+!             call wallTime(globalStartTime)
              sendAllPhotons = .false.
              !needNewPhotonArray = .true.  
              do while(.not.endLoop) 
@@ -3167,8 +3167,8 @@ end subroutine radiationHydro
        end if
 
  
-       call wallTime(globalTime)
-       globalTime = globalTime - globalStartTime
+!       call wallTime(globalTime)
+!       globalTime = globalTime - globalStartTime
 
        if (myrankGlobal /= 0) then
 !          write(*,*) myrankGlobal, " waited for ",waitingTime, " seconds or ",waitingTime/GlobalTime*100.,"% of run"

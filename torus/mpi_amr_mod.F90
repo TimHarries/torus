@@ -6369,9 +6369,9 @@ end subroutine writeRadialFile
           newMass = newMass + thisOctal%rho(isubcell) * dv
        enddo
        
-       write(*,*) "ndepth ",thisOctal%nDepth
-       write(*,*) "rho parent ",parent%rho(parentsubcell)
-       write(*,*) "old mass, new mass ",oldmass, newmass
+!       write(*,*) "ndepth ",thisOctal%nDepth
+!       write(*,*) "rho parent ",parent%rho(parentsubcell)
+!       write(*,*) "old mass, new mass ",oldmass, newmass
        massfactor = oldMass / newMass
        thisOctal%rho(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) * massfactor
        

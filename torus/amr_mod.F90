@@ -4416,19 +4416,19 @@ CONTAINS
           
                          
        case("sphere")
-          if (amr2d) then
-             nr = 100
-             do i = 1, nr
-                rgrid(i) = dble(i-1)/dble(nr-1) * log10(amrGridSize)
-                rgrid(i) = 10.d0**rGrid(i)
-             enddo
-             rgrid(1) = 0.d0
-             rVec = subcellCentre(thisOctal, subcell)
-             call locate(rGrid, nr, modulus(rVec),i)
-             if (thisOctal%subcellSize > (rGrid(i+1)-rGrid(i))) then
-                if (thisOctal%nDepth < maxDepthAMR) split = .true.
-       endif
-          endif
+!          if (amr2d) then
+!             nr = 100
+!             do i = 1, nr
+!                rgrid(i) = dble(i-1)/dble(nr-1) * log10(amrGridSize)
+!                rgrid(i) = 10.d0**rGrid(i)
+!             enddo
+!             rgrid(1) = 0.d0
+!             rVec = subcellCentre(thisOctal, subcell)
+!             call locate(rGrid, nr, modulus(rVec),i)
+!             if (thisOctal%subcellSize > (rGrid(i+1)-rGrid(i))) then
+!                if (thisOctal%nDepth < maxDepthAMR) split = .true.
+!       endif
+!          endif
           bigJ = 0.25d0
           cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))
           rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * (thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
