@@ -1593,7 +1593,7 @@ end subroutine radiationHydro
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
     integer :: nDomainThreads, localRank, m, nBundles
-    real :: FinishTime, WaitingTime, globalStartTime, globalTime
+    real :: FinishTime, WaitingTime
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
 
