@@ -296,7 +296,9 @@ contains
        loadBalanceList(1,nLoadBalanceList(1)) = i
     enddo
     
-    do i = 1, 100
+    i = 0
+    do while(i < 100000)
+       i =  i + 1
        if (myrankGlobal == 1) write(*,*) "Sending branch repeat ",i
        call createLoadBalanceCommunicator
        call createLoadThreadDomainCopies(grid)

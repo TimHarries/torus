@@ -17441,6 +17441,9 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%boundaryCondition)
     call deallocateAttribute(thisOctal%boundaryCell)
 
+    call deallocateAttribute(thisOctal%spectrum)
+    call deallocateAttribute(thisOctal%nFreq)
+
   end subroutine deallocateOctalDynamicAttributes
 
 
