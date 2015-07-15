@@ -15592,7 +15592,7 @@ end subroutine refineGridGeneric2
              call writeInfo("Iterating residuals", TRIVIAL)
              iter = 0 
              fracChange = 1.e3
-             do while(fracChange > 1.d-6)
+             do while(fracChange > 1.d-2)
                 iter = iter + 1
                 fracChange = 0.d0
                 call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.true.)
@@ -15600,7 +15600,7 @@ end subroutine refineGridGeneric2
                 call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
                 fracChange = tempFracChange
                 if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-                if (iter == 5)exit
+                if (iter == 50)exit
              enddo
              
              call addPhiFromBelow(grid%octreeRoot, iDepth)
@@ -15615,7 +15615,7 @@ end subroutine refineGridGeneric2
              ! now iterate over this for ALL cells at this level and calculate the residuals
              iter = 0 
              fracChange = 1.d3
-             do while(fracChange > 1.d-20)
+             do while(fracChange > 1.d-2)
                 iter = iter + 1
                 fracChange = 0.d0
                 call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren = .false.)
@@ -15623,7 +15623,7 @@ end subroutine refineGridGeneric2
                 call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
                 fracChange = tempFracChange
                 if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-                if (iter == 5) exit
+                if (iter == 50) exit
              enddo
              call calculateResiduals2(grid%octreeRoot, grid, iDepth)
              
@@ -15641,7 +15641,7 @@ end subroutine refineGridGeneric2
              call writeInfo("Iterating residuals", TRIVIAL)
              iter = 0 
              fracChange = 1.d3
-             do while(fracChange > 1.d-6)
+             do while(fracChange > 1.d-2)
                 iter = iter + 1
                 fracChange = 0.d0
                 call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.)
@@ -15649,7 +15649,7 @@ end subroutine refineGridGeneric2
                 call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
                 fracChange = tempFracChange
                 if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-                if (iter == 5) exit
+                if (iter == 50) exit
              enddo
              call calculateResiduals2(grid%octreeRoot, grid, iDepth)
 
@@ -15660,7 +15660,7 @@ end subroutine refineGridGeneric2
        ! now the up part of the V-cycle
        call writeInfo("Beginning up part of V-cycle", TRIVIAL)
 
-       do iDepth = 4, minDepthAMR-1
+       do iDepth = 4, minDepthAMR
 
           fracChange = 1.d3
           iter = 0 
@@ -15678,7 +15678,7 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
              fracChange = tempFracChange
              if (writeoutput) write(*,*) "Depth ",iDepth, " iter ",iter, " frac ",fracchange
-             if (iter == 5) exit
+             if (iter == 50) exit
           enddo
 
        enddo
