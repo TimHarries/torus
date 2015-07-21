@@ -6809,9 +6809,8 @@ end subroutine writeRadialFile
          2.0_oc**REAL(maxDepthAmr,kind=oct)
 
     centre = subcellCentre(thisOctal%parent, thisOctal%parentSubcell)
-
     
-    nDir = 8
+    nDir = 2
     r = 0.1d0*smallDist
     dir(1) = VECTOR(-r, 0.d0, 0.d0)
     dir(2) = VECTOR(+r, 0.d0, 0.d0)
@@ -6842,7 +6841,7 @@ end subroutine writeRadialFile
 
           if (inOctal(grid%octreeRoot, position)) then
              call getHydroValues(grid, position, nd, rho, rhoe, rhou, rhov, rhow, energy, phi, xh, yh, zh, pressure, .true.)
-             weight = 1.d0/modulus(position-VECTOR(xh,yh,zh))
+             weight = 1.d0/abs(position%x - xh)
              totalWeight = totalWeight + weight
              rhoCorner(iCorner) = rhoCorner(iCorner) + weight * rho
              rhoeCorner(iCorner) = rhoeCorner(iCorner) + weight * rhoe

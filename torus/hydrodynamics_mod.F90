@@ -3986,6 +3986,7 @@ contains
        else
 !          if (thisoctal%mpithread(subcell) /= myrank) cycle                                                                                                                                                             
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
           if (.not.thisOctal%ghostCell(subcell)) then
              !Get pressure, independent of viscosity
              thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
@@ -4033,7 +4034,7 @@ contains
              write(*,*) "mpithread ",thisOctal%mpiThread(subcell)
              write(*,*) "depth ",thisOctal%nDepth
              write(*,*) "ghost ", thisoctal%ghostcell(subcell)
-             stop
+             thisOctal%rho(subcell) = sqrt(-thisOctal%rho(subcell))
           endif
        endif
     enddo
