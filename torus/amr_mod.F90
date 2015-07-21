@@ -17337,6 +17337,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%oiTransition)
     call deallocateAttribute(thisOctal%c12oLine)
     call deallocateAttribute(thisOctal%c12oTransition)
+    call deallocateAttribute(thisOctal%av)
 
     call deallocateAttribute(thisOctal%coolingRate)
     call deallocateAttribute(thisOctal%heatingRate)
@@ -17399,6 +17400,10 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%flux_amr_i)
     call deallocateAttribute(thisOctal%flux_amr_i_plus_1)
     call deallocateAttribute(thisOctal%flux_amr_i_minus_1)
+
+    call deallocateAttribute(thisOctal%area_i)
+    call deallocateAttribute(thisOctal%area_i_minus_1)
+
     call deallocateAttribute(thisOctal%phiLimit_amr)
 
 
@@ -17434,6 +17439,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%phi_i_minus_1)
     call deallocateAttribute(thisOctal%phi_stars)
     call deallocateAttribute(thisOctal%phi_gas)
+    call deallocateAttribute(thisOctal%phi_gas_corr)
     call deallocateAttribute(thisOctal%rho_i_minus_1)
     call deallocateAttribute(thisOctal%rho_i_plus_1)
     call deallocateAttribute(thisOctal%rhorv_i_minus_1)

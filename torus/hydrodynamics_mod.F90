@@ -7803,8 +7803,8 @@ end subroutine sumFluxes
                 acc = max(1.d-30, abs(acc))
                 
                 
-!                dt = min(dt, 0.5d0*sqrt(dx/acc))
-                dt = min(dt, sqrt(2.d0*dx/acc))
+                dt = min(dt, 0.5d0*sqrt(dx/acc))
+!                dt = min(dt, sqrt(2.d0*dx/acc))
                 if (dt == 0.d0) then
                    write(*,*) "dt is zero from pressure ",0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc)
                 endif

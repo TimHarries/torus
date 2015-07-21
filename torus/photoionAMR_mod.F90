@@ -7745,7 +7745,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
 
   subroutine createImageSplitGrid(grid, nSource, source, imageNum)
-    use inputs_mod, only: nPhotons, gridDistance
+    use inputs_mod, only: nPhotImage, gridDistance
     use hydrodynamics_mod, only: setupEdges
     use image_utils_mod
     use mpi
@@ -7857,7 +7857,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        call writeInfo(message)
     endif
 
-    powerPerPhoton = (lCore + totalEmission) / (dble(nPhotons)*1.d20)
+    powerPerPhoton = (lCore + totalEmission) / (dble(nPhotImage)*1.d20)
     write(message,*) "power per photon ",powerperphoton
     call writeInfo (message, FORINFO)
 
@@ -7879,7 +7879,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     if (myRankGlobal == 0) then
        np = 0
-       mainloop: do iPhoton = 1, nPhotons
+       mainloop: do iPhoton = 1, nPhotImage
 
           thisPhoton%weight = 1.d0
           thisPhoton%stokes = STOKESVECTOR(1.d0*powerPerPhoton, 0.d0, 0.d0, 0.d0)
@@ -7933,7 +7933,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           enddo
           nDone = SUM(nDoneArray(1:nHydroThreadsGlobal))
           write(*,*) myrankglobal, " thinks ", nDone, " photons have completed "
-          if (nDone == nPhotons) photonsStillProcessing = .false.
+          if (nDone == nPhotImage) photonsStillProcessing = .false.
        enddo
        do iThread = 1, nHydroThreadsGlobal
           call sendPhoton(thisPhoton, iThread, endLoop = .true.)

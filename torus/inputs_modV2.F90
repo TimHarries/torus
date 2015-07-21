@@ -3593,7 +3593,10 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real(double) :: ang
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
-         "Number of photons in image: ","(a,i9,a)", 10000_bigInt, ok, .true.)
+         "Number of photons in image: ","(a,i9,a)", 10000_bigInt, ok, .false.)
+
+    call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
+         "Number of photons in image: ","(a,i9,a)", nPhotons, ok, .false.)
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)

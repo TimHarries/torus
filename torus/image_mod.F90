@@ -578,7 +578,7 @@ module image_mod
                       open (123, file="image_flux.dat", status="old", position="append")
                       found = .true.
                       print *, "non zero flux at pixel (",i,",",j,")"
-                      inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz * 1.d20)
+                      inImage = (array(i, j)*strad)/(FluxToMegaJanskies*PerAngstromToPerHz)
                       print *, "Flux at image: ", inImage
                       write(123, *) inImage
                       print *, " "
