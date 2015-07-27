@@ -10,7 +10,8 @@ program compareLex
 
   integer, parameter :: nlines=500     ! number of lines to read from files
   integer, parameter :: nion_check = 1 ! number of species to check 
-  real, parameter :: tolerance = 0.10  ! Maximum tolerance
+  real, parameter :: tolerance_T   = 0.05  ! Maximum tolerance for temperature
+  real, parameter :: tolerance_ion = 0.12  ! Maximum tolerance for ions
   real :: fac1, fac2, avcheck, tav, junk
   integer :: nav, nt
   character(len=*), parameter :: torus_file = "lexington.dat"
@@ -38,7 +39,8 @@ program compareLex
   write(*,*) "Reading ", nlines, " lines"
   write(*,*) "Torus file: ", torus_file
   write(*,*) "Reference file: ", ref_file
-  write(*,*) "Tolerance= ", tolerance
+  write(*,*) "Tolerance (temperature) = ", tolerance_T
+  write(*,*) "Tolerance (ions) = ", tolerance_ion
 
 ! Check the number of species we are comparing
   if ( nion_check > min(nIonsOld,nIonsNew) ) then
@@ -81,11 +83,11 @@ lines:  do i = 1, nlines
   tav = tav / real(nt)
   write(*,*) "Average percentage difference in ions is ",100.*avcheck
   write(*,*) "Average percentage difference in temp is ",100.*tav
-  if (avcheck > tolerance) then
+  if (avcheck > tolerance_ion) then
      failed =.true.
      write(*,*) "Failed on ions"
   endif
-  if (tav > tolerance) then
+  if (tav > tolerance_T) then
      failed =.true.
      write(*,*) "Failed on temperatures"
   endif
