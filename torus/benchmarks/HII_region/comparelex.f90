@@ -11,7 +11,7 @@ program compareLex
   integer, parameter :: nlines=500     ! number of lines to read from files
   integer, parameter :: nion_check = 1 ! number of species to check 
   real, parameter :: tolerance_T   = 0.05  ! Maximum tolerance for temperature
-  real, parameter :: tolerance_ion = 0.12  ! Maximum tolerance for ions
+  real, parameter :: tolerance_ion = 0.15  ! Maximum tolerance for ions
   real :: fac1, fac2, avcheck, tav, junk
   integer :: nav, nt
   character(len=*), parameter :: torus_file = "lexington.dat"
