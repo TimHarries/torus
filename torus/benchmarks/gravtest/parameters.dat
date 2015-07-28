@@ -3,6 +3,7 @@
 
 doselfgrav T
 splitovermpi T
+nhydrothreads 8
 dumpradial T
 geometry gravtest
 readgrid F
@@ -16,7 +17,6 @@ nbodyphysics T
 mindepthamr 7
 maxdepthamr 8
 cfl 0.3
-smoothgridtau T
 dosmoothgrid T
 
 amr3d T
