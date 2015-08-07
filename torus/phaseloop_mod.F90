@@ -45,7 +45,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 #endif
   use TTauri_mod
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
-  use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, addDustContinuumLucyMono
+  use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, & 
+       addDustContinuumLucyMono, calcContinuumEmissivityLucyMonoAtDustTemp
   use timing, only: tune
   use formal_solutions, only: compute_obs_line_flux
   use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
@@ -1310,9 +1311,17 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !              write(message,*) "Tau to gap at ",grid%lamArray(ilambdaPhoton),"angstroms: ",thistaudble
 !              call writeInfo(message, TRIVIAL)
 !           endif
-           
-           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
-                grid%lamArray(ilambdaPhoton), iLambdaPhoton)
+           if (associated(grid%octreeRoot%tdust)) then
+              write(message,*) "Setting emissivity from dust temperature"
+              call writeInfo(message,TRIVIAL)
+              call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, &
+                   grid%lamArray(ilambdaPhoton), iLambdaPhoton)
+           else
+              write(message,*) "Setting emissivity from temperature (same for gas and dust)"
+              call writeInfo(message,TRIVIAL)
+              call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
+                   grid%lamArray(ilambdaPhoton), iLambdaPhoton)
+           endif
 !           thisOctal => grid%octreeRoot
 !           call findSubcellLocal(VECTOR(autocm*2.d0/1.d10,0.d0,0.d0), thisOctal, subcell)
 !           do j = 1, grid%nlambda

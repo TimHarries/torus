@@ -216,11 +216,6 @@ contains
 !    endif
 !    call setTemperature(grid%octreeRoot, 8000.)
 
-! Remove dust from around the source, required in addition to the outflow condition
-    if (variableDustSublimation) then
-       call stripDustAway(grid%octreeRoot, 1.0d-20, 2.5d7, sourcePos=source(1)%position)
-    end if
-
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
 
@@ -699,7 +694,7 @@ contains
     lambdaSmooth = 5500.0 ! wavelength for tau
     call writeVtkFile(grid, "temp.vtk", &
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
-         "OII        ", "OIII       ", "tau        "/))
+         "OII        ", "OIII       ", "tau        ", "tdust      "/))
 
     if (variableDustSublimation .and. nIter < 8 ) then
        converged = .false.

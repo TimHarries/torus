@@ -522,7 +522,9 @@ contains
         sign = 1
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
-        if (dustPhysics) call fillDustUniform(grid, grid%octreeRoot)
+        if (grid%geometry /= "runaway") then
+           if (dustPhysics) call fillDustUniform(grid, grid%octreeRoot)
+        endif
         if (dustPhysics) call setupOrigDustFraction(grid%octreeRoot)
 
         if (.not.grid%splitOverMPI) then
