@@ -3611,11 +3611,11 @@ CONTAINS
     real(double) :: massPerCell, n_bin_az
     real(double) :: vgradx, vgrady, vgradz, vgrad
     INTEGER      :: nparticle, limit
-    real(double) :: chi, zeta0dash, psi, eta, zeta
     real(double) :: dummyDouble
     type(VECTOR) :: minV, maxV
     real(double) :: T, vturb
 #endif
+    real(double) :: chi, zeta0dash, psi, eta, zeta
     real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight
 
     splitInAzimuth = .false.
