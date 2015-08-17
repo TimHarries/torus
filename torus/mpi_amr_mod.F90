@@ -5547,6 +5547,7 @@ end subroutine writeRadialFile
     if (hitGrid) then
        position = position + (tval+0.01d0*smallestcellsize)*uHat
     else
+       write(*,*) myRankGlobal, " Source beyond grid boundaries."
        stop
     endif
     tau = 0.d0

@@ -81,7 +81,7 @@ contains
 !    integer :: nUnrefine
     real :: scalefac
     integer :: nGrid
-    real(double) :: ke, requiredKE, vScalefac
+    real(double) :: gpe, ke, requiredKE, vScalefac
     real, pointer :: xVel(:,:,:) => null()
     real, pointer :: yVel(:,:,:) => null()
     real, pointer :: zVel(:,:,:) => null()
@@ -542,16 +542,22 @@ contains
 #ifdef MPI
                 call findkeOverAllThreads(grid, ke)
 #endif
-                requiredKE = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
-                if (writeoutput) write(*,*) "Gravitational potential ", requiredke
-                vScaleFac = sqrt(requiredKe / ke)
+                gpe = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
+                requiredKE = gpe  
+                if (writeoutput) write(*,*) "Gravitational potential ", gpe
+                if (ke /= 0.d0) then 
+                    vScaleFac = sqrt(requiredKe / ke)
+                else
+                    vscaleFac = 1.d0
+                endif
                 if (writeoutput) write(*,*) "scale fac ",vScaleFac
                 call scaleVelocityAMR(grid%octreeRoot, vScaleFac)
                 ke = 0.d0
 #ifdef MPI
                 call findkeOverAllThreads(grid, ke)
 #endif
-                if (writeoutput) write(*,*) "Kinetic energy ", ke
+!                if (writeoutput) write(*,*) "Kinetic energy ", ke
+                if (writeoutput) write(*,*) "KE/GPE = ", ke/gpe
              endif
 #ifdef MPI
           case("unisphere","gravtest")
@@ -2366,11 +2372,12 @@ end subroutine addSpiralWake
 
 recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
   use inputs_mod, only : amrGridSize
+  use inputs_mod, only : geometry, spherePosition, sphereRadius
   integer, intent(in) :: n
   type(octal), pointer   :: thisOctal
   real, pointer :: xVel(:,:,:), yVel(:,:,:), zVel(:,:,:)
   type(octal), pointer  :: child 
-  real(double) :: vx, vy, vz, u, v, w, xArray(64), fac1, fac2, fac3
+  real(double) :: vx, vy, vz, u, v, w, xArray(64), fac1, fac2, fac3, boxsize
   type(VECTOR) :: rVec
   integer :: subcell, i, i1, j1, k1
   
@@ -2387,53 +2394,65 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
      else 
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
-
         do i1 = 1, 64
            xArray(i1) = 0.5d0/64.d0+dble(i1-1)/64.d0
         enddo
-        rVec  = subcellCentre(thisOctal, subcell)
-        
-        fac1 = (rVec%x + amrGridSize/2.d0) / amrGridSize
-        fac2 = (rVec%y + amrGridSize/2.d0) / amrGridSize
-        fac3 = (rVec%z + amrGridSize/2.d0) / amrGridSize
-        
-        call locate(xArray, 64, fac1, i1)
-        call locate(xArray, 64, fac2, j1)
-        call locate(xArray, 64, fac3, k1)
 
-        u = (fac1 - xArray(i1))/(xArray(i1+1) - xArray(i1))
-        v = (fac2 - xArray(j1))/(xArray(j1+1) - xArray(j1))
-        w = (fac3 - xArray(k1))/(xArray(k1+1) - xArray(k1))
+        if (geometry == "sphere") then
+          ! assign turbulence to a box containing the sphere
+          rVec  = subcellCentre(thisOctal, subcell) - spherePosition
+          boxsize = 2.d0 * sphereRadius
+        else
+          ! assign turbulence to entire grid
+          rVec  = subcellCentre(thisOctal, subcell)
+          boxsize = amrGridSize
+        endif
 
-        vx = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * xVel(i1, j1, k1) + &
-             (1.d0 - u) * (1.d0 - v) * (       w) * xVel(i1, j1, k1+1) + &
-             (1.d0 - u) * (       v) * (1.d0 - w) * xVel(i1, j1+1, k1) + &
-             (1.d0 - u) * (       v) * (       w) * xVel(i1, j1+1, k1+1) + &
-             (       u) * (1.d0 - v) * (1.d0 - w) * xVel(i1+1, j1, k1) + &
-             (       u) * (1.d0 - v) * (       w) * xVel(i1+1, j1, k1+1) + &
-             (       u) * (       v) * (1.d0 - w) * xVel(i1+1, j1+1, k1) + &
-             (       u) * (       v) * (       w) * xVel(i1+1, j1+1, k1+1) 
+        if (modulus(rVec) .lt. sphereRadius) then
+          ! calculate normalised distances
+          fac1 = (rVec%x + boxsize/2.d0) / boxsize 
+          fac2 = (rVec%y + boxsize/2.d0) / boxsize
+          fac3 = (rVec%z + boxsize/2.d0) / boxsize
+         
+          ! find the relevant element in the 64^3 reference grid  
+          call locate(xArray, 64, fac1, i1)
+          call locate(xArray, 64, fac2, j1)
+          call locate(xArray, 64, fac3, k1)
+       
+          ! calculate velocity using trilinear interpolation
+          u = (fac1 - xArray(i1))/(xArray(i1+1) - xArray(i1))
+          v = (fac2 - xArray(j1))/(xArray(j1+1) - xArray(j1))
+          w = (fac3 - xArray(k1))/(xArray(k1+1) - xArray(k1))
 
-        vy = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * yVel(i1, j1, k1) + &
-             (1.d0 - u) * (1.d0 - v) * (       w) * yVel(i1, j1, k1+1) + &
-             (1.d0 - u) * (       v) * (1.d0 - w) * yVel(i1, j1+1, k1) + &
-             (1.d0 - u) * (       v) * (       w) * yVel(i1, j1+1, k1+1) + &
-             (       u) * (1.d0 - v) * (1.d0 - w) * yVel(i1+1, j1, k1) + &
-             (       u) * (1.d0 - v) * (       w) * yVel(i1+1, j1, k1+1) + &
-             (       u) * (       v) * (1.d0 - w) * yVel(i1+1, j1+1, k1) + &
-             (       u) * (       v) * (       w) * yVel(i1+1, j1+1, k1+1) 
+          vx = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * xVel(i1, j1, k1) + &
+               (1.d0 - u) * (1.d0 - v) * (       w) * xVel(i1, j1, k1+1) + &
+               (1.d0 - u) * (       v) * (1.d0 - w) * xVel(i1, j1+1, k1) + &
+               (1.d0 - u) * (       v) * (       w) * xVel(i1, j1+1, k1+1) + &
+               (       u) * (1.d0 - v) * (1.d0 - w) * xVel(i1+1, j1, k1) + &
+               (       u) * (1.d0 - v) * (       w) * xVel(i1+1, j1, k1+1) + &
+               (       u) * (       v) * (1.d0 - w) * xVel(i1+1, j1+1, k1) + &
+               (       u) * (       v) * (       w) * xVel(i1+1, j1+1, k1+1) 
 
-        vz = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * zVel(i1, j1, k1) + &
-             (1.d0 - u) * (1.d0 - v) * (       w) * zVel(i1, j1, k1+1) + &
-             (1.d0 - u) * (       v) * (1.d0 - w) * zVel(i1, j1+1, k1) + &
-             (1.d0 - u) * (       v) * (       w) * zVel(i1, j1+1, k1+1) + &
-             (       u) * (1.d0 - v) * (1.d0 - w) * zVel(i1+1, j1, k1) + &
-             (       u) * (1.d0 - v) * (       w) * zVel(i1+1, j1, k1+1) + &
-             (       u) * (       v) * (1.d0 - w) * zVel(i1+1, j1+1, k1) + &
-             (       u) * (       v) * (       w) * zVel(i1+1, j1+1, k1+1) 
+          vy = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * yVel(i1, j1, k1) + &
+               (1.d0 - u) * (1.d0 - v) * (       w) * yVel(i1, j1, k1+1) + &
+               (1.d0 - u) * (       v) * (1.d0 - w) * yVel(i1, j1+1, k1) + &
+               (1.d0 - u) * (       v) * (       w) * yVel(i1, j1+1, k1+1) + &
+               (       u) * (1.d0 - v) * (1.d0 - w) * yVel(i1+1, j1, k1) + &
+               (       u) * (1.d0 - v) * (       w) * yVel(i1+1, j1, k1+1) + &
+               (       u) * (       v) * (1.d0 - w) * yVel(i1+1, j1+1, k1) + &
+               (       u) * (       v) * (       w) * yVel(i1+1, j1+1, k1+1) 
 
+          vz = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * zVel(i1, j1, k1) + &
+               (1.d0 - u) * (1.d0 - v) * (       w) * zVel(i1, j1, k1+1) + &
+               (1.d0 - u) * (       v) * (1.d0 - w) * zVel(i1, j1+1, k1) + &
+               (1.d0 - u) * (       v) * (       w) * zVel(i1, j1+1, k1+1) + &
+               (       u) * (1.d0 - v) * (1.d0 - w) * zVel(i1+1, j1, k1) + &
+               (       u) * (1.d0 - v) * (       w) * zVel(i1+1, j1, k1+1) + &
+               (       u) * (       v) * (1.d0 - w) * zVel(i1+1, j1+1, k1) + &
+               (       u) * (       v) * (       w) * zVel(i1+1, j1+1, k1+1) 
 
-        thisOctal%velocity(subcell) = VECTOR(vx, vy, vz)
+          thisOctal%velocity(subcell) = VECTOR(vx, vy, vz)
+        endif
      endif
   enddo
 end subroutine assignTurbVelocity

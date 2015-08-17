@@ -154,7 +154,7 @@ contains
           thisOctal%ionFrac(subcell,1) = 1.
           thisOctal%ne(subcell) = 1.d-10
           thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
-          thisOctal%temperature = tminglobal
+          thisOctal%temperature(subcell) = max(tminglobal, thisOctal%temperature(subcell))
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.
              thisOctal%ionFrac(subcell,4) = 1.e-10       

@@ -806,9 +806,10 @@ contains
 
      if (associated(globalsourceArray)) then
         deallocate(globalSourceArray)
+        write(*,*) myrankGlobal, "Deallocated globalSourceArray (physics_mod)"
      endif
 
- !    print *, "setting up global sources"
+!     write(*,*) myrankglobal,  "setting up global sources"
 
      if (readSources.or.(inputNsource > 0 )) call writeBanner("Source setup","-",TRIVIAL)
      globalNSource = 0

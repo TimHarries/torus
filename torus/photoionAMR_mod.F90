@@ -79,12 +79,12 @@ contains
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
-         pressureGradientTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, addSupernovae,&
+         pressureGradientTimestep, computeGravityTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, addSupernovae,&
          perturbIfront, checkSetsAreTheSame, computeCourantTimeGasSource,  hydroStep2dCylindrical, hydroStep2dCylindrical_amr, &
          computeCourantV, writePosRhoPressureVel, writePosRhoPressureVelZERO, killZero, hydrostep2d, checkBoundaryPartners, &
          hydrostep1d, setupAlphaViscosity, sendSinksToZerothThread, computePressureGeneral, hydrostep1dspherical, &
          imposeazimuthalvelocity, forcegascourant, imposefontvelocity, imposekeplerianvelocity, allocatehydrodynamicsAttributes, &
-         broadCastSinks
+         broadCastSinks, setEquationOfState
     use nbody_mod, only : zerosourcepotential
 
     use dimensionality_mod, only: setCodeUnit
@@ -92,6 +92,7 @@ contains
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
          mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead
+    use inputs_mod, only : pressureSupport
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -119,7 +120,7 @@ contains
     integer :: i, status, tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep, nPhotoIter
     real(double) :: timeSinceLastRecomb=0.d0
-    real(double) :: radDt, pressureDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
+    real(double) :: radDt, pressureDt, gravityDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
     logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells, sneAdded, lArray(1)
     integer :: evenUpArray(nHydroThreadsGlobal)
@@ -220,6 +221,8 @@ contains
 !          call emptyDustCavity(grid%octreeRoot, VECTOR(0.d0, 0.d0, 0.d0), 1400.d0*autocm/1.d10)
 !       endif
 
+       ! send grid%currentTime to load balancing threads (and others)
+       call MPI_BCAST(grid%currentTime, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
        nextDumpTime = grid%currentTime + deltaTforDump
        timeofNextDump = nextDumpTime
 
@@ -660,13 +663,13 @@ contains
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
     endif
-
-    call MPI_BCAST(grid%currentTime, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+    
 
 !    !Thaw - trace courant time history                                                                                                                              
 !    open (444, file="tcHistory.dat", status="unknown")
 
     do while(grid%currentTime < tEnd)
+       call MPI_BCAST(grid%currentTime, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
        nstep = nstep + 1
 
        
@@ -692,6 +695,7 @@ contains
        gasSourcedt = 1.d30
        raddt = 1.d30
        pressuredt = 1.d30
+       gravityDt = 1.d30
        recombinationDt = 1.d30
        ionizationDt = 1.d30
        thermalDt = 1.d30
@@ -707,6 +711,7 @@ contains
           if (radiationPressure) call radpressureTimeStep(grid%octreeRoot, raddt)
           call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
           call pressureGradientTimeStep(grid, pressureDt, nPairs, thread1, thread2, nBound, group, nGroup)
+          call computeGravityTimeStep(grid, gravityDt, nPairs, thread1, thread2, nBound, group, nGroup)
           if (timeDependentRT) then
              call getRecombinationTime(grid%octreeRoot, recombinationDt)
              call getIonizationTime(grid%octreeRoot, grid, ionizationDt, globalepsOverDeltaT)
@@ -751,9 +756,11 @@ contains
        raddt = tempDouble
        call MPI_ALLREDUCE(pressuredt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        pressureDt = tempDouble
+       call MPI_ALLREDUCE(gravityDt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
+       gravityDt = tempDouble
        call MPI_ALLREDUCE(viscdt, tempdouble, 1, MPI_DOUBLE_PRECISION, MPI_MIN, localWorldCommunicator, ierr)
        viscDt = tempDouble
-       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt, viscDt, &
+       dt = MIN(gasDt, sourceSourceDt, gasSourcedt, raddt, pressureDt, gravityDt, viscDt, &
             thermalDt)
 
 !       dt = MIN(gasDt, sourceSourceDt, gasSourcedt)
@@ -768,6 +775,7 @@ contains
           write(*,"(a30,1p,e12.3)") "Gas-source courant Time: ", gasSourceDt
           write(*,"(a30,1p,e12.3)") "Radiation pressure courant time: ", raddt
           write(*,"(a30,1p,e12.3)") "Pressure gradient courant time: ", pressuredt
+          write(*,"(a30,1p,e12.3)") "Grav force courant time: ", gravityDt 
           write(*,"(a30,1p,e12.3)") "Max bulk velocity: ", vBulk/1.d5
           write(*,"(a30,1p,e12.3)") "Max sound speed: ", vSound/1.d5
           write(*,"(a30,1p,e12.3)") "Viscous time: ", viscdt
@@ -800,12 +808,14 @@ contains
 
        dumpThisTime = .false.
 
-       if (.not.loadBalancingThreadGlobal) then
+!       if (.not.loadbalancingthreadglobal) then 
           if ((grid%currentTime + dt) >= timeOfNextDump) then
              dt =  timeofNextDump - grid%currentTime
              dumpThisTime = .true.
           endif
-       endif
+!       endif
+       
+!       write(*,*) myrankglobal, dt, dumpThisTime, " dt, dumpthistime"
 
        fractionOfAccretionlum = 1.d0 !min(1.d0, grid%currentTime / 3.1d10)
 
@@ -815,7 +825,8 @@ contains
             grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
        if (myrankWorldGlobal == 1) write(*,*) "Time step", dt
-       if (myRankWorldGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump
+       if (myRankWorldGlobal == 1) write(*,*) "percent to next dump ",100.*(timeofNextDump-grid%currentTime)/deltaTforDump, &
+            " next dump ", (grid%iDump + 1)
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -1094,39 +1105,45 @@ contains
                 globalSourceArray => null()
              endif
              allocate(globalsourcearray(1:1000))
-
              globalsourceArray(:)%outsideGrid = .false.
              globalnSource = 0
+             ! set EOS from adiabatic (0) to isothermal (1)
+             if (pressureSupport.and..not.loadBalancingThreadGlobal) call setEquationOfState(grid%octreeRoot,1)
              call createSources(globalnSource, globalSourceArray, "instantaneous", 0.d0, mStarburst, 0.d0)
-             call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
+             if (.not.loadBalancingThreadGlobal) then
+                 call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
+                 call dumpSources(globalsourceArray, globalnSource)
 
-             call writeVtkFilenBody(globalnSource, globalsourceArray, "starburst_initial.vtk")
+                 call writeVtkFilenBody(globalnSource, globalsourceArray, "starburst_initial.vtk")
 
-          call writeVtkFile(grid, "rho_at_starburst.vtk", &
-               valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         ","dust         ","u_i          ",  &
-               "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
-               "vphi         ","jnu          ","mu           ", &
-               "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
+                 call writeVtkFile(grid, "rho_at_starburst.vtk", &
+                   valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
+                   "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
+                   "diff         ","dust         ","u_i          ",  &
+                   "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
+                   "vphi         ","jnu          ","mu           ", &
+                   "fvisc1       ","fvisc2       ","fvisc3       ","crossings    "/))
 
 
-             if (doselfgrav.and.(myrankGlobal/=0)) &
-                  call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
-             call randomNumberGenerator(randomSeed = .true.)
+                 if (doselfgrav.and.(myrankGlobal/=0)) &
+                      call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+                 call randomNumberGenerator(randomSeed = .true.)
+             endif
              write(*,*) myrankGlobal, " setting up sources done"
+             call sendSinksToZerothThread(globalnSource, globalsourceArray)
+             call broadcastSinks
              call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
-                  lamArray, 3, loopLimitTime, &
+                  lamArray, 10, loopLimitTime, &
                   looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie) 
 
 
           endif
 
-
-          if ((myrankGlobal /= 0).and.stellarwinds) call addStellarWind(grid, globalnSource, globalsourcearray, dt)
+          if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal).and.stellarwinds) &
+               call addStellarWind(grid, globalnSource, globalsourcearray, dt)
 
           sneAdded = .false.
-          if ((myrankGlobal /= 0).and.supernovae) then
+          if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal).and.supernovae) then
              call addSupernovae(grid, globalnSource, globalsourcearray, dt, sneAdded)
              if (doselfgrav.and.sneAdded) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
              lArray(1) = sneAdded
@@ -1139,14 +1156,13 @@ contains
           endif
 
 
-          if (supernovae) then
+          if (supernovae.and.(.not.loadBalancingThreadGlobal)) then
              if (sneAdded) then
                 dumpThisTime = .true.
                 timeOfNextDump = grid%currentTime + dt
                 deltaTfordump = 1.d9
              endif
           endif
-
 
 !add/merge sink particles where necessary
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
@@ -1186,7 +1202,7 @@ contains
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
-       if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) &
+       if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) & 
             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrankGlobal /= 0) call resetNh(grid%octreeRoot)
 
@@ -1226,7 +1242,7 @@ contains
 
        if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = grid%currentTime
 
-       call findMassOverAllThreads(grid, totalMass)
+       if (.not.loadBalancingThreadGlobal) call findMassOverAllThreads(grid, totalMass)
        if (writeoutput) write(*,*) "Total mass on grid is ", totalmass/mSol
 
        
@@ -1243,12 +1259,17 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ", "pressure     "/))
 !       nPhase = nPhase + 1
-       if (dumpThisTime) then
+       if ((.not.loadbalancingthreadglobal).and.(gasdt < 1.d-1)) then
+         dumpThisTime = .true.
+       endif
 
+       if (dumpThisTime) then
+ 
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
 
-
+       endif
+       if (dumpThisTime.and.(.not.loadBalancingThreadGlobal)) then
           if(mod(real(grid%iDump), real(vtuToGrid)) == 0.0) then
              write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
              call writeAmrGrid(mpiFilename, .false., grid)
@@ -1396,7 +1417,12 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
     close(444)
+!    write(*,*) myrankGlobal, " end time ", grid%currentTime
 !    write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
+    if (gasdt < 1.d-1) then
+      call torus_stop("tc less than 0.1 s")
+    endif
+
  enddo
 
 end subroutine radiationHydro
@@ -1526,7 +1552,7 @@ end subroutine radiationHydro
     integer :: stackSize, p
     integer :: mpi_vector, mpi_photon_stack
     logical :: sendAllPhotons = .false., donePanicking = .true.
-    real(double) :: nIonizingPhotons
+    real(double) :: nIonizingPhotons, thisSourceFlux
     logical :: crossedPeriodic = .false.
 
 !    type(PHOTONPACKET) :: photonPacketStack(stackLimit*nThreadsGlobal)
@@ -1593,6 +1619,7 @@ end subroutine radiationHydro
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
     integer :: nDomainThreads, localRank, m, nBundles
+    integer :: numCrossings
     real :: FinishTime, WaitingTime
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
@@ -1697,6 +1724,7 @@ end subroutine radiationHydro
 
     !Add some extra bytes for safety
     bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
+    if (writeoutput) write(*,*) "buffersize ", buffersize
 
     if(bufferSize < 0) then
        write(*,*) "warning negative buffer size", bufferSize
@@ -1847,7 +1875,11 @@ end subroutine radiationHydro
     nionizingphotons = 0
     if(globalnsource > 1) then
        do loopsource = 1, globalnsource
-          nIonizingPhotons = nionizingphotons + ionizingFlux(source(loopSource))
+          thisSourceFlux = ionizingFlux(source(loopSource))
+          nIonizingPhotons = nionizingphotons + thisSourceFlux
+          if (writeoutput .and. thisSourceFlux > 1.d40) then
+            write(*,'(a, i3, 1pe12.1)') "Ionizing photons per sec for source ", loopsource, thisSourceFlux 
+          endif 
        enddo
     else
        nIonizingPhotons = ionizingFlux(source(1))
@@ -1855,7 +1887,7 @@ end subroutine radiationHydro
     
     if (writeoutput) then
 !       write(*,'(a,1pe12.1)') "Ionizing photons per second ", ionizingFlux(source(1))
-       write(*,'(a,1pe12.1)') "Ionizing photons per second ", nIonizingPhotons
+       write(*,'(a,1pe12.1)') "Total ionizing photons per second ", nIonizingPhotons
     endif
 
     if (inputNMonte < 0) then
@@ -2039,7 +2071,8 @@ end subroutine radiationHydro
                 if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
                maxDiffRadius(isource) = maxDiffRadius1(isource)
              endif
-             if (writeoutput) write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
+             if (writeoutput.and.(maxDiffRadius(iSource) /= 0.d0)) &
+                 write(*,*) myrankGlobal," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
 
           
@@ -2098,17 +2131,27 @@ end subroutine radiationHydro
 
 
 
+       write(*,*) myrankglobal, " reached barrier 1"
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       write(*,*) myrankglobal, " exited barrier 1"
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
-       if (firstLoadBalancing.and.(.not.readGrid)) then
+       if (myrankglobal == 0) write(*,*) firstLoadBalancing, (.not.readgrid), "r0 firstloadbalancing, .not.readgrid"
+       if (myrankglobal == 1) write(*,*) firstLoadBalancing, (.not.readgrid), "r1 firstloadbalancing, .not.readgrid"
+       if (myrankglobal == 70) write(*,*) firstLoadBalancing, (.not.readgrid), "r70 firstloadbalancing, .not.readgrid"
+       call countCrossingsTotal(grid,numCrossings)
+       if ((firstLoadBalancing.and.(.not.readGrid)) .or. (numCrossings == 0)) then
+          if (writeoutput) write(*,*) "Attempting load balancing by cells..."
           call setLoadBalancingThreadsByCells(grid)
           firstLoadBalancing = .false.
        else
+          if (writeoutput) write(*,*) "Attempting load balancing by crossings..."
           call  setLoadBalancingThreadsByCrossings(grid)
        endif
 
+       write(*,*) myrankglobal, " reached barrier 2"
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       write(*,*) myrankglobal, " exited barrier 2"
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
@@ -2339,8 +2382,9 @@ end subroutine radiationHydro
              do iThread = 1, nDomainThreads
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+                write(*,*) myrankglobal, " sent stack to ",ithread
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
-!                write(*,*) myrankGlobal, " received donepanicking from ",ithread
+                write(*,*) myrankGlobal, " received donepanicking from ",ithread
              end do
 
 
@@ -3140,6 +3184,7 @@ end subroutine radiationHydro
        end if
 
        call MPI_BARRIER(localWorldCommunicator, ierr)
+
 !       epsOverDeltaT = (lCore) / dble(nMonte)
        if(monochromatic) then
           if (source(1)%outsidegrid) then
@@ -8327,18 +8372,17 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
      if (myrankGlobal /= 0) then
         call computeProbDist2AMRMpi(grid%octreeRoot,totalEmissionArray(myRankGlobal), totalProbArray(myRankGlobal))
-        write(*,*) myrankGlobal, " total emission  ", totalEmissionArray(myrankGlobal)
      endif
 
 
      tArray = 0.d0
      call MPI_ALLREDUCE(totalEmissionArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, &
-          localWorldCommunicator, ierr)
+          zeroPlusAmrCommunicator, ierr)
      totalEmissionArray = tArray
 
      tArray = 0.d0
      call MPI_ALLREDUCE(totalProbArray, tArray, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, &
-          localWorldCommunicator, ierr)
+          zeroPlusAmrCommunicator, ierr)
      totalProb = SUM(tArray(1:nHydroThreadsGlobal))
      
      threadProbArray = tArray(1:nHydroThreadsGlobal)
@@ -8803,8 +8847,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     enddo
   end subroutine radpressureTimeStep
 
-
-
 subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
   use mpi
   use source_mod, only : sourcetype
@@ -8827,11 +8869,13 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
   type(VECTOR) :: rVec
 
   allocate(threadProbArray(1:nHydroThreadsGlobal))
+  ! calculate the prob distribution based on density
   call putDensityInEtaCont(grid%octreeRoot)
   call computeProbDistAMRMpi(grid, mass, threadProbArray)
-  if (writeoutput) write(*,*) "Total mass for put stars ",mass*1.d30/msol
+ 
+!  if (writeoutput) write(*,*) "Total mass for put stars ",mass*1.d30/msol
 
-  
+  ! zeroth thread 
   if (myrankGlobal == 0) then
      do i = 1, nSource
         looping = .true.
@@ -8846,9 +8890,11 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
            signal = -99
            call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
            call mpi_send(source(i)%mass, 1, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+           ! receives x,y,z position of source from other threads
            call MPI_RECV(temp, 3, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
            looping = .false.
            source(i)%position%x = temp(1)
+           ! if threads report back that not enough mass is present in the cell, keep looping
            if (temp(1) < -1.d20) then
               looping = .true.
               cycle
@@ -8858,7 +8904,9 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
            looping = .false.
            if (i > 1) then
               do  j = 1, i-1
-                 if (modulus(source(j)%position - source(i)%position) < 0.1d0*source(j)%accretionRadius/1.d10) then
+                 ! don't put source within 0.1 of accretion radius of another source
+!                if (modulus(source(j)%position - source(i)%position) < 0.1d0*source(j)%accretionRadius/1.d10) then
+                 if (modulus(source(j)%position - source(i)%position) < source(j)%accretionRadius/1.d10) then
                     looping = .true.
                  endif
               enddo
@@ -8869,9 +8917,11 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
         signal = 0
         call mpi_send(signal, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
      enddo
+  ! other threads
   else
      do 
         call MPI_RECV(signal, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+        ! checks if enough mass is present in cell to put star there
         if (signal == -99) then
            call MPI_RECV(starMass, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
            massInCell = 0.d0
@@ -8882,12 +8932,15 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
               sourceOctal => grid%octreeRoot
               call locateContProbAMR(r, sourceOctal,sourcesubcell)
               massInCell = sourceOctal%rho(sourcesubcell) * cellVolume(sourceOctal, sourceSubcell) * 1.d30
-              write(*,*) iter, myRankGlobal, " mass in cell ",massinCell/msol, "star mass ",starMass/msol
+!              write(*,*) iter, myRankGlobal, " mass in cell ",massinCell/msol, "star mass ",starMass/msol
               if (iter > 1000) exit
            enddo
+           write(*,'(i4,i3,a15,f12.5,a12,f12.5)') iter, myRankGlobal, " mass in cell: ",massinCell/msol, "star mass: ",starMass/msol
            rVec = randomPositionInCell(sourceOctal, sourceSubcell)
            temp(1) = rVec%x
-           if (iter > 1000) temp(1) = -1.d21
+           ! assumes the check is unsuccessful if iterations exceed 1000
+! (put the star in anyway, even if iterations exceed 1000) 
+!!!           if (iter > 1000) temp(1) = -1.d21
            temp(2) = rVec%y
            temp(3) = rVec%z
            call mpi_send(temp, 3, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -8896,6 +8949,7 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
         endif
      enddo
   endif
+  ! send the source positions to other threads
   if (myrankGlobal == 0) then
      do ithread = 1, nHydroThreadsGlobal
         call mpi_send(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
@@ -8919,7 +8973,7 @@ subroutine putStarsInGridAccordingToDensity(grid, nSource, source)
            source(i)%velocity%x = sourceOctal%rhou(sourcesubcell)/sourceoctal%rho(sourcesubcell)
            source(i)%velocity%y = sourceOctal%rhov(sourcesubcell)/sourceoctal%rho(sourcesubcell)
            source(i)%velocity%z = sourceOctal%rhow(sourcesubcell)/sourceoctal%rho(sourcesubcell)
-           
+           ! remove source mass from the cell 
            rhoLeft = max(rhoFloor, sourceOctal%rho(sourcesubcell)  - source(i)%mass/dv)
            sourceOctal%rho(sourcesubcell) = rhoLeft
            sourceOctal%rhou(sourcesubcell) = rhoLeft * source(i)%velocity%x
@@ -8956,6 +9010,36 @@ end subroutine putStarsInGridAccordingToDensity
        endif
     enddo
   end subroutine putDensityInEtaCont
+
+! count total number of crossings over all hydro threads on grid
+  subroutine countCrossingsTotal(grid, totalNumberOfCrossings)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer, allocatable :: itemp(:)
+    integer, allocatable :: numberOfCrossingsOnThread(:)
+    integer, intent(out) :: totalNumberOfCrossings
+    real(double), allocatable :: frac(:)
+    integer :: ierr
+
+    allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
+
+    numberOfCrossingsOnThread = 0
+    if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
+       ! count crossings on each thread
+       call sumCrossings(grid%octreeRoot, numberOfCrossingsOnThread(myRankGlobal))
+       ! combine individual counts into one array, copy to all hydro threads
+       allocate(itemp(1:nHydroThreadsGlobal))
+       call MPI_ALLREDUCE(numberOfCrossingsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+       numberOfCrossingsOnThread = itemp
+       deallocate(itemp)
+    endif
+
+    totalNumberOfCrossings = SUM(numberOfCrossingsOnThread)
+    call MPI_BCAST(totalNumberOfCrossings, 1, MPI_INTEGER, 1, localWorldCommunicator, ierr)
+    if (myrankglobal == 0) write(*,*) myrankglobal, totalNumberOfCrossings, "r0 total num crossings"
+    if (myrankglobal == 1) write(*,*) myrankglobal, totalNumberOfCrossings, "r1 total num crossings"
+    if (myrankglobal == 70) write(*,*) myrankglobal, totalNumberOfCrossings, "r70 total num crossings"
+  end subroutine countCrossingsTotal
 
 
 

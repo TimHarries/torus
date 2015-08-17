@@ -4179,6 +4179,7 @@ contains
                    thisOctal%rhoe(subcell) = thisOctal%rhoe(subcell) - dt*thisOctal%chiline(subcell)
                 endif
 
+
              endif
 !
  !            if(grid%geometry == "SB_coolshk") then
@@ -6693,6 +6694,7 @@ end subroutine sumFluxes
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
          moveSources, hydroSpeedLimit, nbodyTest
+    use inputs_mod, only : pressureSupport
     use starburst_mod, only : updateSourceProperties
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -6844,6 +6846,7 @@ end subroutine sumFluxes
 
        !modify rhou and rhoe due to pressure/graviational potential gradient
        call pressureForce(grid%octreeRoot, dt, grid, direction)
+       if (pressuresupport) call calculateTemperatureFromEnergy(grid%octreeRoot)
 
        select case(idir)
          case(1)
@@ -7772,7 +7775,7 @@ end subroutine sumFluxes
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, dx, acc
+    real(double) :: dt, dx, acc, acc_adj
     
 
 
@@ -7795,17 +7798,39 @@ end subroutine sumFluxes
              dx = thisoctal%subcellsize * griddistancescale
 
              if (includePressureTerms) then
+                ! calculate acc using pressure from cells either side of cell i
                 acc =  (1.d0/thisOctal%rho(subcell)) * &
                      (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i_minus_1(subcell)) / (dx)
                 
-                acc = acc + &
-                     (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
+!                acc = acc + &
+!                     (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
                 
                 acc = max(1.d-30, abs(acc))
+
+                ! calculate acc using pressure from cell i and cell adjacent to cell i
+                ! i, i-1
+                acc_adj =  (1.d0/thisOctal%rho(subcell)) * &
+                     (thisoctal%pressure_i(subcell) - thisoctal%pressure_i_minus_1(subcell)) / (dx)
                 
+!                acc_adj = acc_adj + &
+!                     (thisOctal%phi_i(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
+            
+                acc = max(acc, abs(acc_adj))
                 
-                dt = min(dt, 0.5d0*sqrt(dx/acc))
-!                dt = min(dt, sqrt(2.d0*dx/acc))
+                ! i+1, i
+                acc_adj =  (1.d0/thisOctal%rho(subcell)) * &
+                     (thisoctal%pressure_i_plus_1(subcell) - thisoctal%pressure_i(subcell)) / (dx)
+                
+!                acc_adj = acc_adj + &
+!                     (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i(subcell)) / (dx)
+            
+                acc = max(acc, abs(acc_adj))
+
+               
+                
+!                dt = min(dt, 0.5d0*sqrt(dx/acc))
+                dt = min(dt, sqrt(2.d0*dx/acc))
+
                 if (dt == 0.d0) then
                    write(*,*) "dt is zero from pressure ",0.5d0*sqrt(smallestCellSize*gridDistanceScale/acc)
                 endif
@@ -7826,6 +7851,87 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine pressureTimeStep
+
+  subroutine computeGravityTimeStep(grid, dt, npairs,thread1,thread2,nbound,group,ngroup)
+    use inputs_mod, only : amr3d
+    integer :: nPairs, thread1(:), thread2(:), group(:), nBound(:), ngroup
+    type(GRIDTYPE) :: grid
+    real(double) :: dt
+    type(VECTOR) :: direction
+    dt = 1.d30
+    
+    direction = VECTOR(1.d0, 0.d0, 0.d0)
+    call computepressureGeneral(grid, grid%octreeroot, .true.) 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call setuprhoPhi(grid%octreeroot, grid, direction)    
+    call gravityTimeStep(grid%octreeRoot, dt)
+
+    if (amr3d) then
+       direction = VECTOR(0.d0, 1.d0, 0.d0)
+       call computepressureGeneral(grid, grid%octreeroot, .true.) 
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call setuprhoPhi(grid%octreeroot, grid, direction)
+       call gravityTimeStep(grid%octreeRoot, dt)
+    endif
+
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
+    call computepressureGeneral(grid, grid%octreeroot, .true.) 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+    call setuppressure(grid%octreeroot, grid, direction)
+    call setuprhoPhi(grid%octreeroot, grid, direction)
+    call gravityTimeStep(grid%octreeRoot, dt)
+
+  end subroutine computeGravityTimeStep
+
+  recursive subroutine gravityTimeStep(thisoctal, dt)
+    use inputs_mod, only : gridDistanceScale, smallestCellSize 
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt, dx, acc, acc_adj
+    
+
+
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call gravityTimestep(child, dt)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+          if (.not.thisoctal%ghostcell(subcell)) then
+
+             
+             dx = thisoctal%subcellsize * griddistancescale
+
+             ! calculate acc using phi from cells either side of cell i
+             acc = (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
+             acc = max(1.d-30, abs(acc))
+
+             ! calculate acc using phi from cell i and cell adjacent to cell i
+             ! i, i-1
+             acc_adj = (thisOctal%phi_i(subcell) - thisOctal%phi_i_minus_1(subcell)) / (dx)
+             acc = max(acc, abs(acc_adj))
+             
+             ! i+1, i
+             acc_adj = (thisOctal%phi_i_plus_1(subcell) - thisOctal%phi_i(subcell)) / (dx)
+             acc = max(acc, abs(acc_adj))
+             
+             dt = min(dt, sqrt(2.d0*dx/acc))
+
+          endif
+       endif
+    enddo
+  end subroutine gravityTimeStep
 
 !sum gas and star contributions to total graviational potential
   recursive subroutine sumGasStarGravity(thisOctal)
@@ -7871,34 +7977,8 @@ end subroutine sumFluxes
     if(octalOnThread(thisOctal, subcell,myRankGlobal)) then
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic 
-          if (thisOctal%threed) then
-             u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          else
-             if (.not.cylindricalHydro) then
-                u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-             else
-                rVec = subcellCentre(thisOctal, subcell)
-                rhov = thisOctal%rhov(subcell) / (rVec%x * gridDistanceScale)
-                u2 = (thisOctal%rhou(subcell)**2 + rhov**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-             endif
-          endif
-          eKinetic = u2 / 2.d0
-          eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-          eThermal = eTot - eKinetic
-          if (eThermal < 0.d0) then
-             if (firstTime) then
-                write(*,*) "eThermal problem: ",ethermal
-                write(*,*) eTot, ekinetic, u2
-                write(*,*) "rhoe, rho", thisOctal%rhoe(subcell), thisOctal%rho(subcell)
-                write(*,*) thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
-                     thisOctal%rhow(subcell)/thisOctal%rho(subcell)
-                write(*,*) "cen ",subcellCentre(thisOctal, subcell), thisOctal%ghostCell(subcell)
-                write(*,*) "temp ",thisOctal%temperature(subcell)
-                firstTime = .false.
-             endif
-             eThermal = tiny(eThermal)
-          endif
-          cs = sqrt(thisOctal%gamma(subcell)*(thisOctal%gamma(subcell)-1.d0)*eThermal)
+          cs = sqrt(thisOctal%gamma(subcell)*getPressure(thisOctal, subcell)/thisOctal%rho(subcell))
+      
        case(1) ! isothermal
 
 
@@ -16024,6 +16104,7 @@ end subroutine refineGridGeneric2
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
     real(double) :: rhoPhys, gamma, cs, rhoNorm, rhov
     type(VECTOR) :: rVec
+    logical, save :: firstTime = .true.
 
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic
@@ -16043,7 +16124,21 @@ end subroutine refineGridGeneric2
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
           if (eThermal < 0.d0) then
-!             write(*,*) "eThermal problem: ",ethermal
+             if (firstTime) then
+                rVec = subcellCentre(thisOctal, subcell)
+                write(*,'(a18, 1pe9.2)') "eThermal problem: ",ethermal
+                write(*,'(1pe9.2,1pe9.2,1pe9.2)') eTot, ekinetic, u2
+                write(*,'(a8,1pe9.2)') "3/2nkT ", 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+                write(*,'(a8,1pe9.2)') "1/2mv2 ", 0.5d0 * (thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)*1.d30) * &
+                     (modulus(thisOctal%velocity(subcell))*cs)**2
+                write(*,'(a10,1pe9.2,1pe9.2)') "rhoe, rho", thisOctal%rhoe(subcell), thisOctal%rho(subcell)
+                write(*,'(1pe9.2,1pe9.2,1pe9.2)') thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhow(subcell)/thisOctal%rho(subcell)
+                write(*,'(a4,1pe9.2,1pe9.2,1pe9.2,a2)') "cen ", rvec%x, rvec%y, rvec%z, thisOctal%ghostCell(subcell)
+                write(*,*) "temp ",thisOctal%temperature(subcell)
+                firstTime = .false.
+             endif
+
              ethermal = TINY(ethermal)
           endif
 
@@ -17722,6 +17817,10 @@ end subroutine minMaxDepth
              localWorldCommunicator, ierr)
         call MPI_BCAST(globalsourceArray(1:globalnSource)%mass     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%luminosity, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%age       , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
         call MPI_BCAST(globalsourceArray(1:globalnSource)%radius   , globalnSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
         call MPI_BCAST(globalsourceArray(1:globalnSource)%mdot     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
@@ -17756,6 +17855,8 @@ end subroutine broadcastSinks
           call mpi_recv(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%mass,       nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%luminosity, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%age,        nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
@@ -17784,6 +17885,8 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%mass,       nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%luminosity, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%age,        nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -18293,16 +18396,16 @@ end subroutine broadcastSinks
        accretedAngMomentum(iSource)%z = suma(3)
 
 
-       if (writeoutput) then
-
-          write(*,*) "source ",isource
-          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
-          write(*,*) "before mass ",sourceArray(isource)%mass/msol
-
-          write(*,*) "accreted mass ", accretedMass(isource)
-          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
-          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
-       endif
+!       if (writeoutput) then
+!
+!          write(*,*) "source ",isource
+!          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
+!          write(*,*) "before mass ",sourceArray(isource)%mass/msol
+!
+!          write(*,*) "accreted mass ", accretedMass(isource)
+!          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
+!          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
+!       endif
 
        sourceMom = sourceArray(iSource)%mass * sourceArray(iSource)%velocity
        sourceMom = sourceMom + accretedLinMomentum(iSource)
@@ -18317,9 +18420,9 @@ end subroutine broadcastSinks
        if (myrankWorldGlobal == 1) then
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
-          write(*,*)  "position ",sourceArray(isource)%position
-          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
-          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
+!          write(*,*)  "position ",sourceArray(isource)%position
+!          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
+!          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
        endif
     enddo
     deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
@@ -19349,14 +19452,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     real(double) :: eThermal
     real(double) :: mu
 
-    if (photoionPhysics) then
-       mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
-       if(hOnly .and. simpleMu) then
-          mu = returnMuSimple(thisOctal, subcell)
-       end if
-    else
-       mu = 2.33d0
-    endif
 
     do subcell = 1, thisOctal%maxChildren
        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
@@ -19370,11 +19465,51 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              end if
           end do
        else
+            if (photoionPhysics) then
+               mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+               if(hOnly .and. simpleMu) then
+                  mu = returnMuSimple(thisOctal, subcell)
+               end if
+            else
+               mu = 2.33d0
+            endif
+
           eThermal = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+
           thisOctal%temperature(subcell) = real(mu * mHydrogen * eThermal / (1.5d0 * kerg))
+          
+          if (thisOctal%temperature(subcell) < 0.d0) write(*,*) "temp less than 0", ethermal, thisOctal%rhoe(subcell), mu, &
+               subcellCentre(thisOctal,subcell)
        endif
     enddo
   end subroutine calculateTemperatureFromEnergy
+
+  recursive subroutine setEquationOfState(thisOctal, eos)
+    use mpi
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    integer :: eos
+ 
+
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call setEquationOfState(child, eos)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
+
+          thisOctal%iEquationOfState(subcell) = eos
+          if (myrankglobal == 1) write(*,*) subcell, " eos ", thisOctal%iEquationOfState(subcell)
+       endif
+    enddo
+  end subroutine setEquationOfState
 
 
 #endif

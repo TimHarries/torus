@@ -178,6 +178,8 @@
   real(double) :: gridDistanceScale   !Scale of grid
   integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
 
+  logical :: pressureSupport ! include pressure support for sphere geometry
+
   logical :: readTurb !read in a turbulent velocity grid
   character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)
   character(len=20) :: turbvelfiley    !file for tubrulent velocty field (y)

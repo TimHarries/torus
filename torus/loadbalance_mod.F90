@@ -126,20 +126,29 @@ contains
     integer :: ierr
 
     allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
-    allocate(frac(1:nHydroThreadsGlobal))
-
 
     numberOfCrossingsOnThread = 0
     if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
        call sumCrossings(grid%octreeRoot, numberOfCrossingsOnThread(myRankGlobal))
        allocate(itemp(1:nHydroThreadsGlobal))
        call MPI_ALLREDUCE(numberOfCrossingsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+!       write(*,*) myrankglobal, " received allreduce ", itemp(1)
        numberOfCrossingsOnThread = itemp
        deallocate(itemp)
     endif
 
-
+!    write(*,*) myrankglobal, " waiting for bcast"
     call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
+!    write(*,*) myrankglobal, " received numofcrossings bcast ", numberofcrossingsonthread(1)
+
+!    if (SUM(numberOfCrossingsOnThread) == 0) then
+!        call MPI_BARRIER(localWorldCommunicator, ierr)
+!        if (myRankGlobal == 0) write(*,*) "Attempted load balancing by crossings but ncrossings=0; balancing by cells."
+!        call setLoadBalancingThreadsByCells(grid)
+!        goto 666
+!    endif
+
+    allocate(frac(1:nHydroThreadsGlobal))
     frac = dble(numberOfCrossingsOnThread)/dble(SUM(numberOfCrossingsOnThread))
 
     if (associated(nLoadBalanceList)) then
@@ -181,7 +190,7 @@ contains
     enddo
 
     if (writeoutput) then
-       write(*,*) "Load balancing thread list"
+       write(*,*) "Load balancing thread list (balanced by crossings)"
        do i = 1, nHydroThreadsGlobal
           if (nLoadbalanceList(i) > 1) &
                write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
@@ -191,6 +200,7 @@ contains
     call createLoadBalanceCommunicator
     call createLoadThreadDomainCopies(grid)
 
+666 continue
   end subroutine setLoadBalancingThreadsByCrossings
 
   subroutine setLoadBalancingThreadsByCells(grid)
@@ -259,7 +269,7 @@ contains
     enddo
 
     if (writeoutput) then
-       write(*,*) "Load balancing thread list"
+       write(*,*) "Load balancing thread list (balanced by cells)"
        do i = 1, nHydroThreadsGlobal
           if (nLoadbalanceList(i) > 1) &
                write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))

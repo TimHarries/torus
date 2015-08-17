@@ -95,8 +95,8 @@ contains
     type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
     character(len=80) :: klabel(nKurucz)
 
+   
     call  readKuruczGrid(klabel, kspectrum, nKurucz)
-
 
     nSource = 0
 
@@ -133,6 +133,11 @@ contains
              nSource = 1
              source(1)%initialMass = 40.d0
              totMass = 40.d0
+             source(1:nSource)%age = burstAge
+       
+       case("singlestartest")
+             nSource = 1
+             source(1)%initialMass = burstMass
              source(1:nSource)%age = burstAge
 
        case DEFAULT
@@ -200,7 +205,8 @@ contains
       source(:)%viscosity = .false.
       source(:)%diffuse = .false.
       source(:)%outsideGrid = .false.
-      source(:)%prob = 1.d0/dble(nsource)
+      source(:)%prob = 0.d0 ! 1.d0/dble(nsource)
+      call writeInfo("Photons will be sampled according to source luminosity", TRIVIAL)
       call dumpSources(source, nSource)
     end subroutine createSources
 
@@ -278,7 +284,9 @@ contains
 
          t = (source(i)%initialMass - thisTable%initialMass(j))/(thisTable%initialMass(j+1) - thisTable%initialMass(j))
          deadAge = t1 + t * (t2 - t1)
-
+         if (source(i)%initialMass > 8.d0 .and. writeoutput) then
+           write(*,'(a, i4, a, 1pe12.1)') "Source ", i, " t(SNe) ", deadAge
+         endif
          ! checks if each source is dead and initially > 8 solar mass, adds to SN count, tabulates index                                  
 
 

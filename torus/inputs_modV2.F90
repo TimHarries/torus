@@ -2906,7 +2906,8 @@ contains
     call getLogical("cylindricalhydro", cylindricalHydro, cLine, fLine, nLines, &
          "Hydrodynamics in cylindrical coordinates: ","(a,1l,1x,a)", .false., ok, .false.)
 
-
+    call getLogical("vtkincludeghosts", vtkIncludeGhosts, cLine, fLine, nLines, &
+         "Include ghost cells in vtk files: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
@@ -2963,6 +2964,11 @@ contains
 
     call getLogical("readturb", readTurb, cLine, fLine, nLines, &
          "read in a turbulent velocity field from file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (geometry == "sphere") then
+        call getLogical("pressuresupport", pressureSupport, cLine, fLine, nLines, &
+            "Provide pressure support for sphere: ","(a,1l,1x,a)", .false., ok, .false.)
+    endif
 
     call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
          "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
