@@ -132,21 +132,11 @@ contains
        call sumCrossings(grid%octreeRoot, numberOfCrossingsOnThread(myRankGlobal))
        allocate(itemp(1:nHydroThreadsGlobal))
        call MPI_ALLREDUCE(numberOfCrossingsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
-!       write(*,*) myrankglobal, " received allreduce ", itemp(1)
        numberOfCrossingsOnThread = itemp
        deallocate(itemp)
     endif
 
-!    write(*,*) myrankglobal, " waiting for bcast"
     call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
-!    write(*,*) myrankglobal, " received numofcrossings bcast ", numberofcrossingsonthread(1)
-
-!    if (SUM(numberOfCrossingsOnThread) == 0) then
-!        call MPI_BARRIER(localWorldCommunicator, ierr)
-!        if (myRankGlobal == 0) write(*,*) "Attempted load balancing by crossings but ncrossings=0; balancing by cells."
-!        call setLoadBalancingThreadsByCells(grid)
-!        goto 666
-!    endif
 
     allocate(frac(1:nHydroThreadsGlobal))
     frac = dble(numberOfCrossingsOnThread)/dble(SUM(numberOfCrossingsOnThread))
@@ -200,7 +190,6 @@ contains
     call createLoadBalanceCommunicator
     call createLoadThreadDomainCopies(grid)
 
-666 continue
   end subroutine setLoadBalancingThreadsByCrossings
 
   subroutine setLoadBalancingThreadsByCells(grid)

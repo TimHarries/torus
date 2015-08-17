@@ -806,7 +806,6 @@ contains
 
      if (associated(globalsourceArray)) then
         deallocate(globalSourceArray)
-        write(*,*) myrankGlobal, "Deallocated globalSourceArray (physics_mod)"
      endif
 
 !     write(*,*) myrankglobal,  "setting up global sources"

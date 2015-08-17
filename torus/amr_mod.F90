@@ -9261,7 +9261,7 @@ endif
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, rhoFloor
     use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro, nbodytest
-    use inputs_mod, only : readTurb, pressureSupport
+    use inputs_mod, only : readTurb
 !    use inputs_mod, only : smallestCellSize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -9302,25 +9302,16 @@ endif
        if (rhosphere > 1.d-8) fac = 1.d-20
        if (nbodytest) fac = 1.d-20
        thisOctal%rho(subcell) = fac * rhoSphere
-       if (pressureSupport) then
-          thisOctal%temperature(subcell) = 8.d3 !20.d0 * rhoSphere / max(rhoFloor, thisOctal%rho(subcell))
-       else
-          thisOctal%temperature(subcell) = 20.d0
-       endif
+       thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
     thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
 
     if (hydrodynamics) then
-       if (pressureSupport) then
-          thisOctal%iequationOfState(subcell) = 0 ! adiabatic
-          thisOctal%gamma(subcell) = 7.d0/5.d0
-       else
-          thisOctal%iequationOfState(subcell) = 1 ! isothermal
-          thisOctal%gamma(subcell) = 2.d0
-       endif
+       thisOctal%iequationOfState(subcell) = 1 ! isothermal
        ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
        thisOctal%energy(subcell) = eThermal
+       thisOctal%gamma(subcell) = 2.d0
     endif
 
   end subroutine calcSphere

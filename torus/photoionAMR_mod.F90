@@ -1724,7 +1724,6 @@ end subroutine radiationHydro
 
     !Add some extra bytes for safety
     bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
-    if (writeoutput) write(*,*) "buffersize ", buffersize
 
     if(bufferSize < 0) then
        write(*,*) "warning negative buffer size", bufferSize
