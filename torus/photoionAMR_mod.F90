@@ -2131,14 +2131,9 @@ end subroutine radiationHydro
 
 
 
-       write(*,*) myrankglobal, " reached barrier 1"
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       write(*,*) myrankglobal, " exited barrier 1"
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
-       if (myrankglobal == 0) write(*,*) firstLoadBalancing, (.not.readgrid), "r0 firstloadbalancing, .not.readgrid"
-       if (myrankglobal == 1) write(*,*) firstLoadBalancing, (.not.readgrid), "r1 firstloadbalancing, .not.readgrid"
-       if (myrankglobal == 70) write(*,*) firstLoadBalancing, (.not.readgrid), "r70 firstloadbalancing, .not.readgrid"
        call countCrossingsTotal(grid,numCrossings)
        if ((firstLoadBalancing.and.(.not.readGrid)) .or. (numCrossings == 0)) then
           if (writeoutput) write(*,*) "Attempting load balancing by cells..."
@@ -2149,9 +2144,7 @@ end subroutine radiationHydro
           call  setLoadBalancingThreadsByCrossings(grid)
        endif
 
-       write(*,*) myrankglobal, " reached barrier 2"
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       write(*,*) myrankglobal, " exited barrier 2"
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
@@ -2382,9 +2375,8 @@ end subroutine radiationHydro
              do iThread = 1, nDomainThreads
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
-                write(*,*) myrankglobal, " sent stack to ",ithread
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
-                write(*,*) myrankGlobal, " received donepanicking from ",ithread
+!                write(*,*) myrankGlobal, " received donepanicking from ",ithread
              end do
 
 
@@ -9036,9 +9028,6 @@ end subroutine putStarsInGridAccordingToDensity
 
     totalNumberOfCrossings = SUM(numberOfCrossingsOnThread)
     call MPI_BCAST(totalNumberOfCrossings, 1, MPI_INTEGER, 1, localWorldCommunicator, ierr)
-    if (myrankglobal == 0) write(*,*) myrankglobal, totalNumberOfCrossings, "r0 total num crossings"
-    if (myrankglobal == 1) write(*,*) myrankglobal, totalNumberOfCrossings, "r1 total num crossings"
-    if (myrankglobal == 70) write(*,*) myrankglobal, totalNumberOfCrossings, "r70 total num crossings"
   end subroutine countCrossingsTotal
 
 
