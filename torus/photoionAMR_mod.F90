@@ -9009,7 +9009,6 @@ end subroutine putStarsInGridAccordingToDensity
     integer, allocatable :: itemp(:)
     integer, allocatable :: numberOfCrossingsOnThread(:)
     integer, intent(out) :: totalNumberOfCrossings
-    real(double), allocatable :: frac(:)
     integer :: ierr
 
     allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))

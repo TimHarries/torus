@@ -7886,7 +7886,7 @@ end subroutine sumFluxes
   end subroutine computeGravityTimeStep
 
   recursive subroutine gravityTimeStep(thisoctal, dt)
-    use inputs_mod, only : gridDistanceScale, smallestCellSize 
+    use inputs_mod, only : gridDistanceScale
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
@@ -7969,10 +7969,7 @@ end subroutine sumFluxes
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: cs, rhoPhys
-    real(double) :: u2, eKinetic, eTot, eThermal, rhov
-    logical, save :: firstTime = .true.
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
-    type(VECTOR) :: rVec
 
     if(octalOnThread(thisOctal, subcell,myRankGlobal)) then
     select case(thisOctal%iEquationOfState(subcell))
@@ -16129,11 +16126,11 @@ end subroutine refineGridGeneric2
                 write(*,'(a18, 1pe9.2)') "eThermal problem: ",ethermal
                 write(*,'(1pe9.2,1pe9.2,1pe9.2)') eTot, ekinetic, u2
                 write(*,'(a8,1pe9.2)') "3/2nkT ", 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
-                write(*,'(a8,1pe9.2)') "1/2mv2 ", 0.5d0 * (thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)*1.d30) * &
-                     (modulus(thisOctal%velocity(subcell))*cs)**2
+!                write(*,'(a8,1pe9.2)') "1/2mv2 ", 0.5d0 * (thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)*1.d30) * &
+!                     (modulus(thisOctal%velocity(subcell))*cs)**2
                 write(*,'(a10,1pe9.2,1pe9.2)') "rhoe, rho", thisOctal%rhoe(subcell), thisOctal%rho(subcell)
-                write(*,'(1pe9.2,1pe9.2,1pe9.2)') thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
-                     thisOctal%rhow(subcell)/thisOctal%rho(subcell)
+                write(*,'(1pe9.2,1pe9.2,1pe9.2)') thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                     thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell)
                 write(*,'(a4,1pe9.2,1pe9.2,1pe9.2,a2)') "cen ", rvec%x, rvec%y, rvec%z, thisOctal%ghostCell(subcell)
                 write(*,*) "temp ",thisOctal%temperature(subcell)
                 firstTime = .false.
