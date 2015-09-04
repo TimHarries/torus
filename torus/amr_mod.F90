@@ -4482,7 +4482,7 @@ CONTAINS
        case("gravtest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.          
           rVec = subcellCentre(thisOctal, subcell)          
-          if(modulus(rVec) < (sphereRadius+(sphereRadius*0.15d0)) &
+          if(modulus(rVec) < (sphereRadius+(sphereRadius*0.5d0)) &
                .and. (thisOctal%nDepth < maxDepthAMR)) split = .true.
           
        case("brunt")
@@ -13280,6 +13280,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%pressure_i, source%pressure_i)
     call copyAttribute(dest%phi_i, source%phi_i)
     call copyAttribute(dest%phi_gas, source%phi_gas)
+    call copyAttribute(dest%correction, source%correction)
     call copyAttribute(dest%phi_stars, source%phi_stars)
     call copyAttribute(dest%phi_i_plus_1, source%phi_i_plus_1)
     call copyAttribute(dest%phi_i_minus_1, source%phi_i_minus_1)
@@ -17183,6 +17184,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%x_i_minus_2,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%u_i,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%correction,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%u_i_minus_1,thisOctal%maxchildren)
 
@@ -17219,6 +17221,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%phi_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%phi_gas,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%source,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%phi_stars,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%phi_i_plus_1,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%phi_i_minus_1,thisOctal%maxchildren)
@@ -17371,7 +17374,8 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%photoIonCoeff)
     call deallocateAttribute(thisOctal%sourceContribution)
     call deallocateAttribute(thisOctal%diffuseContribution)
-    call deallocateAttribute(thisOctal%normSourceContribution)
+    call deallocateAttribute(thisOctal%source)
+    call deallocateAttribute(thisOctal%correction)
     call deallocateAttribute(thisOctal%gas_particle_list)
     call deallocateAttribute(thisOctal%changed)
     call deallocateAttribute(thisOctal%mpiBoundaryStorage)

@@ -2144,6 +2144,7 @@ end subroutine radiationHydro
        endif
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
        if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
        if (myrankGlobal /= 0) call zeroDistanceGrid(grid%octreeRoot)
@@ -2375,7 +2376,6 @@ end subroutine radiationHydro
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
-!                write(*,*) myrankGlobal, " received donepanicking from ",ithread
              end do
 
 

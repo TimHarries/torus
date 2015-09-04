@@ -233,6 +233,7 @@ MODULE octal_mod
     REAL(double), DIMENSION(:), pointer                 :: biasLine3D  => null()    ! grid bias distribution
     REAL(double), DIMENSION(:), pointer                 :: biasCont3D  => null()   ! grid bias distribution
     REAL(double), DIMENSION(:), pointer                 :: source  => null()   ! source for poissons equation
+    REAL(double), DIMENSION(:), pointer                 :: correction  => null()   ! correction for poissons equation
     real(double), DIMENSION(:), pointer :: probDistLine  => null() ! emissivity probability distribution
     real(double), DIMENSION(:), pointer :: probDistCont  => null()  ! emissivity probability distribution
     real(double), DIMENSION(:,:), POINTER :: N => null()! stateq level pops

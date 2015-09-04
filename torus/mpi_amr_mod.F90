@@ -1118,7 +1118,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 58
+    integer, parameter :: nStorage = 59
     type(VECTOR) :: octVec, direction, rVec, pVec,locator
     integer :: nBound
     integer :: iOctal
@@ -1131,7 +1131,7 @@ contains
     type(VECTOR), parameter :: xhat = VECTOR(1.d0, 0.d0, 0.d0), yHat = VECTOR(0.d0, 1.d0, 0.d0), zHat = VECTOR(0.d0, 0.d0, 1.d0)
     real(double) :: q , rho, rhoe, rhou, rhov, rhow, pressure, phi, flux, phigas
     real(double) :: temperature
-    real(double) :: rm1, rum1, pm1, qViscosity(3,3)
+    real(double) :: rm1, rum1, pm1, qViscosity(3,3), correction
     real(double), allocatable :: locStack(:), temp1d(:), tempStorage(:,:)
     integer, allocatable :: nDepthStorage(:)
     
@@ -1386,10 +1386,11 @@ contains
              tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
              tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
              tempStorage(i,58) = dble(neighbourOctal%nChildren)
+             tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
           else ! need to average (neighbour octal depth > this Octal depth)
              call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-                  flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
+                  flux, phi, phigas, correction, rm1, rum1, pm1, qViscosity, temperature)
              tempStorage(i,1) = q
              tempStorage(i,2) = rho
              tempStorage(i,3) = rhoe
@@ -1432,6 +1433,7 @@ contains
              tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
              
              tempStorage(i,58) = dble(neighbourOctal%nChildren)
+             tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
 
           do j = 1, 4
@@ -1843,7 +1845,7 @@ contains
     integer :: receiveThread, sendThread, tsubcell
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 58
+    integer, parameter :: nStorage = 59
     integer :: nLoc
     real(double),allocatable :: tempStorage(:,:),temp1d(:)
     real(double), allocatable :: locStack(:)
@@ -2055,6 +2057,7 @@ contains
           tempStorage(i,32) = qViscosity(3,3)
 
           tempStorage(i,58) = dble(neighbourOctal%nChildren)
+          tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
        enddo
 
@@ -2647,7 +2650,7 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
     use mpi
 !    use inputs_mod, only : useTensorViscosity
 
@@ -2660,7 +2663,7 @@ contains
 
     real(double), intent(out) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi, phigas
     real(double), intent(out) :: xplus, px, py, pz, qViscosity(3,3), rm1, rum1, pm1
-    real(double) :: temperature
+    real(double) :: temperature, correction
 
     nbound = getNboundFromDirection(direction)
 
@@ -2694,6 +2697,7 @@ contains
           flux = neighbourOctal%flux_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
           rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
@@ -2710,6 +2714,7 @@ contains
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
 
@@ -2727,7 +2732,7 @@ contains
           endif
        else
           call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, &
-               flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature) ! fine to coarse
+               flux, phi, phigas, correction, rm1, rum1, pm1, qViscosity, temperature) ! fine to coarse
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           
        endif
@@ -2809,6 +2814,7 @@ contains
        qViscosity(3,3) = thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
 
        nc = nint(thisOctal%mpiBoundaryStorage(subcell, nBound, 58))
+       correction = thisOctal%mpiBoundaryStorage(subcell, nBound, 59)
 
     endif
   end subroutine getNeighbourValues
@@ -3716,13 +3722,13 @@ contains
 
 
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, &
-       rhoe, pressure, flux, phi, phigas, rm1, rum1, pm1, qViscosity, temperature)
+       rhoe, pressure, flux, phi, phigas, correction, rm1, rum1, pm1, qViscosity, temperature)
     use inputs_mod, only :  cylindricalHydro
 
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
     real(double), intent(out) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi, phigas, qViscosity(3,3)
-    real(double) :: fac, rm1, rum1, pm1, temperature,fac1,fac2
+    real(double) :: fac, rm1, rum1, pm1, temperature,fac1,fac2, correction
     type(VECTOR) :: direction,rvec
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
@@ -3745,6 +3751,7 @@ contains
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
+       correction = neighbourOctal%correction(neighbourSubcell)
        qViscosity = neighbourOctal%qViscosity(neighbourSubcell, :, :)
        rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
        rum1 = neighbourOctal%u_i_minus_1(neighbourSubcell)
@@ -3800,6 +3807,7 @@ contains
        flux = fac1*neighbourOctal%flux_i(nSubcell(1)) + fac2*neighbourOctal%flux_i(nSubcell(2))
        phi = fac1*neighbourOctal%phi_i(nSubcell(1)) + fac2*neighbourOctal%phi_i(nSubcell(2))
        phigas = fac1*neighbourOctal%phi_gas(nSubcell(1)) + fac2*neighbourOctal%phi_gas(nSubcell(2))
+       correction = fac1*neighbourOctal%correction(nSubcell(1)) + fac2*neighbourOctal%correction(nSubcell(2))
        rm1 = fac1*neighbourOctal%rho_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%rho_i_minus_1(nSubcell(2))
        rum1 = fac1*neighbourOctal%u_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%u_i_minus_1(nSubcell(2))
        pm1 = fac1*neighbourOctal%pressure_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%pressure_i_minus_1(nSubcell(2))
@@ -3871,6 +3879,9 @@ contains
 
        phigas = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
+
+       correction = fac*(neighbourOctal%correction(nSubcell(1)) + neighbourOctal%correction(nSubcell(2)) + & 
+            neighbourOctal%correction(nSubcell(3)) + neighbourOctal%correction(nSubcell(4)))
 
        rm1 = fac*(neighbourOctal%rho_i_minus_1(nSubcell(1)) + neighbourOctal%rho_i_minus_1(nSubcell(2)) + & 
             neighbourOctal%rho_i_minus_1(nSubcell(3)) + neighbourOctal%rho_i_minus_1(nSubcell(4)))
@@ -7439,7 +7450,7 @@ end subroutine writeRadialFile
     real(double) :: loc(7)
     type(OCTAL), pointer :: thisOctal
     integer :: iThread
-    integer, parameter :: nStorage = 58
+    integer, parameter :: nStorage = 59
 !    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval
     integer :: subcell
@@ -7511,7 +7522,7 @@ end subroutine writeRadialFile
 !    type(OCTAL), pointer :: topOctal
     integer :: subcell!, nworking!, topOctalSubcell
     integer :: iThread!, servingArray!, workingTHreads(nworking)
-    integer, parameter :: nStorage = 58
+    integer, parameter :: nStorage = 59
 !    integer, parameter :: nStorage = 6
     real(double) :: tempStorage(nStorage), tval!, tmpthread
     integer :: status(MPI_STATUS_SIZE)
@@ -9115,7 +9126,7 @@ recursive subroutine recurCheckEven(grid, thisOctal, check)
   type(VECTOR) :: locator,direction(6)
   integer :: nDir, nd, idir, nc
   real(double) :: q, rho, rhoe, rhov, rhou,rhow,x,qnext,pressure,&
-       flux,phi,phigas,xnext,px,py,pz,rm1,um1,pm1,qviscosity(3,3)
+       flux,phi,phigas,xnext,px,py,pz,rm1,um1,pm1,qviscosity(3,3), correction
   
   if (thisOctal%threed) then
      ndir = 6
@@ -9149,7 +9160,7 @@ recursive subroutine recurCheckEven(grid, thisOctal, check)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction(idir), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
              if (abs(thisOctal%nDepth-nd) > 1) check = .false.
           endif
 

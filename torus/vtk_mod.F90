@@ -3294,6 +3294,9 @@ end subroutine writeXMLVtkFileAMR
                case("phigas")
                   rArray(1, n) = real(thisOctal%phi_gas(subcell))
 
+               case("correction")
+                  rArray(1, n) = real(thisOctal%correction(subcell))
+
                case("q_i")
                   rArray(1, n) = real(thisOctal%q_i(subcell))
 
