@@ -8128,6 +8128,10 @@ end subroutine sumFluxes
     dt = 1.d30
     
     direction = VECTOR(1.d0, 0.d0, 0.d0)
+
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
+    call setupUi_amr4(grid%octreeRoot, grid, direction, dt)
+    call setupUpm(grid%octreeRoot, grid, direction)
     call computepressureGeneral(grid, grid%octreeroot, .true.) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     call setuppressure(grid%octreeroot, grid, direction)
@@ -8136,6 +8140,9 @@ end subroutine sumFluxes
 
     if (amr3d) then
        direction = VECTOR(0.d0, 1.d0, 0.d0)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
+       call setupUi_amr4(grid%octreeRoot, grid, direction, dt)
+       call setupUpm(grid%octreeRoot, grid, direction)
        call computepressureGeneral(grid, grid%octreeroot, .true.) 
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
        call setuppressure(grid%octreeroot, grid, direction)
@@ -8144,7 +8151,8 @@ end subroutine sumFluxes
     endif
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call computepressureGeneral(grid, grid%octreeroot, .true.) 
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+    call setupUi_amr4(grid%octreeRoot, grid, direction, dt)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
     call setuppressure(grid%octreeroot, grid, direction)
     call setuprhoPhi(grid%octreeroot, grid, direction)
