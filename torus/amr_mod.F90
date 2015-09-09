@@ -4802,7 +4802,7 @@ CONTAINS
                 call find_n_particle_in_subcell(nparticle, ave_density, &
                      thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
              end if
-
+             write(*,*) "ave density ",ave_density
 
              if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine ).and.(nParticle>1)) then
                 split = .true.
@@ -13286,9 +13286,6 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%phi_i_minus_1, source%phi_i_minus_1)
     call copyAttribute(dest%pressure_i_plus_1, source%pressure_i_plus_1)
 
-
-
-
     call copyAttribute(dest%q_amr_i_minus_1, source%q_amr_i_minus_1)
     call copyAttribute(dest%q_amr_i_plus_1, source%q_amr_i_plus_1)
     call copyAttribute(dest%u_interface, source%u_interface)
@@ -13321,6 +13318,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%refinedLastTime, source%refinedLastTime)
 
     call copyAttribute(dest%photoIonCoeff, source%photoIonCoeff)
+    call copyAttribute(dest%source, source%source)
     call copyAttribute(dest%sourceContribution, source%sourceContribution)
     call copyAttribute(dest%diffuseContribution, source%diffuseContribution)
     call copyAttribute(dest%normSourceContribution, source%normSourceContribution)
@@ -17373,6 +17371,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%dust_T)
     call deallocateAttribute(thisOctal%photoIonCoeff)
     call deallocateAttribute(thisOctal%sourceContribution)
+    call deallocateAttribute(thisOctal%normsourceContribution)
     call deallocateAttribute(thisOctal%diffuseContribution)
     call deallocateAttribute(thisOctal%source)
     call deallocateAttribute(thisOctal%correction)

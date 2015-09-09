@@ -8773,6 +8773,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
 !       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
        copyOfThread = fromThread
     endif
+    deallocate(buffer)
     call MPI_BARRIER(communicator,ierr)
 
   end subroutine broadcastBranch

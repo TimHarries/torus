@@ -850,6 +850,7 @@ contains
   end subroutine fillDustUniform
 
   recursive subroutine setupOrigDustFraction(thisOctal)
+    use inputs_mod, only : nDustType
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell, i
@@ -865,6 +866,7 @@ contains
              end if
           end do
        else
+          if (.not.associated(thisOctal%origDustTypeFraction)) allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
           thisOctal%origdustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) 
        end if
     end do

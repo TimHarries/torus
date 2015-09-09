@@ -396,7 +396,8 @@ contains
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
 
-
+    nghost = 0
+    nstar = 0
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
     read(LUIN,*) 
@@ -405,7 +406,9 @@ contains
     read(LUIN,*) junkchar, time, utime
     read(LUIN,*)
     read(LUIN,*)
-    read(LUIN,*) junkchar, npart, nghost, nptmass, nstar, nunknown
+    read(LUIN,*) junkchar,npart, nptmass, nunknown
+    npart = npart + nunknown
+    nunknown = 0 
     read(LUIN,*)
     read(LUIN,'(a)') unitString
     unitString = unitstring(2:)
@@ -415,6 +418,12 @@ contains
     nameString = nameString(2:)
     call splitintoWords(unitString, unit, nunit)
     call splitIntoWords(nameString, word, nWord)
+    write(*,*) "Words: "
+    do i = 1, nWord
+       write(*,*) trim(word(i)),": ",trim(unit(i))
+    enddo
+
+
 
     iitype = indexWord("itype",word,nWord)
 
@@ -560,7 +569,7 @@ part_loop: do ipart=1, nlines
        if (internalView) call rotate_particles(galaxyPositionAngle+extraPA, galaxyInclination)
 
        u = junkArray(iu)
-       rhon = junkArray(irho)
+       rhon = junkArray(irho) * udist**3/uMass
        h = junkArray(ih)
        if (iitype == 0) then
           itype = 1
