@@ -173,7 +173,7 @@ program torus
      call setupGlobalSources(grid)
 
 
-     call testBranchCopying(grid)
+!     call testBranchCopying(grid)
 
 ! SPH data may be required for setting up sources so only free memeory after this is done
 
