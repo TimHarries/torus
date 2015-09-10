@@ -105,7 +105,8 @@ contains
 
   subroutine checkLoadBalance(grid)
     type(GRIDTYPE) :: grid
-    integer :: ithread,j 
+    integer :: ithread
+    integer(bigint) :: j 
     do ithread = 1, nHydroThreadsGlobal+nLoadBalancingThreadsGlobal
        if (iThread == myrankGlobal) then
           j = 0
@@ -120,8 +121,8 @@ contains
     use utils_mod, only : median
     type(GRIDTYPE) :: grid
     integer :: i, iThread, j
-    integer, allocatable :: itemp(:)
-    integer, allocatable :: numberOfCrossingsOnThread(:)
+    integer(bigint), allocatable :: itemp(:)
+    integer(bigint), allocatable :: numberOfCrossingsOnThread(:)
     real(double), allocatable :: frac(:)
     integer :: ierr
 
@@ -131,12 +132,19 @@ contains
     if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
        call sumCrossings(grid%octreeRoot, numberOfCrossingsOnThread(myRankGlobal))
        allocate(itemp(1:nHydroThreadsGlobal))
-       call MPI_ALLREDUCE(numberOfCrossingsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+       call MPI_ALLREDUCE(numberOfCrossingsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER8, MPI_SUM, amrCommunicator, ierr)
        numberOfCrossingsOnThread = itemp
        deallocate(itemp)
     endif
 
-    call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
+    call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER8, 1, localWorldCommunicator, ierr)
+
+    if (writeoutput) write(*,*) "Total number of crossings: ", sum(numberOfCrossingsOnThread)
+    if (sum(numberOfCrossingsOnThread) .le. 0) then
+       if (writeoutput) write(*,*) "Setting load balancing threads by cells instead."
+       call setLoadBalancingThreadsByCells(grid)
+       goto 666
+    endif
 
     allocate(frac(1:nHydroThreadsGlobal))
     frac = dble(numberOfCrossingsOnThread)/dble(SUM(numberOfCrossingsOnThread))
@@ -190,6 +198,9 @@ contains
     call createLoadBalanceCommunicator
     call createLoadThreadDomainCopies(grid)
 
+    deallocate(frac)
+666 continue
+    deallocate(numberOfCrossingsOnThread)
   end subroutine setLoadBalancingThreadsByCrossings
 
   subroutine setLoadBalancingThreadsByCells(grid)
@@ -267,6 +278,9 @@ contains
 
     call createLoadBalanceCommunicator
     call createLoadThreadDomainCopies(grid)
+
+    deallocate(numberOfCellsOnThread)
+    deallocate(frac)
 
   end subroutine setLoadBalancingThreadsByCells
        
@@ -418,7 +432,8 @@ contains
 recursive subroutine sumCrossings(thisOctal, n)
   TYPE(OCTAL),pointer :: thisOctal
   TYPE(OCTAL),pointer :: child
-  integer :: i, subcell, n
+  integer :: i, subcell
+  integer(bigint) ::  n
   
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
