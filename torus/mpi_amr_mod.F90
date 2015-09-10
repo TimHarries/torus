@@ -9161,7 +9161,8 @@ recursive subroutine recurCheckEven(grid, thisOctal, check)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction(idir), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1,um1, pm1, qViscosity)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1,um1, pm1, &
+                  qViscosity)
              if (abs(thisOctal%nDepth-nd) > 1) check = .false.
           endif
 

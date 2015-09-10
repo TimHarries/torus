@@ -209,14 +209,16 @@ contains
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(jDir), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosity1)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, &
+                  qViscosity1)
              cen_i_plus_1 = VECTOR(px, py,pz)
              
              locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir(jDir)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(jDir), q, rho, rhoe, &
-                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosity2)
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, &
+                  qViscosity2)
              cen_i_minus_1 = VECTOR(px, py,pz)
           
              dx = (cen_i_plus_1 - cen_i_minus_1).dot.dir(jDir)
@@ -362,7 +364,8 @@ contains
        neighbouroctal => thisoctal
        call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
        call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir(iDir), q, rho, rhoe, &
-            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, &
+            qViscosity)
        if (thisOctal%threed) then
           select case (iDir)
           case(1)
@@ -387,7 +390,8 @@ contains
        neighbouroctal => thisoctal
        call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
        call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir(iDir), q, rho, rhoe, &
-            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosity)
+            rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, &
+            qViscosity)
        if (thisOctal%threed) then
           select case (iDir)
           case(1)

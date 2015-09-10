@@ -866,7 +866,8 @@ contains
              end if
           end do
        else
-          if (.not.associated(thisOctal%origDustTypeFraction)) allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+          if (.not.associated(thisOctal%origDustTypeFraction)) &
+               allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
           thisOctal%origdustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) 
        end if
     end do
