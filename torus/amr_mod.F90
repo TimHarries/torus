@@ -1213,6 +1213,7 @@ CONTAINS
         real(db), parameter :: vWind = 1800.0_db
         logical, parameter :: runawayDustFromOutflow=.false.
 
+! Assign density and an initial temperature from hydro calculation
         if (vh1FileRequired()) then 
            call assign_from_vh1(thisOctal, subcell)
         elseif(flashFileRequired()) then
@@ -1221,8 +1222,6 @@ CONTAINS
            call torus_abort("No way to assign density for runaway geometry")
         endif
 
-! Any temperature set in call to assign_from_* is overwritten here
-        thisOctal%temperature(subcell) = 10000.
         thisOctal%etaCont(subcell) = 0.
         thisOctal%nh(subcell)      = thisOctal%rho(subcell) / mHydrogen
         thisOctal%ne(subcell)      = thisOctal%nh(subcell)
@@ -1249,6 +1248,9 @@ CONTAINS
         vOutflow = vOutflow * (cspeed / 1.0e5_db)
 ! Set up initial dust distribution with no dust in outflow
         if (vOutflow > vWind) then 
+           thisOctal%dustTypeFraction(subcell,:) = 0.0
+! The hot, post-stellar wind shock should be dust free
+        elseif (thisOctal%temperature(subcell) > 1.1e4 ) then
            thisOctal%dustTypeFraction(subcell,:) = 0.0
         else
            thisOctal%dustTypeFraction(subcell,:) = 0.01

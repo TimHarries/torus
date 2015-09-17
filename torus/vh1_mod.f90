@@ -13,10 +13,12 @@ module vh1_mod
 ! Private components
   integer, private :: nx
   integer, private :: ny
-  real(db), private, save, allocatable :: rho(:,:)
-  real(db), private, save, allocatable :: xaxis(:)
-  real(db), private, save, allocatable :: yaxis(:)
-  real(db), private, save, allocatable :: vx(:,:), vy(:,:)
+  real(db), private, save, allocatable :: rho(:,:)  ! VH-1 density
+  real(db), private, save, allocatable :: tem(:,:)  ! VH-1 temperature
+  real(db), private, save, allocatable :: xaxis(:)  ! VH-1 x-axis
+  real(db), private, save, allocatable :: yaxis(:)  ! VH-1 y-axis
+  real(db), private, save, allocatable :: vx(:,:)   ! VH-1 x velocity
+  real(db), private, save, allocatable :: vy(:,:)   ! VH-1 y velocity
 
   real(db), private, save :: xOffset, yOffset
   logical, private  :: isRequired=.false.
@@ -49,6 +51,7 @@ contains
     ! Read data from VH-1 output file written by printold.f
     
     use messages_mod
+    use constants_mod, only: kErg, mHydrogen
 
     implicit none
 
@@ -59,6 +62,8 @@ contains
     real :: time, dt
 
     real(db) :: pres
+    real(db) :: numDen ! Number density
+    real(db),parameter :: meanMassPerParticle = (14.0/23.0) * mHydrogen
     integer :: i, j
     integer :: nlines
 
@@ -79,6 +84,7 @@ contains
     call writeInfo(message, FORINFO)
 
     allocate(rho(nx,ny))
+    allocate(tem(nx,ny))
     allocate(vx(nx,ny))
     allocate(vy(nx,ny))
     allocate(xaxis(nx))
@@ -99,6 +105,8 @@ contains
     do j=1, ny
        do i=1, nx
           read(10,*) rho(i,j), pres, vy(i,j), vx(i,j)
+          numDen = rho(i,j) / meanMassPerParticle
+          tem(i,j) = pres/(kErg*numDen)
        end do
     end do
 
@@ -203,7 +211,8 @@ contains
        end do
 
 ! this_j is for VH-1 x-axis and this_i is for VH-1 y-axis
-       thisOctal%rho(subcell) = rho(this_j, this_i)
+       thisOctal%rho(subcell)         = rho(this_j, this_i)
+       thisOctal%temperature(subcell) = tem(this_j, this_i)
 
 ! Extract cell velocity from the VH-1 grid and store velocity as fraction of c. 
        thisVel=VECTOR(vy(this_j, this_i), 0.0, vx(this_j, this_i))
@@ -325,6 +334,7 @@ contains
   subroutine deallocate_vh1
     
     if (allocated(rho))   deallocate(rho)
+    if (allocated(tem))   deallocate(tem)
     if (allocated(vx))    deallocate(vx)
     if (allocated(vy))    deallocate(vy)
     if (allocated(xaxis)) deallocate(xaxis)
