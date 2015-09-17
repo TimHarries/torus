@@ -1223,6 +1223,7 @@ CONTAINS
         endif
 
         thisOctal%etaCont(subcell) = 0.
+        thisOctal%ionFrac          = 1.0
         thisOctal%nh(subcell)      = thisOctal%rho(subcell) / mHydrogen
         thisOctal%ne(subcell)      = thisOctal%nh(subcell)
         thisOctal%nhi(subcell)     = 1.e-8
