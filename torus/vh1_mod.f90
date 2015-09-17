@@ -212,7 +212,7 @@ contains
 
 ! this_j is for VH-1 x-axis and this_i is for VH-1 y-axis
        thisOctal%rho(subcell)         = rho(this_j, this_i)
-       thisOctal%temperature(subcell) = tem(this_j, this_i)
+       thisOctal%temperature(subcell) = real(tem(this_j, this_i))
 
 ! Extract cell velocity from the VH-1 grid and store velocity as fraction of c. 
        thisVel=VECTOR(vy(this_j, this_i), 0.0, vx(this_j, this_i))
