@@ -1095,7 +1095,7 @@ module amr_utils_mod
       use inputs_mod, only : suppressWarnings
       TYPE(vector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
-      real(double) :: phi, phimax, phimin,r
+      real(double) :: phi, phimax, phimin,r,a(2)
       INTEGER, INTENT(OUT)   :: subcell
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
@@ -1152,6 +1152,7 @@ module amr_utils_mod
            write(*,*) "inoctal max", thisOctal%xMax,thisOctal%yMax,thisOctal%zMax
 
           PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
+          write(*,*) a(3)
           write(*,*) "currentlydoinghydrostep ",currentlydoinghydrostep
           write(*,*) point
           write(*,*) sqrt(point%x**2+point%y**2)

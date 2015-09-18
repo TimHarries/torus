@@ -1383,9 +1383,12 @@ contains
              tempStorage(i,33) = neighbourOctal%temperature(neighbourSubcell)
              tempStorage(i,34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
              tempStorage(i,35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
-             tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
-             tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
+             if (size(neighbourOctal%flux_amr_i,2) > 2) then
+                tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
+                tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
+             endif
              tempStorage(i,58) = dble(neighbourOctal%nChildren)
+             if (associated(neighbourOctal%correction)) &
              tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
           else ! need to average (neighbour octal depth > this Octal depth)
@@ -1429,10 +1432,13 @@ contains
              tempStorage(i,33) = temperature
              tempStorage(i,34) = neighbourOctal%flux_amr_i(neighbourSubcell,1)
              tempStorage(i,35) = neighbourOctal%flux_amr_i(neighbourSubcell,2)
-             tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
-             tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
+             if (size(neighbourOctal%flux_amr_i,2) > 2) then
+                tempStorage(i,36) = neighbourOctal%flux_amr_i(neighbourSubcell,3)
+                tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
+             endif
              
              tempStorage(i,58) = dble(neighbourOctal%nChildren)
+          if (associated(neighbourOctal%correction)) &
              tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
 
@@ -1836,7 +1842,7 @@ contains
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
     use mpi
-    !    use inputs_mod, only : useTensorViscosity
+    use inputs_mod, only : useTensorViscosity, smallestCellSize
     integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -2023,7 +2029,7 @@ contains
           tempStorage(i,6) = neighbourOctal%rhow(neighbourSubcell)
           tempStorage(i,7) = neighbourOctal%x_i(neighbourSubcell)
           rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
-               direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+               direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*smallestCellSize)
           tOctal => grid%octreeRoot
           tSubcell = neighbourSubcell
           call findSubcellLocalLevel(rVec, tOctal, tSubcell, nDepth)
@@ -2057,6 +2063,7 @@ contains
           tempStorage(i,32) = qViscosity(3,3)
 
           tempStorage(i,58) = dble(neighbourOctal%nChildren)
+          if (associated(neighbourOctal%correction)) &
           tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
        enddo
@@ -2697,6 +2704,7 @@ contains
           flux = neighbourOctal%flux_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          if (associated(neighbourOctal%correction)) &
           correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
@@ -2714,6 +2722,7 @@ contains
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          if (associated(neighbourOctal%correction)) &
           correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
@@ -3751,6 +3760,7 @@ contains
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
+       if (associated(neighbourOctal%correction)) &
        correction = neighbourOctal%correction(neighbourSubcell)
        qViscosity = neighbourOctal%qViscosity(neighbourSubcell, :, :)
        rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
@@ -3807,6 +3817,7 @@ contains
        flux = fac1*neighbourOctal%flux_i(nSubcell(1)) + fac2*neighbourOctal%flux_i(nSubcell(2))
        phi = fac1*neighbourOctal%phi_i(nSubcell(1)) + fac2*neighbourOctal%phi_i(nSubcell(2))
        phigas = fac1*neighbourOctal%phi_gas(nSubcell(1)) + fac2*neighbourOctal%phi_gas(nSubcell(2))
+       if (associated(neighbourOctal%correction)) &
        correction = fac1*neighbourOctal%correction(nSubcell(1)) + fac2*neighbourOctal%correction(nSubcell(2))
        rm1 = fac1*neighbourOctal%rho_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%rho_i_minus_1(nSubcell(2))
        rum1 = fac1*neighbourOctal%u_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%u_i_minus_1(nSubcell(2))
@@ -3880,6 +3891,7 @@ contains
        phigas = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
+       if (associated(neighbourOctal%correction)) &
        correction = fac*(neighbourOctal%correction(nSubcell(1)) + neighbourOctal%correction(nSubcell(2)) + & 
             neighbourOctal%correction(nSubcell(3)) + neighbourOctal%correction(nSubcell(4)))
 

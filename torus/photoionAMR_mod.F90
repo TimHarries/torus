@@ -4795,6 +4795,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
       call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
       call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
       call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
+      call allocateAttribute(thisOctal%correction,thisOctal%maxchildren)
 
       call allocateAttribute(thisOctal%ionFrac, thisOctal%maxchildren, grid%nIon)
       call allocateAttribute(thisOctal%photoionCoeff, thisOctal%maxchildren, grid%nIon)
