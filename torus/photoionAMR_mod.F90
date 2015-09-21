@@ -1438,7 +1438,7 @@ end subroutine radiationHydro
 
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
-         loadBalancing
+         loadBalancing, inputSeed
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -2196,7 +2196,14 @@ end subroutine radiationHydro
           write(*,*) "stack limit array: ", stacklimitarray
           iniCustomTime=.false.
        end if
-          if (myRankGlobal == 0) then
+
+       if (inputSeed /=0 ) then
+          call randomNumberGenerator(putISeed = inputSeed) ! TJH added 21/9/15
+          call randomNumberGenerator(syncIseed=.true.)
+       endif
+
+
+       if (myRankGlobal == 0) then
              if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              mainloop: do iMonte = iMonte_beg, iMonte_end
 !                   if ((myHydroSetGlobal == 0).and.&
