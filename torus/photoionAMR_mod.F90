@@ -1489,7 +1489,7 @@ end subroutine radiationHydro
 !    real(double) :: freq(1000+(2*grid%nIon)), dfreq(1000+(2*grid%nIon)), spectrum(1000+(2*grid%nIon)) 
     real(double) :: nuStart, nuEnd
     real(double) :: kappaAbsGas, kappaAbsDust, escat 
-!    real(double) :: r1 ! add this to the private openmp section if reinstated
+    real(double) :: r1 ! add this to the private openmp section if reinstated
     integer, parameter :: nTemp = 9
     real(double) :: v, dustHeating
     real(double) :: kappaP
@@ -2618,7 +2618,7 @@ end subroutine radiationHydro
                endif
 
                !$OMP PARALLEL DEFAULT(NONE) &
-               !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton) &
+               !$OMP PRIVATE(p, rVec, uHat, thisFreq, tPhoton, photonPacketWeight, sourcePhoton, r1) &
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
@@ -2901,7 +2901,7 @@ end subroutine radiationHydro
                                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
                                                
                                               
-!                               if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+                               if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
 !                                  if (thisOctal%temperature(subcell) == 0.0) then
 !                                     write(*,*) "temperature of cell is zero"
 !                                     write(*,*) "cell is ghost " ,thisOctal%ghostCell(subcell)
@@ -2909,22 +2909,22 @@ end subroutine radiationHydro
 !                                  endif
 !                                  call randomNumberGenerator(getDouble=r1)
                                   
-!                                  if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
+                                  if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
                                      call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                      call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                                      call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                                      !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                      call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-!                                  else
+                                  else
                                      call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, & 
                                           nlambda, lamArray)
-!                                  endif
+                                  endif
                                   !Subsequent progress is now a diffuse photon
                                   sourcePhoton = .false.
-!                               else ! non-ionizing photon must be absorbed by dust
-!                                  call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, &
-!                                       subcell, grid, nlambda, lamArray)
-!                               endif
+                               else ! non-ionizing photon must be absorbed by dust
+                                  call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, &
+                                       subcell, grid, nlambda, lamArray)
+                               endif
 
 
 !                               if (firsttime.and.(myrankWorldglobal==1)) then
