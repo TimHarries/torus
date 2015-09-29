@@ -1842,7 +1842,7 @@ contains
   subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
 
     use mpi
-    use inputs_mod, only : useTensorViscosity, smallestCellSize
+    use inputs_mod, only : smallestCellSize
     integer :: ierr
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal, tOctal
@@ -2659,7 +2659,6 @@ contains
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
        rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xplus, px, py, pz, rm1, rum1, pm1, qViscosity)
     use mpi
-!    use inputs_mod, only : useTensorViscosity
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
