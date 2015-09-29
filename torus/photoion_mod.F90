@@ -30,6 +30,9 @@ public :: photoIonizationLoop, createImagePhotoion
   real :: heIIrecombinationLines(3:30, 2:16)
   type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
 
+! Undercorrection factor for thermal balance calculation
+  real, parameter, private :: underCorrection = 0.5
+
 contains
 
 
@@ -127,13 +130,13 @@ contains
 
     !$OMP THREADPRIVATE (firstTime)
 
-#ifdef MPI
-    if (myRankisZero) then
-       print *, ' '
-       print *, 'Photoionization loop computed by ', nThreadsGlobal, ' processors.'
-       print *, ' '
-    endif
-#endif
+    call writeinfo("",IMPORTANT)
+    write(message,*) 'Photoionization loop computed by ', nThreadsGlobal, ' processors.'
+    call writeinfo(message,IMPORTANT)
+    call writeinfo("",IMPORTANT)
+
+    write(message,'(a,f6.3)') "Undercorrection factor for thermal balance= ", undercorrection
+    call writeinfo(message,FORINFO)
 
     call randomNumberGenerator(randomSeed=.true.)
 
@@ -1124,7 +1127,6 @@ end subroutine photoIonizationloop
     real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, gasGrainCool
     real :: deltaT
     real(double) :: kappaP
-    real :: underCorrection = 0.9
     integer :: nIter
 ! For testing convergence
     real(double), intent(inout) :: sumDeltaT
