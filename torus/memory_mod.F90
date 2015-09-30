@@ -94,6 +94,7 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%nDirectPhotons)
       tot = tot + mySizeOf(thisOctal%undersampled)
       tot = tot + mySizeOf(thisOctal%oldTemperature)
+      tot = tot + mySizeOf(thisOctal%floorTemperature)
       tot = tot + mySizeOf(thisOctal%kappaRoss)
       tot = tot + mySizeOf(thisOctal%distanceGrid)
       tot = tot + mySizeOf(thisOctal%scatteredIntensity)

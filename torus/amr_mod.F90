@@ -1212,6 +1212,7 @@ CONTAINS
         real(db) :: vOutflow
         real(db), parameter :: vWind = 1800.0_db
         logical, parameter :: runawayDustFromOutflow=.false.
+        real(db), parameter :: dustThresholdTem=1.1e4
 
 ! Assign density and an initial temperature from hydro calculation
         if (vh1FileRequired()) then 
@@ -1251,10 +1252,19 @@ CONTAINS
         if (vOutflow > vWind) then 
            thisOctal%dustTypeFraction(subcell,:) = 0.0
 ! The hot, post-stellar wind shock should be dust free
-        elseif (thisOctal%temperature(subcell) > 1.1e4 ) then
+        elseif (thisOctal%temperature(subcell) > dustThresholdTem ) then
            thisOctal%dustTypeFraction(subcell,:) = 0.0
         else
            thisOctal%dustTypeFraction(subcell,:) = 0.01
+        endif
+
+! Store the hydro temperature for use in the photoionisation equilibrium calculation.
+! Cooler regions are masked out and the photoionisation temperature will be used here.
+        if (.not.associated(thisOctal%floorTemperature)) allocate(thisOctal%floorTemperature(thisOctal%maxChildren))
+        if ( thisOctal%temperature(subcell) > dustThresholdTem ) then 
+           thisOctal%floorTemperature(subcell) = thisOctal%temperature(subcell)
+        else
+           thisOctal%floorTemperature(subcell) = 0.0
         endif
 
       end subroutine calcRunaway
@@ -13247,6 +13257,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%kappaP, source%kappaP)
     call copyAttribute(dest%nDirectPhotons, source%nDirectPhotons)
     call copyAttribute(dest%oldtemperature, source%oldtemperature)
+    call copyAttribute(dest%floortemperature, source%floortemperature)
     call copyAttribute(dest%eDens, source%eDens)
     call copyAttribute(dest%oldeDens, source%oldeDens)
     call copyAttribute(dest%kappaRoss, source%kappaRoss)
@@ -17272,6 +17283,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%nDirectPhotons)
     call deallocateAttribute(thisOctal%undersampled)
     call deallocateAttribute(thisOctal%oldTemperature)
+    call deallocateAttribute(thisOctal%floorTemperature)
     call deallocateAttribute(thisOctal%kappaRoss)
     call deallocateAttribute(thisOctal%distanceGrid)
     call deallocateAttribute(thisOctal%scatteredIntensity)

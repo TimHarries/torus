@@ -89,7 +89,7 @@ contains
     type(RECOMBTABLE) :: Hrecombtable
 
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
-! r1 needs to be OMP private if reintated
+! r1 needs to be OMP private if reinstated
     real(double) :: kappaAbsGas, kappaAbsDust, escat !, r1
 
     integer, parameter :: nFreq = 1000
@@ -1222,8 +1222,17 @@ end subroutine photoIonizationloop
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
-                   sumDeltaT = sumDeltaT + deltaT
-                   numDeltaT = numDeltaT + 1 
+
+! Update stats where temperature is above the floor temperature. Lower temperatures will be overwritten later.
+                   if (associated(thisOctal%floorTemperature)) then
+                      if ( thisOctal%temperature(subcell) > thisOctal%floorTemperature(subcell) ) then
+                         sumDeltaT = sumDeltaT + deltaT
+                         numDeltaT = numDeltaT + 1 
+                      endif
+                   else
+                      sumDeltaT = sumDeltaT + deltaT
+                      numDeltaT = numDeltaT + 1
+                   endif
 
 ! now solve the dust temperature
 
@@ -1232,6 +1241,16 @@ end subroutine photoIonizationloop
                 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
+
+! Set a floor temperature. We'll assume that if the octal component is allocated then we want to use it. 
+! For the runaway model this sets the temperature to the hydro temperature in the shock heated region between
+! the forward shock and the stellar wind shock. 
+          if (associated(thisOctal%floorTemperature)) then
+             if ( thisOctal%temperature(subcell) < thisOctal%floorTemperature(subcell)) then
+                thisOctal%temperature(subcell) = thisOctal%floorTemperature(subcell)
+             endif
+          endif
+
        endif
     enddo
   end subroutine calculateThermalBalance

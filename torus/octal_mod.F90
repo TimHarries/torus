@@ -208,6 +208,7 @@ MODULE octal_mod
 
     logical, dimension(:), pointer :: undersampled => null()
     REAL, DIMENSION(:), pointer                 :: oldTemperature  => null()   ! grid subcell temperatures
+    REAL, DIMENSION(:), pointer                 :: floorTemperature => null()  ! Minimum temperature (applied in photoion_mod)
     REAL(double), DIMENSION(:), pointer                 :: kappaRoss => null()
     REAL(double), DIMENSION(:), pointer         :: distanceGrid  => null()  ! distance crossing used by lucy R Eq
     REAL(double), DIMENSION(:), pointer         :: kappaP  => null()
