@@ -3064,10 +3064,15 @@ end subroutine writeXMLVtkFileAMR
                   endif
 
                case("radmom")
+                  if (thisOctal%threed) then
                      rArray(1, n) = real(thisOctal%radiationMomentum(subcell)%x)
                      rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%y)
                      rArray(3, n) = real(thisOctal%radiationMomentum(subcell)%z)
-
+                  else
+                     rArray(1, n) = real(thisOctal%radiationMomentum(subcell)%x)
+                     rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%z)
+                     rArray(3, n) = 0.
+                  endif
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30
                      if (thisOctal%threed) then

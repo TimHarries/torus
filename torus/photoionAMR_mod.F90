@@ -4112,7 +4112,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     if (.not.radpressuretest) then
        if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
           call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-               freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+               freq, dfreq, nfreq, lamArray, nlambda, thisFreq, photonPacketWeight)
           usedMRW = .true.
           thisLam = (cspeed/thisFreq)*1.d8
           call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -8645,11 +8645,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
 
   subroutine modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
-       freq, dfreq, nfreq, lamArray, nlambda, thisFreq)
+       freq, dfreq, nfreq, lamArray, nlambda, thisFreq, photonPacketWeight)
 !    use inputs_mod, only : smallestCellSize
     type(GRIDTYPE) :: grid
     real(double) :: spectrum(2000)
-    real(double) :: freq(:), dfreq(:), thisFreq
+    real(double) :: freq(:), dfreq(:), thisFreq, photonPacketWeight
     real :: lamArray(:)
     integer :: nFreq, nlambda
     type(OCTAL), pointer :: thisOctal
@@ -8695,7 +8695,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        call locate(prob, ny, zeta, i)
        thisY = y(i) + (y(i+1)-y(i))*(zeta-prob(i))/(prob(i+1)-prob(i))
        mrwDist = -log(thisy) * (r0/pi)**2 * (1.d0 / diffCoeff)
-       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap 
+       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + mrwDist * kappap * photonPacketWeight
        uHatDash = uHat
        if (thisOctal%twoD .and. .not. cart2d) then
           rHat = VECTOR(rVec%x, rVec%y, 0.d0)
@@ -8709,8 +8709,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
        endif
 
-       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap)*uHatDash
-       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist)*uHatDash
+!       thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell) + (mrwDist * kappap * photonPacketWeight)*uHatDash
+       thisOctal%UVvector(subcell) = thisOctal%UVvector(subcell) + (mrwDist * photonPacketWeight)*uHatDash
        rVec = rVec + uHat * r0
        uHat = randomUnitVector()
        call distanceToNearestWall(rVec, r0, thisOctal, subcell)

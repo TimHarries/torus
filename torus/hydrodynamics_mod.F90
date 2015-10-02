@@ -4869,8 +4869,11 @@ contains
 
 
                 if (radiationPressure) then
+!                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+!                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+
                    thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                        dt * thisOctal%radiationMomentum(subcell)%x
 
                    if (debug) then
                       if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in x ", &
@@ -4966,8 +4969,11 @@ contains
 !                   endif
 
                 if (radiationPressure) then
+!                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+!                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+
                    thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                        dt * thisOctal%radiationMomentum(subcell)%z
 
 !                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
 !                      write(*,*) "w speed over 200 after rad pressure forces"
