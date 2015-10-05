@@ -49,8 +49,9 @@ if [[ ${MODE} == "daily" ]]; then
 	echo "Torus test suite: FAILED (did not complete)" > ${BASE_DIR}/ready
 #	for user in ${mail_to}; do
 #	    /usr/bin/mail -s "Torus test suite: FAILED (did not complete)" ${user} < ${LOG_FILE}
-#	    exit 1
 #	done
+# Bail out to avoid messing up the log file
+	exit 1
     fi
 fi
 
