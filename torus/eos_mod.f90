@@ -12,7 +12,7 @@ module eos_mod
       implicit none
       private
       public :: get_eos_info
-! Units
+! Units 
       integer :: nrhopoints,nUpoints
       real(double),parameter :: Boltzmannk = 1.3807d-16
       real(double),parameter :: mH = 1.6726d-24
@@ -93,9 +93,17 @@ contains
 ! and radius
 ! Cass Hall Nov 2014
 !=========================================================================
-SUBROUTINE get_eos_info(Mstar,Mdot,metallicity,x,y,z,rho,Temp,Omega)
+SUBROUTINE get_eos_info(Mstar,Mdot,metallicity,x,y,z,rho,Temp,Omega,irrchoice,Q_irr,T_irr,fixatQcrit,fixatalphasat,nspiralarms)
+use utils_mod, only:gasdev
+use mpi
 implicit none
 logical,save :: firstTime = .true.
+logical,save :: first1 = .true.
+logical,save :: first2 = .true.
+logical,save :: first3 = .true.
+logical,save :: first4 = .true.
+logical,save :: first5 = .true.
+logical      :: firstcheck = .true.
 real(double), parameter  :: tolerance = 1.0e-5 !Tolerance limit
 real(double), parameter  :: Q  = 1.9           !Toomre paramter, fixed
 real(double), parameter  :: pi = 3.14159265285 !Pi
@@ -118,28 +126,70 @@ real(double) :: r                              !Radius
 real(double) :: rhomid                         !Midplane density
 real(double) :: arg                            !Junk argument
 real(double) :: gamma,mu,T,kappa,tau           !Info from equation of state
-real(double) :: T_irr                          !Irradiated temp
 real(double) :: betac                          !Beta for cooling
 real(double) :: alpha                          !Gravitational alpha
 real(double) :: Mstar1,Mdot1,z1                !Local copies of (IN)
 real(double) :: Omega1                         !Local copies of (OUT)
-real(double) :: spiralA,spiralB                !a and b in spiral equation
+real(double) :: spiralA1,spiralB1              !a and b in spiral equation
 real(double) :: dSigma, dSigma_max             !Variation in surface density
 real(double) :: theta_s, theta_loc, phi1       !Spiral angle, current location,
                                                !Difference between them
 real(double) :: x1,y1                          !Local copies of x and y
 integer :: iter
-!------------------------------------------------------------
 
-  !Convert to cgs
-  Mstar1 = Mstar*umass
-  Mdot1  = Mdot*umass/3.15e7 
-  r      = sqrt(x**2 + y**2)
-  r      = r*udist
-  z1     = abs(z)*udist
-  x1     = x*udist
-  y1     = y*udist
-  Omega1 = sqrt(G*Mstar1/r**3)
+!Change
+real(double),parameter :: gamma_sigma=1.0e30 !Accretion timescale(orbital periods)
+real(double),parameter :: gamma_omega=1.0e30 !Omega variation timescale(in orb p)
+real(double),parameter :: Qfrag = 2.0        !Fragmentation limit
+real(double),parameter :: Q_irrcrit = 1.99   !Critical irradiation
+real(double),parameter :: alpha_sat = 0.1   !Torque saturates
+real(double),parameter :: gamma_Jcrit = -5   !Min for fragmentation
+real(double),parameter :: gamma_Qcrit = 10   !abs(gamma_Q)> this = fragment
+real(double),parameter :: mjup = 1.8986e30   !Jupiter mass
+real,intent(in)        :: Q_irr              !Fix irradiation to Q_irr
+real,intent(in)        :: T_irr              !Fix irradition to T_irr
+integer,intent(in)     :: irrchoice          !Radiation choice
+integer,intent(in)     :: nspiralarms        !Number of spiral arms
+real                   :: nspiralarms1       !Local copy of nspiralarms
+real                   :: Q_irr1,T_irr1      !Local copies
+real(double)           :: cs_irr             !Irradiated sound speed
+real(double)           :: Msol               !Mass in solar masses
+real(double)           :: rAU                !Radius in AU
+real(double)           :: TLin               !Ida Lin temperature
+real(double)           :: deltasigma         !Rho perturbations
+real(double)           :: mjeans,ljeans      !Jeans mass and length
+real(double)           :: rhill              !Hill radius
+real(double)           :: gamma_J,gamma_Q    !To determine fragmentation
+real(double)           :: csterm             !For calculating
+real(double)           :: gamma_sigma_max    !Max allowed for steady disc
+real(double)           :: alpha_grav         !Grav alpha
+real(double)           :: Q_var              !Q that varies in the disc.
+logical,intent(in)     :: fixatQcrit         !Fix Q to critical value
+logical,intent(in)     :: fixatalphasat      !Fix alpha to saturation
+integer                :: frag,selfgrav      !Flags for self-grav and fragment
+integer                :: taskid1,ierr1
+real(double)           :: alphasave          !alpha check for frag check
+real(double)           :: sigmasave          !sigma check for frag check
+
+!irrchoice options
+! 1 = no irradiation
+! 2 = irradiation at fixed Q_irr
+! 3 = T_irr (irradiation temp)
+! 4 = IdaLin prescription
+
+
+  !Convert to cgs, and cast things
+  Mstar1       = Mstar*umass
+  Mdot1        = Mdot*umass/3.15e7 
+  r            = sqrt(x**2 + y**2)
+  r            = r*udist
+  z1           = abs(z)*udist
+  x1           = x*udist
+  y1           = y*udist
+  Omega1       = sqrt(G*Mstar1/r**3)
+  nspiralarms1 = real(nspiralarms)
+!  spiralA1     = 2400.0
+!  spiralB1     = -0.1103178
 
   ! gammamuT columns:
   ! 1) gamma
@@ -153,6 +203,8 @@ integer :: iter
      allocate(gammamuT(5))
      CALL eosread
      firstTime = .false.
+     open(564,file="ralpha.dat",status="replace")
+     open(594,file="xyzsigma.dat",status="replace")
   endif
 
   !Guess Sigma 
@@ -163,8 +215,7 @@ integer :: iter
   ntries    = 0.0
   fine      = 0.01
   iter = 0
-
-
+  
   DO WHILE(ABS(dT)> tolerance)
            if (iter > 20000) then
               write(*,*) "exiting after 20000 iterations ",abs(dt)
@@ -173,11 +224,16 @@ integer :: iter
            iter = iter + 1
            !Calculate sound speed assuming fixed Q
 
+           cs = Qfrag*pi*G*sigma/Omega1
 
-           cs = Q*pi*G*sigma/Omega1
+           !Set Q_var = Qfrag as a first guess
+           Q_var = Qfrag
 
            !Calculate scale height
-           H = cs/Omega1
+           !H = cs/Omega1
+
+           !Scale height of self-grav disc is different.
+           H = (cs*cs)/(pi*G*sigma)
 
            !Midplane density
            rhomid = sigma/(2.0*H)
@@ -193,20 +249,122 @@ integer :: iter
            kappa = (gammamuT(4)*metallicity)
            tau   = sigma*kappa
 
-           !Assume no irraditation
-           T_irr = 0.0
+           ! If no irradiation, then set all irradiation parameters to zero
+           IF(irrchoice==1) THEN
+              T_irr1 = 0.0
+              Q_irr1 = 0.0
+              cs_irr = 0.0
+           ENDIF
 
-           ! Calculate cooling timescale for these parameters
-           betac = (tau+1.0/tau)*(cs*cs)*Omega1/&
-                (sigma_SB*(T**4.0-T_irr**4.0)*gamma*(gamma-1.0))
+           ! If irradiation at fixed Q_irr, calculate other irradiation parameters
+           IF(irrchoice==2) THEN
+              !Assign local copy a value
+              Q_irr1 = Q_irr
+              cs_irr = Q_irr1*pi*G*sigma/Omega1
+              T_irr1 = 0.0
+              IF(cs_irr/=0.0) THEN
+                 CALL eos_cs(rhomid,cs_irr)                 
+                 T_irr1 = gammamuT(3)
+              ENDIF
+ 
+              ! If irradiation uses T_irr, calculate this and other parameters
+           ELSE IF(irrchoice>2) THEN
+              T_irr1 = T_irr  
+            
+              ! Ida and Lin prescription modifies Tirr
+              IF(irrchoice==4) THEN
+                 rAU = r/udist
+                 Msol = Mstar/umass
+                 TLin = 280.0*Msol/sqrt(rAU)                 
+                 ! Must account for optical depth
+                 IF(tau/=0.0)TLin = TLin/(tau+1.0/tau)**0.25
+                 T_irr1 = max(TLin, T_irr1)
+              ENDIF
 
-           !Calculate alpha from this value --> accretion rate
-           alpha = 4.0/(9.0*gamma*(gamma-1.0)*betac)
+              cs_irr = SQRT(gamma*Boltzmannk*T_irr1/(mu*mH))
+              Q_irr1 = cs_irr*omega1/(pi*G*sigma)
 
-           !Compare calculated mdot with imposed mdot
-           Mdot_try = 3.0*pi*alpha*cs*cs*sigma/Omega1
+              ! If Q_irr > crit then fix it to crit
+              ! If logical flag on to do so
+                 IF(Q_irr1>Q_irrcrit) THEN
+                    !Let Q be fixed
+                    !Change to not fix Q now 23rd april
+                   ! Q_irr1 = Q_irrcrit
+
+                    cs_irr = Q_irr1*pi*G*sigma/Omega1
+                    !Don's set irradiation temp to zero,
+                    !Leave it at the input.
+                    
+                    T_irr1 = T_irr
+                    !T_irr1 = 0.0
+                    IF(cs_irr/=0.0) THEN
+                       CALL eos_cs(rhomid,cs_irr)                 
+                    !   T_irr1 = gammamuT(3)
+                    ENDIF
+                 ENDIF
+
+           ENDIF
+
+           !if((T**4.0-T_irr1**4.0).LT. 0.0)then
+            !if((T-T_irr1).LT. 0.5)then 
+           !Change this for small radii
+           !Basically the temperature goes below but it's ok we just 
+           !Do this sanity check
+
+           !This should only happen in irradiated case
+           !Looks like also only happens for low accretion rates.
+            if((T-T_irr1).LT. 0.0)then   
+                 !Set alpha to backgroud vale 10^-2
+                 !Cass change
+                 !change 17 August
+
+                  alpha  = 1.0e-2 
+!-----------------Change for fixed Beta
+                  !betac = 6.0
+                  !alpha    = 4.0/(9.0*gamma*(gamma-1.0)*betac) +1.0e-2
+!-----------------End fixed beta
+                  !This T_irr is set in the input file, it's the lowest it can go
+                  !Maybe I want T alone here.
+                 ! cs_irr = SQRT(gamma*Boltzmannk*T/(mu*mH))
+
+!-----------------Changed back to T_irr 1oct 2015
+                  !This way we set sound speed by whatever is highest
+                  cs_irr = SQRT(gamma*Boltzmannk*T_irr1/(mu*mH))
+
+                  !Set cs = cs_irr for further down
+                 
+                  !cs = cs_irr!Commented out 1oct 2015
+
+                  sigma = Mdot1*omega1/(3.*pi*cs_irr*cs_irr*alpha)
+
+                  !Reset scale height
+                  H = (cs_irr*cs_irr)/(pi*G*sigma)                  
+
+                  Q_var = 3.*alpha*(cs_irr*cs_irr*cs_irr)/(G*mdot1)
+                  !T = T_irr
+     
+                  EXIT
+
+            else 
+
+                 betac = (tau+1.0/tau)*(cs*cs)*omega1/&
+                      &(sigma_SB*(T**4.0-T_irr1**4.0)*gamma*(gamma-1.0))
+
+!----------------Change for fixed beta
+                ! betac = 6.0
+!----------------End fixed beta
+
+                 !Calculate alpha from this value --> accretion rate
+                 !alpha   = alpha_grav + alpha_visc
+                 alpha    = 4.0/(9.0*gamma*(gamma-1.0)*betac) +1.0e-2
+                 if(alpha.LT. 1.0e-2)alpha=1.0e-2
+
+                 mdot_try = 3.0*pi*alpha*cs*cs*sigma/omega1
+
+                 Q_var = 3.*alpha*(cs*cs*cs)/(G*mdot_try)
+           end if           
+
            dT = (Mdot1-Mdot_try)/Mdot1
-
            IF(ntries> 1000) THEN 
               fine = fine/10.0
               ntries = 0.0
@@ -214,50 +372,142 @@ integer :: iter
 
            dsig = (sigma-sigma_old)/sigma_old   
       
-           !Exit if percentage change in sigma very small
-           IF(ABS(dsig)<1.0e-5.and.ntries>500) exit  
-
            sigma_old = sigma
            sigma     = sigma*(1.0 +dT/(abs(dT))*fine)
            ntries    = ntries+1
 
+!----------Fixed a bug that meant couldn't correctly guess sigma at large radii
+!----------If alpha large, double check correct
+!----------Because this is based on a code that worked on sigma_old being
+!           from a smaller radii, this isn't great at large radii.
+!           in this case, want to double check that it is actually behaving
+
+           if(alpha .GT. alpha_sat)then
+              if(firstcheck)then
+                 alphasave=alpha
+                 sigmasave=sigma
+                 sigma_old=sigma/2.0
+                 sigma = sigma*(1.0 +dT/(abs(dT))*fine)
+                 firstcheck = .false.
+
+                 !Now go to end of loop and check
+                 CYCLE
+              else !Not first check
+
+                 !If percentage change is small, we are good
+                 if((sigmasave-sigma)/sigma <0.00001)then
+
+                    !Check as normal
+                    IF(ABS(dsig)<1.0e-5.and.ntries>500) exit 
+
+                    !If not satisfied,try again
+                    firstcheck = .true.
+
+                    !To next END DO
+                    CYCLE 
+
+                 !else percentage change not small   
+                 else
+
+                    !Set flag to true to check so it divide again
+                    firstcheck=.TRUE.
+                    
+                    !Go to next END DO
+                    CYCLE
+                 end if
+              !End first check   
+              end if
+            !End frag check  
+            end if
+
+!-----------------------------------------------------------------------------
+
+           !Exit if percentage change in sigma very small
+           IF(ABS(dsig)<1.0e-5.and.ntries>500) exit 
+
         ENDDO
+
       
       Omega = Omega1
       Temp  = T
-	
-  !write(564,*)x,y,z
-  !xcart=x*cos(y)
-  !ycart=x*sin(y)	
-  !write(564,*)xcart,ycart
 
+        IF(T>1000.0) THEN
+           alpha = 0.01
+           sigma = Mdot_try*omega1/(3.0*pi*alpha*cs*cs)
+              print*,'MRI active ', r/udist,T, alpha, sigma
+ 
+        ENDIF
+           !If alpha exceed saturation,set sigma=0
+           !As such a disc would fragment
+           
+           if(alpha> alpha_sat) then
+              
+              !Only fix it at alpha sat if flag is on
+              if(fixatalphasat) then 
+                 rho   = 0.0
+                 Omega = 0.0
+                 Temp  = 0.0
+                 sigma = 0.0
+                 dsigma=0.0                
+               end if
 
-  !Theta for x and y
-  if(x1 .GE. 0.0)then
-     theta_loc = asin(y1/r)
-  else
-     theta_loc = -1.*asin(y1/r) + 3.14159265359
-  end if
+           else
+                !Calc gravitational alpha
+                !alpha_grav = alpha_code - background
+                !So dsigma becomes zero if alpha_grav 0
+                alpha_grav = alpha - 1.0e-2
 
-  !Spiral stuff
-  spiralA    = 20.0
-  spiralB    = 1.0
-  r          = r/udist
-  theta_s    = (1./spiralB)*log(r/spiralA)
-  r          = r*udist
-  phi1        = theta_s - theta_loc
+  		!Theta for x and y
+  		if(x1 .GE. 0.0)then
+     			theta_loc = asin(y1/r)
+  		else
+	    	 	theta_loc = -1.*asin(y1/r) + 3.14159265359
+ 		end if
 
-  dSigma_max = sqrt(sqrt(alpha)**2.)*sigma
-  dSigma     = -1.*dSigma_max*cos(2.*(phi1))
-  sigma      = sigma + dSigma
-  rhomid     = sigma/(2.0*H)
-  arg        = z1/H
-  rho        = rhomid/(cosh(arg)*cosh(arg))
-  cs         = Q*pi*G*sigma/Omega1
-  !Use EoS to calculate tau, gamma, betac
-  CALL eos_cs(rho, cs)
-  Temp          = gammamuT(3)
+  		!Spiral stuff
+                !The constants now set in params filie
+		!For loose spirals A=20,B=1. For tight,A=2400,B=-0.1103178
+  		spiralA1   = 13.5
+  		spiralB1   = 0.3832
+  		r          = r/udist
+ 		theta_s    = (1./spiralB1)*log(r/spiralA1)
+  		r          = r*udist
+  		phi1       = theta_s - theta_loc
 
+  		dSigma_max = sqrt(sqrt(alpha_grav)**2.)*sigma
+  		dSigma     = -1.*dSigma_max*cos(nspiralarms1*(phi1))
+
+                !Now add some noise to this dSigma.
+                !Gasdev returns number with mean=0, variance(and SD)=1
+                !So multiply by the desired SD, and add the desired mean.
+                !This gives us a gaussian centered on dsigma, with SD=15%
+                !Commented out noise, not sure need it.
+                !dsigma     = dsigma+(0.15*dsigma)*gasdev()
+  		sigma      = sigma + dSigma
+  		rhomid     = sigma/(2.0*H)
+  		arg        = z1/H
+  		rho        = rhomid/(cosh(arg)*cosh(arg))
+  		cs         = Qfrag*pi*G*sigma/Omega1
+                !Changed to depends on Q_var 19th August
+                !cs         = Q_var*pi*G*sigma/Omega1
+  		!Use EoS to calculate tau, gamma, betac
+  		CALL eos_cs(rho, cs)
+                !Watch this, I don't know if this need to be here.
+                !changed on 19th August
+                !Leave this in for T_irr as it catches local variations
+  		Temp          = gammamuT(3)
+
+                !If temp is below irradiated temp, make it equal Tirr
+                if(Temp - T_irr1 .LT. 0.0) Temp=T_irr1
+
+                 !print*,"alpha_grav",alpha_grav,r/udist,sigma,dsigma
+        end if
+
+        call MPI_COMM_RANK(MPI_COMM_WORLD, taskid1, ierr1)
+        !Write to ralpha.dat
+        if(taskid1 .EQ. 0) write(564,*)r/udist,mdot1*3.15e7/umass,alpha,sigma,dsigma,betac,Temp,cs,T,rho,tau,Q_var
+        !Write to xyzsigma.dat 
+	if(taskid1 .EQ.0) write(594,*)x1,y1,z1,sigma,rho,dSigma,Temp,tau      
 
 END SUBROUTINE get_eos_info
 
@@ -382,4 +632,3 @@ END SUBROUTINE get_eos_info
       end subroutine eos_cs
 
 end module eos_mod
-

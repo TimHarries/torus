@@ -321,11 +321,16 @@ contains
     case("mpi","binary")
        call read_sph_data_mpi(sphdatafilename)
 
+    case("clump")
+       call read_sph_data_clumpfind(sphdatafilename)
+
     case("ascii")
        call new_read_sph_data(sphdatafilename)
 
     case("gadget2")
        call read_gadget2_data(sphdatafilename)
+
+       
 
     case default
        call writeFatal("Unrecognised file format "//inputFileFormat)
@@ -1044,6 +1049,546 @@ gaspart: do i=1, nGasTotal
 
   end subroutine read_gadget2_data
 
+!Read in clumpfind SPH style
+! Cass Hall May 2015
+!--------------------------------------------------
+  subroutine read_sph_data_clumpfind(filename)
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
+         convertrhotohi, sphWithChem
+    use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
+#ifdef MPI
+    use mpi
+#endif
+    implicit none
+
+    
+    character(len=*), intent(in) :: filename
+    character(LEN=150) :: message
+
+    integer(kind=8) :: iiigas, irejected, irequired, i, j, iiisink
+    integer :: iblock ! MPI block number
+    integer :: nums(8), numssink(8), numsrt(8), numsmhd(8)
+
+    real(double) :: udist, umass, utime
+    real(double) :: time
+    integer, parameter :: nptmass=0
+
+    INTEGER(kind=4)  :: int1, int2, i1
+    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
+    integer(kind=4)  :: nblocktypes
+    REAL(kind=8)     :: r1
+    REAL(kind=4)     :: r4
+    integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
+    integer  :: blocksum_nptmass, i_pt_mass
+    CHARACTER(len=100) ::  fileident
+
+    integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
+
+    integer(kind=1), allocatable :: iphase(:)
+    integer, allocatable         :: isteps(:)
+    real(kind=8), allocatable    :: xyzmh(:,:)
+    real(kind=8), allocatable    :: vxyzu(:,:)
+    real(kind=8), allocatable    :: uoverTarray(:)
+    real(kind=4), allocatable    :: rho(:)
+    real(kind=8), allocatable    :: h2ratio(:)
+    real(kind=8), allocatable    :: COfrac(:)
+
+    integer,allocatable :: listpm(:)
+    real(kind=8),allocatable    :: spinx(:)
+    type(VECTOR) :: centre
+    real(double) :: halfSize
+
+    integer :: thisNumGas
+    integer :: nlistinactive, listinactive(1)
+    integer :: iThread
+    integer :: loopIndex
+! The MPI communication handles multiple hydro threads so I've keyed it out for non-hydro builds
+! For Galactic plane survey runs build with hydro=no
+#ifdef MPI
+#ifdef HYDRO
+    integer :: ierr
+    integer, parameter :: tag = 33
+    integer :: status(MPI_STATUS_SIZE)
+#endif
+#endif
+    real(double) :: gmwWithH2
+
+#ifdef MPI
+#ifdef HYDRO
+    if (myrankWorldGlobal == 0 .or. (.not.splitOverMPI)) then
+#endif
+#endif
+
+! Part 1: Read in the dump
+    write(message,*) "Reading SPH data from "//trim(filename)
+    call writeinfo(message, FORINFO)
+
+!---Open file
+    open(unit=LUIN, file=filename, form='unformatted', status='old',convert="LITTLE_ENDIAN")
+    
+    read(LUIN) int1, r1, int2, i1, int1
+    read(LUIN)  fileident
+    write(message,*) "fileident=", fileident
+    call writeinfo(message, TRIVIAL)
+    
+read(LUIN) number
+    IF (number==6) THEN
+       READ (LUIN) npart,n1,n2,nreassign,naccrete,nkill
+       nblocks = 1
+    ELSE
+       read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
+    ENDIF 
+! Read in integers of size int*1, int*2, int*4, int*8
+      do i = 1, 8
+         read (10) number
+      end do
+
+    read(LUIN) udist, umass, utime
+    read(LUIN) number
+
+    nblocktypes = number/nblocks
+    if (number.ne.nblocktypes*nblocks) then
+       write(message,*) "Error in number of block types", number, nblocktypes, nblocks
+       call writeFatal(message)
+       stop
+    endif
+
+! Allocate storage for data read from dump file
+    allocate( isteps(npart) )
+    allocate( iphase(npart) )
+    allocate( xyzmh(5,npart))
+    allocate( vxyzu(4,npart))
+!---Allocate uoverT for rad trans part - may not be present
+    allocate( uoverTarray(npart))
+    allocate( rho(npart)    )
+    if (ConvertRhoToHI .or. sphWithChem) then
+       write (message,'(a)') "Will read H2 fraction"
+       call writeInfo(message,TRIVIAL)
+       allocate ( h2ratio(npart) )
+    endif
+    if (sphWithChem) then
+       write (message,'(a)') "Will read CO abundance"
+       call writeInfo(message,TRIVIAL)
+       allocate ( COfrac(npart) )
+    endif
+
+    iiigas = 0
+    blocksum_npart = 0
+    blocksum_nptmass = 0 
+    mpi_blocks: do iblock=1, nblocks
+
+       write(message,*) "Reading MPI block ", iblock
+       call writeInfo(message,TRIVIAL)
+
+!------Read block containing particles
+       read(LUIN) blocknpart, (nums(i), i=1,8)
+       write(message,*) "This block has npart=", blocknpart
+       call writeInfo(message,TRIVIAL)
+       blocksum_npart = blocksum_npart + blocknpart
+
+!------Read block containing pointmasses
+       read(LUIN) blocknptmass, (numssink(i), i=1,8)
+       write(message,*) "This block has nptmass=", blocknptmass
+       call writeInfo(message,TRIVIAL)
+       blocksum_nptmass = blocksum_nptmass + int(blocknptmass)
+
+!------Read radiative transfer blocks if present
+       if (nblocktypes.GE.3) then
+          read(LUIN) blocknradtrans, (numsrt(i), i=1,8)
+          write(message,*) "Found RT blocks ", blocknradtrans
+          if (blocknradtrans.ne.blocknpart) then
+             write (message,*) "blocknradtrans.ne.blocknpart ",blocknradtrans,blocknpart
+             call writeFatal(message)
+             stop
+          endif
+          call writeInfo(message,TRIVIAL)
+       endif
+
+!------Read MHD blocks if present
+       if (nblocktypes.GE.4) then
+          read(LUIN) blocknmhd, (numsmhd(i), i=1,8)
+          write(message,*) "Found MHD blocks ", blocknmhd
+          call writeInfo(message,TRIVIAL)
+       endif
+
+!------Read default integers
+       READ (LUIN) (isteps(i), i=iiigas+1, iiigas+blocknpart)
+
+!------Read integer*1s
+       READ (LUIN) (iphase(i), i=iiigas+1, iiigas+blocknpart)
+
+!------Read default reals
+       do j=1,5
+          read(LUIN) ( xyzmh(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+       do j=1,4
+          read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+
+!-----Read density
+      read(LUIN) (rho(i), i=iiigas+1,iiigas+blocknpart)
+!-----Read dgrav - added by duncan
+      read(LUIN) !(dgrav(i), i=1,npart)
+
+!-----Read in some junk
+       allocate(listpm(blocknptmass), spinx(blocknptmass))
+       READ (LUIN) (listpm(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) (spinx(i),i=1,blocknptmass)
+       deallocate(listpm, spinx)
+
+       iiigas = iiigas+blocknpart
+
+    end do mpi_blocks
+
+    close(LUIN)
+    if (blocksum_npart == npart ) then 
+       write(*,*) "Read ", npart, " particles"
+!       call writeInfo(message, TRIVIAL)
+    else
+       write(message,*) "Read ",blocksum_npart, "particles but expected ", npart
+       call writeWarning(message)
+    endif
+
+! If the grid is split over MPI processes then only the rank zero process will get here. 
+! It then needs to loop over all the hydro threads to hand out the particles. 
+! Otherwise all MPI process get here and execute this loop once. 
+    if (splitOverMPI) then
+       loopIndex = nHydroThreadsGlobal
+    else
+       loopIndex = 1
+    endif
+
+#ifdef MPI
+#ifdef HYDRO
+hydroThreads: do iThread = 1, loopIndex
+#endif
+#endif
+
+
+!
+! Part 2: Set up SPH data structure
+
+    centre = VECTOR(amrgridcentrex, amrgridcentrey, amrgridcentrez)
+    halfSize = amrgridSize / 2.d0
+    if (splitOverMpi) then
+       call  domainCentreAndSize(iThread, centre, halfsize)
+    endif
+    
+!
+
+! Work out how many particles we actually need
+    irequired=0
+    irejected=0
+    i_pt_mass =0 
+    do i=1, blocksum_npart
+! Rotate/tilt for generating Galactic plane surveys
+       if (internalView) call rotate_particles_mpi(galaxyPositionAngle, galaxyInclination)
+
+       if (iphase(i) > 0) then
+          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize) .and. (.not.discardSinks)) then 
+             i_pt_mass = i_pt_mass + 1
+          endif
+       endif
+       if (iphase(i) == 0) then
+          if ( particleRequired(xyzmh(:,i),uDist, centre, halfSize)) then 
+             irequired = irequired + 1
+          else
+             irejected = irejected + 1
+          endif
+       end if
+    end do
+! irequired is the number of particles we are going to store in sphData
+! int is explicit convertion from kind=8 to default integer to avoid compiler warning
+    npart = int(irequired)
+
+    write(*,*) myrankGlobal, "nptmass ", i_pt_mass, npart
+    call init_sph_data(udist, umass, utime, time, i_pt_mass)
+    sphdata%codeVelocitytoTORUS = (udist / utime) / cspeed
+! Allocate chemistry related components
+    if (sphwithChem) then
+       allocate ( sphData%rhoCO(npart) )
+    endif
+    if (sphwithChem.or.convertRhoToHI) then
+       allocate ( sphData%rhoH2(npart) )
+    endif
+
+    if (nblocktypes.GE.3) then
+       sphdata%codeEnergytoTemperature = 1.0
+    else if (convertRhoToHI) then
+       write(message,*) "Will convert density to HI density and set molecular weight accordingly"
+       call writeInfo(message,FORINFO)
+       sphdata%codeEnergytoTemperature = 1.0
+    else if (sphWithChem) then
+       write(message,'(a)') "Will set molecular weight using H2 fraction but not convert total density to HI density"
+       call writeInfo(message,FORINFO)
+       sphdata%codeEnergytoTemperature = 1.0
+    else
+       sphdata%codeEnergytoTemperature = (2.0/3.0) * (gmw / Rgas) * ( (udist**2)/(utime**2) )
+       write(message,*) "Conversion factor between u and temperature (assumes molecular weight of", gmw,"): ", &
+            sphdata%codeEnergytoTemperature
+       call writeInfo(message,FORINFO)
+    endif
+    iiigas=0
+    iiisink = 0 
+    sphdata%totalgasmass = 0.0
+    sphdata%totalHImass  = 0.0
+    sphdata%totalMolmass = 0.0
+
+! This loop needs to be over all the particles read in
+    do i=1, blocksum_npart
+       if (iphase(i) == 0) then
+          if ( particleRequired(xyzmh(:,i),uDist, centre, halfSize)) then 
+
+             iiigas=iiigas+1
+
+             sphData%rhon(iiigas)  = rho(i)
+
+! Calculate chemistry related components
+             if (convertRhoToHI.or.sphWithChem) then 
+                sphData%rhoH2(iiigas) = h2ratio(i)*2.0*rho(i)*5./7.
+             endif
+             if (sphWithChem) then
+                sphData%rhoCO(iiigas) = rho(i) * COfrac(i)
+             endif
+
+             sphdata%vxn(iiigas)         = vxyzu(1,i)
+             sphdata%vyn(iiigas)         = vxyzu(2,i)
+             sphdata%vzn(iiigas)         = vxyzu(3,i)
+             sphData%temperature(iiigas) = vxyzu(4,i)
+! If the radiative transfer block exists, set temperatures as u / (u/T)
+             if (nblocktypes.GE.3) then
+                if (uoverTarray(i).le.0.0) then
+                   call writeFatal("u over T is <=0")
+                   write(*,*) "u over t ",i,uOverTarray(i)
+                   stop
+                endif
+                sphData%temperature(iiigas) = sphData%temperature(iiigas) / uoverTarray(i)
+             endif
+! Convert internal energy to temperature using the mean molecular weight derived from the H2 fraction
+! sphdata%codeEnergytoTemperature = 1.0 so this needs to be temperature
+             if (convertRhoToHI.or.sphWithChem) then
+                gmwWithH2 = (2.*h2ratio(i)+(1.-2.*h2ratio(i))+0.4) / (0.1+h2ratio(i)+(1.-2.*h2ratio(i)))
+                sphdata%temperature(iiigas) = (2.0/3.0) * sphData%temperature(iiigas) * ( gmwWithH2 / Rgas) &
+                     * ( (udist**2)/(utime**2) )
+             endif
+
+             sphData%xn(iiigas)          = xyzmh(1,i)
+             sphData%yn(iiigas)          = xyzmh(2,i)
+             sphData%zn(iiigas)          = xyzmh(3,i)
+             sphData%gasmass(iiigas)     = xyzmh(4,i)
+             sphData%hn(iiigas)          = xyzmh(5,i)
+
+             sphdata%totalgasmass = sphdata%totalgasmass + sphData%gasmass(iiigas)
+             if (convertRhoToHI.or.sphwithChem) then
+                sphdata%totalHImass  = sphdata%totalHImass + (1.0-2.0*h2ratio(i))*sphData%gasmass(iiigas)*5.0/7.0
+             endif
+             if (sphwithChem) then
+                sphdata%totalMolmass = sphdata%totalMolmass + COfrac(i)*sphData%gasmass(iiigas)
+             endif
+  endif
+       else if(iphase(i) > 0) then
+          if ( particleInBox(xyzmh(:,i),uDist, centre, halfSize).and. (.not.discardSinks)) then 
+       
+             iiisink=iiisink+1
+
+
+             sphdata%x(iiisink)         = xyzmh(1,i)
+             sphdata%y(iiisink)         = xyzmh(2,i)
+             sphdata%z(iiisink)         = xyzmh(3,i)
+             sphData%ptmass(iiisink)    = xyzmh(4,i)
+             sphdata%vx(iiisink)         = vxyzu(1,i)
+             sphdata%vy(iiisink)         = vxyzu(2,i)
+             sphdata%vz(iiisink)         = vxyzu(3,i)
+          endif
+       endif
+    end do
+    sphdata%nptmass = int(iiisink)
+
+    write(message,*) "Stored ", irequired, " gas particles which are required"
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Rejected ", irejected, " gas particles which do not influence the grid"
+    call writeinfo(message, TRIVIAL) 
+    write(message,*) "Total number of gas particles is ", irequired+irejected
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Total number of required sink particles is ", iiisink
+    call writeinfo(message, TRIVIAL)    
+
+    write(message,*) "Minimum x=", minval(xyzmh(1,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum x=", maxval(xyzmh(1,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Minimum y=", minval(xyzmh(2,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum y=", maxval(xyzmh(2,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Minimum z=", minval(xyzmh(3,:)) * udist
+    call writeinfo(message, TRIVIAL)
+    write(message,*) "Maximum z=", maxval(xyzmh(3,:)) * udist
+    call writeinfo(message, TRIVIAL)
+
+#ifdef MPI
+#ifdef HYDRO
+
+    if (splitOverMPI) then
+
+    call mpi_send(uDist, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(uMass, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(uTime, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphData%codeVelocityToTorus, 1, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+
+    call mpi_send(sphdata%nPart, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%rhon, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%vxn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vyn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vzn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+call mpi_send(sphdata%temperature, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%xn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%yn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%zn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%gasmass, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%hn, sphData%nPart, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%nptmass, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%ptmass, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%x, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%y, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%z, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+    call mpi_send(sphdata%vx, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vy, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+    call mpi_send(sphdata%vz, sphData%nptmass, MPI_DOUBLE_PRECISION, ithread, tag, localWorldCommunicator,ierr)
+
+
+    end if
+
+ enddo hydroThreads
+    deallocate(rho)
+    deallocate(vxyzu)
+    deallocate(xyzmh)
+    deallocate(uoverTarray)
+    deallocate(iphase)
+    deallocate(isteps)
+    if (ConvertRhoToHI .or. sphWithChem) then
+       deallocate (h2ratio)
+    endif
+    if (sphWithChem) then
+       deallocate ( COfrac)
+    endif
+
+
+    else
+       call mpi_recv(sphData%uDist, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%uMass, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%uTime, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%codeVelocitytoTorus, 1, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       call mpi_recv(sphData%nPart, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+       npart = sphData%nPart
+       allocate(sphdata%rhon(1:sphData%nPart))
+       call mpi_recv(sphData%rhon, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%vxn(1:sphData%nPart))
+       allocate(sphdata%vyn(1:sphData%nPart))
+       allocate(sphdata%vzn(1:sphData%nPart))
+call mpi_recv(sphData%vxn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%vyn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%vzn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%temperature(1:sphData%nPart))
+       call mpi_recv(sphData%temperature, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%xn(1:sphData%nPart))
+       allocate(sphdata%yn(1:sphData%nPart))
+       allocate(sphdata%zn(1:sphData%nPart))
+       call mpi_recv(sphData%xn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%yn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       call mpi_recv(sphData%zn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+    allocate(sphdata%gasmass(1:sphData%nPart))
+       call mpi_recv(sphData%gasmass, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphdata%hn(1:sphData%nPart))
+       call mpi_recv(sphData%hn, sphData%nPart, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       write(*,*) myrankglobal, " received ", sphData%npart
+
+       call mpi_recv(sphData%nptmass, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%ptmass(1:sphData%nptmass))
+       call mpi_recv(sphData%ptmass, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%x(1:sphData%nptmass))
+       call mpi_recv(sphData%x, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%y(1:sphData%nptmass))
+       call mpi_recv(sphData%y, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%z(1:sphData%nptmass))
+       call mpi_recv(sphData%z, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+       allocate(sphData%vx(1:sphData%nptmass))
+       call mpi_recv(sphData%vx, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%vy(1:sphData%nptmass))
+       call mpi_recv(sphData%vy, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+       allocate(sphData%vz(1:sphData%nptmass))
+       call mpi_recv(sphData%vz, sphData%nptmass, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, status, ierr)
+
+
+    endif
+    call mpi_barrier(MPI_COMM_WORLD, ierr)
+#endif
+#endif
+
+contains
+
+   subroutine rotate_particles_mpi(thisPositionAngle, thisInclination)
+     real(double), intent(in) ::  thisPositionAngle, thisInclination
+     TYPE(VECTOR) :: orig_sph, rot_sph
+
+     orig_sph%x = xyzmh(1,i)
+     orig_sph%y = xyzmh(2,i)
+     orig_sph%z = xyzmh(3,i)
+     rot_sph  = rotateZ( orig_sph,  thisPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, thisInclination*degToRad )
+     xyzmh(1,i) = rot_sph%x
+     xyzmh(2,i) = rot_sph%y
+     xyzmh(3,i) = rot_sph%z
+
+     orig_sph%x = vxyzu(1,i)
+     orig_sph%y = vxyzu(2,i)
+     orig_sph%z = vxyzu(3,i)
+     rot_sph  = rotateZ( orig_sph,  thisPositionAngle*degToRad )
+     rot_sph  = rotateY( rot_sph, thisInclination*degToRad )
+     vxyzu(1,i) = rot_sph%x
+     vxyzu(2,i) = rot_sph%y
+     vxyzu(3,i) = rot_sph%z
+
+   end subroutine rotate_particles_mpi
+
+
+
+
+
+   
+end subroutine read_sph_data_clumpfind
+!------------------------------------------
+
 !---------------------------------------------------------------------------------------------------------------------------------
 
 ! Read in SPH data from an SPH-NG MPI dump file
@@ -1126,7 +1671,7 @@ gaspart: do i=1, nGasTotal
 !    open(unit=LUIN, file=filename, form='unformatted', status='old', convert="BIG_ENDIAN")
 ! but this is not standard and not supported by some compilers so use the appropriate 
 ! environement variable instead (F_UFMTENDIAN for ifort)
-    open(unit=LUIN, file=filename, form='unformatted', status='old')
+    open(unit=LUIN, file=filename, form='unformatted', status='old',convert="LITTLE_ENDIAN")
 
     read(LUIN) int1, r1, int2, i1, int1
     read(LUIN) fileident
@@ -1141,8 +1686,10 @@ gaspart: do i=1, nGasTotal
        read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
     ENDIF       
     write(message,*) "Total number of particles= ", npart
+    print*,"Total number of particles= ", npart
     call writeInfo(message,TRIVIAL)
     write(message,*) "Number of MPI blocks= ", nblocks
+    print*,"Number of MPI blocks= ", nblocks
     call writeInfo(message,TRIVIAL)
 
 ! Allocate storage for data read from dump file
@@ -1164,7 +1711,9 @@ gaspart: do i=1, nGasTotal
     endif
 
     do i=1,6
+       print*,"i before",i
        read(LUIN)
+       print*,"i after",i
     end do
 
     read(LUIN) time 

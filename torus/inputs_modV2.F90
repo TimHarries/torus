@@ -1218,10 +1218,31 @@ contains
             "Mass accretion rate (solar masses per year): ","(a,1p,e8.2,a)", 1., ok, .true.)
        call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
             "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("rinner", rInner, real(autocm)/1.e10, cLine, fLine, nLines, &
+            "Inner radius (AU): ","(a,f7.1,a)", 20., ok, .true.)
+
        call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
             "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 30.d0, ok, .false.)
-
-       
+       !Cass change
+       call getReal("Q_irr", Q_irr, 1.0, cLine, fLine, nLines, &
+            "Irradiation at fixed Q_irr: ","(a,f5.1,a)", 1., ok, .true.)       
+       call getReal("T_irr", T_irr, 1.0, cLine, fLine, nLines, &
+            "Irradiation at fixed Q_irr: ","(a,f5.1,a)", 1., ok, .true.)
+       !call getReal("SpiralA", spiralA, 1.0, cLine, fLine, nLines, &
+       !     "A in spiral equation: ","(a,f5.1,a)", 1., ok, .true.)
+       !call getReal("SpiralB", spiralB, 1.0, cLine, fLine, nLines, &
+       !     "B in spiral equation ","(a,f5.1,a)", 1., ok, .true.)       
+       call getInteger("irrchoice", irrchoice, cLine, fLine, nLines, &
+            "irradiation choice","(a,i8,a)", 1, ok, .true.)
+       call getInteger("nspiralarms", nspiralarms, cLine, fLine, nLines, &
+            "Number of spiral arms:","(a,i8,a)", 1, ok, .true.)
+       call getLogical("fixatalphasat", fixatalphasat, cLine, fLine, &
+            &nLines,"Fix alpha at saturation for the disc: ",&
+            &"(a,1l,1x,a)", .false., ok, .true.)
+       call getLogical("fixatQcrit", fixatQcrit, cLine, fLine, &
+            &nLines,"Fix Toomre parameter Q at critical value: ",&
+            &"(a,1l,1x,a)", .false., ok, .true.)
 
     case("shakara")
 

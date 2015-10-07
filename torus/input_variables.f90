@@ -3,7 +3,7 @@
   !   here so that they only need to be defined once.  nhs
   !
   !   These now are inlcuded in inputs_mod and can be declared as 
-  !   'protected'. This is a F2003 feature which means that only 
+  !   'protected'. This is a F2003 feature which means that only
   !   the module containing the variable can change it - other modules
   !   have read-only access (i.e. it is like intent(in)). D. Acreman 
 
@@ -902,3 +902,13 @@
   real    :: lamLine 
   real    :: massEnvelope
   integer(bigInt) :: inputSeed
+
+!Cass change
+  integer :: irrchoice ! Choice of irradiation
+  real    :: T_irr
+  real    :: Q_irr
+  real    :: spiralA
+  real    :: spiralB
+  logical :: fixatalphasat ! Fix the stress in the disc to saturation
+  logical :: fixatQcrit ! Fix Q to critical value for fragmentation
+  integer :: nspiralarms

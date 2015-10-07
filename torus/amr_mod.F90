@@ -11658,8 +11658,10 @@ end function readparameterfrom2dmap
 
   subroutine cassandraDisc(thisOctal, subcell)
     use eos_mod
-    use inputs_mod, only : tMinGlobal, mCore, molecularPhysics, molAbundance, vturb, &
-         mStar, metallicity, mDot, rOuter
+    use inputs_mod, only : tMinGlobal, mCore, molecularPhysics, &
+         &molAbundance, vturb, mStar, metallicity, mDot, rOuter,&
+         &rInner,irrchoice,Q_irr,T_irr,fixatQcrit,fixatalphasat,nspiralarms!,&
+         !&spiralA,spiralB
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(VECTOR) :: rVec, vVEc, zAxis
@@ -11678,9 +11680,12 @@ end function readparameterfrom2dmap
    thisOctal%temperature(subcell) = tminglobal
    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
-   if (sqrt(rVec%x**2 + rVec%y**2)  < rOuter) then
+   if ((sqrt(rVec%x**2 + rVec%y**2)  < rOuter) .AND.(sqrt(rVec%x**2 + rVec%y**2) > rInner)) then
       if (atan2(abs(z),(sqrt(x**2 + y**2)))*radtodeg < 30.d0) then
-         CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,Omega)
+         CALL get_eos_info(Mstar,dble(Mdot),metallicity,x,y,z,rho,T,&
+		&Omega,irrchoice,Q_irr,T_irr,fixatQcrit,fixatalphasat,&
+                &nspiralarms)!,spiralA,spiralB)
+!,spiralA)!,spiralB)
 !         rho = 1.d-23
 !         t = 3.
          omega = sqrt(bigG * mSol / r)/r
