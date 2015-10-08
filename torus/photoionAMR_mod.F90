@@ -2907,7 +2907,7 @@ end subroutine radiationHydro
 !                                     write(*,*) "cell is ghost " ,thisOctal%ghostCell(subcell)
 !                                     write(*,*) "edge? ", thisOctal%edgeCell(subcell)
 !                                  endif
-!                                  call randomNumberGenerator(getDouble=r1)
+                                  call randomNumberGenerator(getDouble=r1)
                                   
                                   if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
                                      call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
