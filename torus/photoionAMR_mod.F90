@@ -8834,7 +8834,12 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                 allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
                 thisOctal%kappaTimesFlux = VECTOR(0.d0,0.d0,0.d0)
              endif
-             acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%kappaTimesFlux(subcell)/cSpeed)
+             if (.not.associated(thisOctal%radiationMomentum)) then
+                allocate(thisOctal%radiationMomentum(1:thisOctal%maxChildren))
+                thisOctal%kappaTimesFlux = VECTOR(0.d0,0.d0,0.d0)
+             endif
+!             acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%kappaTimesFlux(subcell)/cSpeed)
+             acc =  (1.d0/thisOctal%rho(subcell)) * modulus(thisOctal%radiationMomentum(subcell))
              acc = max(1.d-30, acc)
              dt = min(dt, sqrt(2.d0*dx/acc))
           endif

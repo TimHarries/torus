@@ -95,7 +95,7 @@ contains
 !=========================================================================
 SUBROUTINE get_eos_info(Mstar,Mdot,metallicity,x,y,z,rho,Temp,Omega,irrchoice,Q_irr,T_irr,fixatQcrit,fixatalphasat,nspiralarms)
 use utils_mod, only:gasdev
-use mpi
+use messages_mod
 implicit none
 logical,save :: firstTime = .true.
 logical,save :: first1 = .true.
@@ -103,7 +103,7 @@ logical,save :: first2 = .true.
 logical,save :: first3 = .true.
 logical,save :: first4 = .true.
 logical,save :: first5 = .true.
-logical      :: firstcheck = .true.
+logical      ::  firstcheck = .true.
 real(double), parameter  :: tolerance = 1.0e-5 !Tolerance limit
 real(double), parameter  :: Q  = 1.9           !Toomre paramter, fixed
 real(double), parameter  :: pi = 3.14159265285 !Pi
@@ -177,6 +177,8 @@ real(double)           :: sigmasave          !sigma check for frag check
 ! 3 = T_irr (irradiation temp)
 ! 4 = IdaLin prescription
 
+
+  firstcheck = .true.
 
   !Convert to cgs, and cast things
   Mstar1       = Mstar*umass
@@ -503,11 +505,10 @@ real(double)           :: sigmasave          !sigma check for frag check
                  !print*,"alpha_grav",alpha_grav,r/udist,sigma,dsigma
         end if
 
-        call MPI_COMM_RANK(MPI_COMM_WORLD, taskid1, ierr1)
         !Write to ralpha.dat
-        if(taskid1 .EQ. 0) write(564,*)r/udist,mdot1*3.15e7/umass,alpha,sigma,dsigma,betac,Temp,cs,T,rho,tau,Q_var
+        if(writeoutput) write(564,*)r/udist,mdot1*3.15e7/umass,alpha,sigma,dsigma,betac,Temp,cs,T,rho,tau,Q_var
         !Write to xyzsigma.dat 
-	if(taskid1 .EQ.0) write(594,*)x1,y1,z1,sigma,rho,dSigma,Temp,tau      
+	if(writeoutput) write(594,*)x1,y1,z1,sigma,rho,dSigma,Temp,tau      
 
 END SUBROUTINE get_eos_info
 

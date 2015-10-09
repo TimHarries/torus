@@ -4553,8 +4553,13 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
+!                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+!                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+
                    thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                        dt * thisOctal%radiationMomentum(subcell)%x
+
+
                 endif
 
              else if (direction%y > 0.d0) then
@@ -4566,8 +4571,11 @@ contains
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
+!                   thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+!                        dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
                    thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
+                        dt * thisOctal%radiationMomentum(subcell)%y
+
                 endif
              else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
@@ -4578,8 +4586,12 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
+
+!                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+!                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+
                    thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                        dt * thisOctal%radiationMomentum(subcell)%z
                 endif
 
              endif
@@ -16567,8 +16579,8 @@ end subroutine refineGridGeneric2
 
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange2(1:nHydroThreadsGlobal)),tol2
-       if (it > 100000) then
-          if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it
+       if (it > 500) then
+          if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it,maxval(fracchange(1:nHydroThreadsGlobal))
           exit
        endif
     enddo
