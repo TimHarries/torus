@@ -1592,7 +1592,7 @@ end subroutine molecularLoop
         warned_neg_dtau, tostar)
 !   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, thisMolecule, fixedrays)
 
-     use inputs_mod, only : useDust, realdust, quasi, sourcePos, sourceRadius, sourceTeff
+     use inputs_mod, only : useDust, realdust, quasi, sourcePos, sourceRadius, sourceTeff, smallestCellSize
 
 
      type(MOLECULETYPE), intent(in) :: thisMolecule
@@ -1771,7 +1771,7 @@ end subroutine molecularLoop
      call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
 
 ! Get to cell boundary
-     currentPosition = position + ds * direction
+     currentPosition = position + (ds+0.001d0*smallestCellSize) * direction
 
 ! Get weighting for ray (see sumphi in calculatejbar)
      if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid

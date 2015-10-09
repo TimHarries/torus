@@ -1207,6 +1207,16 @@ module amr_utils_mod
            write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
                 thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
                 phi < thisOctal%phimax, phi > thisOctal%phimin
+           do while (thisOctal%nDepth > 2)
+              write(*,*) "nDepth ",thisOctal%nDepth, inoctal(thisOctal,point), " split ",thisOctal%splitAzimuthally
+           write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
+                thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
+                phi < thisOctal%phimax, phi > thisOctal%phimin
+           write(*,*) "phi ",phi*radtodeg
+           write(*,*) "phimin ",thisOctal%phimin*radtodeg, phi < thisOctal%phimin
+           write(*,*) "phimax ",thisOctal%phimax*radtodeg, phi >= thisOctal%phimax
+              thisOctal => thisOctal%parent
+           enddo
 !           rVec = subcellCentre(thisOctal,subcell)
 !           write(*,*) rVec%x+thisOctal%subcellSize/2.
 !           write(*,*) rVec%x-thisOctal%subcellSize/2.
@@ -1465,7 +1475,8 @@ module amr_utils_mod
 
           if (thisOctal%splitAzimuthally) then ! azimuthal split case
 
-             if (phi <= thisOctal%phi) then ! small y
+!             if (phi <= thisOctal%phi) then ! small y   as it was on 9/10/15
+             if (phi < thisOctal%phi) then ! small y
                 IF ( r <= thisOctal%r) THEN ! small x
                    IF ( point%z <= thisOctal%centre%z ) THEN
                       subcell = 1    ! small x, small y, small z
@@ -1728,7 +1739,7 @@ module amr_utils_mod
     real(double) :: distToSide1, distToSide2, distToSide
     real(double) ::  compx,disttoxBoundary, halfCellSize, d2, fac
     real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2, halfSubCellsize
-    real(double) :: a, b, c 
+    real(double) :: a, b, c
     logical :: ok, thisOk(6)
 !    integer :: jarray(6)
 
@@ -2047,6 +2058,9 @@ module amr_utils_mod
                    write(*,*) "xhat ",xhat
                    write(*,*) "compx ",compx
                    write(*,*) "cosmu ",cosmu
+                   write(*,*) "r1,r2,d ",r1,r2,d
+                   write(*,*) "insubcell ",inSubcell(thisoctal, Subcell, posvec)
+                   do;enddo
                 endif
                 distTor2 = max(x1,x2)/compX
 

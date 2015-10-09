@@ -11195,7 +11195,11 @@ end function readparameterfrom2dmap
 !    write(*,*) "rvec", rvec, modulus(rvec)
 
 !    if ((r > rInner)) then !.and.(r < rOuter)) then
+    if (r < 1.d0) then
+       v = 0.d0
+    else
        v = sqrt(6.672d-8*mcore/(max(r,1.d-10)*1d10)) ! G in cgs and M in g (from Msun)
+    endif
 !    write(*,*) "v", v
  
        keplerianvelocity = VECTOR(0.d0,0.d0,1.d0) .cross. rvec
