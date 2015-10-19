@@ -14,12 +14,11 @@ program check
   real(kind=8) :: maxfrac_tot,frac_tot
   integer :: n, i
 
-  rhoMean = mSol / ((4.d0/3.d0)*pi*(0.5d0*pc)**3)
+  rhoMean = 2.d0*mSol / ((4.d0/3.d0)*pi*(0.5d0*pc)**3)
   open(20,file="radial0001.dat", status="old",form="formatted")
   
   n = 1
   do 
-
      read(20,*,end=30) r(n), junk1, junk2, junk3, junk4,  phi_stars(n), phi_gas(n)
      n = n + 1
   enddo
@@ -38,11 +37,11 @@ program check
   do i = 1, n
 
      if (r(i) > 0.5d0*pc) then
-        phiAnalytical = -bigG*mSol/(r(i))
+        phiAnalytical = -bigG*2.d0*mSol/(r(i))
     else
         phiAnalytical = (2.d0/3.d0)*pi*bigG*rhoMean*(r(i)**2 - 3.d0*(0.5d0*pc)**2)
      endif
-     phiAnalytical = phiAnalytical-bigG*mSol/(sqrt(r(i)**2+5.d18**2))
+!     phiAnalytical = phiAnalytical-bigG*0.5d0*mSol/(sqrt(r(i)**2+5.d18**2))
 
      frac_gas = abs((phi_gas(i) - phiAnalytical)/phiAnalytical)
      maxFrac_Gas = max(maxFrac_gas, frac_gas)

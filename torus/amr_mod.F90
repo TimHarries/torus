@@ -9749,7 +9749,7 @@ endif
     thisOctal%rho(subcell) = rhoambient
     thisOctal%temperature(subcell) = real(Tambient)
     thisOctal%velocity(subcell) = vVec
-    if ((abs(rVec%z)) < 0.1d0*Smallestcellsize) then
+    if ((abs(rVec%z-thisOctal%subcellSize/2.d0)) < 0.1d0*Smallestcellsize) then
        fac = exp(-((rVec%x-r0)/(0.1d0*r0))**2)
        thisOctal%rho(subcell) = rhoAmbient + (rhoRing-rhoAmbient)* fac
        thisOctal%temperature(subcell) = real(tAmbient * rhoAmbient/thisOctal%rho(subcell))
@@ -9757,7 +9757,7 @@ endif
     else
        thisOctal%rho(subcell) = rhoambient
        thisOctal%temperature(subcell) = real(tambient)
-       thisOctal%rhoV(subcell) = 0.
+       thisOctal%rhoV(subcell) = rhoambient * v * (r * 1.d10)
     endif
 
     eKinetic = 0.5d0 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
