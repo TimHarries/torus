@@ -1671,7 +1671,7 @@ end subroutine read_sph_data_clumpfind
 !    open(unit=LUIN, file=filename, form='unformatted', status='old', convert="BIG_ENDIAN")
 ! but this is not standard and not supported by some compilers so use the appropriate 
 ! environement variable instead (F_UFMTENDIAN for ifort)
-    open(unit=LUIN, file=filename, form='unformatted', status='old',convert="LITTLE_ENDIAN")
+    open(unit=LUIN, file=filename, form='unformatted', status='old')! removed this,convert="LITTLE_ENDIAN")
 
     read(LUIN) int1, r1, int2, i1, int1
     read(LUIN) fileident
