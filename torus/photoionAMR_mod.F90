@@ -1438,7 +1438,7 @@ end subroutine radiationHydro
 
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
-         loadBalancing, inputSeed
+         loadBalancing, inputSeed, tsub
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -2026,7 +2026,7 @@ end subroutine radiationHydro
              call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, subTemp=1500.d0, minLevel=1.d-10)
           endif
 !          call writeVTKfile(grid,"dust.vtk",valueTypeString=(/"dust"/))
-          if (maxIter == 1) call  sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax=1.e30, subTemp=1500.d0)
+          if (maxIter == 1) call  sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax=1.e30, subTemp=tsub(1))
        end if
 
        sourceInThickCell = .false.
