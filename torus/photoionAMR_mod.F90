@@ -2622,17 +2622,17 @@ end subroutine radiationHydro
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
-               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, sendStackLimit) &
+               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
-               !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend, containslastpacket) &
+               !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend) &
                !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, movedCells) & 
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
-               !$OMP SHARED(dfreq, endLoop, nIter, spectrum) &
-               !$OMP SHARED(nSaved, maxStackLimit, source, uv_vector) &
+               !$OMP SHARED(dfreq, endLoop, nIter, spectrum, sendStackLimit) &
+               !$OMP SHARED(nSaved, maxStackLimit, source, uv_vector, containslastpacket) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest, augerArray, firstwarning) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal, nToNextEventPhoto, nNotEscaped) &
                !$OMP SHARED(miephase, nmumie, ndusttype, photonmomentum, loadBalancing, nDomainThreads)
