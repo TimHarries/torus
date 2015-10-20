@@ -16623,7 +16623,8 @@ end subroutine refineGridGeneric2
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange2(1:nHydroThreadsGlobal)),tol2
        if (it > 50000) then
-          if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver",it,maxval(fracchange(1:nHydroThreadsGlobal))
+          if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver", &
+               it,maxval(fracchange(1:nHydroThreadsGlobal))
           exit
        endif
     enddo
