@@ -98,11 +98,11 @@ use utils_mod, only:gasdev
 use messages_mod
 implicit none
 logical,save :: firstTime = .true.
-logical,save :: first1 = .true.
-logical,save :: first2 = .true.
-logical,save :: first3 = .true.
-logical,save :: first4 = .true.
-logical,save :: first5 = .true.
+!logical,save :: first1 = .true.
+!logical,save :: first2 = .true.
+!logical,save :: first3 = .true.
+!logical,save :: first4 = .true.
+!logical,save :: first5 = .true.
 logical      ::  firstcheck = .true.
 real(double), parameter  :: tolerance = 1.0e-5 !Tolerance limit
 real(double), parameter  :: Q  = 1.9           !Toomre paramter, fixed
@@ -156,27 +156,29 @@ real(double)           :: cs_irr             !Irradiated sound speed
 real(double)           :: Msol               !Mass in solar masses
 real(double)           :: rAU                !Radius in AU
 real(double)           :: TLin               !Ida Lin temperature
-real(double)           :: deltasigma         !Rho perturbations
-real(double)           :: mjeans,ljeans      !Jeans mass and length
-real(double)           :: rhill              !Hill radius
-real(double)           :: gamma_J,gamma_Q    !To determine fragmentation
-real(double)           :: csterm             !For calculating
-real(double)           :: gamma_sigma_max    !Max allowed for steady disc
+!real(double)           :: deltasigma         !Rho perturbations
+!real(double)           :: mjeans,ljeans      !Jeans mass and length
+!real(double)           :: rhill              !Hill radius
+!real(double)           :: gamma_J,gamma_Q    !To determine fragmentation
+!real(double)           :: csterm             !For calculating
+!real(double)           :: gamma_sigma_max    !Max allowed for steady disc
 real(double)           :: alpha_grav         !Grav alpha
 real(double)           :: Q_var              !Q that varies in the disc.
 logical,intent(in)     :: fixatQcrit         !Fix Q to critical value
 logical,intent(in)     :: fixatalphasat      !Fix alpha to saturation
-integer                :: frag,selfgrav      !Flags for self-grav and fragment
-integer                :: taskid1,ierr1
+!integer                :: frag
+!integer                :: selfgrav      !Flags for self-grav and fragment
+!integer                :: taskid1,ierr1
 real(double)           :: alphasave          !alpha check for frag check
 real(double)           :: sigmasave          !sigma check for frag check
-
+logical :: test
 !irrchoice options
 ! 1 = no irradiation
 ! 2 = irradiation at fixed Q_irr
 ! 3 = T_irr (irradiation temp)
 ! 4 = IdaLin prescription
 
+test = fixatqcrit
 
   firstcheck = .true.
 
@@ -266,7 +268,7 @@ real(double)           :: sigmasave          !sigma check for frag check
               T_irr1 = 0.0
               IF(cs_irr/=0.0) THEN
                  CALL eos_cs(rhomid,cs_irr)                 
-                 T_irr1 = gammamuT(3)
+                 T_irr1 = real(gammamuT(3))
               ENDIF
  
               ! If irradiation uses T_irr, calculate this and other parameters
@@ -280,11 +282,11 @@ real(double)           :: sigmasave          !sigma check for frag check
                  TLin = 280.0*Msol/sqrt(rAU)                 
                  ! Must account for optical depth
                  IF(tau/=0.0)TLin = TLin/(tau+1.0/tau)**0.25
-                 T_irr1 = max(TLin, T_irr1)
+                 T_irr1 = max(real(TLin), T_irr1)
               ENDIF
 
               cs_irr = SQRT(gamma*Boltzmannk*T_irr1/(mu*mH))
-              Q_irr1 = cs_irr*omega1/(pi*G*sigma)
+              Q_irr1 = real(cs_irr*omega1/(pi*G*sigma))
 
               ! If Q_irr > crit then fix it to crit
               ! If logical flag on to do so
@@ -459,25 +461,25 @@ real(double)           :: sigmasave          !sigma check for frag check
                 !So dsigma becomes zero if alpha_grav 0
                 alpha_grav = alpha - 1.0e-2
 
-  		!Theta for x and y
-  		if(x1 .GE. 0.0)then
-     			theta_loc = asin(y1/r)
-  		else
-	    	 	theta_loc = -1.*asin(y1/r) + 3.14159265359
- 		end if
+                !Theta for x and y
+                if(x1 .GE. 0.0)then
+                        theta_loc = asin(y1/r)
+                else
+                        theta_loc = -1.*asin(y1/r) + 3.14159265359
+                end if
 
-  		!Spiral stuff
+                !Spiral stuff
                 !The constants now set in params filie
-		!For loose spirals A=20,B=1. For tight,A=2400,B=-0.1103178
-  		spiralA1   = 13.5
-  		spiralB1   = 0.3832
-  		r          = r/udist
- 		theta_s    = (1./spiralB1)*log(r/spiralA1)
-  		r          = r*udist
-  		phi1       = theta_s - theta_loc
+                !For loose spirals A=20,B=1. For tight,A=2400,B=-0.1103178
+                spiralA1   = 13.5
+                spiralB1   = 0.3832
+                r          = r/udist
+                theta_s    = (1./spiralB1)*log(r/spiralA1)
+                r          = r*udist
+                phi1       = theta_s - theta_loc
 
-  		dSigma_max = sqrt(sqrt(alpha_grav)**2.)*sigma
-  		dSigma     = -1.*dSigma_max*cos(nspiralarms1*(phi1))
+                dSigma_max = sqrt(sqrt(alpha_grav)**2.)*sigma
+                dSigma     = -1.*dSigma_max*cos(nspiralarms1*(phi1))
 
                 !Now add some noise to this dSigma.
                 !Gasdev returns number with mean=0, variance(and SD)=1
@@ -485,19 +487,19 @@ real(double)           :: sigmasave          !sigma check for frag check
                 !This gives us a gaussian centered on dsigma, with SD=15%
                 !Commented out noise, not sure need it.
                 !dsigma     = dsigma+(0.15*dsigma)*gasdev()
-  		sigma      = sigma + dSigma
-  		rhomid     = sigma/(2.0*H)
-  		arg        = z1/H
-  		rho        = rhomid/(cosh(arg)*cosh(arg))
-  		cs         = Qfrag*pi*G*sigma/Omega1
+                sigma      = sigma + dSigma
+                rhomid     = sigma/(2.0*H)
+                arg        = z1/H
+                rho        = rhomid/(cosh(arg)*cosh(arg))
+                cs         = Qfrag*pi*G*sigma/Omega1
                 !Changed to depends on Q_var 19th August
                 !cs         = Q_var*pi*G*sigma/Omega1
-  		!Use EoS to calculate tau, gamma, betac
-  		CALL eos_cs(rho, cs)
+                !Use EoS to calculate tau, gamma, betac
+                CALL eos_cs(rho, cs)
                 !Watch this, I don't know if this need to be here.
                 !changed on 19th August
                 !Leave this in for T_irr as it catches local variations
-  		Temp          = gammamuT(3)
+                Temp          = gammamuT(3)
 
                 !If temp is below irradiated temp, make it equal Tirr
                 if(Temp - T_irr1 .LT. 0.0) Temp=T_irr1
@@ -508,7 +510,7 @@ real(double)           :: sigmasave          !sigma check for frag check
         !Write to ralpha.dat
         if(writeoutput) write(564,*)r/udist,mdot1*3.15e7/umass,alpha,sigma,dsigma,betac,Temp,cs,T,rho,tau,Q_var
         !Write to xyzsigma.dat 
-	if(writeoutput) write(594,*)x1,y1,z1,sigma,rho,dSigma,Temp,tau      
+        if(writeoutput) write(594,*)x1,y1,z1,sigma,rho,dSigma,Temp,tau      
 
 END SUBROUTINE get_eos_info
 

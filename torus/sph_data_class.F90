@@ -1077,7 +1077,6 @@ gaspart: do i=1, nGasTotal
     integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
     integer(kind=4)  :: nblocktypes
     REAL(kind=8)     :: r1
-    REAL(kind=4)     :: r4
     integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
     integer  :: blocksum_nptmass, i_pt_mass
     CHARACTER(len=100) ::  fileident
@@ -1098,8 +1097,6 @@ gaspart: do i=1, nGasTotal
     type(VECTOR) :: centre
     real(double) :: halfSize
 
-    integer :: thisNumGas
-    integer :: nlistinactive, listinactive(1)
     integer :: iThread
     integer :: loopIndex
 ! The MPI communication handles multiple hydro threads so I've keyed it out for non-hydro builds
