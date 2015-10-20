@@ -10050,7 +10050,6 @@ end subroutine sumFluxes
                "fvisc2       ", &
                "fvisc3       ", &
                "q_i          "/))
-
 !          write(plotfile,'(a,i4.4,a)') "visc_",it,".vtk"
 !          call writeVtkFile(grid, plotfile, &
 !               valueTypeString=(/"q11          ", &

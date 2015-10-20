@@ -1212,7 +1212,7 @@ contains
 
        call getDouble("mstar", mStar, 1.d0, cLine, fLine, nLines, &
             "Mass of central star (solar masses): ","(a,f7.1,a)", 1.d0, ok, .true.)
-       mcore = mStar
+       mcore = real(mStar)
        call getDouble("metallicity", metallicity, 1.d0, cLine, fLine, nLines, &
             "Mass of central star (solar masses): ","(a,f7.1,a)", 1.d0, ok, .true.)
        call getreal("mdot", mDot, 1., cLine, fLine, nLines, &
