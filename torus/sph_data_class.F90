@@ -1124,7 +1124,7 @@ gaspart: do i=1, nGasTotal
     call writeinfo(message, FORINFO)
 
 !---Open file
-    open(unit=LUIN, file=filename, form='unformatted', status='old',convert="LITTLE_ENDIAN")
+    open(unit=LUIN, file=filename, form='unformatted', status='old') ! removed little endian statement
     
     read(LUIN) int1, r1, int2, i1, int1
     read(LUIN)  fileident
