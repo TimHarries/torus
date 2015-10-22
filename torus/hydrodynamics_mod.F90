@@ -7394,7 +7394,7 @@ end subroutine sumFluxes
 
       if (writeoutput) call writeInfo("Solving self gravity...")
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup) !, multigrid=.true.)
       call zeroSourcepotential(grid%octreeRoot)
       if (globalnSource > 0) then
          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
