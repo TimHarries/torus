@@ -117,6 +117,9 @@ contains
     integer, parameter :: lun_convfile = 42 ! unit number for convergence file
     integer :: maxIter
 
+    integer :: nPacketIonizing
+    real(double) :: nPhotonIonizing
+    
 #ifdef MPI
     ! For MPI implementations
   ! For MPI implementations =====================================================
@@ -124,6 +127,8 @@ contains
     integer :: np
     integer(bigInt) :: n_rmdr, mPhoton
     integer :: mOctal
+    integer :: tempInt
+    real(double) :: tempDouble
     real, allocatable :: tempArray(:), tArray(:)
     real(double), allocatable :: tempArrayd(:), tArrayd(:), tdArray(:)
 #endif
@@ -227,8 +232,9 @@ contains
 
     do while(.not.converged)
        nIter = nIter + 1
-
-
+       nPacketIonizing = 0
+       nPhotonIonizing = 0.0_db
+       
 ! Set up the dust fraction
        if (variableDustSublimation) then
 
@@ -286,7 +292,8 @@ contains
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r) &
        !$OMP PRIVATE (freqWeight, thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
-       !$OMP SHARED (nlambda, writeoutput)
+       !$OMP SHARED (nlambda, writeoutput, epsoverdeltat) &
+       !$OMP REDUCTION(+:nPacketIonizing, nPhotonIonizing)
 
 
        !$OMP DO SCHEDULE (STATIC)
@@ -320,7 +327,11 @@ contains
           photonPacketWeight = photonPacketWeight * freqWeight
 
           thisFreq = cSpeed/(wavelength / 1.e8)
-
+          
+          if ((thisFreq*hcgs*ergtoev) > 13.6) then
+             nPacketIonizing = nPacketIonizing + 1
+             nPhotonIonizing = nPhotonIonizing + (epsoverdeltat / (thisFreq*hcgs))
+          endif
 
 !          if ((thisFreq*hcgs*ergtoev) < 13.6) then
 !             cycle mainloop
@@ -422,6 +433,20 @@ contains
 #endif
 
 
+#ifdef MPI
+     call MPI_ALLREDUCE(nPacketIonizing,tempInt,1,MPI_INTEGER,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+     nPacketIonizing = tempInt
+     call MPI_ALLREDUCE(nPhotonIonizing,tempDouble,1,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)       
+     nPhotonIonizing = tempDouble
+#endif
+
+       write(message,'(a,1x,i10)') "Number of ionizing photon packets: ", nPacketIonizing
+       call writeInfo(message,TRIVIAL)
+       write(message,'(a,1x,1pe12.5)') "Number of ionizing photons per second: ", nPhotonIonizing
+       call writeInfo(message,TRIVIAL)
+       
        if (doTuning) call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        epsOverDeltaT = (lCore) / dble(nMonte)
