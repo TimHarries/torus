@@ -218,28 +218,22 @@ grep "Checked out revision" svn_log.txt
 run_torus_test_suite()
 {
 
-echo 
-echo "Running benchmarks"
-echo 
-
 for sys in ${SYS_TO_TEST}; do
 
 # Details of how to run each system are set here
     export USEGCOV=no
 # OpenMPI will bind to core by default so we'll use the 2 OpenMP threads available from hyperthreading.
-# Binding can be diabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
+# Binding can be disabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
     if [[ ${sys} == "ompiosx-openmp" ]]; then
 	export SYSTEM=ompiosx
 	export USEOPENMP=yes
 	export NUM_MPI_PROC=4
 	export OMP_NUM_THREADS=2
-	echo "Building ompiosx with OpenMP"
     elif [[ ${sys} == "ompiosx" ]]; then
 	export SYSTEM=ompiosx
 	export USEOPENMP=no
 	export NUM_MPI_PROC=8
 	export USEGCOV=yes
-	echo "Building ompiosx without OpenMP"
     elif [[ ${sys} == "gfortran" ]]; then
 	export SYSTEM=gfortran
 	export USEOPENMP=yes
@@ -252,6 +246,13 @@ for sys in ${SYS_TO_TEST}; do
 	echo "${sys} not recognised. Aborting."
 	exit 1
     fi
+
+    echo
+    echo "======================================"
+    echo "Running tests for system ${SYSTEM}"
+    echo "OpenMP: ${USEOPENMP}"
+    echo "======================================"
+    echo
 
     export WORKING_DIR=${TEST_DIR}/benchmarks_${sys}
     mkdir ${WORKING_DIR}
@@ -276,6 +277,7 @@ for sys in ${SYS_TO_TEST}; do
 	continue
     fi
 
+# Build comparison code for disc benchmark. Be careful moving this as it changes the cwd. 
     make_comparespec
 
 # Run hydro benchmark

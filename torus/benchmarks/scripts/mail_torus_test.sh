@@ -7,7 +7,6 @@
 export MODE=daily
 export BASE_DIR=/data/torustest
 #mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk haworth@astro.ex.ac.uk claire@astro.ex.ac.uk"
-mail_to="acreman@astro.ex.ac.uk"
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -25,7 +24,7 @@ case ${MODE} in
     daily) export TORUS_TEST_DIR=${BASE_DIR}/torus_daily_test
 	export LOG_FILE=${BASE_DIR}/torus_daily_test_log
 # This is probably run from cron so set up PATH
-	export PATH=/Users/acreman/bin:${PATH};;
+	export PATH=/home/torustest/bin:${PATH};;
 
     stable) export TORUS_TEST_DIR=${BASE_DIR}/torus_stable_version_tests/debug=yes
 	export LOG_FILE=${BASE_DIR}/torus_stable_test_log;
@@ -63,6 +62,7 @@ echo "--------------------------" >> ${LOG_FILE}
 echo "Processing coverage output" >> ${LOG_FILE}
 echo "--------------------------" >> ${LOG_FILE}
 process_gcov.sh >> ${LOG_FILE}
+echo >> ${LOG_FILE}
 
 #
 # Make tar file with attachments (daily tests only)
