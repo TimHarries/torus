@@ -4815,7 +4815,7 @@ CONTAINS
                 call find_n_particle_in_subcell(nparticle, ave_density, &
                      thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity, n_pt=npt_subcell)
              end if
-             write(*,*) "ave density ",ave_density
+!             write(*,*) "ave density ",ave_density
 
              if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > dPhirefine ).and.(nParticle>1)) then
                 split = .true.

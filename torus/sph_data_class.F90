@@ -1708,9 +1708,7 @@ end subroutine read_sph_data_clumpfind
     endif
 
     do i=1,6
-       print*,"i before",i
        read(LUIN)
-       print*,"i after",i
     end do
 
     read(LUIN) time 
