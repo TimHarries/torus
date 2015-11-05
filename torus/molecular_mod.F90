@@ -6,7 +6,6 @@ module molecular_mod
  ! made my own by dar
  ! 01/X/07
 
-  USE AMR_MOD, ONLY:CHECKAMRGRID
   use kind_mod
    use constants_mod
    use utils_mod

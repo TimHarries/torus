@@ -2307,6 +2307,7 @@ END SUBROUTINE GAUSSJ
     call lured(a,ok)
     if (.not. ok) then
        write(*,*) "LU solver: lured not ok"
+       write(*,*) a
        return
     endif
 
