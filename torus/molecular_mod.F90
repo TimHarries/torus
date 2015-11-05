@@ -179,13 +179,8 @@ module molecular_mod
 
        
     endif
-    call writeInfo("checking leaf for unrefinement",FORINFO)
-    write(*,*) "nchildren", thisOctal%nChildren
-    write(*,*) "log rho", log10(rho)
-    write(*,*) "fac limit:", fac, limit
     if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
     if ((thisOctal%nChildren == 0).and.unrefine) then
-       call writeInfo("Unrefining",FORINFO)
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
             grid = grid, adjustGridInfo = .true.)
        nunrefine = nunrefine + 1
@@ -1108,7 +1103,7 @@ module molecular_mod
      i=0
      call checkamrgrid(grid, .false.)
      call lineUnrefineCells(grid%octreeRoot, grid, i, 5.0d-1)
-     write(*,*) i
+     write(*,*) i, "cells unrefined"
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 

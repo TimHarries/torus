@@ -12677,20 +12677,6 @@ end function readparameterfrom2dmap
     IF ( ANY(checkMask) ) error = -2
  
     IF (error /= 0) THEN
-       AA=childrenToDelete
-       BB=childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
-       CC= parent%hasChild(1:SIZE(childrenToDelete))
-       print *, "----------"
-       print *, AA
-       print *, BB
-       print *, CC
-       print *, .NOT. AA
-       PRINT *, .NOT. BB
-       print *, .NOT. CC
-       print *,"--"
-       print *, "and",AA .and. BB
-       print *, "or", AA .or. BB
-       print *, "mask", AA .neqv. ( AA .and. BB)
       PRINT *, "In shrinkChildArray, attempting to delete a "
       PRINT *, "child that doesn't exist."
       write(*,*) "error", error
@@ -12703,11 +12689,6 @@ end function readparameterfrom2dmap
       write(*,*) "childrenToDelete", childrenToDelete
       checkMask = checkMask .NEQV. childrenToDelete ! (exclusive OR operation)
       write(*,*) "C2D XOR HC", checkmask
-      write(*,*) "C2D AND not(HC)", childrenToDelete .and. .not.(parent%hasChild(1:SIZE(childrenToDelete)))
-      write(*,*) "HC ",(parent%hasChild(1:SIZE(childrenToDelete)))
-      write(*,*) "not HC ", .not. (parent%hasChild(1:SIZE(childrenToDelete)))
-      write(*,*) "HC and not HC ",(parent%hasChild(1:SIZE(childrenToDelete))) .and. &
-           .not. (parent%hasChild(1:SIZE(childrenToDelete)))
       write(*,*) nChildrentodelete,nchildrenstay,deleteallchildren
 
       STOP
