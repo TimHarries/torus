@@ -6,7 +6,8 @@ module molecular_mod
  ! made my own by dar
  ! 01/X/07
 
-   use kind_mod
+  USE AMR_MOD, ONLY:CHECKAMRGRID
+  use kind_mod
    use constants_mod
    use utils_mod
    use messages_mod
@@ -17,6 +18,7 @@ module molecular_mod
    use math_mod
    use datacube_mod, only: DATACUBE, TELESCOPE, initCube, npixels, &
         addspatialaxes, addvelocityaxis, convertspatialaxes
+    use source_mod, only : globalNSource, globalSourceArray
    use h21cm_mod, only: h21cm
 #ifdef USECFITSIO
    use datacube_mod, only : writeDataCube
@@ -102,6 +104,94 @@ module molecular_mod
 
  contains
    ! Read in molecular parameters from file - note: abundance hard-coded here
+
+  real(double) function maxminOverMean(vals, n)
+    real(double) :: vals(:), mean
+    integer :: n
+
+    mean = SUM(vals(1:n))
+    if (mean /= 0.d0) then
+       maxminoverMean = abs((MAXVAL(vals(1:n)) - MINVAL(vals(1:n)))/mean)
+    else
+       maxminOverMean = 1.0d-10
+    endif
+  end function maxminOverMean
+
+  recursive subroutine lineUnrefineCells(thisOctal, grid, nUnrefine, splitLimit)
+    use inputs_mod, only : minDepthAMR
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child !, neighbourOctal
+    integer :: subcell, i !, neighbourSubcell
+    logical :: unrefine
+    integer :: nc
+    integer, intent(inout) :: nUnrefine
+    real(double) :: rho(8), fac, limit
+    logical :: refinedLastTime, ghostCell !, split
+    real(double) :: r !, maxGradient
+    real(double) :: splitLimit, dv
+    integer :: isource !, ndir
+    logical :: debug, cornerCell
+!    real(double) :: x, xnext, qnext, qViscosity(3,3) , q , flux, phi, phigas, pressure, px, py, pz
+!    real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
+!    integer :: nd
+    type(VECTOR) ::  centre !, dirvec(6), locator
+
+    debug = .false.
+!    limit  = 5.0d-3
+    limit = splitlimit
+    unrefine = .true.
+    refinedLastTime = .false.
+    ghostCell = .false.
+    cornerCell = .false.
+    
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       i = 1
+       DO while(i <= thisOctal%nChildren)
+          child => thisOctal%child(i)
+          CALL lineUnrefineCells(child, grid, nUnrefine, splitLimit)
+          i = i + 1
+       END DO
+       goto 666
+    END IF
+
+    if (.not.octalonThread(thisOctal, 1, myRankGlobal)) goto 666
+    nc=0
+    do subcell = 1, thisOctal%maxChildren
+       nc=nc+1
+       rho(nc) = max(thisOctal%rho(subcell),1.d-30)
+       if (thisOctal%ghostCell(subcell)) ghostCell=.true.
+       if (thisOctal%corner(subcell)) cornerCell=.true.
+     enddo
+ 
+
+    unrefine = .false.
+
+    if (.not. (cornerCell .or. ghostcell)  .and. ALL(rho<1e-18)) then
+
+       unrefine = .true.
+
+       fac = MaxMinOverMean(rho,nc)
+       if (fac > limit) then
+          unrefine = .false.
+       endif
+
+       
+    endif
+    call writeInfo("checking leaf for unrefinement",FORINFO)
+    write(*,*) "nchildren", thisOctal%nChildren
+    write(*,*) "log rho", log10(rho)
+    write(*,*) "fac limit:", fac, limit
+    if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
+    if ((thisOctal%nChildren == 0).and.unrefine) then
+       call writeInfo("Unrefining",FORINFO)
+       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+            grid = grid, adjustGridInfo = .true.)
+       nunrefine = nunrefine + 1
+    endif
+666 continue    
+  end subroutine lineUnrefineCells
 
    subroutine readMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
@@ -360,7 +450,7 @@ module molecular_mod
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
      use grid_mod, only: freeGrid
-     use inputs_mod, only : vturb, restart, isinLTE, &
+     use inputs_mod, only : vturb, restart, isinLTE, amrtolerance,&
           setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics !, addnewmoldata
 #ifdef MPI
@@ -368,7 +458,6 @@ module molecular_mod
      use inputs_mod, only: zeroghosts
 #endif
 #endif
-
 
 !         plotlevels
 !     type(VECTOR) :: pos
@@ -860,7 +949,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use inputs_mod, only : blockhandout, tolerance, &
-          usedust, amr1d, amr3d, plotlevels,  &
+          usedust, amr1d, amr3d, plotlevels,  amrtolerance, &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
           forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
      use dust_mod
@@ -1015,6 +1104,11 @@ module molecular_mod
 
 
 ! IMPORTANT - Here's where molecular levels and other critical data get allocated.     
+     call writeInfo("Unrefining cells for molecular line emission",FORINFO)
+     i=0
+     call checkamrgrid(grid, .false.)
+     call lineUnrefineCells(grid%octreeRoot, grid, i, 5.0d-1)
+     write(*,*) i
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 

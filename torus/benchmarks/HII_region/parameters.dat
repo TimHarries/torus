@@ -52,9 +52,18 @@ qdist1 0.0
 
 ! Grid output 
 
-writegrid F
-
+writegrid T
+outputfile dump.grid
 ! Geometry specific parameters
 
 rinner 30.0
 
+spectrum T
+nphotspec 1000000
+filename sed_
+ninc 3
+inclinations 0. 60. 90.
+sed T
+sednumlam 200
+sedlammin 1
+sedlammax 300000

@@ -3557,7 +3557,7 @@ CONTAINS
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
     use magnetic_mod, only : safierfits
 ! Currently commented out. Reinstate if required. 
-!    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
@@ -12654,6 +12654,8 @@ end function readparameterfrom2dmap
     INTEGER :: nChildrenStay ! how many children will be left when done
     INTEGER :: insertLocation ! the next location to use in tempChildStorage
     
+    LOGICAL :: AA(8), BB(8), CC(8)
+
     NULLIFY(thisChild)
     temporaryIndexChild = -999
     
@@ -12671,18 +12673,41 @@ end function readparameterfrom2dmap
     ! the following lines check that all the children to be deleted have 
     !   their %hasChild flag set.
     checkMask = childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
-    checkMask = checkMask .NEQV. childrenToDelete ! (exclusive OR operation)
+    checkMask = (checkMask .NEQV. childrenToDelete) ! (exclusive OR operation)
     IF ( ANY(checkMask) ) error = -2
-
+ 
     IF (error /= 0) THEN
+       AA=childrenToDelete
+       BB=childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
+       CC= parent%hasChild(1:SIZE(childrenToDelete))
+       print *, "----------"
+       print *, AA
+       print *, BB
+       print *, CC
+       print *, .NOT. AA
+       PRINT *, .NOT. BB
+       print *, .NOT. CC
+       print *,"--"
+       print *, "and",AA .and. BB
+       print *, "or", AA .or. BB
+       print *, "mask", AA .neqv. ( AA .and. BB)
       PRINT *, "In shrinkChildArray, attempting to delete a "
       PRINT *, "child that doesn't exist."
-      PRINT *, error, childrenToDelete
+      write(*,*) "error", error
       write(*,*) "nchildren ",parent%nChildren
+      PRINT *, "childrenToDelete", childrenToDelete
       write(*,*) "haschild ",parent%hasChild(1:SIZE(childrenToDelete))
       write(*,*) "mask ",checkmask
-      write(*,*) " and ",childrenToDelete(1:SIZE(childrenToDelete)) .AND. parent%hasChild(1:SIZE(childrenToDelete))
-      write(*,*) "xor ",childrentodelete.neqv.(childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete)))
+      checkMask = childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "C2D and HC",checkmask!childrenToDelete(1:SIZE(childrenToDelete)) .AND. parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "childrenToDelete", childrenToDelete
+      checkMask = checkMask .NEQV. childrenToDelete ! (exclusive OR operation)
+      write(*,*) "C2D XOR HC", checkmask
+      write(*,*) "C2D AND not(HC)", childrenToDelete .and. .not.(parent%hasChild(1:SIZE(childrenToDelete)))
+      write(*,*) "HC ",(parent%hasChild(1:SIZE(childrenToDelete)))
+      write(*,*) "not HC ", .not. (parent%hasChild(1:SIZE(childrenToDelete)))
+      write(*,*) "HC and not HC ",(parent%hasChild(1:SIZE(childrenToDelete))) .and. &
+           .not. (parent%hasChild(1:SIZE(childrenToDelete)))
       write(*,*) nChildrentodelete,nchildrenstay,deleteallchildren
 
       STOP
