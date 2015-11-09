@@ -12654,8 +12654,6 @@ end function readparameterfrom2dmap
     INTEGER :: nChildrenStay ! how many children will be left when done
     INTEGER :: insertLocation ! the next location to use in tempChildStorage
     
-    LOGICAL :: AA(8), BB(8), CC(8)
-
     NULLIFY(thisChild)
     temporaryIndexChild = -999
     
@@ -12685,7 +12683,7 @@ end function readparameterfrom2dmap
       write(*,*) "haschild ",parent%hasChild(1:SIZE(childrenToDelete))
       write(*,*) "mask ",checkmask
       checkMask = childrenToDelete .AND. parent%hasChild(1:SIZE(childrenToDelete))
-      write(*,*) "C2D and HC",checkmask!childrenToDelete(1:SIZE(childrenToDelete)) .AND. parent%hasChild(1:SIZE(childrenToDelete))
+      write(*,*) "C2D and HC",checkmask
       write(*,*) "childrenToDelete", childrenToDelete
       checkMask = checkMask .NEQV. childrenToDelete ! (exclusive OR operation)
       write(*,*) "C2D XOR HC", checkmask

@@ -912,7 +912,7 @@ contains
 
 
   subroutine readAMRgrid(rootfilename,fileFormatted,grid)
-    use inputs_mod, only: gridUsesAMR, iModel, modelwashydro
+    use inputs_mod, only: gridUsesAMR, iModel, modelwashydro, lineUnrefineThresh
     use utils_mod, only : findMultiFilename
     type(romanova) :: romdata
     character(len=*) :: rootfilename
@@ -922,7 +922,7 @@ contains
     logical :: readFile
     logical, save :: firstTime=.true.
     character(len=80) :: message
-    integer ::  nOctals, nVoxels
+    integer ::  nOctals, nVoxels, i
 #ifdef MPI
 !    integer :: iThread
 #endif
@@ -986,6 +986,14 @@ contains
        call grid_info_mpi(grid, "info_grid.dat")
     endif
 #endif
+
+	 i=0
+	 print *, "unrefine time", lineUnrefineThresh
+!         if (lineUnrefineThresh>1e-60) then
+             print *, "Unrefining cells for line calculation"
+             call lineUnrefineCells(grid%octreeRoot, grid, i, lineUnrefineThresh)         
+	     print *, "cells unrefined", i
+!         end if
 
     if(modelwashydro) then
        if(firstTime) then
@@ -4144,11 +4152,11 @@ contains
 
 
        subroutine readGridMPI(grid, gridfilename, fileFormatted)
-         use inputs_mod, only : splitOverMPI, modelwashydro
+         use inputs_mod, only : splitOverMPI, modelwashydro, lineUnrefineThresh
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
          logical :: fileFormatted
-         integer :: iThread
+         integer :: iThread, i
          integer :: nOctals, nVoxels
          character(len=80) :: message
          logical, save :: firstTime = .true.
@@ -4190,6 +4198,14 @@ contains
 
          endif
 
+         call writeInfo("Unrefining cells for molecular line emission",FORINFO)
+	 i=0
+	 print *, "unrefine time", lineUnrefineThresh
+!         if (lineUnrefineThresh>0) then
+             print *, "Unrefining cells for line calculation"
+             call lineUnrefineCells(grid%octreeRoot, grid, i, 1.0d-19)         
+	     print *, "cells unrefined", i
+!         end if
 
          if(modelwashydro) then
             if(firstTime) then
@@ -5420,5 +5436,89 @@ contains
     end subroutine sendOctalViaMPI
 
 #endif
+
+  real(double) function maxminOverMean(vals, n)
+    real(double) :: vals(:), mean
+    integer :: n
+
+    mean = SUM(vals(1:n))
+    if (mean /= 0.d0) then
+       maxminoverMean = abs((MAXVAL(vals(1:n)) - MINVAL(vals(1:n)))/mean)
+    else
+       maxminOverMean = 1.0d-10
+    endif
+  end function maxminOverMean
+
+  recursive subroutine lineUnrefineCells(thisOctal, grid, nUnrefine, splitLimit)
+    use inputs_mod, only : minDepthAMR, lineUnrefineThresh
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child !, neighbourOctal
+    integer :: subcell, i !, neighbourSubcell
+    logical :: unrefine
+    integer :: nc
+    integer, intent(inout) :: nUnrefine
+    real(double) :: rho(8), fac, limit
+    logical :: refinedLastTime, ghostCell !, split
+    real(double) :: r !, maxGradient
+    real(double) :: dv, splitlimit
+    integer :: isource !, ndir
+    logical :: debug, cornerCell
+!    real(double) :: x, xnext, qnext, qViscosity(3,3) , q , flux, phi, phigas, pressure, px, py, pz
+!    real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
+!    integer :: nd
+    type(VECTOR) ::  centre !, dirvec(6), locator
+
+    debug = .false.
+!    limit  = 5.0d-3
+    limit = splitlimit
+    unrefine = .true.
+    refinedLastTime = .false.
+    ghostCell = .false.
+    cornerCell = .false.
+    
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       i = 1
+       DO while(i <= thisOctal%nChildren)
+          child => thisOctal%child(i)
+          CALL lineUnrefineCells(child, grid, nUnrefine, splitlimit)
+          i = i + 1
+       END DO
+       goto 666
+    END IF
+
+    if (.not.octalonThread(thisOctal, 1, myRankGlobal)) goto 666
+    nc=0
+    do subcell = 1, thisOctal%maxChildren
+       nc=nc+1
+       rho(nc) = max(thisOctal%rho(subcell),1.d-30)
+       if (thisOctal%ghostCell(subcell)) ghostCell=.true.
+       if (thisOctal%corner(subcell)) cornerCell=.true.
+     enddo
+ 
+
+    unrefine = .false.
+
+    if (.not. (cornerCell .or. ghostcell)  .and. ALL(rho<lineUnrefineThresh)) then
+
+       unrefine = .true.
+
+       fac = MaxMinOverMean(rho,nc)
+       if (fac > 1.0d-1) then
+          unrefine = .false.
+       endif
+
+       
+    endif
+    if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
+    if ((thisOctal%nChildren == 0).and.unrefine) then
+       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+          grid = grid, adjustGridInfo = .true.)
+       nunrefine = nunrefine + 1
+    endif
+666 continue    
+  end subroutine lineUnrefineCells
+
 
  end module gridio_mod

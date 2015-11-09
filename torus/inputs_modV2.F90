@@ -2478,8 +2478,8 @@ contains
        call getLogical("modelwashydro", modelwashydro, cLine, fLine, nLines, &
                "Grid is based on hydro or radiation hydro calculation: ","(a,1l,a)", .false., ok, .false.)
        !thaw -
-       call getReal("lineunrefinecells", lineunrefinecells, 1.0 , cLine, fLine, nLines, &
-               "Derefine cells which are below this threshold density prior to line calc: ","(a,e12.5,1x,a)", 0.0, ok, .false.)
+       call getDouble("lineunrefinethresh", lineUnrefineThresh, 1.0d0 , cLine, fLine, nLines, &
+               "Derefine cells which are below this threshold density prior to line calc: ","(a,f4.1,1x,a)", 0.0d0, ok, .false.)
        if(modelWasHydro) then
           call getLogical("zeroghosts", zeroghosts, cLine, fLine, nLines, &
                "Zero the contriubtion from ghost cells to molecular line calc: ","(a,1l,a)", .false., ok, .false.)

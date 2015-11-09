@@ -104,90 +104,8 @@ module molecular_mod
  contains
    ! Read in molecular parameters from file - note: abundance hard-coded here
 
-  real(double) function maxminOverMean(vals, n)
-    real(double) :: vals(:), mean
-    integer :: n
 
-    mean = SUM(vals(1:n))
-    if (mean /= 0.d0) then
-       maxminoverMean = abs((MAXVAL(vals(1:n)) - MINVAL(vals(1:n)))/mean)
-    else
-       maxminOverMean = 1.0d-10
-    endif
-  end function maxminOverMean
-
-  recursive subroutine lineUnrefineCells(thisOctal, grid, nUnrefine, splitLimit)
-    use inputs_mod, only : minDepthAMR
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child !, neighbourOctal
-    integer :: subcell, i !, neighbourSubcell
-    logical :: unrefine
-    integer :: nc
-    integer, intent(inout) :: nUnrefine
-    real(double) :: rho(8), fac, limit
-    logical :: refinedLastTime, ghostCell !, split
-    real(double) :: r !, maxGradient
-    real(double) :: splitLimit, dv
-    integer :: isource !, ndir
-    logical :: debug, cornerCell
-!    real(double) :: x, xnext, qnext, qViscosity(3,3) , q , flux, phi, phigas, pressure, px, py, pz
-!    real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
-!    integer :: nd
-    type(VECTOR) ::  centre !, dirvec(6), locator
-
-    debug = .false.
-!    limit  = 5.0d-3
-    limit = splitlimit
-    unrefine = .true.
-    refinedLastTime = .false.
-    ghostCell = .false.
-    cornerCell = .false.
-    
-    IF ( thisOctal%nChildren > 0 ) THEN
-       ! call this subroutine recursively on each of its children
-       i = 1
-       DO while(i <= thisOctal%nChildren)
-          child => thisOctal%child(i)
-          CALL lineUnrefineCells(child, grid, nUnrefine, splitLimit)
-          i = i + 1
-       END DO
-       goto 666
-    END IF
-
-    if (.not.octalonThread(thisOctal, 1, myRankGlobal)) goto 666
-    nc=0
-    do subcell = 1, thisOctal%maxChildren
-       nc=nc+1
-       rho(nc) = max(thisOctal%rho(subcell),1.d-30)
-       if (thisOctal%ghostCell(subcell)) ghostCell=.true.
-       if (thisOctal%corner(subcell)) cornerCell=.true.
-     enddo
- 
-
-    unrefine = .false.
-
-    if (.not. (cornerCell .or. ghostcell)  .and. ALL(rho<1e-18)) then
-
-       unrefine = .true.
-
-       fac = MaxMinOverMean(rho,nc)
-       if (fac > limit) then
-          unrefine = .false.
-       endif
-
-       
-    endif
-    if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
-    if ((thisOctal%nChildren == 0).and.unrefine) then
-       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
-            grid = grid, adjustGridInfo = .true.)
-       nunrefine = nunrefine + 1
-    endif
-666 continue    
-  end subroutine lineUnrefineCells
-
-   subroutine readMolecule(thisMolecule, molFilename)
+  subroutine readMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
      use inputs_mod, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
@@ -883,7 +801,6 @@ module molecular_mod
      logical, optional :: everything
      logical :: deallocateeverything
 
-
      if(present(everything)) then
         deallocateeverything = everything
      else
@@ -1098,11 +1015,8 @@ module molecular_mod
 
 
 ! IMPORTANT - Here's where molecular levels and other critical data get allocated.     
-     call writeInfo("Unrefining cells for molecular line emission",FORINFO)
      i=0
      call checkamrgrid(grid, .false.)
-     call lineUnrefineCells(grid%octreeRoot, grid, i, 5.0d-1)
-     write(*,*) i, "cells unrefined"
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
@@ -2822,6 +2736,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       integer :: subpixels
       integer :: ipixels, jpixels
 
+      print *, "making image"
 ! pixelcorner initialised to TOPLEFT      
 ! Previous method: only works for cubes with equal sized spatial axes
 !      dnpixels    = dble(npixels) 
@@ -2837,7 +2752,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       else
          subpixels = 0
       endif
-
+      print *, "imagelooop"
       do jpixels = 1, cube%ny ! raster over image
          pixelcorner = pixelcorner - imagebasis(2) 
 !$OMP PARALLEL default(shared), private(ipixels, thisPixelcorner)
@@ -2851,6 +2766,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !$OMP END PARALLEL
       enddo
 
+    print *, "image made"
     end subroutine makeImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
@@ -3143,6 +3059,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            endif
 
            if(iv .eq. 1) then
+              print *, "checking grid"
+              call checkamrgrid(grid, .false.)	
               call writeinfo("Filling Octal parameters for first time",TRIVIAL)
               if (.not. h21cm ) call deallocateUnused(grid,grid%octreeroot,everything = .true.)
               call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)

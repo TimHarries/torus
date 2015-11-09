@@ -13756,17 +13756,17 @@ end subroutine refineGridGeneric2
 666 continue    
   end subroutine unrefineCells
 
-  real(double) function maxminOverMean(vals, n)
-    real(double) :: vals(:), mean
-    integer :: n
-
-    mean = SUM(vals(1:n))
-    if (mean /= 0.d0) then
-       maxminoverMean = abs((MAXVAL(vals(1:n)) - MINVAL(vals(1:n)))/mean)
-    else
-       maxminOverMean = 0.d0
-    endif
-  end function maxminOverMean
+!  real(double) function maxminOverMean(vals, n)
+!    real(double) :: vals(:), mean
+!    integer :: n
+!
+!    mean = SUM(vals(1:n))
+!    if (mean /= 0.d0) then
+!       maxminoverMean = abs((MAXVAL(vals(1:n)) - MINVAL(vals(1:n)))/mean)
+!    else
+!       maxminOverMean = 0.d0
+!    endif
+!  end function maxminOverMean
   
   recursive subroutine unrefineCellsPhotoion(thisOctal, grid)
     use inputs_mod, only : minDepthAMR

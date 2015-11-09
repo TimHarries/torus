@@ -246,7 +246,7 @@
 !  logical, protected :: addnewmoldata ! Not currently used
   logical, protected :: dongstep ! controls Ng Acceleration
   logical, protected :: modelwashydro
-  real, protected :: lineunrefinecells
+  real(double), protected :: lineUnrefineThresh
   logical, protected :: forceIniRay
   logical, protected :: zeroghosts
   logical, protected :: renewinputrays
