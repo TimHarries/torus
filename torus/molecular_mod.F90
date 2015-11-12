@@ -362,7 +362,7 @@ module molecular_mod
    recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
 
      use grid_mod, only: freeGrid
-     use inputs_mod, only : vturb, restart, isinLTE, amrtolerance,&
+     use inputs_mod, only : vturb, restart, isinLTE, &
           setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
           molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics !, addnewmoldata
 #ifdef MPI
@@ -860,7 +860,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use inputs_mod, only : blockhandout, tolerance, &
-          usedust, amr1d, amr3d, plotlevels,  amrtolerance, &
+          usedust, amr1d, amr3d, plotlevels, &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
           forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
      use dust_mod
@@ -3060,7 +3060,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
            if(iv .eq. 1) then
               print *, "checking grid"
-              call checkamrgrid(grid, .false.)	
+              call checkamrgrid(grid, .false.)
               call writeinfo("Filling Octal parameters for first time",TRIVIAL)
               if (.not. h21cm ) call deallocateUnused(grid,grid%octreeroot,everything = .true.)
               call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule)

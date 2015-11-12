@@ -987,12 +987,12 @@ contains
     endif
 #endif
 
-	 i=0
-	 print *, "unrefine time", lineUnrefineThresh
+    i=0
+    print *, "unrefine time", lineUnrefineThresh
 !         if (lineUnrefineThresh>1e-60) then
              print *, "Unrefining cells for line calculation"
              call lineUnrefineCells(grid%octreeRoot, grid, i, lineUnrefineThresh)         
-	     print *, "cells unrefined", i
+             print *, "cells unrefined", i
 !         end if
 
     if(modelwashydro) then
@@ -4199,12 +4199,12 @@ contains
          endif
 
          call writeInfo("Unrefining cells for molecular line emission",FORINFO)
-	 i=0
-	 print *, "unrefine time", lineUnrefineThresh
+         i=0
+         print *, "unrefine time", lineUnrefineThresh
 !         if (lineUnrefineThresh>0) then
              print *, "Unrefining cells for line calculation"
-             call lineUnrefineCells(grid%octreeRoot, grid, i, 1.0d-19)         
-	     print *, "cells unrefined", i
+             call lineUnrefineCells(grid%octreeRoot, grid, i, 1.0d-19)
+             print *, "cells unrefined", i
 !         end if
 
          if(modelwashydro) then
@@ -5453,21 +5453,15 @@ contains
     use inputs_mod, only : minDepthAMR, lineUnrefineThresh
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child !, neighbourOctal
-    integer :: subcell, i !, neighbourSubcell
+    type(octal), pointer  :: child
+    integer :: subcell, i
     logical :: unrefine
     integer :: nc
     integer, intent(inout) :: nUnrefine
     real(double) :: rho(8), fac, limit
-    logical :: refinedLastTime, ghostCell !, split
-    real(double) :: r !, maxGradient
-    real(double) :: dv, splitlimit
-    integer :: isource !, ndir
+    logical :: refinedLastTime, ghostCell
+    real(double) :: splitlimit
     logical :: debug, cornerCell
-!    real(double) :: x, xnext, qnext, qViscosity(3,3) , q , flux, phi, phigas, pressure, px, py, pz
-!    real(double) rhot, rhoet, rhout, rhovt, rhowt, rm1, um1, pm1
-!    integer :: nd
-    type(VECTOR) ::  centre !, dirvec(6), locator
 
     debug = .false.
 !    limit  = 5.0d-3

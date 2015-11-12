@@ -3557,7 +3557,7 @@ CONTAINS
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
     use magnetic_mod, only : safierfits
 ! Currently commented out. Reinstate if required. 
-    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+!    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
