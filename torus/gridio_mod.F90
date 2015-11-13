@@ -4158,7 +4158,7 @@ contains
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
          logical :: fileFormatted
-         integer :: iThread, i
+         integer :: iThread
          integer :: nOctals, nVoxels
          character(len=80) :: message
          logical, save :: firstTime = .true.
