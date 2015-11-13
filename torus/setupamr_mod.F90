@@ -114,7 +114,7 @@ contains
          (zminusbound==6)) call setupInflowParameters()
 
 
-    if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
+readgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
        grid%splitOverMPI = splitOverMPI
        call readAMRgrid(gridInputfilename, .false., grid)
        grid%splitOverMPI = splitOverMPI
@@ -393,7 +393,7 @@ contains
         call finishGrid(grid%octreeRoot, grid, romData=romData)
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
-        if(gridShuffle) then
+gridshuffle: if(gridShuffle) then
            call writeInfo("Shuffling the grid for more accurate initial configuration...", TRIVIAL)
            nTimes = maxDepthAMR - minDepthAMR + 2
            if(logspacegrid) nTimes = nmag*10
@@ -430,7 +430,7 @@ contains
 #endif
 #endif
 
-     end if
+        end if gridshuffle
         
 
 
@@ -578,7 +578,8 @@ contains
 
        call fixParentPointers(grid%octreeRoot)
        call postSetupChecks(grid)
-    endif
+    endif readgrid
+
 #ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
