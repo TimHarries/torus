@@ -2736,7 +2736,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       integer :: subpixels
       integer :: ipixels, jpixels
 
-      print *, "making image"
 ! pixelcorner initialised to TOPLEFT      
 ! Previous method: only works for cubes with equal sized spatial axes
 !      dnpixels    = dble(npixels) 
@@ -2752,7 +2751,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       else
          subpixels = 0
       endif
-      print *, "imagelooop"
       do jpixels = 1, cube%ny ! raster over image
          pixelcorner = pixelcorner - imagebasis(2) 
 !$OMP PARALLEL default(shared), private(ipixels, thisPixelcorner)
@@ -2765,8 +2763,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !$OMP END DO
 !$OMP END PARALLEL
       enddo
-
-    print *, "image made"
     end subroutine makeImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
@@ -3059,7 +3055,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            endif
 
            if(iv .eq. 1) then
-              print *, "checking grid"
               call checkamrgrid(grid, .false.)
               call writeinfo("Filling Octal parameters for first time",TRIVIAL)
               if (.not. h21cm ) call deallocateUnused(grid,grid%octreeroot,everything = .true.)
@@ -3923,6 +3918,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !           endif
            call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
            call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
+
            thisOctal%molcellparam(7,subcell) = kappaAbs * 1.d-10
            if(associated(thisoctal%temperaturedust)) then
               thisOctal%molcellparam(8,subcell) = thisOctal%molcellparam(7,subcell) * bnu(cspeed/(lambda * 1d-8), &

@@ -379,7 +379,7 @@ contains
       else
          open(unit=lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus, iostat=returnVal)
          if (returnVal /= 0) call writeWarning("Error opening file with position "//trim(positionStatus))
-      endif
+      endif !"
 
     end subroutine openUncompressedFile
 
@@ -988,12 +988,14 @@ contains
 #endif
 
     i=0
-    print *, "unrefine time", lineUnrefineThresh
-!         if (lineUnrefineThresh>1e-60) then
+         if (lineUnrefineThresh>1d-60) then
              print *, "Unrefining cells for line calculation"
-             call lineUnrefineCells(grid%octreeRoot, grid, i, lineUnrefineThresh)         
-             print *, "cells unrefined", i
-!         end if
+             call lineUnrefineCells(grid%octreeRoot,grid, i,1d-1, .true.)!remove cells with all densities < thesh and (max-min)/mean <0.1
+             print *, "cells unrefined (first pass)", i
+             i=0
+             call lineUnrefineCells(grid%octreeRoot,grid, i,1d-2,.false.)!remove cells with any density which should be refined anyway
+             print *, "cells unrefined (second pass)", i
+         end if
 
     if(modelwashydro) then
        if(firstTime) then
@@ -4152,7 +4154,7 @@ contains
 
 
        subroutine readGridMPI(grid, gridfilename, fileFormatted)
-         use inputs_mod, only : splitOverMPI, modelwashydro, lineUnrefineThresh
+         use inputs_mod, only : splitOverMPI, modelwashydro
          type(GRIDTYPE) :: grid
          character(len=*) :: gridFilename
          logical :: fileFormatted
@@ -4197,15 +4199,6 @@ contains
             call readAmrGridSingle(gridfilename, fileFormatted, grid)
 
          endif
-
-         call writeInfo("Unrefining cells for molecular line emission",FORINFO)
-         i=0
-         print *, "unrefine time", lineUnrefineThresh
-!         if (lineUnrefineThresh>0) then
-             print *, "Unrefining cells for line calculation"
-             call lineUnrefineCells(grid%octreeRoot, grid, i, 1.0d-19)
-             print *, "cells unrefined", i
-!         end if
 
          if(modelwashydro) then
             if(firstTime) then
@@ -5449,13 +5442,13 @@ contains
     endif
   end function maxminOverMean
 
-  recursive subroutine lineUnrefineCells(thisOctal, grid, nUnrefine, splitLimit)
+  recursive subroutine lineUnrefineCells(thisOctal, grid, nUnrefine, splitLimit, useThresh)
     use inputs_mod, only : minDepthAMR, lineUnrefineThresh
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell, i
-    logical :: unrefine
+    logical :: unrefine, useThresh
     integer :: nc
     integer, intent(inout) :: nUnrefine
     real(double) :: rho(8), fac, limit
@@ -5464,7 +5457,6 @@ contains
     logical :: debug, cornerCell
 
     debug = .false.
-!    limit  = 5.0d-3
     limit = splitlimit
     unrefine = .true.
     refinedLastTime = .false.
@@ -5476,7 +5468,7 @@ contains
        i = 1
        DO while(i <= thisOctal%nChildren)
           child => thisOctal%child(i)
-          CALL lineUnrefineCells(child, grid, nUnrefine, splitlimit)
+          CALL lineUnrefineCells(child, grid, nUnrefine, splitlimit, useThresh)
           i = i + 1
        END DO
        goto 666
@@ -5487,8 +5479,8 @@ contains
     do subcell = 1, thisOctal%maxChildren
        nc=nc+1
        rho(nc) = max(thisOctal%rho(subcell),1.d-30)
-       if (thisOctal%ghostCell(subcell)) ghostCell=.true.
-       if (thisOctal%corner(subcell)) cornerCell=.true.
+       if (associated(thisOctal%ghostCell).and.thisOctal%ghostCell(subcell)) ghostCell=.true.
+       if (associated(thisOctal%corner).and.thisOctal%corner(subcell)) cornerCell=.true.
      enddo
  
 
@@ -5499,7 +5491,7 @@ contains
        unrefine = .true.
 
        fac = MaxMinOverMean(rho,nc)
-       if (fac > 1.0d-1) then
+       if (useThresh .and. fac > splitLimit) then
           unrefine = .false.
        endif
 
