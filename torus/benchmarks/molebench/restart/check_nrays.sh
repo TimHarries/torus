@@ -16,7 +16,7 @@ nrays_used=`grep "Maximum fractional change this iteration" $1 | head -1 | awk '
 
 if [[ ${nrays_saved} -eq ${nrays_used} ]]; then
     echo "Number of rays equal to saved value"
-    echo "TORUS: test passed"
+    echo "TORUS: Test successful"
 else
     echo "Number of rays NOT equal to saved value"
     echo "TORUS: test failed"

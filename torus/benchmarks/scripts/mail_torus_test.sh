@@ -139,7 +139,7 @@ fi
 num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_ompiosx-openmp/benchmarks/molebench/restart/check_log_ompiosx_moleRestart.txt`
 num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_gfortran/benchmarks/molebench/restart/check_log_gfortran_moleRestart.txt`
 num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_ompiosx/benchmarks/molebench/restart/check_log_ompiosx_moleRestart.txt`
-if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]]; then
+if [[ ${num_success} -eq 3 && ${num_success2} -eq 3 && ${num_success3} -eq 3 ]]; then
     echo "Molecular restart successful." >> header
 else
     echo "!! Molecular restart FAILED !!" >> header
