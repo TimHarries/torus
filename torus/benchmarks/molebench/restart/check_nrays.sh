@@ -10,7 +10,10 @@ fi
 
 echo "Checking number of rays against saved value"
 
-nrays_saved=`head -1 restart.dat  | awk '{print $2}'`
+# Take the number of saved rays from the restart file in the original run directory
+# testDump_restart.dat is written at the end of the first non-fixed ray iteration if
+# the  geometry is molebench
+nrays_saved=`head -1 ../testDump_restart.dat  | awk '{print $2}'`
 nrays_used=`grep "Maximum fractional change this iteration" $1 | head -1 | awk '{print $14}'`
 
 if [[ ${nrays_saved} -eq ${nrays_used} ]]; then
