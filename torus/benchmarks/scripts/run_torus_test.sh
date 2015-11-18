@@ -375,7 +375,7 @@ for sys in ${SYS_TO_TEST}; do
     export THIS_BENCH=moleRestart
     run_molecularRestart
     check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
-    ./check_nrays.sh >> check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
+    ./check_nrays.sh run_log_${SYSTEM}_${THIS_BENCH}.txt >> check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
     check_completion
     echo

@@ -8,7 +8,6 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-echo
 echo "Checking number of rays against saved value"
 
 nrays_saved=`head -1 restart.dat  | awk '{print $2}'`
@@ -18,6 +17,6 @@ if [[ ${nrays_saved} -eq ${nrays_used} ]]; then
     echo "Number of rays equal to saved value"
     echo "TORUS: Test successful"
 else
-    echo "Number of rays NOT equal to saved value"
+    echo "Number of rays NOT equal to saved value: ${nrays_used} vs. ${nrays_saved}"
     echo "TORUS: test failed"
 fi
