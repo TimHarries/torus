@@ -18,6 +18,7 @@ open RUNLOG, "<$ARGV[0]";
 my @line;
 my $mass;
 my $fracDiff;
+my $numOK=0;
 while(<RUNLOG>){
 
 # Check gas mass
@@ -29,7 +30,8 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $tolerance ){
-      print "Gas mass agrees within tolerance of $tolerance\n\n"
+	print "Gas mass agrees within tolerance of $tolerance\n\n";
+	$numOK=$numOK+1
     } else
       {
 	print "TORUS: test failed (gas mass)\n";
@@ -45,7 +47,8 @@ while(<RUNLOG>){
       $fracDiff= ($mass - $massSource) / $massSource;
       print "Fractional difference = $fracDiff \n";
       if ( abs($fracDiff) < $toleranceSource ){
-      print "Point mass agrees within tolerance of $toleranceSource\n\n"
+	  print "Point mass agrees within tolerance of $toleranceSource\n\n";
+	  $numOK=$numOK+1
     } else
       {
 	print "TORUS: test failed (point source)\n";
@@ -54,7 +57,12 @@ while(<RUNLOG>){
     }
 }
 
-  print "TORUS: Test successful\n";
+if ( $numOK == 2 ){
+    print "TORUS: Test successful\n";
+} else
+{
+    print "TORUS: Test failed. $numOK passed out of 2\n";   
+}
 
 close RUNLOG;
 
