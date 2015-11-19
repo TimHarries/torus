@@ -375,8 +375,8 @@ contains
 
     character(LEN=*), intent(in)  :: rootfilename
     character(LEN=80) :: filename
-    character(len=20) :: word(40), unit(40)
-    integer :: nword, nunit, status
+    character(len=20) :: word(40), unit(40), pType(40)
+    integer :: nword, nunit, npType, status
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
     real(double) :: udist, umass, utime,  time, uvel, utemp
@@ -387,10 +387,12 @@ contains
     real(double) :: junkArray(50)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
-    character(len=500) :: namestring, unitString
-    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT
+    character(len=500) :: namestring, unitString, pTypeString
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType
     logical :: haveUandUoverT
 
+    integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
+    
 !
 ! For SPH simulations with chemistry
 !
@@ -401,8 +403,6 @@ contains
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
 
-    nghost = 0
-    nstar = 0
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
     read(LUIN,*) 
@@ -410,10 +410,70 @@ contains
     read(LUIN,*)
     read(LUIN,*) junkchar, time, utime
     read(LUIN,*)
-    read(LUIN,*)
-    read(LUIN,*) junkchar,npart, nptmass, nunknown
-    npart = npart + nunknown
-    nunknown = 0 
+
+!
+! Read in particle types and number of each type
+!
+
+! Read in particle types
+    read(LUIN,'(a)') pTypeString
+! Discard the first 8 characters ("# npart:"). 
+    pTypeString = pTypeString(9:)
+    call splitintoWords(pTypeString, pType, npType, wordLen=13, adjL=.false.)
+    
+! Read in number of particles
+    allocate(pNumArray(npType))
+    read(LUIN,*) junkchar, pNumArray(:)
+
+    write(*,*) "Particle types: "
+    do i = 1, npType
+       write(*,*) trim(pType(i)),": ",pNumArray(i)
+    enddo
+
+! Get the number of each type of particle. The names are from an sphNG ascii dump and may be different if
+! the dump came from a different code.
+
+    ! itype: 1
+    ipType = indexWord("gas",pType,npType)
+    if (ipType/=0) then
+       npart = pNumArray(ipType)
+    else
+       npart = 0
+    endif
+
+    ! itype: 2
+    ipType = indexWord("ghost",pType,npType)
+    if (ipType/=0) then
+       nghost = pNumArray(ipType)
+    else
+       nghost = 0
+    endif
+
+    ! itype: 3
+    ipType = indexWord("sink",pType,npType)
+    if (ipType/=0) then
+       nptmass = pNumArray(ipType)
+    else
+       nptmass = 0
+    endif
+
+    ! itype: 4
+    ipType = indexWord("star",pType,npType)
+    if (ipType/=0) then
+       nstar = pNumArray(ipType)
+    else
+       nstar = 0
+    end if
+
+    ! itype: 5
+    ipType = indexWord("unknown/dead",pType,npType)
+    if (ipType/=0) then
+       nunknown = pNumArray(ipType)
+    else
+       nunknown = 0
+    endif
+
+! Read in units    
     read(LUIN,*)
     read(LUIN,'(a)') unitString
     unitString = unitstring(2:)
@@ -427,8 +487,6 @@ contains
     do i = 1, nWord
        write(*,*) trim(word(i)),": ",trim(unit(i))
     enddo
-
-
 
     iitype = indexWord("itype",word,nWord)
 
@@ -3496,20 +3554,41 @@ contains
     
   end function SmoothingKernel3d
   
- subroutine splitIntoWords(longString, word, nWord)
+ subroutine splitIntoWords(longString, word, nWord, wordLen, adjL)
    character(len=20) :: word(:)
-   integer :: nWord
+   integer :: nWord, thisLen
    character(len=*) :: longString
    character(len=500) :: tempString
-   logical :: stillSplitting
+   logical :: stillSplitting, doAdjL
+   integer, optional, intent(in) :: wordLen
+   logical, optional, intent(in) :: adjL
 
-   tempString = ADJUSTL(longString)
+! Set the word length. The default is 16 characters. 
+   if (present(wordLen)) then
+      thisLen = wordLen
+   else
+      thisLen = 16
+   end if
+
+! Decide whether to left adjust the string we have been given. Default is to left adjust.
+   if (present(adjL)) then
+      doAdjL=adjL
+   else
+      doAdjL=.true.
+   endif
+   
+   if (doAdjL) then
+      tempString = ADJUSTL(longString)
+   else
+      tempString = longString
+   endif
+   
    nWord = 0
    stillSplitting = .true.
    do while(stillSplitting)
       nWord = nWord + 1
-      word(nWord) = tempString(1:16)
-      tempString = tempString(17:)
+      word(nWord) = tempString(1:thisLen)
+      tempString = tempString(thisLen+1:)
       if (len(trim(tempString)) == 0) stillSplitting = .false.
    end do
  end subroutine splitIntoWords
@@ -3521,7 +3600,7 @@ contains
    
    indexWord = 0 
    do i = 1, nWord
-      if (inputWord == wordArray(i)) then
+      if (inputWord == adjustl(wordArray(i))) then
          indexWord = i
          exit
       endif
