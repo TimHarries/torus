@@ -383,7 +383,7 @@ contains
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h, h2ratio, gmw
     integer :: itype ! splash particle type, different convention to SPHNG 
     integer :: ipart, icount, iptmass, igas, idead, i
-    integer :: nptmass, nghost, nstar, nunknown, nlines
+    integer :: nptmass, nstar, nother, nlines
     real(double) :: junkArray(50)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
@@ -430,10 +430,13 @@ contains
        write(*,*) trim(pType(i)),": ",pNumArray(i)
     enddo
 
-! Get the number of each type of particle. The names are from an sphNG ascii dump and may be different if
-! the dump came from a different code.
-
-    ! itype: 1
+! Get the number of each type of particle. The names depend on which code the dump came from (see the read_data_*.f90 files
+! in the splash source code). However there are only three cases we care about here:
+! 1. Gas particles
+! 2. Particles which will be treated as sources (sink/stars)
+! 3. Everything else (ghost, dead/unknown). These will be discarded
+    
+    ! itype: 1 - gas particles
     ipType = indexWord("gas",pType,npType)
     if (ipType/=0) then
        npart = pNumArray(ipType)
@@ -441,15 +444,7 @@ contains
        npart = 0
     endif
 
-    ! itype: 2
-    ipType = indexWord("ghost",pType,npType)
-    if (ipType/=0) then
-       nghost = pNumArray(ipType)
-    else
-       nghost = 0
-    endif
-
-    ! itype: 3
+    ! itype: 3 - sinks, treat as sources
     ipType = indexWord("sink",pType,npType)
     if (ipType/=0) then
        nptmass = pNumArray(ipType)
@@ -457,7 +452,7 @@ contains
        nptmass = 0
     endif
 
-    ! itype: 4
+    ! itype: 4 - stars, treat as sources
     ipType = indexWord("star",pType,npType)
     if (ipType/=0) then
        nstar = pNumArray(ipType)
@@ -465,13 +460,8 @@ contains
        nstar = 0
     end if
 
-    ! itype: 5
-    ipType = indexWord("unknown/dead",pType,npType)
-    if (ipType/=0) then
-       nunknown = pNumArray(ipType)
-    else
-       nunknown = 0
-    endif
+    ! Everything else is discarded
+    nother=SUM(pNumArray(:))-npart-nptmass-nstar
 
 ! Read in units    
     read(LUIN,*)
@@ -602,7 +592,7 @@ contains
     sphdata%totalHImass  = 0.d0
     sphdata%totalMolmass = 0.d0
 
-    nlines = npart + nghost + nptmass + nstar + nunknown ! nlines now equal to no. lines - 12 = sum of particles dead or alive
+    nlines = npart + nptmass + nstar + nother ! nlines now equal to no. lines - 12 = sum of particles dead or alive
 
     write(message,*) "Reading SPH data from ASCII...."
     call writeinfo(message, TRIVIAL)
@@ -635,7 +625,12 @@ part_loop: do ipart=1, nlines
        rhon = junkArray(irho) * udist**3/uMass
        h = junkArray(ih)
        if (iitype == 0) then
-          itype = 1
+! If we don't have itype then treat as a gas particle provided the smoothing length is valid
+          if (h>0.0) then
+             itype = 1
+          else
+             itype = 5
+          endif
        else
           itype = int(junkArray(iitype))
        endif
@@ -740,7 +735,7 @@ part_loop: do ipart=1, nlines
  write(message,*) "Read ",icount, " lines"
  call writeinfo(message, TRIVIAL)
 
- write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are dead"
+ write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " were discarded"
  call writeinfo(message, TRIVIAL)
 
  write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass * umass/mSol, " Msol"
@@ -757,6 +752,11 @@ part_loop: do ipart=1, nlines
     call writeWarning(message)
  endif
 
+ if (idead /= nother ) then
+    write(message,*) "Expected to discard", nother, " particles but discarded ", idead
+    call writeWarning(message)
+ endif
+ 
  close(LUIN)
    
  contains
