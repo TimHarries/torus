@@ -912,7 +912,7 @@ contains
 
 
   subroutine readAMRgrid(rootfilename,fileFormatted,grid)
-    use inputs_mod, only: gridUsesAMR, iModel, modelwashydro, lineUnrefineThresh
+    use inputs_mod, only: gridUsesAMR, iModel, modelwashydro, lineUnrefineThresh, molecularPhysics
     use utils_mod, only : findMultiFilename
     type(romanova) :: romdata
     character(len=*) :: rootfilename
@@ -987,16 +987,17 @@ contains
     endif
 #endif
 
-    i=0
-         if (lineUnrefineThresh>1d-60) then
-             print *, "Unrefining cells for line calculation"
-             call lineUnrefineCells(grid%octreeRoot,grid, i,1d-1, .true.)!remove cells with all densities < thesh and (max-min)/mean <0.1
-             print *, "cells unrefined (first pass)", i
-             i=0
-             call lineUnrefineCells(grid%octreeRoot,grid, i,1d-2,.false.)!remove cells with any density which should be refined anyway
-             print *, "cells unrefined (second pass)", i
-         end if
-
+    if (molecularPhysics) then
+       i=0
+       if (lineUnrefineThresh>1d-60) then
+          print *, "Unrefining cells for line calculation"
+          call lineUnrefineCells(grid%octreeRoot,grid, i,1d-1, .true.)!remove cells with all densities < thesh and (max-min)/mean <0.1
+          print *, "cells unrefined (first pass)", i
+          i=0
+          call lineUnrefineCells(grid%octreeRoot,grid, i,1d-2,.false.)!remove cells with any density which should be refined anyway
+          print *, "cells unrefined (second pass)", i
+       end if
+    endif
     if(modelwashydro) then
        if(firstTime) then
           write(message,'(a,i3,a)') "Adding cell corner values"
