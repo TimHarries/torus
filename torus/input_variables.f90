@@ -147,6 +147,7 @@
   logical :: loadBalancing            ! Use load balancing MPI methods
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
+  real(double) :: gravTol             !Tolerance for gravity solver
   logical :: redoGravOnRead           !Resolve self-gravity on readin
   logical :: simpleGrav               !Do self gravity calculation
   logical :: advectHydro              ! perform advection
@@ -157,6 +158,7 @@
   logical :: dumpRadial               ! write a text radial cut each dump
   logical :: radiationPressure        ! use radiation pressure terms
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
+  integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
   logical :: forcegascourant          !use the gas condition only
   real(double) :: rhoFloor            !min density in grid
   real(double) :: mu                  !mean molecular weight

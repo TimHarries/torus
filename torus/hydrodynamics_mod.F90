@@ -9764,6 +9764,11 @@ end subroutine sumFluxes
 
           call zeroSourcepotential(grid%octreeRoot)
           call sumGasStarGravity(grid%octreeRoot)
+
+
+          if (globalnSource > 0) then
+             call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
+          endif
           if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
        endif
 
@@ -16388,7 +16393,7 @@ end subroutine refineGridGeneric2
   end subroutine simpleGravity
 
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid, onlyChanged)
-    use inputs_mod, only :  maxDepthAMR, dirichlet, simpleGrav
+    use inputs_mod, only :  maxDepthAMR, dirichlet, simpleGrav, gravtol
     use mpi
     type(gridtype) :: grid
     logical, optional :: multigrid, onlyChanged
@@ -16404,13 +16409,13 @@ end subroutine refineGridGeneric2
 
 
     if (amr2d) then
-       tol = 1.d-5
-       tol2 = 1.d-5
+       tol = gravtol
+       tol2 = gravtol
     endif
 
     if (amr3d) then
-       tol = 1.d-6
-       tol2 = 1.d-6
+       tol = gravtol
+       tol2 = gravtol
     endif
 
     doOnlyChanged = .false.

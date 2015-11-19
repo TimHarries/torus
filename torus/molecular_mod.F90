@@ -3920,6 +3920,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
 
            thisOctal%molcellparam(7,subcell) = kappaAbs * 1.d-10
+
            if(associated(thisoctal%temperaturedust)) then
               thisOctal%molcellparam(8,subcell) = thisOctal%molcellparam(7,subcell) * bnu(cspeed/(lambda * 1d-8), &
                                                   dble(thisOctal%temperaturedust(subcell)))

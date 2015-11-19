@@ -91,7 +91,7 @@ contains
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
-         mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead
+         mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -127,7 +127,7 @@ contains
     integer :: iterStack(3), itemp
     integer :: optID
     logical, save :: firstWN=.true.
-    integer :: niter
+    integer :: niter, nHydroCounter
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs
 
 
@@ -666,6 +666,7 @@ contains
 
 !    !Thaw - trace courant time history                                                                                                                              
 !    open (444, file="tcHistory.dat", status="unknown")
+    nHydroCounter = 0
 
     do while(grid%currentTime < tEnd)
        call MPI_BCAST(grid%currentTime, 1, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
@@ -888,9 +889,11 @@ contains
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
                 if(.not. xrayonly) then
-                   call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
-                        lamArray, nPhotoIter, loopLimitTime, &
-                        looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie) 
+                   if (mod(nHydroCounter,nHydroPerPhoto) == 0) then
+                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
+                           lamArray, nPhotoIter, loopLimitTime, &
+                           looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie) 
+                   endif
                 endif
 
                 if (isoThermal) then
@@ -946,7 +949,7 @@ contains
 
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
-
+       nHydroCounter = nHydroCounter + 1
        currentlyDoingHydroStep = .true.
 
 

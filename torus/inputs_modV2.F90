@@ -433,8 +433,16 @@ contains
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+
+    call getInteger("nhydroperphoto", nHydroPerPhoto, cLine, fLine, nLines, &
+         "Number of hydro steps per photoionisation loop: ","(a,i4,a)", 1, ok, .false.)
+
+
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getDouble("gravtol", gravTol, 1.d0, cLine, fLine, nLines, &
+            "Tolerance for gravity solver: ", "(a,e12.5,1x,a)", 1.d-6, ok, .false.)
 
     call getLogical("redogravonread", redoGravOnRead, cLine, fLine, nLines, &
          "Re-solve self-gravity on read: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2535,6 +2543,11 @@ contains
 
        call getLogical("useDust", useDust, cLine, fLine, nLines, &
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if (useDust.and.(.not.dustPhysics)) then
+          call writeFatal("useDust specified as true but dustphysics is F")
+          stop
+       endif
 
        if(doCOchemistry) then
 
