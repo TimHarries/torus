@@ -93,6 +93,8 @@ cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
 mpirun -np $1 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
 mv tune.dat tune_${THIS_BENCH}.txt
+# The check_completion function expects the run log to be tagged with the SYSTEM
+ln -s run_log_${THIS_BENCH}.txt run_log_${SYSTEM}_${THIS_BENCH}.txt
 }
 
 setup_sphbench()
@@ -287,6 +289,7 @@ for sys in ${SYS_TO_TEST}; do
 	    run_dom_decomp 3
 	    check_hydro  > check_log_${SYSTEM}_hydro.txt 2>&1 
 	    cat check_log_${SYSTEM}_hydro.txt
+	    check_completion
 	    echo ;;
 	*) echo "Hydro benchmark does not run on this system. Skipping"
 	    echo ;;
@@ -299,6 +302,7 @@ for sys in ${SYS_TO_TEST}; do
 	    run_dom_decomp 9
 	    check_hII > check_log_${SYSTEM}_hII_MPI.txt 2>&1 
 	    cat check_log_${SYSTEM}_hII_MPI.txt
+	    check_completion
 	    echo ;;
 	*) echo "Domain decomposed HII region does not run on this system. Skipping"
 	    echo ;;
@@ -311,6 +315,7 @@ for sys in ${SYS_TO_TEST}; do
 	    run_dom_decomp 9
 	    check_image > check_log_${SYSTEM}_image.txt 2>&1 
 	    cat check_log_${SYSTEM}_image.txt
+            check_completion
 	    echo ;;
 	*) echo "Imaging benchmark does not run on this system. Skipping"
 	    echo ;;
@@ -322,7 +327,8 @@ for sys in ${SYS_TO_TEST}; do
 	    export THIS_BENCH=gravtest
 	    run_dom_decomp 9
 	    check_it > check_log_${SYSTEM}_gravtest.txt 2>&1 
-	    cat check_log_${SYSTEM}_gravtest.txt
+	    tail check_log_${SYSTEM}_gravtest.txt
+	    check_completion
 	    echo ;;
 	*) echo "Gravity solver test does not run on this system. Skipping"
 	    echo ;;
@@ -334,7 +340,8 @@ for sys in ${SYS_TO_TEST}; do
 	    export THIS_BENCH=gravtest_2d
 	    run_dom_decomp 5
 	    check_it > check_log_${SYSTEM}_gravtest_2d.txt 2>&1 
-	    cat check_log_${SYSTEM}_gravtest_2d.txt
+	    tail check_log_${SYSTEM}_gravtest_2d.txt
+	    check_completion
 	    echo ;;
 	*) echo "2D Gravity solver test does not run on this system. Skipping"
 	    echo ;;
@@ -346,6 +353,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     check_it > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_completion
     echo
 
 # Run 2D disc
@@ -354,6 +362,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench 
     check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_completion
     echo
 
     echo "Running HII region benchmark"
@@ -361,6 +370,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     check_hII > check_log_${SYSTEM}_hII.txt 2>&1 
     cat check_log_${SYSTEM}_hII.txt
+    check_completion
     echo
 
     echo "Running molecular benchmark"
@@ -386,6 +396,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     ./checkSphToGrid.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
+    check_completion
     echo
 
     echo "Running SPH to grid test (binary dump with chemistry)"
@@ -395,6 +406,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     ./checkSphToGridChem.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
+    check_completion
     echo
 
     echo "Running restart test"
@@ -404,6 +416,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_completion
     echo
 
     echo "Running angular imaging test"
@@ -411,6 +424,7 @@ for sys in ${SYS_TO_TEST}; do
     run_bench
     check_angImg > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_completion
     echo
 
 # Don't run in the daily test
@@ -420,6 +434,7 @@ for sys in ${SYS_TO_TEST}; do
 	run_bench
 	check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
 	cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+	check_completion
 	echo 
     fi
 
@@ -429,11 +444,11 @@ done
 build_only_tests()
 {
 
-echo 
-echo "Running build-only tests"
-echo 
-
 for sys in ${BUILD_ONLY}; do
+
+echo
+echo "Running build-only test for ${sys}"
+echo
 
 # Details of how to build each system are set here
     export USEGCOV=no

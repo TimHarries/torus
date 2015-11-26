@@ -27,7 +27,7 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $tolerance ){
-      print "HI mass agrees within tolerance of $tolerance\n\n"
+      print "HI mass agrees within tolerance of $tolerance\n"
     } else
       {
 	print "TORUS: test failed (HI mass)\n";
@@ -44,7 +44,7 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $COmassRequired) / $COmassRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $COtolerance ){
-	print "CO mass agrees within tolerance of $tolerance\n\n";
+	print "CO mass agrees within tolerance of $tolerance\n";
 	print "TORUS: Test successful\n";
     } else
       {

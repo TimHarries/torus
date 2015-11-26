@@ -30,7 +30,7 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $tolerance ){
-	print "Gas mass agrees within tolerance of $tolerance\n\n";
+	print "Gas mass agrees within tolerance of $tolerance\n";
 	$numOK=$numOK+1
     } else
       {
@@ -47,7 +47,7 @@ while(<RUNLOG>){
       $fracDiff= ($mass - $massSource) / $massSource;
       print "Fractional difference = $fracDiff \n";
       if ( abs($fracDiff) < $toleranceSource ){
-	  print "Point mass agrees within tolerance of $toleranceSource\n\n";
+	  print "Point mass agrees within tolerance of $toleranceSource\n";
 	  $numOK=$numOK+1
     } else
       {
