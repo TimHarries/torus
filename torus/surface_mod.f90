@@ -42,7 +42,7 @@ module surface_mod
   end type ELEMENTTYPE
 
   type SURFACETYPE
-     integer :: nElements
+     integer :: nElements=0
      integer :: ntheta
      real(double) :: surfaceMdot, trueMdot
      real :: radius ! 1.e10 cm
