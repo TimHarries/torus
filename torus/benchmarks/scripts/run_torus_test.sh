@@ -59,7 +59,7 @@ export TORUS_JOB_DIR=./
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 
 case ${SYSTEM} in
-    ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    ompiosx) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
     gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
@@ -76,7 +76,7 @@ log_file=run_log_${SYSTEM}_${THIS_BENCH}.txt
 export TORUS_JOB_DIR=./
 
 case ${SYSTEM} in
-    ompiosx|zen) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    ompiosx) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
     gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised SYSTEM type. Skipping this test.";;
 esac
@@ -193,28 +193,38 @@ check_completion()
 
 prepare_run()
 {
+
+echo "Working directory is ${TEST_DIR}"
+
 if [[ -e ${TEST_DIR} ]]; then
     if [[ -e ${TEST_DIR}/lock ]]; then
-	echo "Found lock file. Aborting"
+	echo "Found lock file ${TEST_DIR}/lock. Aborting"
 	exit 1
     fi
-    if [[ ${CLOBBEROK} == yes ]]; then
-	echo "Removing old ${TEST_DIR}"
-	rm -rf ${TEST_DIR}
+    echo "Removing old ${TEST_DIR}"
+    rm -rf ${TEST_DIR}
+fi
+
+if [[ ${TORUS_WORKING_COPY} == none ]]; then 
+    mkdir -p ${TEST_DIR}
+    cd ${TEST_DIR}
+    touch lock
+    echo Checking out torus from SVN archive using: ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH}
+    /usr/bin/svn checkout ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH} torus > svn_log.txt 2>&1 
+    grep "Checked out revision" svn_log.txt
+else
+    if [[ -e ${TORUS_WORKING_COPY}/torus/torusMainV2.F90 ]]; then
+	echo "Taking source code from working copy in ${TORUS_WORKING_COPY}"
+	mkdir -p ${TEST_DIR}
+	cd ${TEST_DIR}
+	touch lock
+	ln -s ${TORUS_WORKING_COPY}/torus . 
     else
-	echo "${TEST_DIR} already exists. Aborting"
+	echo "Did not find torusMainV2.F90 in ${TORUS_WORKING_COPY}/torus "
+	echo "This doesn't look like a working copy. Aborting ..."
 	exit 1
     fi
 fi
-
-echo "Working directory is ${TEST_DIR}"
-mkdir -p ${TEST_DIR}
-cd ${TEST_DIR}
-touch lock
-
-echo Checking out torus from SVN archive using: ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH}
-/usr/bin/svn checkout ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH} torus > svn_log.txt 2>&1 
-grep "Checked out revision" svn_log.txt
 }
 
 run_torus_test_suite()
@@ -240,10 +250,6 @@ for sys in ${SYS_TO_TEST}; do
 	export SYSTEM=gfortran
 	export USEOPENMP=yes
 	export OMP_NUM_THREADS=8
-    elif [[ ${sys} == "zen" ]]; then
-	export SYSTEM=zen
-	export USEOPENMP=no
-	export NUM_MPI_PROC=8
     else
 	echo "${sys} not recognised. Aborting."
 	exit 1
@@ -284,7 +290,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Run hydro benchmark
     case ${sys} in
-	ompiosx|zen)  echo "Running hydro benchmark"
+	ompiosx)  echo "Running hydro benchmark"
 	    export THIS_BENCH=hydro
 	    run_dom_decomp 3
 	    check_hydro  > check_log_${SYSTEM}_hydro.txt 2>&1 
@@ -297,7 +303,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Domain decomposed Lexington benchmark
     case ${sys} in
-	ompiosx|zen)  echo "Running domain decomposed HII region benchmark"
+	ompiosx)  echo "Running domain decomposed HII region benchmark"
 	    export THIS_BENCH=HII_regionMPI
 	    run_dom_decomp 9
 	    check_hII > check_log_${SYSTEM}_hII_MPI.txt 2>&1 
@@ -310,7 +316,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Imaging test
     case ${sys} in
-	ompiosx|zen)  echo "Running imaging benchmark"
+	ompiosx)  echo "Running imaging benchmark"
 	    export THIS_BENCH=cylinder_image_test
 	    run_dom_decomp 9
 	    check_image > check_log_${SYSTEM}_image.txt 2>&1 
@@ -323,7 +329,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Gravity solver test
     case ${sys} in
-	ompiosx|zen)  echo "Running 3D gravity solver test"
+	ompiosx)  echo "Running 3D gravity solver test"
 	    export THIS_BENCH=gravtest
 	    run_dom_decomp 9
 	    check_it > check_log_${SYSTEM}_gravtest.txt 2>&1 
@@ -336,7 +342,7 @@ for sys in ${SYS_TO_TEST}; do
 
 # Gravity solver test in 2D
     case ${sys} in
-	ompiosx|zen)  echo "Running 2D gravity solver test"
+	ompiosx)  echo "Running 2D gravity solver test"
 	    export THIS_BENCH=gravtest_2d
 	    run_dom_decomp 5
 	    check_it > check_log_${SYSTEM}_gravtest_2d.txt 2>&1 
@@ -427,8 +433,8 @@ for sys in ${SYS_TO_TEST}; do
     check_completion
     echo
 
-# Don't run in the daily test
-    if [[ ${MODE} != daily ]]; then
+# Only run in stable version tests as this is slow
+    if [[ ${MODE} == stable ]]; then
 	echo "Running cylindrical polar disc benchmark"
 	export THIS_BENCH=disc_cylindrical
 	run_bench
@@ -461,9 +467,6 @@ echo
     elif [[ ${sys} == "gfortran" ]]; then
 	export SYSTEM=gfortran
 	export USEOPENMP=yes
-    elif [[ ${sys} == "zen" ]]; then
-	export SYSTEM=zen
-	export USEOPENMP=no
     else
 	echo "${sys} not recognised. Aborting."
 	exit 1
@@ -484,13 +487,12 @@ print_help()
 echo ""
 echo "This script runs the torus test suite."
 echo ""
-echo "Use the -d option to run the daily tests (default)."
-echo "Use the -s option to run the stable version tests."
-echo "Use the -z option to run the tests on zen."
-echo "Use the -b option to run build tests only"
-echo "Use -e followed by full path to a torus executable to use a pre-built binary"
+echo "Use -w followed by full path to a working copy of the code to test a working copy"
 echo "Use -r followed by a revision number to test the specified svn version e.g. -r 4300"
 echo "Use -p followed by a svn path to check out a branch or tag e.g. -p https://repository.astro.ex.ac.uk/torus/tags/torus3.0.1"
+echo "Use the -d option to run the daily tests (default)."
+echo "Use the -s option to run the stable version tests."
+echo "Use the -b option to run build tests only"
 echo ""
 }
 
@@ -499,19 +501,10 @@ echo ""
 # Default mode is daily test
 export MODE=daily
 export DO_BUILD=yes
-export CLOBBEROK=yes
 export RETURN_CODE=0 
 export TORUS_SVN_PATH=https://repository.astro.ex.ac.uk/torus/trunk/torus/
 export TORUS_SVN_REVISION=
-
-# If we're running on Zen then set the appropriate mode
-this_host=`hostname`
-if [[ ${this_host} == service0 ]]; then
-    echo "Don't run this script on the log in node!"
-    exit 1
-elif [[ ${this_host} == service2 ]]; then
-    export MODE=zen
-fi
+export TORUS_WORKING_COPY=none
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -519,16 +512,14 @@ do
     case "$1" in 
 	-s) export MODE=stable;;
 	-d) export MODE=daily;;
-	-z) export MODE=zen;;
 	-b) export MODE=build;;
-	-e) export DO_BUILD=no
-	    export CLOBBEROK=no
-	    shift 
-	    TORUS_BINARY=$1;;
 	-r) shift
 	    export TORUS_SVN_REVISION="-r $1";;
 	-p) shift
 	    export TORUS_SVN_PATH=$1;;
+	-w) shift 
+	    export TORUS_WORKING_COPY=$1
+	    export MODE=workingcopy;;
 	-h) print_help
 	    exit;;
     esac
@@ -543,7 +534,18 @@ case ${MODE} in
 	   export TORUS_FC="gfortran -g -fcheck=all"
 	   export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
 	   export PATH=~/openmpi/bin:~/bin:/usr/local/bin:${PATH}:/usr/bin
+	   echo -------------------------------------------------------------------
 	   echo TORUS daily test suite started on `date`
+	   echo -------------------------------------------------------------------
+	   echo;;
+
+    workingcopy) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
+           export BUILD_ONLY=""
+	   export DEBUG_OPTS="yes"
+	   export TORUS_FC="gfortran -g -fcheck=all"
+	   export TORUS_FITSLIBS="${HOME}/cfitsio/lib"
+	   echo -------------------------------------------------------------------
+	   echo TORUS working copy tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
 
@@ -553,6 +555,7 @@ case ${MODE} in
 	   export TORUS_FC="gfortran -g -fcheck=all"
 	   export TORUS_FITSLIBS="/home/torustest/cfitsio"
 	   export PATH=~/openmpi/bin:~/bin:/usr/local/bin:${PATH}:/usr/bin
+	   echo -------------------------------------------------------------------
 	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
@@ -563,45 +566,26 @@ case ${MODE} in
 	    export TORUS_FC="gfortran -g -fcheck=all"
 	    export TORUS_FITSLIBS="/Users/acreman/cfitsio"
 	    export PATH=~/bin:/usr/local/bin:${PATH}
+	    echo -------------------------------------------------------------------
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
 	    echo;;
 
-    zen) export SYS_TO_TEST="zen"
-         export BUILD_ONLY=""
-	 export DEBUG_OPTS="no yes"
-	 export TORUS_FC="ifort"
-	 export TORUS_FITSLIBS="/home/tjharrie/cfitsio"
-	 echo TORUS zen tests started on `date`
-	 echo -------------------------------------------------------------------
-	 echo;;
-
     *)  echo "ERROR: unrecognised mode"
 	exit 1;;
 esac
-
-
-if [[ $DO_BUILD == no ]]; then
-    if [[ ! -x ${TORUS_BINARY} ]]; then
-	echo "ERROR: ${TORUS_BINARY} is not an executable file"
-	exit 1
-    else
-	SYS_TO_TEST=`basename ${TORUS_BINARY} | tr '.' ' ' | awk '{print $2}`
-	echo "Using pre-built binary ${TORUS_BINARY}"
-	echo "System type is ${SYS_TO_TEST}"
-	export DEBUG_OPTS="yes" # Just sets flags if pre-built binary is used
-    fi
-fi 
 
 for opt in ${DEBUG_OPTS}; do
     export USEDEBUGFLAGS=${opt}
 
 # Set name of output directory
     case ${MODE} in 
-	daily)  export TEST_DIR=/data/torustest/torus_daily_test;;
-	stable) export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
-	zen)    export TEST_DIR=/scratch/${USER}/torus_tests/debug=${USEDEBUGFLAGS};;
-	build)  export TEST_DIR=${HOME}/torus_build_tests
+	daily)       export TEST_DIR=/data/torustest/torus_daily_test;;
+	workingcopy) export TEST_DIR=${TORUS_WORKING_COPY}/tests;;
+	stable)      export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
+	build)       export TEST_DIR=${HOME}/torus_build_tests;;
+	    *)       echo "Unrecognised MODE"
+	             exit 1;;
     esac
 
     export TORUS_DATA=${TEST_DIR}/torus/data
@@ -610,9 +594,7 @@ for opt in ${DEBUG_OPTS}; do
     prepare_run
 
 # Test build but don't run benchmarks
-    if [[ ${DO_BUILD} == yes ]]; then
-	build_only_tests
-    fi
+    build_only_tests
 
 # Run benchmark tests
     run_torus_test_suite
@@ -620,5 +602,9 @@ for opt in ${DEBUG_OPTS}; do
 done
 
 rm ${TEST_DIR}/lock
+
+echo -------------------------------------------------------------------
+echo TORUS tests finished at `date`
+echo -------------------------------------------------------------------
 
 exit ${RETURN_CODE}
