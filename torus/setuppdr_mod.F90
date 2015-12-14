@@ -59,6 +59,46 @@ real(kind=dp), allocatable :: CII_PH2(:,:,:),CII_OH2(:,:,:)
 contains
 
 
+subroutine readHealpixRays()
+  use unix_mod, only: unixGetenv
+  use inputs_mod, only : hlevel
+  character(len=200):: dataDirectory, filename
+  integer :: nside, nrays, i, ID
+  real(double) :: x,y,z
+
+  nside = 2**hlevel
+  nrays = 12*nside**2
+
+
+  call unixGetenv("TORUS_DATA", dataDirectory)
+
+  if(hlevel == 0) then
+     filename = trim(dataDirectory)//"/"//"healpix/hlev0.dat"
+  elseif(hlevel == 1) then
+     filename = trim(dataDirectory)//"/"//"healpix/hlev1.dat"
+  elseif(hlevel == 2) then
+     filename = trim(dataDirectory)//"/"//"healpix/hlev2.dat"
+  elseif(hlevel == 3) then
+     filename = trim(dataDirectory)//"/"//"healpix/hlev3.dat"
+  endif
+
+  open(1, file=filename, status='old')
+  allocate(vectors(1:3,0:nrays-1))
+
+  do i = 1, nrays
+     read(1, *) x,y,z,ID
+     vectors(1, ID) = x
+     vectors(2, ID) = y
+     vectors(3, ID) = z
+  enddo
+  
+  print *, "HEALPIX VECTORS ARE "
+  do i = 0, nrays-1
+     print *, vectors(1, i), vectors(2, i), vectors(3, i)
+  enddo
+  print *, "NRAYS IS ", nrays
+  print *, "hlevel is ", hlevel
+end subroutine readHealpixRays
 
 recursive subroutine checkPDRAllocations(thisOctal, nrays)
 use octal_mod, only : allocateattribute
@@ -78,35 +118,43 @@ integer :: subcell, nspec, i, nrays
         end do
      else
 
-        
+
         if(.not. associated(thisOctal%abundance)) then
            allocate(thisOctal%abundance(1:thisOctal%maxChildren, 1:nspec))
         endif
+
 
         if(.not. associated(thisOctal%columnrho)) then
            allocate(thisOctal%columnrho(1:thisOctal%maxChildren))
         endif
 
-        if(.not. associated(thisOctal%uvvector)) then
-           call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
-        endif
-
-        if(.not. associated(thisOctal%uvvectorplus)) then
-           call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
-        endif
-
-        if(.not. associated(thisOctal%uvvectorminus)) then
-           call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
-        endif
+!        if(.not. associated(thisOctal%uvvector)) then
+!           call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
+!        endif!
+!
+ !       if(.not. associated(thisOctal%uvvectorplus)) then
+  !         call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
+   !     endif
+!!
+  !      if(.not. associated(thisOctal%uvvectorminus)) then
+   !        call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
+    !    endif
 
 
         if(.not. associated(thisOctal%tlast)) then
            allocate(thisOctal%tLast(1:thisOctal%maxChildren))
         endif
 
+
+        if(.not. associated(thisOctal%nCont)) then
+           allocate(thisOctal%nCont(1:thisOctal%maxChildren))
+        endif
+
+
         if(.not. associated(thisOctal%dust_t)) then
            allocate(thisOctal%dust_t(1:thisOctal%maxChildren))
         endif
+
 
         if(.not. associated(thisOctal%tlow)) then
            allocate(thisOctal%tlow(1:thisOctal%maxChildren))
@@ -136,6 +184,7 @@ integer :: subcell, nspec, i, nrays
            allocate(thisOctal%level_converged(1:thisOctal%maxChildren))
         endif
 
+
         if(.not. associated(thisOctal%biChop)) then
            allocate(thisOctal%biChop(1:thisOctal%maxChildren))
         endif
@@ -143,6 +192,7 @@ integer :: subcell, nspec, i, nrays
         if(.not. associated(thisOctal%expanded)) then
            allocate(thisOctal%expanded(1:thisOctal%maxChildren))
         endif
+
 
         if(.not. associated(thisOctal%lastChange)) then
            allocate(thisOctal%lastChange(1:thisOctal%maxChildren))
@@ -152,13 +202,16 @@ integer :: subcell, nspec, i, nrays
            allocate(thisOctal%coolingRate(1:thisOctal%maxChildren, 1:4))
         endif
 
+
         if(.not. associated(thisOctal%heatingRate)) then
            allocate(thisOctal%heatingRate(1:thisOctal%maxchildren, 1:12))
         endif
 
+
         if(.not. associated(thisOctal%cii_pop)) then
            allocate(thisOctal%cii_pop(1:thisOctal%maxchildren, 1:5))
         endif
+
         if(.not. associated(thisOctal%ci_pop)) then
            allocate(thisOctal%ci_pop(1:thisOctal%maxchildren, 1:5))
         endif
@@ -166,6 +219,7 @@ integer :: subcell, nspec, i, nrays
         if(.not. associated(thisOctal%oi_pop)) then
            allocate(thisOctal%oi_pop(1:thisOctal%maxchildren, 1:5))
         endif
+
         if(.not. associated(thisOctal%c12o_pop)) then
            allocate(thisOctal%c12o_pop(1:thisOctal%maxchildren, 1:41))
         endif
@@ -213,7 +267,6 @@ integer :: subcell, nspec, i, nrays
         if(.not. associated(thisOctal%c12oTransition)) then
            allocate(thisOctal%c12oTransition(1:thisOctal%maxchildren, 1:41, 1:41))
         endif
-
 
      
      endif
@@ -463,7 +516,9 @@ SCO_GRID(1:8,6) = (/-3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.16
           end do
        else
           thisOctal%abundance(subcell, :) = 0.d0
-          if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!          if(.not. thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+!          if(thisOctal%temperature(subcell) < 1.e2) then
+          if(thisOctal%temperature(subcell) < 1.d3) then
              thisOctal%abundance(subcell,:) = dummyabundance(:)
           else
              thisOctal%abundance(subcell, :) = 0.d0

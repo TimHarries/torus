@@ -160,8 +160,9 @@ use utils_mod
 contains
   
   
-  recursive subroutine findDraineFromUV(thisOCtal, ionizingflux)
+  recursive subroutine findDraineFromUV(thisOCtal, ionizingflux, grid)
     use inputs_mod, only : sourcepos, amrgridcentrex, amrgridsize
+    type(gridtype) :: grid
     type(octal), pointer :: thisOCtal, child
     integer :: j, subcell
     type(vector) :: rvec, diff
@@ -175,14 +176,14 @@ contains
           do j = 1, thisoctal%nchildren, 1
              if (thisoctal%indexchild(j) == subcell) then
                 child => thisoctal%child(j)
-                call findDraineFromUV(child, ionizingflux)
+                call findDraineFromUV(child, ionizingflux, grid)
                 exit
              endif
           enddo
        else
           if(.not. octalonthread(thisoctal, subcell, myrankglobal)) cycle
-
-          if(sourcepos(1)%x > (amrgridcentrex-(amrgridsize/2.d0))) then
+          if(inoctal(grid%octreeroot, sourcepos(1))) then
+!          if(sourcepos(1)%x > (amrgridcentrex-(amrgridsize/2.d0))) then
 !             print *, "source on grid"
              rvec = subcellCentre(thisOCtal, subcell)
              diff = rvec-sourcepos(1)
@@ -192,9 +193,9 @@ contains
              rvec = subcellCentre(thisOCtal, subcell)
              diffS = rvec%x-(amrgridcentrex-amrgridsize/2.d0)
              distance = abs(diffS)
- !            print *, "ionizing flux is ", ionizingflux
+             !            print *, "ionizing flux is ", ionizingflux
              thisOctal%UV(subcell) =  ionizingflux*6.612d-47*(pctocm)**2/(((distance*1.d10)/pctocm)**2) 
-  !           print *, "uv is ", thisOctal%uv(subcell)
+!             print *, "uv is ", thisOctal%uv(subcell)
           endif
 
        end if
@@ -240,6 +241,7 @@ SUBROUTINE find_Ccoeff(NTEMP,NLEV,TEMPERATURE,TEMPERATURES,H_COL,HP_COL,EL_COL,H
 !  temperature and the resulting fractions of H2 in para & ortho form
    FPARA=0.0D0 ; FORTHO=0.0D0
    IF(H2_abd.GT.0.0D0 .and. TEMPERATURE/=0.d0) THEN
+!      print *, "temperature blablabla", temperature
       FPARA=1.0D0/(1.0D0+9.0D0*EXP(-170.5D0/TEMPERATURE))
       FORTHO=1.0D0-FPARA
    ENDIF
@@ -865,7 +867,7 @@ end function nray_func
 !#else
       SUBROUTINE CALCULATE_REACTION_RATES(TEMPERATURE,DUST_TEMPERATURE,RAD_SURFACE,AV,COLUMN, &
                  &REACTANT,PRODUCT,ALPHA,BETA,GAMMA,RATE,RTMIN,RTMAX,DUPLICATE,NSPEC,&
-                 &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, n12co, nci, debug)
+                 &NRGR,NRH2,NRHD,NRCO,NRCI,NRSI, nreac, nrays, n12co, nci, ncont, debug)
 !#endif
  
 !T.Bell
@@ -875,9 +877,11 @@ end function nray_func
 ! use global_module
 ! use functions_module
 ! use maincode_module , only : zeta, AV_fac
+        use inputs_mod, only : amr1d
       IMPLICIT NONE
       logical :: debug
       integer, intent(in) ::  NSPEC, nreac, nrays
+      integer, intent(inout) :: ncont
       real(double),intent(in) :: TEMPERATURE, DUST_TEMPERATURE
       real(double),intent(in) :: RAD_SURFACE(1:nrays),AV(1:nrays),COLUMN(1:nrays,1:nspec)
 !#ifdef XRAYS
@@ -1041,7 +1045,7 @@ end function nray_func
             ENDDO
          ENDIF
          GOTO 10
-
+!         print *, "PART 1 DONE"
 !C-----------------------------------------------------------------------
 
 !C     Photoreactions:
@@ -1063,13 +1067,14 @@ end function nray_func
  !           if(myrankglobal == 1) then
 !               print *, "DOING ", NRH2, "FOR ", NRAYS, "REAC ", NREAC
   !          end if
-!            print *, "PART 3"
+!            print *, "PART 3", ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NH2)
             DO K=1,NRAYS
 !            DO K=0,NRAYS-1
                RATE(I)=RATE(I) + H2PDRATE(ALPHA(I),RAD_SURFACE(K),AV(K),COLUMN(K,NH2))
             ENDDO
 !#endif
             NRH2=I
+ !           print *, "out of part 3"
             GOTO 10
          ENDIF
 
@@ -1099,7 +1104,7 @@ end function nray_func
             NRHD=I
             GOTO 10
          ENDIF
-
+!         print *, "PART 4 DONE"
 !C     Store the reaction number for !CO photodissociation. The rate itself
 !C     is calculated separately by the function !COPDRATE (within shield.f)
          IF(trim(REACTANT(I,1)).EQ."CO" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
@@ -1131,7 +1136,7 @@ end function nray_func
             NRCO=I
             GOTO 10
          ENDIF
-
+!         print *, "PART 5 DONE"
 !C     Store the reaction number for !CI photoionization. The rate itself
 !C     is calculated separately by the function CIPDRATE (within shield.f)
          IF(trim(REACTANT(I,1)).EQ."C" .AND. trim(REACTANT(I,3)).EQ."" .AND.&
@@ -1155,6 +1160,7 @@ end function nray_func
             NRCI=I
             GOTO 10
          ENDIF
+!         print *, "PART 6 DONE"
 
 !C     Store the reaction number for SI photoionization. The rate itself
 !C     is calculated separately by the function SIPDRATE (within shield.f)
@@ -1179,6 +1185,7 @@ end function nray_func
             NRSI=I
             GOTO 10
          ENDIF
+ !        print *, "PART 7 DONE"
 
          IF(DUPLICATE(I).EQ.0) THEN
 !C           Loop over all rays
@@ -1195,13 +1202,13 @@ end function nray_func
 
             DO K=1,NRAYS
                if(debug) then
-!                  print *, ""
-!                  print *, "i, k ", i, k
-!                  print *, "PART 8", RATE(I), ALPHA(I), RAD_SURFACE(K)
- !                 print *, GAMMA(I), AV(K)
- !                 print *, ""
+                  !                  print *, ""
+                  !                  print *, "i, k ", i, k
+                  !                  print *, "PART 8", RATE(I), ALPHA(I), RAD_SURFACE(K)
+                  !                 print *, GAMMA(I), AV(K)
+                  !                 print *, ""
                endif
-                RATE(I)=RATE(I) + ALPHA(I)*RAD_SURFACE(K)*EXP(-(GAMMA(I)*AV(K)))/2.0
+               RATE(I)=RATE(I) + ALPHA(I)*RAD_SURFACE(K)*EXP(-(GAMMA(I)*AV(K)))/2.0
             ENDDO
 !#endif
          ELSE IF(DUPLICATE(I).EQ.1) THEN
@@ -1247,6 +1254,7 @@ end function nray_func
                ENDIF
             ENDDO
          ENDIF
+!         print *, "PART 10 DONE"
          GOTO 10
 
 !C-----------------------------------------------------------------------
@@ -1270,6 +1278,7 @@ end function nray_func
                ENDIF
             ENDDO
          ENDIF
+!         print *, "PART 11 DONE"
          GOTO 10
 
 !#ifdef XRAYS
@@ -1330,6 +1339,7 @@ end function nray_func
                ENDIF
             ENDDO
          ENDIF
+!         print *, "PART 12 DONE"
          GOTO 10
 
 !C-----------------------------------------------------------------------
@@ -1346,6 +1356,8 @@ end function nray_func
          STICKING=0.3D0
 !         print *, "PART 13"
          RATE(I)=ALPHA(I)*4.57D4*2.4D-22*SQRT(TEMPERATURE/GAMMA(I))*CION*STICKING
+
+ !        print *, "PART 13 DONE"
          GOTO 10
 
 !C-----------------------------------------------------------------------
@@ -1362,6 +1374,7 @@ end function nray_func
          STICKING=0.3D0
 !         print *, "PART 14"
          RATE(I)=ALPHA(I)*4.57D4*2.4D-22*SQRT(TEMPERATURE/GAMMA(I))*CION*STICKING
+ !        print *, "PART 14 DONE"
          GOTO 10
 
 !C-----------------------------------------------------------------------
@@ -1380,6 +1393,7 @@ end function nray_func
          FLUX=2.06D-3 ! Flux of iron nuclei cosmic rays (in cm^-2 s^-1)
 !         print *, "PART 15"
          RATE(I)=FLUX*ZETA*2.4D-22*YIELD
+ !        print *, "PART 15 DONE"
          GOTO 10
 
 !C-----------------------------------------------------------------------
@@ -1412,6 +1426,7 @@ end function nray_func
             RATE(I)=RATE(I) + FLUX*RAD_SURFACE(K)*EXP(-(1.8D0*AV(K)))*2.4D-22*YIELD
          ENDDO
 !#endif
+ !        print *, "PART 17 DONE"
          GOTO 10
 
 !C-----------------------------------------------------------------------
@@ -1442,14 +1457,19 @@ end function nray_func
            PRINT *,'ERROR! Negative rate for reaction',I
            STOP
          ENDIF
+!         print *, "SURVIVED first check"
          IF(RATE(I).GT.1.0D0 .AND. REACTANT(I,1)(1:1).NE."G") THEN
            WRITE(10,*)'WARNING! Rate is too large for reaction',I
            WRITE(10,*)'RATE =',RATE(I)
            RATE(I)=1.0D0
          ENDIF
+ !        print *, "SURVIVED second check"
          IF(RATE(I).LT.1.0D-99) RATE(I)=0.0D0
 !C     End of loop over rates
       ENDDO
+!      print *, "ncont is", ncont
+      if(amr1d) ncont = 1
+      RATE = RATE/dble(ncont)
 
       RETURN
       END SUBROUTINE CALCULATE_REACTION_RATES
@@ -1502,13 +1522,17 @@ end function nray_func
      real(double) :: h2shieldVAL, scatterVAL
 
      LAMBDA=1000.0D0
+!     print *, "H2PDR 1 "
       DOPW=V_TURBPDR/(LAMBDA*1.0D-8)
       RADW=8.0D7
-
+ !    print *, "H2PDR 2 "
       h2shieldVAL = H2SHIELD1(NH2,DOPW,RADW)
+  !   print *, "H2PDR 3 "
       scatterVAL = SCATTER(AV,LAMBDA, START=.true.)
+   !   print *, "H2PDR 4 "
 !     Calculate the H2 photodissociation rate (H2PDRATE)
       H2PDRATE=K0*G0*h2shieldVAL*scatterVAL/2.0
+    !  print *, "H2PDR 5 ", H2PDRATE
 !      H2PDRATE=K0*G0*H2SHIELD2(NH2)*SCATTER(AV,LAMBDA)/2.0
 
       RETURN
@@ -2370,9 +2394,17 @@ SUBROUTINE CALCULATE_PARTITION_FUNCTION(PARTITION_FUNCTION,NLEV,ENERGIES,WEIGHTS
       INTEGER :: ILEVEL
 
       PARTITION_FUNCTION=0.0D0
+
+#ifdef OPENMP
+!$OMP PRIVATE(ilevel) 
+!$OMP PARALLEL DO DEFAULT(SHARED)  
+#endif
       DO ILEVEL=1,NLEV
          PARTITION_FUNCTION=PARTITION_FUNCTION + WEIGHTS(ILEVEL)*EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)
       ENDDO
+#ifdef OPENMP
+!$OMP END PARALLEL DO
+#endif
 
 RETURN
 END SUBROUTINE CALCULATE_PARTITION_FUNCTION
@@ -2392,14 +2424,13 @@ SUBROUTINE CALCULATE_LTE_POPULATIONS(NLEV,LEVEL_POP,ENERGIES,WEIGHTS,PARTITION_F
       INTEGER :: ILEVEL
       REAL(double) :: TOTAL_POP
 
+
       TOTAL_POP=0.0D0
+#ifdef OPENMP
+!$OMP PRIVATE(ilevel) 
+!$OMP PARALLEL DO DEFAULT(SHARED)  
+#endif
       DO ILEVEL=1,NLEV
-!         print *, " "
-!         print *, "ILEVEL ", ILEVEL
-!         print *, "DENSITY", DENSITY
-!         print *, "WEIGHTS(ILEVEL)", WEIGHTS(ILEVEL)
-!         print *, "PARTITION_FUNCTION", PARTITION_FUNCTION
-!         print *, "EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)", EXP(-ENERGIES(ILEVEL)/KB/TEMPERATURE)
          if(partition_function == 0.d0) then
             call torus_abort("zero partition function being used...")
          endif
@@ -2407,6 +2438,10 @@ SUBROUTINE CALCULATE_LTE_POPULATIONS(NLEV,LEVEL_POP,ENERGIES,WEIGHTS,PARTITION_F
         TOTAL_POP=TOTAL_POP + LEVEL_POP(ILEVEL)
 
       ENDDO
+#ifdef OPENMP
+!$OMP END PARALLEL DO
+#endif
+
 
       ! Check that the sum of the level populations adds up to the total density
       IF(ABS(TOTAL_POP-DENSITY)/DENSITY.GT.1.0D-3) THEN
