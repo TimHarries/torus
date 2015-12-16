@@ -2476,7 +2476,7 @@ contains
        call getString("moleculefile", moleculefile, cLine, fLine, nLines, &
             "Input molecule filename: ","(a,a,1x,a)","none", ok, .true.)
        call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
-            "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
+            "Grid distance (pc): ","(a,f8.1,1x,a)", 1., ok, .true.)
        call getInteger("initnray", initnray, cLine, fLine, nLines, &
                "Number of fixed rays for stage 1: ","(a,i4,a)", 1024, ok, .false.)
        call getLogical("dongstep", dongstep, cLine, fLine, nLines, &

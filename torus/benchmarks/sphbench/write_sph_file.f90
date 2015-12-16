@@ -2,7 +2,6 @@
 
 program sphbench
 
-!use torus_mod, only: torus
 use particle_pos_mod, only: particle_pos
 
   implicit none
@@ -31,15 +30,9 @@ use particle_pos_mod, only: particle_pos
   real(kind=8),allocatable     :: b_xyzmh(:,:)
   real(kind=4),allocatable     :: b_rho(:)
   integer(kind=1), allocatable :: b_iphase(:) 
-  real(kind=8), parameter :: b_udist=1.0 ! unit of distance
-  real(kind=8), parameter :: b_umass=1.0 ! units of mass
-  real(kind=8), parameter :: b_utime=1.0 ! Units of time
-  real(kind=8), parameter :: year = 60.0*60.0*24.0*365.25 
-  real(kind=8), parameter :: b_time=182.0e6_db * year ! Current time, used as age of star
   real(kind=8), allocatable :: b_temp(:)
-  real(kind=8), parameter :: total_disc_mass=0.011  ! Taken from 2D benchmark
+  real(kind=8), parameter :: total_disc_mass=0.011  ! Taken from 2D benchmark, in solar masses
   real(kind=8)            :: total_gas_mass
-  character(len=11), parameter :: file_tag = "sphbench   "
 
 ! Source parameters
   real(db), parameter :: mSol = 1.9891e33_db
@@ -59,6 +52,11 @@ use particle_pos_mod, only: particle_pos
 ! Smoothing length factor. See Price and Bate, 2007
   real, parameter :: eta_smooth = 1.2
 
+! SPH units
+  real(db), parameter :: udist = 1.495979e13_db ! 1 AU
+  real(db), parameter :: umass = mSol
+  real(db) :: uden
+  
   real(db) :: f1, f2, hr, z_over_h
 
   real :: ran_num
@@ -72,6 +70,7 @@ use particle_pos_mod, only: particle_pos
 
   total_gas_mass = total_disc_mass
   b_num_gas      = npart
+  uden           = umass / (udist**3)
 
   write(*,*) "SPH benchmark: generating", npart, "particles"
   b_idim = b_num_gas + 1
@@ -106,20 +105,20 @@ use particle_pos_mod, only: particle_pos
 
         b_rho(ipart) = f1 * f2 * rho_zero
         if (b_rho(ipart) < rho_bg) b_rho(ipart) = rho_bg
-
+        
      endif
-
+     
 ! Set positions of the gas particles
      x = r(ipart) * sin(theta) 
      y = r(ipart) * cos(theta) 
      b_xyzmh(1,ipart) = x
      b_xyzmh(2,ipart) = y
-     b_xyzmh(3,ipart) = z(ipart) 
-! Set particle mass assuming equal mass for all particles 
+     b_xyzmh(3,ipart) = z(ipart)
+! Set particle mass assuming equal mass for all particles
      b_xyzmh(4,ipart) = msol * total_gas_mass / real(b_num_gas, kind=db)
 ! Smoothing length based on particle mass and density
      b_xyzmh(5,ipart) = eta_smooth * ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
-
+     
   end do part_loop
 
   deallocate ( r, z )
@@ -139,10 +138,21 @@ use particle_pos_mod, only: particle_pos
    b_xyzmh(3,b_num_gas+1) = 0.0
    b_xyzmh(4,b_num_gas+1) = source_mass
 
+! 3. Convert to SPH units
+
+   b_xyzmh(1,:) = b_xyzmh(1,:) / udist
+   b_xyzmh(2,:) = b_xyzmh(2,:) / udist
+   b_xyzmh(3,:) = b_xyzmh(3,:) / udist
+   b_xyzmh(4,:) = b_xyzmh(4,:) / umass
+   b_xyzmh(5,:) = b_xyzmh(5,:) / udist
+   b_rho        = b_rho / uden
+   
+! 4. Write output file
+   
   open(unit=61, file="part_out.dat", status='replace')
 ! Gas particles
   do ipart=1, b_num_gas
-     write(61,'(1x,10(e14.7,2x),i4)')  b_xyzmh(:,ipart), b_rho(ipart), b_temp(ipart), 0.0, 0.0, 0.0, 1
+     write(61,'(1x,10(e14.7,2x),i4)')  b_xyzmh(:,ipart), b_rho(ipart),b_temp(ipart), 0.0, 0.0, 0.0, 1
   end do
 ! Sink particle
    write(61,'(1x,10(e14.7,2x),i4)') b_xyzmh(:,b_num_gas+1), 1e-20, 1000.0, 0.0, 0.0, 0.0, 3

@@ -463,7 +463,9 @@ contains
     ! Everything else is discarded
     nother=SUM(pNumArray(:))-npart-nptmass-nstar
 
-! Read in units    
+! Read in units
+! Initialise the unit string so that printing the itype unit doesn't give junk
+    unit(:) = "No unit            "
     read(LUIN,*)
     read(LUIN,'(a)') unitString
     unitString = unitstring(2:)
@@ -503,9 +505,18 @@ contains
 
     read(unit(ix),*) uDist
 
-    ivx = indexWord("v\dx",word,nWord)
-    ivy = indexWord("v\dy",word,nWord)
-    ivz = indexWord("v\dz",word,nWord)
+! Check how the velocity columns are labelled, there are two possibilities so handle both
+    if ( wordIsPresent("v\dx",word,nWord) ) then
+       ivx = indexWord("v\dx",word,nWord)
+       ivy = indexWord("v\dy",word,nWord)
+       ivz = indexWord("v\dz",word,nWord)
+    else if ( wordIsPresent("v_x",word,nWord) ) then
+       ivx = indexWord("v_x",word,nWord)
+       ivy = indexWord("v_y",word,nWord)
+       ivz = indexWord("v_z",word,nWord)
+    else
+       call writeFatal("Did not find velocity columns in SPH file.")
+    end if
 
     read(unit(ivx),*) uvel
 
@@ -622,7 +633,7 @@ part_loop: do ipart=1, nlines
        if (internalView) call rotate_particles(galaxyPositionAngle+extraPA, galaxyInclination)
 
        u = junkArray(iu)
-       rhon = junkArray(irho) * udist**3/uMass
+       rhon = junkArray(irho)
        h = junkArray(ih)
        if (iitype == 0) then
 ! If we don't have itype then treat as a gas particle provided the smoothing length is valid
@@ -3047,7 +3058,7 @@ contains
           
           RhoArray(:) = Rhoarray(:) * codeDensitytoTORUS
           TemArray(:) = sphdata%temperature(ind(:)) * sphdata%codeEnergytoTemperature
-          
+
           write(message, *) "Max/min rho", maxval(RhoArray(:)), minval(RhoArray(:))
           call writeinfo(message, TRIVIAL)
           write(message, *) "Max/min Temp", maxval(TemArray(:)), minval(TemArray(:))

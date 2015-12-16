@@ -9,8 +9,7 @@ my $massRequired=0.011;
 my $tolerance=0.03;
 
 # Central source of one solar mass
-my $msol=1.9891e33;
-my $massSource=$msol;
+my $massSource=1.0;
 my $toleranceSource=0.001;
 
 open RUNLOG, "<$ARGV[0]";
