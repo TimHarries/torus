@@ -551,13 +551,13 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             sed_mod.f90 utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
             gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
-            distortion_mod.f90  \
+            distortion_mod.f90   analytical_velocity_mod.f90 \
             disc_hydro_mod.f90 \
             integratePath.f90 fillGridTio.f90 fillGridRayleigh.f90 \
             fillGridThomson.f90 amr_utils_mod.f90  \
             jets_mod.f90 h21cm_mod.f90 \
             source_mod.f90 spectrum_mod.f90 density_mod.f90 \
-            sph_data_class.f90 cluster_class.f90 vh1_mod.f90 \
+            cluster_class.f90 vh1_mod.f90 \
             timing.f90  isochrone_class.f90 \
             filter_set_class.f90 ostar_mod.f90  \
             surface_mod.f90  math_mod2.f90 disc_class.f90 \
@@ -570,8 +570,8 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             
 
 
-CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoion_utils_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 analytical_velocity_mod.f90 \
-	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 ion_mod.F90 gridtype_mod.F90 gridFromFitsFile.F90 \
+CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoion_utils_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
+	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 ion_mod.F90 gridtype_mod.F90 gridFromFitsFile.F90 sph_data_class.F90 \
 	         gridFromFlash.F90 fits_utils_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90  gas_opacity_mod.F90  \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 TTauri_mod.F90 angularImage_utils.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
@@ -582,10 +582,12 @@ CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 uni
 CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90 setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 \
 	hydrodynamics_mod.F90 angularImage_mod.F90 \
 	photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F90 \
-	          diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
-	          parallel_mod.F90 stateq_mod.F90 torusMod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
-                  phaseloop_mod.F90 gridio_mod.F90 xray_mod.F90 healpix_modules.F90 healpix.F90 nrayshealpix.F90 \
-                  pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90
+	diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
+	parallel_mod.F90 stateq_mod.F90 torusMod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 \
+        phaseloop_mod.F90 gridio_mod.F90 xray_mod.F90 healpix_modules.F90 healpix.F90 nrayshealpix.F90 \
+        pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90 octal_mod.F90 amr_mod.F90 grid_mod.F90 dust_mod.F90 \
+        photoion_utils_mod.F90 ion_mod.F90 angularImage_utils.F90 loadbalance_mod.F90 nbody_mod.F90 viscosity_mod.F90 \
+        mieDistPhaseMatrix.F90 gas_opacity_mod.F90 TTauri_mod.F90 gridFromFlash.F90 fits_utils_mod.F90 sph_data_class.F90
 
 
 ifeq ($(pdr),yes)
@@ -600,7 +602,7 @@ endif
 #    CSOURCELIB =
 #endif
 
-INPUTSMODOBJ = $(INPUTSMODSOURCE:.f90=.o)
+INPUTSMODOBJ = $(INPUTSMODSOURCE:.F90=.o)
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)

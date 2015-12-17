@@ -41,6 +41,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
 ! This no longer exists. Comment out so the library builds
 !  use phasematrix_mod, only: resetNewDirectionMie
   use amr_mod, only: returnKappa
+  use dimensionality_mod, only: initializeCodeUnits
   type(GRIDTYPE) :: grid
   type(VECTOR) :: dummy
 

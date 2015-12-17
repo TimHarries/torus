@@ -46,6 +46,11 @@ module sph_data_class
        npart, init_sph_data, & ! for distributeSphDataOverMPI
        deallocate_sph
 
+#ifdef WITHSPHNG
+  public :: init_sphtorus
+#endif
+
+
 ! Default is private  
   private
 
