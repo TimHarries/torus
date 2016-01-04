@@ -116,7 +116,7 @@ contains
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
     integer :: iRefine, nUnrefine
     logical :: photoLoop, photoLoopGlobal=.false.
-    integer :: i, status, tag=30, sign
+    integer :: i, status(MPI_STATUS_SIZE), tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep, nPhotoIter
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, gravityDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
@@ -6196,7 +6196,7 @@ subroutine dumpWhalenNormanTest(grid)
   integer :: ier, ierr, i, j
   logical, save :: firstTime=.true.
   real(double) :: tempStorage(24), rhoBins(15), rhoDist(15)
-  integer :: status
+  integer :: status(MPI_STATUS_SIZE)
   integer :: tag = 50
   real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
   integer :: nRadii
@@ -6323,7 +6323,7 @@ subroutine dumpIfrontTest(grid)
   integer :: ier, ierr, i, j
   logical, save :: firstTime=.true.
   real(double) :: tempStorage(24), rhoBins(15), rhoDist(15)
-  integer :: stat
+  integer :: stat(MPI_STATUS_SIZE)
   integer :: tag = 50
   real(double) :: minR, meanR, maxR, mIo, mNeu, Movd, KE, mom
   integer :: nRadii
