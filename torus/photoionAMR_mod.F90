@@ -5966,12 +5966,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     gFac = 0.d0
     do i = 1, nDist
        rVecTemp = rVec + (dble(i-1)* ds) * uHat
-       rHat = VECTOR(rVecTemp%x, rVecTemp%y, rVecTemp%z)
-       call normalize(rHat)
        uHatDash = uHat
        if (thisOctal%twoD .and. .not. cart2d) then
           zHat = VECTOR(0.d0, 0.d0, 1.d0)
+          rHat = VECTOR(rVecTemp%x, rVecTemp%y, 0.d0) !rHat needs to be in cylindical rather than spherical
+          call normalize(rHat)
           uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
+       else
+          rHat = VECTOR(rVecTemp%x, rVecTemp%y, rVecTemp%z)
+          call normalize(rHat)
        endif
 
        if (thisOctal%oneD) then
