@@ -12,7 +12,6 @@ amrtolerance 1.d30
 hydrodynamics T
 nbodyphysics T
 
-
 mindepthamr 7
 maxdepthamr 7
 cfl 0.3
@@ -30,12 +29,11 @@ radius1 1.
 teff1 1.
 contflux1 blackbody
 
-
 amrgridsize 1.5e9
 griddistancescale 1.d10
 
 tstart 0.d0 s 
-tend 1. s 
+tend 100000000.0 s 
 tdump 10. s 
 
 mass 1.d0

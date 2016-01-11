@@ -1,5 +1,5 @@
-module inputs_mod
-
+  module inputs_mod
+        
   use vector_mod
   use unix_mod
   use messages_mod
@@ -428,15 +428,15 @@ contains
     call getLogical("nbodytest", nBodyTest, cLine, fLine, nLines, &
          "Test the nbody forces: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if(photoionEquilibrium .and. hydrodynamics) radiationhydrodynamics=.true.
-
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if(photoionEquilibrium .and. hydrodynamics) radiationhydrodynamics=.true.
 
-    call getInteger("nhydroperphoto", nHydroPerPhoto, cLine, fLine, nLines, &
-         "Number of hydro steps per photoionisation loop: ","(a,i4,a)", 1, ok, .false.)
-
+    if (radiationHydrodynamics) then
+       call getLogical("radforcemonte", radForceMonte, cLine, fLine, nLines, &
+       "calculate the radation pressure force using a Monte Carlo estimator: ","(a,1l,1x,a)", .false., ok, .false.)
+    endif
 
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2491,6 +2491,7 @@ contains
        if(modelWasHydro) then
           call getLogical("zeroghosts", zeroghosts, cLine, fLine, nLines, &
                "Zero the contriubtion from ghost cells to molecular line calc: ","(a,1l,a)", .false., ok, .false.)
+
        else
           zeroghosts=.false.
        end if
@@ -2587,13 +2588,16 @@ contains
     logical :: ok
     real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
 
+    call getLogical("caklineopacity", CAKlineOpacity, cLine, fLine, nLines, &
+         "use Abbot82 temp invarient form of line driving: ","(a,1l,1x,a)", .false., ok, .false.)
+    
     call getLogical("timedep", timeDependentRT, cLine, fLine, nLines, &
          "Time-dependent RT: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
-       call getLogical("isothermal", isoThermal, cLine, fLine, nLines, &
+    call getLogical("isothermal", isoThermal, cLine, fLine, nLines, &
             "Isothermal (no photoionization loop): ","(a,1l,1x,a)", .false., ok, .false.)
 
 
@@ -2932,7 +2936,6 @@ contains
 
     call getInteger("CD_version", CD_version, cLine, fLine, nLines, &
          "Contact discontinuity test version: ","(a,1x,i4,a)", 1, ok, .false.)
-
 
     call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
          "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)

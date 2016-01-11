@@ -3150,27 +3150,27 @@ CONTAINS
     ! first we find the correct subcell (if we need to)
     
     IF (PRESENT(startOctal)) THEN
-      IF (PRESENT(actualSubcell)) THEN
-        subcell = actualSubcell
-      ELSE 
-    ! called with rotated position if 2d octal
-        CALL findSubcellLocal(point2,startOctal,subcell, boundaryProblem)
-        IF (PRESENT(foundOctal))   foundOctal   => startOctal
-        IF (PRESENT(foundSubcell)) foundSubcell =  subcell
-        if (boundaryProblem) then
-          boundaryProblem = .false.
-          CALL findSubcellTD(point2,octalTree,resultOctal,subcell)
-          IF (PRESENT(foundOctal))   foundOctal   => resultOctal
+       IF (PRESENT(actualSubcell)) THEN
+          subcell = actualSubcell
+       ELSE 
+          ! called with rotated position if 2d octal
+          CALL findSubcellLocal(point2,startOctal,subcell, boundaryProblem)
+          IF (PRESENT(foundOctal))   foundOctal   => startOctal
           IF (PRESENT(foundSubcell)) foundSubcell =  subcell
-        end if
-      END IF
-      resultOctal => startOctal
-      
+          if (boundaryProblem) then
+             boundaryProblem = .false.
+             CALL findSubcellTD(point2,octalTree,resultOctal,subcell)
+             IF (PRESENT(foundOctal))   foundOctal   => resultOctal
+             IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+          end if
+       END IF
+       resultOctal => startOctal
+       
     ELSE
-      CALL findSubcellTD(point2,octalTree,resultOctal,subcell)
-      IF (PRESENT(foundOctal))   foundOctal   => resultOctal
-      IF (PRESENT(foundSubcell)) foundSubcell =  subcell
-
+       CALL findSubcellTD(point2,octalTree,resultOctal,subcell)
+       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
+       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+       
     END IF
  
     IF (interpolate) THEN
@@ -3270,8 +3270,13 @@ CONTAINS
 !           if (.not.grid%oneKappa) then
 !              kappaSca = resultOctal%kappaSca(subcell,iLambda)
 !           else
+           if(present(direction)) then
               call returnKappa(grid, resultOctal, subcell, &
-              ilambda,lambda=lambda, kappaSca=kappaSca)
+                   ilambda,lambda=lambda, kappaSca=kappaSca, dir=direction)
+           else
+              call returnKappa(grid, resultOctal, subcell, &
+                   ilambda,lambda=lambda, kappaSca=kappaSca)
+           endif
 !              if (resultOctal%gasOpacity) then
 !                 call returnKappaValue(resultOctal%temperature(subcell), lambda, kappaSca)
 !              else
@@ -6305,21 +6310,21 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
              thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
           END IF
        ELSE  ! not inflow
-          !     thisOctal%rho(subcell) = 1.e-25
+!     thisOctal%rho(subcell) = 1.e-25
           thisOctal%rho(subcell) = 1.e-19
           IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
        END IF
-    end if ! ttau_acc_on
-
-  thisOctal%velocity(subcell) = TTauriVelocity(point)
-  !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
-endif
-  if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
-  IF ((thisoctal%threed).and.(subcell == 8)) &
-       CALL fillVelocityCorners(thisOctal,TTauriVelocity)
-  
-  IF ((thisoctal%twod).and.(subcell == 4)) &
-       CALL fillVelocityCorners(thisOctal,TTauriVelocity)
+      end if                    ! ttau_acc_on
+      
+      thisOctal%velocity(subcell) = TTauriVelocity(point)
+!thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
+      endif
+      if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
+      IF ((thisoctal%threed).and.(subcell == 8)) &
+      CALL fillVelocityCorners(thisOctal,TTauriVelocity)
+      
+      IF ((thisoctal%twod).and.(subcell == 4)) &
+      CALL fillVelocityCorners(thisOctal,TTauriVelocity)
   
 666 continue
   END SUBROUTINE calcTTauriMassVelocity
@@ -14181,12 +14186,12 @@ end function readparameterfrom2dmap
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
-       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa)
+       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir)
     use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
-    use inputs_mod, only: photoionization, hOnly
+    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity
     use phfit_mod, only : phfit2
 #endif
     implicit none
@@ -14204,6 +14209,7 @@ end function readparameterfrom2dmap
     real(double), optional, intent(out) :: kappap
     real, optional :: atthistemperature
     logical, optional, intent(in) :: reset_kappa
+    type(VECTOR), optional, intent(in) :: dir
     real :: temperature
     real :: frac
     real :: tlambda
@@ -14227,6 +14233,9 @@ end function readparameterfrom2dmap
 #ifdef _OPENMP
 !$OMP THREADPRIVATE (firstTime, nlambda, tgasArray, oneKappaAbsT, oneKAppaScaT)
 #endif
+
+!    print *, "ReturnKappa args: ", present(kappaSca),present(kappaAbs),present(kappaScaArray),present(kappaAbsArray),&
+!         present(rosselandKappa),present(kappaAbsDust),present(kappaScaDust),present(kappap), present(dir)
 
 
     if ( present(reset_kappa) ) then 
@@ -14540,13 +14549,13 @@ end function readparameterfrom2dmap
          dfreq = cSpeed / (grid%lamArray(i-1)*1.d-8) - cSpeed / (grid%lamArray(i)*1.d-8)
          do j = 1, nDustType
             kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
-                 thisOctal%rho(subcell) *&
+            thisOctal%rho(subcell) *&
                  bnu(freq,tempdouble)  * dfreq
-
-            if (includeGasOpacity) then
+                 
+                 if (includeGasOpacity) then
                kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tempDouble))  * dfreq
             endif
-
+            
          enddo
          norm = norm + bnu(freq,tempDouble)  * dfreq
       enddo
@@ -14555,36 +14564,51 @@ end function readparameterfrom2dmap
       else
          kappaP = tiny(kappap)
       endif
-   endif
+      endif
    
 #ifdef PHOTOION
-   if (photoionization.and.(.not.dustonly)) then
-
-      if (PRESENT(kappaAbs)) then
-         if (present(lambda)) then
-            e = real((hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev)
-         else
-            e = real((hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev)
-            !            write(*,*) "! using rough grid"
+      if (photoionization.and.(.not.dustonly)) then
+         if (PRESENT(kappaAbs)) then
+            if (present(lambda)) then
+               e = real((hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev)
+            else
+               e = real((hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev)
+!            write(*,*) "! using rough grid"
+            endif
+            call phfit2(1, 1, 1 , e , h0)
+            call phfit2(2, 2, 1 , e , he0)
+            kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
+            if (.not. hOnly) then
+               kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
+            else
+               kappaHe = 0.d0
+            end if
+            kappaAbs = kappaAbs + (kappaH + kappaHe)
          endif
-         call phfit2(1, 1, 1 , e , h0)
-         call phfit2(2, 2, 1 , e , he0)
-         kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
-         if (.not. hOnly) then
-            kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
+         if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
+         if (.not. present(dir).AND.CAKlineOpacity .and.&
+         (present(kappaScaGas) .or. present(kappaSca).or.present(kappaScaArray))) then
+!            print *, "no dir"
+         endif
+         if (present(dir).AND.CAKlineOpacity) then
+            tempDouble = sigmaE*thisOctal%rho(subcell)/mHydrogen
+            tempDouble= tempDouble * sqrt(5.0/3.0*kErg*thisOctal%temperature(subcell)/mHydrogen)
+            tempDouble = tempDouble / (1.0e10 * abs(amrGridDirectionalDeriv(grid,subcellCentre(thisOctal,subcell),dir,startOctal=thisOctal)))
+            tempDouble=min(1.0d3,0.28*tempDouble**(-0.56)*(thisOctal%Ne(subcell)/1.0e11)**0.09) !Abbott 1982 temp invarient form of CAK line driving, valid for roughly 10kK < Teff < 50kK
+!            print *, "n, vtherm, dv/dl, mulitplier: ", log10(thisOctal%rho(subcell)/mHydrogen), &
          else
-            kappaHe = 0.d0
-         end if
-         kappaAbs = kappaAbs + (kappaH + kappaHe)
+            tempDouble=0.0
+         endif
+         if (PRESENT(kappaScaGas)) then
+            if (present(debug)) write(*,*) "kappasca3 ",kappasca, thisOctal%ne(subcell) * sigmaE * 1.e10, thisOctal%ne(subcell),&
+            thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
+            kappaScaGas = kappaScaGas + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+         else if (PRESENT(kappaSca)) then
+            kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+         else if (PRESENT(kappaScaArray)) then
+            kappaScaArray = kappaScaArray + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+         endif
       endif
-      if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
-      if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
-         if (present(debug)) write(*,*) "kappasca3 ",kappasca, thisOctal%ne(subcell) * sigmaE * 1.e10, thisOctal%ne(subcell),&
-              thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
-      endif
-      if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10 
-   endif
 #else
    if (PRESENT(kappaAbsGas)) kappaAbsGas = 0.0
    if (PRESENT(kappaScaGas)) kappaScaGas = 0.0
@@ -16383,10 +16407,10 @@ end function readparameterfrom2dmap
 
        call findSubcellLocal(currentPosition, thisOctal,subcell)
        if (.not.PRESENT(ross)) then
-          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs, dir=direction)
           kappaExt = kappaAbs + kappaSca
        else
-          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt)
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt, dir=direction)
           kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
        endif
        sOctal => thisOctal
@@ -16506,10 +16530,10 @@ end function readparameterfrom2dmap
 
        call findSubcellLocal(currentPosition, thisOctal,subcell)
        if (.not.PRESENT(ross)) then
-          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs, dir=direction)
           kappaExt = kappaAbs + kappaSca
        else
-          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt)
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt, dir=direction)
           kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
        endif
        sOctal => thisOctal
@@ -16581,10 +16605,10 @@ end function readparameterfrom2dmap
 
        call findSubcellLocal(currentPosition, thisOctal,subcell)
        if (.not.PRESENT(ross)) then
-          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs, dir=direction)
           kappaExt = kappaAbs + kappaSca
        else
-          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt)
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt, dir=direction)
           kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
        endif
        sOctal => thisOctal

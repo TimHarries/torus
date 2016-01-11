@@ -5744,7 +5744,7 @@ end subroutine writeRadialFile
                 sOctal => thisOctal
                 call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
                 call returnKappa(grid, thisOctal, subcell, ilambda=1,&
-                     kappaSca=kappaSca, kappaAbs=kappaAbs)
+                     kappaSca=kappaSca, kappaAbs=kappaAbs, dir=uHat)
                 tauAbs = tauAbs + dble(kappaAbs) * tval
                 tauSca = tauSca + dble(kappaSca) * tval
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat

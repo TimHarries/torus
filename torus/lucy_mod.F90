@@ -520,10 +520,9 @@ contains
                       ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
                       ilam = max(ilam, 1)
 
-                      call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,  &
-                           photonInDiffusionZone, diffusionZoneTemp,  &
-                           directPhoton, scatteredPhoton,  &
-                           sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
+                      call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,&
+                           photonInDiffusionZone, diffusionZoneTemp, directPhoton, scatteredPhoton, sOctal,&
+                           foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
 
                       If (escaped) then
                          !$OMP ATOMIC
@@ -1999,7 +1998,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  startOctal=startOctal, foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-         grid=grid, inFlow=inFlow)
+         grid=grid, inFlow=inFlow, direction=uHat)
 
     if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
     if(present(kappaScaOut)) kappaScaOut = kappaScadb
@@ -2155,7 +2154,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
           call amrGridValues(topOctal, octVec, iLambda=iLam,  foundOctal=thisOctal, startOctal=sOctal,&
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-               grid=grid, inFlow=inFlow)
+               grid=grid, inFlow=inFlow, direction=uHat)
 
           if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
           if(present(kappaScaOut)) kappaScaOut = kappaScadb
@@ -2209,8 +2208,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        endif
 
        call amrGridValues(topOctal, octVec, startOctal=oldOctal,iLambda=iLam, &
-            foundOctal=thisOctal, foundSubcell=subcell, & 
-            kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
+            foundOctal=thisOctal, foundSubcell=subcell, kappaAbs=kappaAbsdb,&
+            kappaSca=kappaScadb, grid=grid, inFlow=inFlow, direction=uHat)
 
        if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
        if(present(kappaScaOut)) kappaScaOut = kappaScadb
@@ -3030,9 +3029,16 @@ subroutine setBiasOnTau(grid, iLambda)
              if (thisOctal%threed) then
                 rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
              endif
-              
+             
+             call normalize(rVec)           
              call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
              kappaExt = kappaAbs + kappaSca
+
+             rVec = subcellCentre(thisOctal, subcell)
+             if (thisOctal%threed) then
+                rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
+             endif
+
              if (thisOctal%subcellSize*kappaExt < 0.1d0) then
                 thisOctal%biasCont3D(subcell) = 1.d0
              else
@@ -3210,9 +3216,16 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
              if (thisOctal%threed) then
                 rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
              endif
-              
-             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+             
+             call normalize(rVec)
+             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs,dir=rVec)
              kappaExt = kappaAbs + kappaSca
+             
+             rVec = subcellCentre(thisOctal, subcell)
+             if (thisOctal%threed) then
+                rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
+             endif
+             
              if (thisOctal%subcellSize*kappaExt < 0.1d0) then
                 thisOctal%biasCont3D(subcell) = 1.d0
              else

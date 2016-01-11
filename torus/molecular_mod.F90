@@ -2527,10 +2527,11 @@ doNg:       if(ng) then
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
-        gridDistance, imageside, wantTau, dataCubeUnits, datacubeaxisunits
+        gridDistance, imageside, dataCubeUnits, datacubeaxisunits
    use datacube_mod, only: convertIntensityToBrightnessTemperature
 #ifdef USECFITSIO
    use fits_utils_mod
+   use inputs_mod, only: wanttau
 #endif
 #ifdef MPI
    use mpi

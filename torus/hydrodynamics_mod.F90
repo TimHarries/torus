@@ -2826,7 +2826,6 @@ contains
              x_interface_i_p_half = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
 
 
-
              if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
                 write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
                 print *, "cen ", subcellCentre(thisOctal, subcell)
@@ -4491,7 +4490,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforce(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only  : radiationpressure
+    use inputs_mod, only  : radiationpressure, radForceMonte
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction
@@ -4522,6 +4521,7 @@ contains
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrankGlobal," error in setting up x_i values in pressure force"
+!"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
                 write(*,*) thisoctal%ndepth
                 write(*,*) "centre ",subcellcentre(thisoctal,subcell)
@@ -4575,12 +4575,13 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
-!                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-
-                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%x
-
+                   if (RadForceMonte) then
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                      dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                   else
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                      dt * thisOctal%radiationMomentum(subcell)%x
+                   endif
 
                 endif
 
@@ -4593,11 +4594,13 @@ contains
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
-!                   thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
-                   thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%y
-
+                   if (RadForceMonte) then
+                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+                      dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
+                   else
+                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+                      dt * thisOctal%radiationMomentum(subcell)%y
+                   endif
                 endif
              else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
@@ -4608,12 +4611,13 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
-
-!                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
-
-                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%z
+                   if (RadForceMonte) then
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                      dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                   else
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                      dt * thisOctal%radiationMomentum(subcell)%z
+                   endif
                 endif
 
              endif
@@ -4655,7 +4659,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceCylindrical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : includePressureTerms, radiationpressure
+    use inputs_mod, only : includePressureTerms, radiationpressure, radForceMonte
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks, cellCentre
@@ -4695,7 +4699,7 @@ contains
              debug = .false.
              speed = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)/1.d5
 
-             if (speed > 50.d0) debug = .true.
+             if (abs(thisOctal%centre%z)/thisOctal%centre%x > 2) debug = .true.
 !             if (inSubcell(thisOctal, subcell, VECTOR(10.d3, 0.d0, 1.11d6))) then
 !                debug = .true.
 !             endif
@@ -4704,6 +4708,7 @@ contains
                 write(*,*) "speed before " ,speed, 1.d-5*thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
                      1.d-5*thisOctal%rhow(subcell)/thisOctal%rho(subcell)
                 write(*,*) "direction ",direction
+                write(*,*) "position ", thisOctal%centre
                 write(*,*) "u_interface ",thisOctal%u_amr_interface(subcell,1:2)/1.d5
                    write(*,*) "flux small i+1 ",thisOctal%flux_amr_i_plus_1(subcell,1:2)
                    write(*,*) "flux small i  ",thisOctal%flux_amr_i(subcell,1:2)
@@ -4719,6 +4724,7 @@ contains
 
              if (thisoctal%x_i_plus_1(subcell) == thisoctal%x_i_minus_1(subcell)) then
                 write(*,*) myrankGlobal," error in setting up x_i values"
+!"
                 write(*,*) thisoctal%x_i_plus_1(subcell),thisoctal%x_i_minus_1(subcell), thisoctal%x_i(subcell)
                 write(*,*) thisoctal%ndepth
                 write(*,*) "centre ",subcellcentre(thisoctal,subcell)
@@ -4901,17 +4907,18 @@ contains
                      / (thisOctal%rho(subcell)**2*thisOctal%x_i(subcell)**3)/1.d5
                 endif
 
-
+!"
                 if (radiationPressure) then
-!                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-
-                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%x
-
-                   if (debug) then
-                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in x ", &
-                           (dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed)/(thisOctal%rho(subcell)*1.d5)
+                   if (RadForceMonte) then
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                      dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                   else
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                      dt * thisOctal%radiationMomentum(subcell)%x
+                   endif
+                   if (debug) then 
+                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in  ", &
+                           (dt * thisOctal%kappaTimesFlux(subcell)/cspeed)/(thisOctal%rho(subcell)*1.d5)
 
                    endif
 !                   if (abs(thisOctal%rhou(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
@@ -5003,18 +5010,19 @@ contains
 !                   endif
 
                 if (radiationPressure) then
-!                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
-
-                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%z
-
+                   if (RadForceMonte) then
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                      dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                   else
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                      dt * thisOctal%radiationMomentum(subcell)%z
+                   endif
 !                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
 !                      write(*,*) "w speed over 200 after rad pressure forces"
 !                   endif
 
                    if (debug) then
-                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in x ", &
+                      if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in z ", &
                            (dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed)/(thisOctal%rho(subcell)*1.d5)
                    endif
 
@@ -5058,7 +5066,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceSpherical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : includePressureTerms, radiationpressure
+    use inputs_mod, only : includePressureTerms, radiationpressure, radForceMonte
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks
@@ -5095,7 +5103,7 @@ contains
 
           debug = .false.
           speed = sqrt(thisOctal%rhou(subcell)**2)/thisOctal%rho(subcell)/1.d5
-          if ((speed > 200.d0).and.(myHydroSetGlobal == 0)) then
+          if (( abs(thisOctal%centre%z)/thisOctal%centre%x > 2) .and.(myHydroSetGlobal == 0)) then
              write(*,*) "speed before" ,speed
              debug = .true.
           endif
@@ -5240,9 +5248,13 @@ contains
 
 
                 if (radiationPressure) then
+                   if (RadForceMonte) then
                    thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-
+                   dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                   else
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                      dt * thisOctal%radiationMomentum(subcell)%x
+                   endif
                         
 !                   if (thisOctal%radiationMomentum(subcell)%x /= 0.d0) write(*,*) "from flux,mom ",thisOctal%kappaTimesFlux(subcell)%x/cspeed,thisOctal%radiationMomentum(subcell)
 
@@ -10502,6 +10514,36 @@ end subroutine sumFluxes
        endif
     enddo
   end subroutine calculateRhoV
+
+    recursive subroutine calculateVelocityFromMomenta(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateVelocityFromMomenta(child)
+                exit
+             end if
+          end do
+       else 
+
+          if (thisOctal%oneD) then
+             thisOctal%velocity(subcell) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell),0.d0, 0.d0)/cSpeed
+          else if (thisOctal%twoD) then
+             thisOctal%velocity(subcell) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell),0.d0, thisOctal%rhow(subcell)/thisOctal%rho(subcell))/cSpeed
+          else if (thisOctal%threeD) then
+             thisOctal%velocity(subcell) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell),thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                  thisOctal%rhow(subcell)/thisOctal%rho(subcell))/cSpeed
+          endif
+
+       endif
+    enddo
+  end subroutine calculateVelocityFromMomenta
 
   recursive subroutine calculateRhoW(thisOctal, direction)
     type(octal), pointer   :: thisOctal
@@ -16613,23 +16655,20 @@ end subroutine refineGridGeneric2
        call MPI_ALLREDUCE(fracChange2, tempFracChange, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
        fracChange2 = tempFracChange
 
-       !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-!           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreadsGlobal))
-
-!       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
-!            MAXVAL(fracChange(1:nHydroThreadsGlobal))
-
-!       if (mod(it,10) == 0) then
-!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-!          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
-!       endif
-
-!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
-!       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange2(1:nHydroThreadsGlobal)),tol2
-       if (it > 50000) then
-          if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver", &
-               it,maxval(fracchange(1:nHydroThreadsGlobal))
+!              write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
+       if (modulo(it,100) .eq. 0) then
+          if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreadsGlobal))
+          
+          if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
+          MAXVAL(fracChange(1:nHydroThreadsGlobal))
+          
+          if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
+          if (writeoutput) write(*,*) it," frac change ",maxval(fracChange2(1:nHydroThreadsGlobal)),tol2
+          if (it > 50000) then
+             if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver", &
+             it,maxval(fracchange(1:nHydroThreadsGlobal))
+          endif
+          
           exit
        endif
     enddo
