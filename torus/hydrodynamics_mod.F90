@@ -7686,6 +7686,8 @@ end subroutine sumFluxes
 
     enddo
 
+    call fixCells(grid%ocTreeRoot)
+    
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupUi(grid%octreeRoot, grid, direction, dt)
@@ -20064,7 +20066,32 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     enddo
   end subroutine setEquationOfState
 
+  recursive subroutine fixCells(thisOctal)
+    use vector, only : modulus
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer      :: i
+    real(double) :: r
 
+    IF ( thisOctal%nChildren > 0 ) THEN
+       ! call this subroutine recursively on each of its children
+       i = 1
+       DO while(i <= thisOctal%nChildren)
+          child => thisOctal%child(i)
+          CALL fixCells(child)
+          i = i + 1
+       END DO
+    ELSE
+       if (call modulus(thisOctal%centre)<50) then
+          thisOctal%rho=1.0d-9
+          thisOctal%rhou=0
+          thisOctal%rhov=0
+          thisOctal%rhow=0
+       endif
+    ENDIF
+  end subroutine fixCells(thisOctal)
+    
+  
 #endif
 
 end module hydrodynamics_mod
