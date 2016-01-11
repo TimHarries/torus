@@ -93,7 +93,6 @@
   logical :: photoionization   !Perform a photoionization calculation
   logical :: hOnly             !Hydrogen only model (no Helium)
   logical :: massiveStars      !only use stars with M>20Msol in photo calc
-  logical :: CAKlineOpacity    !use Abbot82 temp invarient form of line driving
   logical :: forceminrho       !Endforce a minimum density
   logical :: simpleMu          !simpified mean particle mass calc
   logical :: caseB             !use a case b recombination coefficient
@@ -158,7 +157,6 @@
   logical :: includePressureTerms     ! include pressure source terms
   logical :: dumpRadial               ! write a text radial cut each dump
   logical :: radiationPressure        ! use radiation pressure terms
-  logical :: radForceMonte            !calculate the radiation pressure force using a Monte Carlo estimator
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
   logical :: forcegascourant          !use the gas condition only

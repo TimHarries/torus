@@ -275,8 +275,7 @@ contains
     real, allocatable, save :: cosArray(:)
 !$OMP THREADPRIVATE (cosArray)
 
-    print *, "photon scatter"
-    
+
     weight = 1.
     if (firstTime)  then
        allocate(cosArray(1:nMuMie))
@@ -402,9 +401,8 @@ contains
              fac =1.
           endif
           
-          print *, "dir: ", thisPhoton%direction
-          call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
-               dir=thisPhoton%direction)
+
+          call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca)
 
           k = randomIndex(allSca(1:nDustType), nDustType)
 

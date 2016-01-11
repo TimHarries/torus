@@ -76,7 +76,7 @@ contains
     use viscosity_mod, only : viscousTimescale
     use dust_mod, only : emptyDustCavity, sublimateDust
     use hydrodynamics_mod, only: hydroStep3d, hydrostep3d_amr, calculaterhou, calculaterhov, calculaterhow, &
-         calculaterhoe, calculatevelocityfrommomenta, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
+         calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
          setupx, setupqx, computecouranttime, unrefinecells, selfgrav, sumgasstargravity, transfertempstorage, &
          zerophigas, applysourcepotential, addStellarWind, cutVacuum, setupEvenUpArray, &
          pressureGradientTimestep, computeGravityTimestep, mergeSinks, addSinks, ComputeCourantTimenBody, addSupernovae,&
@@ -429,8 +429,6 @@ contains
     endif
 
 
-    call calculateVelocityFromMomenta(grid%octreeRoot)
-    
 
     if(grid%currentTime == 0.d0 .and. .not. readGrid .or. singleMegaPhoto .or. UV_vector) then
 !       if (startFromNeutral) then
@@ -1054,7 +1052,6 @@ contains
        endif
 !    endif
 
-       call calculateVelocityFromMomenta(grid%octreeRoot)
     currentlyDoingHydroStep = .false.
 
        if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
@@ -1426,9 +1423,9 @@ contains
 
     close(444)
 !    write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
-!    if (gasdt < 1.d-1) then
-!      call torus_stop("tc less than 0.1 s")
-!    endif
+    if (gasdt < 1.d-1) then
+      call torus_stop("tc less than 0.1 s")
+    endif
 
  enddo
 
@@ -2374,7 +2371,6 @@ end subroutine radiationHydro
              end if
 
 
-             print *, "max ",nSmallPackets,nBundles
              do i = 1, max(nSmallPackets,1)*nBundles
 !               write(*,*) myHydroSetGlobal," looping from 1 to ",max(nsmallpackets,1), i
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
@@ -2382,10 +2378,7 @@ end subroutine radiationHydro
 !                write(*,*) myrankWorldglobal, " receiving from ",j
              enddo
 
-             print *, "end loop"
-
              do iThread = 1, nDomainThreads
-                print *, iThread
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
@@ -2401,7 +2394,7 @@ end subroutine radiationHydro
              i = 0
 
              do while(photonsStillProcessing)                   
-                print *, i
+
 !                do iThread = 1, nHydroThreadsGlobal
 !                   toSendStack(1)%destination = 600
 !                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
@@ -2871,7 +2864,7 @@ end subroutine radiationHydro
                             call locate(lamArray, nLambda, real(thisLam), iLam)
                             octVec = rVec 
                             call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
-                                 lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid, direction=uHat)
+                                 lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                             
                             albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
 
@@ -2908,7 +2901,7 @@ end subroutine radiationHydro
                                
                                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                     kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                                    kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=UHatBefore)
+                                    kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
                                                
                                               
                                if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
@@ -3018,7 +3011,7 @@ end subroutine radiationHydro
                                   call locate(lamArray, nLambda, real(thisLam), iLam)
                                   
                                   call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
-                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, dir=uHat)
+                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb)
 
 !                                  write(*,*) "small packet wavelength ", thisLam
 !                                  write(*,*) "optical depth of cell ",(kappaAbsDb+kappaScadb)*thisOctal%subcellSize
@@ -3036,7 +3029,7 @@ end subroutine radiationHydro
                             
                             call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                  Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
+                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
 !                            write(*,*) "thislam",thislam,ilam, lamArray(ilam)
 !!                            write(*,*) lamArray(1:nLambda)
  !                           write(*,*) "kappaAbsDust",kappaAbsDust
@@ -4108,7 +4101,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
          actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, rosselandKappa=kappaRoss, &
-         grid=grid, inFlow=inFlow, direction=uHat)
+         grid=grid, inFlow=inFlow)
     kappaP = thisOctal%kappap(subcell)
     oldOctal => thisOctal
 
@@ -4128,7 +4121,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), startOctal=thisOctal, &
                actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-               grid=grid, inFlow=inFlow, direction=uHat)
+               grid=grid, inFlow=inFlow)
           call distanceToCellBoundary(grid, rVec, uHat, tval, thisOctal, subcell)
 !          write(*,*) "used MRW ",rVec
        endif
@@ -4314,7 +4307,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), startOctal=thisOctal, &
                actualSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-               grid=grid, inFlow=inFlow, direction=uHat)
+               grid=grid, inFlow=inFlow)
           oldOctal => thisOctal
           thisOctVec = octVec
 
@@ -4390,7 +4383,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
        call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualSubcell = subcell, &
             iLambda=iLam,lambda=real(thisLam),&
-            kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow, direction=uHat)
+            kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
        thisOctVec = octVec
 
 
@@ -5932,8 +5925,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        enddo
     endif
 
-    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, &
-      kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat)
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca)
     kappaExt = kappaAbs + kappaSca
 
 
@@ -8252,7 +8244,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
+            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust)
        kappaExt = kappaAbsDust + kappaScaDust
 
 !       if(grid%geometry == "imgTest") then
@@ -8309,7 +8301,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
+            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust)
        kappaExt = kappaAbsDust + kappaScaDust
 
 !       if(grid%geometry == "imgTest") then
