@@ -8,6 +8,7 @@ module setupamr_mod
   use discwind_class
   use messages_mod
   USE constants_mod
+  use biophysics_mod
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute
   use gridtype_mod, only:   gridtype
@@ -183,7 +184,21 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call readgridKengo(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-         
+       case("skin")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+                   if (doSmoothGrid) then
+          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+          do
+             gridConverged = .true.
+             call myScaleSmooth(3., grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .false.)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+          endif
+
 
 #ifdef SPH
        case("cluster")
@@ -436,6 +451,9 @@ doGridshuffle: if(gridShuffle) then
 
        select case (geometry)
 
+          case("skin")
+             call  fillMatcherSkinLayers(grid%octreeRoot)
+             call setSurfaceNormals(grid, grid%octreeRoot)
 
           case("theGalaxy","fitsfile")
              if (variableDustsublimation) then

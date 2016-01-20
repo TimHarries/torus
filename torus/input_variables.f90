@@ -16,6 +16,7 @@
   logical :: atomicPhysics
   logical :: nbodyPhysics
   logical :: dustPhysics
+  logical :: bioPhysics
   logical :: gasOpacityPhysics
 
 !--------------------------
@@ -33,6 +34,21 @@
   logical :: donBodyOnly
   logical :: nBodyTest
 
+
+!--------------------------
+! Biophysics parameters
+!--------------------------
+
+  type(VECTOR) :: sourcePosition
+  real(double) :: sourceTheta, sourcePhi
+  integer :: nComponent
+  character(len=10) :: componentType(10)
+  type(VECTOR) :: componentPosition(10)
+  type(VECTOR) :: componentDirection(10)
+  real(double) :: componentPower(10)
+  real(double) :: componentWavelength(10)
+  real(double) :: componentRadius(10)
+  real(double) :: componentNa(10)
 
 
 !-------------------------------

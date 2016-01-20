@@ -683,7 +683,7 @@ contains
 
     select case (valueType)
        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom", &
-            "radforce", "uvvec", "velcall")
+            "radforce", "uvvec", "velcall","surfnorm")
           scalarvalue = .false.
           vectorvalue = .true.
        case DEFAULT
@@ -2682,7 +2682,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   do ivalues = 1, nValueType
      select case (valueType(iValues))
      case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
-          "radforce", "uvvec","velcall")
+          "radforce", "uvvec","velcall","surfnorm")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -3073,6 +3073,11 @@ end subroutine writeXMLVtkFileAMR
                      rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%z)
                      rArray(3, n) = 0.
                   endif
+               case("surfnorm")
+                     rArray(1, n) = real(thisOctal%surfaceNormal(subcell)%x)
+                     rArray(2, n) = real(thisOctal%surfaceNormal(subcell)%y)
+                     rArray(3, n) = real(thisOctal%surfaceNormal(subcell)%z)
+
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30
                      if (thisOctal%threed) then
@@ -3275,6 +3280,18 @@ end subroutine writeXMLVtkFileAMR
                case("crossings")
                   value = thisOctal%ncrossings(subcell)
                   if (thisOctal%diffusionApprox(subcell)) value = 1.e6
+                  rArray(1, n) = real(value)
+
+               case("ncrossings")
+                  value = thisOctal%ncrossings(subcell)
+                  rArray(1, n) = real(value)
+
+               case("tissue")
+                  value = thisOctal%iTissue(subcell)
+                  rArray(1, n) = real(value)
+
+               case("udens")
+                  value = thisOctal%uDens(subcell)
                   rArray(1, n) = real(value)
 
                case("diff")

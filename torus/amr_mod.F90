@@ -1163,6 +1163,11 @@ CONTAINS
       thisOctal%rho = 100.d0 * mHydrogen
       thisOctal%temperature = 8000.
 
+   CASE ("skin")
+      thisOctal%rho = 0.d0
+      thisOctal%temperature = 300.d0
+      thisOctal%velocity= VECTOR(0.d0, 0.d0, 0.d0)
+
    CASE ("runaway")
       call calcRunaway
 
@@ -3566,6 +3571,7 @@ CONTAINS
     use density_mod, only: density
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
     use magnetic_mod, only : safierfits
+    use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required. 
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
@@ -3784,6 +3790,9 @@ CONTAINS
        
        select case(grid%geometry)
           
+       case("skin")
+          split = splitSkin(thisOctal, subcell)
+
        case("melvin")
           
           cellSize = thisOctal%subcellSize 
@@ -13237,6 +13246,7 @@ end function readparameterfrom2dmap
     dest%inStar = source%inStar
 
     call copyAttribute(dest%nCrossings, source%nCrossings)
+    call copyAttribute(dest%iTissue, source%iTissue)
     call copyAttribute(dest%chiLine, source%chiLine)
     call copyAttribute(dest%etaLine, source%etaLine)
     call copyAttribute(dest%etaCont, source%etaCont)
@@ -13256,6 +13266,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%boundaryCell,  source%boundaryCell)
     call copyAttribute(dest%boundaryPartner,  source%boundaryPartner)
     call copyAttribute(dest%GravboundaryPartner,  source%GravboundaryPartner)
+    call copyAttribute(dest%surfaceNormal,  source%surfaceNormal)
     call copyAttribute(dest%NHII,  source%NHII)
     call copyAttribute(dest%NHeI,  source%NHeI)
     call copyAttribute(dest%NHeII,  source%NHeII)
@@ -16905,7 +16916,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
-    use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam
+    use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
 #ifdef PDR
@@ -16993,7 +17004,13 @@ end function readparameterfrom2dmap
 
     endif
 
-
+    if (bioPhysics) then
+       call allocateAttribute(thisOctal%iTissue, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%undersampled, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%uDens, thisOctal%maxChildren)
+    endif
 
     if (atomicPhysics) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
@@ -17281,7 +17298,9 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
 
-
+    endif
+    if (bioPhysics) then
+       call allocateAttribute(thisOctal%surfaceNormal,thisOctal%maxChildren)
     endif
   end  subroutine allocateOctalAttributes
 
@@ -17312,6 +17331,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%scatteredIntensity)
     call deallocateAttribute(thisOctal%meanIntensity)
     call deallocateAttribute(thisOctal%nCrossings)
+    call deallocateAttribute(thisOctal%iTissue)
     call deallocateAttribute(thisOctal%nTot)
     call deallocateAttribute(thisOctal%oldFrac)
     call deallocateAttribute(thisOctal%dusttype)
@@ -17472,6 +17492,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%tempStorage)
     call deallocateAttribute(thisOctal%boundaryPartner)
     call deallocateAttribute(thisOctal%gravboundaryPartner)
+    call deallocateAttribute(thisOctal%surfaceNormal)
     call deallocateAttribute(thisOctal%radiationMomentum)
     call deallocateAttribute(thisOctal%kappaTimesFlux)
 

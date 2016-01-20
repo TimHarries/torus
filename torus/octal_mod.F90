@@ -173,6 +173,7 @@ MODULE octal_mod
 
     integer, pointer :: iAnalyticalVelocity(:)  => null()
     integer, pointer :: iEquationOfState(:)  => null()
+    integer, pointer :: iTissue(:)  => null()
     real(double), pointer :: gamma(:) => null()
     real(double), pointer :: divV(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
@@ -379,6 +380,7 @@ MODULE octal_mod
     real(double), pointer :: tempStorage(:,:) => null()
     type(vECTOR), pointer :: boundaryPartner(:) => null()
     type(vECTOR), pointer :: gravboundaryPartner(:) => null()
+    type(vECTOR), pointer :: surfaceNormal(:) => null()
     type(VECTOR), pointer :: radiationMomentum(:) => null()
     type(VECTOR), pointer :: kappaTimesFlux(:) => null()
     type(VECTOR), pointer :: UVvector(:) => null()

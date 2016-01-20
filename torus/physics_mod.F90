@@ -10,12 +10,15 @@ module physics_mod
   use vector_mod
   use parallel_mod
   use random_mod
+  use biophysics_mod
   implicit none
 
 
 contains
 
   subroutine setupMicrophysics(grid)
+    use inputs_mod, only : biophysics
+    use biophysics_mod
 #ifdef CMFATOM
     use inputs_mod, only : atomicPhysics, nAtom
     use modelatom_mod
@@ -56,6 +59,11 @@ contains
   endif
 #endif
 
+  if (biophysics) then
+     call writeInfo("Setting up skin tissue properties...",TRIVIAL)
+     call setupMatcherSkinTissue()
+     call writeInfo("Done.",TRIVIAL)
+   endif
 
   end subroutine setupMicrophysics
 
@@ -322,7 +330,8 @@ contains
   subroutine doPhysics(grid)
     use phasematrix_mod
     use dust_mod
-    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics
+    use biophysics_mod
+    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics, bioPhysics
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics, setupMolecularLteOnly !, UV_vector
@@ -433,7 +442,11 @@ contains
        endif
     endif
 
-
+    if (bioPhysics) then
+       call photonLoop(grid)
+       call writeVtkFile(grid, "skin.vtu", &
+            valueTypeString=(/"tissue    ","udens     ","ncrossings","surfnorm  "/))
+    endif
 
 
      if (dustPhysics.and.radiativeEquilibrium) then

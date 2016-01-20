@@ -244,6 +244,9 @@ contains
 
     call writeBanner("Physical ingredients of model","*",TRIVIAL)
 
+    call getLogical("biophysics", bioPhysics, cLine, fLine, nLines, &
+         "Include biophysics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("dustphysics", dustPhysics, cLine, fLine, nLines, &
          "Include dust physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -371,6 +374,7 @@ contains
     if (dustPhysics) call readDustPhysicsParameters(cLine, fLine, nLines)
     if (atomicPhysics) call readAtomicPhysicsParameters(cLine, fLine, nLines)
     if (molecularPhysics) call readMolecularPhysicsParameters(cLine, fLine, nLines)
+    if (bioPhysics) call readBiophysicsParameters(cLine, fLine, nLines)
 #ifdef PHOTOION
     if (photoionPhysics) call readPhotoionPhysicsParameters(cLine, fLine, nLines)
 #endif
@@ -3825,6 +3829,58 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call writeInfo(" ")
    
   end subroutine readMovieParameters
+
+
+  subroutine readBioPhysicsParameters(cLine, fLine, nLines)
+    character(len=lencLine) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+    integer :: i
+    character(len=20) :: keyword
+
+    call getVector("sourcepos", sourcePosition, 1.d0, cLine, fLine, nLines, &
+         "Source position: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+    call getDouble("sourcetheta", sourceTheta, degtorad, cLine, fLine, nLines, &
+         "Source theta angle: ","(a,f5.1,a)",180.d0, ok, .false.)
+
+    call getDouble("sourcephi", sourcePhi, degtorad, cLine, fLine, nLines, &
+         "Source phi angle: ","(a,f5.1,a)",0.d0, ok, .false.)
+
+    call getInteger("ncomponent", nComponent, cLine, fLine, nLines, &
+         "Number of source components","(a,i2,a)", 1, ok, .false.)
+
+    do i = 1, nComponent
+
+       write(keyword, '(a,i1)') "componenttype",i
+       call getString(keyword, componentType(i), cLine, fLine, nLines, &
+            "Type of source component: ","(a,a,1x,a)","spectrum.dat", ok, .true.)
+
+       write(keyword, '(a,i1)') "componentpos",i
+       call getVector(keyword, componentPosition(i), 1.d0, cLine, fLine, nLines, &
+            "Component position: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       write(keyword, '(a,i1)') "power",i
+       call getDouble(keyword, componentPower(i), 1.d0, cLine, fLine, nLines, &
+            "Component power (mW): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+
+       write(keyword, '(a,i1)') "wavelength",i
+       call getDouble(keyword, componentWavelength(i), 1.d0, cLine, fLine, nLines, &
+            "Component monochromatic wavelength (nm): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+
+       write(keyword, '(a,i1)') "radius",i
+       call getDouble(keyword, componentRadius(i), microntocm, cLine, fLine, nLines, &
+            "Component radius (microns): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+
+       if (componentType(i) == "fibre") then
+          write(keyword, '(a,i1)') "na",i
+          call getDouble(keyword, componentNa(i), 1.d0, cLine, fLine, nLines, &
+               "Numerical aperture: ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+       endif
+    enddo
+  end subroutine readBioPhysicsParameters
+
 
   subroutine readFitsParameters(cLine, fLine, nLines)
     use fits_utils_mod, only: fitsBitpix

@@ -42,6 +42,8 @@ program torus
   use memory_mod
   use turbulence_mod
   use loadbalance_mod
+  use biophysics_mod
+
 !  use pah_mod
 !  use zlib_mod
   use sph_data_class, only: deallocate_sph
@@ -105,9 +107,7 @@ program torus
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
-!  if (Writeoutput) call compressTest()
-!  stop
-  !  call testSuiteRandom()  
+
   call inputs()
 
 #ifdef MPI
