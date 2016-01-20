@@ -629,7 +629,7 @@ contains
     integer :: nLines
     logical :: fLine(:)
     logical :: ok
-    logical :: setSubRadius
+    logical :: setSubRadius, oldWindUnits
     character(len=20) :: heightLabel, betaLabel
     integer :: i
 
@@ -923,44 +923,91 @@ contains
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
        if (ttauriwind) then
-          ! --- parameters for ttauri wind
-          call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
-               "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
 
-          call getDouble("DW_Rmin", DW_Rmin, ttaurirOuter/1.d10, cLine, fLine, nLines, &
+          call getLogical("oldwindunits", oldWindUnits, cLine, fLine, nLines, &
+               "Use old ttauri wind units:","(a,1l,1x,a)", .false., ok, .false.)
+
+          if (oldWindUnits) then
+             ! --- parameters for ttauri wind
+             call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
+                  "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
+             
+             call getDouble("DW_Rmin", DW_Rmin, ttaurirOuter/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
-          call getDouble("DW_Rmax", DW_rMax, ttaurirOuter/1.d10, cLine, fLine, nLines, &
-               "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
-          call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
-               "Disc wind:: Wind source displacement [inner wind radii]: ", &
+             call getDouble("DW_Rmax", DW_rMax, ttaurirOuter/1.d10, cLine, fLine, nLines, &
+                  "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
+                  "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+             call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
+                  "Disc wind:: Wind source displacement [inner wind radii]: ", &
+                  "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+             call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Temperature of disc at inner radius [K]: ", &
+                  "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+             call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+                  "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
+             call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+                  "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+             call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+             call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+             call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
+                  "Disc wind:: Effective acceleration length [inner wind radii]: ", &
+                  "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
+             call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Scaling on the terminal velocity [-]: ", &
+                  "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+             call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Isothermal temperature of disc wind [K]: ", &
+                  "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+          else
+             ! --- parameters for ttauri wind
+             call getDouble("DW_Rmin", DW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Inner radius of the wind [stellar radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
-!          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
-!               "Disc wind:: Temperature of disc at inner radius [K]: ", &
-!               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
-          call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-               "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
-          call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
-          call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
-          call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
-          call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
-               "Disc wind:: Effective acceleration length [inner wind radii]: ", &
-               "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
-          call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Scaling on the terminal velocity [-]: ", &
-               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
-          call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
-               "Disc wind:: Isothermal temperature of disc wind [K]: ", &
-               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+             call getDouble("DW_Rmax", DW_rMax, ttaurirstar/1.d10, cLine, fLine, nLines, &
+                  "Disc wind:: Outer radius of the disc [stellar radii]: ", &
+                  "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+             call getDouble("DW_d", DW_d, ttaurirstar/1.d10, cLine, fLine, nLines, &
+                  "Disc wind:: Wind source displacement [stellar radii]: ", &
+                  "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+             call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Temperature of disc at inner radius [K]: ", &
+                  "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+             call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+                  "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
+             call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+                  "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+             call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+             call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+             call getDouble("DW_Rs", DW_Rs,  DW_rmin, cLine, fLine, nLines, &
+                  "Disc wind:: Effective acceleration length [stellar radii]: ", &
+                  "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
+             call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Scaling on the terminal velocity [-]: ", &
+                  "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+             call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
+                  "Disc wind:: Isothermal temperature of disc wind [K]: ", &
+                  "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+          endif
+
+
+
+
        endif
+
+
 
 
        if (useHartmannTemp .and. isoTherm) then 
@@ -1396,9 +1443,9 @@ contains
           call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
                "Disc wind:: Wind source displacement [inner wind radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
-!          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
-!               "Disc wind:: Temperature of disc at inner radius [K]: ", &
-!               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Temperature of disc at inner radius [K]: ", &
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
           call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the disc temperature power law [-]: ", &
                "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 

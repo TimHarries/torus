@@ -17,8 +17,10 @@ module discwind_class
   public::  &
        &   new, &
        &   get_parameters, &
+       &   mdot_on_disc,&
        &   component, &
        &   in_discwind, &
+       &   split_discwind, &
        &   all_in_discwind, &
        &   discwind_density, &
        &   discwind_Vr, &
@@ -34,7 +36,6 @@ module discwind_class
        &   speed_of_sound, &
        &   escape_velocity,&
        &   temperature_disc, &
-       &   mdot_on_disc,&
        &   ave_discwind_density_slow, &
        &   ave_discwind_density_fast
 
@@ -549,6 +550,65 @@ contains
 
   end function in_discwind
 
+  logical function split_discwind(this, xpos,ypos,zpos, subcellsize)
+    implicit none
+    type(discwind_type), intent(in) :: this
+    real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
+    real(double), optional, intent(in) :: subcellsize
+    !
+    real(double) :: x, y, z     ! [10^10cm]  position with respect to the center of star
+    real(double) :: R           ! [10^10cm]  cylindical radius 
+    real(double) :: s1, s2      ! slope of the inner and outer edge of the wind
+    real(double) :: R1, R2      ! The range of the R allowed for the win
+    real(double) :: dr
+    logical :: in_discwind
+    ! position with respect to the center of the star
+    x = xpos
+    y = ypos
+    z = zpos
+
+    ! distance from the center of the star on the disc (z=0)
+    R = SQRT(x*x + y*y)
+
+    ! slopes of the two boundaries
+    s1 = this%d/this%Rmin
+    s2 = this%d/this%Rmax
+    if (s1 ==0)  then
+       write(*,*) "Error:: s1 = 0 in [discwind_class::in_discwid]."
+       stop
+    end if
+    if (s2 ==0)  then
+       write(*,*) "Error:: s2 = 0 in [discwind_class::in_discwid]."
+       stop
+    end if
+
+    ! the boundaries
+    R1 = (ABS(z)+this%d)/s1
+    R2 = (ABS(z)+this%d)/s2
+
+
+    ! Now checks if in a vaild zone
+    if (PRESENT(subcellsize)) then
+       ! this will allow to split
+       ! the cell at the edge
+       dr = subcellsize/2.d0
+    else
+       dr = 0.0d0
+    end if
+    if ( (R+dr) >R1 .and. (R-dr)<R2 ) then
+       in_discwind = .true.
+    else
+       in_discwind = .false.
+    end if
+
+    split_discwind = .false.
+    if (in_Discwind .and.(subcellsize > (r2-r1)/40.d0)) split_discwind = .true.
+    
+
+
+  end function split_discwind
+
+
 
   logical function all_in_discwind(thisOctal, subcell, this)
     type(DISCWIND_TYPE) :: this
@@ -604,7 +664,6 @@ contains
        write(*,*) "Error:: fac <0.0 in [discwind_class::mdot_on_disc]."
        stop
     end if
-
     out = Mdot*(R**delta)*fac/(4.0d0*pi)   ! [g/s/cm^2]
 
   end function mdot_on_disc

@@ -1628,7 +1628,7 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Ga
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nHydrogen
-
+! Hollenbach & McKee 1979, ApJS 41 555
   rGrain  = 1.d-4
   sigmaGrain = pi * rGrain**2
   grainVolume = (4.d0/3.d0)*pi*rGrain**3

@@ -430,7 +430,8 @@ CONTAINS
   subroutine addDiscWind(grid)
     use inputs_mod, only : DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
        DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, limitscalar, ttauriMstar
-    real(double) :: DW_Hdisc
+    real(double) :: DW_Hdisc, r
+    integer :: i
     type(GRIDTYPE) :: grid
     type(DISCWIND_type) :: myDiscWind
 
@@ -439,6 +440,11 @@ CONTAINS
     globalDiscWind = myDiscWind
     call add_discwind(grid%octreeRoot, grid, myDiscWind, limitscalar)
     call assignDensitiesDiscwind(grid, grid%octreeRoot, myDiscWind)
+    do i = 1, 100
+       r = (1.7d0 + dble(i-1)/dble(99)*(23.5d0-1.7d0))*rSol*6.2d0/1.d10
+       if (writeoutput) write(33,'(5e12.4)') r/(6.2d0*rsol/1.d10), mdot_on_disc(myDiscWind, r), &
+            discwind_density(myDiscWind,r,0d0,1.d-10), discwind_vr(myDiscWind,r,0.d0,1.d-10)/1.d5
+    enddo
 
   end subroutine addDiscWind
 
@@ -457,7 +463,7 @@ CONTAINS
     
     real(oct)  :: cellSize, d
     TYPE(VECTOR)     :: cellCentre
-!    integer, parameter :: nr = 150  ! normal resolution
+!    integer, parameter :: nr = 100  ! normal resolution
 !    integer, parameter :: nr = 180  ! normal resolution
     integer, parameter :: nr = 40  ! low resolution
 
@@ -488,6 +494,7 @@ CONTAINS
     cellCentre = subcellCentre(thisOctal, subcell)
 
 
+
 !    if (.not.in_jet_flow(this, cellCentre) ) then
     if (.not.in_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z, thisOctal%subcellSize) ) then
        need_to_split2 = .false.
@@ -505,6 +512,9 @@ CONTAINS
           need_to_split2 = .true.
        end if
     endif
+    need_to_split2 = split_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z, thisOctal%subcellSize)
+
+
   end function need_to_split2
 
 
