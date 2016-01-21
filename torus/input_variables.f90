@@ -668,6 +668,17 @@
   real(double) :: DW_Mstar ! [M_sun]  mass of the central object
   !-----------------------------------------------------------------------------
 
+  !-----------------------------------For T Tauri stellar wind------------------
+
+  logical :: TTauriStellarWind
+  real(double) :: SW_Rmin  ! minimum radius of stellar wind  (10^10 cm)
+  real(double) :: SW_Rmax  ! maximum radius of stellar wind  (10^10 cm)
+  real(double) :: SW_Vmin  ! minimum speed of stellar wind  (cm/s)
+  real(double) :: SW_Vmax  ! maximum speed of stellar wind  (escape speed)
+  real(double) :: SW_beta  ! beta law for stellar wind
+  real(double) :: SW_Mdot  ! stellar wind mass loss rate (msol/yr)
+  real(double) :: SW_temperature  ! stellar wind temperature [K]
+
 
   !----- For T Tauri Jets -----------------------------------------------------
   real(double) :: JET_Rmin    !  [10^10cm]  The minimum raidus of jet

@@ -2301,12 +2301,18 @@ END SUBROUTINE GAUSSJ
     real(double), intent(inout) :: b(:)    
     logical, intent(out) :: ok
     integer :: i, n
+    logical, save :: firstTime = .true.
+    !$OMP THREADPRIVATE(firstTime)
+
 
 ! lured can change diagonal terms in a so check for 
 ! zeros in the subroutine iteslf
     call lured(a,ok)
     if (.not. ok) then
-       write(*,*) "LU solver: lured not ok"
+       if (firstTime) then
+          write(*,*) "LU solver: lured not ok"
+          firstTime = .false.
+       endif
        write(*,*) a
        return
     endif
@@ -2343,7 +2349,7 @@ END SUBROUTINE GAUSSJ
     
 i_loop: do i = 1, n-1
        do k = i+1, n
-          if (a(i,i)==0.0) then 
+          if (a(i,i)==0.d0) then 
              ok=.false.
              exit i_loop
           endif

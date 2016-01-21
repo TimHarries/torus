@@ -2119,12 +2119,12 @@ end subroutine molecularLoop
      real(double) :: matrixArad(maxlevel+1,maxlevel+1)
      real(double), intent(in) :: collMatrix(:,:), ctot(:)
 
-     integer :: l, k, itrans
+     integer :: i, l, k, itrans
 
      logical :: dummy
      logical :: luslvOK
 
-     matrixA = 1.d-60 ! Initialise rates to negligible to avoid divisions by zero
+     matrixA = 1.d-59 ! Initialise rates to negligible to avoid divisions by zero
      matrixB = 0.d0 ! Solution vector - all components (except last) => equilibrium
 
 ! Sum over all levels = 1 - Conservation constraint
@@ -2141,6 +2141,7 @@ end subroutine molecularLoop
         k = iUpper(itrans)
         l = iLower(itrans)
 
+
 ! total emission (+) from upper level into (-) all lower levels (stored on-diagonal) 
         matrixA(k,k) = matrixA(k,k) + buljnu(itrans) + thisMolecule%einsteinA(iTrans)
 
@@ -2154,7 +2155,11 @@ end subroutine molecularLoop
 ! stimulated emission (+) from lower level, l into upper level, k
 !(-ve emission stored in k,l)
         matrixA(k,l) = matrixA(k,l) - blujnu(itrans)
+
+
      enddo
+
+
 !write(*,*) "matrix",matrixA(:,:)
 
 ! Store for use in raditively dominated solution if the LU solver fails (2nd fix).
@@ -2162,6 +2167,19 @@ end subroutine molecularLoop
 
 ! Add contributions from getcollmatrix
      matrixA(1:maxlevel,1:maxlevel) = matrixA(1:maxlevel,1:maxlevel) - collmatrix(1:maxlevel,1:maxlevel)
+
+
+     do i = 1, maxLevel
+        if (matrixA(i,i) == 0.d0) then
+           write(*,*) "Matrix diagonal element ",i,i," is zero ",collmatrix(i,i)
+           do iTrans = 1, maxtrans
+              write(*,*) "itrans ",itrans, " buljnu ",buljnu(itrans), " A ",thisMolecule%einsteinA(iTrans), &
+                   "blujnu ",blujnu(itrans)
+           enddo
+        endif
+     enddo
+
+
 !write(*,*) "matrixN",matrixA(:,:)
      matrixA(maxlevel+1,1:maxlevel+1) = 1.d0 ! sum of all level populations
      matrixA(1:maxlevel+1,maxlevel+1) = 1.d-60 ! fix highest population to small non-zero value
@@ -2186,6 +2204,7 @@ end subroutine molecularLoop
 #endif
 !write(*,*) "matrixS",matrixA(:,:)
 !write(*,*) "matrixSS",matrixB
+
 
 ! final step - if level population candidates have a problem then fix by 
 ! 1st) repeating solution over minlevels 
@@ -2227,6 +2246,7 @@ end subroutine molecularLoop
               call gesv(matrixArad, matrixB)
 #else
               call luSlv(matrixArad, matrixB(:,1),luslvOK)
+
 #endif        
               if ( (debug .and. .not. any(isnan(matrixB))) .or. luslvOK ) then
                  matrixB = abs(matrixB) ! stops negative level populations causing problems

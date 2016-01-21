@@ -31,7 +31,7 @@ contains
     use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics, variableDustSublimation
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
-    use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp
+    use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope, readTurb
@@ -360,6 +360,10 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("Done.",TRIVIAL)
 #endif
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+
+          if (TTauriStellarWind) call assignDensitiesStellarWind(grid, grid%octreeRoot)
+
+
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
           ! Finding the total mass in the accretion flow
           mass_accretion_old = 0.0d0

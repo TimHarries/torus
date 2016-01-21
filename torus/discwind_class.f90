@@ -473,8 +473,8 @@ contains
        if (phi < 0.d0) phi = phi + twoPi
        theta = ACOS( (ABS(z)+d) / rp )  ! origin shifted
        
-       Vx = Vr*SIN(theta)*COS(phi) - Vphi*SIN(phi)      ! [c]
-       Vy = -1.d0*(Vr*SIN(theta)*SIN(phi) + Vphi*COS(phi))      ! [c]
+       Vx = -Vr*SIN(theta)*COS(phi) + Vphi*SIN(phi)      ! [c]
+       Vy = +1.d0*(Vr*SIN(theta)*SIN(phi) - Vphi*COS(phi))      ! [c]
        Vz = Vr*COS(theta)                               ! [c]
        if (z < 0.d0) Vz = -Vz
 

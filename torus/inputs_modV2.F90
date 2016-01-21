@@ -926,6 +926,9 @@ contains
        call getLogical("ttauriwind", ttauriWind, cLine, fLine, nLines, &
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("ttauristellarwind", ttauriStellarWind, cLine, fLine, nLines, &
+            "T Tauri stellar wind present:","(a,1l,1x,a)", .false., ok, .false.)
+
        if (ttauriwind) then
 
           call getLogical("oldwindunits", oldWindUnits, cLine, fLine, nLines, &
@@ -996,7 +999,7 @@ contains
                   "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
                   "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
              call getDouble("DW_Rs", DW_Rs,  DW_rmin, cLine, fLine, nLines, &
-                  "Disc wind:: Effective acceleration length [stellar radii]: ", &
+                  "Disc wind:: Effective acceleration length [inner wind radii]: ", &
                   "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
              call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Scaling on the terminal velocity [-]: ", &
@@ -1006,12 +1009,39 @@ contains
                   "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
           endif
 
+       endif
+       
+       if (TTauristellarWind) then
+          ! --- parameters for ttauri wind
+          call getDouble("SW_Rmin", SW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
+               "Stellar wind:: Inner radius of the wind [stellar radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
 
+          call getDouble("SW_Rmax", SW_rMax, ttaurirstar/1.d10, cLine, fLine, nLines, &
+               "Stellar wind:: Outer radius of the wind [stellar radii]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
 
+          call getDouble("SW_Vmin", SW_vMin, 1.d5, cLine, fLine, nLines, &
+               "Stellar wind:: Wind base velocity [km/s]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+
+          call getDouble("SW_Vmax", SW_Vmax, 1.d0, cLine, fLine, nLines, &
+               "Stellar wind:: Wind max velocity [Vesc]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+
+          call getDouble("SW_beta", SW_beta, 1.d0, cLine, fLine, nLines, &
+               "Stellar wind:: beta-velocity index []: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+
+          call getDouble("SW_Mdot", SW_mdot, 1.d0, cLine, fLine, nLines, &
+               "Stellar wind:: mass-loss rate [Msol/yr]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+
+          call getDouble("SW_temp", SW_temperature, 1.d0, cLine, fLine, nLines, &
+               "Stellar wind:: temperature [K]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
 
        endif
-
-
 
 
        if (useHartmannTemp .and. isoTherm) then 

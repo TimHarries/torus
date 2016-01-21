@@ -3560,7 +3560,7 @@ CONTAINS
     use inputs_mod, only : inputnsource, sourcepos, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc
-    use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1
+    use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1, ttauristellarwind, SW_rMax, SW_rmin
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -4044,6 +4044,34 @@ CONTAINS
           cellSize = thisOctal%subcellSize
           r0 = modulus(cellCentre)
           
+
+
+          if (ttauriStellarWind) then
+
+
+             r = modulus(cellCentre)
+             if (firsttime) then
+                nr = 100
+                do i = 1, nr
+                   rgrid(i) = log10(SW_Rmin) + (dble(i-1)/dble(nr-1))*log10(SW_Rmax/SW_Rmin)
+                enddo
+                rgrid(1:nr) = 10.d0**rgrid(1:nr)
+                firsttime = .false.
+             endif
+
+             if ((r > SW_Rmin).and.(r < SW_Rmax)) then
+                call locate(rGrid, 100, r ,i)
+                if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
+             endif
+             if ( ((r + cellsize/2.d0) > SW_rMin).and.(r < SW_rMin)) then
+                if (cellsize > (rgrid(2)-rgrid(1))) split = .true.
+             endif
+
+          endif
+
+
+
+
           if (ttauriMagnetosphere) then
              if (inflowMahdavi(cellcentre*1.d10).and.&
                   cellVolume(thisOctal,subcell)*1.d30*density(cellCentre,grid) > maxCellMass) &
@@ -15072,6 +15100,49 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesAlphaDisc
+
+  recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
+    use analytical_velocity_mod
+    use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+    type(GRIDTYPE) :: grid
+    real(double) :: thisRho, r, fac, v
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: cellCentre
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignDensitiesStellarWind(grid, child)
+                exit
+             end if
+          end do
+       else
+
+          cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
+          r = modulus(cellCentre)
+
+          v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
+          thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
+
+
+          if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
+             thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
+
+!             CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
+             thisOctal%iAnalyticalVelocity(subcell) = 3
+             thisOCtal%rho(subcell) = thisRho
+             thisOCtal%fixedTemperature(subcell) = .true.
+             thisOctal%temperature(subcell) = SW_temperature
+          endif
+
+       endif
+    enddo
+  end subroutine assignDensitiesStellarWind
 
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)

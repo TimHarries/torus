@@ -1538,7 +1538,7 @@ end subroutine radiationHydro
 !    integer, parameter :: stackLimit=200
     real, intent(inout) :: iterTime(3)
     integer, intent(inout) :: iterStack(3)
-    integer :: ZerothstackLimit, OldStackLimit
+    integer :: ZerothstackLimit
     real :: startTime, endTime, newTime
     integer, intent(inout) :: optID
     integer :: optCounter, optCount
@@ -1604,6 +1604,7 @@ end subroutine radiationHydro
     real(double) :: tempDouble
 
     real, allocatable :: tempCell(:,:), temp1(:), temp2(:), tempIon(:,:,:)
+    real(double), allocatable :: temp1d(:)
 
     integer :: n_rmdr, mOctal, nNotEscaped
     character(len=80) :: mpiFilename, message
@@ -1623,10 +1624,14 @@ end subroutine radiationHydro
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize, nToSend
     integer :: nDomainThreads, localRank, m, nBundles
-    real :: FinishTime, WaitingTime
+    real :: FinishTime, WaitingTime, globalStartTime, globalTime
+    real(double), allocatable :: efficiencyArray(:)
+    real(double) :: medianEfficiency
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
-
+    integer, save :: oldStackLimit = 0
+    real(double),save :: oldMedianEfficiency = 0.d0
+    logical, save :: firstCall = .true.
     !AMR
 !    integer :: iUnrefine, nUnrefine
 
@@ -1637,8 +1642,16 @@ end subroutine radiationHydro
     !   stackLimit = 1
     !   zerothStackLimit = 1
     !end if
+
+    if (firstCall) then
+       firstCall = .false.
+       oldStackLimit = stackLimit
+    endif
+
     
     if (globalnSource == 0) goto 666
+
+    allocate(efficiencyArray(1:nThreadsGlobal-1))
 
     if (readGrid) splitThisTime = .true.
 
@@ -1650,6 +1663,8 @@ end subroutine radiationHydro
 
    nDomainThreads = nHydroThreadsGlobal + nLoadBalancingThreadsGlobal
     
+
+
     if(stacklimit == 0) then
        stacklimit = 200
     end if
@@ -2457,7 +2472,7 @@ end subroutine radiationHydro
              nSaved = 0
              nNotEndLoop = 0
              waitingTime = 0.d0
-!             call wallTime(globalStartTime)
+             call wallTime(globalStartTime)
              sendAllPhotons = .false.
              !needNewPhotonArray = .true.  
              do while(.not.endLoop) 
@@ -3209,11 +3224,36 @@ end subroutine radiationHydro
        end if
 
  
-!       call wallTime(globalTime)
-!       globalTime = globalTime - globalStartTime
 
+       efficiencyArray = 0.d0
        if (myrankGlobal /= 0) then
-!          write(*,*) myrankGlobal, " waited for ",waitingTime, " seconds or ",waitingTime/GlobalTime*100.,"% of run"
+          call wallTime(globalTime)
+          globalTime = globalTime - globalStartTime
+
+          efficiencyArray(myrankGlobal) = 100.d0*(1.d0 - dble(waitingTime/GlobalTime))
+          allocate(temp1d(1:nThreadsGlobal-1))
+          call MPI_ALLREDUCE(efficiencyArray, temp1d, nThreadsGlobal-1, &
+               MPI_DOUBLE_PRECISION, MPI_SUM, allDomainsCommunicator, ierr)
+          efficiencyArray = temp1d
+          deallocate(temp1d)
+          call sort(nThreadsGlobal-1, efficiencyArray)
+          if (myrankGlobal == 1) then
+             do i = 1, nThreadsGlobal-1
+                write(*,*) i, " efficiency ", efficiencyArray(i), " %"
+             enddo
+          endif
+          if (writeoutput) write(*,*) "Median efficiency is ",efficiencyArray((nThreadsGlobal-1)/2), " %"
+          medianEfficiency = efficiencyArray((nThreadsGlobal-1)/2)
+          oldStackLimit = stackLimit
+
+!          if (medianEfficiency > oldMedianEfficiency) then
+!             stackLimit = stackLimit + 1
+!          else
+!             stackLimit = max(1, sackLimit-1)
+!          endif
+          
+
+          
 
 
           call MPI_ALLREDUCE(nTotScat, i, 1, MPI_INTEGER, MPI_SUM, allDomainsCommunicator, ierr)
