@@ -15132,7 +15132,7 @@ end function readparameterfrom2dmap
 
           if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
              thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
-
+             thisOctal%inflow(subcell) = .true.
 !             CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
              thisOctal%iAnalyticalVelocity(subcell) = 3
              thisOCtal%rho(subcell) = thisRho
