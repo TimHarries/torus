@@ -678,7 +678,7 @@
   real(double) :: SW_beta  ! beta law for stellar wind
   real(double) :: SW_Mdot  ! stellar wind mass loss rate (msol/yr)
   real(double) :: SW_temperature  ! stellar wind temperature [K]
-
+  real(double) :: SW_protation  ! stellar rotation period [d]
 
   !----- For T Tauri Jets -----------------------------------------------------
   real(double) :: JET_Rmin    !  [10^10cm]  The minimum raidus of jet
