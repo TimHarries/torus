@@ -1041,9 +1041,9 @@ contains
                "Stellar wind:: temperature [K]: ", &
                "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.) 
 
-	  call getDouble("SW_Prot", SW_protation, 86400.d0, cLine, fLine, nLines, &
-	       "Stellar wind:: stellar rotation period [d]: ", &
-	       "(a,1p,e9.3,1x,a)", 2.d0, ok, .true.)
+          call getDouble("SW_Prot", SW_protation, 86400.d0, cLine, fLine, nLines, &
+               "Stellar wind:: stellar rotation period [d]: ", &
+               "(a,1p,e9.3,1x,a)", 2.d0, ok, .true.)
 
        endif
 

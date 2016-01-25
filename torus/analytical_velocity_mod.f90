@@ -40,8 +40,7 @@ contains
             SW_vMax, SW_Rmin, SW_beta, SW_rmax, SW_protation
        type(VECTOR) :: point, rHat, phiHat
        real(double) :: r, v_r, vEsc, vterm, v_eq, v_phi, x, y, z, phi
-       real(double) :: vx, vy, vz, theta
-       type(VECTOR) :: vHat
+       real(double) :: theta
        type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.0d0)
 
        r = modulus(point)

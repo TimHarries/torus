@@ -15105,7 +15105,7 @@ end function readparameterfrom2dmap
     use analytical_velocity_mod
     use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
     type(GRIDTYPE) :: grid
-    real(double) :: thisRho, r, fac, v
+    real(double) :: thisRho, r,  v
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(VECTOR) :: cellCentre
@@ -15137,7 +15137,7 @@ end function readparameterfrom2dmap
              thisOctal%iAnalyticalVelocity(subcell) = 3
              thisOCtal%rho(subcell) = thisRho
              thisOCtal%fixedTemperature(subcell) = .true.
-             thisOctal%temperature(subcell) = SW_temperature
+             thisOctal%temperature(subcell) = real(SW_temperature)
           endif
 
        endif
