@@ -1019,27 +1019,31 @@ contains
 
           call getDouble("SW_Rmax", SW_rMax, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Outer radius of the wind [stellar radii]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 100.0d0, ok, .true.) 
 
           call getDouble("SW_Vmin", SW_vMin, 1.d5, cLine, fLine, nLines, &
                "Stellar wind:: Wind base velocity [km/s]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 10.0d0, ok, .true.) 
 
           call getDouble("SW_Vmax", SW_Vmax, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: Wind max velocity [Vesc]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
 
           call getDouble("SW_beta", SW_beta, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: beta-velocity index []: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
 
           call getDouble("SW_Mdot", SW_mdot, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: mass-loss rate [Msol/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-7, ok, .true.) 
 
           call getDouble("SW_temp", SW_temperature, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: temperature [K]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.) 
+
+	  call getDouble("SW_Prot", SW_protation, 86400.d0, cLine, fLine, nLines, &
+	       "Stellar wind:: stellar rotation period [d]: ", &
+	       "(a,1p,e9.3,1x,a)", 2.d0, ok, .true.)
 
        endif
 
