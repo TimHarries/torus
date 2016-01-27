@@ -3007,6 +3007,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
                 IF ( CAN .GT. MAXCAN ) THEN
 
                    WRITE(*,'('' TOO MANY CANDIDATES '')')
+                   write(*,*) can,maxcan
                    STOP
 
                 ENDIF

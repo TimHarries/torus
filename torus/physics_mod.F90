@@ -898,6 +898,7 @@ contains
        if (writeoutput) write(*,*) "EUV/X-ray flux (erg/s)", &
             xRayFlux*fourPi*globalSourceArray(1)%radius**2*1.d20
 
+
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, nSphereSurface, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)

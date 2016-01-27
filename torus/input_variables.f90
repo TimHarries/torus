@@ -679,6 +679,7 @@
   real(double) :: SW_Mdot  ! stellar wind mass loss rate (msol/yr)
   real(double) :: SW_temperature  ! stellar wind temperature [K]
   real(double) :: SW_protation  ! stellar rotation period [d]
+  real(double) :: SW_veq  ! equatorial rotation velocity
 
   !----- For T Tauri Jets -----------------------------------------------------
   real(double) :: JET_Rmin    !  [10^10cm]  The minimum raidus of jet

@@ -1041,9 +1041,21 @@ contains
                "Stellar wind:: temperature [K]: ", &
                "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.) 
 
-          call getDouble("SW_Prot", SW_protation, 86400.d0, cLine, fLine, nLines, &
-               "Stellar wind:: stellar rotation period [d]: ", &
-               "(a,1p,e9.3,1x,a)", 2.d0, ok, .true.)
+	  call getDouble("SW_Veq", SW_veq, 1.d5, cLine, fLine, nLines, &
+	       "Stellar wind:: stellar equatorial rotation velocity [km/s]: ", &
+	       "(a,1p,e9.3,1x,a)", 0.d0, ok, .false.)
+
+
+          if (SW_veq == 0.d0) then
+             call getDouble("SW_Prot", SW_protation, 86400.d0, cLine, fLine, nLines, &
+                  "Stellar wind:: stellar rotation period [d]: ", &
+                  "(a,1p,e9.3,1x,a)", 0.d0, ok, .true.)
+          endif
+
+          if ((SW_veq /= 0.d0).and.(SW_Protation /= 0.d0)) then
+             call writeFatal("Both stellar rotation period and equatorial rotation velocity set")
+             stop
+          endif
 
        endif
 

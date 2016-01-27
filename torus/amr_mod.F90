@@ -4213,6 +4213,15 @@ CONTAINS
 !                     (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 5.d0) ) split=.true.
              endif
           endif
+
+          if (thisOctal%cylindrical) then
+             dphi = returndPhi(thisOctal)
+             if (dphi > minPhiResolution) then
+                split = .true.
+                splitinAzimuth = .true.
+             endif
+          endif
+
        case("lexington", "NLR")
           if (thisOctal%nDepth < mindepthamr) then
              split = .true.
@@ -15127,13 +15136,17 @@ end function readparameterfrom2dmap
           r = modulus(cellCentre)
 
           v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
-          thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
+          thisRho = 0.d0
+          if (v > 0.d0) then
+             thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
+          endif
+
 
 
           if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
              thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
              thisOctal%inflow(subcell) = .true.
-!             CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
+             CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
              thisOctal%iAnalyticalVelocity(subcell) = 3
              thisOCtal%rho(subcell) = thisRho
              thisOCtal%fixedTemperature(subcell) = .true.
@@ -16837,7 +16850,7 @@ end function readparameterfrom2dmap
     subroutine genericAccretionSurface(surface, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use inputs_mod, only : tHotSpot, mDotParameter1, tTauriRstar
+    use inputs_mod, only : tHotSpot, mDotParameter1, tTauriRstar, ttauriMagnetosphere
     use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
     type(SURFACETYPE) :: surface
     type(VECTOR) :: rVec
@@ -16859,56 +16872,62 @@ end function readparameterfrom2dmap
     totallum = 0.d0
     totalmdot = 0.d0
 
-    do i = 1, surface%nElements
-       rVec = (modulus(surface%Element(i)%position-surface%centre)*1.001d0) &
-            *surface%element(i)%norm
-       surface%element(i)%hot = .false.
-       area = (surface%element(i)%area*1.d20)
-       totalArea = totalArea + area
-
-       if (inflowMahdavi(rVec*1.d10)) then
+    if (.not.ttauriMagnetosphere) then
+       surface%element(:)%hot = .false.
+       accretingArea = 0.d0
+    else
 
 
-          thisR = modulus(rVec)*1.d10
-
-          v = modulus(velocityMahdavi(rVec))*cSpeed
+       do i = 1, surface%nElements
+          rVec = (modulus(surface%Element(i)%position-surface%centre)*1.001d0) &
+               *surface%element(i)%norm
+          surface%element(i)%hot = .false.
+          area = (surface%element(i)%area*1.d20)
+          totalArea = totalArea + area
           
-          thisRho = 0.d0
-          if (v /= 0.d0) then
-             thisRho =  thismdot /(aStar * v)  * (ttauriRstar/thisR)**3 
-          endif
-          
-          mdot = thisRho * v * area
+          if (inflowMahdavi(rVec*1.d10)) then
+             
+             
+             thisR = modulus(rVec)*1.d10
+             
+             v = modulus(velocityMahdavi(rVec))*cSpeed
+             
+             thisRho = 0.d0
+             if (v /= 0.d0) then
+                thisRho =  thismdot /(aStar * v)  * (ttauriRstar/thisR)**3 
+             endif
+             
+             mdot = thisRho * v * area
+             
+             
+             
+             totalMdot = totalMdot + mdot
+             power = 0.5d0 * mdot * v**2
+             if (area /= 0.d0) then
+                flux = power / area
+             else
+                flux = 0.d0
+             endif
+             totalLum = totalLum + power
+             
+             
+             T = max((flux/stefanBoltz)**0.25d0,3.d0)
+             
+             
+             surface%element(i)%hot = .true.
+             allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
+             
+             if (Thotspot > 0.) t = thotspot
+             
+             surface%element(i)%hotFlux(:) = &
+                  pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:)))
+             surface%element(i)%temperature = real(T)
+             accretingArea = accretingArea + area
+          end if
+       enddo
+    endif
 
-
-
-          totalMdot = totalMdot + mdot
-          power = 0.5d0 * mdot * v**2
-          if (area /= 0.d0) then
-             flux = power / area
-          else
-             flux = 0.d0
-          endif
-          totalLum = totalLum + power
-          
-          
-          T = max((flux/stefanBoltz)**0.25d0,3.d0)
-
-
-          surface%element(i)%hot = .true.
-          allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
-
-          if (Thotspot > 0.) t = thotspot
-          
-          surface%element(i)%hotFlux(:) = &
-               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:)))
-          surface%element(i)%temperature = real(T)
-          accretingArea = accretingArea + area
-       end if
-    enddo
-
-
-    if (writeoutput) then
+    if (writeoutput.and.ttauriMagnetosphere) then
        write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
        write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
             (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"

@@ -1404,6 +1404,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     integer :: ithread
     integer, parameter :: tag = 54
+    real(double) inu_times_betacmn, betamn, sobJnuLine
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
     logical,allocatable :: doneByThisThread(:)
 #endif
@@ -1563,6 +1564,11 @@ contains
     !       enddo
     !    enddo
 
+
+    call testSobolevJnuLine(grid, grid%octreeRoot, 1, 4, thisAtom, source(1), &
+       inu_times_betacmn, betamn, sobJnuLine)
+    call writeVTKfile(grid,"sobtest.vtk", valueTypeString = (/"rhou","rhov"/))
+
     nInUse = 0
     call getOctalArrayLocal(grid%octreeRoot,octalArray, nInUse, .true.)
     allocate(octalArray(nInUse))
@@ -1635,9 +1641,10 @@ contains
 
 
 
-#ifdef MPI
 
          nOctals = size(octalArray)
+
+#ifdef MPI
          allocate(doneBythisThread(1:nOctals))
          donebythisthread = .false.
 
@@ -2114,7 +2121,6 @@ contains
                       endif
                    end do
                 enddo
-                write(*,*) myrankglobal, " voxels counted"
                 allocate(tArrayd(1:nVoxels))
                 allocate(tempArrayd(1:nVoxels))
                 tArrayd = 0.d0
@@ -2123,10 +2129,8 @@ contains
                    do i = 1, thisAtom(iAtom)%nLevels
                       tArrayd = 0.d0
                       call packAtomLevel(octalArray, nVoxels, tArrayd,  iAtom, i, doneByThisThread)
-                      write(*,*) myrankglobal, " packed"
                       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                            MPI_SUM,MPI_COMM_WORLD,ierr)
-                      if (my_rank == 0) write(*,*) "allreduce levels done ",iatom,i
                       tArrayd = tempArrayd
                       call unpackAtomLevel(octalArray, nVoxels, tArrayd, iAtom, i)
                    enddo
@@ -2137,7 +2141,6 @@ contains
                    call packJnu(octalArray, nVoxels, tArrayd, i, doneByThisThread)
                    call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
                         MPI_SUM,MPI_COMM_WORLD,ierr)
-                      if (my_rank == 0) write(*,*) "allreduce freqs done ",i
                    tArrayd = tempArrayd
                    call unpackJnu(octalArray, nVoxels, tArrayd, i)
                 enddo
@@ -3591,8 +3594,9 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-    use inputs_mod, only : amrGridSize, ttauriwind, ttauriRouter
+    use inputs_mod, only : amrGridSize, ttauriwind, ttauriRouter, ttauriStellarwind, SW_rMin, SW_Rmax
     use source_mod, only : globalSourceArray
+    use utils_mod
     type(GRIDTYPE) :: grid
     integer :: nRay
     type(VECTOR) :: rayPosition(:), viewVec, xProj,yProj
@@ -3602,26 +3606,27 @@ contains
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
     real(double) :: xPos, yPos, zPos
-    integer :: nr1, nr2, nr3, i
+    integer :: nr1, nr2, nr3, nr4,  i
 
     nr1 = 200
     nr2 = 100
     nr3 = 100
-    if (.not.ttauriWind) nr3 = 0
+    nr4 = 100
+    if (.not.(ttauriWind)) nr3 = 0
+    if (.not.(ttauriStellarWind)) nr4 = 0
 
-
-    nr = nr1 + nr2 + nr3
+    nr = nr1 + nr2 + nr3 + nr4
     nphi = 200
     nray = 0
     i = 0
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
-    rmin = globalSourceArray(1)%radius 
-    rMax = amrGridSize
+    rmin = 0.d0
+    rMax = globalSourceArray(1)%radius 
 
     do ir = 1, nr1
-       r1 = rMin * dble(ir-1)/dble(nr1)
-       r2 = rMin * dble(ir)/dble(nr1)
+       r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr1))
+       r2 = rMin + (rmax-rMin) * (dble(ir)/dble(nr1))
        i = i + 1
        rgrid(i) = 0.5d0 * (r1 + r2)
        dr(i) = r2 - r1
@@ -3645,7 +3650,7 @@ contains
 
 
     if (nr3 > 0) then
-       rmin = ttauriRouter/1.d10 ! DW_Rmin
+       rmin = ttauriRouter/1.d10 
        rMax = grid%octreeRoot%subcellsize*2.d0
        do ir = 1, nr3
           r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr3))**3
@@ -3657,6 +3662,23 @@ contains
        enddo
     endif
 
+
+
+    if (nr4 > 0) then
+       rmin = SW_Rmin
+       rMax = SW_rmax
+       do ir = 1, nr4
+          r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr4))**3
+          r2 = rMin + (rmax-rMin) * (dble(ir)/dble(nr4))**3
+          i = i + 1
+          rgrid(i) = 0.5d0 * (r1 + r2)
+          dr(i) = r2 - r1
+          !       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
+       enddo
+    endif
+
+
+    call sort(nr, rgrid)
        
        do iphi = 1, nPhi
           phi1 = twoPi * dble(iphi-1)/dble(nPhi)
@@ -3857,8 +3879,6 @@ contains
 
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy, xpoints, ypoints, &
                   nPoints,  nRay, xRay, yRay, area)
-
-
 
 
              thisIntensity = 0.
@@ -4220,7 +4240,8 @@ contains
 
 
   subroutine createRayGridGeneric(cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
-    use inputs_mod, only :  ttaurirouter, amrgridsize
+    use inputs_mod, only :  ttaurirouter, amrgridsize, ttauriStellarWind, SW_Rmin, SW_rmax, &
+         ttauriMagnetosphere, ttauriWind
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
@@ -4231,16 +4252,23 @@ contains
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nphi
     real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2, dxOffset, dyOffset
-    integer :: ix, iy, iSource, nr1, nr2, nr3
+    integer :: ix, iy, iSource, nr1, nr2, nr3, nr4
     logical :: enhanced
     enhanced = .true.
 
-    nphi = 100
-    nr1 = 50
-    nr2 = 50
-    nr3 = 50
+    nphi = 200
+    nr1 = 100
 
-    nPoints = (nr1 + nr2 + nr3) * nphi +  globalnSource * nr1 * nphi
+    nr2 = 0
+    if (ttauriMagnetosphere) nr2 = 100
+
+    nr3 = 0
+    if (tTauriWind) nr3 = 100
+
+    nr4 = 0
+    if (ttauriStellarWind) nr4 = 100
+
+    nPoints = (nr1 + nr2 + nr3 + nr4) * nphi +  globalnSource * nr1 * nphi
     nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
@@ -4260,39 +4288,71 @@ contains
        enddo
     enddo
 
-    rmin = sourceArray(1)%radius 
-    rMax = ttaurirouter/1.d10
-    do i = 1, nr2
-       r1 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i-1)/dble(nr2))
-       r2 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i)/dble(nr2))
-       r = 10.d0**(0.5d0*(r1+r2))
-       call randomNumberGenerator(getDouble=dphi)
-       dphi = dphi * twoPi
-       do j = 1, nphi
-          phi = twoPi * dble(j)/dble(nPhi)+dphi
-          rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
-          nPoints = nPoints + 1
-          xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
-          yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
-       enddo   
-    enddo
+    if (ttauriMagnetosphere) then
+       rmin = sourceArray(1)%radius 
+       rMax = ttaurirouter/1.d10
+       do i = 1, nr2
+          r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr2))**3
+          r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr2))**3
+          r = 0.5d0*(r1+r2)
+          call randomNumberGenerator(getDouble=dphi)
+          dphi = dphi * twoPi
+          do j = 1, nphi
+             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
+             nPoints = nPoints + 1
+!             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
+!             yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
 
-    rmin = ttaurirOuter/1.d10 !dw_rmin
-    rMax = amrGridSize
-    do i = 1, nr3
-       r1 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i-1)/dble(nr3))
-       r2 = log10(rMin) + (log10(rmax)-log10(rMin)) * (dble(i)/dble(nr3))
-       r = 10.d0**(0.5d0*(r1+r2))
-       call randomNumberGenerator(getDouble=dphi)
-       dphi = dphi * twoPi
-       do j = 1, nphi
-          phi = twoPi * dble(j)/dble(nPhi)+dphi
-          rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
-          nPoints = nPoints + 1
-          xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
-          yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
-       enddo   
-    enddo
+
+             xPoints(nPoints) = sourceArray(isource)%position%x + rVec%x
+             yPoints(nPoints) = sourceArray(isource)%position%y + rVec%y
+          enddo
+       enddo
+    endif
+    
+    if (ttauriWind) then
+       rmin = ttaurirOuter/1.d10 !dw_rmin
+       rMax = amrGridSize
+       do i = 1, nr3
+          r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr3))**3
+          r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr3))**3
+          r = 0.5d0*(r1+r2)
+          call randomNumberGenerator(getDouble=dphi)
+          dphi = dphi * twoPi
+          do j = 1, nphi
+             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
+             nPoints = nPoints + 1
+!             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
+!             yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
+             xPoints(nPoints) = sourceArray(isource)%position%x + rVec%x
+             yPoints(nPoints) = sourceArray(isource)%position%y + rVec%y
+          enddo
+       enddo
+    endif
+
+
+    if (ttauriStellarwind) then
+       rmin = SW_rMin
+       rMax = SW_rMax
+       do i = 1, nr4
+          r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr4))**3
+          r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr4))**3
+          r = 0.5d0*(r1+r2)
+          call randomNumberGenerator(getDouble=dphi)
+          dphi = dphi * twoPi
+          do j = 1, nphi
+             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
+             nPoints = nPoints + 1
+!             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
+!             yPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.yproj
+             xPoints(nPoints) = sourceArray(isource)%position%x + rVec%x
+             yPoints(nPoints) = sourceArray(isource)%position%y + rVec%y
+         enddo
+       enddo
+    endif
 
 
 
@@ -4487,6 +4547,65 @@ contains
 !!$  end subroutine getProjectedPointsRecursive
 
 
+
+  recursive subroutine testSobolevJnuLine(grid, thisOctal, iatom, itrans, thisAtom, source, &
+       inu_times_betacmn, betamn, sobJnuLine)
+    use source_mod, only : globalSourceArray, globalnSource
+    use amr_mod, only : amrgridDirectionalDeriv
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: subcell
+    real(double) :: inu_times_betacmn
+    type(MODELATOM) :: thisAtom(:)
+    integer :: iAtom
+    type(SOURCETYPE) :: source
+    integer :: iTrans
+    integer :: iUpper, iLower
+    real(double) :: nUpper, nLower, gUpper, gLower
+    real(double) :: transitionFreq, inu, chiline, a, blu, bul
+    real(double) :: betamn, betacmn, grad, tauij, theta, ang, fij
+    real(double) :: sobJnuLine, dphi, phi, escProb
+    integer :: i, j
+    integer :: ntheta, nphi
+    real(double) :: domega, dtheta, totomega, disttostar, sinang, r
+    real(double) :: thetaToStar, phiToStar, tauAv
+    type(VECTOR) :: uHat, position, toStar, photoDirection, direction
+    real(double) :: dotprod
+    logical :: hitSource
+    integer :: sourcenumber
+    integer :: iElement
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call testSobolevJnuLine(grid, child, iatom, itrans, thisAtom, source, &
+       inu_times_betacmn, betamn, sobJnuLine)
+                exit
+             end if
+          end do
+       else
+          if (.not.associated(thisOctal%rhou)) then
+             allocate(thisOctal%rhou(1:thisOctal%maxChildren))
+             thisOctal%rhou = 0.d0
+          endif
+          if (.not.associated(thisOctal%rhov))  then
+             allocate(thisOctal%rhov(1:thisOctal%maxChildren))
+             thisOctal%rhov = 0.d0
+          endif
+          if (thisOctal%inflow(subcell)) then
+             call getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, source, &
+                  inu_times_betacmn, betamn, sobJnuLine)
+          endif
+       endif
+    enddo
+  end subroutine testSobolevJnuLine
+
+
+
   subroutine getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, source, &
        inu_times_betacmn, betamn, sobJnuLine)
     use source_mod, only : globalSourceArray, globalnSource
@@ -4507,8 +4626,8 @@ contains
     integer :: i, j
     integer :: ntheta, nphi
     real(double) :: domega, dtheta, totomega, disttostar, sinang, r
-    real(double) :: thetaToStar, phiToStar, tauAv
-    type(VECTOR) :: uHat, position, toStar, photoDirection, direction
+    real(double) :: thetaToStar, phiToStar, tauAv, sphericalCapAngle
+    type(VECTOR) :: uHat, position, toStar, photoDirection, direction, norm
     real(double) :: dotprod
     logical :: hitSource
     integer :: sourcenumber
@@ -4541,13 +4660,13 @@ contains
 
     totomega = 0.d0
     tauAv = 0.d0
-    dtheta = pi / real(ntheta-1)
+    dtheta = pi / real(ntheta)
     do i = 1, ntheta
-       theta = pi*real(i-1)/real(ntheta-1)
+       theta = dtheta/2.d0 + dtheta*dble(i-1)
        nphi = max(2,nint(real(ntheta)*sin(theta)))
-       dphi = twopi / real(nphi-1)
-       do j = 1, nphi-1
-          phi = twopi * real(j-1)/real(nphi-1)
+       dphi = twopi / real(nphi)
+       do j = 1, nphi
+          phi = dphi/2.d0 + dphi*dble(j-1)
           uHat = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           domega = sin(theta)*dtheta*dphi
           totomega = totomega + domega
@@ -4571,13 +4690,15 @@ contains
     betamn = betamn / totomega
     tauAv = tauAv /totOmega
 
+    thisOctal%rhou(subcell) = tauAv
+
 
     tostar = source%position - position
     disttostar = modulus(tostar)
     tostar = tostar / dble(disttostar)
 
     sinAng = source%radius/distToStar
-    ang = asin(min(1.d0,max(-1.d0,sinAng)))
+    sphericalCapAngle = asin(min(1.d0,max(-1.d0,sinAng)))
 
     call getPolar(toStar, r, thetaTostar, phiToStar)
 
@@ -4586,49 +4707,53 @@ contains
     inu_times_betacmn = 0.d0
     ntheta = 20
     nphi = 20
+
+    dTheta = sphericalCapAngle/dble(nTheta)
+    dPhi = twoPi / dble(nPhi)
     do i = 1, ntheta
-       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
-       if (theta > pi) theta = theta - pi
-       if (theta < 0.) theta = theta + pi
-       dTheta = 2.*ang/real(nTheta-1)
+       theta = dTheta/2.d0 + dble(i-1)*dTheta
        do j = 1, nphi
-          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
-          if (phi < 0.) phi = phi + twoPi
-          if (phi > twoPi) phi = phi + twoPi
-          dphi = 2.*ang/real(nPhi-1)
-          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          phi = dPhi/2.d0 + dble(j-1)*dPhi
+          direction = toStar
+          norm = direction.cross.randomUnitVector()
+          call normalize(norm)
+          direction = arbitraryRotate(direction, theta, norm)
+          call normalize(direction)
+          direction =  arbitraryRotate(direction, phi, toStar)
+          call normalize(direction)
           domega = sin(theta)*dtheta*dphi
           dotprod = direction .dot. tostar
-          if ((dotprod > 0.d0) .and. (acos(min(1.d0,max(-1.d0,dotprod))) < ang)) then
-             call distanceToSource(globalSourceArray, globalnSource, position, direction, hitSource, distToStar, sourcenumber)
-             if (.not.hitsource) write(*,*) "bug in betacmn"
-             photoDirection = (position + distToStar*direction) - source%position
-             call normalize(photoDirection)
-             iElement = getElement(source%surface, photoDirection)
-             inu = i_nu(source, transitionFreq, iElement, 1.d0)
-             grad =  abs(amrGridDirectionalDeriv(grid, position, direction, startOctal=thisOctal)/1.d10)
-             tauij = chiLine / grad 
-             tauij =  tauij / transitionFreq
-             tauij = max(1.d-20,tauij)
+          call distanceToSource(globalSourceArray, globalnSource, position, direction, hitSource, distToStar, sourcenumber)
+          if (.not.hitsource) write(*,*) "bug in betacmn"
+          photoDirection = (position + distToStar*direction) - source%position
+          call normalize(photoDirection)
+          iElement = getElement(source%surface, photoDirection)
+          inu = i_nu(source, transitionFreq, iElement, 1.d0)
+          grad =  abs(amrGridDirectionalDeriv(grid, position, direction, startOctal=thisOctal)/1.d10)
+          tauij = chiLine / grad 
+          tauij =  tauij / transitionFreq
+          tauij = max(1.d-20,tauij)
 
 
              
-             if (tauij < 0.1d0) then
-                escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
-             else if (tauij < 15.d0) then
-                escProb = (1.0-exp(-tauij))/tauij
-             else
-                escProb = 1.d0/tauij
-             end if
-             betacmn = betacmn + escprob * domega
-             inu_times_betacmn = inu_times_betacmn + inu * escprob * domega
-             totOmega = totOmega + dOmega
-          endif
+          if (tauij < 0.1d0) then
+             escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
+          else if (tauij < 15.d0) then
+             escProb = (1.0-exp(-tauij))/tauij
+          else
+             escProb = 1.d0/tauij
+          end if
+          betacmn = betacmn + escprob * domega
+          inu_times_betacmn = inu_times_betacmn + inu * escprob * domega
+          totOmega = totOmega + dOmega
        enddo
     enddo
 
 
     betacmn = betacmn / fourPi
+
+
+    thisOctal%rhov(subcell) = betacmn
 
     inu_times_betacmn = inu_times_betacmn / fourPi
 
