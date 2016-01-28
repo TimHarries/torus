@@ -177,9 +177,9 @@ contains
                         nint(lamLine),"_",i
                 endif
                 if (writeoutput) write(*,*) "Calculating spectrum: ",trim(tempFilename)
-!                call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
-!                     viewVec, dble(gridDistance), &
-!                     globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true., prefix=tempFilename)
+                call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+                     viewVec, dble(gridDistance), &
+                     globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true., prefix=tempFilename)
              enddo
           enddo
        enddo
