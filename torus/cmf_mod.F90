@@ -3098,7 +3098,7 @@ contains
        goto 666
     endif
 
-    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
+    currentPosition = position + (distToGrid + 1.d-6*grid%halfSmallestSubcell) * direction
  
  
 
