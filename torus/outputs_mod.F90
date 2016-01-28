@@ -166,7 +166,7 @@ contains
                 lamLine = lamLineArray(iLambda)
  
                 tempChar = trim(dataCubeFilename)
-                if (index(datacubefilename,".fits")) then
+                if (index(datacubefilename,".fits")/=0) then
                    tempChar = datacubeFilename(1:(index(datacubefilename,".fits")-1))
                 endif
                 if (ncubes==1) then
