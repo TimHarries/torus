@@ -116,6 +116,10 @@ contains
     do
        nLines = nLines + 1
        read(32,cLineFormat,end=10) cLine(nLines)
+       if (index(cline(nLines), char(9))/=0) then
+          call writeFatal("Input file must not contain tab characters")
+          call torus_abort
+       endif
        thisLine = trim(adjustl(cLine(nLines)))
        if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) nLines = nLines - 1   ! % or ! is a comment
        if (thisLine(1:1) == " ") nLines = nLines - 1
@@ -3240,8 +3244,17 @@ contains
          "Background to subtract for moment maps: ","(a,f4.1,1x,a)", -1.0, ok, .false.)
 
     if (atomicPhysics) then
-          call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
-               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
+          call getInteger("ninc", nDataCubeInclinations,cLine, fLine, nLines, &
+               "Number of inclinations: ","(a,i2,1x,a)", 1, ok, .true.)          
+          allocate(datacubeInclinations(nDataCubeInclinations))
+          call getRealArray("inclinations", datacubeInclinations, real(degtorad), cLine, fLine, nLines, &
+               "Inclinations (deg): ",90., ok, .false.)
+          call getInteger("nlamline", nlamLine,cLine, fLine, nLines, &
+               "Number of line emission wavelength: ","(a,i2,1x,a)", 1, ok, .true.)          
+          allocate(lamLineArray(1:nLamLine))
+          call getRealArray("lamline", lamLineArray, 1.,cLine, fLine, nLines, &
+               "Line emission wavelengths: ", 850., ok, .true.)
+
           call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
     endif

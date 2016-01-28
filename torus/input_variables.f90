@@ -930,7 +930,11 @@
   logical :: useBias
   logical :: thinLine
   logical :: doRaman ! raman scattering model 
-  real    :: lamLine 
+  real    :: lamLine
+  integer :: nLamLine
+  integer :: nDatacubeInclinations
+  real, allocatable :: datacubeInclinations(:)
+  real, allocatable :: lamLineArray(:)
   real    :: massEnvelope
   integer(bigInt) :: inputSeed
 

@@ -3334,7 +3334,7 @@ contains
 
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
-       totalFlux, forceLambda, occultingDisc)
+       totalFlux, prefix, forceLambda, occultingDisc)
     use inputs_mod, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf, calcPhotometry, calcSpectrum
     use inputs_mod, only : minvel, maxvel
     use source_mod, only : globalSourceArray
@@ -3349,6 +3349,7 @@ contains
     use mpi
 #endif
     logical, optional :: occultingDisc
+    character(len=*) :: prefix
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     integer :: nSource
@@ -3452,12 +3453,11 @@ contains
        write(*,*) "Process ",my_rank, " create data cube done"
 #endif
        if (myrankiszero) then
-          tempChar = datacubeFilename(1:(index(datacubefilename,".fits")-1))
-          write(tempFilename,'(a,i3.3,a)') trim(tempChar),nFile,".fits"
+          write(tempFilename,'(a,a)') trim(prefix),".fits"
           call writeDataCube(cube,tempfilename)
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
-          write(tempFilename,'(a,i3.3,a)') "spec",nFile,".dat"
+          write(tempFilename,'(a,a)') "prefix",".dat"
           call dumpCubeToSpectrum(cube, tempFilename)
        endif
 !       write(tempFilename,'(a,i3.3)') "vis",nFile
@@ -3575,7 +3575,7 @@ contains
      endif
 
     if (myRankIsZero) then
-       write(plotfile,'(a,i3.3,a)') "spec_from_rays",nfile,".dat"
+       write(plotfile,'(a,a)') trim(prefix),"_from_rays.dat"
        open(42, file=plotfile,status="unknown",form="formatted")
        do i = 1, nv
           transitionFreq = thisAtom(iAtom)%transFreq(iTrans)

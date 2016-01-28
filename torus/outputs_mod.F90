@@ -54,6 +54,7 @@ contains
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
     use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
+    use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -67,6 +68,7 @@ contains
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: thisCube
     real, pointer :: xArray(:)=>null()
+    character(len=80) :: tempChar, tempFilename
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
     integer :: i, j
@@ -79,6 +81,7 @@ contains
     real, allocatable :: tarray(:,:)
     real(double), allocatable :: xArrayDouble(:)
     real(double) :: kabs, ksca
+    integer :: iInc
 #ifdef MOLECULAR
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
@@ -153,14 +156,32 @@ contains
        call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
        if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        do i = 1, ncubes
-          viewVec = VECTOR(sin(thisInclination), 0.d0, -cos(thisinclination))
-          !       gridDistance = 140.d0* pctocm/1.d10
-          ang = 2.*pi * dble(i-1)/dble(ncubes)
-          viewVec =  rotatez(viewVec, ang)
-          !       gridDistance = 140.d0* pctocm/1.d10
-          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
-               viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true.)
+          do ilambda = 1, nLamLine
+             do iInc = 1, nDataCubeInclinations
+
+                viewVec = VECTOR(sin(dataCubeInclinations(iInc)), 0.d0, -cos(datacubeInclinations(iInc)))
+                ang = 2.*pi * dble(i-1)/dble(ncubes)
+                viewVec =  rotatez(viewVec, ang)
+
+                lamLine = lamLineArray(iLambda)
+ 
+                tempChar = trim(dataCubeFilename)
+                if (index(datacubefilename,".fits")) then
+                   tempChar = datacubeFilename(1:(index(datacubefilename,".fits")-1))
+                endif
+                if (ncubes==1) then
+                   write(tempFilename,'(a,a,i3.3,a,i5.5)') trim(tempChar),"_",nint(radtodeg*dataCubeInclinations(iInc)),"_", &
+                        nint(lamLine)
+                else
+                   write(tempFilename,'(a,a,i3.3,a,i5.5,a,i3.3)') trim(tempChar),"_",nint(radtodeg*dataCubeInclinations(iInc)),"_", &
+                        nint(lamLine),"_",i
+                endif
+                if (writeoutput) write(*,*) "Calculating spectrum: ",trim(tempFilename)
+!                call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
+!                     viewVec, dble(gridDistance), &
+!                     globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true., prefix=tempFilename)
+             enddo
+          enddo
        enddo
     endif
 
@@ -181,7 +202,7 @@ contains
           globalSourceArray(1)%limbDark(2) = sourcelimbbB 
          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, 1, bflux, forceLambda=4400.d0, occultingDisc=.true.)
+               globalSourceArray, globalnsource, 1, bflux, " ",forceLambda=4400.d0, occultingDisc=.true.)
 !          globalSourceArray(1)%limbDark(1) = +8.29919E-01
 !          globalSourceArray(1)%limbDark(2) = +1.62937E-02
          globalSourceArray(1)%limbDark(1) = sourcelimbaV
@@ -190,7 +211,7 @@ contains
 
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, 1, vflux, forceLambda=5500.d0, occultingDisc=.true.)
+               globalSourceArray, globalnsource, 1, vflux, " ",forceLambda=5500.d0, occultingDisc=.true.)
           if (myrankGlobal == 1) write(28,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
                returnMagnitude(bFlux, "B") -  returnMagnitude(vFlux,"V")
 !          write(*,*)  myrankGlobal,writeoutput, " v, b flux",vflux, bflux
@@ -212,7 +233,7 @@ if (.false.) then
              globalSourceArray(1)%limbDark(2) = 0.d0
              call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                   viewVec, dble(gridDistance), &
-                  globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true.)
+                  globalSourceArray, globalnsource, i, totalflux, " ",occultingDisc=.true.)
           enddo
        else
           call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)
