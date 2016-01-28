@@ -170,16 +170,18 @@ contains
                    tempChar = datacubeFilename(1:(index(datacubefilename,".fits")-1))
                 endif
                 if (ncubes==1) then
-                   write(tempFilename,'(a,a,i3.3,a,i5.5)') trim(tempChar),"_",nint(radtodeg*dataCubeInclinations(iInc)),"_", &
+                   write(tempFilename,'(a,a,i3.3,a,i5.5)') trim(tempChar),"_", &
+                        nint(radtodeg*dataCubeInclinations(iInc)),"_", &
                         nint(lamLine)
                 else
-                   write(tempFilename,'(a,a,i3.3,a,i5.5,a,i3.3)') trim(tempChar),"_",nint(radtodeg*dataCubeInclinations(iInc)),"_", &
+                   write(tempFilename,'(a,a,i3.3,a,i5.5,a,i3.3)') trim(tempChar),"_",& 
+                        nint(radtodeg*dataCubeInclinations(iInc)),"_", &
                         nint(lamLine),"_",i
                 endif
                 if (writeoutput) write(*,*) "Calculating spectrum: ",trim(tempFilename)
                 call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                      viewVec, dble(gridDistance), &
-                     globalSourceArray, globalnsource, i, totalflux, occultingDisc=.true., prefix=tempFilename)
+                     globalSourceArray, globalnsource, totalflux, occultingDisc=.true., prefix=tempFilename)
              enddo
           enddo
        enddo
@@ -202,7 +204,7 @@ contains
           globalSourceArray(1)%limbDark(2) = sourcelimbbB 
          call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, 1, bflux, " ",forceLambda=4400.d0, occultingDisc=.true.)
+               globalSourceArray, globalnsource,  bflux, " ",forceLambda=4400.d0, occultingDisc=.true.)
 !          globalSourceArray(1)%limbDark(1) = +8.29919E-01
 !          globalSourceArray(1)%limbDark(2) = +1.62937E-02
          globalSourceArray(1)%limbDark(1) = sourcelimbaV
@@ -211,7 +213,7 @@ contains
 
           call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                viewVec, dble(gridDistance), &
-               globalSourceArray, globalnsource, 1, vflux, " ",forceLambda=5500.d0, occultingDisc=.true.)
+               globalSourceArray, globalnsource, vflux, " ",forceLambda=5500.d0, occultingDisc=.true.)
           if (myrankGlobal == 1) write(28,'(4f13.4)') ang/twoPi, returnMagnitude(bFlux, "B"), returnMagnitude(vFlux,"V"), &
                returnMagnitude(bFlux, "B") -  returnMagnitude(vFlux,"V")
 !          write(*,*)  myrankGlobal,writeoutput, " v, b flux",vflux, bflux
@@ -233,7 +235,7 @@ if (.false.) then
              globalSourceArray(1)%limbDark(2) = 0.d0
              call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                   viewVec, dble(gridDistance), &
-                  globalSourceArray, globalnsource, i, totalflux, " ",occultingDisc=.true.)
+                  globalSourceArray, globalnsource, totalflux, " ",occultingDisc=.true.)
           enddo
        else
           call setupXarray(grid, xArray, nLambda, atomicDataCube=.true.)

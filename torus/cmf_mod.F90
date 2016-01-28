@@ -1392,6 +1392,7 @@ contains
     real(double), save, allocatable :: oldpops1(:,:), oldpops2(:,:), oldpops3(:,:), oldpops4(:,:)
     integer, parameter :: iNgStep = 5
     integer :: nStage
+    real(double) :: inu_times_betacmn, betamn, sobJnuLine
 
 #ifdef MPI
     ! For MPI implementations
@@ -1404,7 +1405,6 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     integer :: ithread
     integer, parameter :: tag = 54
-    real(double) inu_times_betacmn, betamn, sobJnuLine
     real(double), allocatable :: tArrayd(:),tempArrayd(:)
     logical,allocatable :: doneByThisThread(:)
 #endif
@@ -3333,7 +3333,7 @@ contains
   end function intensityAlongRayGeneric
 
   
-  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile, &
+  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, &
        totalFlux, prefix, forceLambda, occultingDisc)
     use inputs_mod, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf, calcPhotometry, calcSpectrum
     use inputs_mod, only : minvel, maxvel
@@ -3343,7 +3343,7 @@ contains
     use modelatom_mod, only : identifyTransitionCmf
     use datacube_mod, only : dumpCubeToSpectrum, dumpCubeToVisibilityCurves
 #ifdef USECFITSIO
-    use datacube_mod, only : writedataCube, dataCubeFilename
+    use datacube_mod, only : writedataCube
 #endif
 #ifdef MPI
     use mpi
@@ -3354,7 +3354,6 @@ contains
     type(MODELATOM) :: thisAtom(:)
     integer :: nSource
     real(double), optional :: forceLambda
-    integer :: nFile
     type(SOURCETYPE) :: source(:)
     integer :: nAtom, iAtom
     real(double) :: distance, totalFlux
@@ -3378,7 +3377,7 @@ contains
     logical :: doCube, doSpec
     logical :: storeLineoff
 #ifdef USECFITSIO
-    character(len=80) :: tempChar, tempFilename
+    character(len=80) :: tempFilename
 #endif
 
 #ifdef MPI
@@ -3594,7 +3593,7 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-    use inputs_mod, only : amrGridSize, ttauriwind, ttauriRouter, ttauriStellarwind, SW_rMin, SW_Rmax
+    use inputs_mod, only : ttauriwind, ttauriRouter, ttauriStellarwind, SW_rMin, SW_Rmax
     use source_mod, only : globalSourceArray
     use utils_mod
     type(GRIDTYPE) :: grid
@@ -4550,30 +4549,17 @@ contains
 
   recursive subroutine testSobolevJnuLine(grid, thisOctal, iatom, itrans, thisAtom, source, &
        inu_times_betacmn, betamn, sobJnuLine)
-    use source_mod, only : globalSourceArray, globalnSource
+
     use amr_mod, only : amrgridDirectionalDeriv
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     integer :: subcell
-    real(double) :: inu_times_betacmn
+    real(double) :: inu_times_betacmn, betamn, sobJnuLine
     type(MODELATOM) :: thisAtom(:)
     integer :: iAtom
     type(SOURCETYPE) :: source
     integer :: iTrans
-    integer :: iUpper, iLower
-    real(double) :: nUpper, nLower, gUpper, gLower
-    real(double) :: transitionFreq, inu, chiline, a, blu, bul
-    real(double) :: betamn, betacmn, grad, tauij, theta, ang, fij
-    real(double) :: sobJnuLine, dphi, phi, escProb
-    integer :: i, j
-    integer :: ntheta, nphi
-    real(double) :: domega, dtheta, totomega, disttostar, sinang, r
-    real(double) :: thetaToStar, phiToStar, tauAv
-    type(VECTOR) :: uHat, position, toStar, photoDirection, direction
-    real(double) :: dotprod
-    logical :: hitSource
-    integer :: sourcenumber
-    integer :: iElement
+    integer :: i
 
 
     do subcell = 1, thisOctal%maxChildren
@@ -4621,14 +4607,14 @@ contains
     integer :: iUpper, iLower
     real(double) :: nUpper, nLower, gUpper, gLower
     real(double) :: transitionFreq, inu, chiline, a, blu, bul
-    real(double) :: betamn, betacmn, grad, tauij, theta, ang, fij
+    real(double) :: betamn,  grad, tauij, theta, fij
     real(double) :: sobJnuLine, dphi, phi, escProb
     integer :: i, j
     integer :: ntheta, nphi
-    real(double) :: domega, dtheta, totomega, disttostar, sinang, r
     real(double) :: thetaToStar, phiToStar, tauAv, sphericalCapAngle
-    type(VECTOR) :: uHat, position, toStar, photoDirection, direction, norm
-    real(double) :: dotprod
+    type(VECTOR) :: uHat, position, toStar, photoDirection,  norm, direction
+    real(double) :: dotprod, betacmn, disttostar, domega, dtheta, r, sinang
+    real(double) :: totomega
     logical :: hitSource
     integer :: sourcenumber
     integer :: iElement
