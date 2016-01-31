@@ -2989,7 +2989,7 @@ contains
 
   function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
       forceFreq, occultingDisc) result (i0)
-    use inputs_mod, only : lineOff,  mie, lamLine, holeRadius
+    use inputs_mod, only : lineOff,  mie, lamLine, holeRadius, amr2d
     use amr_mod, only: distanceToGridFromOutside, returnKappa
     use utils_mod, only : findIlambda
     use atom_mod, only : bnu
@@ -3035,7 +3035,7 @@ contains
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
     
     real(double) :: tauStep, tauTmp, iStep
-    logical :: passThroughResonance, ok, closeToResonance
+    logical :: passThroughResonance, ok, closeToResonance, hitgrid
 #ifdef _OPENMP
     integer :: omp_get_thread_num
 #endif
@@ -3068,7 +3068,12 @@ contains
     if (mie) iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
 
 
-    distToGrid = distanceToGridFromOutside(grid, position, direction)
+    distToGrid = distanceToGridFromOutside(grid, position, direction, hitgrid=hitgrid)
+    if (.not.hitgrid) then
+       i0 = tiny(i0)
+       goto 666
+    endif
+
 
     currentposition = position
     distToDisc = 1.d30
@@ -3105,6 +3110,10 @@ contains
     if (.not.inOctal(grid%octreeRoot, currentPosition)) then
        write(*,*) "initial position not in grid"
        write(*,*) "curre pos",currentPosition
+       if (amr2d) then
+          write(*,*) "current position r ",sqrt(currentposition%x**2 + currentposition%y**2),&
+               "current position z ",currentposition%z
+       endif
        write(*,*) "dir",direction
        write(*,*) "pos",position
        write(*,*) "modulsu",modulus(currentPosition - position)
@@ -3500,7 +3509,7 @@ contains
 
 
     do iv = iv1, iv2
-       write(*,*) iv,varray(iv)*cspeed/1.d5
+!       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
