@@ -600,6 +600,8 @@ contains
 
     deallocate (cLine)
 
+    call sanityCheck()
+
     if ( parameterCheckMode ) then 
        call writeBanner("Parameter check mode: inputs read OK","-",IMPORTANT)
 #ifdef MPI
@@ -611,6 +613,24 @@ contains
     endif
 
   end subroutine inputs
+
+  subroutine sanityCheck()
+    ! put your sanity checks here
+
+    select case(geometry)
+
+       case("ttauri")
+          if (TTauriDisc.and.(.not.DustPhysics)) then
+             call writeFatal("ttauridisc specified but dustphysics is false")
+             call torus_abort
+          endif
+
+       case DEFAULT
+
+     end select
+
+   end subroutine sanityCheck
+
 
   subroutine writeUnusedKeywords(cLine, fline, nLines)
     character(len=*) :: cLine(:)

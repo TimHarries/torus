@@ -3350,7 +3350,7 @@ contains
     use messages_mod, only : myRankIsZero
     use datacube_mod, only: DATACUBE, freedatacube
     use modelatom_mod, only : identifyTransitionCmf
-    use datacube_mod, only : dumpCubeToSpectrum, dumpCubeToVisibilityCurves
+    use datacube_mod, only : dumpCubeToSpectrum, dumpCubeToVisibilityCurves, writeSpectroastrometry
 #ifdef USECFITSIO
     use datacube_mod, only : writedataCube
 #endif
@@ -3465,8 +3465,12 @@ contains
           call writeDataCube(cube,tempfilename)
 !          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
 !          call writeCollapsedDataCube(cube,plotfile)
-          write(tempFilename,'(a,a)') "prefix",".dat"
+          write(tempFilename,'(a,a)') trim(prefix),".dat"
           call dumpCubeToSpectrum(cube, tempFilename)
+
+          write(tempFilename,'(a,a)') trim(prefix),"_spectroastrometry.dat"
+          call writeSpectroastrometry(cube, tempFilename)
+
        endif
 !       write(tempFilename,'(a,i3.3)') "vis",nFile
 ! Import gridDistance from inputs_mod if this line needs to be reinstated. 
