@@ -1685,7 +1685,7 @@ end subroutine read_sph_data_clumpfind
     real(double) :: time
     integer, parameter :: nptmass=0
 
-    INTEGER(kind=4)  :: int1, int2, i1
+    INTEGER(kind=4)  :: int1, int2, i1, int1o
     integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
     integer(kind=4)  :: nblocktypes
     REAL(kind=8)     :: r1
@@ -1744,7 +1744,24 @@ end subroutine read_sph_data_clumpfind
 ! environement variable instead (F_UFMTENDIAN for ifort)
     open(unit=LUIN, file=filename, form='unformatted', status='old')! removed this,convert="LITTLE_ENDIAN")
 
-    read(LUIN) int1, r1, int2, i1, int1
+    read(LUIN) int1, r1, int2, i1, int1o
+
+! Check that the endian is correct. int1o is the same in version 1 and version 2 SPH dumps. 
+    if (int1o/=690706) then
+       call writeFatal("Problem opening file. Check endian")
+    endif
+
+! Check file format: version 2 is incompatible with version 1 and we can't read it yet.
+    if (i1==690706) then
+       write(message,*) "Version 1 dump opened OK"
+       call writeinfo(message, TRIVIAL)
+    else if (i1==1.or.i1==2) then
+       call writeFatal("Version 2 dumps not supported yet. Convert to ASCII.")
+    else
+       write(message,*) "Unrecognised version number", i1
+       call writeWarning(message)
+    endif
+
     read(LUIN) fileident
     write(message,*) "fileident=", fileident
     call writeinfo(message, TRIVIAL)
