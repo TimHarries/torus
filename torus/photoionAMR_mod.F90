@@ -1630,7 +1630,6 @@ end subroutine radiationHydro
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
     integer, save :: oldStackLimit = 0
-    real(double),save :: oldMedianEfficiency = 0.d0
     logical, save :: firstCall = .true.
     !AMR
 !    integer :: iUnrefine, nUnrefine
