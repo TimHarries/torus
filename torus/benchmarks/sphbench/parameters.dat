@@ -36,4 +36,5 @@ sphNormLimit 0.5
 kerneltype 0
 useHull F
 inputFileFormat ascii
-
+hcritPercentile 0.80
+hmaxPercentile 0.99

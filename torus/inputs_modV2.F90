@@ -1235,10 +1235,10 @@ contains
                "SPH file is from dragon SPH: ","(a,1l,a)",.false., ok, .false.)
 
           call getReal("hcritPercentile", hcritPercentile, 1., cLine, fLine, nLines, &
-               "Percentile for hcrit: ", "(a,f10.4,1x,f10.4)", 0.80, ok, .false.)
+               "Percentile for hcrit: ", "(a,f10.4,1x,a)", 0.80, ok, .false.)
 
           call getReal("hmaxPercentile", hmaxPercentile, 1., cLine, fLine, nLines, &
-               "Percentile for hmax: ", "(a,f10.4,1x,f10.4)", 0.99, ok, .false.)
+               "Percentile for hmax: ", "(a,f10.4,1x,a)", 0.99, ok, .false.)
 
           call getReal("sphNormLimit", sph_norm_limit, 1., cLine, fLine, nLines, &
                "Limit for SPH normalisation: ", "(a,f10.4,a)", 0.5, ok, .false.)
