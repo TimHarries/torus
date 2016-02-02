@@ -13,7 +13,7 @@ amrgridcentrey  0.0000
 amrgridcentrez  0.0000
 amrgridsize     1.d9
 geometry        imgTest
-nhydrothreads 	8
+nhydrothreads   8
 
 !
 ! Physics 
