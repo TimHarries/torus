@@ -3463,8 +3463,6 @@ contains
        if (myrankiszero) then
           write(tempFilename,'(a,a)') trim(prefix),".fits"
           call writeDataCube(cube,tempfilename)
-!          write(plotfile,'(a,i3.3,a)') "flatimage",nfile,".fits.gz"
-!          call writeCollapsedDataCube(cube,plotfile)
           write(tempFilename,'(a,a)') trim(prefix),".dat"
           call dumpCubeToSpectrum(cube, tempFilename)
 
@@ -3620,7 +3618,7 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, nr3, nr4,  i
 
-    nr1 = 200
+    nr1 = 20
     nr2 = 100
     nr3 = 100
     nr4 = 100
@@ -3888,6 +3886,7 @@ contains
 
        !$OMP DO SCHEDULE(DYNAMIC,1)
           do iy = 1, cube%ny
+	         write(*,*) myrankglobal, " doing ray ",iv,ix,iy
 
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy, xpoints, ypoints, &
                   nPoints,  nRay, xRay, yRay, area)
@@ -4285,13 +4284,17 @@ contains
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
+
+    nr1 = 20
+    nphi = 20
+
     do iSource = 1, globalnSource
        do i = 1, nr1
           r = (dble(i)/dble(nr1)) * sourceArray(iSource)%radius
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
           do j = 1, nphi
-             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
              xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
@@ -4303,6 +4306,9 @@ contains
     if (ttauriMagnetosphere) then
        rmin = sourceArray(1)%radius 
        rMax = ttaurirouter/1.d10
+       nr2 = 100
+       nphi = 100
+
        do i = 1, nr2
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr2))**3
           r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr2))**3
@@ -4310,7 +4316,7 @@ contains
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
           do j = 1, nphi
-             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
 !             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
@@ -4326,6 +4332,8 @@ contains
     if (ttauriWind) then
        rmin = ttaurirOuter/1.d10 !dw_rmin
        rMax = amrGridSize
+       nr3 = 100
+       nphi = 100
        do i = 1, nr3
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr3))**3
           r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr3))**3
@@ -4333,7 +4341,7 @@ contains
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
           do j = 1, nphi
-             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
 !             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
@@ -4348,6 +4356,8 @@ contains
     if (ttauriStellarwind) then
        rmin = SW_rMin
        rMax = SW_rMax
+       nr4 = 100
+       nphi = 100
        do i = 1, nr4
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr4))**3
           r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr4))**3
@@ -4355,7 +4365,7 @@ contains
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
           do j = 1, nphi
-             phi = twoPi * dble(j)/dble(nPhi)+dphi
+             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
 !             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj

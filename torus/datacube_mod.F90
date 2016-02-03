@@ -1021,25 +1021,23 @@ subroutine freeDataCube(thiscube)
     real(double) :: meanPosX, meanPosY, tot
     integer :: ix, iy, iv
 
-    if (writeoutput) then
-       open(34, file=saFilename)
-       do iv = 1, cube%nv
-          meanPosX = 0.d0
-          meanPosY = 0.d0
-          tot = 0.d0
-          do ix = 1, cube%nx
-             do iy = 1, cube%ny
-                meanPosX = meanPosX + cube%intensity(iv,ix,iy)*cube%xAxis(ix)
-                meanPosY = meanPosY + cube%intensity(iv,ix,iy)*cube%yAxis(iy)
-                tot = tot + cube%intensity(iv,ix,iy)
-             enddo
+    open(34, file=saFilename)
+    do iv = 1, cube%nv
+       meanPosX = 0.d0
+       meanPosY = 0.d0
+       tot = 0.d0
+       do ix = 1, cube%nx
+          do iy = 1, cube%ny
+             meanPosX = meanPosX + cube%intensity(iv,ix,iy)*cube%xAxis(ix)
+             meanPosY = meanPosY + cube%intensity(iv,ix,iy)*cube%yAxis(iy)
+             tot = tot + cube%intensity(iv,ix,iy)
           enddo
-          meanPosX = meanPosX / tot
-          meanPosY = meanPosY / tot
-          write(34, *) cube%vAxis(iv), meanPosX, meanPosY
        enddo
-       close(34)
-    endif
+       meanPosX = meanPosX / tot
+       meanPosY = meanPosY / tot
+       write(34, *) cube%vAxis(iv), meanPosX, meanPosY
+    enddo
+    close(34)
   end subroutine writeSpectroastrometry
 
 end module datacube_mod
