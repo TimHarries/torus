@@ -3268,8 +3268,8 @@ contains
                "Number of inclinations: ","(a,i2,1x,a)", 1, ok, .true.)          
           allocate(datacubeInclinations(nDataCubeInclinations))
           call getRealArray("inclinations", datacubeInclinations, real(degtorad), cLine, fLine, nLines, &
-               "Inclinations (deg): ",90., ok, .false.)
-          call getInteger("nlamline", nlamLine,cLine, fLine, nLines, &
+               "Inclinations (deg): ",90., ok, .true.)
+          call  getInteger("nlamline", nlamLine,cLine, fLine, nLines, &
                "Number of line emission wavelength: ","(a,i2,1x,a)", 1, ok, .true.)          
           allocate(lamLineArray(1:nLamLine))
           call getRealArray("lamline", lamLineArray, 1.,cLine, fLine, nLines, &

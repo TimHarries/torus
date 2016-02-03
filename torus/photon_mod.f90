@@ -685,10 +685,11 @@ contains
     ! if we are doing this by sources then find out which source we are using
     
     sourceWeight = 1.d0
+    thisPointsource = .false.
     if (nSource > 0) then
        call randomSource(source, nSource, thisSource, sourceWeight)
+       thisPointsource = source(thisSource)%pointsource
     endif
-    thisPointsource = source(thisSource)%pointsource
 
     thisPhoton%stokes = thisPHoton%stokes * sourceWeight
 
