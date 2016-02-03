@@ -1028,14 +1028,14 @@ subroutine freeDataCube(thiscube)
        tot = 0.d0
        do ix = 1, cube%nx
           do iy = 1, cube%ny
-             meanPosX = meanPosX + cube%intensity(iv,ix,iy)*cube%xAxis(ix)
-             meanPosY = meanPosY + cube%intensity(iv,ix,iy)*cube%yAxis(iy)
-             tot = tot + cube%intensity(iv,ix,iy)
+             meanPosX = meanPosX + cube%intensity(ix,iy,iv)*cube%xAxis(ix)
+             meanPosY = meanPosY + cube%intensity(ix,iy,iv)*cube%yAxis(iy)
+             tot = tot + cube%intensity(ix,iy,iv)
           enddo
        enddo
        meanPosX = meanPosX / tot
        meanPosY = meanPosY / tot
-       write(34, *) cube%vAxis(iv), meanPosX, meanPosY
+       write(34, '(1p,3e12.3)') cube%vAxis(iv), meanPosX, meanPosY
     enddo
     close(34)
   end subroutine writeSpectroastrometry

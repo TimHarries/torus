@@ -2,8 +2,9 @@ module biophysics_mod
 
   use vector_mod
   use kind_mod
+  use amr_utils_mod
   use unix_mod
-  use utils_mod
+  use utils_mod, only : locate
   use gridtype_mod
   use spectrum_mod
 

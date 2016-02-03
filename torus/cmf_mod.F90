@@ -3377,7 +3377,7 @@ contains
     real(double) :: i0
     real(double), allocatable :: vArray(:), spec(:)
     integer :: iv1, iv2, i
-    character(len=30) :: plotfile,message
+    character(len=80) :: plotfile,message
     type(DATACUBE) :: cube
     integer :: nFreqArray
     real(double) :: totalOmega
@@ -3886,7 +3886,7 @@ contains
 
        !$OMP DO SCHEDULE(DYNAMIC,1)
           do iy = 1, cube%ny
-	         write(*,*) myrankglobal, " doing ray ",iv,ix,iy
+!	         write(*,*) myrankglobal, " doing ray ",iv,ix,iy
 
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy, xpoints, ypoints, &
                   nPoints,  nRay, xRay, yRay, area)
