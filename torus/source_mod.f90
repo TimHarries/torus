@@ -445,11 +445,17 @@
       type(SOURCETYPE) :: source(:)
       real :: lam1, lam2
       integer :: i
+      character(len=80) :: message
 
       tot = 0
       do i = 1, nSource
-         tot = tot + integrateSpectrumOverBand(source(i)%spectrum, dble(lam1) , &
-                    dble(lam2)) * (fourPi*(1.d10*source(i)%radius)**2)
+         if (associated(source(i)%spectrum%lambda)) then
+            tot = tot + integrateSpectrumOverBand(source(i)%spectrum, dble(lam1) , &
+                 dble(lam2)) * (fourPi*(1.d10*source(i)%radius)**2)
+         else
+            write(message,*) "source_mod: spectrum%lambda not allocated for source", i
+            call writeFatal(message)
+         endif
       enddo
     end function sumSourceLuminosity
 
