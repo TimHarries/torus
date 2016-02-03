@@ -148,7 +148,7 @@ CONTAINS
       
       OPEN(UNIT=27,FILE=fileName,STATUS="old",FORM="formatted")
       nStreams = 0
-      iStream  = 0
+      iStream  = 1
       IF (fileRead == 1) nSamples = 0
       iSample  = 0
       iSampleInStream = 1

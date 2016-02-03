@@ -6890,8 +6890,8 @@ endif
     grid%starPos2 = VECTOR(9.e9,9.e9,9.e9) ! in units of 1.e-10 cm
 
 
-    theta1 = asin(sqrt(TTauriRstar/TTauriRouter))
-    theta2 = asin(sqrt(TTauriRstar/TTauriRinner))
+!    theta1 = asin(sqrt(TTauriRstar/TTauriRouter))
+!    theta2 = asin(sqrt(TTauriRstar/TTauriRinner))
 
     !Laccretion = (REAL(bigG,KIND=db)* &
     !              REAL(TTauriMstar,KIND=db)* &
