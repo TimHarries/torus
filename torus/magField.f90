@@ -148,7 +148,7 @@ CONTAINS
       
       OPEN(UNIT=27,FILE=fileName,STATUS="old",FORM="formatted")
       nStreams = 0
-      iStream  = 1
+      iStream  = 0
       IF (fileRead == 1) nSamples = 0
       iSample  = 0
       iSampleInStream = 1
@@ -282,8 +282,8 @@ CONTAINS
             
           ELSE IF ( iSampleInStream == 2 ) THEN
             ! store a line segment for the first sample in this stream
-            prevSample => magFieldGrid(iSample-1)
-            thisSample => magFieldGrid(iSample)
+            prevSample => magFieldGrid(iSampleInStream-1)
+            thisSample => magFieldGrid(iSampleInStream)
             
             prevSample%flowVector = prevSample%position - thisSample%position
             prevSample%nextDistance = modulus(prevSample%flowVector)
@@ -310,8 +310,8 @@ CONTAINS
             thisSample%nextFlowVector = thisSample%flowVector
 
           ELSE IF ( iSampleInStream > 2 ) THEN
-            prevSample => magFieldGrid(iSample-1)
-            thisSample => magFieldGrid(iSample)
+            prevSample => magFieldGrid(iSampleInStream-1)
+            thisSample => magFieldGrid(iSampleInStream)
               
             ! the general case:
             prevVector = prevSample%position - thisSample%position

@@ -321,6 +321,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
 
+
        case("ttauri")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
           call writeInfo("First octal initialized.", TRIVIAL)

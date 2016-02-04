@@ -810,6 +810,10 @@ contains
      case("magstream")
        call getString("magstreamfile", magStreamFile, cLine, fLine, nLines, &
             "Magnetic field stream file: ","(a,a,1x,a)","constant", ok, .true.)
+       call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
+            "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
+       rcore = TTauriRstar/1.0e10       ! [10^10cm]
+
        magStreamFileDegrees = .false.
        isothermStream = .true.
        isothermTemp = 10000.

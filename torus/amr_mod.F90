@@ -1295,8 +1295,7 @@ CONTAINS
 #endif
   END SUBROUTINE calcValuesAMR
 
-  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, romData ,&
-       stream)
+  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, romData)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
@@ -1310,7 +1309,6 @@ CONTAINS
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
-    type(streamtype), optional :: stream
     !
     LOGICAL :: oned, twod, threed  ! true if this is a twoD amr grid
     INTEGER :: subcell ! loop counter 
@@ -1432,14 +1430,9 @@ CONTAINS
           END DO
 
        case("magstream")
-          ! just checking..
-          if (.not. PRESENT(stream)) then
-             print *, "Error:: stream is not present in initFirstOctal!"
-             stop
-          end if
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, stream=stream)
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
@@ -6861,15 +6854,12 @@ endif
     use constants_mod
     use vector_mod
 
-    use inputs_mod, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               dipoleOffset, &
-                               magStreamFile, thinDiskRin !, TTauriMstar
+    use  inputs_mod, only: magstreamfile, dipoleoffset, thindiskrin, ttaurirstar
     USE magField, only: loadMagField
 
     implicit none
     
     type(GRIDTYPE), intent(inout)      :: grid                
-    real :: theta1, theta2
    
     real :: rStar
 
@@ -6915,7 +6905,6 @@ endif
     ! add the accretion luminosity spectrum to the stellar spectrum,
     ! write it out and pass it to the stateq routine.
     
-
     IF ( grid%geometry == "magstream" ) THEN           
       CALL loadMagField(fileName=magStreamFile,starPosn=grid%starPos1,Rstar=grid%rStar1)           
     END IF
