@@ -16931,7 +16931,7 @@ end function readparameterfrom2dmap
     subroutine magstreamAccretionSurface(grid, surface, lineFreq,coreContFlux,fAccretion,totalLum)
 
     USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
-    use inputs_mod, only : tHotSpot, mDotParameter1
+    use inputs_mod, only : tHotSpot, mDotParameter1, teff1
     use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
     type(SURFACETYPE) :: surface
     type(VECTOR) :: rVec
@@ -16989,7 +16989,7 @@ end function readparameterfrom2dmap
              totalLum = totalLum + power
              
              
-             T = max((flux/stefanBoltz)**0.25d0,3.d0)
+             T = max((flux/stefanBoltz)**0.25d0,teff1)
              
              
              surface%element(i)%hot = .true.

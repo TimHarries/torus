@@ -2497,7 +2497,7 @@ end subroutine assignTurbVelocity
 
 
 recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoArray, velArray)
-  use inputs_mod, only : minDepthAMR, maxDepthAMR
+  use inputs_mod, only : minDepthAMR, maxDepthAMR, isothermTemp
   type(GRIDTYPE) :: grid
   type(OCTAL),pointer :: thisOctal !TJH 9 JULY
   type(OCTAL), pointer :: childPointer
@@ -2508,10 +2508,17 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
   integer :: npoints, nInOctal
   real(double) :: rhoArray(:)
   type(VECTOR) :: velArray(:), posArray(:)
-  real(double) :: tempRhoArray(1000000)
-  type(VECTOR) :: tempPosArray(1000000), tempVelArray(1000000)
+  real(double), allocatable :: tempRhoArray(:)
+  type(VECTOR), allocatable :: tempPosArray(:), tempVelArray(:)
 
   nInOctal = 0
+     do k = 1, npoints
+        if (inOctal(thisOctal, posArray(k))) then
+           nInOctal = nInOctal + 1
+        endif
+     enddo
+     allocate(tempPosArray(1:nInOctal), tempRhoArray(1:nInOctal), tempVelArray(1:nInOctal))
+     nInOctal = 0
      do k = 1, npoints
         if (inOctal(thisOctal, posArray(k))) then
            nInOctal = nInOctal + 1
@@ -2525,7 +2532,7 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
   DO iSubcell = 1, thisOctal%maxChildren
 
      split = .false.
-
+     thisOctal%inflow(isubcell) = .false.
      nInCell = 0
 
      thisOctal%velocity(isubcell) = VECTOR(0.d0,0.d0,0.d0)
@@ -2548,6 +2555,7 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
      if (nInCell >  0) then
         thisOctal%velocity(isubcell) = (1.d0/dble(nInCell)) * thisOctal%velocity(isubcell)
         thisOctal%rho(isubcell) = thisOctal%rho(isubcell) / real(nInCell)
+        thisOctal%temperature(isubcell) = isothermTemp
         thisOctal%inflow(isubcell) = .true.
      endif
      if (nInCell > 2) split = .true.
@@ -2606,22 +2614,32 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
         childPointer => thisOctal%child(iIndex) ! TJH 9 JULY
         call  splitGridMagstream(childPointer, grid, nInOctal,tempposArray, temprhoArray, tempvelArray)
      END DO
-
+     deallocate(tempPosArray, tempRhoArray, tempVelArray)
    end subroutine splitGridMagstream
 
 
    subroutine readMagstreamFile(posArray, velArray, rhoArray, npoints)
      use inputs_mod, only : ttaurirstar, magstreamfile
-  real(double) :: rArray(396879), thetaArray(396879), phiArray(396879)
-  real(double) :: vArray(396879), rhoArray(:), rstar
-  type(VECTOR) :: velArray(:), posArray(:)
-  integer :: i
-  integer :: npoints
-  type(VECTOR) :: dir
+     real(double), allocatable :: rArray(:), thetaArray(:), phiArray(:)
+     real(double), allocatable :: vArray(:)
+     real(double) :: rstar, junk
+     type(VECTOR) :: velArray(:), posArray(:)
+     real(double) :: rhoArray(:)
+     integer :: i
+     integer :: npoints
+     type(VECTOR) :: dir
 
-  rStar = ttaurirStar/1.d10
+     npoints = 0
      open(27, file=magStreamFile, status="old", form="formatted")
-     npoints = 396879
+10   read(27,*,end=20) junk
+     npoints = npoints + 1
+     goto 10
+20   continue
+     close(27)
+     allocate(rArray(1:nPoints), thetaArray(1:nPoints), phiArray(1:nPoints), vArray(1:nPoints))
+
+     rStar = ttaurirStar/1.d10
+     open(27, file=magStreamFile, status="old", form="formatted")
      do i = 1, npoints
         read(27,*) rArray(i), thetaArray(i), phiArray(i), vArray(i), rhoArray(i)
      enddo
