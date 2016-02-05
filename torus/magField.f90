@@ -33,7 +33,7 @@ TYPE gridsample
 END TYPE gridSample
 
 TYPE hotSpotVariable
-  TYPE(spVector) :: position ! position, r should be 1.0  
+  TYPE(Vector) :: position ! position, r should be 1.0  
   REAL :: speed ! (cm s-1)
   REAL :: rho ! g cm-3
   REAL(oct) :: radius ! radius of (circular) stream (radians)
@@ -99,8 +99,7 @@ CONTAINS
     REAL :: rhoValue   ! rho, from file  
     REAL(oct) :: areaValue  ! cross-sectional area, from file  
     INTEGER :: fileRead ! loop counter
-    TYPE(spVector) :: spPosition ! position, spherical polar coords.
-    TYPE(vector) :: prevVector
+    TYPE(vector) :: prevVector, spPosition
     TYPE(gridSample), POINTER :: thisSample
     TYPE(gridSample), POINTER :: prevSample
     INTEGER :: iStream ! index of current stream
@@ -110,7 +109,7 @@ CONTAINS
     REAL(double) :: localAccretionRate
     REAL(double) :: totalAccretionRate
     REAL :: distance
-    TYPE(spVector) :: spSubSurfacePosn ! sub-surface position (sph. pol.) 
+    TYPE(Vector) :: spSubSurfacePosn ! sub-surface position (sph. pol.) 
 
     IF (scaleFlowRho) THEN
       PRINT *, "Will rescale densities by factor of: ",flowRhoScale
@@ -151,13 +150,13 @@ CONTAINS
       iStream  = 0
       IF (fileRead == 1) nSamples = 0
       iSample  = 0
-      iSampleInStream = 1
+      iSampleInStream = 0
     
       readLineLoop: &
       DO
         
         READ(UNIT=27,FMT=*,IOSTAT=returnVal) &
-               rValue, thetaValue, phiValue, velValue, rhoValue, areaValue
+               rValue, thetaValue, phiValue, velValue, rhoValue
           IF (magStreamFileDegrees) THEN
             ! need to convert to radians
             thetaValue = thetaValue * real(DegToRad)
@@ -197,26 +196,25 @@ CONTAINS
         IF ( fileRead == 2 ) THEN
           ! we want to store the data in our arrays
           
-          spPosition = spVector(rValue, thetaValue, phiValue)
+          spPosition = Vector(rValue*sin(thetavalue)*cos(phivalue), &
+               rValue*sin(thetaValue)*sin(phiValue), rValue*cos(thetaValue))
           ! transform to grid coordinates
-          spPosition%r = spPosition%r * Rstar
+          spPosition = dble(rStar) * spPosition 
           magFieldGrid(iSample)%position = spPosition ! (includes conversion to
+          write(*,*) "grid ",magfieldgrid(isample)%position
                                               ! cartesian coordinates)
-          magFieldGrid(iSample)%position =                           &
-            magFieldGrid(iSample)%position + &
-              vector(starPosn%x,starPosn%y,starPosn%z)
                                               
           magFieldGrid(iSample)%velocity = real((velValue * 1.e5) / cSpeed )
 !          magFieldGrid(iSample)%velocity = (velValue * 1.e-5) 
           IF (scaleFlowRho) THEN
             rhoValue = rhoValue * flowRhoScale
           END IF
-          magFieldGrid(iSample)%rho = rhoValue * 1.e-3 ! convert to g cm-3
+          magFieldGrid(iSample)%rho = (10.**real(rhoValue))*real(mHydrogen)
           areaValue = areaValue * 1.e4 ! m^2 to cm^2 !!!!!! changed from neils 1.e5
           areaValue = SQRT(areaValue / pi) ! area to radius
           magFieldGrid(iSample)%radius = areaValue / 1.e10_oct ! to 1.e10 cm
 
-          maxSizeMagFieldGrid = MAX(maxSizeMagFieldGrid, real(spPosition%r) )
+          maxSizeMagFieldGrid = MAX(maxSizeMagFieldGrid, real(modulus(spPosition)) )
 
           ! store inner disk radius, for this stream.
           ! we don't care if this is not the last sample in this stream,
@@ -251,7 +249,7 @@ CONTAINS
               magFieldHotspots(iStream)%XYZposition + starPosn
             magFieldHotspots(iStream)%radius_1e10 = thisSample%radius
 
-            magFieldHotspots(iStream)%position%r = 1.0
+            magFieldHotspots(iStream)%position = VECTOR(0.d0, 0.d0, 0.d0)
             magFieldHotspots(iStream)%speed = real(thisSample%velocity * cSpeed)
             ! approximation, radius will not be quite correct 
             magFieldHotspots(iStream)%radius = &
@@ -270,7 +268,7 @@ CONTAINS
             ! work out how far beneath the surface "subSurfacePosn" should lie
             distance = real(COS(magFieldHotspots(iStream)%radius)) ! (Rstar)
             spSubSurfacePosn = magFieldHotspots(iStream)%position
-            spSubSurfacePosn%r = distance * Rstar
+!            spSubSurfacePosn= distance * Rstar
             magFieldHotspots(iStream)%subSurfacePosn = spSubSurfacePosn ! convert to XYZ
               ! note that we haven't added on "starPosn" 
             
@@ -312,6 +310,10 @@ CONTAINS
           ELSE IF ( iSampleInStream > 2 ) THEN
             prevSample => magFieldGrid(iSampleInStream-1)
             thisSample => magFieldGrid(iSampleInStream)
+
+            write(*,*) "prev ",prevSample%position,modulus(prevSample%position)/rstar
+            write(*,*) "next ",thisSample%position,modulus(thisSample%position)/rstar
+            write(*,*) " "
               
             ! the general case:
             prevVector = prevSample%position - thisSample%position
@@ -331,8 +333,7 @@ CONTAINS
             
             ! in case we are at the end of the stream, fill all this sample's
             !   variables:
-            thisSample%flowVector = thisSample%prevDirection 
-            CALL normalize(thisSample%flowVector)  
+            write(*,*) "flow vector ", thisSample%flowVector
             thisSample%nextDistance = thisSample%prevDistance
             thisSample%nextFlowVector = thisSample%flowVector
             thisSample%nextVelocity = thisSample%velocity

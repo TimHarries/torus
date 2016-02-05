@@ -1429,13 +1429,13 @@ CONTAINS
              grid%octreeRoot%label(subcell) = subcell
           END DO
 
-       case("magstream")
-          DO subcell = 1, grid%octreeRoot%maxChildren
-             ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
-             ! label the subcells
-             grid%octreeRoot%label(subcell) = subcell
-          END DO
+!       case("magstream")
+!          DO subcell = 1, grid%octreeRoot%maxChildren
+!             ! calculate the values at the centre of each of the subcells
+!             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
+!             ! label the subcells
+!             grid%octreeRoot%label(subcell) = subcell
+!          END DO
        case DEFAULT
 
 !!!!!!!!!! EDITTED OUT BY TJH
@@ -6854,8 +6854,7 @@ endif
     use constants_mod
     use vector_mod
 
-    use  inputs_mod, only: magstreamfile, dipoleoffset, thindiskrin, ttaurirstar
-    USE magField, only: loadMagField
+    use  inputs_mod, only: dipoleoffset, thindiskrin, ttaurirstar
 
     implicit none
     
@@ -6905,9 +6904,6 @@ endif
     ! add the accretion luminosity spectrum to the stellar spectrum,
     ! write it out and pass it to the stateq routine.
     
-    IF ( grid%geometry == "magstream" ) THEN           
-      CALL loadMagField(fileName=magStreamFile,starPosn=grid%starPos1,Rstar=grid%rStar1)           
-    END IF
 
     !open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
     !do i = 1, nNu
@@ -16931,6 +16927,98 @@ end function readparameterfrom2dmap
     CALL sumSurface(surface)
 
   end subroutine genericAccretionSurface
+
+    subroutine magstreamAccretionSurface(grid, surface, lineFreq,coreContFlux,fAccretion,totalLum)
+
+    USE surface_mod, only: createProbs, sumSurface, SURFACETYPE
+    use inputs_mod, only : tHotSpot, mDotParameter1
+    use magnetic_mod, only : accretingAreaMahdavi, velocityMahdavi, inflowMahdavi
+    type(SURFACETYPE) :: surface
+    type(VECTOR) :: rVec
+    real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
+    integer :: i
+    real(double) :: totalLum
+    REAL(double), INTENT(IN) :: coreContFlux
+    REAL, INTENT(IN) :: lineFreq
+    REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
+    real(double) :: astar,  thisMdot, thisRho
+    type(octal), pointer :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+
+    thisOctal => grid%octreeRoot
+    if (Writeoutput) write(*,*) "calculating generic accretion surface ",surface%nElements
+    astar = accretingAreaMahdavi()
+    thismdot = mDotparameter1*mSol/(365.25d0*24.d0*3600.d0)
+
+    if (writeoutput.and.(Thotspot > 0.)) write(*,*) "Setting hot spot temperature to: ",thotspot
+    accretingArea = 0.d0
+    totalArea = 0.d0
+    totallum = 0.d0
+    totalmdot = 0.d0
+
+
+       do i = 1, surface%nElements
+          rVec = (modulus(surface%Element(i)%position-surface%centre)*1.001d0) &
+               *surface%element(i)%norm
+          surface%element(i)%hot = .false.
+          area = (surface%element(i)%area*1.d20)
+          totalArea = totalArea + area
+          
+
+          call findSubcellLocal(rVec, thisOctal, subcell)
+          if (thisOctal%inflow(subcell).and.(thisOctal%rho(subcell) > 1.d-20)) then
+             
+             
+             
+             v = modulus(thisOctal%velocity(subcell))*cSpeed
+             
+             thisRho = thisOctal%rho(subcell)
+             
+             mdot = thisRho * v * area
+             
+             
+             
+             totalMdot = totalMdot + mdot
+             power = 0.5d0 * mdot * v**2
+             if (area /= 0.d0) then
+                flux = power / area
+             else
+                flux = 0.d0
+             endif
+             totalLum = totalLum + power
+             
+             
+             T = max((flux/stefanBoltz)**0.25d0,3.d0)
+             
+             
+             surface%element(i)%hot = .true.
+             allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
+             
+             if (Thotspot > 0.) t = thotspot
+             
+             surface%element(i)%hotFlux(:) = &
+                  pi*blackbody(REAL(T), 1.e8*REAL(cSpeed/surface%nuArray(:)))
+             surface%element(i)%temperature = real(T)
+             accretingArea = accretingArea + area
+          end if
+       enddo
+
+    if (writeoutput) then
+       write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
+       write(*,'(a,1pe12.3,a)') "Mass accretion rate is: ", &
+            (totalMdot/mSol)*(365.25d0*24.d0*3600.d0), " solar masses/year"
+       
+       if (accretingArea > 0.d0) then
+          t = (totalLum/(accretingArea*stefanBoltz))**0.25d0
+          write(*,*) "Approx accretion temperature is ",t, " kelvin"
+       endif
+    endif
+
+    CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
+    CALL sumSurface(surface)
+
+  end subroutine magstreamAccretionSurface
 
     subroutine hotSpotSurface(surface, lineFreq,coreContFlux,fAccretion,totalLum)
 

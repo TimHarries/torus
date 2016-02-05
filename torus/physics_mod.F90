@@ -910,6 +910,28 @@ contains
        globalNSource = 1
     endif
 
+    if (grid%geometry=="magstream") then
+       coreContinuumFlux = 0.d0
+       call addXray(globalSourceArray(1)%spectrum, lxoverlbol)
+       xRayFlux = integrateSpectrumOverBand(globalSourceArray(1)%spectrum, &
+            (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8, &
+            (cSpeed / (0.1d0 * 1000.d0 * evtoerg/hcgs))*1.d8)
+       if (writeoutput) write(*,*) "EUV/X-ray flux (erg/s)", &
+            xRayFlux*fourPi*globalSourceArray(1)%radius**2*1.d20
+
+
+       call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
+            globalsourcearray(1)%surface, nSphereSurface, &
+            globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
+       call magstreamAccretionSurface(grid, globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
+       call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
+       if (writeoutput) write(*,*) "Added accretion luminosity of ",lAccretion/lsol, " lsol"
+       if (writeoutput) write(*,*) "Accretion luminosity in stellar units ",lAccretion/globalsourceArray(1)%luminosity
+       globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
+       globalNSource = 1
+    endif
+
+
     if (hotSpot) then
        coreContinuumFlux = 0.d0
 

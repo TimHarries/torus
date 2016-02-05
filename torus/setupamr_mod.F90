@@ -86,6 +86,9 @@ contains
     real, pointer :: xVel(:,:,:) => null()
     real, pointer :: yVel(:,:,:) => null()
     real, pointer :: zVel(:,:,:) => null()
+    type(vector) :: posArray(1000000), velArray(1000000)
+    real(double) :: rhoArray(1000000)
+    integer :: npoints
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
@@ -321,6 +324,16 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
 
+       case("magstream")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
+          call writeInfo("First octal initialized.", TRIVIAL)
+
+
+
+          call readMagstreamFile(posArray, velArray, rhoArray, npoints)
+
+          call splitGridMagstream(grid%octreeRoot,grid, npoints, posArray, rhoArray, velArray)
+          call writeVtkFile(grid, "test.vtk")
 
        case("ttauri")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
@@ -2479,7 +2492,166 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
         endif
      endif
   enddo
+
 end subroutine assignTurbVelocity
+
+
+recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoArray, velArray)
+  use inputs_mod, only : minDepthAMR, maxDepthAMR
+  type(GRIDTYPE) :: grid
+  type(OCTAL),pointer :: thisOctal !TJH 9 JULY
+  type(OCTAL), pointer :: childPointer
+  !    type(OCTAL) :: thisOctal
+  integer :: iIndex
+  logical :: split
+  integer :: iSubcell, i, j, k, nInCell
+  integer :: npoints, nInOctal
+  real(double) :: rhoArray(:)
+  type(VECTOR) :: velArray(:), posArray(:)
+  real(double) :: tempRhoArray(1000000)
+  type(VECTOR) :: tempPosArray(1000000), tempVelArray(1000000)
+
+  nInOctal = 0
+     do k = 1, npoints
+        if (inOctal(thisOctal, posArray(k))) then
+           nInOctal = nInOctal + 1
+           tempPosArray(nInOctal) = posArray(k)
+           tempRhoArray(nInOctal) = rhoArray(k)
+           tempVelArray(nInOctal) = velArray(k)
+        endif
+     enddo
+     
+
+  DO iSubcell = 1, thisOctal%maxChildren
+
+     split = .false.
+
+     nInCell = 0
+
+     thisOctal%velocity(isubcell) = VECTOR(0.d0,0.d0,0.d0)
+     thisOctal%rho(isubcell) = 0.d0
+
+     do k = 1, npoints
+
+        if (inOctal(thisOctal, posArray(k))) then
+           tempPosArray(nInOctal) = posArray(k)
+           tempRhoArray(nInOctal) = rhoArray(k)
+           tempVelArray(nInOctal) = velArray(k)
+        endif
+        if (inSubcell(thisOctal, iSubcell, posArray(k))) then
+           nInCell = nInCell + 1
+           thisOctal%velocity(isubcell) = thisOctal%velocity(isubcell) + velArray(k)
+           thisOctal%rho(isubcell) = thisOctal%rho(isubcell) + rhoArray(k)
+        endif
+
+     enddo
+     if (nInCell >  0) then
+        thisOctal%velocity(isubcell) = (1.d0/dble(nInCell)) * thisOctal%velocity(isubcell)
+        thisOctal%rho(isubcell) = thisOctal%rho(isubcell) / real(nInCell)
+        thisOctal%inflow(isubcell) = .true.
+     endif
+     if (nInCell > 2) split = .true.
+
+
+
+     if (thisOctal%nDepth >= maxDepthAMR) split = .false.
+     if (thisOctal%nDepth <= minDepthAMR) split = .true.
+
+     IF (split) then
+
+        CALL addNewChild(thisOctal, iSubcell, grid, adjustGridInfo=.TRUE., &
+             inherit = .true.)
+
+        if (.not.thisOctal%hasChild(isubcell)) then
+           write(*,*) "add child failed in splitGrid"
+           do
+           enddo
+        endif
+
+
+
+     END IF
+     
+  END DO
+
+  do i = 1, thisOctal%nChildren
+     if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
+        write(*,*) "octal children messed up"
+        do ; enddo
+        endif
+     enddo
+
+     do i = 1, thisOctal%maxChildren
+        k = -99
+        if (thisOctal%hasChild(i)) then
+           do j = 1, thisOctal%nChildren
+              if (thisOctal%indexChild(j) == i) then
+                 k = j
+                 exit
+              endif
+           enddo
+           if (k==-99) then
+              write(*,*) "subcell screwup"
+              do
+              enddo
+           endif
+        endif
+     enddo
+
+     if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
+        write(*,*) "nchildren screw up"
+     endif
+
+     DO iIndex = 1, thisOctal%nChildren
+        childPointer => thisOctal%child(iIndex) ! TJH 9 JULY
+        call  splitGridMagstream(childPointer, grid, nInOctal,tempposArray, temprhoArray, tempvelArray)
+     END DO
+
+   end subroutine splitGridMagstream
+
+
+   subroutine readMagstreamFile(posArray, velArray, rhoArray, npoints)
+     use inputs_mod, only : ttaurirstar, magstreamfile
+  real(double) :: rArray(396879), thetaArray(396879), phiArray(396879)
+  real(double) :: vArray(396879), rhoArray(:), rstar
+  type(VECTOR) :: velArray(:), posArray(:)
+  integer :: i
+  integer :: npoints
+  type(VECTOR) :: dir
+
+  rStar = ttaurirStar/1.d10
+     open(27, file=magStreamFile, status="old", form="formatted")
+     npoints = 396879
+     do i = 1, npoints
+        read(27,*) rArray(i), thetaArray(i), phiArray(i), vArray(i), rhoArray(i)
+     enddo
+     close(27)
+
+     vArray = vArray * 1.d5/cspeed
+     rhoArray = (10.d0**rhoArray)*mhydrogen
+     do i = 1, npoints
+        posArray(i) = VECTOR(rArray(i)*sin(thetaArray(i))*cos(phiArray(i)), &
+             rArray(i)*sin(thetaArray(i))*sin(phiArray(i)), &
+             rArray(i)*cos(thetaArray(i)))
+        posArray(i) = rStar * posArray(i)
+     enddo
+     dir = (posArray(2) - posArray(1))
+     call normalize(dir)
+     velArray(1) = (vArray(1)) * dir
+
+     do i = 2, npoints
+        if (rArray(i) < rArray(i-1)) then
+           dir = (posArray(i) - posArray(i-1))
+           call normalize(dir)
+           velArray(i) = (vArray(i)) * dir
+        else
+           dir = (posArray(i+1) - posArray(i))
+           call normalize(dir)
+           velArray(i) = (vArray(i)) * dir
+        endif
+        if (rArray(i) > rArray(i-1)) velArray(i) = (-1.d0)*velArray(i)
+     enddo
+   end subroutine readMagstreamFile
 
 
 end module setupamr_mod
