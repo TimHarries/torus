@@ -86,8 +86,8 @@ contains
     real, pointer :: xVel(:,:,:) => null()
     real, pointer :: yVel(:,:,:) => null()
     real, pointer :: zVel(:,:,:) => null()
-    type(vector) :: posArray(1000000), velArray(1000000)
-    real(double) :: rhoArray(1000000)
+    type(vector), pointer :: posArray(:) => null(), velArray(:) => null()
+    real(double), pointer :: rhoArray(:) => null()
     integer :: npoints
 #ifdef SPH
     type(cluster) :: young_cluster
@@ -333,6 +333,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call readMagstreamFile(posArray, velArray, rhoArray, npoints)
 
           call splitGridMagstream(grid%octreeRoot,grid, npoints, posArray, rhoArray, velArray)
+
+          deallocate(posArray, velArray, rhoArray)
           call writeVtkFile(grid, "test.vtk")
 
        case("ttauri")
@@ -2623,8 +2625,8 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
      real(double), allocatable :: rArray(:), thetaArray(:), phiArray(:)
      real(double), allocatable :: vArray(:)
      real(double) :: rstar, junk
-     type(VECTOR) :: velArray(:), posArray(:)
-     real(double) :: rhoArray(:)
+     type(VECTOR), pointer :: velArray(:), posArray(:)
+     real(double), pointer :: rhoArray(:)
      integer :: i
      integer :: npoints
      type(VECTOR) :: dir
@@ -2637,6 +2639,7 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
 20   continue
      close(27)
      allocate(rArray(1:nPoints), thetaArray(1:nPoints), phiArray(1:nPoints), vArray(1:nPoints))
+     allocate(velArray(1:nPoints), posArray(1:nPoints), rhoArray(1:nPoints))
 
      rStar = ttaurirStar/1.d10
      open(27, file=magStreamFile, status="old", form="formatted")
