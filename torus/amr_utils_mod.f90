@@ -3003,7 +3003,6 @@ SUBROUTINE fillDensityVelocityCornersFromCentres(thisOctal, grid)
 !        print *, "thisOctal%cornerRho(j)", thisOctal%cornerRho(j)
      end do
 !     stop
-     write(*,*)
   else 
      call torus_abort("Corner velocities only available in 3D calculations at present")
 

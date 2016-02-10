@@ -3604,7 +3604,7 @@ contains
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-    use inputs_mod, only : ttauriwind, ttauriRouter, ttauriStellarwind, SW_rMin, SW_Rmax
+    use inputs_mod, only : ttauriwind, ttauriRouter, ttauriStellarwind, SW_rMin, SW_Rmax, amrGridSize
     use source_mod, only : globalSourceArray
     use utils_mod
     type(GRIDTYPE) :: grid
@@ -3618,7 +3618,7 @@ contains
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, nr3, nr4,  i
 
-    nr1 = 20
+    nr1 = 200
     nr2 = 100
     nr3 = 100
     nr4 = 100
@@ -3645,7 +3645,7 @@ contains
     
     if (nr2 > 0) then
        rmin = globalSourceArray(1)%radius 
-       rMax = ttaurirouter/1.d10
+       rMax = ttaurirOuter/1.d10
     
 
        do ir = 1, nr2
@@ -4270,8 +4270,7 @@ contains
     nphi = 200
     nr1 = 100
 
-    nr2 = 0
-    if (ttauriMagnetosphere) nr2 = 100
+    nr2 = 100
 
     nr3 = 0
     if (tTauriWind) nr3 = 100
@@ -4285,8 +4284,8 @@ contains
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
 
-    nr1 = 20
-    nphi = 20
+    nr1 = 100
+    nphi = 200
 
     do iSource = 1, globalnSource
        do i = 1, nr1
@@ -4303,11 +4302,10 @@ contains
        enddo
     enddo
 
-    if (ttauriMagnetosphere) then
        rmin = sourceArray(1)%radius 
-       rMax = ttaurirouter/1.d10
+       rMax = ttauriRouter/1.d10
        nr2 = 100
-       nphi = 100
+       nphi = 200
 
        do i = 1, nr2
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr2))**3
@@ -4327,7 +4325,6 @@ contains
              yPoints(nPoints) = sourceArray(isource)%position%y + rVec%y
           enddo
        enddo
-    endif
     
     if (ttauriWind) then
        rmin = ttaurirOuter/1.d10 !dw_rmin

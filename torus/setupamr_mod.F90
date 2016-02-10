@@ -2510,7 +2510,6 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
   type(VECTOR) :: velArray(:), posArray(:)
   real(double), allocatable :: tempRhoArray(:)
   type(VECTOR), allocatable :: tempPosArray(:), tempVelArray(:)
-
   nInOctal = 0
      do k = 1, npoints
         if (inOctal(thisOctal, posArray(k))) then
