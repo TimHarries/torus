@@ -333,9 +333,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call readMagstreamFile(posArray, velArray, rhoArray, npoints)
 
           call splitGridMagstream(grid%octreeRoot,grid, npoints, posArray, rhoArray, velArray)
-
           deallocate(posArray, velArray, rhoArray)
-          call writeVtkFile(grid, "test.vtk")
 
        case("ttauri")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
@@ -2666,8 +2664,13 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
            call normalize(dir)
            velArray(i) = (vArray(i)) * dir
         else
-           dir = (posArray(i+1) - posArray(i))
-           call normalize(dir)
+           if (i < npoints) then
+              dir = (posArray(i+1) - posArray(i))
+              call normalize(dir)
+           else
+              dir = (posArray(i) - posArray(i-1))
+              call normalize(dir)
+           endif
            velArray(i) = (vArray(i)) * dir
         endif
         if (rArray(i) > rArray(i-1)) velArray(i) = (-1.d0)*velArray(i)

@@ -2097,6 +2097,22 @@ CONTAINS
        CASE ("romanova")
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
 
+
+       CASE ("magstream")
+
+          if( .not. thisoctal%haschild(subcell)) then 
+             if (.not. associated(thisoctal%cornervelocity)) then 
+                allocate(thisoctal%cornervelocity(27))
+                thisoctal%cornervelocity(:) = VECTOR(0.d0, 0.d0, 0.d0)
+             endif
+             if (.not. associated(thisoctal%cornerrho)) then 
+                allocate(thisoctal%cornerrho(27))
+                thisoctal%cornerrho(:) = 0.d0
+             endif
+             CALL fillDensityVelocityCornersFromCentres(thisOctal, grid)
+          end if
+
+
 #ifdef SPH
 ! Without corner velocities
        CASE ("sphfile","cluster","wr104")

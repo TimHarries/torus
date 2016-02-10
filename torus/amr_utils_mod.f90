@@ -2869,4 +2869,146 @@ SUBROUTINE fillHydroDensityVelocityCorners(thisOctal, grid)
      
 END SUBROUTINE fillHydroDensityVelocityCorners
 
+SUBROUTINE fillDensityVelocityCornersFromCentres(thisOctal, grid)
+  use inputs_mod, only : smallestCellSize
+  type(gridtype) :: grid
+  TYPE(octal), pointer :: thisOctal
+  TYPE(octal), pointer :: probeOctal
+  type(vector), allocatable :: rVecArray(:), probeArray(:)
+  type(vector) :: position
+  integer ::  j
+!  real(double) :: radius, x, y, z, xmin, zmin, dx, dz
+  integer, parameter :: maxpts = 8
+  integer :: probeSubcell
+  real(double) :: x1, x2, x3, y1, y2, y3, z1, z2, z3
+  real(double) :: rhoPoints(maxpts)
+  real(double) :: rhouPoints(maxpts)
+  real(double) :: rhovPoints(maxpts)
+  real(double) :: rhowPoints(maxpts)
+  type(vector), allocatable :: sourcePoints(:)
+  integer :: nPoints, f, k
+  logical :: replica 
+
+  if (thisOctal%threed) then
+     
+     allocate(rVecArray(27))
+     allocate(probeArray(8))
+     allocate(sourcePoints(8))
+     
+     probeArray(1) = VECTOR(1.d0, 1.d0, 1.d0)
+     probeArray(2) = VECTOR(1.d0, 1.d0, -1.d0)
+     probeArray(3) = VECTOR(1.d0, -1.d0, 1.d0)
+     probeArray(4) = VECTOR(-1.d0, 1.d0, 1.d0)
+     probeArray(5) = VECTOR(1.d0, -1.d0, -1.d0)
+     probeArray(6) = VECTOR(-1.d0, -1.d0, 1.d0)
+     probeArray(7) = VECTOR(-1.d0, 1.d0, -1.d0)
+     probeArray(8) = VECTOR(-1.d0, -1.d0, -1.d0)
+     
+    
+     x1 = thisOctal%centre%x - thisOctal%subcellSize
+     x2 = thisOctal%centre%x
+     x3 = thisOctal%centre%x + thisOctal%subcellSize
+     
+     y1 = thisOctal%centre%y - thisOctal%subcellSize
+     y2 = thisOctal%centre%y
+     y3 = thisOctal%centre%y + thisOctal%subcellSize
+     
+     z1 = thisOctal%centre%z - thisOctal%subcellSize
+     z2 = thisOctal%centre%z
+     z3 = thisOctal%centre%z + thisOctal%subcellSize
+    
+     rVecArray(1) = VECTOR(x1,y1,z1)
+     rVecArray(2) = VECTOR(x2,y1,z1)
+     rVecArray(3) = VECTOR(x3,y1,z1)
+     rVecArray(4) = VECTOR(x1,y2,z1)
+     rVecArray(5) = VECTOR(x2,y2,z1)
+     rVecArray(6) = VECTOR(x3,y2,z1)
+     rVecArray(7) = VECTOR(x1,y3,z1)
+     rVecArray(8) = VECTOR(x2,y3,z1)
+     rVecArray(9) = VECTOR(x3,y3,z1)
+     rVecArray(10) = VECTOR(x1,y1,z2)
+     rVecArray(11) = VECTOR(x2,y1,z2)
+     rVecArray(12) = VECTOR(x3,y1,z2)
+     rVecArray(13) = VECTOR(x1,y2,z2)
+     rVecArray(14) = VECTOR(x2,y2,z2)
+     rVecArray(15) = VECTOR(x3,y2,z2)
+     rVecArray(16) = VECTOR(x1,y3,z2)
+     rVecArray(17) = VECTOR(x2,y3,z2)
+     rVecArray(18) = VECTOR(x3,y3,z2)
+     rVecArray(19) = VECTOR(x1,y1,z3)
+     rVecArray(20) = VECTOR(x2,y1,z3)
+     rVecArray(21) = VECTOR(x3,y1,z3)
+     rVecArray(22) = VECTOR(x1,y2,z3)
+     rVecArray(23) = VECTOR(x2,y2,z3)
+     rVecArray(24) = VECTOR(x3,y2,z3)
+     rVecArray(25) = VECTOR(x1,y3,z3)
+     rVecArray(26) = VECTOR(x2,y3,z3)
+     rVecArray(27) = VECTOR(x3,y3,z3)
+
+     do j = 1, 27
+        nPoints = 0
+        rhoPoints = 0.d0
+        rhouPoints = 0.d0
+        rhovPoints = 0.d0
+        rhowPoints = 0.d0
+        do k = 1, 8
+           replica = .false.
+           position = rVecArray(j) + rmult(0.01d0*smallestCellSize,probeArray(k))
+           probeOctal => thisOctal
+           if(inOctal(grid%octreeRoot, position)) then
+              call findSubcellLocal(position, probeOctal, probeSubcell)
+              position = subcellCentre(probeOctal, probeSubcell)
+              do f = 1, k
+                 if(vectorEquivalence(position,sourcePoints(f))) then
+                    replica = .true.
+                 end if
+              enddo
+              if(.not. replica) then
+                 sourcePoints(k) = position
+                 rhoPoints(k) = probeOctal%rho(probeSubcell)
+                 rhouPoints(k) = probeOctal%velocity(probeSubcell)%x
+                 rhovPoints(k) = probeOctal%velocity(probeSubcell)%y
+                 rhowPoints(k) = probeOctal%velocity(probeSubcell)%z                            
+                 nPoints = nPoints + 1
+              end if
+!           else
+!              rhoPoints(k) = 0.d0
+!              rhouPoints(k) = 0.d0
+!              rhovPoints(k) = 0.d0
+!              rhowPoints(k) = 0.d0
+!              nPoints = nPoints + 1
+           end if
+
+        enddo
+        
+        if(nPoints /= 0) then
+           thisOctal%cornerRho(j) = SUM(rhoPoints(1:nPoints))/dble(nPoints)
+!           print *, "thisOctal%cornerRho(j)", thisOctal%cornerRho(j)
+           thisOctal%cornerVelocity(j)%x = SUM(rhouPoints(1:nPoints))/(dble(nPoints))
+           thisOctal%cornerVelocity(j)%y = SUM(rhovPoints(1:nPoints))/(dble(nPoints))
+           thisOctal%cornerVelocity(j)%z = SUM(rhowPoints(1:nPoints))/(dble(nPoints))
+        else
+           thisOctal%cornerRho(j) = 0.d0
+           thisOctal%cornerVelocity(j)%x = 0.d0
+           thisOctal%cornerVelocity(j)%y = 0.d0
+           thisOctal%cornerVelocity(j)%z = 0.d0
+
+!           print *, "zero cells surrounding points ", position
+!           call torus_abort("aborting...")
+        end if
+
+!        print *, "rhoPoints", rhoPoints
+!        print *, "vel ", thisOctal%cornervelocity(j)
+!        print *, "dble(nPoints)", dble(nPoints)
+!        print *, "thisOctal%cornerRho(j)", thisOctal%cornerRho(j)
+     end do
+!     stop
+     write(*,*)
+  else 
+     call torus_abort("Corner velocities only available in 3D calculations at present")
+
+  end if
+     
+END SUBROUTINE fillDensityVelocityCornersFromCentres
+
 end module amr_utils_mod

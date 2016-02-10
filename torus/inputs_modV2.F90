@@ -818,6 +818,10 @@ contains
        isothermStream = .true.
        isothermTemp = 10000.
 
+       call getDouble("holeradius", holeRadius, dble(ttaurirstar), cLine, fLine, nLines, &
+            "Size of hole in geometrically thin, optically thick disc (in R_star): ","(a,f7.1,1x,a)", &
+            1.d10, ok, .false.)
+
 
      case("ttauri")
        call getReal("ttaurirstar", TTauriRstar, real(rsol), cLine, fLine, nLines, &
