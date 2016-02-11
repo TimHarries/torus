@@ -814,7 +814,7 @@ contains
             "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
        rcore = TTauriRstar/1.0e10       ! [10^10cm]
 
-       ttauriRouter = 20.d0*ttaurirStar
+       ttauriRouter = 20.0*ttaurirStar
        magStreamFileDegrees = .false.
        isothermStream = .true.
        isothermTemp = 10000.
