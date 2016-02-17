@@ -184,7 +184,7 @@
       type(SOURCETYPE) :: source(:)
       integer :: nSource
       character(len=*) :: rootfilename
-      character(len=80) :: filename, message
+      character(len=120) :: filename, message
       integer :: iSource
       integer, parameter :: lunit = 65
 
