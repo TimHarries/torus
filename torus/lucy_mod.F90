@@ -3981,12 +3981,11 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
   end subroutine getTemperatureDensityRun
 
-recursive subroutine quickSublimateLucy(thisOctal, fraction)
+recursive subroutine quickSublimateLucy(thisOctal)
   use inputs_mod, only : grainFrac, nDustType, tsub
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   ! Where dust is present set dustTypeFraction to this value. 
-  real, optional, intent(in) :: fraction
   integer :: subcell, i, idust
   
   do subcell = 1, thisOctal%maxChildren
