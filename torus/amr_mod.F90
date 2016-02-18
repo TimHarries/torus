@@ -3589,7 +3589,7 @@ CONTAINS
 #endif
 #ifdef SPH
     USE cluster_class, only:   find_n_particle_in_subcell
-    use sph_data_class, only:  sphVelocityPresent, get_npart
+    use sph_data_class, only:  sphVelocityPresent, get_npart, get_pt_position, get_udist
 #endif
 
     IMPLICIT NONE
@@ -5026,6 +5026,19 @@ CONTAINS
                    split = .false.
             
              end if
+
+
+             if (inputnSource > 0) then
+                do iSource = 1, inputnSource
+                   rvec = get_pt_position(isource) * (get_udist()/1.d10)
+                   if (inSubcell(thisOctal,subcell, rvec) &
+                        .and. (thisOctal%nDepth < maxDepthAMR)) then
+                      split = .true.
+                      exit
+                   endif
+                enddo
+             endif
+
              
           ! The stellar disc code is retained in case this functionality needs to be used in future 
 !!$

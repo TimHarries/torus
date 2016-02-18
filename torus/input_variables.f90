@@ -321,6 +321,7 @@
   logical :: solveDiffusionZone
   integer :: nHydro
   integer :: nLucy
+  logical :: quickSublimate
   integer :: iterLucy
   integer :: maxIterLucy
   logical :: narrowBandImage

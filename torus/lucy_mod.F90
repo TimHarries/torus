@@ -30,7 +30,7 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, maxMemoryAvailable !, mDisc, dusttogas, dustSettling
-    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone
+    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
@@ -872,6 +872,8 @@ contains
        if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
           call fillDustUniform(grid, grid%octreeRoot)
        endif
+
+       if (quickSublimate) call quickSublimateLucy(grid%octreeRoot)
 
 
        if (variableDustSublimation) then
@@ -3978,6 +3980,38 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     end do
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
   end subroutine getTemperatureDensityRun
+
+recursive subroutine quickSublimateLucy(thisOctal, fraction)
+  use inputs_mod, only : grainFrac, nDustType, tsub
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  ! Where dust is present set dustTypeFraction to this value. 
+  real, optional, intent(in) :: fraction
+  integer :: subcell, i, idust
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call quickSublimateLucy(child)
+                exit
+             end if
+          end do
+       else
+
+
+          do idust = 1, nDustType
+             if (thisOctal%temperature(subcell) > tsub(idust)) then
+                thisOctal%dustTypeFraction(subcell,idust) = 1.d-20
+             else
+                thisOctal%dustTypeFraction(subcell,iDust) = grainFrac(iDust)
+             endif
+          enddo
+       endif
+    enddo
+  end subroutine quickSublimateLucy
 
 end module lucy_mod
 

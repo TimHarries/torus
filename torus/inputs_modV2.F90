@@ -2552,7 +2552,7 @@ contains
 
              write(keyword, '(a,i1)') "sourcepos",i
              call getVector(keyword, sourcePos(i), 1.d0, cLine, fLine, nLines, &
-                  "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+                  "Source position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
 
              write(keyword, '(a,i1)') "velocity",i
              call getVector(keyword, sourceVel(i), 1.d5, cLine, fLine, nLines, &
@@ -2938,6 +2938,9 @@ contains
 
     call getLogical("solvediffusion", solveDiffusionZone, cLine, fLine, nLines, &
          "Solve diffusion region using Gauss-Seidel: ","(a,1l,1x,a)", .true., ok, .false.)
+
+    call getLogical("quicksublimate", quickSublimate, cLine, fLine, nLines, &
+         "Quick and dirty dust sublimation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("lucy_undersampled", lucy_undersampled, 1., cLine, fLine, nLines, &
          "Minimum percentage of undersampled cell in lucy iteration: ", &

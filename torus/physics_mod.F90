@@ -803,7 +803,8 @@ contains
      use source_mod, only : globalNsource, globalSourceArray
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
-          burstType, burstAge, burstTime
+          burstType, burstAge, burstTime, sourceMass, sourceTeff, sourceRadius, accretionradius, &
+          sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile
 #ifdef MPI
      use mpi
 #endif
@@ -814,8 +815,10 @@ contains
      integer :: i
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
+     real(double) :: sumSurfaceLuminosity, fac
      real :: fAccretion
-     character(len=80) :: message
+     character(len=120) :: message
+     logical :: ok
 
      if (associated(globalsourceArray)) then
         deallocate(globalSourceArray)
@@ -837,7 +840,15 @@ contains
         if(.not. discardsinks) then
            !        print *, "echo"
 #ifdef SPH
+
+
+           if (get_nptmass().ne.inputnsource) then
+              call writeFatal("Number of sinks found in sph file not the same as quoted in parameters file")
+              call torus_abort
+           endif
+
            globalnSource = get_nptmass()
+
            !        print *, "using ", globalnsource, "sources"
            if ( globalnSource > size(globalSourceArray)) then 
               write(message,*) "Number of sources exceeds size of source array", globalnSource, size(globalSourceArray)
@@ -846,8 +857,70 @@ contains
            do i = 1, globalnSource
               globalSourceArray(i)%stellar = .true.
               globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()
+
+              if (abs((sourceMass(i) - globalSourceArray(i)%mass)/sourceMass(i)) > 0.01d0) then
+                 call writeFatal("Source mass differs by more than 1% from that in sph file")
+                 call torus_abort
+              endif
               globalSourceArray(i)%position = get_pt_position(i) * (get_udist()/1.d10)
               globalSourceArray(i)%velocity = get_pt_velocity(i) * get_udist() / get_utime()
+
+
+
+
+
+              globalSourceArray(i)%stellar = .true.
+              globalSourceArray(i)%diffuse = .false.
+
+              globalSourceArray(i)%limbDark = 0.d0
+              globalSourceArray(i)%teff = sourceTeff(i)
+              globalSourceArray(i)%mdot = sourceMdot(i)
+              globalSourceArray(i)%mdotWind = sourceMdot(i)
+              globalSourceArray(i)%radius = sourceRadius(i)
+              globalSourceArray(i)%accretionRadius = 1.d10*accretionRadius*smallestCellSize
+              globalSourceArray(i)%luminosity = fourPi * stefanBoltz * &
+                   (globalSourceArray(i)%radius*1.d10)**2 * (globalSourceArray(i)%teff)**4
+              globalSourceArray(i)%prob = sourceProb(i)
+              globalSourceArray(i)%pointSource = pointSourceArray(i)
+              globalSourceArray(i)%time = 0.d0
+              globalSourceArray(i)%outsideGrid = .false.
+              globalSourceArray(i)%onEdge      = .false. 
+              globalSourceArray(i)%onCorner    = .false. 
+
+
+              select case(inputContFluxFile(i))
+                case("blackbody")
+                   !          if(biasToLyman) then
+                   !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
+                   !                  1000)
+                   !          else
+                   call fillSpectrumBB(globalsourceArray(i)%spectrum, globalsourceArray(i)%teff, 100.d0, 2000.d4,10000)
+                   !          end if
+                case("kurucz")
+                   call fillSpectrumKurucz(globalsourcearray(i)%spectrum, globalsourceArray(i)%teff, globalsourceArray(i)%mass, &
+                        globalsourceArray(i)%radius*1.d10)
+                case("tlusty")
+                   call fillSpectrumTlusty(globalsourceArray(i)%spectrum, globalsourceArray(i)%teff, globalsourceArray(i)%mass, &
+                        globalsourceArray(i)%radius*1.d10)
+                case DEFAULT
+                   call readSpectrum(globalsourceArray(i)%spectrum, inputcontfluxfile(i), ok)
+                end select
+
+                call normalizedSpectrum(globalsourceArray(i)%spectrum)
+                !       lamStart = 10.d0
+                !       lamEnd = 1000.d4
+                !       nlambda = 1000
+                call buildSphere(globalsourceArray(i)%position, globalSourceArray(i)%radius, &
+                     globalsourceArray(i)%surface, 100, globalsourceArray(i)%teff, & 
+                     globalsourceArray(i)%spectrum)
+                call sumSurface(globalSourceArray(i)%surface, sumSurfaceluminosity)
+                fac = fourPi * stefanBoltz * (globalsourceArray(i)%radius*1.d10)**2 * (globalsourceArray(i)%teff)**4
+                write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac
+                call writeInfo(message, TRIVIAL)
+                write(message,*) "Setting source luminosity to luminosity from spectrum: ",sumSurfaceLuminosity/lsol, " lsol"
+                call writeInfo(message, TRIVIAL)
+                globalsourceArray(i)%luminosity = sumSurfaceLuminosity
+
            enddo
 #else
            call writeFatal("This geometry requires SPH functionality which is not built.")
@@ -946,7 +1019,7 @@ contains
        globalNSource = 1
     endif
 
-    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
+!    if ((myrankGlobal==0).and.(globalnSource > 0)) call writeVtkfileSource(globalnSource, globalsourcearray, "source.vtk")
 
 
 end subroutine setupGlobalSources

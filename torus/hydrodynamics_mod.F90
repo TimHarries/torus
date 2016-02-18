@@ -1103,7 +1103,6 @@ contains
                    neighbourOctal => grid%octreeRoot
                    
                    call findSubcellLocalLevel(locator(i), neighbourOctal, neighbourSubcell, nDepth-1)
-                   
                    call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(i), q, rho, rhoe, &
                         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction(i), nd, nc, xnext, px, py, pz, rm1,um1,&
                         pm1, qViscosity)
@@ -1117,7 +1116,7 @@ contains
              tot = 0.d0
              corrInterp = 0.d0
              do i = 1, 7
-                weight = 1.d0/modulus(locator(i) - centre)**2
+                weight = 1.d0/modulus(locator(i) - centre)
                 corrInterp = corrInterp + correction(i) * weight
                 tot = tot + weight
              enddo
@@ -16220,7 +16219,7 @@ end subroutine refineGridGeneric2
     integer :: iDepth
     real(double) :: fracChange, tempFracChange, residual
     integer :: ierr, iter, bigIter, i
-!    character(len=80) :: plotfile
+    character(len=80) :: plotfile
     integer, parameter :: minDepth = 4
     integer :: maxDepth
 
@@ -16275,6 +16274,7 @@ end subroutine refineGridGeneric2
           do
              fracChange = 0.d0
              call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.,Black=.true.)
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.,Red=.true.)
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call MPI_ALLREDUCE(fracChange, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR &
@@ -16321,6 +16321,7 @@ end subroutine refineGridGeneric2
           do i = 1, 3
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call gaussSeidelSweepForDeltaE(grid%octreeRoot, grid, iDepth,black = .true.)
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call gaussSeidelSweepForDeltaE(grid%octreeRoot, grid, iDepth,red = .true.)
           enddo
           call updateCorrectionWithDeltaE(grid%octreeRoot, iDepth)
@@ -16343,9 +16344,9 @@ end subroutine refineGridGeneric2
        call setCorrectionToZero(grid%octreeRoot, maxDepth)
 
 
-!          write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
-!          call writeVtkFile(grid, plotfile, &
-!               valueTypeString=(/"phigas ", "rho    ","chiline","adot   ","correction"/))
+          write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
+          call writeVtkFile(grid, plotfile, &
+               valueTypeString=(/"phigas ", "rho    ","chiline","adot   ","correction"/))
 
 
        bigiter = bigiter+1
@@ -17274,7 +17275,7 @@ end subroutine minMaxDepth
               x = x * 1.d10
               dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
               m = m + dm
-              do iPole = 0, 2
+              do iPole = 0, 4
                  v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
               enddo
               
@@ -17775,7 +17776,7 @@ end subroutine minMaxDepth
      call MPI_BCAST(points%z, npoints, MPI_DOUBLE_PRECISION, 0, amrCommunicator, ierr)
      v = 0.d0
      do i = 1, nPoints
-        call multipoleExpansionLevel(grid%octreeRoot, points(i), com, v(i), m, level=4)
+        call multipoleExpansionLevel(grid%octreeRoot, points(i), com, v(i), m, level=5)
      enddo
      allocate(temp(1:nPoints))
      call MPI_ALLREDUCE(v(1:nPoints), temp, npoints, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
