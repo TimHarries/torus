@@ -2823,7 +2823,6 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine calcContinuumEmissivityLucyMono
 
   recursive subroutine  setDustTemperatureIfZero(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
