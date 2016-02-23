@@ -1009,7 +1009,7 @@ contains
           endif
        endif
 
-       if (iIter_grand > maxiterLucy) then
+       if (iIter_grand >= maxiterLucy) then
           write(message,'(a)') "Lucy loop exceeded max iterations. Forcing convergence"
           converged = .true.
        endif
@@ -2821,6 +2821,30 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        endif
     enddo
   end subroutine calcContinuumEmissivityLucyMono
+
+  recursive subroutine  setDustTemperatureIfZero(thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setDustTemperatureIfZero(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%tDust(subcell) < 1.d-10) then
+             thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
+          endif
+       endif
+    enddo
+  end subroutine setDustTemperatureIfZero
 
   recursive subroutine  calcContinuumEmissivityLucyMonoAtDustTemp(grid, thisOctal, lamArray, lambda, iPhotonLambda)
     type(GRIDTYPE) :: grid

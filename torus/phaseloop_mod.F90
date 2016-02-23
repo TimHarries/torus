@@ -46,7 +46,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use TTauri_mod
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
   use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, & 
-       addDustContinuumLucyMono, calcContinuumEmissivityLucyMonoAtDustTemp
+       addDustContinuumLucyMono, calcContinuumEmissivityLucyMonoAtDustTemp, setDustTemperatureIfZero
   use timing, only: tune
   use formal_solutions, only: compute_obs_line_flux
   use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
@@ -730,7 +730,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      if (mie .and. (.not. useDust)) then
 
+        write(*,*) "nlambda ",nlambda, " grid%lamArray ",grid%lamarray
         call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, grid%lamArray)
+
 
         call computeProbDist(grid, totLineEmission, &
              totDustContinuumEmission,lamline, .false.)
@@ -1312,6 +1314,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !              call writeInfo(message, TRIVIAL)
 !           endif
            if (associated(grid%octreeRoot%tdust)) then
+              call setDustTemperatureIfZero(grid%octreeRoot)
               write(message,*) "Setting emissivity from dust temperature"
               call writeInfo(message,TRIVIAL)
               call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, &
