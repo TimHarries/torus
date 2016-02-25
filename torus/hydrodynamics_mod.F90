@@ -16282,7 +16282,7 @@ end subroutine refineGridGeneric2
              fracChange = tempFracChange
 
              i = i + 1
-             if ((iDepth > minDepth).and.(i == 3)) exit
+             if ((iDepth > minDepth).and.(i == 5)) exit
              if ((iDepth == minDepth).and.(fracChange < 1.d-6)) exit
 !             write(*,*) i,fracChange
 
@@ -16318,7 +16318,7 @@ end subroutine refineGridGeneric2
 !          call zeroPhiGasLevel(grid%octreeRoot, iDepth-1)
 !          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
           call setSourceToResiduals(grid%octreeRoot, iDepth)
-          do i = 1, 3
+          do i = 1, 5
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
              call gaussSeidelSweepForDeltaE(grid%octreeRoot, grid, iDepth,black = .true.)
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
@@ -17279,7 +17279,7 @@ end subroutine minMaxDepth
               x = x * 1.d10
               dm = thisOctal%rho(subcell) * cellVolume(thisOctal,subcell) * 1.d30
               m = m + dm
-              do iPole = 0, 4
+              do iPole = 0, 6
                  v = v + (-bigG/x)*(r/x)**ipole * legendre(ipole, cosTheta) * dm
               enddo
               
