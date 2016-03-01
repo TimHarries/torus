@@ -5964,7 +5964,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        enddo
     endif
 
-    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat)
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, &
+         kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat)
     kappaExt = kappaAbs + kappaSca
 
 

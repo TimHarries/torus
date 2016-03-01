@@ -18,7 +18,8 @@ contains
     real(double) :: u_i_minus_1, u_i_plus_1, u_i
     type(VECTOR) :: cen, dx, cen_i_plus_1, cen_i_minus_1
     type(VECTOR) :: dir_u, dir_x, locator, tmpV
-    real(double) :: q, rho_m1,rho_p1, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, qViscosity(3,3)
+    real(double) :: q, rho_m1,rho_p1, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, &
+         phigas, px, py, pz, qViscosity(3,3)
     real(double) :: rm1, um1, pm1, r, correction
     integer :: nd, nc
 
@@ -104,7 +105,8 @@ contains
     real(double) :: u_i_plus_1, u_i_plus_2, u_i
     type(VECTOR) :: cen, dx, cen_i_plus_1, cen_i_plus_2
     type(VECTOR) :: dir_u, dir_x, locator, tmpV
-    real(double) :: q, rho_p1,rho_p2, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, qViscosity(3,3)
+    real(double) :: q, rho_p1,rho_p2, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, &
+         px, py, pz, qViscosity(3,3)
     real(double) :: rm1, um1, pm1, r, correction
     integer :: nd, nc, backDeriv
     logical, optional :: backwards !are we doing a backwards deriv i.e. using values from the lhs of the cell
@@ -209,7 +211,8 @@ contains
     real(double) :: u_i_minus_1, u_i_plus_1, u_i
     type(VECTOR) :: cen, dx, cen_i_plus_1, cen_i_minus_1
     type(VECTOR) :: dir_u, dir_x, locator, tmpV
-    real(double) :: q, rho_m1,rho_p1, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, phigas, px, py, pz, qViscosity(3,3)
+    real(double) :: q, rho_m1,rho_p1, rhoe, rhou, rhov, rhow, x, xnext, qnext, pressure, flux, phi, &
+         phigas, px, py, pz, qViscosity(3,3)
     real(double) :: rm1, um1, pm1, r, correction
     integer :: nd, nc
     
@@ -279,7 +282,7 @@ contains
   end function ddudxx
   
   real(double) function ddudxdz(thisOctal, subcell, dir_u, grid, oneSide)
-    use inputs_mod, only : smallestCellSize, gridDistanceScale, cylindricalHydro
+    use inputs_mod, only : smallestCellSize, gridDistanceScale
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     integer :: subcell, neighbourSubcell
@@ -624,7 +627,8 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir, q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosityP1)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, &
+         qViscosityP1)
     cen_i_plus_1 = VECTOR(px, py,pz)
     r2 = abs(px)*gridDistanceScale
     
@@ -632,13 +636,15 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, dir, q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosityP2)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, &
+         pm1, qViscosityP2)
     
     locator = cen2 - (thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*dir
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir, q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosityM1)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, &
+         qViscosityM1)
     cen_i_minus_1 = VECTOR(px, py,pz)
     r1 = abs(px)*gridDistanceScale
     
@@ -646,7 +652,8 @@ contains
     neighbouroctal => thisoctal
     call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
     call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, (-1.d0)*dir, q, rho, rhoe, &
-         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, pm1, qViscosityM2)
+         rhou, rhov, rhow, x, qnext, pressure, flux, phi, phigas, correction, nd, nc, xnext, px, py, pz, rm1, um1, &
+         pm1, qViscosityM2)
     
     dx = (cen_i_plus_1 - cen_i_minus_1).dot.dir
     if (doMultByR) then
@@ -825,7 +832,8 @@ contains
              ! now tau_rr
              
              thisOctal%qViscosity(subcell,1,1) = thisOctal%etaline(subcell) * &
-                  (2.d0 * dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), VECTOR(1.d0, 0.d0, 0.d0), grid) - 0.6666666666d0 * divV)
+                  (2.d0 * dudx(thisOctal, subcell, VECTOR(1.d0, 0.d0, 0.d0), &
+                  VECTOR(1.d0, 0.d0, 0.d0), grid) - 0.6666666666d0 * divV)
              
              ! now tau_thetatheta
              thisOctal%qViscosity(subcell,2,2) =  thisOctal%etaline(subcell) * &
@@ -834,7 +842,8 @@ contains
              ! now tau_zz
              
              thisOctal%qViscosity(subcell,3,3) = thisOctal%etaline(subcell) * &
-                  (2.d0 * dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid) - 0.6666666666d0 * divV)
+                  (2.d0 * dudx(thisOctal, subcell, VECTOR(0.d0, 0.d0, 1.d0), VECTOR(0.d0, 0.d0, 1.d0), grid) &
+                  - 0.6666666666d0 * divV)
              
              ! now tau_rtheta
              
