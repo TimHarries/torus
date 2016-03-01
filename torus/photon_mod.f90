@@ -402,7 +402,8 @@ contains
           endif
           
 
-          call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca)
+          call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
+               dir=thisPhoton%direction)
 
           k = randomIndex(allSca(1:nDustType), nDustType)
 

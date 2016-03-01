@@ -4490,7 +4490,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforce(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only  : radiationpressure
+    use inputs_mod, only  : radiationpressure, RadForceMonte
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction
@@ -4574,12 +4574,13 @@ contains
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
-!                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-
-                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%x
-
+                   if (RadForceMonte) then
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                           dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                   else
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                           dt * thisOctal%radiationMomentum(subcell)%x
+                   endif
 
                 endif
 
@@ -4592,11 +4593,13 @@ contains
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
-!                   thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
-                   thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%y
-
+                   if (RadForceMonte) then
+                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+                           dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
+                   else
+                      thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
+                           dt * thisOctal%radiationMomentum(subcell)%y
+                   endif
                 endif
              else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
@@ -4607,14 +4610,14 @@ contains
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
                 if (radiationPressure) then
-
-!                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
-
-                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%z
+                   if (RadForceMonte) then
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                           dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                   else
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                           dt * thisOctal%radiationMomentum(subcell)%z
+                   endif
                 endif
-
              endif
 
 
@@ -4654,7 +4657,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceCylindrical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : includePressureTerms, radiationpressure
+    use inputs_mod, only : includePressureTerms, radiationpressure, RadForceMonte
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks, cellCentre
@@ -4902,12 +4905,13 @@ contains
 
 
                 if (radiationPressure) then
-!                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-
-                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%x
-
+                   if (RadForceMonte) then
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                           dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                   else
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                           dt * thisOctal%radiationMomentum(subcell)%x
+                   endif
                    if (debug) then
                       if (myHydroSetGlobal == 0) write(*,*) "change in speed from rad pressure in x ", &
                            (dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed)/(thisOctal%rho(subcell)*1.d5)
@@ -5002,12 +5006,13 @@ contains
 !                   endif
 
                 if (radiationPressure) then
-!                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-!                        dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
-
-                   thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
-                        dt * thisOctal%radiationMomentum(subcell)%z
-
+                   if (RadForceMonte) then
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                           dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
+                   else
+                      thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
+                           dt * thisOctal%radiationMomentum(subcell)%z
+                   endif
 !                   if (abs(thisOctal%rhow(subcell)/(thisOctal%rho(subcell)*1.d5)) > 201.d0) then
 !                      write(*,*) "w speed over 200 after rad pressure forces"
 !                   endif
@@ -5057,7 +5062,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceSpherical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : includePressureTerms, radiationpressure
+    use inputs_mod, only : includePressureTerms, radiationpressure, RadForceMonte
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks
@@ -5239,10 +5244,13 @@ contains
 
 
                 if (radiationPressure) then
-                   thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
-                        dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
-
-                        
+                   if (RadForceMonte) then
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                           dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
+                   else
+                      thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                           dt * thisOctal%radiationMomentum(subcell)%x
+                   endif
 !                   if (thisOctal%radiationMomentum(subcell)%x /= 0.d0) write(*,*) "from flux,mom ",thisOctal%kappaTimesFlux(subcell)%x/cspeed,thisOctal%radiationMomentum(subcell)
 
                    if (debug) then

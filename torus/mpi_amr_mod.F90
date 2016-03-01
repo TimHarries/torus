@@ -4950,7 +4950,7 @@ end subroutine writeRadialFile
              if (dustPhysics) then
                 call returnKappa(grid, thisOctal, subcell, ilambda=1,&
                      kappaScaDust=kappaScaDust, kappaAbsDust=kappaAbsDust, &
-                     kappaSca=kappaSca, kappaAbs=kappaAbs)
+                     kappaSca=kappaSca, kappaAbs=kappaAbs, dir=direction)
                 
                 tempStorage(14) = kappaAbsDust
                 tempStorage(15) = kappaScaDust
@@ -5635,7 +5635,7 @@ end subroutine writeRadialFile
 
                 sOctal => thisOctal
                 call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
-                call returnKappa(grid, thisOctal, subcell, kappap = kappap)
+                call returnKappa(grid, thisOctal, subcell, kappap = kappap, dir=uHat)
                 tau = tau + dble(kappap) * tval * 1.d10 
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat
                 if (tau > tauWanted) then
@@ -5744,7 +5744,7 @@ end subroutine writeRadialFile
                 sOctal => thisOctal
                 call distanceToCellBoundary(grid, position, uHat, tVal, sOctal)
                 call returnKappa(grid, thisOctal, subcell, ilambda=1,&
-                     kappaSca=kappaSca, kappaAbs=kappaAbs)
+                     kappaSca=kappaSca, kappaAbs=kappaAbs, dir=uHat)
                 tauAbs = tauAbs + dble(kappaAbs) * tval
                 tauSca = tauSca + dble(kappaSca) * tval
                 position = position + (tVal+0.01d0*thisOctal%subcellSize)*uHat

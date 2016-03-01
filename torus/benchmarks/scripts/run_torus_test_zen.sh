@@ -121,7 +121,7 @@ cd $test_dir
 for test in ${test_list}; do
     echo "Setting up directory for ${test}"
     if [[ -e ${test} ]]; then
-	echo "${test} already exists. Aborting ..."
+	pwd;echo "${test} already exists. Aborting ..."
 	exit 1
     fi
     mkdir ${test}

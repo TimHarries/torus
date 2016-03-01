@@ -347,7 +347,7 @@ contains
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
-                     lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
+                     lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid, direction=uHat)
 
                 albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
 
@@ -359,7 +359,7 @@ contains
                    spectrum = 1.d-30
 
                    call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                        kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                        kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
 
 
 !                   if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
@@ -402,7 +402,7 @@ contains
                 call locate(lamArray, nLambda, real(thisLam), iLam)
 
                 call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, debug=.true.)
+                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, debug=.true., dir=uHat)
                 write(*,*) "thislam",thislam,ilam, lamArray(ilam)
                 write(*,*) lamArray(1:nLambda)
                 write(*,*) "kappaAbsDust",kappaAbsDust
@@ -803,7 +803,7 @@ end subroutine photoIonizationloop
 
     call amrGridValues(grid%octreeRoot, octVec,  iLambda=iLam, lambda=real(thisLam), foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-         grid=grid, inFlow=inFlow)
+         grid=grid, inFlow=inFlow, direction=uHat)
     oldOctal => thisOctal
 
     if (inFlow) then
@@ -848,7 +848,7 @@ end subroutine photoIonizationloop
              rVec = subcellCentre(endOctal,endSubcell)
              octVec = rVec
              call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
-                  foundSubcell=tempsubcell)
+                  foundSubcell=tempsubcell, direction=uHat)
              uHat = randomUnitVector()
           endif
        endif
@@ -865,7 +865,7 @@ end subroutine photoIonizationloop
           call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), foundOctal=thisOctal, &
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-               grid=grid, inFlow=inFlow)
+               grid=grid, inFlow=inFlow, direction=uHat)
           oldOctal => thisOctal
 
 ! calculate the distance to the next cell
@@ -922,7 +922,7 @@ end subroutine photoIonizationloop
 
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
             foundOctal=thisOctal, foundSubcell=subcell, & 
-            kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
+            kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow, direction=uHat)
 
 
        if (thisOctal%diffusionApprox(subcell)) then
@@ -3266,7 +3266,7 @@ end subroutine readHeIIrecombination
     do while (.not.endLoop)
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsGas, kappaSca=kappaScaGas)
+            kappaAbs=kappaAbsGas, kappaSca=kappaScaGas, dir=thisPhoton%direction)
        kappaExt = kappaAbsGas + kappaScaGas
        thisPhoton%tau = real(thisPhoton%tau + tval * kappaExt)
        thisPhoton%position = thisPhoton%position + (tVal + 1.d-3*grid%halfSmallestSubcell) * thisPhoton%direction
@@ -3299,7 +3299,7 @@ end subroutine readHeIIrecombination
     do while (.not.endLoop)
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsGas, kappaSca=kappaScaGas)
+            kappaAbs=kappaAbsGas, kappaSca=kappaScaGas, dir=thisPhoton%direction)
        kappaExt = kappaAbsGas + kappaScaGas
        tau = kappaExt * tVal
 

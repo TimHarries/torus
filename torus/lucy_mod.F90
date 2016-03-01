@@ -2001,7 +2001,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  startOctal=startOctal, foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
-         grid=grid, inFlow=inFlow)
+         grid=grid, inFlow=inFlow, direction=uHat)
 
     if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
     if(present(kappaScaOut)) kappaScaOut = kappaScadb

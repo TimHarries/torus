@@ -173,6 +173,8 @@
   logical :: includePressureTerms     ! include pressure source terms
   logical :: dumpRadial               ! write a text radial cut each dump
   logical :: radiationPressure        ! use radiation pressure terms
+  logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
+  logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
   logical :: forcegascourant          !use the gas condition only

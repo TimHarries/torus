@@ -2915,7 +2915,7 @@ end subroutine radiationHydro
                                
                                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                     kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                                    kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                                    kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
                                                
                                               
                                if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
@@ -3025,7 +3025,7 @@ end subroutine radiationHydro
                                   call locate(lamArray, nLambda, real(thisLam), iLam)
                                   
                                   call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
-                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb)
+                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, dir=uHat)
 
 !                                  write(*,*) "small packet wavelength ", thisLam
 !                                  write(*,*) "optical depth of cell ",(kappaAbsDb+kappaScadb)*thisOctal%subcellSize
@@ -3043,7 +3043,7 @@ end subroutine radiationHydro
                             
                             call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
                                  Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                                 kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
 !                            write(*,*) "thislam",thislam,ilam, lamArray(ilam)
 !!                            write(*,*) lamArray(1:nLambda)
  !                           write(*,*) "kappaAbsDust",kappaAbsDust
@@ -5964,7 +5964,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        enddo
     endif
 
-    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca)
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat)
     kappaExt = kappaAbs + kappaSca
 
 
@@ -6010,11 +6010,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        uHatDash = uHat
        if (thisOctal%twoD .and. .not. cart2d) then
           zHat = VECTOR(0.d0, 0.d0, 1.d0)
+          rHat = VECTOR(rVecTemp%x, rVecTemp%y, 0.0)
+          call normalize(rHat)
           uHatDash = VECTOR(rHat.dot.uHat, 0.d0, zHat.dot.uHat)
        endif
 
        if (thisOctal%oneD) then
           rHat = VECTOR(rVec%x, rVec%y, rVec%z)
+          call normalize(rHat)
           uHatDash = VECTOR(rHat.dot.uHat, 0.d0, 0.d0)
        endif
        thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
@@ -8280,7 +8283,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust)
+            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
        kappaExt = kappaAbsDust + kappaScaDust
 
 !       if(grid%geometry == "imgTest") then
@@ -8301,9 +8304,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
     enddo
   end subroutine propagateObserverPhoton
-
-
-
 
 
   subroutine moveToNextScattering(grid, thisPhoton, escaped, absorbed, crossedBoundary, newThread)
@@ -8337,7 +8337,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust)
+            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
        kappaExt = kappaAbsDust + kappaScaDust
 
 !       if(grid%geometry == "imgTest") then

@@ -441,6 +441,11 @@ contains
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("caklineopacity", CAKlineOpacity, cLine, fLine, nLines, &
+         "use Abbot82 temp invarient form of line driving: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("radforcemonte", RadForceMonte, cLine, fLine, nLines, &
+         "use a path length based estimation for the rad pressure: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("nhydroperphoto", nHydroPerPhoto, cLine, fLine, nLines, &
          "Number of hydro steps per photoionisation loop: ","(a,i4,a)", 1, ok, .false.)
