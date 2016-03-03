@@ -42,4 +42,5 @@ nsource 1
 mass1 1.
 teff1 1.
 lum1 1.
+contflux1 blackbody
 
