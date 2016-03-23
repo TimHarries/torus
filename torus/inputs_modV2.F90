@@ -1317,6 +1317,36 @@ contains
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 
+! These parameters allow SPH particles within a box to be selected. Particles 
+! outside the box are discarded
+    call getLogical("sphboxcut", sphboxcut, cLine, fLine, nLines, &
+         "Select SPH particles within a box: ","(a,1l,1x,a)",.false., ok, .false.)
+    call getDouble("sphboxxmin", sphboxxmin, 1.0_db, cLine, fLine, nLines, &
+         "SPH box min x: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.) 
+    call getDouble("sphboxxmax", sphboxxmax, 1.0_db, cLine, fLine, nLines, &
+         "SPH box max x: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.) 
+    call getDouble("sphboxymin", sphboxymin, 1.0_db, cLine, fLine, nLines, &
+         "SPH box min y: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.) 
+    call getDouble("sphboxymax", sphboxymax, 1.0_db, cLine, fLine, nLines, &
+         "SPH box max y: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.) 
+    call getDouble("sphboxzmin", sphboxzmin, 1.0_db, cLine, fLine, nLines, &
+         "SPH box min z: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.) 
+    call getDouble("sphboxzmax", sphboxzmax, 1.0_db, cLine, fLine, nLines, &
+         "SPH box max z: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.) 
+
+! These parameters allow SPH particles within a sphere to be selected. Particles 
+! outside the sphere are discarded
+    call getLogical("sphspherecut", sphspherecut, cLine, fLine, nLines, &
+         "Select SPH particles within a sphere: ","(a,1l,1x,a)",.false., ok, .false.)
+    call getDouble("sphspherex", sphspherex, 1.0_db, cLine, fLine, nLines, &
+         "SPH sphere x: ","(a,1pe8.1,1x,a)", amrgridcentrex, ok, .false.) 
+    call getDouble("sphspherey", sphspherey, 1.0_db, cLine, fLine, nLines, &
+         "SPH sphere y: ","(a,1pe8.1,1x,a)", amrgridcentrey, ok, .false.) 
+    call getDouble("sphspherez", sphspherez, 1.0_db, cLine, fLine, nLines, &
+         "SPH sphere z: ","(a,1pe8.1,1x,a)", amrgridcentrez, ok, .false.) 
+    call getDouble("sphsphereradius", sphsphereradius, 1.0_db, cLine, fLine, nLines, &
+         "SPH sphere radius: ","(a,1pe8.1,1x,a)", real(0.5*amrgridsize,db), ok, .false.) 
+
           if ( geometry == "cluster" ) then 
              call getReal("removeradius", rCore, 1.0, cLine, fLine, nLines, &
                   "Clearing radius (Torus units): ","(a,f7.3,a)", 2000.0, ok, .false.)

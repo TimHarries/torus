@@ -2302,11 +2302,13 @@ contains
   end subroutine read_sph_data_mpi
 
   logical function particleRequired(positionArray, uDist, cen, halfsize)
+    use inputs_mod, only: sphboxcut, sphboxxmin, sphboxxmax, sphboxymin, sphboxymax, &
+         sphboxzmin, sphboxzmax, sphspherecut, sphspherex, sphspherey, sphspherez, sphsphereradius
     type(VECTOR) :: cen
     real(double) :: halfSize
     real(kind=8) :: positionArray(5)
     real(db) :: x, y, z, h
-    real(db) :: distFromGridCentre, maxDist
+    real(db) :: distFromGridCentre, maxDist, distFromSphereCentre
     real(db), intent(in) :: uDist
 
     ! Particle position in Torus units
@@ -2314,6 +2316,27 @@ contains
     y = positionArray(2) * uDist / 1.0e10
     z = positionArray(3) * uDist / 1.0e10
     h = positionArray(5) * uDist / 1.0e10
+
+! If we are limiting the particles to a user specified box and this particle
+! is outside the box then it is not required. Otherwise continue to see whether
+! the particle influences the grid.
+    if (sphboxcut) then 
+       if ( x<sphboxxmin .or. x>sphboxxmax .or. &
+            y<sphboxymin .or. y>sphboxymax .or. &
+            z<sphboxzmin .or. z>sphboxzmax) then
+          particleRequired = .false.
+          return
+       endif
+    endif
+
+! Ditto for limiting particles to a sphere
+    if (sphspherecut) then
+       distFromSphereCentre = sqrt ( (x-sphspherex)**2 + (y-sphspherey)**2 + (z-sphspherez)**2 )
+       if (distFromSphereCentre > sphsphereradius) then
+          particleRequired = .false.
+          return
+       endif
+    endif
 
     distFromGridCentre = sqrt ( (x-cen%x)**2 + (y-cen%y)**2 + (z-cen%z)**2)
 

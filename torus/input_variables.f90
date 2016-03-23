@@ -883,6 +883,21 @@
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature
 
+! Select SPH particles within a box 
+  logical, protected      :: sphboxcut
+  real(double), protected :: sphboxxmin ! Minimum x value
+  real(double), protected :: sphboxxmax ! Maximum x value
+  real(double), protected :: sphboxymin ! Minimum y value
+  real(double), protected :: sphboxymax ! Maximum y value
+  real(double), protected :: sphboxzmin ! Minimum z value
+  real(double), protected :: sphboxzmax ! Maximum z value
+! Select SPH particles within a sphere
+  logical, protected      :: sphspherecut
+  real(double), protected :: sphspherex      ! Sphere centre x
+  real(double), protected :: sphspherey      ! Sphere centre y
+  real(double), protected :: sphspherez      ! Sphere centre z
+  real(double), protected :: sphsphereradius ! Sphere radius
+
 !------------------
 ! Other parameters 
 !------------------
