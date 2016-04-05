@@ -55,21 +55,21 @@ program compare_molbench
      endif
   end do
 
-  write(*,*) "Maximum difference = ",diffmax
-  write(*,*) "Radius = ", model_Rarray(diffmaxloc(2))
-  write(*,*) "Level ", diffmaxloc(1) - 1
+  write(*,'(a,es10.3)') "Maximum difference = ",diffmax
+  write(*,'(a,es10.3)') "Radius = ", model_Rarray(diffmaxloc(2))
+  write(*,'(a,i3)') "Level  = ", diffmaxloc(1) - 1
 
   if ( any(diff(1:ncheck,:) > max_diff)) then
-     write(*,*) "Difference of more than ", max_diff, "found."
-     write(*,*) "TORUS: Test failed"
+     write(*,'(a,es10.3,a)') "Difference of more than ", max_diff, " found."
+     write(*,'(a)') "TORUS: Test failed"
      status = 0
   else
-     write(*,*) "Difference of more than ", max_diff, "not found."
-     write(*,*) "TORUS: Test successful"
+     write(*,'(a,es10.3,a)') "Difference of more than ", max_diff, " not found."
+     write(*,'(a)') "TORUS: Test successful"
      status = 1
   endif
   
-  write(*,*) "Read ", nlines-1, "lines"
+  write(*,'(a,i4,a)') "Read ", nlines-1, " lines"
 
   close(60)
   close(61)

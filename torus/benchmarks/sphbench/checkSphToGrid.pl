@@ -24,7 +24,7 @@ while(<RUNLOG>){
   if (/Mass of envelope:/){
     @line=split;
     $mass=$line[4];
-    print "\nGas mass on grid is $mass solar masses \n";
+    print "Gas mass on grid is $mass solar masses \n";
     print "Expected value is $massRequired solar masses \n";
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";

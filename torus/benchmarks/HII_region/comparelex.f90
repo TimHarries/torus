@@ -39,8 +39,8 @@ program compareLex
   write(*,*) "Reading ", nlines, " lines"
   write(*,*) "Torus file: ", torus_file
   write(*,*) "Reference file: ", ref_file
-  write(*,*) "Tolerance (temperature) = ", tolerance_T
-  write(*,*) "Tolerance (ions) = ", tolerance_ion
+  write(*,'(a,f5.2)') "Tolerance (temperature) = ", tolerance_T
+  write(*,'(a,f5.2)') "Tolerance (ions)        = ", tolerance_ion
 
 ! Check the number of species we are comparing
   if ( nion_check > min(nIonsOld,nIonsNew) ) then
@@ -81,8 +81,8 @@ lines:  do i = 1, nlines
   enddo lines
   avcheck = avcheck / real(nav)
   tav = tav / real(nt)
-  write(*,*) "Average percentage difference in ions is ",100.*avcheck
-  write(*,*) "Average percentage difference in temp is ",100.*tav
+  write(*,'(a,f7.2)') "Average percentage difference in ions is ",100.*avcheck
+  write(*,'(a,f7.2)') "Average percentage difference in temp is ",100.*tav
   if (avcheck > tolerance_ion) then
      failed =.true.
      write(*,*) "Failed on ions"

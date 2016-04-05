@@ -9,7 +9,7 @@ program check_cube
   character(len=*), parameter :: image_file(nimages)=(/"intensity_molebench.fits"/)
   logical :: found_file
   real, parameter :: expectedVal(nimages)  = (/2.82369639E-09/) ! Expected values for sum of pixels
-  real, parameter :: tolerance = 0.01 ! Fractional tolerance 
+  real, parameter :: tolerance = 0.001 ! Fractional tolerance 
   real :: diff
 
 ! FITS file parameters and variables
@@ -44,7 +44,7 @@ images:  do i=1,nimages
 
      ! Find the axis sizes
      call ftgknj(unit,"NAXIS",1,3,npix,nfound,status)
-     write(*,*) "Axis sizes: ", npix
+     write(*,'(a,3(i4,2x))') "Axis sizes: ", npix
 
      ! Read in the pixel values
      allocate (cube(npix(1),npix(2),npix(3)))
@@ -76,11 +76,11 @@ images:  do i=1,nimages
 
      ! Report basic stats
      cube_sum = SUM(cube) 
-     write(*,*) "Sum of pixel values= ", cube_sum
+     write(*,'(a,es10.4)') "Sum of pixel values= ", cube_sum
 
      diff = abs(cube_sum - expectedVal(i)) / expectedVal(i)
-     write(*,'(a,f6.1,a)') "Difference from expected value= ", diff*100.0, " %"
-     write(*,'(a,f6.1,a)') "Tolerance= ", tolerance*100.0, " %"
+     write(*,'(a,f6.2,a)') "Difference from expected value= ", diff*100.0, " %"
+     write(*,'(a,f6.2,a)') "Tolerance= ", tolerance*100.0, " %"
      if (diff > tolerance) then
         write(*,*) "TORUS: Test failed"
         STOP

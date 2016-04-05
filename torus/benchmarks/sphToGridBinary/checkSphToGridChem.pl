@@ -22,7 +22,7 @@ while(<RUNLOG>){
   if (/Mass of envelope:/){
     @line=split;
     $mass=$line[4];
-    print "\nHI mass on grid is $mass solar masses \n";
+    print "HI mass on grid is $mass solar masses \n";
     print "Expected value is $massRequired solar masses \n";
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";
@@ -39,7 +39,7 @@ while(<RUNLOG>){
   if (/Molecular mass of envelope:/){
     @line=split;
     $mass=$line[5];
-    print "\nCO mass on grid is $mass solar masses \n";
+    print "CO mass on grid is $mass solar masses \n";
     print "Expected value is $COmassRequired solar masses \n";
     $fracDiff= ($mass - $COmassRequired) / $COmassRequired;
     print "Fractional difference = $fracDiff \n";

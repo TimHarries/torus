@@ -91,7 +91,7 @@ contains
 
     ! Find the axis sizes
     call ftgknj(unit,"NAXIS",1,2,npix,nfound,status)
-    write(*,*) "Axis sizes: ", npix
+    write(*,'(a,2(2x,i3))') "Axis sizes: ", npix
 
     ! Read in the pixel values
     allocate (nCol_torus(npix(1),npix(2)))
@@ -145,7 +145,7 @@ contains
     integer :: xPix_max
 
     yPix = npix(2) / 2
-    write(*,*) "Comparing with row y= ", yPix
+    write(*,'(a,i3)') "Comparing with row y= ", yPix
 
     deviation = 0.0
     npoints = 0
@@ -186,8 +186,8 @@ contains
     end do
 
     mean_deviation = deviation/real(npoints)
-    write(*,*) "Mean deviation= ", mean_deviation
-    write(*,*) "Tolerance= ", tolerance
+    write(*,'(a,es10.4)') "Mean deviation= ", mean_deviation
+    write(*,'(a,es10.4)') "Tolerance=      ", tolerance
     if (mean_deviation > tolerance) then 
        fail=.true.
     endif

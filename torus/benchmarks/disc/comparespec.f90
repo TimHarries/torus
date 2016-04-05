@@ -64,11 +64,11 @@ program comparespec
      write(*,*) "Spectrum full of zeros..."
      write(*,*) "TORUS: Test failed"
   elseif (mean > 0.1) then
-     write(*,*) "Mean relative difference > 10%", mean*100.
+     write(*,'(a,f7.2,a)') "Mean relative difference > 10%", mean*100.
      write(*,*) "TORUS: Test failed"
   else
      write(*,*) "TORUS: Test successful"
-     write(*,*) "Mean relative difference= ", mean*100, "%"
+     write(*,'(a,f7.2,a)') "Mean relative difference= ", mean*100, "%"
   end if
 
   deallocate (x1, x2, y1, y2)
