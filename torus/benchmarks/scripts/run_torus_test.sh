@@ -268,14 +268,7 @@ for sys in ${SYS_TO_TEST}; do
     cp -r ${TEST_DIR}/torus/benchmarks . 
 
 # Build code
-    if [[ ${DO_BUILD} == yes ]]; then
-	make_build
-    else
-	mkdir build
-	cd build 
-	ln -s ${TORUS_BINARY}
-	cd ..
-    fi
+    make_build
 
 # Check if we have an executable. If not proceed to the next SYSTEM
     if [[ -x build/torus.${SYSTEM} ]]; then
@@ -500,7 +493,6 @@ echo ""
 
 # Default mode is daily test
 export MODE=daily
-export DO_BUILD=yes
 export RETURN_CODE=0 
 export TORUS_SVN_PATH=https://repository.astro.ex.ac.uk/torus/trunk/torus/
 export TORUS_SVN_REVISION=
