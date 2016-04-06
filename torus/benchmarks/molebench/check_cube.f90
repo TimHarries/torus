@@ -9,7 +9,7 @@ program check_cube
   character(len=*), parameter :: image_file(nimages)=(/"intensity_molebench.fits"/)
   logical :: found_file
   real, parameter :: expectedVal(nimages)  = (/2.82369639E-09/) ! Expected values for sum of pixels
-  real, parameter :: tolerance = 0.001 ! Fractional tolerance 
+  real, parameter :: tolerance = 0.01 ! Fractional tolerance 
   real :: diff
 
 ! FITS file parameters and variables
